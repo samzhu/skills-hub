@@ -40,6 +40,8 @@
 - 狀態管理：server state 用 TanStack Query，client state 用 Zustand
 - 元件檔案：PascalCase（`SkillCard.tsx`）
 - hooks/utilities：camelCase（`useSkillSearch.ts`）
+- UI 語言：繁體中文（zh-TW）— 所有頁面標題、按鈕文字、提示訊息、空狀態文案皆使用繁體中文
+- 程式碼中的變數、函式名稱維持英文
 
 ## API Standards
 

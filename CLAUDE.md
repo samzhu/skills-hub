@@ -128,6 +128,8 @@ skills-hub/
 - Commit messages: conventional commits (feat:, fix:, refactor:, test:, docs:, chore:)
 - Branch naming: feature/S001-skill-crud, fix/S002-upload-validation
 - AC-to-test: @DisplayName("AC-1: ...") or @Tag("AC-1")
+- UI 語言: 繁體中文（zh-TW）— 所有前端頁面、按鈕、提示訊息、錯誤訊息皆使用繁體中文
+- API 錯誤訊息: 英文（給前端轉譯用）
 
 ## Build commands
 
