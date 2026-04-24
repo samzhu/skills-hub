@@ -6,7 +6,7 @@ Done when: S000 done, `./gradlew build` 成功，frontend dev server 可啟動
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S000 | Project Init — 前後端骨架、ES 基礎設施、Gradle 整合 | S(11) | none | 🔲 |
+| S000 | Project Init — 前後端骨架、ES 基礎設施、Gradle 整合 | S(10) | none | ⏳ |
 
 ### S000: Project Init
 
@@ -69,8 +69,8 @@ Done when: S001-S002 all done
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S001 | Skill 領域模型 + Command/Query API (ES+CQRS) | M(13) | S000 | 🔲 |
-| S002 | 技能瀏覽與搜尋 UI + 關鍵字搜尋 | M(12) | S001 | 🔲 |
+| S001 | Skill 領域模型 + Command/Query API (ES+CQRS) | S(11) | S000 | ⏳ |
+| S002 | 技能瀏覽與搜尋 UI + 關鍵字搜尋 | S(11) | S001 | ⏳ |
 
 ### S001: Skill 領域模型 + Command/Query API (ES+CQRS)
 

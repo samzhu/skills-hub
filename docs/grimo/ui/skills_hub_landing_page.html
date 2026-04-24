@@ -1,0 +1,732 @@
+<h2 class="sr-only">Skills Hub landing page with hero pitch, dual paths for consumers and publishers, live registry preview, how-it-works flow, and social proof</h2>
+
+<style>
+  .lp-root { font-family: var(--font-sans); color: var(--color-text-primary); }
+
+  .lp-app {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+  }
+
+  /* Top nav */
+  .lp-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 26px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .lp-brand { display: flex; align-items: center; gap: 10px; }
+  .lp-logo {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--color-text-primary); color: var(--color-background-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500;
+  }
+  .lp-brand-name { font-size: 15px; font-weight: 500; }
+  .lp-brand-org {
+    font-size: 11px; color: var(--color-text-tertiary);
+    padding: 2px 7px; border-radius: 4px;
+    background: var(--color-background-secondary);
+    margin-left: 8px;
+  }
+  .lp-nav-links { display: flex; gap: 20px; font-size: 13px; color: var(--color-text-secondary); }
+  .lp-nav-cta {
+    font-size: 13px; padding: 6px 14px;
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border-radius: var(--border-radius-md);
+    font-weight: 500;
+  }
+
+  /* Hero */
+  .lp-hero {
+    padding: 48px 26px 40px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 32px;
+    align-items: center;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    background:
+      radial-gradient(ellipse 400px 200px at 85% 30%, rgba(127, 119, 221, 0.06), transparent 70%),
+      radial-gradient(ellipse 300px 180px at 15% 85%, rgba(29, 158, 117, 0.04), transparent 70%);
+  }
+
+  .lp-eyebrow {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; padding: 4px 10px;
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: 999px;
+    color: var(--color-text-secondary);
+    margin-bottom: 18px;
+  }
+  .lp-eyebrow .pulse {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #1D9E75;
+    animation: lp-pulse 2s ease-in-out infinite;
+  }
+  @keyframes lp-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .lp-headline {
+    font-size: 36px; font-weight: 500; margin: 0 0 14px;
+    line-height: 1.15; letter-spacing: -0.01em;
+  }
+  .lp-headline .accent {
+    background: linear-gradient(135deg, #7F77DD 0%, #378ADD 50%, #1D9E75 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .lp-sub {
+    font-size: 15px; color: var(--color-text-secondary);
+    margin: 0 0 24px; line-height: 1.55;
+    max-width: 440px;
+  }
+
+  .lp-cta-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  .lp-cta-primary-wrap {
+    position: relative;
+    border-radius: var(--border-radius-md);
+    padding: 1.5px;
+    background: var(--color-border-tertiary);
+    overflow: hidden;
+  }
+  .lp-cta-primary-wrap::before {
+    content: '';
+    position: absolute; inset: -80%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 290deg, #7F77DD 320deg, #378ADD 345deg, transparent 360deg);
+    animation: lp-spin 4s linear infinite;
+  }
+  @keyframes lp-spin { to { transform: rotate(360deg); } }
+  .lp-cta-primary {
+    position: relative;
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border: none; font-weight: 500;
+    font-size: 14px; padding: 11px 22px;
+    border-radius: calc(var(--border-radius-md) - 1.5px);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .lp-cta-secondary {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-secondary);
+    color: var(--color-text-primary); font-weight: 500;
+    font-size: 14px; padding: 11px 18px;
+    border-radius: var(--border-radius-md);
+    display: flex; align-items: center; gap: 7px;
+  }
+
+  .lp-trust-row {
+    display: flex; gap: 18px; align-items: center;
+    margin-top: 22px;
+    font-size: 12px; color: var(--color-text-tertiary);
+  }
+  .lp-trust-row .t-dot {
+    width: 3px; height: 3px; border-radius: 50%;
+    background: var(--color-border-secondary);
+  }
+  .lp-trust-row .ok { color: #27500A; display: flex; align-items: center; gap: 4px; }
+
+  /* Hero visual — registry preview card */
+  .lp-hero-visual {
+    position: relative;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .lp-preview-card {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 11px 13px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .lp-preview-card.tilt-1 { transform: translateX(-12px) rotate(-0.8deg); }
+  .lp-preview-card.tilt-2 { transform: translateX(8px) rotate(0.5deg); }
+  .lp-preview-card.tilt-3 { transform: translateX(-4px) rotate(-0.3deg); }
+  .lp-preview-card.featured {
+    padding: 1.5px;
+    background: var(--color-border-tertiary);
+    position: relative; overflow: hidden;
+  }
+  .lp-preview-card.featured::before {
+    content: '';
+    position: absolute; inset: -40%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 310deg, #1D9E75 340deg, #7F77DD 355deg, transparent 360deg);
+    animation: lp-spin 5s linear infinite;
+  }
+  .lp-preview-inner {
+    position: relative;
+    background: var(--color-background-primary);
+    border-radius: calc(var(--border-radius-lg) - 1.5px);
+    padding: 11px 13px;
+    display: flex; align-items: center; gap: 10px;
+    flex: 1;
+  }
+
+  .lp-pi {
+    width: 30px; height: 30px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500; flex-shrink: 0;
+  }
+  .lp-pi.purple { background: #EEEDFE; color: #3C3489; }
+  .lp-pi.blue   { background: #E6F1FB; color: #0C447C; }
+  .lp-pi.teal   { background: #E1F5EE; color: #085041; }
+  .lp-pi.amber  { background: #FAEEDA; color: #633806; }
+  .lp-pi.coral  { background: #FAECE7; color: #712B13; }
+
+  .lp-p-body { flex: 1; min-width: 0; }
+  .lp-p-name {
+    font-size: 13px; font-weight: 500; margin: 0 0 2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .lp-p-desc {
+    font-size: 11.5px; color: var(--color-text-tertiary); margin: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .lp-p-risk {
+    font-size: 10px; padding: 1px 7px; border-radius: 999px; font-weight: 500;
+    flex-shrink: 0;
+  }
+  .lp-p-risk.low { background: #EAF3DE; color: #27500A; }
+  .lp-p-risk.med { background: #FAEEDA; color: #633806; }
+  .lp-p-dl {
+    font-size: 11px; color: var(--color-text-secondary);
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Stat strip */
+  .lp-stats {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    padding: 24px 26px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .lp-stat {
+    padding: 0 20px;
+    border-left: 0.5px solid var(--color-border-tertiary);
+  }
+  .lp-stat:first-child { border-left: none; padding-left: 0; }
+  .lp-stat .k {
+    font-size: 11px; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin: 0 0 6px;
+  }
+  .lp-stat .v {
+    font-size: 26px; font-weight: 500; margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .lp-stat .sub {
+    font-size: 11px; color: var(--color-text-secondary);
+    margin: 4px 0 0;
+  }
+
+  /* Section wrapper */
+  .lp-section { padding: 40px 26px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .lp-section-label {
+    font-size: 11px; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin: 0 0 10px;
+  }
+  .lp-section-title {
+    font-size: 24px; font-weight: 500; margin: 0 0 10px;
+    line-height: 1.25; letter-spacing: -0.005em;
+  }
+  .lp-section-intro {
+    font-size: 14px; color: var(--color-text-secondary);
+    max-width: 520px; line-height: 1.6;
+    margin: 0 0 26px;
+  }
+
+  /* Dual paths */
+  .lp-paths {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .lp-path {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 22px;
+    display: flex; flex-direction: column;
+  }
+  .lp-path-icon {
+    width: 38px; height: 38px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .lp-path-icon.consumer { background: #E6F1FB; color: #0C447C; }
+  .lp-path-icon.publisher { background: #EEEDFE; color: #3C3489; }
+
+  .lp-path-eyebrow {
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin: 0 0 6px;
+  }
+  .lp-path-eyebrow.consumer { color: #185FA5; }
+  .lp-path-eyebrow.publisher { color: #534AB7; }
+
+  .lp-path-title {
+    font-size: 17px; font-weight: 500; margin: 0 0 8px;
+  }
+  .lp-path-desc {
+    font-size: 13px; color: var(--color-text-secondary);
+    line-height: 1.6; margin: 0 0 16px;
+    flex: 1;
+  }
+  .lp-path-steps {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 18px;
+  }
+  .lp-path-step {
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 12.5px; color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+  .lp-path-step .n {
+    font-family: var(--font-mono); font-size: 10px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary); font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .lp-path-step strong {
+    font-weight: 500; color: var(--color-text-primary);
+    margin-right: 5px;
+  }
+
+  .lp-path-cta {
+    font-size: 13px; font-weight: 500;
+    padding: 9px 14px;
+    border-radius: var(--border-radius-md);
+    display: inline-flex; align-items: center; gap: 6px;
+    align-self: flex-start;
+  }
+  .lp-path-cta.consumer {
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border: none;
+  }
+  .lp-path-cta.publisher {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-secondary);
+    color: var(--color-text-primary);
+  }
+
+  /* How it works — event flow diagram */
+  .lp-flow-wrap {
+    padding: 22px 18px;
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+  }
+  .lp-flow-caption {
+    font-size: 12px; color: var(--color-text-tertiary);
+    margin: 10px 0 0; text-align: center;
+    font-family: var(--font-mono);
+  }
+
+  /* Value props */
+  .lp-values {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .lp-value {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 18px;
+  }
+  .lp-value-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+  }
+  .lp-value-icon.teal { background: #E1F5EE; color: #085041; }
+  .lp-value-icon.amber { background: #FAEEDA; color: #633806; }
+  .lp-value-icon.purple { background: #EEEDFE; color: #3C3489; }
+  .lp-value-title {
+    font-size: 15px; font-weight: 500; margin: 0 0 6px;
+  }
+  .lp-value-desc {
+    font-size: 12.5px; color: var(--color-text-secondary);
+    line-height: 1.55; margin: 0;
+  }
+
+  /* Compatibility strip */
+  .lp-compat {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 26px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    gap: 20px; flex-wrap: wrap;
+  }
+  .lp-compat-label {
+    font-size: 12px; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+  .lp-compat-logos {
+    display: flex; gap: 22px; align-items: center; flex-wrap: wrap;
+    font-size: 12.5px; color: var(--color-text-secondary);
+  }
+  .lp-compat-logos .logo-dot {
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .lp-compat-logos .logo-dot::before {
+    content: ''; width: 7px; height: 7px; border-radius: 2px;
+    background: var(--color-text-tertiary); opacity: 0.5;
+  }
+
+  /* Final CTA */
+  .lp-final {
+    padding: 44px 26px;
+    text-align: center;
+    position: relative;
+    background:
+      radial-gradient(ellipse 500px 200px at 50% 0%, rgba(127, 119, 221, 0.08), transparent 70%);
+  }
+  .lp-final-title {
+    font-size: 26px; font-weight: 500; margin: 0 0 10px;
+    letter-spacing: -0.005em;
+  }
+  .lp-final-sub {
+    font-size: 14px; color: var(--color-text-secondary);
+    margin: 0 0 22px;
+    max-width: 440px;
+    margin-left: auto; margin-right: auto;
+    line-height: 1.55;
+  }
+  .lp-final-ctas {
+    display: flex; gap: 10px; justify-content: center;
+  }
+
+  /* Footer */
+  .lp-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 26px;
+    font-size: 11.5px; color: var(--color-text-tertiary);
+    border-top: 0.5px solid var(--color-border-tertiary);
+  }
+  .lp-footer-links { display: flex; gap: 16px; }
+</style>
+
+<div class="lp-root">
+<div class="lp-app">
+
+  <!-- Nav -->
+  <nav class="lp-nav">
+    <div class="lp-brand">
+      <div class="lp-logo">S</div>
+      <div>
+        <span class="lp-brand-name">Skills Hub</span>
+        <span class="lp-brand-org">Engineering org</span>
+      </div>
+    </div>
+    <div class="lp-nav-links">
+      <span>Browse</span>
+      <span>Publish</span>
+      <span>Docs</span>
+      <span>Pricing</span>
+    </div>
+    <span class="lp-nav-cta">Sign in</span>
+  </nav>
+
+  <!-- Hero -->
+  <section class="lp-hero">
+    <div>
+      <div class="lp-eyebrow">
+        <span class="pulse"></span>
+        New · 247 skills across 12 teams
+      </div>
+      <h1 class="lp-headline">
+        The agent skills registry<br>
+        your team can <span class="accent">actually trust</span>
+      </h1>
+      <p class="lp-sub">
+        Discover, publish, and govern SKILL.md bundles across Claude Code, Cursor, Copilot, and every tool that speaks the open agentskills.io standard — with risk scoring baked in.
+      </p>
+
+      <div class="lp-cta-row">
+        <div class="lp-cta-primary-wrap">
+          <button class="lp-cta-primary">
+            Browse the registry
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+        <button class="lp-cta-secondary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+          Publish your first skill
+        </button>
+      </div>
+
+      <div class="lp-trust-row">
+        <span class="ok">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+          Auto risk-scored
+        </span>
+        <span class="t-dot"></span>
+        <span>SSO via company OAuth</span>
+        <span class="t-dot"></span>
+        <span>Open standard · no lock-in</span>
+      </div>
+    </div>
+
+    <div class="lp-hero-visual">
+      <div class="lp-preview-card tilt-1">
+        <div class="lp-pi purple">DC</div>
+        <div class="lp-p-body">
+          <p class="lp-p-name">docker-compose-helper</p>
+          <p class="lp-p-desc">Generate &amp; validate compose files</p>
+        </div>
+        <span class="lp-p-risk low">Low</span>
+        <span class="lp-p-dl">↓ 1,284</span>
+      </div>
+
+      <div class="lp-preview-card featured">
+        <div class="lp-preview-inner">
+          <div class="lp-pi blue">K8</div>
+          <div class="lp-p-body">
+            <p class="lp-p-name">k8s-deployment</p>
+            <p class="lp-p-desc">Production-ready Kubernetes manifests</p>
+          </div>
+          <span class="lp-p-risk med">Med</span>
+          <span class="lp-p-dl">↓ 892</span>
+        </div>
+      </div>
+
+      <div class="lp-preview-card tilt-2">
+        <div class="lp-pi teal">JU</div>
+        <div class="lp-p-body">
+          <p class="lp-p-name">junit-generator</p>
+          <p class="lp-p-desc">Idiomatic JUnit 5 with Mockito</p>
+        </div>
+        <span class="lp-p-risk low">Low</span>
+        <span class="lp-p-dl">↓ 641</span>
+      </div>
+
+      <div class="lp-preview-card tilt-3">
+        <div class="lp-pi amber">GA</div>
+        <div class="lp-p-body">
+          <p class="lp-p-name">gha-workflow-builder</p>
+          <p class="lp-p-desc">Compose GitHub Actions workflows</p>
+        </div>
+        <span class="lp-p-risk low">Low</span>
+        <span class="lp-p-dl">↓ 478</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stat strip -->
+  <section class="lp-stats">
+    <div class="lp-stat">
+      <p class="k">Published skills</p>
+      <p class="v">247</p>
+      <p class="sub">across 12 teams</p>
+    </div>
+    <div class="lp-stat">
+      <p class="k">Downloads · 30d</p>
+      <p class="v">38,412</p>
+      <p class="sub">up 22.4% vs prev 30d</p>
+    </div>
+    <div class="lp-stat">
+      <p class="k">Active publishers</p>
+      <p class="v">62</p>
+      <p class="sub">8 new this month</p>
+    </div>
+    <div class="lp-stat">
+      <p class="k">Avg risk score</p>
+      <p class="v">Low</p>
+      <p class="sub">68% pass auto-scan</p>
+    </div>
+  </section>
+
+  <!-- Dual paths -->
+  <section class="lp-section">
+    <p class="lp-section-label">Two ways in</p>
+    <h2 class="lp-section-title">Wherever you start, get to productive fast.</h2>
+    <p class="lp-section-intro">Skills Hub is built for developers who want to reuse good work, and for platform teams who want visibility and control. Both paths share the same open SKILL.md format.</p>
+
+    <div class="lp-paths">
+
+      <div class="lp-path">
+        <div class="lp-path-icon consumer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <p class="lp-path-eyebrow consumer">I want to use skills</p>
+        <h3 class="lp-path-title">Find the right skill in seconds</h3>
+        <p class="lp-path-desc">Semantic search understands intent, not just keywords. Every skill is risk-scored so you know what you're installing before you install it.</p>
+
+        <div class="lp-path-steps">
+          <div class="lp-path-step"><span class="n">1</span><div><strong>Describe your task</strong>in plain language — or browse by category.</div></div>
+          <div class="lp-path-step"><span class="n">2</span><div><strong>Check the risk</strong>— low-risk skills auto-publish, high-risk ones get reviewed.</div></div>
+          <div class="lp-path-step"><span class="n">3</span><div><strong>Download &amp; drop</strong>the bundle into <code style="font-family:var(--font-mono); font-size:11px; background:var(--color-background-secondary); padding: 1px 5px; border-radius: 3px;">~/.claude/skills/</code></div></div>
+        </div>
+
+        <button class="lp-path-cta consumer">
+          Browse 247 skills
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </div>
+
+      <div class="lp-path">
+        <div class="lp-path-icon publisher">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+        </div>
+        <p class="lp-path-eyebrow publisher">I want to share what I've built</p>
+        <h3 class="lp-path-title">Ship a skill in under a minute</h3>
+        <p class="lp-path-desc">Zip your SKILL.md bundle. We validate the format, scan for risks, and publish — with full download analytics on day one.</p>
+
+        <div class="lp-path-steps">
+          <div class="lp-path-step"><span class="n">1</span><div><strong>Upload a zip</strong>with your SKILL.md and optional scripts/references.</div></div>
+          <div class="lp-path-step"><span class="n">2</span><div><strong>See validation</strong>— format check, risk findings, file-by-file.</div></div>
+          <div class="lp-path-step"><span class="n">3</span><div><strong>Publish &amp; track</strong>downloads, ratings, and usage trends over time.</div></div>
+        </div>
+
+        <button class="lp-path-cta publisher">
+          Publish your first skill
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- How it works — event flow -->
+  <section class="lp-section">
+    <p class="lp-section-label">How it works</p>
+    <h2 class="lp-section-title">Built on events, not imports.</h2>
+    <p class="lp-section-intro">Every skill lifecycle moment — created, scanned, published, flagged, downloaded — is a durable domain event. That's how we keep audit trails clean and trust signals visible.</p>
+
+    <div class="lp-flow-wrap">
+      <svg viewBox="0 0 640 180" width="100%" role="img" preserveAspectRatio="xMidYMid meet">
+        <title>Skill lifecycle event flow</title>
+        <desc>Upload emits a created event, then scan emits a risk assessed event, then publish emits a version published event which feeds both downloads and analytics.</desc>
+
+        <defs>
+          <marker id="lp-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+
+        <g class="c-purple">
+          <rect x="0" y="30" width="110" height="56" rx="8"/>
+          <text class="th" x="55" y="56" text-anchor="middle">Upload</text>
+          <text class="ts" x="55" y="72" text-anchor="middle">SKILL.md + zip</text>
+        </g>
+
+        <line x1="110" y1="58" x2="165" y2="58" stroke="#888780" stroke-width="1" marker-end="url(#lp-arrow)"/>
+        <text class="ts" x="137" y="50" text-anchor="middle" fill="#888780">SkillCreated</text>
+
+        <g class="c-amber">
+          <rect x="165" y="30" width="110" height="56" rx="8"/>
+          <text class="th" x="220" y="56" text-anchor="middle">Auto scan</text>
+          <text class="ts" x="220" y="72" text-anchor="middle">Risk findings</text>
+        </g>
+
+        <line x1="275" y1="58" x2="330" y2="58" stroke="#888780" stroke-width="1" marker-end="url(#lp-arrow)"/>
+        <text class="ts" x="302" y="50" text-anchor="middle" fill="#888780">SkillRiskAssessed</text>
+
+        <g class="c-teal">
+          <rect x="330" y="30" width="110" height="56" rx="8"/>
+          <text class="th" x="385" y="56" text-anchor="middle">Publish</text>
+          <text class="ts" x="385" y="72" text-anchor="middle">Version goes live</text>
+        </g>
+
+        <line x1="440" y1="58" x2="495" y2="58" stroke="#888780" stroke-width="1" marker-end="url(#lp-arrow)"/>
+        <text class="ts" x="467" y="50" text-anchor="middle" fill="#888780">SkillVersionPublished</text>
+
+        <g class="c-blue">
+          <rect x="495" y="30" width="110" height="56" rx="8"/>
+          <text class="th" x="550" y="56" text-anchor="middle">Live</text>
+          <text class="ts" x="550" y="72" text-anchor="middle">Downloadable, searchable</text>
+        </g>
+
+        <g class="c-gray">
+          <rect x="250" y="130" width="140" height="38" rx="8"/>
+          <text class="th" x="320" y="155" text-anchor="middle">Analytics projection</text>
+        </g>
+
+        <path d="M 550 86 Q 550 120 390 148" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#lp-arrow)"/>
+        <path d="M 220 86 Q 220 120 250 148" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#lp-arrow)"/>
+      </svg>
+      <p class="lp-flow-caption">domain_events → projections → read models</p>
+    </div>
+  </section>
+
+  <!-- Value props -->
+  <section class="lp-section">
+    <p class="lp-section-label">Why teams choose Skills Hub</p>
+    <h2 class="lp-section-title">Governance without slowing anyone down.</h2>
+
+    <div class="lp-values">
+      <div class="lp-value">
+        <div class="lp-value-icon teal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+        </div>
+        <h3 class="lp-value-title">Risk-tiered by default</h3>
+        <p class="lp-value-desc">Every upload is scanned for dangerous shell patterns, sensitive path access, and untrusted domains. Low-risk skills auto-publish; high-risk go to review.</p>
+      </div>
+
+      <div class="lp-value">
+        <div class="lp-value-icon purple">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/></svg>
+        </div>
+        <h3 class="lp-value-title">Semantic search that gets intent</h3>
+        <p class="lp-value-desc">Describe the task — "deploy a service to kubernetes" — and get ranked matches with explanations. Powered by Gemini embeddings over your org's registry.</p>
+      </div>
+
+      <div class="lp-value">
+        <div class="lp-value-icon amber">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        </div>
+        <h3 class="lp-value-title">Full-lifecycle analytics</h3>
+        <p class="lp-value-desc">Downloads, ratings, version adoption, flag volume. Authors see what lands; admins see what needs attention. All derived from a single event stream.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Compatibility -->
+  <section class="lp-compat">
+    <span class="lp-compat-label">Works with</span>
+    <div class="lp-compat-logos">
+      <span class="logo-dot">Claude Code</span>
+      <span class="logo-dot">Cursor</span>
+      <span class="logo-dot">GitHub Copilot</span>
+      <span class="logo-dot">OpenAI Codex</span>
+      <span class="logo-dot">Gemini CLI</span>
+      <span class="logo-dot">+ 25 more</span>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="lp-final">
+    <h2 class="lp-final-title">Start sharing skills like libraries.</h2>
+    <p class="lp-final-sub">The first 5 minutes is all it takes — browse what's live, or ship your first SKILL.md bundle right now.</p>
+    <div class="lp-final-ctas">
+      <div class="lp-cta-primary-wrap">
+        <button class="lp-cta-primary">
+          Browse the registry
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </div>
+      <button class="lp-cta-secondary">
+        Read the docs
+      </button>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <div class="lp-footer">
+    <div>Skills Hub · built on the agentskills.io open standard</div>
+    <div class="lp-footer-links">
+      <span>Docs</span>
+      <span>API</span>
+      <span>Changelog</span>
+      <span>Status</span>
+    </div>
+  </div>
+
+</div>
+</div>

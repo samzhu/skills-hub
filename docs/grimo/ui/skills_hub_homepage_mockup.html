@@ -1,0 +1,473 @@
+<h2 class="sr-only">Skills Hub homepage mockup with search bar, category sidebar, and skill card grid</h2>
+
+<style>
+  .sh-root { font-family: var(--font-sans); color: var(--color-text-primary); }
+  .sh-frame {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px;
+  }
+  .sh-app {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+  }
+  .sh-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .sh-brand { display: flex; align-items: center; gap: 10px; }
+  .sh-logo {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500;
+  }
+  .sh-brand-name { font-size: 15px; font-weight: 500; }
+  .sh-brand-sub { font-size: 12px; color: var(--color-text-tertiary); margin-left: 6px; }
+  .sh-nav { display: flex; gap: 18px; font-size: 13px; color: var(--color-text-secondary); }
+  .sh-nav .on { color: var(--color-text-primary); font-weight: 500; }
+  .sh-user {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--color-text-secondary);
+  }
+  .sh-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: #EEEDFE; color: #3C3489;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500;
+  }
+
+  .sh-body { display: grid; grid-template-columns: 188px minmax(0, 1fr); }
+
+  /* Sidebar */
+  .sh-side {
+    border-right: 0.5px solid var(--color-border-tertiary);
+    padding: 18px 14px;
+  }
+  .sh-side-label {
+    font-size: 11px; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin: 0 0 10px; padding: 0 6px;
+  }
+  .sh-cat {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 10px; border-radius: var(--border-radius-md);
+    font-size: 13px; color: var(--color-text-secondary);
+    cursor: pointer;
+  }
+  .sh-cat .count { font-size: 11px; color: var(--color-text-tertiary); }
+  .sh-cat.active {
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary);
+    font-weight: 500;
+  }
+  .sh-cat.active .count { color: var(--color-text-secondary); }
+  .sh-side-block { margin-top: 20px; }
+  .sh-check {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; font-size: 13px; color: var(--color-text-secondary);
+  }
+  .sh-box {
+    width: 13px; height: 13px; border-radius: 3px;
+    border: 1px solid var(--color-border-secondary);
+    flex-shrink: 0;
+  }
+  .sh-box.checked {
+    background: var(--color-text-primary);
+    border-color: var(--color-text-primary);
+    position: relative;
+  }
+  .sh-box.checked::after {
+    content: ''; position: absolute;
+    left: 3px; top: 0px; width: 4px; height: 8px;
+    border: solid var(--color-background-primary);
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
+  }
+  .sh-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Main */
+  .sh-main { padding: 20px 22px 24px; min-width: 0; }
+  .sh-hero-row { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; gap: 16px; }
+  .sh-h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+  .sh-sub { font-size: 13px; color: var(--color-text-secondary); margin: 0; }
+  .sh-publish {
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    font-size: 13px; font-weight: 500;
+    padding: 8px 14px; border-radius: var(--border-radius-md);
+    border: none; white-space: nowrap;
+  }
+
+  /* Search with animated beam border */
+  .sh-search-wrap {
+    position: relative;
+    border-radius: var(--border-radius-lg);
+    padding: 1px;
+    background: var(--color-border-tertiary);
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .sh-search-wrap::before {
+    content: '';
+    position: absolute;
+    inset: -50%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 300deg, #7F77DD 330deg, #378ADD 345deg, transparent 360deg);
+    animation: sh-spin 4s linear infinite;
+  }
+  @keyframes sh-spin { to { transform: rotate(360deg); } }
+  .sh-search {
+    position: relative;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--color-background-primary);
+    border-radius: calc(var(--border-radius-lg) - 1px);
+    padding: 10px 14px;
+  }
+  .sh-search svg { flex-shrink: 0; color: var(--color-text-tertiary); }
+  .sh-search input {
+    border: none; outline: none; background: transparent;
+    font-family: var(--font-sans); font-size: 14px;
+    color: var(--color-text-primary);
+    flex: 1; min-width: 0;
+  }
+  .sh-mode {
+    display: flex; gap: 4px;
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-md);
+    padding: 3px;
+  }
+  .sh-mode span {
+    font-size: 12px; padding: 4px 10px; border-radius: 5px;
+    color: var(--color-text-secondary);
+  }
+  .sh-mode span.on {
+    background: var(--color-background-primary);
+    color: var(--color-text-primary); font-weight: 500;
+  }
+
+  .sh-meta {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--color-text-secondary);
+    margin-bottom: 14px;
+  }
+  .sh-chips { display: flex; gap: 6px; }
+  .sh-chip {
+    font-size: 12px;
+    background: var(--color-background-secondary);
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .sh-chip.active {
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+  }
+
+  /* Grid */
+  .sh-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .sh-card {
+    position: relative;
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .sh-card.beam {
+    padding: 0;
+    background: var(--color-border-tertiary);
+    border: none;
+  }
+  .sh-card.beam::before {
+    content: '';
+    position: absolute;
+    inset: -40%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 310deg, #1D9E75 335deg, #7F77DD 350deg, transparent 360deg);
+    animation: sh-spin 5s linear infinite;
+  }
+  .sh-card.beam .sh-card-inner {
+    position: relative;
+    background: var(--color-background-primary);
+    border-radius: calc(var(--border-radius-lg) - 1px);
+    padding: 14px;
+    margin: 1px;
+  }
+  .sh-card-inner { min-width: 0; }
+  .sh-card-top {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 10px; margin-bottom: 8px;
+  }
+  .sh-card-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .sh-icon {
+    width: 30px; height: 30px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500; flex-shrink: 0;
+  }
+  .sh-icon.purple { background: #EEEDFE; color: #3C3489; }
+  .sh-icon.blue   { background: #E6F1FB; color: #0C447C; }
+  .sh-icon.teal   { background: #E1F5EE; color: #085041; }
+  .sh-icon.coral  { background: #FAECE7; color: #712B13; }
+  .sh-icon.amber  { background: #FAEEDA; color: #633806; }
+  .sh-icon.pink   { background: #FBEAF0; color: #72243E; }
+  .sh-card-title { font-size: 14px; font-weight: 500; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sh-card-author { font-size: 12px; color: var(--color-text-tertiary); margin: 1px 0 0; }
+
+  .sh-risk {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    flex-shrink: 0; font-weight: 500;
+  }
+  .sh-risk.low   { background: #EAF3DE; color: #27500A; }
+  .sh-risk.med   { background: #FAEEDA; color: #633806; }
+  .sh-risk.high  { background: #FCEBEB; color: #791F1F; }
+
+  .sh-desc {
+    font-size: 13px; color: var(--color-text-secondary);
+    line-height: 1.5; margin: 0 0 12px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .sh-card-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--color-text-tertiary);
+  }
+  .sh-stats { display: flex; gap: 12px; align-items: center; }
+  .sh-stat { display: flex; gap: 4px; align-items: center; }
+  .sh-ver {
+    font-family: var(--font-mono); font-size: 11px;
+    background: var(--color-background-secondary);
+    padding: 2px 7px; border-radius: 4px;
+    color: var(--color-text-secondary);
+  }
+</style>
+
+<div class="sh-root">
+<div class="sh-frame">
+  <div class="sh-app">
+
+    <!-- top bar -->
+    <div class="sh-topbar">
+      <div class="sh-brand">
+        <div class="sh-logo">S</div>
+        <div class="sh-brand-name">Skills Hub<span class="sh-brand-sub">Agent skill registry</span></div>
+      </div>
+      <div class="sh-nav">
+        <span class="on">Browse</span>
+        <span>My skills</span>
+        <span>Analytics</span>
+        <span>Docs</span>
+      </div>
+      <div class="sh-user">
+        <span>Engineering org</span>
+        <div class="sh-avatar">MC</div>
+      </div>
+    </div>
+
+    <div class="sh-body">
+
+      <!-- sidebar -->
+      <aside class="sh-side">
+        <p class="sh-side-label">Categories</p>
+        <div class="sh-cat active"><span>All skills</span><span class="count">247</span></div>
+        <div class="sh-cat"><span>DevOps</span><span class="count">58</span></div>
+        <div class="sh-cat"><span>Testing</span><span class="count">42</span></div>
+        <div class="sh-cat"><span>Documentation</span><span class="count">31</span></div>
+        <div class="sh-cat"><span>Data &amp; ETL</span><span class="count">28</span></div>
+        <div class="sh-cat"><span>Frontend</span><span class="count">24</span></div>
+        <div class="sh-cat"><span>Security</span><span class="count">19</span></div>
+        <div class="sh-cat"><span>AI &amp; ML</span><span class="count">17</span></div>
+
+        <div class="sh-side-block">
+          <p class="sh-side-label">Risk level</p>
+          <div class="sh-check"><div class="sh-box checked"></div><div class="sh-dot" style="background:#639922"></div><span>Low</span></div>
+          <div class="sh-check"><div class="sh-box checked"></div><div class="sh-dot" style="background:#BA7517"></div><span>Medium</span></div>
+          <div class="sh-check"><div class="sh-box"></div><div class="sh-dot" style="background:#A32D2D"></div><span>High</span></div>
+        </div>
+
+        <div class="sh-side-block">
+          <p class="sh-side-label">Compatibility</p>
+          <div class="sh-check"><div class="sh-box checked"></div><span>Claude Code</span></div>
+          <div class="sh-check"><div class="sh-box"></div><span>Cursor</span></div>
+          <div class="sh-check"><div class="sh-box"></div><span>Copilot</span></div>
+          <div class="sh-check"><div class="sh-box"></div><span>Gemini CLI</span></div>
+        </div>
+      </aside>
+
+      <!-- main -->
+      <main class="sh-main">
+        <div class="sh-hero-row">
+          <div>
+            <h1 class="sh-h1">Discover agent skills</h1>
+            <p class="sh-sub">Curated, risk-scored SKILL.md packages for your team</p>
+          </div>
+          <button class="sh-publish">Publish skill</button>
+        </div>
+
+        <!-- search with beam border -->
+        <div class="sh-search-wrap">
+          <div class="sh-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            <input placeholder="Try “deploy a service to kubernetes” or search by name…" value="docker" />
+            <div class="sh-mode"><span class="on">Semantic</span><span>Keyword</span></div>
+          </div>
+        </div>
+
+        <div class="sh-meta">
+          <div class="sh-chips">
+            <span class="sh-chip active">Popular</span>
+            <span class="sh-chip">Newest</span>
+            <span class="sh-chip">Trending</span>
+            <span class="sh-chip">Top rated</span>
+          </div>
+          <span>247 skills · sorted by relevance</span>
+        </div>
+
+        <!-- grid -->
+        <div class="sh-grid">
+
+          <!-- featured card with beam -->
+          <div class="sh-card beam">
+            <div class="sh-card-inner">
+              <div class="sh-card-top">
+                <div class="sh-card-title-row">
+                  <div class="sh-icon purple">DC</div>
+                  <div style="min-width:0;">
+                    <p class="sh-card-title">docker-compose-helper</p>
+                    <p class="sh-card-author">platform-team · verified</p>
+                  </div>
+                </div>
+                <span class="sh-risk low">Low</span>
+              </div>
+              <p class="sh-desc">Generate, validate, and troubleshoot docker-compose files with multi-service awareness and healthcheck suggestions.</p>
+              <div class="sh-card-foot">
+                <div class="sh-stats">
+                  <span class="sh-stat">↓ 1,284</span>
+                  <span class="sh-stat">★ 4.8</span>
+                </div>
+                <span class="sh-ver">v2.1.0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="sh-card">
+            <div class="sh-card-top">
+              <div class="sh-card-title-row">
+                <div class="sh-icon blue">K8</div>
+                <div style="min-width:0;">
+                  <p class="sh-card-title">k8s-deployment</p>
+                  <p class="sh-card-author">infra-guild</p>
+                </div>
+              </div>
+              <span class="sh-risk med">Med</span>
+            </div>
+            <p class="sh-desc">Scaffold production-ready Kubernetes manifests with probes, resource limits, and rollout strategies.</p>
+            <div class="sh-card-foot">
+              <div class="sh-stats">
+                <span class="sh-stat">↓ 892</span>
+                <span class="sh-stat">★ 4.6</span>
+              </div>
+              <span class="sh-ver">v1.4.2</span>
+            </div>
+          </div>
+
+          <div class="sh-card">
+            <div class="sh-card-top">
+              <div class="sh-card-title-row">
+                <div class="sh-icon teal">JU</div>
+                <div style="min-width:0;">
+                  <p class="sh-card-title">junit-generator</p>
+                  <p class="sh-card-author">quality-team</p>
+                </div>
+              </div>
+              <span class="sh-risk low">Low</span>
+            </div>
+            <p class="sh-desc">Write idiomatic JUnit 5 tests with parameterized cases and Mockito stubs from a given class.</p>
+            <div class="sh-card-foot">
+              <div class="sh-stats">
+                <span class="sh-stat">↓ 641</span>
+                <span class="sh-stat">★ 4.7</span>
+              </div>
+              <span class="sh-ver">v1.0.3</span>
+            </div>
+          </div>
+
+          <div class="sh-card">
+            <div class="sh-card-top">
+              <div class="sh-card-title-row">
+                <div class="sh-icon coral">TF</div>
+                <div style="min-width:0;">
+                  <p class="sh-card-title">terraform-module-author</p>
+                  <p class="sh-card-author">cloud-platform</p>
+                </div>
+              </div>
+              <span class="sh-risk med">Med</span>
+            </div>
+            <p class="sh-desc">Author reusable Terraform modules with input validation, examples, and auto-generated docs.</p>
+            <div class="sh-card-foot">
+              <div class="sh-stats">
+                <span class="sh-stat">↓ 512</span>
+                <span class="sh-stat">★ 4.5</span>
+              </div>
+              <span class="sh-ver">v0.9.1</span>
+            </div>
+          </div>
+
+          <div class="sh-card">
+            <div class="sh-card-top">
+              <div class="sh-card-title-row">
+                <div class="sh-icon amber">CI</div>
+                <div style="min-width:0;">
+                  <p class="sh-card-title">gha-workflow-builder</p>
+                  <p class="sh-card-author">devex-team</p>
+                </div>
+              </div>
+              <span class="sh-risk low">Low</span>
+            </div>
+            <p class="sh-desc">Compose GitHub Actions workflows with matrix builds, caching, and secret handling best practices.</p>
+            <div class="sh-card-foot">
+              <div class="sh-stats">
+                <span class="sh-stat">↓ 478</span>
+                <span class="sh-stat">★ 4.4</span>
+              </div>
+              <span class="sh-ver">v1.2.0</span>
+            </div>
+          </div>
+
+          <div class="sh-card">
+            <div class="sh-card-top">
+              <div class="sh-card-title-row">
+                <div class="sh-icon pink">API</div>
+                <div style="min-width:0;">
+                  <p class="sh-card-title">openapi-scaffold</p>
+                  <p class="sh-card-author">api-guild</p>
+                </div>
+              </div>
+              <span class="sh-risk low">Low</span>
+            </div>
+            <p class="sh-desc">Turn a prose API brief into a valid OpenAPI 3.1 spec with examples and typed error responses.</p>
+            <div class="sh-card-foot">
+              <div class="sh-stats">
+                <span class="sh-stat">↓ 356</span>
+                <span class="sh-stat">★ 4.6</span>
+              </div>
+              <span class="sh-ver">v1.1.0</span>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+</div>
