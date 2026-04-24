@@ -51,11 +51,21 @@ claude
 
 ## 快速開始
 
-### Step 0: 設定 .claude/loop.md（只需做一次）
+### Step 0: 準備 /loop 的 prompt
 
-`/loop` 裸執行時會讀取專案根目錄的 `.claude/loop.md` 作為預設 prompt。這個檔案定義了「Claude 每一輪要做什麼」。
+`/loop` 需要告訴 Claude「每一輪要做什麼」。有兩種方式：
 
-在專案根目錄建立 `.claude/loop.md`：
+**方式 A：直接帶 prompt（推薦，最可靠）**
+
+把 prompt 寫在 `/loop` 後面，一行搞定：
+
+```
+/loop 讀取 docs/grimo/specs/spec-roadmap.md，依照以下規則每次處理一個 spec：(1) 如果有 ⏳ 狀態且其依賴都已 ✅ 的 spec，執行 /planning-tasks 完成實作。(2) 否則找第一個 🔲 的 spec，執行 /planning-spec 完成設計。(3) 前端相關 spec 設計前先讀 docs/grimo/ui/README.md。(4) 每次只處理一個 spec。(5) 所有 spec 都 ✅ 後停止。
+```
+
+**方式 B：用 .claude/loop.md（裸 /loop 的預設 prompt）**
+
+在專案根目錄建立 `.claude/loop.md`，之後裸執行 `/loop` 就會自動讀取：
 
 ```bash
 mkdir -p .claude
@@ -73,19 +83,21 @@ cat > .claude/loop.md << 'EOF'
 EOF
 ```
 
+> **注意：** 部分版本的 `/loop` 裸執行會顯示互動式選單而非讀取 loop.md。如果遇到這種情況，改用方式 A。
+
+**loop.md 放置位置：**
+
+| 路徑 | 範圍 |
+|------|------|
+| `.claude/loop.md` | 專案級（優先讀取） |
+| `~/.claude/loop.md` | 使用者級（所有沒有專案級的都用這個） |
+
 **寫法要點：**
 - 用自然語言寫，像在跟 Claude 說話
 - 明確指出要讀什麼檔案、執行什麼 skill
 - 定義優先順序和停止條件
 - 檔案上限 25,000 bytes，保持簡潔
 - 修改即時生效（下一輪就會用新 prompt）
-
-**放置位置：**
-
-| 路徑 | 範圍 |
-|------|------|
-| `.claude/loop.md` | 專案級（優先讀取） |
-| `~/.claude/loop.md` | 使用者級（所有沒有專案級的都用這個） |
 
 ---
 
@@ -115,10 +127,10 @@ claude --dangerously-skip-permissions
 ### Step 3: 執行 /loop
 
 ```
-/loop
+/loop 讀取 docs/grimo/specs/spec-roadmap.md，依照以下規則每次處理一個 spec：(1) 如果有 ⏳ 狀態且其依賴都已 ✅ 的 spec，執行 /planning-tasks 完成實作。(2) 否則找第一個 🔲 的 spec，執行 /planning-spec 完成設計。(3) 前端相關 spec 設計前先讀 docs/grimo/ui/README.md。(4) 每次只處理一個 spec。(5) 所有 spec 都 ✅ 後停止。
 ```
 
-裸 `/loop` 會自動讀取專案的 `.claude/loop.md`，開始依序設計和實作所有 spec。
+如果裸 `/loop` 能讀到 `.claude/loop.md`，也可以直接打 `/loop`。
 
 ### 完成後要回來看？
 
@@ -128,14 +140,6 @@ tmux attach -t claude
 
 # 想脫離（讓 Claude 繼續跑）
 # 按 Ctrl+B，放開，再按 D
-```
-
-### 一次 copy-paste 版本
-
-```bash
-tmux new -s claude \; send-keys 'claude --dangerously-skip-permissions' Enter
-# 等 Claude 啟動後，在 Claude Code 裡輸入：
-# /loop
 ```
 
 ---
