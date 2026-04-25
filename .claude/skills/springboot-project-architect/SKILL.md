@@ -208,8 +208,9 @@ Full details in `references/config-design-principles.md`. One-line summaries:
 - **Do NOT** put behavior config (log levels, actuator scope) in `src/main/resources/` — belongs in `config/`
 - **Do NOT** put `springdoc.*.enabled=false` only in `config/application-prod.yaml` — it won't exist on the server; set defaults in `application.yaml` instead
 - **Do NOT** set `spring.profiles.active` inside a profile-specific file — Spring Boot will throw an error
-- **Do NOT** ignore the artifact name — 選了 `*-starter-*` 就查官方文件用 YAML 屬性配置，不要自己建 bean（衝突風險）；選了純 library 就自己控制，不要期待 auto-config 生效。混用 = 衝突
+- **Do NOT** ignore the artifact name — 選了 `*-starter-*` 就查官方文件用 YAML 屬性配置，不要自己建 bean（衝突風險）；選了純 library 就自己控制，不要期待 auto-config 生效。混用 = 衝突。**描述 artifact 變體的配置策略前，必須先讀官方文件確認該變體的設計意圖 — 不可從單一專案的實作反推**
 - **Do NOT** jump to Manual Configuration when the framework has a built-in disable switch — follow the decision ladder
 - **Do NOT** duplicate fixed values (model names, dimensions) across profile files — put once in `application.yaml` or `{App}Properties @DefaultValue`; Manual Config 的 `@Bean` 從 properties 讀取
 - **Do NOT** hardcode cloud-specific secret mechanisms (Secret Manager URIs, vault paths) in `application.yaml` — 用 env var 注入; cloud-native 整合放在雲端特定 profile 或部署設定，詳見 `references/cloud-*` 參考文件
 - **Do NOT** trust framework property paths from templates or memory — 框架主版本升級會 rename / deprecate / 搬移屬性路徑。執行時**必須**查證目標版本的官方 Application Properties 索引。`{app}.*` 由 `@ConfigurationProperties` 控制不受影響，但所有框架 namespace（`spring.*`、`management.*` 等）都可能變動
+- **Do NOT** treat "tests pass" as proof that config values are correct — deprecated 屬性在新版仍可運作（向下相容），測試無法捕捉 deprecation。查證手段：讀 JAR 內 `META-INF/spring-configuration-metadata.json` 的 `deprecation` 欄位，或查官方 Application Properties 索引。**設定值一定要查證過再動手，不是測試過就好**
