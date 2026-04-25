@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.8.0] - 2026-04-25
+
+### Changed
+- S009: Config optimisation — `@ConfigurationProperties` best practices aligned across all YAML and Java config
+  - Removed all `${...}` placeholder indirection from `skillshub.*` and `spring.data.mongodb.uri`
+  - Eliminated Spring AI auto-config / Manual Config conflict: `spring.ai.model.embedding.text: none` + `GoogleGenAiEmbeddingConnectionAutoConfiguration` excluded in base
+  - Centralised `gemini-embedding-2` model name and `768` dimensions into `SkillshubProperties.GenAI` via `@DefaultValue`
+  - `springdoc` disabled by default in `application.yaml`; enabled only in `config/application-dev.yaml`
+  - `config/application-secrets.properties.example` updated to dot-notation (`skillshub.genai.api-key=...`)
+
 ## [v0.7.0] - 2026-04-25
 
 All 9 specs complete — full MVP shipped.

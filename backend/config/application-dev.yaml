@@ -14,6 +14,13 @@ spring:
     #           編輯填入實際值後重新啟動
     import: "optional:file:./config/application-secrets.properties"
 
+# 開發環境開啟 API 文件（application.yaml 預設關閉）
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 # 開發環境開放完整 actuator endpoint，方便診斷
 management:
   endpoints:

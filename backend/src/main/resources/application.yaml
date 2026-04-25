@@ -2,6 +2,7 @@
 # Skills Hub — 基礎共用配置
 # =============================================================================
 # 此檔案包進 Docker Image，包含所有環境共用的配置。
+# 預設值接近正式環境，開發者需要的功能在 config/application-dev.yaml 開啟。
 # 環境特定配置透過 profile 檔案覆蓋（基礎設施 × 行為 雙層 profile 設計）：
 #
 #   基礎設施 profile（src/main/resources/）：
@@ -9,7 +10,7 @@
 #     gcp     — GCP 服務（Cloud Run 部署）
 #
 #   行為 profile（config/，Spring Boot 外部配置目錄）：
-#     dev     — 開發行為（DEBUG log、完整 actuator、引入 secrets）
+#     dev     — 開發行為（DEBUG log、完整 actuator、springdoc、引入 secrets）
 #     prod    — 正式行為（INFO log、限縮 actuator）
 #
 # 啟動範例：
@@ -28,13 +29,24 @@ spring:
 
   data:
     mongodb:
-      uri: ${skillshub-mongodb-uri:mongodb://localhost:27017/skillshub}
+      uri: mongodb://localhost:27017/skillshub
       database: skillshub
       # Firestore 不支援透過 MongoDB wire protocol 建立 index（createIndex 命令不受支援）。
       # Composite index 必須在 Firestore Console 或 gcloud CLI 手動建立，
       # 因此停用 Spring Data 自動建立 index，避免啟動時報錯。
-      # 需要建立的 index 清單請參考各 @Document 類別上的 @CompoundIndex 標注。
       auto-index-creation: false
+
+  ai:
+    model:
+      # 停用 Spring AI Google GenAI text embedding auto-configuration。
+      # Embedding bean 由 SearchConfig Manual Configuration 建立（@ConditionalOnProperty）。
+      embedding:
+        text: none
+
+  autoconfigure:
+    exclude:
+      # Manual Configuration 取代 auto-config，排除需要 api-key/project-id 才能啟動的 connection auto-config。
+      - org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiEmbeddingConnectionAutoConfiguration
 
   servlet:
     multipart:
@@ -62,13 +74,27 @@ logging:
   level:
     root: INFO
 
-# ----- 應用程式自訂屬性 -----
+# ----- API 文件（正式預設關閉，config/application-dev.yaml 開啟） -----
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# ----- 應用程式自訂屬性（純值，不用 ${...} placeholder） -----
+# Relaxed binding 自動支援 env var 覆蓋：
+#   SKILLSHUB_STORAGE_BUCKET → skillshub.storage.bucket
+#   SKILLSHUB_SEARCH_VECTOR_STORE → skillshub.search.vector-store
+#   SKILLSHUB_GENAI_API_KEY → skillshub.genai.api-key
 skillshub:
   storage:
-    bucket: ${skillshub-storage-bucket:skillshub-packages}
+    bucket: skillshub-packages
   search:
-    # 向量儲存後端：simple（本機測試，記憶體，重啟即清除）
-    #               firestore（正式環境，持久化）
-    # 可用環境變數 SKILLSHUB_VECTOR_STORE 在部署時覆蓋。
-    vector-store: ${SKILLSHUB_VECTOR_STORE:simple}
+    vector-store: simple
     collection: skill_embeddings
+  genai:
+    model: gemini-embedding-2
+    dimensions: 768
+    # api-key 不在此設定 — 缺席即停用（NoOp fallback）
+    # 本機開發：config/application-secrets.properties 注入 skillshub.genai.api-key=AIzaSy...
+    # 雲端部署：env var SKILLSHUB_GENAI_API_KEY（relaxed binding 自動對應）

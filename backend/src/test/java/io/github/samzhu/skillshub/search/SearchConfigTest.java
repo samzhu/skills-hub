@@ -14,8 +14,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.google.genai.text.GoogleGenAiTextEmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
+
+import io.github.samzhu.skillshub.SkillshubProperties;
 
 /**
  * AC-5 驗證：SearchConfig 的 @Bean 方法直接測試，避免觸發 Spring Modulith AOT 處理。
@@ -69,6 +72,19 @@ class SearchConfigTest {
                         .build());
 
         assertThat(results).isNotNull();
+    }
+
+    @Test
+    @DisplayName("AC-3: googleGenAiEmbeddingModel() 當 skillshub.genai.api-key 設定時回傳 GoogleGenAiTextEmbeddingModel")
+    void googleGenAiEmbeddingModelReturnsRealModel() {
+        var props = new SkillshubProperties(
+                new SkillshubProperties.Storage("skillshub-packages", "./storage-local"),
+                new SkillshubProperties.Search("simple", "skill_embeddings"),
+                new SkillshubProperties.GenAI("gemini-embedding-2", 768, "test-api-key"));
+
+        var em = config.googleGenAiEmbeddingModel(props);
+
+        assertThat(em).isInstanceOf(GoogleGenAiTextEmbeddingModel.class);
     }
 
     // ---- helpers ----

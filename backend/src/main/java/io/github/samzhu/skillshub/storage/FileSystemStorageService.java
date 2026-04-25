@@ -8,9 +8,10 @@ import java.nio.file.Path;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
+
+import io.github.samzhu.skillshub.SkillshubProperties;
 
 /**
  * 本機檔案系統儲存服務（local 環境用）。
@@ -37,11 +38,10 @@ public class FileSystemStorageService implements StorageService {
 	/**
 	 * 建構本機檔案系統儲存服務，並確保基底目錄存在。
 	 *
-	 * @param baseDirPath 儲存根目錄路徑，預設為 {@code ./storage-local}
+	 * @param props 應用程式屬性，透過 {@link SkillshubProperties#storage()} 取得儲存根目錄路徑
 	 */
-	public FileSystemStorageService(
-			@Value("${skillshub.storage.local-path:./storage-local}") String baseDirPath) {
-		this.baseDir = Path.of(baseDirPath).toAbsolutePath().normalize();
+	public FileSystemStorageService(SkillshubProperties props) {
+		this.baseDir = Path.of(props.storage().localPath()).toAbsolutePath().normalize();
 		try {
 			Files.createDirectories(baseDir);
 		} catch (IOException e) {

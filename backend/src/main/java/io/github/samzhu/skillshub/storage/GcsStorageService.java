@@ -4,13 +4,14 @@ import java.lang.invoke.MethodHandles;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
+
+import io.github.samzhu.skillshub.SkillshubProperties;
 
 /**
  * Google Cloud Storage（GCS）儲存服務實作。
@@ -34,12 +35,12 @@ public class GcsStorageService implements StorageService {
 	/**
 	 * 建構 GCS 儲存服務。
 	 *
-	 * @param storage GCP Storage 用戶端（由 Spring Cloud GCP 自動配置注入）
-	 * @param bucket  目標 Bucket 名稱，預設 {@code skillshub-packages}
+	 * @param gcsStorage GCP Storage 用戶端（由 Spring Cloud GCP 自動配置注入）
+	 * @param props      應用程式屬性，透過 {@link SkillshubProperties#storage()} 取得 bucket 名稱
 	 */
-	public GcsStorageService(Storage storage, @Value("${skillshub.storage.bucket:skillshub-packages}") String bucket) {
-		this.storage = storage;
-		this.bucket = bucket;
+	public GcsStorageService(Storage gcsStorage, SkillshubProperties props) {
+		this.storage = gcsStorage;
+		this.bucket = props.storage().bucket();
 	}
 
 	/**

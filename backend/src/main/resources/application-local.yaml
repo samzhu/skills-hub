@@ -14,43 +14,16 @@ spring:
       lifecycle-management: start-and-stop
 
   autoconfigure:
-    # 本機無 GCP 憑證，排除需要 GCP 憑證的 autoconfiguration 以避免啟動失敗。
-    # GCP 服務（GCS / Firestore）改由 gcp profile 啟用，不在 local profile 使用。
+    # Profile YAML 覆蓋（非合併）base 的 exclude list，因此必須重複 base 的排除項。
     exclude:
+      # base: Manual Configuration 取代 auto-config
+      - org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiEmbeddingConnectionAutoConfiguration
+      # local: 無 GCP 憑證，排除需要 GCP 憑證的 autoconfiguration
       - com.google.cloud.spring.autoconfigure.core.GcpContextAutoConfiguration
-      # 注意：GoogleGenAiEmbeddingConnectionAutoConfiguration 不在此排除。
-      # 改以 placeholder api-key（GOOGLE_GENAI_API_KEY 預設值 DISABLED）讓該 bean 建立但不實際呼叫。
-      # 當 api-key = "DISABLED" 且 spring.ai.model.embedding.text = none 時，
-      # GoogleGenAiTextEmbeddingAutoConfiguration 不建立 text embedding bean，
-      # SearchConfig.noOpEmbeddingModel() 接管（ConditionalOnMissingBean）。
-
-  ai:
-    google:
-      genai:
-        embedding:
-          # API key 從 config/application-secrets.properties 注入（gitignored）。
-          # 未設定時使用 "DISABLED" 作為 placeholder，使 ConnectionAutoConfiguration 正常啟動
-          # 但不實際發出 API 呼叫（text embedding model 由 noOpEmbeddingModel 取代）。
-          # 設定方式：在 config/application-secrets.properties 加入
-          #   GOOGLE_GENAI_API_KEY=AIzaSy...
-          #   spring.ai.model.embedding.text=google-genai
-          api-key: ${GOOGLE_GENAI_API_KEY:DISABLED}
-          text:
-            options:
-              model: gemini-embedding-2
-              dimensions: 768
-    model:
-      # 預設 none — 使用 NoOpEmbeddingModel（語意搜尋停用，其餘功能正常）。
-      # 在 config/application-secrets.properties 加入
-      #   spring.ai.model.embedding.text=google-genai
-      # 可切換至真實 Google GenAI EmbeddingModel。
-      embedding:
-        text: none
 
   cloud:
     gcp:
-      # 本機無 GCP 憑證，停用所有 GCP autoconfiguration 以避免啟動失敗。
-      # GCP 服務（GCS / Firestore native SDK）改由 gcp profile 啟用。
+      # 本機無 GCP 憑證，停用 GCP 服務。改由 gcp profile 啟用。
       storage:
         enabled: false
       firestore:

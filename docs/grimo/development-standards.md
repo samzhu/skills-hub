@@ -80,6 +80,15 @@
 - Frontend: Vitest + React Testing Library
 - Module 邊界測試：Spring Modulith `@ApplicationModuleTest`
 
+## Configuration Best Practices (S009)
+
+- **Pure values in YAML** — `skillshub.*` properties must not use `${...}` placeholder indirection. Relaxed binding handles env var override automatically (e.g., `SKILLSHUB_GENAI_API_KEY`).
+- **Spring AI Manual Configuration** — Never mix auto-config and Manual Config. Always declare `spring.ai.model.embedding.text: none` + exclude `GoogleGenAiEmbeddingConnectionAutoConfiguration` in `application.yaml`. Build EmbeddingModel beans explicitly with `@ConditionalOnProperty`.
+- **Fixed values in `@ConfigurationProperties`** — Centralise constant defaults (model name, dimensions, collection name) in the `SkillshubProperties` record using `@DefaultValue`. Don't hardcode them in `@Bean` methods.
+- **springdoc off by default** — `application.yaml` (packaged into Docker image) must set `springdoc.api-docs.enabled: false` and `springdoc.swagger-ui.enabled: false`. Enable only in `config/application-dev.yaml`.
+- **secrets dot-notation** — `config/application-secrets.properties` keys use dot-notation (`skillshub.genai.api-key=...`), not SCREAMING_SNAKE_CASE.
+- **`autoconfigure.exclude` list is replaced (not merged) by profile YAML** — Profile YAML must repeat any base exclusions it still needs, plus its own additions.
+
 ## Build & Deploy
 
 - Build: `./gradlew build`（含前端 build + 後端 build + test）

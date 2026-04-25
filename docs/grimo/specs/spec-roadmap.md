@@ -65,28 +65,8 @@ Scenario: 無相關結果
 
 ---
 
-## Milestone 7: 設定檔最佳化 — ⏳ In Progress
-Goal: 統一屬性命名、消除配置衝突、確保 GCP 部署設定正確生效
-Done when: S009 done
-
-| # | Spec | Points | Dependencies | Status |
-|---|------|--------|--------------|--------|
-| S009 | Spring Boot 設定檔最佳化 | XS(7) | 無 | ⏳ Design |
-
-### S009: Spring Boot 設定檔最佳化
-
-**Description:** 對齊 springboot-config-organizer 雙層 Profile 設計原則。統一所有外部化屬性為 `skillshub-xxx` 命名、提取 AI embedding 共用配置、修正 springdoc 在 GCP 部署時不生效的問題、新增 `lab` 行為 profile。
-
-**Estimation:**
-| Dimension | Score | Reason |
-|-----------|-------|--------|
-| Technical risk | 1 | 純配置重構，無新框架 API |
-| Uncertainty | 1 | 模式已驗證，改善項明確 |
-| Dependencies | 1 | 無 code-level 依賴 |
-| Scope | 2 | ~8 個設定檔 |
-| Testing | 1 | 啟動驗證 + 既有測試 |
-| Reversibility | 1 | 配置變更容易回退 |
-| **Total** | **7** | **XS** |
+## Milestone 7: 設定檔最佳化 ✅ `v0.8.0` (2026-04-25)
+1/1 specs complete. Details → `specs/archive/2026-04-25-S009-config-optimization.md`
 
 ---
 
@@ -101,9 +81,9 @@ Done when: S009 done
 | M4: 一鍵安裝（Web 下載） | S006 | S(9) | 76 | ✅ |
 | M5: 語意搜尋 | S007 | M(14) | 90 | ✅ |
 | M6: 使用數據分析 | S008 | S(11) | 101 | ✅ |
-| M7: 設定檔最佳化 | S009 | XS(7) | 108 | ⏳ |
+| M7: 設定檔最佳化 | S009 | XS(7) | 108 | ✅ |
 
-**Total: 10 specs, 108 story points — 9/10 specs shipped (101 points done)**
+**Total: 10 specs, 108 story points — 10/10 specs shipped (108 points done)**
 
 ### Dependency Graph
 
@@ -118,7 +98,7 @@ S000 ──▶ S001 ──▶ S002             ✅
               │
               └──▶ S007                ✅
 
-S009 (獨立，無依賴)                    ⏳
+S009 (獨立，無依賴)                    ✅
 ```
 
 ### Backlog (ES 進階功能)

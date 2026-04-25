@@ -2,8 +2,9 @@
 # GCP 基礎設施配置
 # =============================================================================
 # Profile: gcp
-# 用途: 部署至 GCP Cloud Run，啟用 GCS（StorageService）與 Firestore native SDK（S007 向量搜尋）。
+# 用途: 部署至 GCP Cloud Run，啟用 GCS（StorageService）與 Firestore native SDK（向量搜尋）。
 #       GCP Application Default Credentials 由 Cloud Run Workload Identity 自動提供。
+#       Embedding API key 由 env var SKILLSHUB_GENAI_API_KEY 注入（relaxed binding）。
 # 啟動: SPRING_PROFILES_ACTIVE=gcp,prod
 # =============================================================================
 
@@ -16,25 +17,11 @@ spring:
   cloud:
     gcp:
       storage:
-        # 啟用 GcsStorageService（@Profile("gcp")）
         enabled: true
       firestore:
-        # 啟用 Firestore native SDK（用於 S007 向量搜尋）
         enabled: true
 
-  ai:
-    model:
-      # 啟用 Spring AI Google GenAI embedding auto-configuration（local profile 設為 none）
-      embedding:
-        text: google-genai
-    google:
-      genai:
-        embedding:
-          # Vertex AI 模式：使用 Cloud Run Workload Identity 提供的 ADC 認證
-          project-id: ${GCP_PROJECT_ID}
-          location: ${GCP_LOCATION:us-central1}
-          text:
-            options:
-              # gemini-embedding-2 不在 Spring AI 的 enum，需手動設定 model name
-              model: gemini-embedding-2
-              dimensions: 768
+# GCP 使用 Firestore 向量搜尋（覆蓋 application.yaml 的 simple 預設值）
+skillshub:
+  search:
+    vector-store: firestore
