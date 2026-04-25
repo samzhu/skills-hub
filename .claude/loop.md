@@ -12,11 +12,12 @@
 Skill 流程（每個 spec 的完整生命週期）：
 
 ```
-/planning-spec → /planning-tasks ⟺ /implementing-task (loop) → /verifying-quality → /shipping-release
+/planning-spec [/deep-research] → /planning-tasks ⟺ /implementing-task (loop) → /verifying-quality → /shipping-release
 ```
 
 各 skill 職責：
-- /planning-spec — 研究 API、設計方案、寫 spec §1-5（Goal, Approach, AC, Interface, File Plan）
+- /deep-research — 深入研究外部專案或技術，產出架構、協議、資料流設計文件（可選，搭配 /planning-spec 使用）
+- /planning-spec — 研究 API、設計方案、寫 spec §1-5（Goal, Approach, AC, Interface, File Plan）。可帶 /deep-research 參數先做深入研究再設計
 - /planning-tasks — 拆 BDD task、逐一呼叫 /implementing-task、最終驗證
 - /implementing-task — TDD 實作單一 task（Red → Green → Refactor）
 - /verifying-quality — 獨立 QA subagent，三層驗證（自動 + 整合 + 手動）

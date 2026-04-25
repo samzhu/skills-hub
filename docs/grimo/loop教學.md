@@ -194,16 +194,19 @@ tmux attach -t claude
 ### Skill 流程（每個 spec 的完整生命週期）
 
 ```
-/planning-spec → /planning-tasks ⟺ /implementing-task (loop) → /verifying-quality → /shipping-release
+/planning-spec [/deep-research] → /planning-tasks ⟺ /implementing-task (loop) → /verifying-quality → /shipping-release
 ```
 
 | Skill | 職責 | 輸入 → 輸出 |
 |-------|------|-------------|
-| `/planning-spec` | 研究 API、設計方案、寫 spec §1-5 | roadmap entry → spec file（Goal, Approach, AC, Interface, File Plan） |
+| `/deep-research` | 深入研究外部專案或技術，產出架構設計文件 | 技術主題 → deepwiki-style 設計文件（可選，搭配 /planning-spec） |
+| `/planning-spec` | 研究 API、設計方案、寫 spec §1-5。可帶 `/deep-research` 先做深入研究再設計 | roadmap entry → spec file（Goal, Approach, AC, Interface, File Plan） |
 | `/planning-tasks` | 拆 BDD task、逐一呼叫 /implementing-task、最終驗證 | spec §1-5 → spec §6-7（Task Plan + Results） |
 | `/implementing-task` | TDD 實作單一 task（Red → Green → Refactor） | task file → 程式碼 + 測試 |
 | `/verifying-quality` | 獨立 QA subagent，三層驗證 | spec §7 → PASS / REJECT |
 | `/shipping-release` | commit、文件同步、歸檔 spec、CHANGELOG、tag | verified spec → ✅ shipped |
+
+> **使用範例：** `/planning-spec S007 /deep-research` — 先對 Spring AI + Firestore Vector Search 做深入研究，再根據研究結果設計 spec。適合涉及陌生技術或複雜整合的 spec。
 
 ### 自動化流程
 
