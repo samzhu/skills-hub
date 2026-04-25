@@ -38,3 +38,7 @@ out/
 
 ### Frontend build output (copied by Gradle) ###
 src/main/resources/static/
+
+### Secrets (本地機敏值，不提交 Git) ###
+config/application-secrets.properties
+!config/application-secrets.properties.example

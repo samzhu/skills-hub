@@ -1,0 +1,23 @@
+# =============================================================================
+# GCP 基礎設施配置
+# =============================================================================
+# Profile: gcp
+# 用途: 部署至 GCP Cloud Run，啟用 GCS（StorageService）與 Firestore native SDK（S007 向量搜尋）。
+#       GCP Application Default Credentials 由 Cloud Run Workload Identity 自動提供。
+# 啟動: SPRING_PROFILES_ACTIVE=gcp,prod
+# =============================================================================
+
+spring:
+  docker:
+    compose:
+      # Cloud Run 無 Docker Compose，停用以避免啟動錯誤
+      enabled: false
+
+  cloud:
+    gcp:
+      storage:
+        # 啟用 GcsStorageService（@Profile("gcp")）
+        enabled: true
+      firestore:
+        # 啟用 Firestore native SDK（用於 S007 向量搜尋）
+        enabled: true

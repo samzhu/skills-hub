@@ -1,0 +1,23 @@
+# =============================================================================
+# 本地開發基礎設施配置
+# =============================================================================
+# Profile: local
+# 用途: 本機開發環境，使用 Docker Compose 啟動 MongoDB 與 Grafana LGTM。
+#       StorageService 實作：FileSystemStorageService（./storage-local/）
+#       無需 GCP Application Default Credentials。
+# =============================================================================
+
+spring:
+  docker:
+    compose:
+      enabled: true
+      lifecycle-management: start-and-stop
+
+  cloud:
+    gcp:
+      # 本機無 GCP 憑證，停用所有 GCP autoconfiguration 以避免啟動失敗。
+      # GCP 服務（GCS / Firestore native SDK）改由 gcp profile 啟用。
+      storage:
+        enabled: false
+      firestore:
+        enabled: false

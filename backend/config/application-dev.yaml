@@ -1,0 +1,27 @@
+# =============================================================================
+# 開發環境行為配置
+# =============================================================================
+# Profile: dev
+# 用途: 本地開發行為 — DEBUG 日誌、完整 actuator endpoint、引入本地機敏值。
+# 注意: 此檔案位於 config/ 外部目錄（Spring Boot 自動掃描），
+#       不包進 Docker Image，確保開發設定不污染生產環境。
+# =============================================================================
+
+spring:
+  config:
+    # 引入本地機敏值（可選，檔案不存在時應用程式照常啟動）。
+    # 使用說明: cp config/application-secrets.properties.example config/application-secrets.properties
+    #           編輯填入實際值後重新啟動
+    import: "optional:file:./config/application-secrets.properties"
+
+# 開發環境開放完整 actuator endpoint，方便診斷
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env,configprops,beans,mappings
+
+# 應用程式套件使用 DEBUG，framework 維持 INFO 避免 log 過多
+logging:
+  level:
+    io.github.samzhu.skillshub: DEBUG

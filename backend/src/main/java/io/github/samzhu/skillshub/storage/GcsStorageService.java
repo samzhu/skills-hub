@@ -5,7 +5,7 @@ import java.lang.invoke.MethodHandles;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import com.google.cloud.storage.BlobId;
@@ -15,14 +15,15 @@ import com.google.cloud.storage.Storage;
 /**
  * Google Cloud Storage（GCS）儲存服務實作。
  *
- * <p>當 {@code spring.cloud.gcp.storage.enabled} 為 {@code true}（預設啟用）時，
- * 此 Bean 會被注入為 {@link StorageService} 的實作，負責技能套件 zip 的存取。
+ * <p>當 Spring profile 包含 {@code gcp} 時啟用，作為 {@link StorageService} 的 GCP 實作，
+ * 負責技能套件 zip 的存取。本機開發請使用 {@code local} profile，
+ * 對應 {@link FileSystemStorageService}。
  *
  * <p>目標 GCS Bucket 由設定值 {@code skillshub.storage.bucket} 決定，
  * 預設為 {@code skillshub-packages}。
  */
 @Service
-@ConditionalOnProperty(name = "spring.cloud.gcp.storage.enabled", havingValue = "true", matchIfMissing = true)
+@Profile("gcp")
 public class GcsStorageService implements StorageService {
 
 	private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());

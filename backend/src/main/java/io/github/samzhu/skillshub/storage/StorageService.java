@@ -1,10 +1,13 @@
 package io.github.samzhu.skillshub.storage;
 
 /**
- * 物件儲存服務介面。
+ * 物件儲存服務介面：技能套件（zip）的上傳、下載與刪除操作。
  *
- * <p>抽象化底層儲存實作（預設為 Google Cloud Storage），
- * 提供技能套件（zip）的上傳、下載與刪除操作。
+ * <p>透過 Spring Profile 切換底層實作，無需修改業務邏輯：
+ * <ul>
+ *   <li><b>local profile</b>：{@link FileSystemStorageService}（本機目錄，無需 GCP 憑證）</li>
+ *   <li><b>gcp profile</b>：{@link GcsStorageService}（Google Cloud Storage）</li>
+ * </ul>
  */
 public interface StorageService {
 

@@ -1,28 +1,68 @@
+# =============================================================================
+# Skills Hub — 基礎共用配置
+# =============================================================================
+# 此檔案包進 Docker Image，包含所有環境共用的配置。
+# 環境特定配置透過 profile 檔案覆蓋（基礎設施 × 行為 雙層 profile 設計）：
+#
+#   基礎設施 profile（src/main/resources/）：
+#     local   — Docker Compose（本機開發，預設）
+#     gcp     — GCP 服務（Cloud Run 部署）
+#
+#   行為 profile（config/，Spring Boot 外部配置目錄）：
+#     dev     — 開發行為（DEBUG log、完整 actuator、引入 secrets）
+#     prod    — 正式行為（INFO log、限縮 actuator）
+#
+# 啟動範例：
+#   本機開發：./gradlew bootRun              → 自動套用 local,dev
+#   GCP 部署：SPRING_PROFILES_ACTIVE=gcp,prod
+# =============================================================================
+
 spring:
   application:
     name: skillshub
+
+  profiles:
+    # 預設套用 local（Docker Compose）+ dev（開發行為），
+    # 讓 ./gradlew bootRun 不需任何額外參數即可啟動
+    default: local,dev
+
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/skillshub}
+      uri: ${skillshub-mongodb-uri:mongodb://localhost:27017/skillshub}
       database: skillshub
       # Firestore 不支援透過 MongoDB wire protocol 建立 index（createIndex 命令不受支援）。
       # Composite index 必須在 Firestore Console 或 gcloud CLI 手動建立，
       # 因此停用 Spring Data 自動建立 index，避免啟動時報錯。
       # 需要建立的 index 清單請參考各 @Document 類別上的 @CompoundIndex 標注。
       auto-index-creation: false
+
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
 
-spring:
-  cloud:
-    gcp:
-      storage:
-        # 本機開發預設停用 GCS，改用 InMemoryStorageService（不需要 ADC 憑證）。
-        # 部署至 GCP Cloud Run 時透過環境變數 SPRING_CLOUD_GCP_STORAGE_ENABLED=true 覆蓋。
-        enabled: ${SPRING_CLOUD_GCP_STORAGE_ENABLED:false}
+  threads:
+    virtual:
+      enabled: true
 
+# ----- Actuator（基礎曝露，各環境 profile 可擴充） -----
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+# ----- 日誌（根預設 INFO，dev profile 會對應用套用 DEBUG） -----
+logging:
+  level:
+    root: INFO
+
+# ----- 應用程式自訂屬性 -----
 skillshub:
   storage:
-    bucket: ${SKILLSHUB_STORAGE_BUCKET:skillshub-packages}
+    bucket: ${skillshub-storage-bucket:skillshub-packages}

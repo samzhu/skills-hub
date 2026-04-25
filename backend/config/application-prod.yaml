@@ -1,0 +1,20 @@
+# =============================================================================
+# 正式環境行為配置
+# =============================================================================
+# Profile: prod
+# 用途: GCP Cloud Run 正式部署行為 — INFO 日誌、限縮 actuator endpoint。
+# 啟動: SPRING_PROFILES_ACTIVE=gcp,prod
+# =============================================================================
+
+# 正式環境僅開放 health 與 info（避免洩漏內部資訊）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# 正式環境維持 INFO，減少 log 量與儲存成本
+logging:
+  level:
+    root: INFO
+    io.github.samzhu.skillshub: INFO
