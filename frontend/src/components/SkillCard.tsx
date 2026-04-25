@@ -11,9 +11,10 @@ import type { Skill } from '@/types/skill'
  * 整張卡片包覆於 `<Link>` 中，使整個點擊區域皆可跳轉至詳情頁。
  * `line-clamp-2` 限制描述文字最多顯示兩行，超出部分以省略號截斷。
  *
- * @param skill 技能讀取模型
+ * @param skill 技能讀取模型（或語意搜尋結果）
+ * @param score 語意相似度（0.0–1.0）；語意搜尋模式下顯示「XX% 相符」badge，一般列表不顯示
  */
-export function SkillCard({ skill }: { skill: Skill }) {
+export function SkillCard({ skill, score }: { skill: Skill; score?: number }) {
   return (
     // 以 <Link> 包覆整個卡片，讓整個可點擊區域皆可導航至詳情頁
     <Link to={`/skills/${skill.id}`} className="block">
@@ -41,6 +42,12 @@ export function SkillCard({ skill }: { skill: Skill }) {
               <Download className="h-3 w-3" />
               {skill.downloadCount}
             </span>
+            {/* 語意搜尋模式才顯示相符度 badge；toFixed(0) 避免小數位 */}
+            {score !== undefined && (
+              <Badge variant="outline" className="ml-auto text-xs text-green-600">
+                {(score * 100).toFixed(0)}% 相符
+              </Badge>
+            )}
           </div>
         </CardContent>
       </Card>

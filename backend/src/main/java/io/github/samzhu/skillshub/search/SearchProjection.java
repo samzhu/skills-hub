@@ -1,0 +1,118 @@
+package io.github.samzhu.skillshub.search;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+
+import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
+
+/**
+ * 語意搜尋投影 — 監聽技能領域事件，維護 VectorStore 中的 embedding。
+ *
+ * <p>當 {@link SkillCreatedEvent} 發布時，將技能文字（名稱 + 描述）加入 VectorStore，
+ * 由 EmbeddingModel 計算向量並存入後端（SimpleVectorStore 或 FirestoreVectorStore）。
+ *
+ * <p>當 {@link SkillVersionPublishedEvent} 發布時，先刪除舊 embedding（delete）
+ * 再用 frontmatter 中的最新 metadata 重新建立（add）。Delete-then-add 可能造成短暫搜尋空窗，
+ * 在 MVP 階段屬可接受範圍。
+ *
+ * <p>採用同步 {@code @EventListener}（與 {@code SkillProjection} 一致）—
+ * {@code spring-modulith-events-api} 未納入 classpath，
+ * {@code @ApplicationModuleListener} 需要額外依賴。
+ *
+ * @see SemanticSearchService
+ * @see SearchConfig
+ */
+@Component
+class SearchProjection {
+
+    private static final Logger log = LoggerFactory.getLogger(SearchProjection.class);
+
+    private final VectorStore vectorStore;
+
+    SearchProjection(VectorStore vectorStore) {
+        this.vectorStore = vectorStore;
+    }
+
+    /**
+     * 處理 SkillCreatedEvent — 新增技能 embedding 至 VectorStore。
+     * 文字格式：「name description」，供 embedding 模型理解技能用途。
+     */
+    @EventListener
+    void onSkillCreated(SkillCreatedEvent event) {
+        log.info("SearchProjection onSkillCreated skillId={} name={}", event.aggregateId(), event.name());
+        var doc = buildDocument(
+                event.aggregateId(),
+                event.name(),
+                event.description(),
+                event.author(),
+                event.category(),
+                null,   // latestVersion — 尚未發布版本
+                null    // riskLevel — 尚未完成評估
+        );
+        vectorStore.add(List.of(doc));
+        log.info("SearchProjection onSkillCreated done skillId={}", event.aggregateId());
+    }
+
+    /**
+     * 處理 SkillVersionPublishedEvent — 刪除舊 embedding 並以 frontmatter 重建。
+     * frontmatter 可能含更新後的 description，因此必須重新 embed。
+     */
+    @EventListener
+    void onVersionPublished(SkillVersionPublishedEvent event) {
+        log.info("SearchProjection onVersionPublished skillId={} version={}", event.aggregateId(), event.version());
+        // Delete-then-add: 移除舊向量再建立新向量（有短暫空窗，MVP 可接受）
+        vectorStore.delete(List.of(event.aggregateId()));
+
+        var fm = event.frontmatter();
+        String name = getString(fm, "name", event.aggregateId());
+        String description = getString(fm, "description", "");
+        String author = getString(fm, "author", "");
+        String category = getString(fm, "category", "");
+
+        var doc = buildDocument(event.aggregateId(), name, description, author, category,
+                event.version(), null);
+        vectorStore.add(List.of(doc));
+        log.info("SearchProjection onVersionPublished done skillId={}", event.aggregateId());
+    }
+
+    /**
+     * 建立 VectorStore Document。
+     * 文字格式為「name description」，提供足夠語意讓 embedding 模型理解技能用途。
+     * metadata 鍵名必須與 {@link SemanticSearchService#toResult} 讀取的鍵名一致。
+     */
+    private static Document buildDocument(String skillId, String name, String description,
+                                          String author, String category,
+                                          String latestVersion, String riskLevel) {
+        String text = (name + " " + description).trim();
+        // Use HashMap to allow null values for optional fields (latestVersion, riskLevel)
+        var meta = new HashMap<String, Object>();
+        meta.put("skillId", skillId);
+        meta.put("name", name);
+        meta.put("description", description);
+        meta.put("author", author);
+        meta.put("category", category);
+        if (latestVersion != null) meta.put("latestVersion", latestVersion);
+        if (riskLevel != null) meta.put("riskLevel", riskLevel);
+
+        return Document.builder()
+                .id(skillId)
+                .text(text)
+                .metadata(meta)
+                .build();
+    }
+
+    /** 安全地從 Map 讀取字串，缺少或非字串型別時回傳 defaultValue。 */
+    private static String getString(Map<String, Object> map, String key, String defaultValue) {
+        Object v = map.get(key);
+        return v != null ? v.toString() : defaultValue;
+    }
+}

@@ -66,3 +66,9 @@ logging:
 skillshub:
   storage:
     bucket: ${skillshub-storage-bucket:skillshub-packages}
+  search:
+    # 向量儲存後端：simple（本機測試，記憶體，重啟即清除）
+    #               firestore（正式環境，持久化）
+    # 可用環境變數 SKILLSHUB_VECTOR_STORE 在部署時覆蓋。
+    vector-store: ${SKILLSHUB_VECTOR_STORE:simple}
+    collection: skill_embeddings

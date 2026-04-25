@@ -1,4 +1,17 @@
 spring:
+  ai:
+    model:
+      # Prevent GoogleGenAiTextEmbeddingAutoConfiguration from creating googleGenAiTextEmbedding bean.
+      # Its matchIfMissing=true would otherwise conflict with SearchConfig.noOpEmbeddingModel.
+      embedding:
+        text: none
+
+  autoconfigure:
+    exclude:
+      # GoogleGenAiEmbeddingConnectionAutoConfiguration requires project-id at startup (no @ConditionalOnProperty),
+      # so exclude it when GCP credentials are not available (local / test environments).
+      - org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiEmbeddingConnectionAutoConfiguration
+
   cloud:
     gcp:
       core:

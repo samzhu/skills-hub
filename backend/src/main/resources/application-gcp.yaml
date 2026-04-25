@@ -21,3 +21,20 @@ spring:
       firestore:
         # 啟用 Firestore native SDK（用於 S007 向量搜尋）
         enabled: true
+
+  ai:
+    model:
+      # 啟用 Spring AI Google GenAI embedding auto-configuration（local profile 設為 none）
+      embedding:
+        text: google-genai
+    google:
+      genai:
+        embedding:
+          # Vertex AI 模式：使用 Cloud Run Workload Identity 提供的 ADC 認證
+          project-id: ${GCP_PROJECT_ID}
+          location: ${GCP_LOCATION:us-central1}
+          text:
+            options:
+              # gemini-embedding-2 不在 Spring AI 的 enum，需手動設定 model name
+              model: gemini-embedding-2
+              dimensions: 768

@@ -2,25 +2,36 @@ import { useState } from 'react'
 import { AppShell } from '@/components/AppShell'
 import { SearchBar } from '@/components/SearchBar'
 import { CategorySidebar } from '@/components/CategorySidebar'
+import { SkillCard } from '@/components/SkillCard'
 import { SkillCardGrid } from '@/components/SkillCardGrid'
 import { useSkillList } from '@/hooks/useSkillList'
 import { useCategories } from '@/hooks/useCategories'
+import { useSemanticSearch } from '@/hooks/useSemanticSearch'
 
 /**
- * 技能瀏覽首頁：包含關鍵字搜尋列、分類側邊欄、技能卡片網格及分頁控制列。
+ * 技能瀏覽首頁：支援語意搜尋（自然語言）與關鍵字搜尋（fallback）。
  *
- * 搜尋與分類篩選條件儲存於元件 state，
- * 任一條件改變時同步重置頁碼至第 0 頁，避免顯示無效頁面。
+ * 搜尋模式切換規則：
+ * - query 非空 → 語意搜尋模式（useSemanticSearch），隱藏 CategorySidebar 與分頁
+ * - query 空字串 → 關鍵字搜尋模式（useSkillList），顯示完整 CategorySidebar 與分頁
+ *
+ * 此設計符合 AC-6：「關鍵字搜尋與分類篩選在語意搜尋模式下隱藏」。
  */
 export function HomePage() {
-  const [keyword, setKeyword] = useState('')
+  const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string | null>(null)
   const [page, setPage] = useState(0)
 
-  const { data: skillsPage, isLoading, error } = useSkillList({
-    // 空字串轉為 undefined，避免後端收到 keyword= 空值而誤判為有效關鍵字
-    keyword: keyword || undefined,
-    // null 表示「不篩選分類」，轉為 undefined 以省略查詢參數
+  // 語意搜尋模式：query 非空時啟用（enabled 由 hook 內部控制）
+  const {
+    data: semanticResults,
+    isLoading: semanticLoading,
+    error: semanticError,
+  } = useSemanticSearch(query)
+
+  // 關鍵字搜尋模式：query 空時作為 fallback；query 非空時仍會被呼叫，但渲染層忽略
+  const { data: skillsPage, isLoading: listLoading, error: listError } = useSkillList({
+    keyword: undefined,   // 語意模式下不傳關鍵字
     category: category ?? undefined,
     page,
     size: 20,
@@ -28,39 +39,46 @@ export function HomePage() {
 
   const { data: categories } = useCategories()
 
+  // 語意搜尋模式：query 非空
+  const isSemanticMode = query.trim().length > 0
+
   /**
-   * 使用者輸入關鍵字時觸發，同時重置頁碼至第 0 頁，
-   * 避免搜尋條件改變後停留在已無效的頁面。
+   * 使用者輸入搜尋字串時觸發，同時重置分頁與分類篩選。
    */
   const handleSearch = (value: string) => {
-    setKeyword(value)
+    setQuery(value)
     setPage(0)
   }
 
   /**
-   * 使用者點選側邊欄分類時觸發；傳入 null 表示取消篩選（顯示全部）。
-   * 同樣重置頁碼，確保從第一頁開始瀏覽新篩選結果。
+   * 點選側邊欄分類時觸發；只在關鍵字模式下有效。
    */
   const handleCategorySelect = (cat: string | null) => {
     setCategory(cat)
     setPage(0)
   }
 
+  const isLoading = isSemanticMode ? semanticLoading : listLoading
+  const error = isSemanticMode ? semanticError : listError
+
   return (
     <AppShell>
       <div className="mb-6">
         <h1 className="mb-4 text-2xl font-bold">探索 Agent 技能</h1>
-        <SearchBar value={keyword} onChange={handleSearch} />
+        <SearchBar value={query} onChange={handleSearch} />
       </div>
 
       <div className="flex gap-6">
-        <aside className="hidden w-56 shrink-0 md:block">
-          <CategorySidebar
-            categories={categories ?? []}
-            selected={category}
-            onSelect={handleCategorySelect}
-          />
-        </aside>
+        {/* CategorySidebar 只在關鍵字搜尋模式（query 空）時顯示 */}
+        {!isSemanticMode && (
+          <aside className="hidden w-56 shrink-0 md:block">
+            <CategorySidebar
+              categories={categories ?? []}
+              selected={category}
+              onSelect={handleCategorySelect}
+            />
+          </aside>
+        )}
 
         <div className="min-w-0 flex-1">
           {isLoading ? (
@@ -68,11 +86,36 @@ export function HomePage() {
               載入中...
             </div>
           ) : error ? (
-            // 查詢失敗時顯示明確錯誤訊息，錯誤已由 main.tsx QueryCache 訂閱記錄至 console
             <div className="flex items-center justify-center py-16 text-red-500">
               載入技能失敗，請重新整理頁面
             </div>
+          ) : isSemanticMode ? (
+            // 語意搜尋結果：顯示每張卡片的相符度 badge，無分頁
+            <>
+              <div className="mb-4 text-sm text-muted-foreground">
+                找到 {semanticResults?.length ?? 0} 個相關技能
+              </div>
+              {semanticResults && semanticResults.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {semanticResults.map((result) => (
+                    <SkillCard
+                      key={result.id}
+                      // SemanticSearchResult 欄位與 Skill 高度重疊；
+                      // 以型別斷言橋接（status / createdAt / updatedAt 為語意結果不含的欄位）
+                      skill={result as unknown as Parameters<typeof SkillCard>[0]['skill']}
+                      score={result.score}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <p className="text-lg font-medium">未找到匹配的技能</p>
+                  <p className="text-sm">試試換個描述方式</p>
+                </div>
+              )}
+            </>
           ) : (
+            // 關鍵字搜尋 / 全部瀏覽模式：含分頁
             <>
               <div className="mb-4 text-sm text-muted-foreground">
                 共 {skillsPage?.page.totalElements ?? 0} 個技能

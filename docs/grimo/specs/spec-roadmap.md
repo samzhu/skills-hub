@@ -17,13 +17,13 @@
 
 ---
 
-## Milestone 5: 語意搜尋 (Critical Path P5, 非最優先)
+## Milestone 5: 語意搜尋 ✅ `v0.7.0` (2026-04-25)
 Goal: 使用者用自然語言描述需求，AI 推薦最適合的技能
 Done when: S007 done
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S007 | 語意搜尋（Spring AI + Gemini + Firestore Vector） | M(14) | S001 | 🔧 In Design |
+| S007 | 語意搜尋（Spring AI + Gemini + Firestore Vector） | M(14) | S001 | ✅ |
 
 ### S007: 語意搜尋
 
@@ -74,10 +74,10 @@ Scenario: 無相關結果
 | M2: 技能發佈流程 | S003, S004 | M(12) + S(10) = 22 | 55 | ✅ |
 | M3: 自動風險評估 | S005 | M(12) | 67 | ✅ |
 | M4: 一鍵安裝（Web 下載） | S006 | S(9) | 76 | ✅ |
-| M5: 語意搜尋 | S007 | M(14) | 90 | ⏳ |
+| M5: 語意搜尋 | S007 | M(14) | 90 | ✅ |
 | M6: 使用數據分析 | S008 | S(11) | 101 | ✅ |
 
-**Total: 9 specs, 101 story points — 8/9 specs shipped (87 points done)**
+**Total: 9 specs, 101 story points — 9/9 specs shipped (101 points done)**
 
 ### Dependency Graph
 
@@ -90,7 +90,7 @@ S000 ──▶ S001 ──▶ S002             ✅
               │       │
               │       └──▶ S006 ──▶ S008  ✅
               │
-              └──▶ S007 (⏳ Design)
+              └──▶ S007                ✅
 ```
 
 ### Backlog (ES 進階功能)

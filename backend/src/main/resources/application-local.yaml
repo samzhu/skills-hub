@@ -20,6 +20,15 @@ spring:
     exclude:
       - com.google.cloud.spring.autoconfigure.core.GcpContextAutoConfiguration
 
+  ai:
+    model:
+      # 本機無 GCP 憑證，禁用 Spring AI Google GenAI embedding auto-configuration。
+      # GoogleGenAiTextEmbeddingAutoConfiguration 的 matchIfMissing=true 會在屬性缺失時自動建立 bean，
+      # 導致與 SearchConfig.noOpEmbeddingModel 衝突（NoUniqueBeanDefinitionException）。
+      # 設為 none（非 google-genai）可防止 auto-config 建立 bean；改用 NoOpEmbeddingModel。
+      embedding:
+        text: none
+
   cloud:
     gcp:
       # 本機無 GCP 憑證，停用所有 GCP autoconfiguration 以避免啟動失敗。

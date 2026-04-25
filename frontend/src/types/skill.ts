@@ -73,6 +73,33 @@ export interface CategoryCount {
 }
 
 /**
+ * 語意搜尋結果 DTO，對應後端 SemanticSearchResult 的 JSON 序列化結果。
+ *
+ * 由 GET /api/v1/search/semantic?q=... 回傳，每筆記錄包含技能摘要與語意相似度分數。
+ * score 為 cosine similarity（0.0–1.0），越高表示與查詢語意越相近。
+ */
+export interface SemanticSearchResult {
+  /** 技能唯一識別碼 (UUID) */
+  id: string
+  /** 技能名稱 */
+  name: string
+  /** 技能功能描述 */
+  description: string
+  /** 作者名稱 */
+  author: string
+  /** 技能分類 */
+  category: string
+  /** 最新版本號；尚未發佈任何版本時為 null */
+  latestVersion: string | null
+  /** 風險評估等級；尚未評估時為 null */
+  riskLevel: RiskLevel | null
+  /** 累計下載次數 */
+  downloadCount: number
+  /** 與查詢的語意相似度（0.0–1.0） */
+  score: number
+}
+
+/**
  * 技能版本讀取模型，對應後端 SkillVersionReadModel 的序列化結果。
  * 版本清單由 API 依 publishedAt 降冪排序，第一筆為最新版。
  */
