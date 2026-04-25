@@ -60,7 +60,7 @@ claude
 把 prompt 寫在 `/loop` 後面，一行搞定：
 
 ```
-/loop 讀取 docs/grimo/specs/spec-roadmap.md，依照以下規則每次處理一個 spec：(1) 如果有 ⏳ 狀態且其依賴都已 ✅ 的 spec，執行 /planning-tasks 完成實作。(2) 否則找第一個 🔲 的 spec，執行 /planning-spec 完成設計。(3) 前端相關 spec 設計前先讀 docs/grimo/ui/README.md。(4) 每次只處理一個 spec。(5) 所有 spec 都 ✅ 後停止。
+/loop 讀取 docs/grimo/specs/spec-roadmap.md，找第一個未完成的 spec：🔲 → /planning-spec 設計；⏳ Design 且依賴 ✅ → /planning-tasks 實作；實作通過 → /shipping-release 出貨。每次處理一個 spec，全部 ✅ 後停止。
 ```
 
 **方式 B：用 .claude/loop.md（裸 /loop 的預設 prompt）**
@@ -72,14 +72,17 @@ mkdir -p .claude
 cat > .claude/loop.md << 'EOF'
 讀取 docs/grimo/specs/spec-roadmap.md，依照以下規則每次處理一個 spec：
 
-1. 如果有 ⏳ 狀態且其依賴都已 ✅ 的 spec，執行 /planning-tasks 完成實作
-2. 否則找第一個 🔲 的 spec，執行 /planning-spec 完成設計
-3. 前端相關 spec（S002, S004 等）設計前先讀 docs/grimo/ui/README.md 和 docs/grimo/ui/ 的 HTML mockups
-4. 每次只處理一個 spec
-5. 所有 spec 都 ✅ 後停止
+1. 找到第一個未完成（非 ✅）的 spec，依其狀態決定動作：
+   - 🔲 未設計 → 執行 /planning-spec 完成設計（→ ⏳ Design）
+   - ⏳ Design（已設計，依賴都 ✅）→ 執行 /planning-tasks 完成實作
+   - 實作通過驗證後 → 執行 /shipping-release 出貨（→ ✅）
+2. 前端相關 spec 設計前先讀 docs/grimo/ui/README.md
+3. 每次只處理一個 spec，完成後進入下一輪
+4. 所有 spec 都 ✅ 後停止
+5. 遵守依賴關係：依賴未完成就跳過，找下一個可處理的 spec
 
-優先順序：先實作（⏳ → ✅），再設計（🔲 → ⏳）。
-遵守依賴關係：依賴未完成就不能實作該 spec。
+Skill 流程（每個 spec 的完整生命週期）：
+/planning-spec → /planning-tasks ⟺ /implementing-task (loop) → /verifying-quality → /shipping-release
 EOF
 ```
 
@@ -127,7 +130,7 @@ claude --dangerously-skip-permissions
 ### Step 3: 執行 /loop
 
 ```
-/loop 讀取 docs/grimo/specs/spec-roadmap.md，依照以下規則每次處理一個 spec：(1) 如果有 ⏳ 狀態且其依賴都已 ✅ 的 spec，執行 /planning-tasks 完成實作。(2) 否則找第一個 🔲 的 spec，執行 /planning-spec 完成設計。(3) 前端相關 spec 設計前先讀 docs/grimo/ui/README.md。(4) 每次只處理一個 spec。(5) 所有 spec 都 ✅ 後停止。
+/loop 讀取 docs/grimo/specs/spec-roadmap.md，找第一個未完成的 spec：🔲 → /planning-spec 設計；⏳ Design 且依賴 ✅ → /planning-tasks 實作；實作通過 → /shipping-release 出貨。每次處理一個 spec，全部 ✅ 後停止。
 ```
 
 如果裸 `/loop` 能讀到 `.claude/loop.md`，也可以直接打 `/loop`。
@@ -183,8 +186,24 @@ tmux attach -t claude
 `.claude/loop.md` 定義了裸 `/loop` 的預設行為：
 
 ```
-讀取 spec-roadmap.md → 找下一個要處理的 spec → 執行對應 skill
+讀取 spec-roadmap.md → 找下一個未完成的 spec → 依狀態執行對應 skill
+  🔲 → /planning-spec（設計）
+  ⏳ → /planning-tasks（實作）→ /shipping-release（出貨）
 ```
+
+### Skill 流程（每個 spec 的完整生命週期）
+
+```
+/planning-spec → /planning-tasks ⟺ /implementing-task (loop) → /verifying-quality → /shipping-release
+```
+
+| Skill | 職責 | 輸入 → 輸出 |
+|-------|------|-------------|
+| `/planning-spec` | 研究 API、設計方案、寫 spec §1-5 | roadmap entry → spec file（Goal, Approach, AC, Interface, File Plan） |
+| `/planning-tasks` | 拆 BDD task、逐一呼叫 /implementing-task、最終驗證 | spec §1-5 → spec §6-7（Task Plan + Results） |
+| `/implementing-task` | TDD 實作單一 task（Red → Green → Refactor） | task file → 程式碼 + 測試 |
+| `/verifying-quality` | 獨立 QA subagent，三層驗證 | spec §7 → PASS / REJECT |
+| `/shipping-release` | commit、文件同步、歸檔 spec、CHANGELOG、tag | verified spec → ✅ shipped |
 
 ### 自動化流程
 
@@ -194,15 +213,19 @@ tmux attach -t claude
     ▼
 讀取 spec-roadmap.md
     │
-    ├─ 有 ⏳ spec 且依賴都 ✅ → /planning-tasks (實作)
-    │                              ↓
-    │                         內部 loop: /implementing-task × N
-    │                              ↓
-    │                         spec → ✅
+    ├─ 🔲 未設計的 spec → /planning-spec (研究 + 設計)
+    │                        ↓
+    │                    spec → ⏳ Design
     │
-    └─ 有 🔲 spec → /planning-spec (設計)
-                        ↓
-                    spec → ⏳
+    ├─ ⏳ 已設計且依賴都 ✅ → /planning-tasks (實作)
+    │                           ↓
+    │                      內部 loop: /implementing-task × N
+    │                           ↓
+    │                      /verifying-quality (QA 驗證)
+    │                           ↓
+    │                      /shipping-release (出貨)
+    │                           ↓
+    │                      spec → ✅
     │
     ▼
 回到開頭，處理下一個 spec
