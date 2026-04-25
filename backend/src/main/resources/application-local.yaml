@@ -14,11 +14,14 @@ spring:
       lifecycle-management: start-and-stop
 
   autoconfigure:
-    # 本機無 GCP 憑證，排除 GCP 核心 context autoconfiguration 以避免 WARN：
-    # "No core credentials are set" / "Your default credentials were not found"
+    # 本機無 GCP 憑證，排除需要 GCP 憑證的 autoconfiguration 以避免啟動失敗。
     # GCP 服務（GCS / Firestore）改由 gcp profile 啟用，不在 local profile 使用。
     exclude:
       - com.google.cloud.spring.autoconfigure.core.GcpContextAutoConfiguration
+      # GoogleGenAiEmbeddingConnectionAutoConfiguration 只有 @ConditionalOnClass（無 @ConditionalOnProperty），
+      # 即使設定 spring.ai.model.embedding.text=none 仍會嘗試建立 bean 並要求 project-id。
+      # 本機以 NoOpEmbeddingModel 取代，故排除此 autoconfiguration。
+      - org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiEmbeddingConnectionAutoConfiguration
 
   ai:
     model:
