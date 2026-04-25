@@ -3,8 +3,8 @@
 ## Language & Runtime
 
 - **Java 25** (toolchain managed by Gradle)
-- **Node.js 22 LTS** (frontend build)
-- **TypeScript 6.0.3** (frontend strict mode)
+- **Node.js 20 LTS** (frontend build)
+- **TypeScript ~6.0.2** (frontend strict mode)
 
 ## Code Style
 

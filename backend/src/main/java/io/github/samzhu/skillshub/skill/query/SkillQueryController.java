@@ -1,0 +1,96 @@
+package io.github.samzhu.skillshub.skill.query;
+
+import java.util.List;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * 技能讀取端 REST Controller — 處理所有唯讀查詢。
+ *
+ * <p>遵循 CQRS 原則，此 Controller 只接受 GET 請求（讀取端），
+ * 資料來源為 {@link SkillProjection} 維護的 read model。</p>
+ *
+ * <h3>端點一覽</h3>
+ * <ul>
+ *   <li>{@code GET /api/v1/skills} — 關鍵字搜尋 + 分類篩選（分頁）</li>
+ *   <li>{@code GET /api/v1/skills/{id}} — 單一技能詳情</li>
+ *   <li>{@code GET /api/v1/skills/{id}/versions} — 版本歷史</li>
+ *   <li>{@code GET /api/v1/skills/{id}/download} — 下載最新版本 zip</li>
+ *   <li>{@code GET /api/v1/skills/{id}/versions/{ver}/download} — 下載指定版本 zip</li>
+ *   <li>{@code GET /api/v1/categories} — 分類清單（含技能數量）</li>
+ * </ul>
+ */
+@RestController
+@RequestMapping("/api/v1")
+public class SkillQueryController {
+
+	private final SkillQueryService queryService;
+
+	public SkillQueryController(SkillQueryService queryService) {
+		this.queryService = queryService;
+	}
+
+	/** 依 ID 取得單一技能詳情。找不到時回傳 404。 */
+	@GetMapping("/skills/{id}")
+	SkillReadModel getById(@PathVariable String id) {
+		return queryService.findById(id);
+	}
+
+	/**
+	 * 搜尋技能 — 支援 keyword（name/description 模糊匹配）和 category（精確匹配）。
+	 * 兩個參數皆為可選，都不帶則回傳全部。
+	 */
+	@GetMapping("/skills")
+	Page<SkillReadModel> search(
+			@RequestParam(required = false) String keyword,
+			@RequestParam(required = false) String category,
+			@PageableDefault(size = 20) Pageable pageable) {
+		return queryService.search(keyword, category, pageable);
+	}
+
+	/** 取得某技能的版本歷史，按發佈時間降序排列。 */
+	@GetMapping("/skills/{id}/versions")
+	List<SkillVersionReadModel> getVersions(@PathVariable String id) {
+		return queryService.findVersionsBySkillId(id);
+	}
+
+	/**
+	 * 下載某技能的最新版本 zip。回傳 {@code application/octet-stream}。
+	 * 同時記錄 {@code SkillDownloaded} 領域事件供 analytics 消費。
+	 */
+	@GetMapping("/skills/{id}/download")
+	ResponseEntity<byte[]> downloadLatest(@PathVariable String id) {
+		var bytes = queryService.downloadLatest(id);
+		return ResponseEntity.ok()
+				.contentType(MediaType.APPLICATION_OCTET_STREAM)
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=skill.zip")
+				.body(bytes);
+	}
+
+	/** 下載某技能的指定版本 zip。 */
+	@GetMapping("/skills/{id}/versions/{version}/download")
+	ResponseEntity<byte[]> downloadVersion(@PathVariable String id, @PathVariable String version) {
+		var bytes = queryService.downloadVersion(id, version);
+		return ResponseEntity.ok()
+				.contentType(MediaType.APPLICATION_OCTET_STREAM)
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=skill-" + version + ".zip")
+				.body(bytes);
+	}
+
+	/** 取得所有分類及其技能數量，按數量降序排列。 */
+	@GetMapping("/categories")
+	List<CategoryCount> categories() {
+		return queryService.getCategoryCounts();
+	}
+
+}

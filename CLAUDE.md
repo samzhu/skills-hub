@@ -10,6 +10,7 @@
 
 IMPORTANT: Follow these in every session.
 
+- **Feature First, Security Later**: MVP 階段以功能開發為主，Spring Security 設為 permit all。安全性（認證、授權、CSRF）在功能完成後再補。不要在開發階段加入擋住功能的安全設定。
 - **First Principles Thinking**: Address root causes, not surface symptoms
 - **Design-Intent Comments**: After understanding the requirement, document *why* the design was chosen
 - **Web-Verify First**: Searching official docs is faster than trial-and-error — cite sources
@@ -68,7 +69,7 @@ skills-hub/
 │   ├── settings.gradle.kts
 │   ├── src/main/java/io/github/samzhu/skillshub/
 │   │   ├── SkillshubApplication.java
-│   │   ├── shared/                    ← [待建] DomainEvent, EventStore
+│   │   ├── shared/                    ← DomainEvent, EventStore (S000 已建)
 │   │   ├── skill/
 │   │   │   ├── command/               ← [待建] Command handlers (ES write side)
 │   │   │   ├── query/                 ← [待建] Query handlers + Projections (read side)
@@ -80,7 +81,7 @@ skills-hub/
 │   │   └── storage/                   ← [待建] GCS integration
 │   ├── src/main/resources/
 │   │   ├── application.yaml
-│   │   └── static/                    ← [待建] React build output
+│   │   └── static/                    ← React build output (Gradle 自動 copy)
 │   └── src/test/java/
 │
 └── frontend/                          ← [待建] React 19 SPA
@@ -134,6 +135,9 @@ skills-hub/
 ## Build commands
 
 ```bash
+
+cd backend && ./gradlew bootRun
+
 # Full build (frontend + backend)
 cd backend && ./gradlew build
 

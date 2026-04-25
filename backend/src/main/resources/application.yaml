@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: skillshub
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/skillshub}
+      database: skillshub
+      # Firestore 不支援透過 MongoDB wire protocol 建立 index（createIndex 命令不受支援）。
+      # Composite index 必須在 Firestore Console 或 gcloud CLI 手動建立，
+      # 因此停用 Spring Data 自動建立 index，避免啟動時報錯。
+      # 需要建立的 index 清單請參考各 @Document 類別上的 @CompoundIndex 標注。
+      auto-index-creation: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+skillshub:
+  storage:
+    bucket: ${SKILLSHUB_STORAGE_BUCKET:skillshub-packages}

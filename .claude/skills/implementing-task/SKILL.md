@@ -126,6 +126,35 @@ beyond this task's BDD scope.
 
 Clean up while keeping green. Follow the development-standards doc.
 
+### Code Readability Gate
+
+After Green passes and before updating the task file, verify every
+production file touched by this task. This gate is mandatory — code
+without documentation is not shippable.
+
+Read `references/code-readability-checklist.md` for the full best
+practices reference (sourced from Google Style Guide, OWASP, SLF4J,
+Clean Code). The three requirements in brief:
+
+**1. Class-level Javadoc / docstring** — every new public class
+needs: purpose (one sentence), module relationships (`@see`),
+`@param` for record fields. Skip: getters, package-info, tests.
+
+**2. Logger + structured log statements** — every new Service,
+Listener, Projection needs a Logger. Use INFO for business
+milestones, WARN for validation failures, structured key-value
+context (not string concatenation). Never log secrets or PII.
+
+**3. Inline comments on non-obvious logic** — comment *why*, not
+*what*: regex patterns, business rules, framework workarounds,
+aggregation pipelines, null guards. Do NOT restate obvious code.
+
+**Exit criterion**: grep the changed files —
+- No production class without a `/**` block (except package-info)
+- No Service/Listener without `LoggerFactory`
+- No regex, aggregation pipeline, or business-rule block without
+  a comment explaining the intent
+
 ### Update task file
 
 Read the update format from `references/task-result-format.md`.

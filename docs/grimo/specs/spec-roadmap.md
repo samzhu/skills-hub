@@ -6,7 +6,7 @@ Done when: S000 done, `./gradlew build` 成功，frontend dev server 可啟動
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S000 | Project Init — 前後端骨架、ES 基礎設施、Gradle 整合 | S(10) | none | ⏳ |
+| S000 | Project Init — 前後端骨架、ES 基礎設施、Gradle 整合 | S(10) | none | ✅ |
 
 ### S000: Project Init
 
@@ -69,8 +69,8 @@ Done when: S001-S002 all done
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S001 | Skill 領域模型 + Command/Query API (ES+CQRS) | S(11) | S000 | ⏳ |
-| S002 | 技能瀏覽與搜尋 UI + 關鍵字搜尋 | S(11) | S001 | ⏳ |
+| S001 | Skill 領域模型 + Command/Query API (ES+CQRS) | S(10) | S000 | ✅ |
+| S002 | 技能瀏覽與搜尋 UI + 關鍵字搜尋 | S(11) | S001 | ✅ |
 
 ### S001: Skill 領域模型 + Command/Query API (ES+CQRS)
 
@@ -160,8 +160,8 @@ Done when: S003-S004 all done
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S003 | Skill 上傳 + 版本管理（GCS + ES 事件流） | M(14) | S001 | 🔲 |
-| S004 | 技能發佈 UI（上傳、版本歷史） | S(10) | S002, S003 | 🔲 |
+| S003 | Skill 上傳 + 版本管理（GCS + ES 事件流） | M(14) | S001 | ✅ |
+| S004 | 技能發佈 UI（上傳、版本歷史） | S(10) | S002, S003 | ✅ |
 
 ### S003: Skill 上傳 + 版本管理（GCS + ES 事件流）
 
@@ -240,7 +240,7 @@ Done when: S005 done
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S005 | 風險評估引擎（Event-driven）+ UI 顯示 | M(13) | S003 | 🔲 |
+| S005 | 風險評估引擎（Event-driven）+ UI 顯示 | M(13) | S003 | ✅ |
 
 ### S005: 風險評估引擎（Event-driven）+ UI 顯示
 
@@ -292,7 +292,7 @@ Done when: S006 done
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S006 | Skill 下載 API + UI（含 SkillDownloaded event） | S(10) | S003 | 🔲 |
+| S006 | Skill 下載 API + UI（含 SkillDownloaded event） | S(10) | S003 | ✅ |
 
 ### S006: Skill 下載 API + UI
 
@@ -340,7 +340,7 @@ Done when: S007 done
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S007 | 語意搜尋（Spring AI + Gemini + Firestore Vector） | L(15) | S001 | 🔲 |
+| S007 | 語意搜尋（Spring AI + Gemini + Firestore Vector） | L(15) | S001 | ⏳ Design |
 
 ### S007: 語意搜尋
 
@@ -383,7 +383,7 @@ Done when: S008 done
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S008 | 數據分析儀表板（Event-driven projection） | M(12) | S006 | 🔲 |
+| S008 | 數據分析儀表板（Event-driven projection） | M(12) | S006 | ✅ |
 
 ### S008: 數據分析儀表板
 
