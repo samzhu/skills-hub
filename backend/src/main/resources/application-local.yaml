@@ -13,6 +13,13 @@ spring:
       enabled: true
       lifecycle-management: start-and-stop
 
+  autoconfigure:
+    # 本機無 GCP 憑證，排除 GCP 核心 context autoconfiguration 以避免 WARN：
+    # "No core credentials are set" / "Your default credentials were not found"
+    # GCP 服務（GCS / Firestore）改由 gcp profile 啟用，不在 local profile 使用。
+    exclude:
+      - com.google.cloud.spring.autoconfigure.core.GcpContextAutoConfiguration
+
   cloud:
     gcp:
       # 本機無 GCP 憑證，停用所有 GCP autoconfiguration 以避免啟動失敗。

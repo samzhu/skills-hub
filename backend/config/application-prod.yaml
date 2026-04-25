@@ -18,3 +18,10 @@ logging:
   level:
     root: INFO
     io.github.samzhu.skillshub: INFO
+
+# 正式環境停用 OpenAPI / Swagger UI（避免暴露 API 文件給外部）
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
