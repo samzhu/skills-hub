@@ -29,9 +29,9 @@ export function HomePage() {
     error: semanticError,
   } = useSemanticSearch(query)
 
-  // 關鍵字搜尋模式：query 空時作為 fallback；query 非空時仍會被呼叫，但渲染層忽略
+  // 關鍵字搜尋模式：query 空時為主模式；query 非空時作為語意搜尋的 fallback
   const { data: skillsPage, isLoading: listLoading, error: listError } = useSkillList({
-    keyword: undefined,   // 語意模式下不傳關鍵字
+    keyword: query.trim() || undefined,
     category: category ?? undefined,
     page,
     size: 20,
@@ -39,8 +39,8 @@ export function HomePage() {
 
   const { data: categories } = useCategories()
 
-  // 語意搜尋模式：query 非空
-  const isSemanticMode = query.trim().length > 0
+  // 語意搜尋模式：query 非空且語意搜尋未出錯時啟用；出錯時退回關鍵字搜尋
+  const isSemanticMode = query.trim().length > 0 && !semanticError
 
   /**
    * 使用者輸入搜尋字串時觸發，同時重置分頁與分類篩選。
