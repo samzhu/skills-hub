@@ -40,18 +40,6 @@ spring:
       # 注意：auto-index-creation 仍在 spring.data.mongodb 命名空間（spring-boot-data-mongodb 模組）。
       auto-index-creation: false
 
-  ai:
-    model:
-      # 停用 Spring AI Google GenAI text embedding auto-configuration。
-      # Embedding bean 由 SearchConfig Manual Configuration 建立（@ConditionalOnProperty）。
-      embedding:
-        text: none
-
-  autoconfigure:
-    exclude:
-      # Manual Configuration 取代 auto-config，排除需要 api-key/project-id 才能啟動的 connection auto-config。
-      - org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiEmbeddingConnectionAutoConfiguration
-
   servlet:
     multipart:
       max-file-size: 10MB
