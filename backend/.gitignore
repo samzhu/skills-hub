@@ -42,3 +42,7 @@ src/main/resources/static/
 ### Secrets (本地機敏值，不提交 Git) ###
 config/application-secrets.properties
 !config/application-secrets.properties.example
+
+### Local storage (本機檔案儲存，僅保留目錄結構) ###
+storage-local/*
+!storage-local/.gitkeep
