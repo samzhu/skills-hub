@@ -15,6 +15,14 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+spring:
+  cloud:
+    gcp:
+      storage:
+        # 本機開發預設停用 GCS，改用 InMemoryStorageService（不需要 ADC 憑證）。
+        # 部署至 GCP Cloud Run 時透過環境變數 SPRING_CLOUD_GCP_STORAGE_ENABLED=true 覆蓋。
+        enabled: ${SPRING_CLOUD_GCP_STORAGE_ENABLED:false}
+
 skillshub:
   storage:
     bucket: ${SKILLSHUB_STORAGE_BUCKET:skillshub-packages}
