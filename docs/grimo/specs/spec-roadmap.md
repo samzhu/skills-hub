@@ -23,7 +23,7 @@ Done when: S007 done
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S007 | 語意搜尋（Spring AI + Gemini + Firestore Vector） | L(15) | S001 | ⏳ Design |
+| S007 | 語意搜尋（Spring AI + Gemini + Firestore Vector） | M(14) | S001 | 🔧 In Design |
 
 ### S007: 語意搜尋
 
