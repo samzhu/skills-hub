@@ -44,7 +44,15 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
  * @see SemanticSearchService
  * @see SearchConfig
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        // Inline properties have the highest priority (override external config files).
+        // Prevents config/application-secrets.properties from enabling googleGenAiTextEmbedding,
+        // which would create a second EmbeddingModel bean and make @MockitoBean ambiguous.
+        properties = {
+                "spring.ai.model.embedding.text=none",
+                "spring.ai.google.genai.embedding.api-key=TEST-DISABLED"
+        })
 @AutoConfigureTestRestTemplate
 @Import(TestcontainersConfiguration.class)
 class SemanticSearchIntegrationTest {
