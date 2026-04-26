@@ -2,6 +2,7 @@
 
 1. 找到第一個未完成（非 ✅）的 spec，依其狀態決定動作：
    - 🔲 未設計 → 執行 /planning-spec 完成設計（→ ⏳ Design）
+   - 🔵 in-design -> 之前初步規劃, 可以再多上網查詢或使用 deep-research 後定案
    - ⏳ Design（已設計，依賴都 ✅）→ 執行 /planning-tasks 完成實作
    - 實作通過驗證後 → 執行 /shipping-release 出貨（→ ✅）
 2. 前端相關 spec 設計前先讀 docs/grimo/ui/README.md
