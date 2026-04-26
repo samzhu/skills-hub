@@ -1,9 +1,9 @@
 # S012: OAuth 開關 + LAB 模式
 
-> Spec: S012 | Size: XS(8) | Status: ⏳ Design
+> Spec: S012 | Size: XS(8) | Status: ✅ Done (2026-04-27)
 > Date: 2026-04-27
 > Depends: S011 (✅ shipped) — 沿用 SecurityConfig、MeController、AdminController 結構，本 spec 加 conditional 分支
-> Research: `docs/deepwiki/mock-oauth2-server/`、Spring Security 7 SecurityFilterChain（S011 §2.5 已驗證）
+> Research: `docs/deepwiki/mock-oauth2-server/`（已被清空）、Spring Security 7 SecurityFilterChain（S011 §2.5 已驗證）、本 spec §2.6 Validation Pass 已對既有 code 做差異對照
 
 ---
 
@@ -57,7 +57,7 @@
 | `SkillshubProperties` | 4 nested records: `storage`, `search`, `genai`, `scanner` | 新增 `security` nested record（含 `oauth.enabled` 與 `lab.userId`） |
 | `SecurityConfig` | 1 個 SecurityFilterChain bean + JwtDecoder + JwtAuthenticationConverter | SecurityFilterChain 內依 property 分支；JwtDecoder/Converter 加 `@ConditionalOnProperty` 只在 OAuth enabled 時建立 |
 | `MeController` | 直接用 `@AuthenticationPrincipal Jwt` | 改用新 `CurrentUserProvider`，兩種模式都能正確取值 |
-| `AdminController` | 維持 `@PreAuthorize("hasRole('admin')")` | **不動** — LAB 模式下因為注入 ROLE_admin 的 Authentication，`hasRole` 自然通過 |
+| `AdminController` | 維持 `@PreAuthorize("hasRole('admin')")` | **`@PreAuthorize` 不動**（兩模式都通過）；但內部 `@AuthenticationPrincipal Jwt jwt` 必須改用 `CurrentUserProvider`，否則 LAB 模式下 principal 是 `String "lab-user"` 而非 `Jwt`，`jwt.getSubject()` 會 NPE。AC-2 要求 `by="lab-user"` 也只能透過 provider 達成。 |
 | Profile / 設定檔 | `local`/`gcp` × `dev`/`prod` 雙層 | **不新增 profile**；只在 `application.yaml` 加 `skillshub.security.oauth.enabled: true`（顯式預設）並文件化「LAB 用 env var 覆寫為 false」 |
 
 ### 2.3 關鍵設計決策
@@ -92,6 +92,17 @@ S011 §2.5 已涵蓋 Spring Security 7 / Spring Boot 4 OAuth2 RS API 全部 surf
 - 內部研究：S011 §7.3 已記載 SecurityConfig + JwtDecoder bean 互動
 
 無 Hypothesis-grade 設計決策；POC 不需要。
+
+### 2.6 Validation Pass — Drift Sync (2026-04-27)
+
+從 🔵 in-design 收斂到 ⏳ Design 前，對 main 分支既有 code 做了一輪差異對照，發現兩處 spec 初稿與實情不符，已於本次更新校正：
+
+1. **AdminController 也用 `@AuthenticationPrincipal Jwt jwt`**（`AdminController.java:28-30`）—— 與 MeController 同樣會在 LAB 模式 NPE。原 spec §2.2 寫「AdminController 不動」屬內部不一致：AC-2 已要求 `by="lab-user"`，因此 controller 必須改用 `CurrentUserProvider.userId()`。修正：File Plan 加入 `AdminController.java` 為 M（modify），§4.7 補上對應改寫範例。`@PreAuthorize("hasRole('admin')")` 仍保留（兩模式都通）。
+2. **MeController 回 6 個欄位**（`MeController.java:38-45`：`sub`、`roles`、`groups`、`companyId`、`deptId`、`scope`）——原 §4.6 範例只回 2 欄會破壞既有 response shape、間接讓 OAuthMockE2ETest（S011）回歸失敗。校正：MeController 內部對 `JwtAuthenticationToken` / 其他 Authentication 兩種情境分別建構 6 欄 map，LAB 模式下 `groups`/`scope` 給空集合、`companyId`/`deptId` 給 null。`CurrentUser` 抽象維持 `(userId, roles)` 給 audit 場景用，不為 `/me` debug 端點過度設計。
+3. **`SkillshubProperties` ctor 既有呼叫只有 1 處** —— `SearchConfigTest.java:80`。新增 `Security` record 為 record 第 5 個 component，該測試需多帶一個 `new SkillshubProperties.Security(...)` 引數即可。File Plan 已涵蓋，無需擴張 scope。
+4. **`SecurityContextHolder.clearContext()` 在 OncePerRequestFilter finally 為冗餘但無害** —— Spring Security `FilterChainProxy` 本就會在 chain 結束清 context（[Architecture docs](https://docs.spring.io/spring-security/reference/servlet/architecture.html)）。LabSecurityFilter 保留 finally clear 是「明示意圖、不依賴外層」原則，不與框架行為衝突。
+
+驗證後本 spec 從 🔵 in-design → ⏳ Design，可進 `/planning-tasks S012`。
 
 ---
 
@@ -356,7 +367,7 @@ class SecurityConfig {
 }
 ```
 
-### 4.6 MeController 改用 CurrentUserProvider
+### 4.6 MeController 改寫 — 兩模式共用 6 欄回傳 shape
 
 ```java
 @RestController
@@ -371,16 +382,58 @@ class MeController {
 
     @GetMapping
     Map<String, Object> me() {
-        var u = users.current();
+        // OAuth 模式優先抽 JWT 完整 claims；LAB / 其他 Authentication 退回 CurrentUserProvider
+        // 兩個分支回傳相同的 6-key shape，response schema 對前端與既有 S011 測試保持一致。
+        var auth = SecurityContextHolder.getContext().getAuthentication();
         var result = new LinkedHashMap<String, Object>();
-        result.put("sub", u.userId());
-        result.put("roles", u.roles());
+        if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            var jwt = jwtAuth.getToken();
+            result.put("sub",       jwt.getSubject());
+            result.put("roles",     orEmpty(jwt.getClaimAsStringList("roles")));
+            result.put("groups",    orEmpty(jwt.getClaimAsStringList("groups")));
+            result.put("companyId", jwt.getClaimAsString("company_id"));
+            result.put("deptId",    jwt.getClaimAsString("dept_id"));
+            result.put("scope",     jwt.getClaimAsString("scope"));
+        } else {
+            var u = users.current();
+            result.put("sub",       u.userId());
+            result.put("roles",     u.roles());
+            result.put("groups",    List.of());
+            result.put("companyId", null);
+            result.put("deptId",    null);
+            result.put("scope",     "");
+        }
         return result;
+    }
+
+    private static List<String> orEmpty(List<String> list) {
+        return list == null ? List.of() : list;
     }
 }
 ```
 
-> AdminController 不變（@PreAuthorize 兩模式都運作）。
+### 4.6b AdminController 改寫 — 用 CurrentUserProvider 取代 `@AuthenticationPrincipal Jwt`
+
+```java
+@RestController
+@RequestMapping("/api/v1/admin")
+class AdminController {
+
+    private final CurrentUserProvider users;
+
+    AdminController(CurrentUserProvider users) {
+        this.users = users;
+    }
+
+    @GetMapping("/echo")
+    @PreAuthorize("hasRole('admin')")
+    Map<String, String> echo(@RequestParam(defaultValue = "hi") String msg) {
+        return Map.of("echo", msg, "by", users.userId());
+    }
+}
+```
+
+> `@PreAuthorize("hasRole('admin')")` 不變——OAuth 模式靠 JWT `roles` claim 對應到 `ROLE_admin`、LAB 模式靠 `LabSecurityFilter` 注入的 `[ROLE_admin]`，兩條路徑都通過。
 
 ### 4.7 application.yaml 增量
 
@@ -402,7 +455,8 @@ skillshub:
 |---|---|---|
 | `backend/src/main/java/io/github/samzhu/skillshub/SkillshubProperties.java` | M | 加 `Security` / `OAuth` / `Lab` nested records |
 | `backend/src/main/java/.../shared/security/SecurityConfig.java` | M | 內部 branch on `props.security().oauth().enabled()`；JwtDecoder/Converter 加 `@ConditionalOnProperty` |
-| `backend/src/main/java/.../shared/security/MeController.java` | M | 改用 `CurrentUserProvider` 取代 `@AuthenticationPrincipal Jwt` |
+| `backend/src/main/java/.../shared/security/MeController.java` | M | 兩模式分支建構 6 欄 response（保留 S011 既有 shape） |
+| `backend/src/main/java/.../shared/security/AdminController.java` | M | 移除 `@AuthenticationPrincipal Jwt`、改注入 `CurrentUserProvider`，避免 LAB 模式 NPE |
 | `backend/src/main/java/.../shared/security/CurrentUser.java` | A | record |
 | `backend/src/main/java/.../shared/security/CurrentUserProvider.java` | A | provider bean |
 | `backend/src/main/java/.../shared/security/LabSecurityFilter.java` | A | OncePerRequestFilter 注入 lab Authentication |
@@ -412,23 +466,252 @@ skillshub:
 | `backend/src/test/java/.../shared/security/CurrentUserProviderTest.java` | A | AC-4, AC-5（unit test，不需 SpringBootTest，直接 mock SecurityContextHolder） |
 | `backend/src/test/java/.../shared/security/JwtDecoderConditionalTest.java` | A | AC-3 — 驗 OAuth disabled 時 JwtDecoder bean 不存在 |
 | `backend/src/test/java/.../shared/security/SkillshubSecurityPropertiesTest.java` | A | AC-6 — `@SpringBootTest` 注入 SkillshubProperties 驗 binding |
-| `backend/src/test/java/.../search/SearchConfigTest.java` 等 | M（如有） | 既有 `new SkillshubProperties(...)` ctor 呼叫須加 Security 參數 |
+| `backend/src/test/java/.../search/SearchConfigTest.java` | M | 唯一 `new SkillshubProperties(...)` ctor 呼叫（line 80），補一個 `Security` 引數即可（grep 確認） |
 
-**檔案總數：3 modify + 6 add = 9** + 視 grep 結果可能再加幾個既有測試小修，落在 XS 上限。
+**檔案總數：5 modify + 6 add = 11**（其中 6 個是新增 + 5 個是既有檔修改；測試 5 add；落在 XS 上限）。
 
-既有 S011 測試（MeControllerTest, AdminControllerTest, OAuthMockE2ETest, SkillsApiAnonymousTest）**不修改**——AC-1 要求 default 模式行為與 S011 一致。
+既有 S011 測試（MeControllerTest, AdminControllerTest, OAuthMockE2ETest, SkillsApiAnonymousTest）**不修改**——AC-1 要求 default 模式行為與 S011 一致。AdminController 雖改 ctor，AdminControllerTest 既有 `.with(jwt())` 路徑會建立 `JwtAuthenticationToken`，但因 controller 不再用 `@AuthenticationPrincipal Jwt`、改用 `CurrentUserProvider.userId()`（從 `JwtAuthenticationToken.getName()` 取 sub），回傳值對既有測試斷言一致。MeController 也是同理（`JwtAuthenticationToken` 分支）。
 
 ---
 
 ## 6. Task Plan
 
-> 由 `/planning-tasks S012` 產生。
+> 由 `/planning-tasks S012` 於 2026-04-27 產生。POC: **not required**（理由：所有外部 API 已由 S011 §7 + S010 Scanner `@ConditionalOnProperty` pattern 在本專案驗證；本 spec 僅做 Spring Security 7 標準 SPI 組合，無新外部依賴）。
+
+| # | 主題 | AC 對應 | 變動範圍 | 依賴 | Status |
+|---|------|---------|----------|------|--------|
+| T1 | Foundation — `SkillshubProperties.Security` + `CurrentUser` + `CurrentUserProvider` + `LabSecurityFilter` + 兩 unit tests | AC-4, AC-5, AC-6 | 2 modify (`SkillshubProperties`, `SearchConfigTest`) + 5 add（3 production + 2 test）= 7 檔 | none | pending |
+| T2 | Wiring — `SecurityConfig` branch、`MeController` / `AdminController` 改用 `CurrentUserProvider`、`application.yaml` security 區塊、3 個 LAB-mode integration tests | AC-1, AC-2, AC-3, AC-7 | 3 modify (`SecurityConfig`, `MeController`, `AdminController`) + 1 modify (`application.yaml`) + 3 add（test）= 7 檔 | T1 | pending |
+
+**執行順序：T1 → T2**。T1 是純新增（不動既有 wiring），跑完 `./gradlew test` 全套測試應仍為 104/0/0/0；T2 才把開關接到 SecurityFilterChain，啟動兩種模式行為。
+
+**E2E 評估**：
+- AC-1 (OAuth 模式 backward compat) 由 S011 既有 `OAuthMockE2ETest`（Testcontainers + 真實 mock-oauth2-server）涵蓋——T2 完成後 `./gradlew test` 全綠即達成 E2E。
+- AC-2 (LAB 模式) 由 `LabModeMeControllerTest` + `LabModeAdminControllerTest`（`@SpringBootTest` + `@TestPropertySource`）涵蓋——這已是真實 ApplicationContext + 真實 SecurityFilterChain 的整合測試，無需額外 Testcontainers E2E task。
+- AC-7 (既有 endpoints 在 LAB 仍可訪問) 在 LabModeMeControllerTest 多加一個 method 打 `/api/v1/skills` 即可。
+
+無需獨立的 E2E task；T1 + T2 的測試集合即達成 Phase 4 Step 1.5 的整合 seam gate。
 
 ---
 
 ## 7. Implementation Results
 
-> 由 `/planning-tasks S012` 完成所有 tasks 後彙整。
+> 完成日期：2026-04-27 | T1 + T2 都 PASS | `./gradlew clean test` 114/0/0/0（baseline 104 + T1 5 + T2 5）
+
+### 7.1 Verification
+
+| 指令 | 結果 | 數據 |
+|---|---|---|
+| `./gradlew clean test` | BUILD SUCCESSFUL | 114 tests, 0 failed, 0 skipped, 36s |
+| `./gradlew compileTestJava` | BUILD SUCCESSFUL | — |
+
+**E2E artifact verification（Phase 4 Step 1.5）**：S012 wiring 仰賴實際 SpringBootTest stack（SecurityFilterChain bean 重組、`@ConditionalOnProperty` bean lifecycle、OncePerRequestFilter ordering），三類測試已涵蓋全部整合 seam：
+- `OAuthMockE2ETest`（S011 留存，3 個方法）— Testcontainers 啟動真實 navikt/mock-oauth2-server 容器，發 client_credentials token 後解碼通過
+- `LabModeMeControllerTest` + `LabModeAdminControllerTest`（共 3 方法）— `@SpringBootTest` + `@TestPropertySource("skillshub.security.oauth.enabled=false")` = 真實 ApplicationContext、真實 SecurityFilterChain、真實 LabSecurityFilter 注入
+- `JwtDecoderConditionalTest`（2 方法）— 直接從 ApplicationContext 查詢 `getBeansOfType(JwtDecoder.class)`，驗 bean lifecycle 對 property 反應正確
+
+無需獨立 bootRun smoke test —— SpringBootTest 已是同一條 spring.factories + auto-config 啟動路徑，property 切換在 test 層級驗證等同 bootRun 行為。
+
+### 7.2 AC Results
+
+| AC | 描述 | 對應測試 | 結果 |
+|---|---|---|---|
+| AC-1 | OAuth enabled (default) backward compat | 既有 9 個 S011 測試 (MeControllerTest, AdminControllerTest, OAuthMockE2ETest, SkillsApiAnonymousTest) | ✅ 全綠 |
+| AC-2 | OAuth disabled，permitAll + lab user 注入 | `LabModeMeControllerTest.labMode_meWithoutToken_returns200WithLabUserPayload`、`LabModeAdminControllerTest.labMode_adminEchoWithoutToken_returns200` | ✅ |
+| AC-3 | JwtDecoder bean 不在容器中（LAB 模式） | `JwtDecoderConditionalTest.jwtDecoder_notPresentInContextWhenOauthDisabled` + `securityFilterChain_stillPresentInLabMode` | ✅ |
+| AC-4 | CurrentUserProvider 兩模式回一致介面 | `CurrentUserProviderTest.current_jwtAuthentication_returnsJwtSubjectAndRoles` + `current_labAuthentication_stripsRolePrefix` | ✅ |
+| AC-5 | CurrentUserProvider 安全 fallback | `CurrentUserProviderTest.current_nullAuthentication_returnsLabUserFallback` + `current_anonymousAuthentication_returnsLabUserFallback` | ✅ |
+| AC-6 | SkillshubProperties.security 結構正確 | `SkillshubSecurityPropertiesTest.security_nestedRecordNotNullAndDefaults` | ✅ |
+| AC-7 | 既有 S001~S010 endpoints 在 LAB 仍正常 | `LabModeMeControllerTest.labMode_existingSkillsApi_returns200` | ✅ |
+
+### 7.3 Key Findings (correct usage patterns)
+
+#### Finding 1: `@ConditionalOnProperty` 在 SecurityConfig `@Bean` methods 上正常運作
+
+S012 在 `JwtDecoder` 與 `JwtAuthenticationConverter` 兩個 @Bean methods 加上 `@ConditionalOnProperty(prefix="skillshub.security.oauth", name="enabled", havingValue="true", matchIfMissing=true)`，行為符合預期：
+
+```java
+@Bean
+@ConditionalOnProperty(prefix = "skillshub.security.oauth", name = "enabled",
+                       havingValue = "true", matchIfMissing = true)
+JwtDecoder jwtDecoder(@Value("${...:default}") String issuerUri) {
+    return new SupplierJwtDecoder(() -> JwtDecoders.fromIssuerLocation(issuerUri));
+}
+```
+
+- `oauth.enabled=true`（或未設定）→ bean 存在
+- `oauth.enabled=false` → `getBeansOfType(JwtDecoder.class)` 回空 map（驗證於 `JwtDecoderConditionalTest`）
+
+`matchIfMissing=true` 是 fail-secure 預設（缺 property 時走 OAuth 路徑），與 S011 行為一致。
+
+#### Finding 2: `LabSecurityFilter` 用 `UsernamePasswordAuthenticationToken` 而非偽造 JWT
+
+```java
+public class LabSecurityFilter extends OncePerRequestFilter {
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain) throws ServletException, IOException {
+        var auth = new UsernamePasswordAuthenticationToken(
+                labUserId,
+                null,  // credentials
+                List.of(new SimpleGrantedAuthority("ROLE_admin")));  // 三參 ctor = isAuthenticated()=true
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        try {
+            chain.doFilter(request, response);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+}
+```
+
+關鍵點：三參數構造子（principal, credentials, authorities）才會讓 `isAuthenticated()` 回 true；兩參構造子 `(principal, credentials)` 是「未認證」狀態，會被 method security 拒絕。`@PreAuthorize("hasRole('admin')")` 因 `[ROLE_admin]` authority 通過。
+
+#### Finding 3: SecurityFilterChain 內部 if/else 分支策略保留單一 bean
+
+```java
+@Bean
+SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    if (props.security().oauth().enabled()) {
+        http.authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/v1/me", "/api/v1/admin/**").authenticated()
+                .anyRequest().permitAll())
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(...)));
+    } else {
+        http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+            .addFilterBefore(new LabSecurityFilter(props.security().lab().userId()),
+                             UsernamePasswordAuthenticationFilter.class);
+    }
+    http.csrf(AbstractHttpConfigurer::disable);
+    return http.build();
+}
+```
+
+選擇 if/else 而非兩個 `@ConditionalOnProperty` 互斥 bean：
+- 兩個 chain bean 需要 `@Order` 顯式管理或 `Conditional` 互斥，閱讀成本較高
+- 單一 bean 內部分支：兩條路徑左右並列、`csrf().disable()` 與 `build()` 共用
+- Test 端用 `@TestPropertySource("skillshub.security.oauth.enabled=false")` 觸發整個 SecurityFilterChain bean 重新建立（context per-test class）
+
+#### Finding 4: MeController 兩模式回 6-key shape 一致（避免前端 schema 分歧）
+
+```java
+@GetMapping
+Map<String, Object> me() {
+    var result = new LinkedHashMap<String, Object>();
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth instanceof JwtAuthenticationToken jwtAuth) {
+        // OAuth: 6 個 JWT claims 直接抽出（保留 S011 行為）
+        var jwt = jwtAuth.getToken();
+        result.put("sub",       jwt.getSubject());
+        result.put("roles",     orEmpty(jwt.getClaimAsStringList("roles")));
+        result.put("groups",    orEmpty(jwt.getClaimAsStringList("groups")));
+        result.put("companyId", jwt.getClaimAsString("company_id"));
+        result.put("deptId",    jwt.getClaimAsString("dept_id"));
+        result.put("scope",     jwt.getClaimAsString("scope"));
+    } else {
+        // LAB / fallback: sub + roles 從 CurrentUserProvider，其餘 4 欄空值占位
+        var u = users.current();
+        result.put("sub",       u.userId());
+        result.put("roles",     u.roles());
+        result.put("groups",    List.of());
+        result.put("companyId", null);
+        result.put("deptId",    null);
+        result.put("scope",     "");
+    }
+    return result;
+}
+```
+
+驗證細節：Spring 的 Jackson 預設 `JsonInclude.NON_NULL` 不輸出 null key，所以 `companyId=null` 在 JSON 是「key 不存在」，測試用 `jsonPath("$.companyId").doesNotExist()` 驗證實際 wire format。
+
+#### Finding 5: `CurrentUserProvider` 三分支判斷順序固定（JWT → 已認證 token → fallback）
+
+```java
+public CurrentUser current() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth instanceof JwtAuthenticationToken jwt) {           // (1) OAuth
+        var roles = jwt.getToken().getClaimAsStringList("roles");
+        return new CurrentUser(jwt.getName(), roles == null ? List.of() : roles);
+    }
+    if (auth != null && auth.isAuthenticated()
+            && !"anonymousUser".equals(auth.getPrincipal())) {  // (2) LAB / 其他
+        var roles = auth.getAuthorities().stream()
+                .map(a -> a.getAuthority().replaceFirst("^ROLE_", ""))
+                .toList();
+        return new CurrentUser(auth.getName(), roles);
+    }
+    return new CurrentUser(labUserId, List.of("admin"));        // (3) safe fallback
+}
+```
+
+過濾 `"anonymousUser"` 是必要的：Spring Security 的 `AnonymousAuthenticationFilter` 會設一個「已認證」的 anonymous token，那不算合法 user，必須走 fallback 才能讓背景執行緒、未認證情境下取得有意義的 userId。
+
+### 7.4 Design Drift Sync
+
+§2 Approach 與 §4 Interface Design 在 §2.6 Validation Pass 已對齊本次實作；無 post-implementation drift。實作完全依照 §2.6 校正後的 §4.6（MeController 6-key shape）+ §4.6b（AdminController 改用 CurrentUserProvider）+ §4.5（SecurityConfig branch + @ConditionalOnProperty）。
+
+### 7.5 Tech Debt / Limitations
+
+無新發現的 tech debt。S011 §7 已記載的兩條 tech debt（顯式 JwtDecoder bean、`SecurityMockMvcRequestPostProcessors.jwt()` 不跑自訂 converter）在本 spec 仍適用，未進一步解決也不需要——本 spec 的設計是繞過、而非修復。
+
+### 7.6 Files (final)
+
+**Production (5):**
+- `backend/src/main/java/io/github/samzhu/skillshub/SkillshubProperties.java` (M) — 加 `Security` / `OAuth` / `Lab` nested records
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/security/SecurityConfig.java` (M) — branch on property + `@ConditionalOnProperty` on JwtDecoder + JwtAuthenticationConverter
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/security/MeController.java` (M) — 兩模式 6-key shape
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/security/AdminController.java` (M) — 改用 `CurrentUserProvider.userId()`
+- `backend/src/main/resources/application.yaml` (M) — 加 `skillshub.security.{oauth,lab}` 區塊
+
+**Production (3 new):**
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/security/CurrentUser.java` (A) — `record(userId, roles)`
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/security/CurrentUserProvider.java` (A) — `@Component` 三分支抽象
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/security/LabSecurityFilter.java` (A) — `OncePerRequestFilter` 注入 lab user
+
+**Tests (5 new):**
+- `backend/src/test/java/.../shared/security/CurrentUserProviderTest.java` (A) — 4 unit methods, AC-4 + AC-5
+- `backend/src/test/java/.../shared/security/SkillshubSecurityPropertiesTest.java` (A) — 1 method, AC-6
+- `backend/src/test/java/.../shared/security/LabModeMeControllerTest.java` (A) — 2 methods, AC-2 + AC-7
+- `backend/src/test/java/.../shared/security/LabModeAdminControllerTest.java` (A) — 1 method, AC-2
+- `backend/src/test/java/.../shared/security/JwtDecoderConditionalTest.java` (A) — 2 methods, AC-3
+
+**Test (1 modify):**
+- `backend/src/test/java/.../search/SearchConfigTest.java` (M) — line 80 ctor 加 `Security` 引數
+
+**Total: 5 modify + 8 add = 13 檔**（spec §5 預估 11，因 production AdminController + test ctor fix 在 §2.6 校正後加入；落在 XS 上限）。
+
+---
+
+### 7.7 QA Review (independent subagent, 2026-04-27)
+
+**Verdict:** PASS
+
+**Verification:**
+- `./gradlew clean test` → BUILD SUCCESSFUL (114 tests, 0 failures, 38s)
+- `./gradlew compileTestJava` → BUILD SUCCESSFUL (compiled as part of full run)
+
+**AC coverage:** All ACs mapped to specific @DisplayName tests:
+- AC-1: Implicitly covered — existing S011 suite (MeControllerTest ×2, AdminControllerTest ×2, SkillsApiAnonymousTest) all pass at 114/0 baseline; OAuthMockE2ETest ×3 also included.
+- AC-2: `LabModeMeControllerTest.labMode_meWithoutToken_returns200WithLabUserPayload` + `LabModeAdminControllerTest.labMode_adminEchoWithoutToken_returns200`
+- AC-3: `JwtDecoderConditionalTest.jwtDecoder_notPresentInContextWhenOauthDisabled` + `securityFilterChain_stillPresentInLabMode`
+- AC-4: `CurrentUserProviderTest.current_jwtAuthentication_returnsJwtSubjectAndRoles` + `current_labAuthentication_stripsRolePrefix`
+- AC-5: `CurrentUserProviderTest.current_nullAuthentication_returnsLabUserFallback` + `current_anonymousAuthentication_returnsLabUserFallback`
+- AC-6: `SkillshubSecurityPropertiesTest.security_nestedRecordNotNullAndDefaults`
+- AC-7: `LabModeMeControllerTest.labMode_existingSkillsApi_returns200`
+
+**Findings:**
+- (none) All risk hotspots verified clean:
+  - `CurrentUserProvider.current()` — three-branch logic correct; JwtAuthenticationToken first, then authenticated non-anonymous, then safe fallback; `"anonymousUser"` filter properly gates branch 2.
+  - `SecurityConfig.filterChain()` — both branches build valid chains; `csrf().disable()` applied outside the if/else (shared); `oauth2ResourceServer` only in OAuth branch; `@EnableMethodSecurity` unconditional.
+  - `LabSecurityFilter` — 3-arg `UsernamePasswordAuthenticationToken` constructor used (isAuthenticated()=true confirmed); `clearContext()` in finally block present.
+  - `MeController` — 6-key shape preserved in both branches; existing S011 `MeControllerTest` (uses `.with(jwt())` → JwtAuthenticationToken path) passes without modification.
+  - `AdminController` — `@AuthenticationPrincipal Jwt jwt` parameter removed; replaced with `CurrentUserProvider` injection; `users.userId()` used correctly; `@PreAuthorize` retained unchanged.
+  - `SkillshubProperties.Security` — `@DefaultValue` chain: `Security(@DefaultValue OAuth, @DefaultValue Lab)` + `OAuth(@DefaultValue("true") boolean)` + `Lab(@DefaultValue("lab-user") String)` — non-null chain verified.
+  - `SearchConfigTest` ctor at line 80 correctly updated to include `Security(OAuth(true), Lab("lab-user"))` as 5th constructor argument.
+  - `application.yaml` — `skillshub.security.oauth.enabled: true` and `skillshub.security.lab.user-id: lab-user` both present.
+
+**Notes:** No design drift found between §4 Interface Design and shipped code. §2.6 Validation Pass corrections (AdminController change, MeController 6-key shape, SearchConfigTest ctor) all implemented as specified. Javadoc accurately describes actual behavior in all production files. No deprecated API use detected.
 
 ---
 

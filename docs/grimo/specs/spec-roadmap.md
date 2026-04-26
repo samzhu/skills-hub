@@ -85,10 +85,10 @@ Scenario: 無相關結果
 
 | M8: 安全掃描升級 | S010 | M(12) | 120 | ✅ |
 | M9: 開發環境 OAuth Mock | S011 | XS(8) | 128 | ✅ |
-| M10: OAuth 開關 + LAB 模式 | S012 | XS(8) | 136 | 🔵 |
+| M10: OAuth 開關 + LAB 模式 | S012 | XS(8) | 136 | ✅ |
 | M11: GCP Cloud Run 部署 | S013 | S(11) | 147 | 🔵 |
 
-**Total: 14 specs, 147 story points — 12/14 specs shipped (128 points done)**
+**Total: 14 specs, 147 story points — 13/14 specs shipped (136 points done)**
 
 ### Dependency Graph
 
@@ -110,7 +110,7 @@ S007 ──┘
 
 S009 ──▶ S011 (dev OAuth mock)          ✅
               │
-              └──▶ S012 (OAuth toggle + LAB)   🔵
+              └──▶ S012 (OAuth toggle + LAB)   ✅
 
 S013 (GCP Cloud Run 部署腳本，獨立)     🔵
 ```
@@ -125,48 +125,8 @@ S013 (GCP Cloud Run 部署腳本，獨立)     🔵
 
 ---
 
-## Milestone 10: OAuth 開關 + LAB 模式 `v0.11.0`
-Goal: 加 `skillshub.security.oauth.enabled` toggle，LAB 環境關掉 OAuth 直接用預設 lab user 測試功能；提供 `CurrentUserProvider` 為未來 audit 欄位準備
-Done when: S012 done
-
-| # | Spec | Points | Dependencies | Status |
-|---|------|--------|--------------|--------|
-| S012 | OAuth 開關 + LAB 模式 | XS(8) | S011 | 🔵 in-design |
-
-### S012: OAuth 開關 + LAB 模式
-
-**Description:** 加入 `skillshub.security.oauth.enabled`（預設 true）開關。LAB 環境設 `false` → SecurityFilterChain 全 permitAll、JwtDecoder bean 不建立、`LabSecurityFilter` 注入預設 `lab-user` + `ROLE_admin` Authentication；`/api/v1/me`、`/api/v1/admin/echo`、既有 S001~S010 endpoints 全部可訪問。新增 `CurrentUserProvider` 抽象，未來 audit 欄位（createdBy 等）統一從這個介面取 userId — OAuth 模式回 JWT subject、LAB 模式回固定 `lab-user`。
-
-**SBE Acceptance Criteria:**
-```
-Scenario: OAuth enabled (default) 行為與 S011 一致
-  Given 沒設定 oauth.enabled
-  When 跑 S011 既有 9 個測試
-  Then 全部通過
-
-Scenario: OAuth disabled，permitAll 生效
-  Given oauth.enabled=false
-  When 不帶 token 打 /api/v1/me
-  Then 200 + sub=lab-user, roles=[admin]
-  When 不帶 token 打 /api/v1/admin/echo?msg=hello
-  Then 200 + echo=hello, by=lab-user
-
-Scenario: CurrentUserProvider 統一介面
-  Given 兩種模式
-  When 呼叫 currentUserProvider.userId()
-  Then OAuth 模式回 JWT subject；LAB 模式回 lab-user
-```
-
-**Estimation:**
-| Dimension | Score | Reason |
-|-----------|-------|--------|
-| Technical risk | 1 | Spring Security 標準 SPI |
-| Uncertainty | 1 | API 在 S011 已驗證 |
-| Dependencies | 1 | 無新外部依賴 |
-| Scope | 2 | 3 modify + 6 add = 9 檔 |
-| Testing | 2 | 兩種模式各測一遍 |
-| Reversibility | 1 | 純 toggle 可還原 |
-| **Total** | **8** | **XS** |
+## Milestone 10: OAuth 開關 + LAB 模式 ✅ `v0.11.0` (2026-04-27)
+1/1 specs complete. Details → `specs/archive/2026-04-27-S012-oauth-toggle-lab-mode.md`
 
 ---
 

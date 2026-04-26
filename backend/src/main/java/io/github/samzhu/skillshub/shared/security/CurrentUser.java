@@ -1,0 +1,19 @@
+package io.github.samzhu.skillshub.shared.security;
+
+import java.util.List;
+
+/**
+ * 當前請求的使用者識別 — 從 {@link org.springframework.security.core.context.SecurityContext}
+ * 抽出的最小欄位集合（S012）。
+ *
+ * <p>OAuth 模式下 {@code userId} 來自 JWT {@code sub} claim、{@code roles} 來自 JWT
+ * {@code roles} claim；LAB 模式下兩者均來自 {@link LabSecurityFilter} 注入的預設值。
+ *
+ * <p>未來 audit 欄位（{@code createdBy} / {@code updatedBy}）統一從
+ * {@link CurrentUserProvider#userId()} 取值，避免散在各 controller / service 自行
+ * 處理 JWT vs LAB 兩種型別差異。
+ *
+ * @param userId JWT {@code sub} 或 LAB 模式預設值（如 {@code "lab-user"}）
+ * @param roles  角色清單；已剝去 Spring Security 的 {@code ROLE_} 前綴，回到業務語意值
+ */
+public record CurrentUser(String userId, List<String> roles) {}

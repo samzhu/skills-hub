@@ -101,6 +101,17 @@ skillshub:
     # 本機開發：config/application-secrets.properties 注入 skillshub.genai.api-key=AIzaSy...
     # 雲端部署：env var SKILLSHUB_GENAI_API_KEY（relaxed binding 自動對應）
 
+  # ----- OAuth 開關 + LAB 模式 (S012) -----
+  # oauth.enabled=true（預設）走 S011 完整 OAuth Resource Server 鏈路。
+  # LAB 環境設 false（用 env var SKILLSHUB_SECURITY_OAUTH_ENABLED=false 最直接），
+  # SecurityFilterChain 走 LAB 分支：JwtDecoder bean 不建立、anyRequest permitAll、
+  # LabSecurityFilter 注入 lab user (principal=lab-user, authorities=[ROLE_admin])。
+  security:
+    oauth:
+      enabled: true
+    lab:
+      user-id: lab-user
+
   # ----- 多引擎安全掃描 Pipeline (S010) -----
   # 每個引擎可獨立開關；關閉的引擎 bean 不建立、不出現在 SARIF runs[]、
   # 也不參與 max-severity 彙整。Engine bean 透過 @ConditionalOnProperty 控制。

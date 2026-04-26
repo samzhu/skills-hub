@@ -24,7 +24,8 @@ public record SkillshubProperties(
         @DefaultValue Storage storage,
         @DefaultValue Search search,
         @DefaultValue GenAI genai,
-        @DefaultValue Scanner scanner) {
+        @DefaultValue Scanner scanner,
+        @DefaultValue Security security) {
 
     /**
      * GCS / 本機儲存設定。
@@ -108,4 +109,40 @@ public record SkillshubProperties(
      * @param enabled 引擎是否啟用（預設 {@code true}；個別引擎在 application.yaml 可覆寫）
      */
     public record Engine(@DefaultValue("true") boolean enabled) {}
+
+    /**
+     * Security 設定 — OAuth Resource Server 開關 + LAB 模式預設值（S012）。
+     *
+     * <p>透過 {@code skillshub.security.oauth.enabled} 控制 OAuth2 Resource Server 鏈路是否啟用：
+     * <ul>
+     *   <li>{@code true}（預設、production / 對外開發）— SecurityFilterChain 啟用 OAuth2 RS、
+     *       JwtDecoder + JwtAuthenticationConverter beans 透過 {@code @ConditionalOnProperty}
+     *       建立、{@code /api/v1/me} 與 {@code /api/v1/admin/**} 須帶 JWT。</li>
+     *   <li>{@code false}（LAB / 純功能測試）— SecurityFilterChain anyRequest permitAll、
+     *       {@code LabSecurityFilter} 注入預設 lab user Authentication（{@code lab.user-id} 帶
+     *       {@code ROLE_admin}），所有 endpoint 在無 JWT 情境下仍可訪問且帶 admin 權限。</li>
+     * </ul>
+     *
+     * <p>{@code lab.user-id} 同時提供給 {@link io.github.samzhu.skillshub.shared.security.CurrentUserProvider}
+     * 作為 LAB 模式 / 安全 fallback 情境下的固定 userId（未來 audit 欄位的 createdBy）。
+     *
+     * @param oauth OAuth Resource Server 開關
+     * @param lab   LAB 模式專屬設定（預設 user 識別）
+     */
+    public record Security(
+            @DefaultValue OAuth oauth,
+            @DefaultValue Lab lab) {}
+
+    /**
+     * @param enabled OAuth2 Resource Server 是否啟用；預設 {@code true}（fail-secure）。
+     *                LAB 環境須以 env var {@code SKILLSHUB_SECURITY_OAUTH_ENABLED=false} 顯式關閉。
+     */
+    public record OAuth(@DefaultValue("true") boolean enabled) {}
+
+    /**
+     * @param userId LAB 模式下 {@code LabSecurityFilter} 注入的 principal 值與
+     *               {@link io.github.samzhu.skillshub.shared.security.CurrentUserProvider}
+     *               的 fallback userId；預設 {@code "lab-user"}（一眼識別非真實 user）。
+     */
+    public record Lab(@DefaultValue("lab-user") String userId) {}
 }

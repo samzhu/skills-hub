@@ -1,5 +1,28 @@
 # Changelog
 
+## [v0.11.0] - 2026-04-27
+
+### Added
+- S012: OAuth 開關 + LAB 模式 — 透過 `skillshub.security.oauth.enabled` 開關（預設 `true`，env var `SKILLSHUB_SECURITY_OAUTH_ENABLED=false` 顯式關閉）切換兩種模式：
+  - **OAuth 模式**（預設）— 維持 S011 行為：JwtDecoder + JwtAuthenticationConverter beans 透過 `@ConditionalOnProperty` 建立、`/api/v1/me` 與 `/api/v1/admin/**` 須帶 JWT。
+  - **LAB 模式** — JwtDecoder bean 不建立、SecurityFilterChain `anyRequest().permitAll()`、`LabSecurityFilter` 注入預設 lab user（principal=`lab-user`，authorities=`[ROLE_admin]`），所有 endpoint 在無 JWT 情境下皆可訪問且通過 `@PreAuthorize("hasRole('admin')")`。
+- `shared/security/CurrentUserProvider` — 統一抽象「當前使用者識別」的三分支邏輯（JwtAuthenticationToken → 已認證其他 token → 安全 fallback `lab-user`），未來 audit 欄位（`createdBy` / `updatedBy`）直接 constructor injection 即可，不需各自處理 JWT vs LAB 型別差異。
+- `shared/security/CurrentUser` record 與 `LabSecurityFilter`（`OncePerRequestFilter`）。
+- `SkillshubProperties.Security` nested record（`oauth.enabled` + `lab.user-id`），與既有 4 個 `@ConfigurationProperties` 區塊同層。
+- 5 個新測試類別涵蓋 7 個 AC：`CurrentUserProviderTest`（4 unit, AC-4/5）、`SkillshubSecurityPropertiesTest`（1 SpringBoot, AC-6）、`LabModeMeControllerTest`（2 SpringBoot, AC-2/7）、`LabModeAdminControllerTest`（1 SpringBoot, AC-2）、`JwtDecoderConditionalTest`（2 SpringBoot, AC-3）。
+
+### Changed
+- `shared/security/MeController` — 內部依 `Authentication` 子型別分支：`JwtAuthenticationToken` 走 OAuth 路徑（保留 6 個 JWT claims 抽取邏輯，S011 既有測試斷言不變），其他 Authentication 走 LAB 路徑（`CurrentUserProvider` + 4 欄空值占位），兩條路徑回相同 6-key shape，避免前端因模式不同收到不同 schema。
+- `shared/security/AdminController` — 移除 `@AuthenticationPrincipal Jwt` 參數（LAB 模式下 principal 是 `String "lab-user"` 而非 `Jwt`，會 NPE），改注入 `CurrentUserProvider`，`by` 欄位用 `users.userId()`；`@PreAuthorize("hasRole('admin')")` 不變（兩模式都通過）。
+- `shared/security/SecurityConfig` — 注入 `SkillshubProperties`，`filterChain` 內部 if/else 分支於兩種模式（單一 bean 策略，避免兩個 chain bean 競爭）；JwtDecoder + JwtAuthenticationConverter 兩個 @Bean 加 `@ConditionalOnProperty(prefix="skillshub.security.oauth", name="enabled", havingValue="true", matchIfMissing=true)`，`matchIfMissing=true` 為 fail-secure 預設。
+- `application.yaml` 加 `skillshub.security.{oauth.enabled, lab.user-id}` 區塊（純值，與 S009 規範一致）。
+
+### Notes
+- 遵循 CLAUDE.md「Feature First, Security Later」：S001~S010 既有 endpoints 在 LAB 模式仍維持匿名可達；OAuth 模式下亦只有 `/api/v1/me` 與 `/api/v1/admin/**` 需要 JWT。
+- 設計 §2.6 Validation Pass 已在實作前對 main 分支做差異對照，發現並校正兩處 spec 初稿與實情不符（AdminController 也用 `@AuthenticationPrincipal Jwt`、MeController 回 6 欄而非 2 欄）；實作完全依校正後設計，無 post-implementation drift。
+- `LabSecurityFilter` 用 `UsernamePasswordAuthenticationToken` 三參構造子（principal, credentials, authorities）才會讓 `isAuthenticated()=true`；`SecurityContextHolder.clearContext()` 在 finally 為冗餘但無害的明示意圖（`FilterChainProxy` 本就會清）。
+- 驗證：`./gradlew clean test` → BUILD SUCCESSFUL（114 tests, 0 failed）。
+
 ## [v0.10.0] - 2026-04-27
 
 ### Added

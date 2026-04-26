@@ -86,7 +86,10 @@ class SearchConfigTest {
                         new SkillshubProperties.Engine(true),
                         new SkillshubProperties.Engine(true),
                         new SkillshubProperties.Engine(false),
-                        new SkillshubProperties.Engine(true))));
+                        new SkillshubProperties.Engine(true))),
+                new SkillshubProperties.Security(
+                        new SkillshubProperties.OAuth(true),
+                        new SkillshubProperties.Lab("lab-user")));
 
         var em = config.googleGenAiEmbeddingModel(props);
 
