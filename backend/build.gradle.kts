@@ -40,6 +40,8 @@ dependencies {
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
 	implementation("org.springframework.ai:spring-ai-markdown-document-reader")
 	implementation("org.springframework.ai:spring-ai-google-genai-embedding")
+	implementation("org.springframework.ai:spring-ai-google-genai")
+	implementation("org.springframework.ai:spring-ai-client-chat")
 	implementation("org.springframework.ai:spring-ai-vector-store")
 	implementation("org.springframework.modulith:spring-modulith-starter-core")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")

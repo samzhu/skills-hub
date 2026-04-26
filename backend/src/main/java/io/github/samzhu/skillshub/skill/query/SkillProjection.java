@@ -7,6 +7,8 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
@@ -64,8 +66,16 @@ class SkillProjection {
 				.log("投影已建立技能 read model");
 	}
 
-	/** 版本發佈 → 更新 skills 的 latestVersion + 新增 skill_versions 記錄。 */
+	/**
+	 * 版本發佈 → 更新 skills 的 latestVersion + 新增 skill_versions 記錄。
+	 *
+	 * <p>{@code @Order(HIGHEST_PRECEDENCE)} 確保在 ScanOrchestrator (S010, security::scan) 之前執行：
+	 * ScanOrchestrator 用 {@code MongoTemplate.updateFirst} 寫 riskAssessment 欄位，需要本 listener
+	 * 先建立 skill_versions document 才有效。Spring 同步 @EventListener 預設 priority 同為
+	 * LOWEST_PRECEDENCE，順序未定；顯式排序避免種族條件。
+	 */
 	@EventListener
+	@Order(Ordered.HIGHEST_PRECEDENCE)
 	void on(SkillVersionPublishedEvent event) {
 		// 更新 skills read model 的最新版本
 		repo.findById(event.aggregateId()).ifPresent(existing -> {
@@ -85,7 +95,8 @@ class SkillProjection {
 			repo.save(updated);
 		});
 
-		// 建立版本 read model 記錄
+		// 建立版本 read model 記錄；riskAssessment 在此為 null，由 S010 ScanOrchestrator
+		// 完成多引擎掃描後直接以 MongoTemplate.updateFirst 寫入此欄位。
 		var versionEntry = new SkillVersionReadModel(
 				UUID.randomUUID().toString(),
 				event.aggregateId(),
@@ -93,6 +104,7 @@ class SkillProjection {
 				event.storagePath(),
 				event.fileSize(),
 				event.frontmatter(),
+				null,
 				Instant.now()
 		);
 		versionRepo.save(versionEntry);

@@ -25,3 +25,8 @@ spring:
 skillshub:
   search:
     vector-store: firestore
+  # GCP 部署啟用 LlmJudge（要求 SKILLSHUB_GENAI_API_KEY 同時提供，否則 bean 不建立）
+  scanner:
+    engines:
+      llm:
+        enabled: true

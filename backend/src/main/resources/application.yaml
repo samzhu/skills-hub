@@ -90,3 +90,19 @@ skillshub:
     # api-key 不在此設定 — 缺席即停用（NoOp fallback）
     # 本機開發：config/application-secrets.properties 注入 skillshub.genai.api-key=AIzaSy...
     # 雲端部署：env var SKILLSHUB_GENAI_API_KEY（relaxed binding 自動對應）
+
+  # ----- 多引擎安全掃描 Pipeline (S010) -----
+  # 每個引擎可獨立開關；關閉的引擎 bean 不建立、不出現在 SARIF runs[]、
+  # 也不參與 max-severity 彙整。Engine bean 透過 @ConditionalOnProperty 控制。
+  scanner:
+    engines:
+      pattern:
+        enabled: true     # PatternScanner — 靜態規則匹配（rm -rf、pipe-to-shell、敏感路徑）
+      secret:
+        enabled: true     # SecretScanner — API key / token / private key 偵測 + 遮罩
+      metadata:
+        enabled: true     # MetadataValidator — agentskills.io frontmatter 規則
+      llm:
+        enabled: false    # LlmJudge — base profile 預設關閉（避免本機 API call cost）；gcp profile 開啟
+      meta:
+        enabled: true     # MetaAnalyzer — 跨引擎合併規則（不調 LLM）

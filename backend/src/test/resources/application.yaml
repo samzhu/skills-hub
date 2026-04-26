@@ -5,6 +5,9 @@ spring:
       # Its matchIfMissing=true would otherwise conflict with SearchConfig.noOpEmbeddingModel.
       embedding:
         text: none
+      # Same reasoning for chat: ScannerAiConfig (S010) handles ChatModel manually.
+      # `spring.ai.model.chat: none` gates `GoogleGenAiChatAutoConfiguration`'s ConditionalOnProperty.
+      chat: none
 
   autoconfigure:
     exclude:

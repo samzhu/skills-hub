@@ -1,5 +1,24 @@
 # Changelog
 
+## [v0.9.0] - 2026-04-26
+
+### Added
+- S010: Multi-engine security scanner pipeline — replaces S005 single-regex scanner with 5 independently-toggleable engines + SARIF 2.1.0 output
+  - `SecurityAnalyzer` SPI + `Phase` (STATIC/LLM/META) execution model in `security.scan` package
+  - 5 engines: `PatternScanner` (8 regex rules, OWASP AST06), `SecretScanner` (10 patterns inspired by gitleaks MIT + masking), `MetadataValidator` (Jakarta Bean Validation against agentskills.io frontmatter), `LlmJudge` (Spring AI ChatClient + Gemini 2.5 Flash + structured output via `BeanOutputConverter`), `MetaAnalyzer` (cross-engine deterministic rules: META_EXFIL_PATTERN, META_MULTI_ENGINE_SIGNAL, META_OPACITY)
+  - `ScanOrchestrator` (`@EventListener` on `SkillVersionPublishedEvent`) — Phase 1 STATIC parallel via `Executors.newVirtualThreadPerTaskExecutor()`, Phase 2 LLM sequential, Phase 3 META sequential; max-severity aggregation; per-engine try/catch isolation
+  - `SarifReporter` — hand-rolled Jackson POJO renderer (no third-party SARIF lib due to dead-library landscape); HIGH/MEDIUM/LOW → error/warning/note + `security-severity` 浮點字串 for future GHAS integration; one `runs[]` per enabled engine
+  - `ScannerAiConfig` — Spring AI Manual Configuration for `GoogleGenAiChatModel` + `ChatClient`; `AllNestedConditions` dual gate (`engines.llm.enabled=true` AND `genai.api-key` present)
+  - `SkillVersionReadModel.riskAssessment Map<String,Object>` field stores level + findings + notices + SARIF + scannedAt
+  - `SkillshubProperties.Scanner` nested `@ConfigurationProperties` record with per-engine toggles
+- New dependencies: `spring-ai-google-genai`, `spring-ai-client-chat` (chat artifact NOT transitive from genai)
+
+### Fixed
+- Cross-module `@EventListener` race condition: `SkillProjection` and `ScanOrchestrator` both listen to `SkillVersionPublishedEvent` with default LOWEST_PRECEDENCE → undefined order. Explicit `@Order(HIGHEST_PRECEDENCE)` on SkillProjection + `@Order(LOWEST_PRECEDENCE)` on ScanOrchestrator. (Race existed since S005 but was masked because S005 didn't depend on `skill_versions` document being pre-written.)
+
+### Removed
+- S005 legacy classes: `RiskAssessmentListener`, `RiskScanner`, `RiskFinding`, old `ScanResult` (replaced by `ScanOrchestrator` + `PatternScanner` + `SecurityFinding` + new `ScanResult` with SARIF map)
+
 ## [v0.8.0] - 2026-04-25
 
 ### Changed

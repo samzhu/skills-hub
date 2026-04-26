@@ -80,7 +80,13 @@ class SearchConfigTest {
         var props = new SkillshubProperties(
                 new SkillshubProperties.Storage("skillshub-packages", "./storage-local"),
                 new SkillshubProperties.Search("simple", "skill_embeddings"),
-                new SkillshubProperties.GenAI("gemini-embedding-2", 768, "test-api-key"));
+                new SkillshubProperties.GenAI("gemini-embedding-2", 768, "test-api-key"),
+                new SkillshubProperties.Scanner(new SkillshubProperties.Engines(
+                        new SkillshubProperties.Engine(true),
+                        new SkillshubProperties.Engine(true),
+                        new SkillshubProperties.Engine(true),
+                        new SkillshubProperties.Engine(false),
+                        new SkillshubProperties.Engine(true))));
 
         var em = config.googleGenAiEmbeddingModel(props);
 
