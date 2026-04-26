@@ -1,0 +1,51 @@
+{
+  "interactiveLogin": false,
+  "httpServer": "NettyWrapper",
+  "tokenCallbacks": [
+    {
+      "issuerId": "skills-hub-dev",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "client_id",
+          "match": "admin-client",
+          "claims": {
+            "sub": "admin-001",
+            "roles": ["admin"],
+            "groups": ["platform-admins", "skills-curators"],
+            "company_id": "skills-hub-corp",
+            "dept_id": "engineering",
+            "scope": "skills:admin skills:read skills:write",
+            "aud": ["skills-hub-api"]
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "developer-client",
+          "claims": {
+            "sub": "dev-042",
+            "roles": ["developer"],
+            "groups": ["skill-authors"],
+            "company_id": "skills-hub-corp",
+            "dept_id": "engineering",
+            "scope": "skills:read skills:write",
+            "aud": ["skills-hub-api"]
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "viewer-client",
+          "claims": {
+            "sub": "viewer-007",
+            "roles": ["viewer"],
+            "groups": ["readers"],
+            "company_id": "skills-hub-corp",
+            "dept_id": "marketing",
+            "scope": "skills:read",
+            "aud": ["skills-hub-api"]
+          }
+        }
+      ]
+    }
+  ]
+}

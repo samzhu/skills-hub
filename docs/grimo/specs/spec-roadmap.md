@@ -84,9 +84,11 @@ Scenario: 無相關結果
 | M7: 設定檔最佳化 | S009 | XS(7) | 108 | ✅ |
 
 | M8: 安全掃描升級 | S010 | M(12) | 120 | ✅ |
-| M9: 開發環境 OAuth Mock | S011 | XS(8) | 128 | 🔵 |
+| M9: 開發環境 OAuth Mock | S011 | XS(8) | 128 | ✅ |
+| M10: OAuth 開關 + LAB 模式 | S012 | XS(8) | 136 | 🔵 |
+| M11: GCP Cloud Run 部署 | S013 | S(11) | 147 | 🔵 |
 
-**Total: 12 specs, 128 story points — 11/12 specs shipped (120 points done)**
+**Total: 14 specs, 147 story points — 12/14 specs shipped (128 points done)**
 
 ### Dependency Graph
 
@@ -106,7 +108,11 @@ S009 (獨立，無依賴)                    ✅
 S005 ──▶ S010 (多引擎安全掃描)         ✅
 S007 ──┘
 
-S009 ──▶ S011 (dev OAuth mock)          🔵
+S009 ──▶ S011 (dev OAuth mock)          ✅
+              │
+              └──▶ S012 (OAuth toggle + LAB)   🔵
+
+S013 (GCP Cloud Run 部署腳本，獨立)     🔵
 ```
 
 ## Milestone 8: 安全掃描升級 ✅ `v0.9.0` (2026-04-26)
@@ -114,55 +120,96 @@ S009 ──▶ S011 (dev OAuth mock)          🔵
 
 ---
 
-## Milestone 9: 開發環境 OAuth Mock `v0.10.0`
-Goal: dev/CI 環境本地核發 JWT，把 Spring Security OAuth2 Resource Server 通路跑通；現有 API 仍維持匿名可達（Feature First, Security Later）
-Done when: S011 done
+## Milestone 9: 開發環境 OAuth Mock ✅ `v0.10.0` (2026-04-27)
+1/1 specs complete. Details → `specs/archive/2026-04-25-S011-dev-oauth-mock.md`
+
+---
+
+## Milestone 10: OAuth 開關 + LAB 模式 `v0.11.0`
+Goal: 加 `skillshub.security.oauth.enabled` toggle，LAB 環境關掉 OAuth 直接用預設 lab user 測試功能；提供 `CurrentUserProvider` 為未來 audit 欄位準備
+Done when: S012 done
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S011 | 開發環境 OAuth Mock 整合 | XS(8) | S009 | ⏳ Dev (T1, T2 ✅; QA blocked by S010 cascade) |
+| S012 | OAuth 開關 + LAB 模式 | XS(8) | S011 | 🔵 in-design |
 
-### S011: 開發環境 OAuth Mock 整合
+### S012: OAuth 開關 + LAB 模式
 
-**Description:** docker-compose 加入 navikt/mock-oauth2-server，`./gradlew bootRun` 自動帶起；提供三組假身分（admin / developer / viewer），各帶 `sub` / `roles` / `groups` / `company_id` / `dept_id` / `scope` 等 claim。Spring Security 顯式配置 SecurityFilterChain：`/api/v1/me` 與 `/api/v1/admin/**` 需 JWT，其他端點 permitAll。研究來源：`docs/deepwiki/mock-oauth2-server/`。
+**Description:** 加入 `skillshub.security.oauth.enabled`（預設 true）開關。LAB 環境設 `false` → SecurityFilterChain 全 permitAll、JwtDecoder bean 不建立、`LabSecurityFilter` 注入預設 `lab-user` + `ROLE_admin` Authentication；`/api/v1/me`、`/api/v1/admin/echo`、既有 S001~S010 endpoints 全部可訪問。新增 `CurrentUserProvider` 抽象，未來 audit 欄位（createdBy 等）統一從這個介面取 userId — OAuth 模式回 JWT subject、LAB 模式回固定 `lab-user`。
 
 **SBE Acceptance Criteria:**
 ```
-Scenario: bootRun 自動帶起 mock-oauth2-server
-  Given 開發者執行 ./gradlew bootRun
-  Then docker-compose 啟動 mongodb + mock-oauth2-server
-  And /skills-hub-dev/.well-known/openid-configuration 可訪問
+Scenario: OAuth enabled (default) 行為與 S011 一致
+  Given 沒設定 oauth.enabled
+  When 跑 S011 既有 9 個測試
+  Then 全部通過
 
-Scenario: 三組 client_id 取得不同身分 JWT
-  Given mock 已 ready
-  When client_credentials grant 帶 client_id=admin-client / developer-client / viewer-client
-  Then 各自取得對應 roles / groups / dept_id 的 JWT
+Scenario: OAuth disabled，permitAll 生效
+  Given oauth.enabled=false
+  When 不帶 token 打 /api/v1/me
+  Then 200 + sub=lab-user, roles=[admin]
+  When 不帶 token 打 /api/v1/admin/echo?msg=hello
+  Then 200 + echo=hello, by=lab-user
 
-Scenario: /api/v1/me 回傳 token claims
-  Given 已取得 JWT
-  When GET /api/v1/me 帶 Bearer token
-  Then 回傳 sub / roles / groups / companyId / deptId
-
-Scenario: /api/v1/admin/echo 拒絕非 admin
-  Given viewer-client 的 token
-  Then GET /api/v1/admin/echo 回 403
-
-Scenario: 既有 API 仍可匿名訪問
-  Given 不帶 token
-  When GET /api/v1/skills
-  Then 回 200（與 S001 一致）
+Scenario: CurrentUserProvider 統一介面
+  Given 兩種模式
+  When 呼叫 currentUserProvider.userId()
+  Then OAuth 模式回 JWT subject；LAB 模式回 lab-user
 ```
 
 **Estimation:**
 | Dimension | Score | Reason |
 |-----------|-------|--------|
-| Technical risk | 1 | Spring Security OAuth2 RS 與 mock-oauth2-server 都成熟 |
-| Uncertainty | 1 | deepwiki 研究 + Spring Security 7 API 已逐項驗證 |
-| Dependencies | 1 | 取消 1 個 starter 註解 + 1 個 Docker image |
-| Scope | 2 | 7 個生產檔 + 4 個測試檔 |
-| Testing | 2 | Testcontainers (AC-1~3) + MockMvc jwt() (AC-4~7) |
-| Reversibility | 1 | dev 基礎設施，可完全還原 |
+| Technical risk | 1 | Spring Security 標準 SPI |
+| Uncertainty | 1 | API 在 S011 已驗證 |
+| Dependencies | 1 | 無新外部依賴 |
+| Scope | 2 | 3 modify + 6 add = 9 檔 |
+| Testing | 2 | 兩種模式各測一遍 |
+| Reversibility | 1 | 純 toggle 可還原 |
 | **Total** | **8** | **XS** |
+
+---
+
+## Milestone 11: GCP Cloud Run 部署 `v1.0.0`
+Goal: 一組 bash 腳本支援全新 GCP 專案上一鍵部署 Skills Hub 到 Cloud Run；開發者只需 export 三個 env var 即可
+Done when: S013 done
+
+| # | Spec | Points | Dependencies | Status |
+|---|------|--------|--------------|--------|
+| S013 | GCP Cloud Run 部署腳本 | S(11) | S009 (gcp profile) | 🔵 in-design |
+
+### S013: GCP Cloud Run 部署腳本與打包流程
+
+**Description:** 在 `scripts/gcp/` 提供 6 個 bash 腳本（01-bootstrap, 02-create-secrets, 03-build-push, 04-deploy, 99-teardown + .env.example）+ README。01 bootstrap 啟用 6 個 GCP API 並 provision Artifact Registry repo + Firestore Enterprise (MongoDB compat) + GCS bucket + Service Account + 7 個 min IAM roles。03 build-push 用 gradle bootBuildImage 產 OCI image + git short SHA + latest 雙 tag 推到 AR。04 deploy 用 gcloud run deploy 帶完整 env vars + Secret Manager 引用 + allow-unauthenticated。腳本全 idempotent，跑兩次不報錯。
+
+**SBE Acceptance Criteria:**
+```
+Scenario: 三步啟動部署
+  Given 全新 GCP 專案，export GCP_PROJECT_ID + GCP_REGION + SKILLSHUB_GENAI_API_KEY
+  When 依序跑 01~04 腳本
+  Then Cloud Run service URL 可訪問
+  And /actuator/health 回 200
+
+Scenario: 腳本 idempotent
+  Given AC-3 已跑過一次
+  When 再跑一次 01-bootstrap.sh
+  Then exit 0，不重複建立資源
+
+Scenario: Image 雙 tag
+  When 03-build-push.sh
+  Then AR 上同時有 :<git-short-sha> 與 :latest
+```
+
+**Estimation:**
+| Dimension | Score | Reason |
+|-----------|-------|--------|
+| Technical risk | 1 | gcloud / docker / bash 成熟工具 |
+| Uncertainty | 2 | 多 GCP API + 命令 minor drift |
+| Dependencies | 2 | 6 個 GCP API 需 orchestrate |
+| Scope | 2 | 7 add + 1 modify = 8 檔 |
+| Testing | 2 | manual / dry-run；bash -n + shellcheck advisory |
+| Reversibility | 2 | 99-teardown 拆除；但部署消耗 GCP quota |
+| **Total** | **11** | **S** |
 
 ---
 

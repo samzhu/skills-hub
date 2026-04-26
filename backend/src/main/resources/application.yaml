@@ -49,6 +49,16 @@ spring:
     virtual:
       enabled: true
 
+  # ----- OAuth2 Resource Server (S011) -----
+  # issuer-uri 為 base default，指向 backend/compose.yaml 啟動的 mock-oauth2-server。
+  # `application-gcp.yaml` 之後可覆寫為企業 IdP。Spring Security 7 採 lazy discovery，
+  # 即使 mock 容器尚未 ready，bootRun 仍可正常啟動（首個 JWT 請求才連線）。
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9000/skills-hub-dev
+
 # ----- Actuator（基礎曝露，各環境 profile 可擴充） -----
 management:
   endpoints:

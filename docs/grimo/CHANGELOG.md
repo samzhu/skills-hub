@@ -1,5 +1,24 @@
 # Changelog
 
+## [v0.10.0] - 2026-04-27
+
+### Added
+- S011: 開發環境 OAuth Mock 整合 — `./gradlew bootRun` 自動帶起 navikt/mock-oauth2-server (透過 `spring-boot-docker-compose`)，提供三組假身分（admin / developer / viewer）核發 OIDC JWT，含 `sub` / `roles` / `groups` / `company_id` / `dept_id` / `scope` 等符合 RFC 7519 / 9068 + SCIM 慣例的 claim
+  - `backend/compose.yaml` 加入 `mock-oauth2-server` service（port 9000:8080，掛 `config/oauth-mock-config.json`，含 healthcheck + `org.springframework.boot.ignore` label）
+  - `backend/config/oauth-mock-config.json` 三組 `requestParam: client_id` mapping（admin-client → admin-001、developer-client → dev-042、viewer-client → viewer-007）
+  - `backend/build.gradle.kts` 啟用 `spring-boot-starter-security-oauth2-resource-server` 與其 test starter（從 S000 模板註解狀態取消註解）
+  - `shared/security/SecurityConfig` — 顯式 SecurityFilterChain：`/api/v1/me` + `/api/v1/admin/**` authenticated，`anyRequest().permitAll()` 保留 S001~S010 既有匿名可達；`@EnableMethodSecurity` 啟用 method-level role 判斷
+  - `shared/security/MeController` (`/api/v1/me`) 回傳 token 6 個 claims；`shared/security/AdminController` (`/api/v1/admin/echo`) 用 `@PreAuthorize("hasRole('admin')")` 示範 role 強制
+  - `JwtAuthenticationConverter` 透過 `JwtGrantedAuthoritiesConverter.setAuthoritiesClaimName("roles")` + `setAuthorityPrefix("ROLE_")` 自動映射 JWT `roles: ["admin"]` → `ROLE_admin` GrantedAuthority
+- 4 個測試類別涵蓋 8 個 AC：`OAuthMockE2ETest`（Testcontainers 真打 mock 容器，AC-1~3）+ `MeControllerTest` / `AdminControllerTest` / `SkillsApiAnonymousTest`（MockMvc + `SecurityMockMvcRequestPostProcessors.jwt()`，AC-4~8）
+
+### Fixed
+- Spring Boot 4 / Spring Security 7 OAuth2 Resource Server auto-config 不會自動建立 `JwtDecoder` bean — 顯式宣告 `JwtDecoder` 並用 `SupplierJwtDecoder` 包裝確保 lazy discovery（mock 容器後啟動不擋 `bootRun`）。`@Value` 帶 default 值同時兼容 prod yaml 與 test classpath 完全覆蓋 main yaml 的情境
+
+### Notes
+- 遵循 CLAUDE.md「Feature First, Security Later」：S001~S010 既有 API 全部維持匿名可達；只有本 spec 新增 demo 端點要 JWT
+- Spring Boot 4 已將 starter 重新命名為 `spring-boot-starter-security-oauth2-resource-server`（原 `spring-boot-starter-oauth2-resource-server`）
+
 ## [v0.9.0] - 2026-04-26
 
 ### Added

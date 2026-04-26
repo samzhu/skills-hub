@@ -18,11 +18,11 @@ public class TestcontainersConfiguration {
 		return new MongoDBContainer(DockerImageName.parse("mongo:8"));
 	}
 
-	@Bean
-	@ServiceConnection
-	LgtmStackContainer grafanaLgtmContainer() {
-		return new LgtmStackContainer(DockerImageName.parse("grafana/otel-lgtm:latest"));
-	}
+	// @Bean
+	// @ServiceConnection
+	// LgtmStackContainer grafanaLgtmContainer() {
+	// 	return new LgtmStackContainer(DockerImageName.parse("grafana/otel-lgtm:latest"));
+	// }
 
 	// @Primary 確保測試環境中 InMemoryStorageService 優先於 @Profile("local") 的 FileSystemStorageService
 	@Bean
