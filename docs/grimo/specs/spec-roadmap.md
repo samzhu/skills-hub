@@ -86,9 +86,9 @@ Scenario: 無相關結果
 | M8: 安全掃描升級 | S010 | M(12) | 120 | ✅ |
 | M9: 開發環境 OAuth Mock | S011 | XS(8) | 128 | ✅ |
 | M10: OAuth 開關 + LAB 模式 | S012 | XS(8) | 136 | ✅ |
-| M11: GCP Cloud Run 部署 | S013 | S(11) | 147 | 🔵 |
+| M11: GCP Cloud Run 部署 | S013 | S(11) | 147 | ✅ |
 
-**Total: 14 specs, 147 story points — 13/14 specs shipped (136 points done)**
+**Total: 14 specs, 147 story points — 14/14 specs shipped (147 points done) 🎉 MVP complete**
 
 ### Dependency Graph
 
@@ -112,7 +112,7 @@ S009 ──▶ S011 (dev OAuth mock)          ✅
               │
               └──▶ S012 (OAuth toggle + LAB)   ✅
 
-S013 (GCP Cloud Run 部署腳本，獨立)     🔵
+S013 (GCP Cloud Run 部署腳本，獨立)     ✅
 ```
 
 ## Milestone 8: 安全掃描升級 ✅ `v0.9.0` (2026-04-26)
@@ -130,46 +130,8 @@ S013 (GCP Cloud Run 部署腳本，獨立)     🔵
 
 ---
 
-## Milestone 11: GCP Cloud Run 部署 `v1.0.0`
-Goal: 一組 bash 腳本支援全新 GCP 專案上一鍵部署 Skills Hub 到 Cloud Run；開發者只需 export 三個 env var 即可
-Done when: S013 done
-
-| # | Spec | Points | Dependencies | Status |
-|---|------|--------|--------------|--------|
-| S013 | GCP Cloud Run 部署腳本 | S(11) | S009 (gcp profile) | 🔵 in-design |
-
-### S013: GCP Cloud Run 部署腳本與打包流程
-
-**Description:** 在 `scripts/gcp/` 提供 6 個 bash 腳本（01-bootstrap, 02-create-secrets, 03-build-push, 04-deploy, 99-teardown + .env.example）+ README。01 bootstrap 啟用 6 個 GCP API 並 provision Artifact Registry repo + Firestore Enterprise (MongoDB compat) + GCS bucket + Service Account + 7 個 min IAM roles。03 build-push 用 gradle bootBuildImage 產 OCI image + git short SHA + latest 雙 tag 推到 AR。04 deploy 用 gcloud run deploy 帶完整 env vars + Secret Manager 引用 + allow-unauthenticated。腳本全 idempotent，跑兩次不報錯。
-
-**SBE Acceptance Criteria:**
-```
-Scenario: 三步啟動部署
-  Given 全新 GCP 專案，export GCP_PROJECT_ID + GCP_REGION + SKILLSHUB_GENAI_API_KEY
-  When 依序跑 01~04 腳本
-  Then Cloud Run service URL 可訪問
-  And /actuator/health 回 200
-
-Scenario: 腳本 idempotent
-  Given AC-3 已跑過一次
-  When 再跑一次 01-bootstrap.sh
-  Then exit 0，不重複建立資源
-
-Scenario: Image 雙 tag
-  When 03-build-push.sh
-  Then AR 上同時有 :<git-short-sha> 與 :latest
-```
-
-**Estimation:**
-| Dimension | Score | Reason |
-|-----------|-------|--------|
-| Technical risk | 1 | gcloud / docker / bash 成熟工具 |
-| Uncertainty | 2 | 多 GCP API + 命令 minor drift |
-| Dependencies | 2 | 6 個 GCP API 需 orchestrate |
-| Scope | 2 | 7 add + 1 modify = 8 檔 |
-| Testing | 2 | manual / dry-run；bash -n + shellcheck advisory |
-| Reversibility | 2 | 99-teardown 拆除；但部署消耗 GCP quota |
-| **Total** | **11** | **S** |
+## Milestone 11: GCP Cloud Run 部署 ✅ `v1.0.0` (2026-04-27)
+1/1 specs complete. Details → `specs/archive/2026-04-27-S013-gcp-deploy-scripts.md`
 
 ---
 

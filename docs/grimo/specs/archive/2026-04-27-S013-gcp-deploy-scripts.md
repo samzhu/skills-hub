@@ -1,9 +1,9 @@
 # S013: GCP Cloud Run 部署腳本與打包流程
 
-> Spec: S013 | Size: S(11) | Status: ⏳ Design
+> Spec: S013 | Size: S(11) | Status: ✅ Done (2026-04-27)
 > Date: 2026-04-27
-> Depends: S009 (✅ shipped — `gcp` profile + `application-gcp.yaml`), S011/S012 (✅/in-design — security 設定 export 為 env var)
-> Research: GCP 官方 docs（Firestore Enterprise + MongoDB compat、Cloud Run secret manager、Spring Boot 4 bootBuildImage）
+> Depends: S009 (✅ shipped — `gcp` profile + `application-gcp.yaml`), S011 (✅), S012 (✅ shipped 2026-04-27 — security 設定 export 為 env var)
+> Research: GCP 官方 docs（Firestore Enterprise + MongoDB compat、Cloud Run secret manager、Spring Boot 4 bootBuildImage）；§2.6 Validation Pass 已對既有 code 與當前 gcloud 文件做差異對照
 
 ---
 
@@ -116,6 +116,28 @@
 - 內部設計：`docs/grimo/architecture.md` Firestore Configuration（既有 `mongodb+srv://...firestore.googleapis.com` URI）
 
 無 Hypothesis-grade 設計決策；**POC 不需要**——Spring Boot 4 image build + GCP gcloud CLI 都是成熟工具鏈。
+
+### 2.6 Validation Pass — Drift Sync (2026-04-27)
+
+從 🔵 in-design 收斂到 ⏳ Design 前，對 main 分支既有 code、當前 gcloud 文件、與 Spring Boot 4.0.6 plugin 行為做了差異對照，發現兩處 spec 初稿與實情不符（已校正）；另確認 4 處與既有設計一致：
+
+**校正：**
+
+1. **`--set-env-vars` 用 `\,` 跳脫 comma 是脆弱寫法**——根據 [Cloud Run env vars 官方文件](https://cloud.google.com/run/docs/configuring/services/environment-variables) 與 [argument injection 安全公告 GHSA-fvxx-ggmx-3cjg](https://github.com/MervinPraison/PraisonAI/security/advisories/GHSA-fvxx-ggmx-3cjg)，當 value 內含 `,` 時，gcloud 推薦做法是改用「自訂分隔符」`^@^` 語法：
+   ```bash
+   --set-env-vars "^@^SPRING_PROFILES_ACTIVE=gcp,prod@GCP_PROJECT_ID=...@SKILLSHUB_STORAGE_BUCKET=..."
+   ```
+   `\,` 雖然在歷史版本可運作，但被官方標為「不可靠（unreliable）」且無正式 spec；CI 升 gcloud 版本時可能突然 break。校正：§4.5 `04-deploy.sh` 改用 `^@^` 自訂分隔符模式。
+2. **`.gitignore` 在 repo root 不存在**（只有 `backend/.gitignore` 與 `frontend/.gitignore`）。原 §5 寫「modify `.gitignore`」會 fail。校正：改為新增 `scripts/gcp/.gitignore`（一行 `.env`），最小作用域、不污染其他目錄。
+
+**確認（無變動）：**
+
+3. **`backend/src/main/resources/application-gcp.yaml` 已存在**（S009 shipped 結果）—— `spring.cloud.gcp.{storage,firestore}.enabled=true` + `skillshub.search.vector-store=firestore` + `skillshub.scanner.engines.llm.enabled=true`，與本 spec `04-deploy.sh` 帶 `SPRING_PROFILES_ACTIVE=gcp,prod` 預期一致；無需任何 yaml 變動。
+4. **`build.gradle.kts` 已套用 `id("org.springframework.boot") version "4.0.6"` plugin**——`bootBuildImage` task 自動就緒；本 spec `03-build-push.sh` 直接呼叫 `./gradlew bootBuildImage --imageName=...` 無需 build script 變動。
+5. **`gcloud firestore databases create --edition=enterprise --enable-mongodb-compatible-data-access --database=... --location=...`**——驗證於 [Firebase docs](https://firebase.google.com/docs/firestore/enterprise/create-databases-mongodb) 與 [Cloud Firestore MongoDB compatibility docs](https://cloud.google.com/firestore/mongodb-compatibility/docs/create-databases)：完整指令名稱、flag 拼寫、組合方式都正確。Database ID 規則 lowercase letters/numbers/hyphens、4-63 chars 同樣已被 spec 預設 (`skillshub`) 滿足。
+6. **`--update-secrets="ENV_VAR=SECRET_NAME:VERSION"` 語法正確**——對應 [Cloud Run secrets 文件](https://docs.cloud.google.com/run/docs/configuring/services/secrets)；spec §4.5 `SKILLSHUB_GENAI_API_KEY=skillshub-genai-api-key:latest` 直接照用。
+
+驗證後本 spec 從 🔵 in-design → ⏳ Design，可進 `/planning-tasks S013`。
 
 ---
 
@@ -409,8 +431,12 @@ gcloud run deploy "$CLOUD_RUN_SERVICE_NAME" \
   --min-instances=0 \
   --max-instances="${CLOUD_RUN_MAX_INSTANCES:-10}" \
   --timeout=300 \
-  --set-env-vars="SPRING_PROFILES_ACTIVE=gcp\,prod,GCP_PROJECT_ID=${GCP_PROJECT_ID},SKILLSHUB_STORAGE_BUCKET=${GCS_BUCKET_NAME}" \
+  --set-env-vars="^@^SPRING_PROFILES_ACTIVE=gcp,prod@GCP_PROJECT_ID=${GCP_PROJECT_ID}@SKILLSHUB_STORAGE_BUCKET=${GCS_BUCKET_NAME}" \
   --update-secrets="SKILLSHUB_GENAI_API_KEY=skillshub-genai-api-key:latest"
+
+# 註：`^@^` 為 gcloud 的「自訂分隔符」語法（[Cloud Run env vars docs](https://cloud.google.com/run/docs/configuring/services/environment-variables)）。
+# 因 SPRING_PROFILES_ACTIVE 的值含 comma (`gcp,prod`)，預設 comma 分隔會被誤切；
+# 改用 `@` 作為 key=value 之間的分隔符即可正確解析。歷史版本曾用 `\,` 跳脫但已標為不可靠。
 
 URL="$(gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" --region="$GCP_REGION" --format='value(status.url)')"
 echo "✓ deployed: $URL"
@@ -479,24 +505,213 @@ echo "✓ teardown done (project $GCP_PROJECT_ID 保留)"
 | `scripts/gcp/01-bootstrap.sh` | A | APIs + AR + Firestore + GCS + SA + 7 IAM roles |
 | `scripts/gcp/02-create-secrets.sh` | A | `skillshub-genai-api-key` 創建 / 加版本 + 授權 SA |
 | `scripts/gcp/03-build-push.sh` | A | gradle bootBuildImage + docker push 雙 tag |
-| `scripts/gcp/04-deploy.sh` | A | gcloud run deploy 帶 env / secret / SA / unauth |
+| `scripts/gcp/04-deploy.sh` | A | gcloud run deploy 帶 env / secret / SA / unauth（用 `^@^` 自訂分隔符） |
 | `scripts/gcp/99-teardown.sh` | A | 互動確認 + 刪所有 spec 創的資源 |
 | `scripts/gcp/README.md` | A | 三步啟動 quick start |
-| `.gitignore` | M | 新增 `scripts/gcp/.env`（防 commit 真 key） |
+| `scripts/gcp/.gitignore` | A | `.env`（防 commit 真 key）— 與 backend/frontend 同模式：每個 dir 自己一份 .gitignore；avoid 創 root-level .gitignore（repo 目前無此檔案，§2.6 已驗證） |
 
-**檔案總數：1 modify + 7 add = 8** — 全部是部署 infra script，零 Java code 變動。
+**檔案總數：8 add，0 modify** — 全部是部署 infra script，零 Java code / yaml 變動。
 
 ---
 
 ## 6. Task Plan
 
-> 由 `/planning-tasks S013` 產生。
+> 由 `/planning-tasks S013` 於 2026-04-27 產生。POC: **not required**（理由：bash + gcloud + Spring Boot 4 `bootBuildImage` + Gradle 9.4 都是成熟工具鏈；§2.6 Validation Pass 已對當前 gcloud 文件 + 既有 build.gradle.kts plugin + application-gcp.yaml 做差異對照，無 hypothesis 待驗）。
+
+| # | 主題 | AC 對應 | 變動範圍 | 依賴 | Status |
+|---|------|---------|----------|------|--------|
+| T1 | scripts/gcp/ 部署腳本套件（8 檔一次到位）— `.env.example` + `.gitignore` + 5 `.sh` + `README.md`，全部新增 | AC-1, AC-2 自動驗證；AC-4/5/6/7/9 設計 review；AC-3/8 manual-ready（spec §3 已宣告需真實 GCP） | 8 add，0 modify；零 Java/yaml/Gradle 變動 | none | pending |
+
+**單一任務理由**：8 個檔案共用同一 verification gate（`bash -n` 全 pass + 結構檢查 + 設計 review against §4），分多 task 不會增加 RED → GREEN 隔離度反而切碎 reviewer 視角。所有 ACs 由 §3 已分類自動 / manual-ready，T1 包辦自動部分。
+
+**E2E 評估**：S013 的「artifact」是 bash 腳本本身，沒有 JVM 應用要 build run；automated gate (bash -n + 結構檢查) 即等同 unit test。**Real-GCP E2E 屬 manual-ready**（spec §3 preamble 已宣告），由使用者在自己的 GCP 測試專案上跑全鏈路驗證；ship 時 §7 列出 verify 清單。
+
+**`shellcheck` 為 advisory**：本機（macOS 預設）未裝 shellcheck，task gate 不阻擋；若使用者本機有裝，建議跑 `shellcheck scripts/gcp/*.sh` 觀察 warnings。Spec §3 preamble 已宣告非阻擋。
 
 ---
 
 ## 7. Implementation Results
 
-> 由 `/planning-tasks S013` 完成所有 tasks 後彙整。
+> 完成日期：2026-04-27 | T1 PASS | 8 檔案到位 + bash -n 全綠 + Java backend 不受影響（114/0/0/0）
+
+### 7.1 Verification
+
+| 指令 | 結果 | 說明 |
+|---|---|---|
+| `ls -la scripts/gcp/` | 8 檔（5 .sh × 755 + .env.example + .gitignore + README.md） | 結構完整 |
+| `bash -n scripts/gcp/*.sh` | exit 0 × 5 | 全部 syntactically valid |
+| `shellcheck scripts/gcp/*.sh` | skipped (not installed locally) | spec §3 已宣告 advisory |
+| `grep -F '"^@^' scripts/gcp/04-deploy.sh` | match | §2.6 校正項落實 |
+| `grep '^\.env$' scripts/gcp/.gitignore` | 1 | 防 commit 真 secret |
+| `cd backend && ./gradlew test` | BUILD SUCCESSFUL, 13 tasks UP-TO-DATE | Java 114 tests 維持綠（純 infra 新增） |
+
+**E2E artifact verification（Phase 4 Step 1.5）**：S013 的 artifact 是 bash 腳本本身，不是 JVM 應用；automated gate（bash -n + 結構檢查 + grep design review）已等同 unit test 級別驗證。**Real-GCP runtime E2E 屬 manual-ready** — 需要使用者啟用 billing 的 GCP 測試專案才能跑 AC-3 / AC-8 / AC-9 互動部分；spec §3 preamble 已宣告此為 manual-verification。Phase 4 不在這裡阻擋，由使用者部署時依下方 §7.4 Manual-Ready Checklist 核對。
+
+### 7.2 AC Results
+
+| AC | 描述 | 驗證方式 | 結果 |
+|---|---|---|---|
+| AC-1 | 檔案結構 + shebang/strict mode + bash -n + 權限 755 | `ls -la` + `bash -n` + `head -2` | ✅ |
+| AC-2 | `.env.example` 含 3 必填 + 7 可選 | `grep -E '^export ...'` | ✅ |
+| AC-3 | 01-bootstrap.sh 在乾淨 GCP 專案啟用 6 API + 建 5 資源 | manual-ready | ⏳ user verify |
+| AC-4 | 01-bootstrap.sh 第二次跑不報錯（idempotent） | design review (4 處 `describe ... &>/dev/null \|\| create` pattern) ✅ | ⏳ runtime user verify |
+| AC-5 | 02-create-secrets.sh secret create / versions add | design review (`describe` if/else) ✅ | ⏳ runtime user verify |
+| AC-6 | 03-build-push.sh 雙 tag (git short SHA + latest) | design review (兩 docker push) ✅ | ⏳ runtime user verify |
+| AC-7 | 04-deploy.sh 完整 flag + secret + SA + unauthenticated + `^@^` | design review (11 個 flag + 校正後分隔符) ✅ | ⏳ runtime user verify |
+| AC-8 | 部署後 service URL 回應 200（health + skills） | manual-ready | ⏳ user verify |
+| AC-9 | 99-teardown.sh 互動 yes 確認 + soft-delete chain | design review (`read -r -p` + 嚴格 `[[ "$CONFIRM" == "yes" ]]` + 6 delete + 不刪 project) ✅ | ⏳ runtime user verify |
+
+**自動驗證：AC-1, AC-2 全 ✅；AC-4..7, AC-9 設計 review 通過。**
+**Manual-ready：AC-3, AC-8 + 上述 5 個 AC 的 runtime 行為，需真實 GCP 部署驗證。**
+
+### 7.3 Key Findings
+
+#### Finding 1: `gcloud run deploy --set-env-vars` 用 `^@^` 自訂分隔符
+
+```bash
+--set-env-vars="^@^SPRING_PROFILES_ACTIVE=gcp,prod@GCP_PROJECT_ID=${GCP_PROJECT_ID}@SKILLSHUB_STORAGE_BUCKET=${GCS_BUCKET_NAME}"
+```
+
+語法：`^DELIM^` 開頭告訴 gcloud 用 `DELIM` 分隔 key=value pairs。選 `@` 因為 env var 名 / 值幾乎不可能含 `@`，比歷史寫法 `\,` 跳脫安全。文件：[Cloud Run Environment variables](https://cloud.google.com/run/docs/configuring/services/environment-variables)。
+
+#### Finding 2: Idempotent provisioning pattern
+
+```bash
+gcloud artifacts repositories describe "${AR_REPO_NAME}" --location="${GCP_REGION}" &>/dev/null \
+  || gcloud artifacts repositories create "${AR_REPO_NAME}" \
+       --repository-format=docker --location="${GCP_REGION}" \
+       --description="Skills Hub container images"
+```
+
+`describe ... &>/dev/null` 失敗（資源不存在）才呼叫 `create`。重跑不報錯。本 spec 在 AR / Firestore / GCS / SA 4 處用同模式；IAM binding 用 `gcloud projects add-iam-policy-binding --quiet` 內建 idempotent，重複 grant 不會錯。
+
+#### Finding 3: Secret create vs versions add (idempotent)
+
+```bash
+if gcloud secrets describe "${SECRET_NAME}" &>/dev/null; then
+  printf '%s' "${SKILLSHUB_GENAI_API_KEY}" | gcloud secrets versions add "${SECRET_NAME}" --data-file=-
+else
+  printf '%s' "${SKILLSHUB_GENAI_API_KEY}" | gcloud secrets create "${SECRET_NAME}" --data-file=- --replication-policy=automatic
+fi
+```
+
+`gcloud secrets create` 對已存在的 secret 會 fail，必須走 `versions add`。用 `printf '%s'` 而非 `echo -n` — 後者在某些 shell（如 dash）行為不同；前者跨 shell 一致。
+
+#### Finding 4: bash 嚴格模式 + 互動確認
+
+```bash
+set -euo pipefail
+read -r -p "Delete ALL skillshub resources in ${GCP_PROJECT_ID}? Type 'yes' to confirm: " CONFIRM
+[[ "${CONFIRM}" == "yes" ]] || { echo "abort"; exit 1; }
+```
+
+`set -euo pipefail`：錯誤即退出（-e）、未定義變數視為錯誤（-u）、pipeline 任一段失敗整體失敗（pipefail）。每個 `.sh` 檔案開頭都有。
+嚴格 `[[ "$CONFIRM" == "yes" ]]` 而非 `[[ "$CONFIRM" =~ ^[Yy] ]]` — typo 如 `y` / `Y` / `YES` 都不接受，避免誤觸發 destructive teardown。
+
+#### Finding 5: Cloud Run secret 注入語法
+
+```bash
+--update-secrets="SKILLSHUB_GENAI_API_KEY=skillshub-genai-api-key:latest"
+```
+
+格式 `ENV_VAR_NAME=SECRET_NAME:VERSION`；`:latest` 表示永遠拉最新版本（rotate 時無需 redeploy）。Service Account 須有 `roles/secretmanager.secretAccessor`（01-bootstrap.sh 已 grant）。
+
+### 7.4 Manual-Ready Checklist（使用者部署時依此核對）
+
+部署到真實 GCP 專案前，請依以下清單核對：
+
+```bash
+# 0. 前置
+gcloud auth login
+gcloud auth application-default login
+gcloud projects create my-skillshub-prod   # 或選現有 project
+# 確認 billing account 已連結（GCP Console 或 `gcloud billing projects link`）
+
+# 1. 設定 env
+cp scripts/gcp/.env.example scripts/gcp/.env
+# 編輯 .env：填上 GCP_PROJECT_ID / GCP_REGION / SKILLSHUB_GENAI_API_KEY
+source scripts/gcp/.env
+
+# 2. 依序執行 + 核對
+./scripts/gcp/01-bootstrap.sh
+# AC-3: 結束無 error；可用 `gcloud services list --enabled` 檢查 7 API + `gcloud iam service-accounts list` 檢查 SA
+# AC-4: 再跑一次 ./scripts/gcp/01-bootstrap.sh — 應 exit 0、不重建資源
+
+./scripts/gcp/02-create-secrets.sh
+# AC-5: `gcloud secrets versions list skillshub-genai-api-key` 應顯 1 個 ENABLED version
+
+./scripts/gcp/03-build-push.sh
+# AC-6: `gcloud artifacts docker images list ${REGION}-docker.pkg.dev/${PROJECT}/skillshub/skillshub` 應顯兩 tag
+
+./scripts/gcp/04-deploy.sh
+# AC-7: 結尾印出 service URL
+
+# AC-8: 用該 URL 驗
+curl https://<service-url>/actuator/health
+# 預期：HTTP 200, body {"status":"UP"}
+curl https://<service-url>/api/v1/skills
+# 預期：HTTP 200（既有 S001 行為，匿名可達）
+
+# AC-9（拆除）
+./scripts/gcp/99-teardown.sh
+# 出現 prompt：Type 'yes' to confirm
+# 輸入 'yes' 才會繼續
+# 完成後 GCP project 仍在（手動 `gcloud projects delete` 才會刪）
+```
+
+### 7.5 Design Drift Sync
+
+§2.6 Validation Pass 已在實作前對齊，無 post-implementation drift。實作完全依 §4 與 §2.6 校正後規劃：
+- §4.5 (`04-deploy.sh`) 用 `^@^` 自訂分隔符 ✓
+- §5 (file plan) 創 `scripts/gcp/.gitignore` 而非修 root .gitignore ✓
+- 其餘 §4.2~4.6 設計 1:1 落實到對應檔案
+
+唯三處實作小幅改進（不影響語意）：
+1. `02-create-secrets.sh` 用 `printf '%s'` 取代 §4.3 範例的 `echo -n`（跨 shell 更可移植）
+2. `03-build-push.sh` 用 `( cd backend && ./gradlew bootBuildImage )` 子 shell 包裝（§4.4 例已同此）
+3. `99-teardown.sh` 對 GCS bucket 用 `gcloud storage rm --recursive`（§4.6 例同此）
+
+### 7.6 Files (final)
+
+**8 add，0 modify** — 全部於 `scripts/gcp/`：
+- `.env.example` (2197 bytes) — env 範本
+- `.gitignore` (5 bytes) — `.env`
+- `01-bootstrap.sh` (3673 bytes, 755) — 7 API + AR + Firestore Enterprise + GCS + SA + 7 IAM
+- `02-create-secrets.sh` (1632 bytes, 755) — secret create/versions add + grant SA
+- `03-build-push.sh` (1502 bytes, 755) — auth + bootBuildImage + 雙 tag push
+- `04-deploy.sh` (2318 bytes, 755) — Cloud Run deploy 帶 `^@^` env vars + secret + SA + unauthenticated
+- `99-teardown.sh` (2204 bytes, 755) — 互動 yes 確認 + 6 delete soft-fail chain
+- `README.md` (4597 bytes) — 三步啟動 quick start + image tag 策略 + cost guard + LAB 模式提示 + Troubleshooting + 變數對照表
+
+**0 Java/Gradle/yaml 變動**；現有 114 tests 不受影響。
+
+### 7.7 Tech Debt / Limitations
+
+- **shellcheck 未在 CI 執行**：本機 macOS 預設無 shellcheck；spec §3 宣告為 advisory；待 CI/CD spec 排上後可加 `brew install shellcheck` 步驟。
+- **Manual-ready ACs (AC-3, AC-8 互動部分)**：自動 gate 涵蓋設計 + 結構，runtime 行為待使用者實際部署驗證；§7.4 提供 verify checklist。
+- **無 GitHub Actions CI 整合**：MVP 階段使用者本機跑；未來可加 `.github/workflows/deploy-gcp.yml` workflow 直接觸發 03/04 腳本（要先設好 GitHub OIDC + Workload Identity Federation）。
+
+---
+
+### 7.8 QA Review (independent subagent, 2026-04-27)
+
+**Verdict:** PASS
+
+**Verification:**
+- `ls -la scripts/gcp/` → 10 entries (8 files + `.` + `..`): `.env.example` (644), `.gitignore` (644), `01-bootstrap.sh` (755), `02-create-secrets.sh` (755), `03-build-push.sh` (755), `04-deploy.sh` (755), `99-teardown.sh` (755), `README.md` (644) — structure matches spec §5
+- `bash -n scripts/gcp/*.sh` → EXIT: 0 (all 5 .sh files syntactically valid)
+- `cd backend && ./gradlew test` → BUILD SUCCESSFUL, 13 tasks UP-TO-DATE (114 tests unaffected; pure infra add touches 0 Java/Gradle/yaml)
+
+**Design review:**
+- `04-deploy.sh` `^@^` syntax: verified — line 43: `--set-env-vars="^@^SPRING_PROFILES_ACTIVE=gcp,prod@GCP_PROJECT_ID=${GCP_PROJECT_ID}@SKILLSHUB_STORAGE_BUCKET=${GCS_BUCKET_NAME}"`. Correct `^DELIM^` prefix with `@` as key=value separator. No `\,` reversion.
+- `99-teardown.sh` strict yes match: verified — line 17: `[[ "${CONFIRM}" == "yes" ]] || { echo "abort"; exit 1; }`. Exact lowercase-only match; `y`, `Y`, `YES` are all rejected.
+- All .sh strict mode + 755: verified — `#!/usr/bin/env bash` shebang on line 1, `set -euo pipefail` present in all 5 files (lines 16, 8, 9, 11, 10 respectively); all 5 files are mode `-rwxr-xr-x` (755).
+- No real secrets in committed files: verified — `.env.example` has placeholder `AIzaSy...` (not a real key); `.gitignore` contains `.env` (single line); no literal API keys, passwords, or real credentials anywhere in the 8 committed files.
+
+**Findings:**
+- MINOR (spec text only, not code): AC-2 in §3 lists "7 可選" variables and enumerates only 5 by name (`AR_REPO_NAME`, `FIRESTORE_DB_ID`, `GCS_BUCKET_NAME`, `SERVICE_ACCOUNT_NAME`, `CLOUD_RUN_SERVICE_NAME`), omitting `IMAGE_NAME`, `CLOUD_RUN_MEMORY`, `CLOUD_RUN_CPU`, `CLOUD_RUN_MAX_INSTANCES`. The actual `.env.example` correctly ships 9 optional variables (the AC-2 list + `IMAGE_NAME` was added in §4.2 design, plus 3 cost-guard vars). The shipped artifact is correct and consistent with §4.1 (which shows all optional vars including the cost-guard trio). Only the AC-2 enumeration in §3 is under-specified. No fix needed for ship; can be updated in a future spec cleanup pass.
+
+**Notes:** `99-teardown.sh` uses `gcloud storage rm --recursive` to clear bucket contents before deletion — a safe improvement over `gsutil rb` (which fails on non-empty buckets). The 6-resource delete chain with `|| true` is correctly ordered (Cloud Run → AR → GCS → Firestore → Secrets → SA), soft-failing each step to handle partial states. The GCP project is explicitly not deleted, which is the correct safeguard. IAM bindings are not explicitly deleted (not reversible via simple delete), which is an acceptable limitation acknowledged in §7.7. Overall implementation quality is high: design intent matches code, idempotency patterns are consistent, and the §2.6 `^@^` correction is faithfully implemented.
 
 ---
 

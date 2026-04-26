@@ -1,5 +1,26 @@
 # Changelog
 
+## [v1.0.0] - 2026-04-27 — MVP complete 🎉
+
+### Added
+- S013: GCP Cloud Run 部署腳本與打包流程 — 一組可在全新 GCP 專案上一鍵跑通的 bash 腳本，把 Skills Hub 從 source code 打包並部署到 Cloud Run。開發者只需 `export GCP_PROJECT_ID / GCP_REGION / SKILLSHUB_GENAI_API_KEY`，依序跑 4 個腳本即可看到 service URL。
+- `scripts/gcp/.env.example` — 3 必填 + 7 可選環境變數範本（含 Cloud Run cost-guard defaults）。
+- `scripts/gcp/.gitignore` — 一行 `.env` 防 commit 真實 API key。
+- `scripts/gcp/01-bootstrap.sh` — 啟用 7 GCP API（run, artifactregistry, firestore, storage, secretmanager, aiplatform, iam）+ 建立 Artifact Registry repo + Firestore Enterprise (MongoDB compat) + GCS bucket + Service Account + 7 個最小 IAM roles（datastore.user, storage.objectAdmin, aiplatform.user, secretmanager.secretAccessor, logging.logWriter, monitoring.metricWriter, cloudtrace.agent）。4 處 idempotent `describe ... &>/dev/null || create` pattern。
+- `scripts/gcp/02-create-secrets.sh` — `gcloud secrets describe` if/else: 已存在用 `versions add`，不存在用 `create`；後續 grant SA `roles/secretmanager.secretAccessor`。
+- `scripts/gcp/03-build-push.sh` — `gcloud auth configure-docker` + `(cd backend && ./gradlew bootBuildImage --imageName=$IMG:$SHA)` + `docker tag $IMG:$SHA $IMG:latest` + 兩 `docker push`，產出 `<git-short-sha>` + `:latest` 雙 tag。
+- `scripts/gcp/04-deploy.sh` — `gcloud run deploy` 帶 `^@^` 自訂分隔符語法處理含 comma 的 `SPRING_PROFILES_ACTIVE=gcp,prod` env var、`--update-secrets` 注入 Secret Manager 引用、`--service-account` 綁定 runtime SA、`--allow-unauthenticated` 公開存取、Cloud Run cost-guard flags（`--min-instances=0`、`--max-instances=10`、`--memory=512Mi`、`--cpu=1`），結尾抽取並印出 service URL。
+- `scripts/gcp/99-teardown.sh` — 互動 `read -r -p "... Type 'yes' to confirm:"` 嚴格 `[[ "$CONFIRM" == "yes" ]]` 確認後，依序刪除 Cloud Run service / AR repo / GCS bucket / Firestore DB / Secret / Service Account；**GCP project 本身保留**（避免誤刪）。
+- `scripts/gcp/README.md` — 三步啟動 quick start + image tag 策略 + cost guard + LAB 模式提示 + Troubleshooting 表 + 變數對照表 + 5 個官方 docs 連結。
+
+### Notes
+- §2.6 Validation Pass 在實作前對齊 2 處設計校正：(1) `--set-env-vars` 改用 `^@^` 自訂分隔符（取代脆弱的 `\,` 跳脫，參考 Cloud Run docs 與 GHSA-fvxx-ggmx-3cjg 安全公告）；(2) `.gitignore` 用 per-dir 模式（repo root 無 .gitignore，與 backend/、frontend/ 一致）。
+- AC-1 (file structure + bash -n) 與 AC-2 (.env.example 內容) 已 automated 驗證；AC-4/5/6/7/9 設計 review 通過；AC-3/8 為 manual-ready（需真實 GCP project + billing），spec §7.4 提供完整 verify checklist 供使用者部署時核對。
+- 零 Java/Gradle/yaml 變動 — 純新增 8 個 deploy infra 檔；既有 114 tests 維持綠（`./gradlew test` UP-TO-DATE）。
+- shellcheck 為 advisory（spec §3 已宣告非阻擋）；本機 macOS 預設未裝。
+- 獨立 QA subagent 驗證 PASS（一個 MINOR finding：§3 AC-2 spec 文字僅列舉 5 個可選變數，shipped `.env.example` 完整列 7 個——純文件不一致，無 code 變動）。
+- 14 個 spec 全部完成、147 story points 達成 — Skills Hub MVP 達標 🎉
+
 ## [v0.11.0] - 2026-04-27
 
 ### Added
