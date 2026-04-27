@@ -92,9 +92,11 @@ Scenario: 無相關結果
 | M14: Row-Level ACL 基礎建設 | S016 | M(13) | 180 | 🔲 Backlog |
 | M15: ACL-Aware 語意搜尋 | S017 | S-M(11) | 191 | 🔲 Backlog |
 | M16: Skill Aggregate 充血演化 | S018 | S(11) | 202 | ⏳ Design |
+| M17: Project Infra — Coverage / Verify Registry / Doc-Sync | S019, S020, S021 | XS(5) + S(10) + S(8) = 23 | 225 | 🔲 Planning |
 
 **MVP（v1.0.0）已完成：14 specs, 147 story points 🎉**
 **Phase 2（PostgreSQL + Row-Level ACL + Aggregate 充血）規劃中：4 specs, 55 story points**（S015 absorbed into S014；T2 ship 後決策一次拆 Firestore，避免 SearchConfig 雙條件分支與 google-cloud-firestore dep 持續耦合 — 詳 ADR-001 §4.5）
+**Phase 2.5（Project Infra）登記中：3 specs, 23 story points**（S014 ship 後浮出的 pre-existing project gaps + Phase 2 doc-sync）
 
 ### Dependency Graph
 
@@ -196,6 +198,20 @@ Done when: S017 done
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
 | S017 | ACL-Aware 語意搜尋（PgVectorStore + ACL SQL composition） | S-M(11) | S016 | 🔲 |
+
+---
+
+## Milestone 17: Project Infra — Coverage Gate / Verify Registry / Phase 2 Doc-Sync 🔲 Planning (2026-04-27)
+Goal: 補齊 S014 ship 後浮出的 3 個 pre-existing project gaps — JaCoCo coverage gate、verification command registry / `verify-all.sh`、PRD + architecture.md Phase 2 doc-sync。
+Done when: S019 + S020 + S021 all ✅；`./gradlew jacocoTestCoverageVerification` task 註冊且通過 80% line coverage gate；`scripts/verify-all.sh` 可一次跑完 critical gates；PRD.md + architecture.md 反映 PostgreSQL + custom SkillshubPgVectorStore 現實。
+Driver: S014 §7.13 `/verifying-quality` 主驗 IMPORTANT 列為 pre-existing；handover §Lessons Learned 標記 `bootRun -x processAot`、JaCoCo、verify-all.sh 三個 follow-up；`/shipping-release` 跳過 PRD/architecture 更新待此 spec 補。
+Spec files: 待 `/planning-spec` 建立
+
+| # | Spec | Points | Dependencies | Status |
+|---|------|--------|--------------|--------|
+| S019 | JaCoCo coverage gate plugin + 80% line threshold | XS(5) | — | 🔲 Planning |
+| S020 | Verification command registry + `scripts/verify-all.sh`（含 `bootRun -x processAot` workaround 編入 registry）| S(10) | S019（jacocoTestCoverageVerification 列入 registry）| 🔲 Planning |
+| S021 | Phase 2 doc-sync — PRD.md（D8/D9/D14/D15 + MVP scope + 圖示）+ architecture.md（Data Model / Firestore Configuration → PostgreSQL + pgvector + Cloud SQL Auth Proxy sidecar）| S(8) | — | 🔲 Planning |
 
 ---
 
