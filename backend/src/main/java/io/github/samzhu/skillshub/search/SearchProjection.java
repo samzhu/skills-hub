@@ -7,43 +7,60 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.context.event.EventListener;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 
 /**
- * 語意搜尋投影 — 監聽技能領域事件，維護 VectorStore 中的 embedding。
+ * 語意搜尋投影 — 監聽技能領域事件，維護 vector_store 表的 embedding。
  *
- * <p>當 {@link SkillCreatedEvent} 發布時，將技能文字（名稱 + 描述）加入 VectorStore，
- * 由 EmbeddingModel 計算向量並存入後端（SimpleVectorStore 或 FirestoreVectorStore）。
+ * <p>當 {@link SkillCreatedEvent} 發布時，將技能文字（名稱 + 描述）寫入 vector_store；
+ * 由 {@link SkillshubPgVectorStore} 一次 6-欄 INSERT（id, content, metadata, embedding,
+ * owner, skill_id）— owner 來自 {@link CurrentUserProvider#userId()}、skill_id 來自
+ * {@code event.aggregateId()}。
  *
- * <p>當 {@link SkillVersionPublishedEvent} 發布時，先刪除舊 embedding（delete）
- * 再用 frontmatter 中的最新 metadata 重新建立（add）。Delete-then-add 可能造成短暫搜尋空窗，
- * 在 MVP 階段屬可接受範圍。
+ * <p>當 {@link SkillVersionPublishedEvent} 發布時，先 delete 舊 embedding 再 add 新版本。
+ * Delete-then-add 可能造成短暫搜尋空窗，在 MVP 階段屬可接受範圍。
+ *
+ * <p><strong>Per-request VectorStore 模式（T8）</strong>：每次 listener 用
+ * {@link SkillshubPgVectorStore#builder} 建構 instance，owner / skillId 鎖在 instance 裡，
+ * 操作完即可被 GC。無 Spring Bean 註冊、無 thread-safety 顧慮、無 singleton state leak。
  *
  * <p>採用同步 {@code @EventListener}（與 {@code SkillProjection} 一致）—
  * {@code spring-modulith-events-api} 未納入 classpath，
  * {@code @ApplicationModuleListener} 需要額外依賴。
  *
- * @see SemanticSearchService
+ * <p>FK 順序：vector_store.skill_id → skills.id (ON DELETE CASCADE)；
+ * {@code SkillProjection.on(SkillCreatedEvent)} 已加 {@code @Order(HIGHEST_PRECEDENCE)}
+ * 確保 skills row 先寫入再給本 listener 寫 vector_store。
+ *
+ * @see SkillshubPgVectorStore
  * @see SearchConfig
+ * @see SemanticSearchService
  */
 @Component
 class SearchProjection {
 
     private static final Logger log = LoggerFactory.getLogger(SearchProjection.class);
 
-    private final VectorStore vectorStore;
+    private final JdbcTemplate jdbcTemplate;
+    private final EmbeddingModel embeddingModel;
+    private final CurrentUserProvider currentUserProvider;
 
-    SearchProjection(VectorStore vectorStore) {
-        this.vectorStore = vectorStore;
+    SearchProjection(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel,
+                     CurrentUserProvider currentUserProvider) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.embeddingModel = embeddingModel;
+        this.currentUserProvider = currentUserProvider;
     }
 
     /**
-     * 處理 SkillCreatedEvent — 新增技能 embedding 至 VectorStore。
+     * 處理 SkillCreatedEvent — 新增技能 embedding 至 vector_store。
      * 文字格式：「name description」，供 embedding 模型理解技能用途。
      */
     @EventListener
@@ -58,7 +75,12 @@ class SearchProjection {
                 null,   // latestVersion — 尚未發布版本
                 null    // riskLevel — 尚未完成評估
         );
-        vectorStore.add(List.of(doc));
+        // Per-request：owner / skillId 鎖在這個 instance 裡，操作完 GC（無 singleton state）
+        SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
+                .owner(currentUserProvider.userId())
+                .skillId(event.aggregateId())
+                .build()
+                .add(List.of(doc));
         log.info("SearchProjection onSkillCreated done skillId={}", event.aggregateId());
     }
 
@@ -69,6 +91,13 @@ class SearchProjection {
     @EventListener
     void onVersionPublished(SkillVersionPublishedEvent event) {
         log.info("SearchProjection onVersionPublished skillId={} version={}", event.aggregateId(), event.version());
+
+        // delete + re-add 用同一個 instance（owner/skillId context 共享）
+        var vectorStore = SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
+                .owner(currentUserProvider.userId())
+                .skillId(event.aggregateId())
+                .build();
+
         // Delete-then-add: 移除舊向量再建立新向量（有短暫空窗，MVP 可接受）
         vectorStore.delete(List.of(event.aggregateId()));
 

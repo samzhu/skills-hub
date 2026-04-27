@@ -4,6 +4,10 @@
 > Supersedes: PRD Decision Log D8, D9, D14
 > Triggered by: S014 規劃階段研究 — Row-Level ACL × 向量搜尋整合需求
 > Research: `docs/deepwiki/spring-acl-pgvector/`
+>
+> **修訂 (2026-04-27, T2 mega ship 後)**：
+> - **S015 併入 S014** — Firestore 一次拆乾淨；不留死碼。詳 §5（migration plan 表）+ §6.2 影響評估
+> - **GCP 連線方式改 Cloud SQL Auth Proxy sidecar**（取代原「Private IP + VPC Connector」）— 同連線串、無 socket-factory dep；本機 Docker Compose `pgvector/pgvector:pg16` 與 GCP 用同一條 `jdbc:postgresql://localhost:5432/<db>` JDBC URL（dev/prod parity）。詳 §4.4 + §6.2
 
 ---
 
@@ -103,6 +107,33 @@ PostgreSQL Testcontainers 在所有 OS 上一致；既有 QA strategy（`docs/gr
   - 自訂實作會與官方版本長期維護分歧（HNSW 算法細節、observation API 升版）
 - 結論：**採用官方 starter + 自訂 schema** — 維護成本最低、行為可預測
 
+### 4.4 Alternative D（修訂新增）：GCP 連線方式 — sidecar Auth Proxy vs Private IP+VPC vs Java Connector
+
+S014 T2 ship 後修訂評估三種 GCP 連線方式：
+
+| 方案 | 應用端 dep | JDBC URL | 部署複雜度 | dev/prod parity |
+|------|-----------|---------|-----------|----------------|
+| **Cloud SQL Auth Proxy sidecar**（採用） | 無 | `jdbc:postgresql://localhost:5432/<db>` | Cloud Run multi-container（main + `cloud-sql-proxy` sidecar；共享 localhost network） | **完美** — 與本機 `compose.yaml` `pgvector/pgvector:pg16` 連線串完全一致 |
+| Private IP + VPC Connector | 無 | `jdbc:postgresql://10.x.x.x:5432/<db>` | VPC Connector + Cloud Run egress 配置 | 弱 — JDBC URL 跟本機不一樣 |
+| Cloud SQL Java Connector（postgres-socket-factory） | `com.google.cloud.sql:postgres-socket-factory` | `jdbc:postgresql:///<db>?cloudSqlInstance=...&socketFactory=...` | 觸發 `spring-cloud-gcp-autoconfigure.CloudSqlEnvironmentPostProcessor` 啟動驗證；非 GCP profile 也會 fail | 非常弱 |
+
+**採 sidecar 的關鍵理由**：
+1. **dev/prod parity** — 本機 Docker Compose 跑 `pgvector/pgvector:pg16` 開放 port 5432；GCP Cloud Run 跑 `cloud-sql-proxy` sidecar 也 listen localhost:5432。應用端 yaml 的 JDBC URL **同一條**（`jdbc:postgresql://localhost:5432/...`），只差環境變數帶不同 `SKILLSHUB_DB_NAME` / `SKILLSHUB_DB_USER` / `SKILLSHUB_DB_PASSWORD`。除錯心智模型一致。
+2. **無應用端 dep** — `cloud-sql-proxy` 是 Google 官方 binary（`gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest`），跑在 sidecar container；應用容器無需 socket-factory，避免 `CloudSqlEnvironmentPostProcessor` 干擾
+3. **Cloud Run 已 GA 多容器**（[Cloud Run sidecars docs](https://docs.cloud.google.com/run/docs/deploying#sidecars)）— 部署旗標 `--container` 設兩個 image，sidecar `--ingress=none`、main container `--port=8080`
+4. **IAM 授權自動化** — sidecar 用 Cloud Run service account 連 Cloud SQL，無需 DB password 進 Secret Manager（Auth Proxy 自動 IAM token 換 DB token；S013 GCP profile env var 可只帶 `SKILLSHUB_DB_NAME` + `SKILLSHUB_DB_USER`）
+
+**取代原「Private IP + VPC Connector」**：原方案在 ADR §6.2 + S014 spec §2.1 決策 #9 + §2.4 #10 是當時的「不引入額外 dep」最簡解；sidecar 同樣不引入 dep，但 dev/prod parity 更佳。
+
+### 4.5 Alternative E（修訂新增）：S015 範圍處理 — 留 FirestoreVectorStore 死碼 vs 一次清
+
+| 選擇 | 動作 | 風險 |
+|------|------|------|
+| **A. 只移設定** | 拿掉 deps、留 `FirestoreVectorStore.java` + `firestoreVectorStore @Bean` | 死碼 / Modulith 邊界混淆 / S015 raised 仍要再清一次 |
+| **B. 一次拆**（採用） | 把原 S015 PgVectorStore 接管 + Firestore deletion 併入 S014 | S014 規模從 M-L(15) 升到 L(20)；但少一輪 PR review、deps 一次乾淨 |
+
+**採 B 的理由**：T2 mega 已實證「漸進遷移會在最後 Mongo deps 移除時觸發雪崩編譯錯誤」（handover 紀錄）。Firestore 同性質：保留 dep 會讓 `SearchConfig` 兩條件分支與 `google-cloud-firestore` 持續耦合。一次拆乾淨。
+
 ### 4.3 Alternative C：PostgreSQL Row-Level Security（RLS）作為主授權層
 
 - 優：DB 強制執行、應用層侵入低
@@ -118,12 +149,12 @@ PostgreSQL Testcontainers 在所有 OS 上一致；既有 QA strategy（`docs/gr
 
 | Spec | 主題 | 規模 | 核心輸出 | 依賴 |
 |------|------|------|---------|------|
-| **S014** | PostgreSQL 資料層遷移（無 ACL） | M–L | Spring Data JDBC + 4 read models（`skills` / `skill_versions` / `flags` / `download_events`） + `domain_events` 表 + Testcontainers Postgres；功能等同 v1.0.0 | ADR-001 |
-| **S015** | 引入 Spring AI `PgVectorStore` 並接管向量寫入路徑 | S–M | 透過 `spring-ai-starter-vector-store-pgvector` 啟用官方 `PgVectorStore` bean；`SearchConfig` 加 `vector-store=pgvector` 分支；`SearchProjection` 把 ingest 從 `FirestoreVectorStore` 切到 `PgVectorStore`（`metadata` 含 `owner`、`skillId`）；移除 `FirestoreVectorStore` 與 `google-cloud-firestore` 依賴 | S014 |
-| **S016** | Row-Level ACL 基礎建設 | M | `acl_entries JSONB` + GIN(`jsonb_path_ops`) 索引、`PermissionEvaluator` Strategy/Registry、`CurrentUser` 擴充 groups/orgs/depts、`@PreAuthorize` 套上 `SkillCommandService`、`SkillAclGranted/Revoked` events、ACL CRUD API | S015 |
+| **S014** | PostgreSQL 資料層遷移 + PgVectorStore 接管 + Firestore 全清（無 ACL） | L(20) | Spring Data JDBC + 4 read models（`skills` / `skill_versions` / `flags` / `download_events`）+ `domain_events` 表 + Spring AI 官方 `PgVectorStore` 接管寫入（`metadata` 含 `owner`、`skillId`，schema-validation=false）+ Testcontainers `pgvector/pgvector:pg16` + GCP Cloud SQL Auth Proxy sidecar 連線 + 移除 `google-cloud-firestore` + `FirestoreVectorStore.java`；功能等同 v1.0.0 | ADR-001 |
+| ~~**S015**~~ | ~~引入 Spring AI `PgVectorStore` 並接管向量寫入路徑~~ | — | **ABSORBED INTO S014（2026-04-27 修訂）** — 拆 deps 不分批、避免死碼；詳 §4.5 | — |
+| **S016** | Row-Level ACL 基礎建設 | M | `acl_entries JSONB` + GIN(`jsonb_path_ops`) 索引、`PermissionEvaluator` Strategy/Registry、`CurrentUser` 擴充 groups/orgs/depts、`@PreAuthorize` 套上 `SkillCommandService`、`SkillAclGranted/Revoked` events、ACL CRUD API | S014 |
 | **S017** | ACL-Aware 語意搜尋 | S–M | `vector_store` 表加 `acl_entries`；`PgVectorStore.doSimilaritySearch` 擴充 ACL SQL composition；composite query 一次完成 GIN filter + HNSW 排序 | S016 |
 
-每個 spec 落在 M 範圍內；總計四個 spec 處理整段遷移 + ACL 功能。
+S015 併入 S014 後，總計三個 spec 處理整段遷移 + ACL 功能（原四個）。
 
 ---
 
@@ -148,7 +179,7 @@ PostgreSQL Testcontainers 在所有 OS 上一致；既有 QA strategy（`docs/gr
   - 含 VPC Connector 月費；粗估從 v1.0.0 的 $1–2/月升至 $15–25/月
   - 上 production 時需評估升級到 dedicated core（如 db-custom-2-7680 或 Enterprise Plus 機型）
 - **db-f1-micro `max_connections = 25` 限制**：HikariCP `maximum-pool-size = 3` 是必要設計（25 - 5 reserved = 20 available；÷ Cloud Run 假設 5 instances = 4/instance；保留 buffer 取 3）。Cloud Run 端理論上限 100 connections/DB（[Cloud SQL quotas](https://docs.cloud.google.com/sql/docs/quotas)）— 受 DB 端 25 上限主導。
-- **Cloud Run + Cloud SQL 整合**：原 D10 + S013 部署腳本需更新 — 採 **Private IP + VPC Connector**（不用 Cloud SQL Java Connector / postgres-socket-factory，避免 spring-cloud-gcp 額外配置；S014 T1 階段已驗證移除 socketFactory 後 application context 啟動順暢）
+- **Cloud Run + Cloud SQL 整合**：原 D10 + S013 部署腳本需更新 — 採 **Cloud SQL Auth Proxy sidecar**（Cloud Run multi-container deploy；main container + `gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest` sidecar；共享 localhost network；JDBC URL `jdbc:postgresql://localhost:5432/<db>`）。應用端**無 socket-factory dep**，避免 `spring-cloud-gcp-autoconfigure.CloudSqlEnvironmentPostProcessor` 啟動驗證；本機 Docker Compose `pgvector/pgvector:pg16` 用同條 JDBC URL（dev/prod parity）。詳 §4.4。
 - **pgvector extension 啟用**：Cloud SQL 須在 instance 建立時配置 `cloudsql.enable_pgvector = on`（PostgreSQL 18 支援；S014 V1 migration 含 `CREATE EXTENSION IF NOT EXISTS vector`，但 instance flag 必須先在 GCP 端啟用）
 
 ### 6.3 不變的事

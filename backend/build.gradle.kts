@@ -28,12 +28,17 @@ dependencies {
 	// implementation("org.springframework.boot:spring-boot-micrometer-tracing-brave")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	// implementation("org.springframework.boot:spring-boot-starter-cache")
-	implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
+	// S014: PostgreSQL data layer（取代 spring-boot-starter-data-mongodb）
+	implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
+	implementation("org.springframework.boot:spring-boot-starter-jdbc")
+	// S014 T8: Spring AI core artifact（非 auto-config starter）
+	// 自寫 SkillshubPgVectorStore 子類控制 6-欄 INSERT；§4.14 / §2.1 決策 #2/#12（再修訂）
+	implementation("org.springframework.ai:spring-ai-pgvector-store")
 	// implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
-	implementation("com.google.cloud:google-cloud-firestore:3.31.6")
+	// S014 T7: google-cloud-firestore dep 移除（決策 #10；FirestoreVectorStore.java 同步刪除）
 	implementation("com.google.cloud:spring-cloud-gcp-starter")
 	implementation("com.google.cloud:spring-cloud-gcp-starter-storage")
 	implementation("io.micrometer:micrometer-tracing-bridge-brave")
@@ -46,6 +51,17 @@ dependencies {
 	implementation("org.springframework.modulith:spring-modulith-starter-core")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	developmentOnly("org.springframework.boot:spring-boot-docker-compose")
+	// S014: Flyway schema migration（V1 建立 6 張表 + extensions + indexes）
+	// Spring Boot 4 把 Flyway auto-config 拆到獨立 artifact，需顯式引入
+	implementation("org.springframework.boot:spring-boot-flyway")
+	implementation("org.flywaydb:flyway-core")
+	runtimeOnly("org.flywaydb:flyway-database-postgresql")
+	// S014: PostgreSQL JDBC driver
+	runtimeOnly("org.postgresql:postgresql")
+	// NOTE: Cloud SQL Java Connector (com.google.cloud.sql:postgres-socket-factory)
+	// 加入會觸發 spring-cloud-gcp-autoconfigure 的 CloudSqlEnvironmentPostProcessor，
+	// 要求 spring.cloud.gcp.sql.database-name；屬 T5 GCP profile 完整配置範圍，
+	// T1 不引入。
 	runtimeOnly("io.micrometer:micrometer-registry-otlp")
 	developmentOnly("org.springframework.ai:spring-ai-spring-boot-docker-compose")
 	runtimeOnly("org.springframework.modulith:spring-modulith-actuator")
@@ -54,7 +70,7 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-micrometer-tracing-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-cache-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-data-mongodb-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-data-jdbc-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-opentelemetry-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
@@ -65,7 +81,7 @@ dependencies {
 	testImplementation("org.testcontainers:testcontainers-gcloud")
 	testImplementation("org.testcontainers:testcontainers-grafana")
 	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
-	testImplementation("org.testcontainers:testcontainers-mongodb")
+	testImplementation("org.testcontainers:testcontainers-postgresql")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

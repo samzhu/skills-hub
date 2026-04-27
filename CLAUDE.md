@@ -103,13 +103,14 @@ skills-hub/
 - **Supporting (search, analytics):** Read-side projections consuming domain events
 - **Infrastructure (storage):** Traditional service (GCS operations)
 - **Event bus:** Spring Modulith `ApplicationEventPublisher`
-- **Event store:** `domain_events` collection in Firestore (via MongoDB driver)
+- **Event store:** `domain_events` table in PostgreSQL (Spring Data JDBC; JSONB payload）
 
 ## Tech stack
 
 - **Backend:** Spring Boot 4.0.6, Java 25, Gradle 9.4.1, Spring Modulith 2.0.6
 - **Frontend:** React 19, Vite 8, TypeScript 6, Tailwind CSS 4, shadcn/ui, Beam (border-beam)
-- **Database:** Firestore Enterprise (MongoDB driver for CRUD + event store, native SDK for vector search)
+- **Database:** PostgreSQL 16 + pgvector（Spring Data JDBC for CRUD + event store；自訂 `SkillshubPgVectorStore` extends Spring AI `AbstractObservationVectorStore` for vector search）— 詳 ADR-001
+- **DB connectivity（GCP）:** Cloud SQL Auth Proxy sidecar（Cloud Run multi-container）— 應用透過 `localhost:5432` 連線
 - **Storage:** Google Cloud Storage (skill zip packages)
 - **AI:** Spring AI 2.0.0-M4 + Gemini (via Vertex AI) for semantic search embeddings
 - **Auth:** Spring Security OAuth2 Resource Server (MVP: mock)
@@ -124,7 +125,7 @@ skills-hub/
 - Query API: GET (read from projections)
 - Spring Modulith modules: shared, skill, security, search, analytics, storage
 - Package base: `io.github.samzhu.skillshub`
-- Domain events: `domain_events` Firestore collection
+- Domain events: `domain_events` PostgreSQL table（aggregate_id + sequence UNIQUE，JSONB payload）
 - Skill format: agentskills.io SKILL.md specification
 - Commit messages: conventional commits (feat:, fix:, refactor:, test:, docs:, chore:)
 - Branch naming: feature/S001-skill-crud, fix/S002-upload-validation

@@ -3,8 +3,8 @@ package io.github.samzhu.skillshub;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.grafana.LgtmStackContainer;
-import org.testcontainers.mongodb.MongoDBContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import io.github.samzhu.skillshub.storage.StorageService;
@@ -12,10 +12,18 @@ import io.github.samzhu.skillshub.storage.StorageService;
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
 
+	// S014: PostgreSQL 16 + pgvector — 與本機 compose pgvector/pgvector:pg16 對齊；
+	// asCompatibleSubstituteFor("postgres") 告訴 Testcontainers 此 image 為 postgres-compatible。
+	// @ServiceConnection 自動注入連線到 spring.datasource.{url,username,password}。
 	@Bean
 	@ServiceConnection
-	MongoDBContainer mongoContainer() {
-		return new MongoDBContainer(DockerImageName.parse("mongo:8"));
+	PostgreSQLContainer<?> pgvectorContainer() {
+		return new PostgreSQLContainer<>(
+				DockerImageName.parse("pgvector/pgvector:pg16")
+						.asCompatibleSubstituteFor("postgres"))
+				.withDatabaseName("test")
+				.withUsername("test")
+				.withPassword("test");
 	}
 
 	// @Bean

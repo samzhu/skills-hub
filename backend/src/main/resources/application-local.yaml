@@ -2,9 +2,11 @@
 # 本地開發基礎設施配置
 # =============================================================================
 # Profile: local
-# 用途: 本機開發環境，使用 Docker Compose 啟動 MongoDB 與 Grafana LGTM。
+# 用途: 本機開發環境，使用 Docker Compose 啟動 pgvector/pgvector:pg16 與 mock-oauth2-server。
 #       StorageService 實作：FileSystemStorageService（./storage-local/）
 #       無需 GCP Application Default Credentials。
+#       JDBC URL 與 GCP sidecar profile 同條（dev/prod parity；ADR-001 §4.4）：
+#         jdbc:postgresql://localhost:5432/<db>
 # =============================================================================
 
 spring:
@@ -12,6 +14,15 @@ spring:
     compose:
       enabled: true
       lifecycle-management: start-and-stop
+
+  # ----- PostgreSQL 連線（與 gcp profile 同條 URL 結構）-----
+  # 本機 Docker Compose pgvector 容器暴露 localhost:5432；
+  # GCP Cloud Run 由 cloud-sql-proxy sidecar 也 listen localhost:5432。
+  # 預設值對齊 backend/compose.yaml 的 POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD。
+  datasource:
+    url: jdbc:postgresql://localhost:5432/${SKILLSHUB_DB_NAME:mydatabase}
+    username: ${SKILLSHUB_DB_USER:myuser}
+    password: ${SKILLSHUB_DB_PASSWORD:secret}
 
   autoconfigure:
     # Profile YAML 覆蓋（非合併）base 的 exclude list，因此必須重複 base 的排除項。
@@ -24,7 +35,6 @@ spring:
   cloud:
     gcp:
       # 本機無 GCP 憑證，停用 GCP 服務。改由 gcp profile 啟用。
+      # T7 後 google-cloud-firestore dep 已移除，無需 firestore.enabled 設定。
       storage:
-        enabled: false
-      firestore:
         enabled: false

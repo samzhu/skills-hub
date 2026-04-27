@@ -27,18 +27,25 @@ spring:
     # 讓 ./gradlew bootRun 不需任何額外參數即可啟動
     default: local,dev
 
-  # ----- MongoDB（Spring Boot 4.0 起 spring.data.mongodb.* 已 deprecated，改用 spring.mongodb.*）-----
-  mongodb:
-    uri: mongodb://localhost:27017/skillshub
-    database: skillshub
+  # ----- PostgreSQL（S014 起為唯一儲存層）-----
+  # local profile 由 Docker Compose 服務注入連線（service-connection label）；
+  # gcp profile 由 application-gcp.yaml 覆寫（Cloud SQL Auth Proxy sidecar — 同條 JDBC URL）。
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mydatabase
+    username: myuser
+    password: secret
+    hikari:
+      maximum-pool-size: 10
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    locations: classpath:db/migration
 
-  data:
-    mongodb:
-      # Firestore 不支援透過 MongoDB wire protocol 建立 index（createIndex 命令不受支援）。
-      # Composite index 必須在 Firestore Console 或 gcloud CLI 手動建立，
-      # 因此停用 Spring Data 自動建立 index，避免啟動時報錯。
-      # 注意：auto-index-creation 仍在 spring.data.mongodb 命名空間（spring-boot-data-mongodb 模組）。
-      auto-index-creation: false
+  # ----- Spring AI 向量儲存（T8）-----
+  # T8 改 spring-ai-pgvector-store core artifact + 自寫 SkillshubPgVectorStore 子類
+  # （per-request builder 模式；§4.14 / §2.1 決策 #2/#12 修訂），不走 starter auto-config
+  # → 完全無 spring.ai.vectorstore.pgvector.* 設定，所有 wiring 由子類 constructor 寫死
+  # （HNSW + cosine + 6-欄 INSERT；Flyway V1 schema 已建表）。
 
   servlet:
     multipart:
@@ -86,13 +93,12 @@ springdoc:
 # ----- 應用程式自訂屬性（純值，不用 ${...} placeholder） -----
 # Relaxed binding 自動支援 env var 覆蓋：
 #   SKILLSHUB_STORAGE_BUCKET → skillshub.storage.bucket
-#   SKILLSHUB_SEARCH_VECTOR_STORE → skillshub.search.vector-store
 #   SKILLSHUB_GENAI_API_KEY → skillshub.genai.api-key
 skillshub:
   storage:
     bucket: skillshub-packages
   search:
-    vector-store: simple
+    # T8 後唯一 backend 為自寫 SkillshubPgVectorStore 子類；無 vector-store 切換屬性。
     collection: skill_embeddings
   genai:
     model: gemini-embedding-2

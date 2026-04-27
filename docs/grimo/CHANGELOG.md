@@ -1,5 +1,39 @@
 # Changelog
 
+## [v1.1.0] - 2026-04-27 — Phase 2 啟動：PostgreSQL 資料層遷移
+
+### Changed
+- S014: 把 Firestore Enterprise + MongoDB driver 全面換成 **PostgreSQL 16 + pgvector**（Spring Data JDBC for CRUD + event store；自訂 `SkillshubPgVectorStore` for vector search）— 一次性拆乾淨 `google-cloud-firestore` dep 與 `FirestoreVectorStore` 死碼（原 S015 PgVectorStore 接管 scope **absorbed**；詳 ADR-001 §4.5）；行為等同 v1.0.0、115/115 tests 全綠、bootRun in-vivo smoke 通過。
+- **Persistence layer（5 個 read model + event store）**：`Skill*ReadModel` / `DownloadEventReadModel` / `FlagReadModel` / `DomainEvent` 從 `@Document`（MongoDB）改 `@Table`（Spring Data JDBC）；皆 implement `Persistable<String>.isNew()=true` 強制 INSERT 路徑（避開預設 SELECT-then-UPDATE）；`Map<String,Object>` 欄位透過 `MapJsonbConverter` 雙向 round-trip JSONB 並保留 nested 型別。
+- **Repository 介面**：5 個 `*Repository` 從 `MongoRepository` 改 `ListCrudRepository`；改用 `@Query` + `NamedParameterJdbcTemplate` 處理動態 keyword/category/sort filter（含 LIKE `%` `_` `\` 三符 escape + `SORTABLE_PROPERTIES` 白名單防 SQL 注入）；`@Modifying @Query` helper 集中於介面層（`incrementDownloadCount` / `updateLatestVersion` / `updateRiskLevel` / `updateRiskAssessment`）。
+- **Concurrency**：`AnalyticsService.recordDownload` 從「先 SELECT 後 UPDATE」改 atomic `UPDATE ... SET count = count + 1`；100 並發測試零 lost update。
+- **Spring AI VectorStore 接管（T8 architectural refinement）**：`build.gradle.kts` 從 `spring-ai-starter-vector-store-pgvector` 換 **`spring-ai-pgvector-store`** core artifact（無 auto-config）；新增 `SkillshubPgVectorStore extends AbstractObservationVectorStore`（235 行，Builder pattern）—`doAdd` 走 6-欄 `INSERT ... ON CONFLICT DO UPDATE COALESCE` 原子寫入（id / content / metadata / embedding / **owner** / **skill_id** 一次到位，不留中間視窗）；對齊 CLAUDE.md「Spring AI Manual Configuration」原則（與 S007 GoogleGenAiChatModel 同模式）。
+- **Per-request builder pattern**：`SearchProjection` / `SemanticSearchService` constructor 注入 `(JdbcTemplate, EmbeddingModel, ...)`，每次寫入用 `SkillshubPgVectorStore.builder(jdbc, em).owner(u).skillId(id).build().add(...)` 建新 instance；不註冊 singleton Bean — owner/skillId 是 per-write context，避免 ThreadLocal 與 state leak。
+- **Schema**：Flyway `V1__initial_schema.sql` 自動建立 6 表（skills / skill_versions / download_events / flag_read_model / domain_events / vector_store）+ `vector` / `uuid-ossp` extensions + HNSW `vs_emb_idx` index + `(aggregate_id, sequence)` UNIQUE constraint。
+- **GCP 部署**：`application-gcp.yaml` 完全重寫為 **Cloud SQL Auth Proxy sidecar** 模式（`jdbc:postgresql://localhost:5432/...` + HikariCP `maximum-pool-size=3 / minimum-idle=1 / leak-detection-threshold=60000`）；無 `socket-factory` dep；本機 `application-local.yaml` 使用同條 URL（dev/prod parity）。
+- **`compose.yaml`**：mock-oauth2-server healthcheck `wget --spider`（HEAD，server 不支援 → 404）改 `wget -q -O - ... > /dev/null`（GET）— pre-existing bug。
+- **Cross-aggregate 順序**：`SkillProjection.on(SkillCreatedEvent)` 加 `@Order(HIGHEST_PRECEDENCE)`，與 `SearchProjection` / `ScanOrchestrator` 形成顯式 listener 排序鏈（避免 FK violation 21 例）；search 模組 `package-info.java` `allowedDependencies` 加 `"shared :: security"`（SearchProjection 注入 CurrentUserProvider）。
+
+### Removed
+- `FirestoreVectorStore.java`（S007 過渡版自寫向量寫入 helper）— 由自訂 `SkillshubPgVectorStore` 接管。
+- `google-cloud-firestore` + `spring-cloud-gcp-starter-data-firestore` dependencies；`spring.cloud.gcp.firestore.*` 全 yaml 設定；`firestore.enabled` flag。
+- `application.yaml` + `config/application-dev.yaml` 的 `vector-store: simple` 預設 + `SimpleVectorStore` fallback bean — dev 走 Docker Compose pgvector container（dev/prod parity），無 in-memory fallback 必要。
+- 過時 POC 測試：`SemanticSearchPocTest`（SimpleVectorStore POC obsolete）+ `SemanticSearchTest`（與 IntegrationTest scope 重疊）。
+
+### Added
+- `backend/src/main/java/.../search/SkillshubPgVectorStore.java`（235 行，T8 核心新類）。
+- `backend/src/main/java/.../shared/persistence/JdbcConfiguration.java` + `MapJsonbConverter`（custom JSONB Reading/WritingConverter）。
+- `backend/src/main/resources/db/migration/V1__initial_schema.sql`（Flyway baseline schema）。
+- `TestcontainersConfiguration` 改 `pgvector/pgvector:pg16` container（取代 mongo:7）。
+- 新增測試：`PgVectorStoreOwnerWriteTest`（6 欄寫入 + ON CONFLICT COALESCE 防護 + schema introspection）、`SearchProjectionTest`（`@SpringBootTest` + Testcontainers，per-request isolation）、`AtomicDownloadCountTest`（100 並發）、`DomainEventSequenceUniquenessTest`（UNIQUE constraint）、`MapJsonbConverterTest`（JSONB round-trip）。
+
+### Notes
+- **3 輪獨立 QA PASS**（spec §7.11 第一輪 subagent / §7.12 第二輪 subagent / §7.13 `/verifying-quality` skill 主驗）— 含 hermetic E2E + boundary CJK / escape quote + 6-欄 SELECT + design integrity 14-check。Verdict 一致 PASS。
+- **115/115 tests PASS**（37 test classes；T7 ship 121 → T8 後 115：移除 SemanticSearchPocTest 3 + SemanticSearchTest 3 + SearchConfig 2 個 simple tests，新增 SearchProjectionTest 1 + PgVectorStoreOwnerWriteTest 1 = net -6）。
+- **AC-13 強化（再次修訂）**：原 S014 規劃「保留 FirestoreVectorStore + Spring AI 官方 PgVectorStore」→ 修訂為「Firestore 全清 + 自寫 SkillshubPgVectorStore 子類」；理由：vector_store schema 含 `owner` / `skill_id` 自訂欄位（為 S016/S017 ACL 鋪路），官方 starter 4-欄 INSERT 無法擴；自寫子類 6-欄 atomic 寫入消除 add→UPDATE 兩步驟中間視窗 + `instanceof PgVectorStore` guard + `UUID.fromString` workaround。
+- **2 個 IMPORTANT pre-existing project gaps**（未阻擋本次 ship，已登記 follow-up）：(1) JaCoCo plugin 缺失（qa-strategy 宣告 80% 線覆蓋率但 task 未註冊）；(2) Verification command registry / `scripts/verify-all.sh` 缺失（`/verifying-quality` Step 0.5 期望結構化 registry）— 建議獨立 spec 補。
+- **MVP（v1.0.0）→ Phase 2（v1.1.0）**：本次為 MVP 完成後第一個 spec；架構升級為下一階段 Row-Level ACL（S016）+ ACL-Aware 語意搜尋（S017）+ Skill aggregate 充血演化（S018）鋪路。
+
 ## [v1.0.0] - 2026-04-27 — MVP complete 🎉
 
 ### Added

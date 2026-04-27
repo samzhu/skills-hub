@@ -1,4 +1,14 @@
 spring:
+  # S014: 測試 datasource 由 @ServiceConnection（PostgreSQLContainer）動態注入；
+  # 此處只設 Flyway 預設 — 個別測試（如 MapJsonbConverterTest）可用
+  # @TestPropertySource("spring.flyway.enabled=false") 關閉以隔離。
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  # T8: 不再需要 spring.ai.vectorstore.pgvector.* 設定（自寫 SkillshubPgVectorStore
+  # constructor 內部寫死），保留 spring.ai.model.* 為阻擋 GoogleGenAi auto-config
+  # 與 SearchConfig.noOpEmbeddingModel 衝突。
   ai:
     model:
       # Prevent GoogleGenAiTextEmbeddingAutoConfiguration from creating googleGenAiTextEmbedding bean.
@@ -20,6 +30,4 @@ spring:
       core:
         enabled: false
       storage:
-        enabled: false
-      firestore:
         enabled: false

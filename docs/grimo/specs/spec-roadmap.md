@@ -87,14 +87,14 @@ Scenario: 無相關結果
 | M9: 開發環境 OAuth Mock | S011 | XS(8) | 128 | ✅ |
 | M10: OAuth 開關 + LAB 模式 | S012 | XS(8) | 136 | ✅ |
 | M11: GCP Cloud Run 部署 | S013 | S(11) | 147 | ✅ |
-| M12: PostgreSQL 資料層遷移 | S014 | M-L(15) | 162 | ⏳ Plan |
-| M13: 自訂 PgVectorStore | S015 | S-M(11) | 173 | 🔲 Backlog |
-| M14: Row-Level ACL 基礎建設 | S016 | M(13) | 186 | 🔲 Backlog |
-| M15: ACL-Aware 語意搜尋 | S017 | S-M(11) | 197 | 🔲 Backlog |
-| M16: Skill Aggregate 充血演化 | S018 | S(11) | 208 | ⏳ Design |
+| M12: PostgreSQL 資料層遷移 + PgVectorStore 接管 + Firestore 全清 | S014（含 S015 absorbed） | L(20) | 167 | ✅ `v1.1.0` |
+| ~~M13: 自訂 PgVectorStore~~ | ~~S015~~ | — | — | 🚫 ABSORBED into S014（2026-04-27） |
+| M14: Row-Level ACL 基礎建設 | S016 | M(13) | 180 | 🔲 Backlog |
+| M15: ACL-Aware 語意搜尋 | S017 | S-M(11) | 191 | 🔲 Backlog |
+| M16: Skill Aggregate 充血演化 | S018 | S(11) | 202 | ⏳ Design |
 
 **MVP（v1.0.0）已完成：14 specs, 147 story points 🎉**
-**Phase 2（PostgreSQL + Row-Level ACL + Aggregate 充血）規劃中：5 specs, 61 story points（依 ADR-001 + S018）**
+**Phase 2（PostgreSQL + Row-Level ACL + Aggregate 充血）規劃中：4 specs, 55 story points**（S015 absorbed into S014；T2 ship 後決策一次拆 Firestore，避免 SearchConfig 雙條件分支與 google-cloud-firestore dep 持續耦合 — 詳 ADR-001 §4.5）
 
 ### Dependency Graph
 
@@ -121,13 +121,14 @@ S009 ──▶ S011 (dev OAuth mock)          ✅
 S013 (GCP Cloud Run 部署腳本，獨立)     ✅
 
 ── Phase 2（依 ADR-001：Firestore → PostgreSQL）──
-ADR-001 ──▶ S014 (PostgreSQL 資料層遷移)
-              └─▶ S015 (自訂 PgVectorStore)
-                    └─▶ S016 (Row-Level ACL 基礎建設)
-                          ├─▶ S017 (ACL-Aware 語意搜尋)
-                          └─▶ S018 (Skill Aggregate 充血演化 + Suspend/Reactivate)
-                              ↑
-                              S014 (event store JDBC) + S016 (PermissionEvaluator)
+ADR-001 ──▶ S014 (PostgreSQL 資料層遷移 + PgVectorStore 接管 + Firestore 全清)
+                └─▶ S016 (Row-Level ACL 基礎建設)
+                      ├─▶ S017 (ACL-Aware 語意搜尋)
+                      └─▶ S018 (Skill Aggregate 充血演化 + Suspend/Reactivate)
+                          ↑
+                          S014 (event store JDBC) + S016 (PermissionEvaluator)
+
+# S015 已併入 S014（2026-04-27 T2 ship 後決策；ADR-001 §4.5）
 ```
 
 ## Milestone 8: 安全掃描升級 ✅ `v0.9.0` (2026-04-26)
@@ -150,15 +151,8 @@ ADR-001 ──▶ S014 (PostgreSQL 資料層遷移)
 
 ---
 
-## Milestone 12: PostgreSQL 資料層遷移 ⏳ Design (2026-04-27)
-Goal: 把 Firestore + MongoDB driver 換成 PostgreSQL + Spring Data JDBC，行為等同 v1.0.0
-Done when: S014 done；既有 100+ 測試在 Testcontainers PostgreSQL 全綠
-Driver: ADR-001 — Firestore array-contains-any 30 元素硬上限阻塞 Backlog B1/B7/B8
-Decision: `docs/grimo/adr/ADR-001-postgresql-migration.md`
-
-| # | Spec | Points | Dependencies | Status |
-|---|------|--------|--------------|--------|
-| S014 | PostgreSQL 資料層遷移（無 ACL） | M-L(15) | ADR-001 | ⏳ Plan |
+## Milestone 12: PostgreSQL 資料層遷移 + PgVectorStore 接管 + Firestore 全清 ✅ `v1.1.0` (2026-04-27)
+1/1 specs complete (含 S015 absorbed). Details → `specs/archive/2026-04-27-S014-postgresql-migration.md` + `adr/ADR-001-postgresql-migration.md`
 
 ---
 
@@ -174,13 +168,13 @@ Spec: `docs/grimo/specs/2026-04-27-S018-skill-aggregate-rich-domain.md`
 
 ---
 
-## Milestone 13: Spring AI PgVectorStore 接管向量寫入 🔲 Backlog
-Goal: 把 FirestoreVectorStore 換成 Spring AI 官方 PgVectorStore（透過 `spring-ai-starter-vector-store-pgvector` starter）；S007 行為等同；移除 google-cloud-firestore 依賴
-Done when: S015 done
+## ~~Milestone 13: Spring AI PgVectorStore 接管向量寫入~~ 🚫 ABSORBED into S014（2026-04-27）
+
+> 原 S015 scope（PgVectorStore 接管 + FirestoreVectorStore 刪除 + google-cloud-firestore dep 移除）併入 S014 T7。決策依據：T2 mega ship 後 Mongo deps 已乾淨，若分批保留 Firestore 至 S015，`SearchConfig` 雙條件分支 + `google-cloud-firestore` dep tree 將持續耦合一整輪 spec → 一次拆乾淨少一輪 PR review。詳 ADR-001 §4.5 + S014 spec §1 / §2.1 決策 #2 / #10。
 
 | # | Spec | Points | Dependencies | Status |
 |---|------|--------|--------------|--------|
-| S015 | Spring AI PgVectorStore 接管向量寫入（schema 由 S014 已建立） | S-M(11) | S014 | 🔲 |
+| ~~S015~~ | ~~Spring AI PgVectorStore 接管向量寫入~~ | — | — | 🚫 ABSORBED → S014 T7 |
 
 ---
 

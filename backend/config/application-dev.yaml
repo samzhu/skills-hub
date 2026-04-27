@@ -28,10 +28,10 @@ management:
       exposure:
         include: health,info,metrics,env,configprops,beans,mappings
 
-# ----- 向量搜尋（dev 使用 in-memory，lab/gcp 使用 Firestore） -----
-skillshub:
-  search:
-    vector-store: simple   # Spring AI SimpleVectorStore（in-memory，重啟後清空）
+# ----- 向量搜尋（S014 T7 後 dev 也走 PgVectorStore，與 production parity） -----
+# 本機 Docker Compose 已經啟動 pgvector container（service-connection 自動注入 datasource），
+# spring-ai-starter-vector-store-pgvector auto-config 直接接管 vector_store 表寫入。
+# 無 vector-store 設定 → 預設使用 PgVectorStoreAutoConfiguration 提供的 bean。
 
 # 應用程式套件使用 DEBUG，framework 維持 INFO 避免 log 過多
 logging:

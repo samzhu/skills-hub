@@ -17,16 +17,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Component;
+
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.samzhu.skillshub.security.scan.sarif.SarifReporter;
 import io.github.samzhu.skillshub.shared.events.DomainEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
+import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.query.SkillVersionReadModelRepository;
 import io.github.samzhu.skillshub.storage.PackageService;
 import io.github.samzhu.skillshub.storage.StorageService;
 
@@ -50,9 +50,14 @@ import io.github.samzhu.skillshub.storage.StorageService;
  *       → 不出現在 SARIF runs[]，無 null 處理</li>
  *   <li>單一引擎拋例外不影響其他引擎；統一以 WARN log 記錄</li>
  *   <li>嚴重度合併採 max severity 規則</li>
- *   <li>持久化：直接 MongoTemplate.updateFirst 寫 skills + skill_versions（per S005 §7
- *       finding：避免循環依賴；不發第二個 SkillRiskAssessed application event）</li>
+ *   <li>持久化：直接透過 Spring Data JDBC repository 的 @Modifying @Query 寫
+ *       skills.risk_level + skill_versions.risk_assessment（per S005 §7 finding：
+ *       避免循環依賴；不發第二個 SkillRiskAssessed application event）</li>
  * </ul>
+ *
+ * <p>S014 從 MongoTemplate 遷至 Spring Data JDBC — 寫入路徑改走
+ * {@link SkillReadModelRepository#updateRiskLevel} +
+ * {@link SkillVersionReadModelRepository#updateRiskAssessment}（皆 @Modifying @Query）。
  *
  * @see SecurityAnalyzer
  * @see SarifReporter
@@ -66,7 +71,9 @@ class ScanOrchestrator {
 	private final StorageService storageService;
 	private final PackageService packageService;
 	private final DomainEventRepository eventStore;
-	private final MongoTemplate mongoTemplate;
+	private final SkillReadModelRepository skillRepo;
+	private final SkillVersionReadModelRepository versionRepo;
+	private final ObjectMapper objectMapper;
 	private final SarifReporter sarifReporter;
 
 	/**
@@ -79,19 +86,24 @@ class ScanOrchestrator {
 			StorageService storageService,
 			PackageService packageService,
 			DomainEventRepository eventStore,
-			MongoTemplate mongoTemplate,
+			SkillReadModelRepository skillRepo,
+			SkillVersionReadModelRepository versionRepo,
+			ObjectMapper objectMapper,
 			SarifReporter sarifReporter) {
 		this.analyzers = analyzers;
 		this.storageService = storageService;
 		this.packageService = packageService;
 		this.eventStore = eventStore;
-		this.mongoTemplate = mongoTemplate;
+		this.skillRepo = skillRepo;
+		this.versionRepo = versionRepo;
+		this.objectMapper = objectMapper;
 		this.sarifReporter = sarifReporter;
 	}
 
 	/**
-	 * 必須在 SkillProjection (skill::query) 寫入 skill_versions document 之後才執行 —
-	 * ScanOrchestrator 用 {@code MongoTemplate.updateFirst} 寫 riskAssessment，需要該 document 已存在。
+	 * 必須在 SkillProjection (skill::query) 寫入 skill_versions row 之後才執行 —
+	 * ScanOrchestrator 透過 {@link SkillVersionReadModelRepository#updateRiskAssessment}
+	 * 寫 risk_assessment，需要該 row 已存在（依 (skill_id, version) 找）。
 	 * Spring 同步 @EventListener 預設順序由 bean scan 決定，不保證；用 LOWEST_PRECEDENCE 強制最後跑。
 	 */
 	@EventListener
@@ -238,7 +250,8 @@ class ScanOrchestrator {
 	 *   <li>{@code skills.{aggregateId}.riskLevel} 更新</li>
 	 *   <li>{@code skill_versions.{...}.riskAssessment} 寫入完整 sarif + findings + notices</li>
 	 * </ol>
-	 * 直接走 MongoTemplate（per S005 §7：避免發第二個 application event 造成循環依賴）。
+	 * 直接呼叫 Spring Data JDBC repository 的 @Modifying @Query
+	 * （per S005 §7：避免發第二個 application event 造成循環依賴）。
 	 */
 	private void persist(SkillVersionPublishedEvent event,
 			Severity finalLevel,
@@ -263,13 +276,10 @@ class ScanOrchestrator {
 				Instant.now(),
 				Map.of()));
 
-		// 2. skills.riskLevel — 與 S005 行為相容（read model 同一欄位）
-		mongoTemplate.updateFirst(
-				Query.query(Criteria.where("_id").is(event.aggregateId())),
-				Update.update("riskLevel", finalLevel.name()).set("updatedAt", Instant.now()),
-				"skills");
+		// 2. skills.risk_level — 與 S005 行為相容（read model 同一欄位）
+		skillRepo.updateRiskLevel(event.aggregateId(), finalLevel.name(), Instant.now());
 
-		// 3. skill_versions.riskAssessment — 完整 SARIF + findings + notices
+		// 3. skill_versions.risk_assessment — 完整 SARIF + findings + notices
 		var allNotices = new ArrayList<ScanNotice>();
 		for (var output : perEngine.values()) allNotices.addAll(output.notices());
 
@@ -280,11 +290,9 @@ class ScanOrchestrator {
 		riskAssessment.put("sarif", sarif);
 		riskAssessment.put("scannedAt", Instant.now());
 
-		// skill_versions 是 keyed by id (UUID per row)，需依 skillId + version 找到正確版本
-		mongoTemplate.updateFirst(
-				Query.query(Criteria.where("skillId").is(event.aggregateId())
-						.and("version").is(event.version())),
-				new Update().set("riskAssessment", riskAssessment),
-				"skill_versions");
+		// JSON 序列化後由 PostgreSQL 透過 CAST(... AS jsonb) 寫入；
+		// 找對應 row 用 (skill_id, version) — UNIQUE 約束保證最多一筆
+		String riskJson = objectMapper.writeValueAsString(riskAssessment);
+		versionRepo.updateRiskAssessment(event.aggregateId(), event.version(), riskJson);
 	}
 }

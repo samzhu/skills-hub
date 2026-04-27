@@ -2,12 +2,13 @@ package io.github.samzhu.skillshub.security;
 
 import java.util.List;
 
-import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.repository.ListCrudRepository;
 
 /**
- * {@link FlagReadModel} 的 MongoDB Repository，提供 Flag 資料的持久化與查詢操作。
+ * {@link FlagReadModel} 的 Spring Data JDBC Repository，提供 Flag 資料的持久化與
+ * 查詢操作（對應 PostgreSQL {@code flags} 表）。
  */
-public interface FlagReadModelRepository extends MongoRepository<FlagReadModel, String> {
+public interface FlagReadModelRepository extends ListCrudRepository<FlagReadModel, String> {
 
 	/**
 	 * 依 Skill ID 查詢該 Skill 的所有 Flag，並依建立時間降冪排序（最新在前）。

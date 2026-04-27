@@ -1,11 +1,20 @@
 # =============================================================================
-# GCP 基礎設施配置
+# GCP 基礎設施配置 — Cloud SQL Auth Proxy sidecar 模式（S014 修訂）
 # =============================================================================
 # Profile: gcp
-# 用途: 部署至 GCP Cloud Run，啟用 GCS（StorageService）與 Firestore native SDK（向量搜尋）。
-#       GCP Application Default Credentials 由 Cloud Run Workload Identity 自動提供。
-#       Embedding API key 由 env var SKILLSHUB_GENAI_API_KEY 注入（relaxed binding）。
-# 啟動: SPRING_PROFILES_ACTIVE=gcp,prod
+# 用途:    部署至 GCP Cloud Run（multi-container：main app + cloud-sql-proxy sidecar）
+#          - main container：Skills Hub Spring Boot
+#          - sidecar container：gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+#                              listen on localhost:5432，IAM auth 自動處理
+#          - 兩 container 共享 Cloud Run instance 的 localhost network namespace
+#          GCS（StorageService）由 Workload Identity 自動提供憑證；
+#          embedding API key 由 env var SKILLSHUB_GENAI_API_KEY 注入。
+# 啟動:    SPRING_PROFILES_ACTIVE=gcp,prod
+# 部署:    `gcloud run services replace service.yaml`（CLI flag 對 sidecar 受限）
+#
+# JDBC URL 與本機 Docker Compose 同條 — dev/prod parity（ADR-001 §4.4）：
+#   jdbc:postgresql://localhost:5432/<db>
+# 應用端無 postgres-socket-factory dep；標準 JDBC client 即可。
 # =============================================================================
 
 spring:
@@ -14,19 +23,59 @@ spring:
       # Cloud Run 無 Docker Compose，停用以避免啟動錯誤
       enabled: false
 
+  # ----- Cloud SQL Auth Proxy sidecar 連線 -----
+  # SKILLSHUB_DB_USER / SKILLSHUB_DB_PASSWORD 由 Secret Manager 注入（延續 S013 模式）
+  # SKILLSHUB_DB_NAME 預設 skillshub（可由 env var 覆蓋）
+  # 無 SKILLSHUB_DB_HOST — sidecar 固定 listen localhost:5432
+  datasource:
+    url: jdbc:postgresql://localhost:5432/${SKILLSHUB_DB_NAME:skillshub}
+    username: ${SKILLSHUB_DB_USER}
+    password: ${SKILLSHUB_DB_PASSWORD}
+    hikari:
+      # db-f1-micro max_connections=25 - 5 reserved = 20 ÷ 5 (Cloud Run max instances) = 4 → 取 3 留 buffer
+      maximum-pool-size: 3
+      minimum-idle: 1
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      # f1-micro 連線少，洩漏要早抓
+      leak-detection-threshold: 60000
+
   cloud:
     gcp:
       storage:
         enabled: true
-      firestore:
-        enabled: true
+      # 無 firestore 設定（T7 將連 dep 一起移除）
 
-# GCP 使用 Firestore 向量搜尋（覆蓋 application.yaml 的 simple 預設值）
+# GCP 部署啟用 LlmJudge（要求 SKILLSHUB_GENAI_API_KEY 同時提供，否則 bean 不建立）
 skillshub:
-  search:
-    vector-store: firestore
-  # GCP 部署啟用 LlmJudge（要求 SKILLSHUB_GENAI_API_KEY 同時提供，否則 bean 不建立）
   scanner:
     engines:
       llm:
         enabled: true
+
+# -----------------------------------------------------------------------------
+# Cloud Run multi-container service.yaml 部署範本（部署層使用，本檔不啟動）：
+# -----------------------------------------------------------------------------
+# apiVersion: serving.knative.dev/v1
+# kind: Service
+# metadata:
+#   name: skillshub
+# spec:
+#   template:
+#     spec:
+#       containers:
+#         - name: app
+#           image: gcr.io/$PROJECT_ID/skillshub:latest
+#           ports: [{ containerPort: 8080 }]
+#           env:
+#             - { name: SPRING_PROFILES_ACTIVE, value: gcp }
+#             - { name: SKILLSHUB_DB_NAME, value: skillshub }
+#             - { name: SKILLSHUB_DB_USER, valueFrom: { secretKeyRef: { name: db-user, key: latest } } }
+#             - { name: SKILLSHUB_DB_PASSWORD, valueFrom: { secretKeyRef: { name: db-password, key: latest } } }
+#         - name: cloud-sql-proxy
+#           image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+#           args:
+#             - "--port=5432"
+#             - "--auto-iam-authn"
+#             - "$PROJECT_ID:$REGION:skillshub-db"

@@ -41,8 +41,15 @@ class SkillProjection {
 		this.versionRepo = versionRepo;
 	}
 
-	/** 技能建立 → 初始化 read model，狀態設為 DRAFT，下載數為 0。 */
+	/**
+	 * 技能建立 → 初始化 read model，狀態設為 DRAFT，下載數為 0。
+	 *
+	 * <p>{@code @Order(HIGHEST_PRECEDENCE)} 確保在 SearchProjection.onSkillCreated
+	 * （S014 T7 後兩步驟寫入 vector_store，第二步 UPDATE 寫 {@code skill_id}
+	 * FK 至 skills.id）之前執行。skills row 必須先存在，否則 vector_store FK violation。
+	 */
 	@EventListener
+	@Order(Ordered.HIGHEST_PRECEDENCE)
 	void on(SkillCreatedEvent event) {
 		var now = Instant.now();
 		var readModel = new SkillReadModel(
@@ -70,33 +77,21 @@ class SkillProjection {
 	 * 版本發佈 → 更新 skills 的 latestVersion + 新增 skill_versions 記錄。
 	 *
 	 * <p>{@code @Order(HIGHEST_PRECEDENCE)} 確保在 ScanOrchestrator (S010, security::scan) 之前執行：
-	 * ScanOrchestrator 用 {@code MongoTemplate.updateFirst} 寫 riskAssessment 欄位，需要本 listener
-	 * 先建立 skill_versions document 才有效。Spring 同步 @EventListener 預設 priority 同為
+	 * ScanOrchestrator 透過 {@code SkillVersionReadModelRepository.updateRiskAssessment}
+	 * （@Modifying @Query）寫 risk_assessment 欄位，需要本 listener 先建立 skill_versions row
+	 * （依 (skill_id, version) 找）才有效。Spring 同步 @EventListener 預設 priority 同為
 	 * LOWEST_PRECEDENCE，順序未定；顯式排序避免種族條件。
 	 */
 	@EventListener
 	@Order(Ordered.HIGHEST_PRECEDENCE)
 	void on(SkillVersionPublishedEvent event) {
-		// 更新 skills read model 的最新版本
-		repo.findById(event.aggregateId()).ifPresent(existing -> {
-			var updated = new SkillReadModel(
-					existing.id(),
-					existing.name(),
-					existing.description(),
-					existing.author(),
-					existing.category(),
-					event.version(),
-					existing.riskLevel(),
-					existing.status(),
-					existing.downloadCount(),
-					existing.createdAt(),
-					Instant.now()
-			);
-			repo.save(updated);
-		});
+		// 更新 skills read model 的最新版本 — atomic UPDATE，避免 Spring Data JDBC 對
+		// record + non-null id 的「save → UPDATE」誤判路徑（既有 read-modify-write 在
+		// Persistable.isNew()=true 後會走 INSERT 變 PK 衝突）
+		repo.updateLatestVersion(event.aggregateId(), event.version(), Instant.now());
 
 		// 建立版本 read model 記錄；riskAssessment 在此為 null，由 S010 ScanOrchestrator
-		// 完成多引擎掃描後直接以 MongoTemplate.updateFirst 寫入此欄位。
+		// 完成多引擎掃描後透過 SkillVersionReadModelRepository.updateRiskAssessment 寫入。
 		var versionEntry = new SkillVersionReadModel(
 				UUID.randomUUID().toString(),
 				event.aggregateId(),
@@ -115,30 +110,22 @@ class SkillProjection {
 				.log("投影已更新版本記錄");
 	}
 
-	/** 下載事件 → 累加 downloadCount。 */
+	/**
+	 * 下載事件 → 累加 download_count（atomic UPDATE，避免 race condition）。
+	 *
+	 * <p>S014 從 read-modify-write 改 atomic UPDATE — 既有實作在 Mongo 上有
+	 * race condition（兩個並發 download 可能丟一次計數），改用 SQL 原生表達式
+	 * {@code SET download_count = download_count + 1} 由 PostgreSQL row-level lock
+	 * 保證原子性。
+	 */
 	@EventListener
 	void on(SkillDownloadedEvent event) {
-		repo.findById(event.aggregateId()).ifPresent(existing -> {
-			var updated = new SkillReadModel(
-					existing.id(),
-					existing.name(),
-					existing.description(),
-					existing.author(),
-					existing.category(),
-					existing.latestVersion(),
-					existing.riskLevel(),
-					existing.status(),
-					existing.downloadCount() + 1,
-					existing.createdAt(),
-					Instant.now()
-			);
-			repo.save(updated);
-		});
+		repo.incrementDownloadCount(event.aggregateId(), Instant.now());
 
 		log.atDebug()
 				.addKeyValue("skillId", event.aggregateId())
 				.addKeyValue("version", event.version())
-				.log("投影已累加下載次數");
+				.log("投影已累加下載次數（atomic）");
 	}
 
 }

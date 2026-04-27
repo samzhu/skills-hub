@@ -3,15 +3,20 @@ package io.github.samzhu.skillshub.shared.events;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.repository.ListCrudRepository;
 
 /**
- * 領域事件倉儲介面。
+ * 領域事件倉儲介面（Spring Data JDBC）。
  *
- * <p>繼承 {@link MongoRepository} 提供基本 CRUD，並額外定義事件溯源所需的查詢方法，
- * 以便依聚合根 ID 重放歷史事件或取得最新序號。
+ * <p>繼承 {@link ListCrudRepository} 提供基本 CRUD（save / findById / findAll / count
+ * / deleteById），並額外定義事件溯源所需的查詢方法，以便依聚合根 ID 重放歷史事件
+ * 或取得最新序號。
+ *
+ * <p>{@code (aggregate_id, sequence)} UNIQUE 約束（V1 schema
+ * {@code idx_domain_events_aggregate_seq}）保證 Aggregate 樂觀鎖；違反時拋
+ * {@link org.springframework.dao.DataIntegrityViolationException}。
  */
-public interface DomainEventRepository extends MongoRepository<DomainEvent, String> {
+public interface DomainEventRepository extends ListCrudRepository<DomainEvent, String> {
 
 	/**
 	 * 依聚合根 ID 取得所有事件，按序號由小到大排序。

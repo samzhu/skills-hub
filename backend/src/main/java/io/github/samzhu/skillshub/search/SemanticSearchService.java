@@ -6,20 +6,26 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * 語意搜尋服務 — 接收自然語言查詢，透過 VectorStore 找出語意相近的技能。
+ * 語意搜尋服務 — 接收自然語言查詢，透過 {@link SkillshubPgVectorStore} 找出語意相近的技能。
  *
- * <p>呼叫 {@link VectorStore#similaritySearch} 並將回傳的 {@link Document} 清單映射至
- * {@link SemanticSearchResult}。VectorStore 後端由 {@link SearchConfig} 根據
- * {@code skillshub.search.vector-store} 屬性決定（SimpleVectorStore 或 FirestoreVectorStore）。
+ * <p>呼叫 {@code SkillshubPgVectorStore.builder(jdbc, em).build().similaritySearch(...)}
+ * 並將回傳的 {@link Document} 清單映射至 {@link SemanticSearchResult}。
  *
- * <p>此 service 不負責 embedding 計算（由 VectorStore 實作內部處理），
- * 也不負責 embedding 的寫入（由 {@link SearchProjection} 負責）。
+ * <p><strong>Per-request VectorStore 模式（T8）</strong>：每次搜尋用 builder 建構新 instance，
+ * 操作完即可被 GC；讀取場景不需 owner / skillId（builder 略過）。VectorStore 不註冊為
+ * Spring Bean，與寫入路徑（{@link SearchProjection}）共用同一份 {@link SkillshubPgVectorStore}
+ * 實作（一次 SQL 走 cosine distance；§4.14）。
  *
+ * <p>此 service 不負責 embedding 計算（{@link SkillshubPgVectorStore#doSimilaritySearch}
+ * 內部處理），也不負責 embedding 的寫入（由 {@link SearchProjection} 負責）。
+ *
+ * @see SkillshubPgVectorStore
  * @see SearchProjection
  * @see SearchConfig
  */
@@ -38,10 +44,12 @@ class SemanticSearchService {
      */
     private static final double SIMILARITY_THRESHOLD = 0.3;
 
-    private final VectorStore vectorStore;
+    private final JdbcTemplate jdbcTemplate;
+    private final EmbeddingModel embeddingModel;
 
-    SemanticSearchService(VectorStore vectorStore) {
-        this.vectorStore = vectorStore;
+    SemanticSearchService(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.embeddingModel = embeddingModel;
     }
 
     /**
@@ -57,7 +65,10 @@ class SemanticSearchService {
                 .topK(TOP_K)
                 .similarityThreshold(SIMILARITY_THRESHOLD)
                 .build();
-        var results = vectorStore.similaritySearch(request)
+        // Per-request：搜尋場景 owner / skillId 不需要，builder 預設跳過
+        var results = SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
+                .build()
+                .similaritySearch(request)
                 .stream()
                 .map(this::toResult)
                 .toList();
@@ -80,7 +91,7 @@ class SemanticSearchService {
                 (String) meta.get("latestVersion"),   // nullable — skill 可能尚未發布版本
                 (String) meta.get("riskLevel"),        // nullable — 可能尚未完成風險評估
                 toLong(meta.get("downloadCount")),
-                // getScore() 在 SimpleVectorStore 總是有值；FirestoreVectorStore 也回傳 1.0-distance
+                // SkillshubPgVectorStore.DocumentRowMapper 設 score = 1 - cosine distance
                 doc.getScore() != null ? doc.getScore() : 0.0
         );
     }

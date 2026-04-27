@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -22,9 +21,6 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -32,8 +28,18 @@ import org.springframework.http.MediaType;
 import org.springframework.util.LinkedMultiValueMap;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
+import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
+import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.query.SkillVersionReadModelRepository;
 
+/**
+ * S010 多引擎安全掃描 e2e 整合測試。
+ *
+ * <p>S014 從 MongoTemplate 讀取改 Spring Data JDBC repository — read model 結構不變，
+ * 只是底層儲存從 Firestore（MongoDB driver）換成 PostgreSQL。SARIF / findings / notices
+ * JSONB 欄位透過 {@code JdbcConfiguration} 的 Map↔JSONB Converter 還原為
+ * {@code Map<String, Object>}（nested List/Map 結構保留）。
+ */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 @Import(TestcontainersConfiguration.class)
@@ -43,7 +49,13 @@ class RiskAssessmentIntegrationTest {
 	private TestRestTemplate restTemplate;
 
 	@Autowired
-	private MongoTemplate mongoTemplate;
+	private SkillReadModelRepository skillRepo;
+
+	@Autowired
+	private SkillVersionReadModelRepository versionRepo;
+
+	@Autowired
+	private DomainEventRepository eventStore;
 
 	@Test
 	@DisplayName("AC-1: 純 markdown skill → risk level LOW")
@@ -53,8 +65,7 @@ class RiskAssessmentIntegrationTest {
 
 		var skillId = uploadSkill(zip);
 
-		var skill = mongoTemplate.findById(skillId, SkillReadModel.class, "skills");
-		assertThat(skill).isNotNull();
+		var skill = skillRepo.findById(skillId).orElseThrow();
 		assertThat(skill.riskLevel()).isEqualTo("LOW");
 	}
 
@@ -69,8 +80,7 @@ class RiskAssessmentIntegrationTest {
 
 		var skillId = uploadSkill(zip);
 
-		var skill = mongoTemplate.findById(skillId, SkillReadModel.class, "skills");
-		assertThat(skill).isNotNull();
+		var skill = skillRepo.findById(skillId).orElseThrow();
 		assertThat(skill.riskLevel()).isEqualTo("HIGH");
 	}
 
@@ -94,58 +104,54 @@ class RiskAssessmentIntegrationTest {
 		// 用 Awaitility 等候 ScanOrchestrator 的 @EventListener 同步完成（synchronous，但 multipart upload
 		// 在不同 thread 會有微小延遲）
 		await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
-			var events = mongoTemplate.find(
-					Query.query(Criteria.where("aggregateId").is(skillId)),
-					Document.class, "domain_events");
-			assertThat(events).extracting(d -> d.getString("eventType"))
+			var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
+			assertThat(events).extracting(e -> e.eventType())
 					.contains("SkillCreated", "SkillVersionPublished", "SkillRiskAssessed");
 		});
 
-		// AC-8.2: skills.riskLevel = HIGH
-		var skill = mongoTemplate.findById(skillId, SkillReadModel.class, "skills");
-		assertThat(skill).isNotNull();
+		// AC-8.2: skills.risk_level = HIGH
+		var skill = skillRepo.findById(skillId).orElseThrow();
 		assertThat(skill.riskLevel()).isEqualTo("HIGH");
 
-		// AC-8.1: skill_versions.{version}.riskAssessment 結構驗證
-		var versionDoc = mongoTemplate.findOne(
-				Query.query(Criteria.where("skillId").is(skillId).and("version").is("1.0.0")),
-				Document.class, "skill_versions");
-		assertThat(versionDoc).isNotNull();
-
-		var riskAssessment = (Document) versionDoc.get("riskAssessment");
+		// AC-8.1: skill_versions.{version}.risk_assessment 結構驗證
+		var version = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId).stream()
+				.filter(v -> "1.0.0".equals(v.version()))
+				.findFirst().orElseThrow();
+		var riskAssessment = version.riskAssessment();
 		assertThat(riskAssessment)
-				.as("skill_versions.riskAssessment must be populated by ScanOrchestrator")
+				.as("skill_versions.risk_assessment must be populated by ScanOrchestrator")
 				.isNotNull();
 
-		assertThat(riskAssessment.getString("level")).isEqualTo("HIGH");
+		assertThat(riskAssessment.get("level")).isEqualTo("HIGH");
 
-		// findings 至少 2 筆（pattern: rm -rf + secret: ghp_...）
-		var findings = (List<Document>) riskAssessment.get("findings");
+		// findings 至少 2 筆（pattern: rm -rf + secret: ghp_...）— JSONB 還原為 List<Map>
+		var findings = (List<Map<String, Object>>) riskAssessment.get("findings");
 		assertThat(findings).hasSizeGreaterThanOrEqualTo(2);
-		assertThat(findings).extracting(d -> d.getString("analyzer"))
+		assertThat(findings).extracting(d -> (String) d.get("analyzer"))
 				.contains("pattern", "secret");
-		assertThat(findings).extracting(d -> d.getString("ruleId"))
+		assertThat(findings).extracting(d -> (String) d.get("ruleId"))
 				.anyMatch(s -> s.startsWith("DANGEROUS_COMMAND") || s.startsWith("PIPE_TO_SHELL"));
-		assertThat(findings).extracting(d -> d.getString("ruleId"))
+		assertThat(findings).extracting(d -> (String) d.get("ruleId"))
 				.contains("GITHUB_PAT");
 
-		// SARIF 結構合規
-		var sarif = (Document) riskAssessment.get("sarif");
+		// SARIF 結構合規 — JSONB 還原為 Map<String, Object>
+		var sarif = (Map<String, Object>) riskAssessment.get("sarif");
 		assertThat(sarif).isNotNull();
-		assertThat(sarif.getString("version")).isEqualTo("2.1.0");
-		assertThat(sarif.getString("$schema"))
+		assertThat(sarif.get("version")).isEqualTo("2.1.0");
+		assertThat(sarif.get("$schema"))
 				.isEqualTo("https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.json");
 
 		// runs[]：每個啟用引擎一個 run。LLM 關閉 → 4 個（pattern, secret, metadata, meta）
-		var runs = (List<Document>) sarif.get("runs");
+		var runs = (List<Map<String, Object>>) sarif.get("runs");
 		assertThat(runs).hasSize(4);
-		assertThat(runs).extracting(r -> ((Document) r.get("tool")).get("driver"))
-				.extracting(d -> ((Document) d).getString("name"))
+		assertThat(runs)
+				.extracting(r -> ((Map<String, Object>) r.get("tool")).get("driver"))
+				.extracting(d -> (String) ((Map<String, Object>) d).get("name"))
 				.containsExactlyInAnyOrder("pattern", "secret", "metadata", "meta");
 
-		// scannedAt 是合法時間戳
-		assertThat(riskAssessment.getDate("scannedAt"))
-				.as("scannedAt must be a valid Date").isNotNull();
+		// scannedAt 是合法時間戳（JSONB 序列化為 ISO-8601 字串）
+		assertThat(riskAssessment.get("scannedAt"))
+				.as("scannedAt must be a valid timestamp").isNotNull();
 	}
 
 	@SuppressWarnings("unchecked")

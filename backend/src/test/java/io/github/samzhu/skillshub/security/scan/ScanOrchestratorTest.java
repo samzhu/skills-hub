@@ -2,6 +2,7 @@ package io.github.samzhu.skillshub.security.scan;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -17,17 +19,25 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
+
+import tools.jackson.databind.ObjectMapper;
 
 import io.github.samzhu.skillshub.security.scan.sarif.SarifReporter;
 import io.github.samzhu.skillshub.shared.events.DomainEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
+import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.query.SkillVersionReadModelRepository;
 import io.github.samzhu.skillshub.storage.PackageService;
 import io.github.samzhu.skillshub.storage.StorageService;
 
+/**
+ * S010 多引擎安全掃描編排測試（Spring Data JDBC 版）。
+ *
+ * <p>S014 從 MongoTemplate mock 改為 SkillReadModelRepository + SkillVersionReadModelRepository
+ * + ObjectMapper mock — 驗證 ScanOrchestrator 透過 @Modifying @Query 寫入
+ * skills.risk_level 與 skill_versions.risk_assessment（取代 mongoTemplate.updateFirst）。
+ */
 class ScanOrchestratorTest {
 
 	private static final SkillVersionPublishedEvent EVT =
@@ -61,19 +71,34 @@ class ScanOrchestratorTest {
 		};
 	}
 
-	private ScanOrchestrator buildOrchestrator(List<SecurityAnalyzer> analyzers,
-			DomainEventRepository eventStore, MongoTemplate mongo) throws IOException {
+	private record Mocks(
+			DomainEventRepository eventStore,
+			SkillReadModelRepository skillRepo,
+			SkillVersionReadModelRepository versionRepo,
+			ObjectMapper objectMapper) {}
+
+	private ScanOrchestrator buildOrchestrator(List<SecurityAnalyzer> analyzers, Mocks m) throws IOException {
 		var storage = mock(StorageService.class);
 		when(storage.download(any())).thenReturn(new byte[0]);
 		var pkg = mock(PackageService.class);
 		when(pkg.extractSkillMd(any())).thenReturn("# md");
 		when(pkg.extractScripts(any())).thenReturn(Map.of());
 		var sarif = new SarifReporter();
-		return new ScanOrchestrator(analyzers, storage, pkg, eventStore, mongo, sarif);
+		return new ScanOrchestrator(analyzers, storage, pkg, m.eventStore,
+				m.skillRepo, m.versionRepo, m.objectMapper, sarif);
+	}
+
+	private Mocks newMocks() {
+		var eventStore = mock(DomainEventRepository.class);
+		when(eventStore.findTopByAggregateIdOrderBySequenceDesc(any())).thenReturn(java.util.Optional.empty());
+		var skillRepo = mock(SkillReadModelRepository.class);
+		var versionRepo = mock(SkillVersionReadModelRepository.class);
+		var objectMapper = new ObjectMapper(); // 真實實例，序列化邏輯測試需要
+		return new Mocks(eventStore, skillRepo, versionRepo, objectMapper);
 	}
 
 	@Test
-	@DisplayName("AC-1.1: pipeline → DomainEvent SkillRiskAssessed + skills.riskLevel + skill_versions.riskAssessment")
+	@DisplayName("AC-1.1: pipeline → DomainEvent SkillRiskAssessed + skills.risk_level + skill_versions.risk_assessment")
 	@Tag("AC-1")
 	void pipelinePersistsToAllThreeStores() throws IOException {
 		var pattern = fakeAnalyzer("pattern", Phase.STATIC, new AnalysisOutput(
@@ -81,25 +106,21 @@ class ScanOrchestratorTest {
 				List.of()));
 		var meta = fakeAnalyzer("meta", Phase.META, AnalysisOutput.empty());
 
-		var eventStore = mock(DomainEventRepository.class);
-		when(eventStore.findTopByAggregateIdOrderBySequenceDesc(any()))
-				.thenReturn(java.util.Optional.empty());
-		var mongo = mock(MongoTemplate.class);
-
-		var orch = buildOrchestrator(List.of(pattern, meta), eventStore, mongo);
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(pattern, meta), m);
 		orch.on(EVT);
 
 		// 1. DomainEvent saved
 		var domainEventCaptor = ArgumentCaptor.forClass(DomainEvent.class);
-		verify(eventStore).save(domainEventCaptor.capture());
+		verify(m.eventStore).save(domainEventCaptor.capture());
 		assertThat(domainEventCaptor.getValue().eventType()).isEqualTo("SkillRiskAssessed");
 		assertThat(domainEventCaptor.getValue().aggregateId()).isEqualTo("agg-1");
 
-		// 2. skills.riskLevel updated
-		verify(mongo, atLeastOnce()).updateFirst(any(Query.class), any(Update.class), eq("skills"));
+		// 2. skills.risk_level updated
+		verify(m.skillRepo, atLeastOnce()).updateRiskLevel(eq("agg-1"), anyString(), any(Instant.class));
 
-		// 3. skill_versions.riskAssessment updated
-		verify(mongo, atLeastOnce()).updateFirst(any(Query.class), any(Update.class), eq("skill_versions"));
+		// 3. skill_versions.risk_assessment updated
+		verify(m.versionRepo, atLeastOnce()).updateRiskAssessment(eq("agg-1"), eq("1.0.0"), anyString());
 	}
 
 	@Test
@@ -113,17 +134,12 @@ class ScanOrchestratorTest {
 				List.of(new SecurityFinding("R2", Severity.HIGH, "x", "f", 2, "e", "secret", "AST01")),
 				List.of()));
 
-		var eventStore = mock(DomainEventRepository.class);
-		when(eventStore.findTopByAggregateIdOrderBySequenceDesc(any())).thenReturn(java.util.Optional.empty());
-		var mongo = mock(MongoTemplate.class);
-		var orch = buildOrchestrator(List.of(pattern, secret), eventStore, mongo);
-
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(pattern, secret), m);
 		orch.on(EVT);
 
-		var captor = ArgumentCaptor.forClass(Update.class);
-		verify(mongo, atLeastOnce()).updateFirst(any(Query.class), captor.capture(), eq("skills"));
-		// Update.set("riskLevel", "HIGH") — verify by toString
-		assertThat(captor.getValue().toString()).contains("riskLevel").contains("HIGH");
+		// skill_repo.updateRiskLevel(skillId, "HIGH", ts)
+		verify(m.skillRepo, atLeastOnce()).updateRiskLevel(eq("agg-1"), eq("HIGH"), any(Instant.class));
 	}
 
 	@Test
@@ -132,16 +148,11 @@ class ScanOrchestratorTest {
 	void noFindingsLow() throws IOException {
 		var pattern = fakeAnalyzer("pattern", Phase.STATIC, AnalysisOutput.empty());
 
-		var eventStore = mock(DomainEventRepository.class);
-		when(eventStore.findTopByAggregateIdOrderBySequenceDesc(any())).thenReturn(java.util.Optional.empty());
-		var mongo = mock(MongoTemplate.class);
-		var orch = buildOrchestrator(List.of(pattern), eventStore, mongo);
-
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(pattern), m);
 		orch.on(EVT);
 
-		var captor = ArgumentCaptor.forClass(Update.class);
-		verify(mongo, atLeastOnce()).updateFirst(any(Query.class), captor.capture(), eq("skills"));
-		assertThat(captor.getValue().toString()).contains("LOW");
+		verify(m.skillRepo, atLeastOnce()).updateRiskLevel(eq("agg-1"), eq("LOW"), any(Instant.class));
 	}
 
 	@Test
@@ -152,10 +163,8 @@ class ScanOrchestratorTest {
 		var b = slowAnalyzer("b", Phase.STATIC, 100);
 		var c = slowAnalyzer("c", Phase.STATIC, 100);
 
-		var eventStore = mock(DomainEventRepository.class);
-		when(eventStore.findTopByAggregateIdOrderBySequenceDesc(any())).thenReturn(java.util.Optional.empty());
-		var mongo = mock(MongoTemplate.class);
-		var orch = buildOrchestrator(List.of(a, b, c), eventStore, mongo);
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(a, b, c), m);
 
 		long start = System.currentTimeMillis();
 		orch.on(EVT);
@@ -174,44 +183,35 @@ class ScanOrchestratorTest {
 				List.of(new SecurityFinding("R", Severity.HIGH, "x", "f", 1, "e", "secret", "AST01")),
 				List.of()));
 
-		var eventStore = mock(DomainEventRepository.class);
-		when(eventStore.findTopByAggregateIdOrderBySequenceDesc(any())).thenReturn(java.util.Optional.empty());
-		var mongo = mock(MongoTemplate.class);
-		var orch = buildOrchestrator(List.of(failing, ok), eventStore, mongo);
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(failing, ok), m);
 
 		// 不應拋例外
 		orch.on(EVT);
 
-		// secret 的 finding 仍寫入 SARIF — 透過驗 mongo 寫進去的 update 含 GROUP_LEVEL=HIGH
-		var captor = ArgumentCaptor.forClass(Update.class);
-		verify(mongo, atLeastOnce()).updateFirst(any(Query.class), captor.capture(), eq("skills"));
-		assertThat(captor.getValue().toString()).contains("HIGH");
+		// secret 的 finding 仍寫入 — 透過驗 skill_repo 寫進 HIGH
+		verify(m.skillRepo, atLeastOnce()).updateRiskLevel(eq("agg-1"), eq("HIGH"), any(Instant.class));
 	}
 
 	@Test
 	@DisplayName("AC-2.1: 關閉的 engine 不在 SARIF runs[]")
 	@Tag("AC-2")
-	@SuppressWarnings("unchecked")
 	void disabledEngineNotInSarif() throws IOException {
 		// 模擬 metadata bean 沒被建立 — 只給 pattern + meta
 		var pattern = fakeAnalyzer("pattern", Phase.STATIC, AnalysisOutput.empty());
 		var meta = fakeAnalyzer("meta", Phase.META, AnalysisOutput.empty());
 
-		var eventStore = mock(DomainEventRepository.class);
-		when(eventStore.findTopByAggregateIdOrderBySequenceDesc(any())).thenReturn(java.util.Optional.empty());
-		var mongo = mock(MongoTemplate.class);
-		var orch = buildOrchestrator(List.of(pattern, meta), eventStore, mongo);
-
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(pattern, meta), m);
 		orch.on(EVT);
 
-		// 抓 skill_versions update 中的 sarif 結構
-		var captor = ArgumentCaptor.forClass(Update.class);
-		verify(mongo, atLeastOnce()).updateFirst(any(Query.class), captor.capture(), eq("skill_versions"));
-		// Update.toString() 含 sarif 的 driver names
-		var updateStr = captor.getValue().toString();
-		assertThat(updateStr).contains("pattern");
-		assertThat(updateStr).contains("meta");
-		assertThat(updateStr).doesNotContain("\"name\":\"metadata\"");
+		// 抓 versionRepo.updateRiskAssessment(skillId, version, riskJson) 中的 SARIF JSON
+		var jsonCaptor = ArgumentCaptor.forClass(String.class);
+		verify(m.versionRepo, atLeastOnce()).updateRiskAssessment(eq("agg-1"), eq("1.0.0"), jsonCaptor.capture());
+		var json = jsonCaptor.getValue();
+		assertThat(json).contains("\"name\":\"pattern\"");
+		assertThat(json).contains("\"name\":\"meta\"");
+		assertThat(json).doesNotContain("\"name\":\"metadata\"");
 	}
 
 	@Test
@@ -242,11 +242,8 @@ class ScanOrchestratorTest {
 			}
 		};
 
-		var eventStore = mock(DomainEventRepository.class);
-		when(eventStore.findTopByAggregateIdOrderBySequenceDesc(any())).thenReturn(java.util.Optional.empty());
-		var mongo = mock(MongoTemplate.class);
-		var orch = buildOrchestrator(List.of(staticEng, metaEng), eventStore, mongo);
-
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(staticEng, metaEng), m);
 		orch.on(EVT);
 
 		assertThat(staticOrder[0]).isLessThan(metaOrder[0]);
