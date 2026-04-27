@@ -1,20 +1,32 @@
-# S018: Skill Aggregate 充血演化 + Suspend/Reactivate Events
+# S018: Skill Aggregate 充血演化 + SKILL.md 對齊 + Suspend/Reactivate Events
 
-> Spec: S018 | Size: S(11) | Status: ⏳ Design
-> Date: 2026-04-27
-> Depends: S014（PostgreSQL `domain_events` 表 — code-level: aggregate replay 需 JDBC 路徑）、S016（`PermissionEvaluator` 介面 — code-level: 新端點掛 `@PreAuthorize("hasPermission(...)")`）
+> Spec: S018 | Size: M(13) | Status: ⏳ Design (revised 2026-04-28)
+> Date: 2026-04-27（initial design）／2026-04-28（revised — 解 paused、加 SKILL.md alignment + AbstractAggregateRoot 評估收尾）
+> Depends: S014 ✅（PostgreSQL `domain_events` 表 — code-level: aggregate replay 需 JDBC 路徑）、S016（`PermissionEvaluator` 介面 — code-level: 新端點掛 `@PreAuthorize("hasPermission(...)")`，graceful degradation：S016 ship 前用 `hasRole('admin')` 占位）
 > Blocks: 無
-> Parallel design ok：S014 / S016 仍在 design 期，本 spec 設計可平行進行；ship 必須等兩者皆 shipped。
+> Parallel design ok：S014 ✅；S016 仍在 backlog；本 spec 設計可平行進行；suspend/reactivate AC 的授權層 ship 必須等 S016 ship。其餘 ACs（rich domain + SKILL.md alignment + BUG fix）不依賴 S016，可獨立 ship。
 
 > **本 spec 自包含**：所有載重設計決策的研究結論已內聯於 §2.4 / §2.5。
+
+> **修訂紀錄（2026-04-28）**：
+> - **解 paused 狀態** — 原因「等 S016 ship 後重審 PermissionEvaluator 整合點」；現規劃以 graceful degradation 處理（`hasRole('admin')` 占位），核心設計可先 ship。
+> - **新增決策 #10**：Event publishing mechanism 路徑收尾 — 評估 Spring Data `AbstractAggregateRoot<T>` + Spring Modulith outbox 後決定**保留現況 manual orchestration**；研究結論寫入 §2.4 Challenge #10。
+> - **新增決策 #11**：SKILL.md `allowed-tools` 升 first-class column + `SkillValidator` 嚴格化（per agentskills.io 標準）；對應 §2.4 Challenge #11、§3 AC-13/14/15、§4.8/§4.9。
+> - **拆出 S023 backlog** — Spring Modulith outbox migration（`@EventListener` → `@ApplicationModuleListener`、加 `spring-modulith-starter-jdbc`、`EVENT_PUBLICATION` 表）為**全模組** scope，S018 不包；獨立 spec 處理。
+> - **Size**：S(11) → **M(13)**（scope 加 SKILL.md alignment + 1 個新 schema migration + validator strictness work）。
 
 ---
 
 ## 1. Goal
 
-把 Skill aggregate 從目前的「**部分重建**」（只追蹤版本號）升級為**完整充血模型**：aggregate 透過 `apply(DomainEvent)` 重建完整狀態（含 `status`、`name` 等），對外暴露 `suspend()` / `reactivate()` 業務動作並產生對應 domain events，同時順手修兩個既有缺陷（SkillProjection 不轉 status 的 BUG + `SkillCommandService.createSkill/uploadSkill` 的 hardcoded sequence）。
+把 Skill aggregate 從目前的「**部分重建**」（只追蹤版本號）升級為**完整充血模型**：aggregate 透過 `apply(DomainEvent)` 重建完整狀態（含 `status`、`name` 等），對外暴露 `suspend()` / `reactivate()` 業務動作並產生對應 domain events；**同步對齊 [agentskills.io](https://agentskills.io/) SKILL.md 標準**（`allowed-tools` 從 opaque JSONB 升為 `SkillVersionReadModel` first-class column，`SkillValidator` 嚴格化 per spec 規範 — name regex / description ≤ 1024 chars / compatibility ≤ 500 chars / allowed-tools 語法）；同時順手修兩個既有缺陷（SkillProjection 不轉 status 的 BUG + `SkillCommandService.createSkill/uploadSkill` 的 hardcoded sequence）。
 
-**簡單講**：以前 Skill 只知道「我發過哪些版本」；以後 Skill 知道「我現在是 DRAFT / PUBLISHED / SUSPENDED」、「我能不能被 publish 新版本」、「我能不能被 suspend」。所有狀態轉換規則由 aggregate 自己 enforce，service 只是 orchestrator。新增「下架 / 恢復」兩個管理者動作，授權交給 S016 的 `PermissionEvaluator`。
+**簡單講**：以前 Skill 只知道「我發過哪些版本」；以後 Skill 知道「我現在是 DRAFT / PUBLISHED / SUSPENDED」、「我能不能被 publish 新版本」、「我能不能被 suspend」、且每個版本知道「我授權了哪些工具」（symbol-level，不再藏 JSONB）。所有狀態轉換規則由 aggregate 自己 enforce，service 只是 orchestrator。新增「下架 / 恢復」兩個管理者動作，授權交給 S016 的 `PermissionEvaluator`（S016 ship 前 graceful degrade 用 `hasRole('admin')` 占位）。
+
+> **不在本 spec 範圍**：
+> - **Spring Modulith outbox migration** — 全模組 `@EventListener → @ApplicationModuleListener` + `spring-modulith-starter-jdbc` + `EVENT_PUBLICATION` 表；**S023 backlog** 處理。
+> - **`license` / `compatibility` / `metadata.*` 等 SKILL.md 其他欄位升 first-class** — 留在 JSONB；YAGNI 至 marketplace 真有 query 需求時再升。
+> - **`SkillValidator` 對 `allowed-tools` 語意層驗證**（工具白名單）— 本 spec 只做語法 + 長度 + 格式驗證，不做語意。
 
 ```
 ┌── v1.0.0（current）──────────────────────────────────────────────┐
@@ -93,6 +105,8 @@ SkillCommandService.suspend(cmd)
 | 7 | SkillProjection BUG 修法 | **在既有 `on(SkillVersionPublishedEvent)` 內加 `if (status == DRAFT) → PUBLISHED`；並新增 `on(SkillSuspendedEvent)` / `on(SkillReactivatedEvent)`** | 與既有 read-modify-write 模式一致；event-driven 自然轉換 | 加 status 欄位 default 在 Projection 寫死 — 不正確；需 aggregate 主動驅動 |
 | 8 | hardcoded sequence 修法 | **`createSkill` / `uploadSkill` 改用 `Skill.create()` factory 之後的 `aggregate.nextSequence()`**（即 1L，但走標準路徑） | 一致性；rich domain 化後所有路徑走相同 API | 保留 hardcoded — 持續技術債、rich domain 化後產生 inconsistency |
 | 9 | Transactional boundary | **新方法 `suspend` / `reactivate` 加 `@Transactional`；既有方法保持原樣**（避免 side effect） | 新方法的 event store + projection 一致性必要；既有方法行為已驗證 v1.0.0 通過，不在本 spec 範圍 | 全部統一加 `@Transactional` — 改變既有行為，需更廣的回歸測試 |
+| 10 ★ | Event publishing mechanism（2026-04-28 revision） | **保留現況 manual orchestration**（`SkillCommandService.saveAndPublish()` 內 `eventStore.save()` + `events.publishEvent()`） | (a) Spring Data `AbstractAggregateRoot<T>` 設計給「persisted aggregate（被 `repository.save()`）」— Skills Hub `Skill` 純 domain 不持久化，`DomainEvent` record 又因 Java 語言限制無法 extend class；架構不相容（詳 §2.4 Challenge #10）<br/>(b) Spring Modulith outbox 雖可行但**改變失敗語義**（從 strong → eventual consistency）+ 影響全模組 listener，超出 S018 scope（拆 S023） | A. AbstractAggregateRoot Path A（不可行；技術阻擋）<br/>B. Modulith outbox（可行但 scope 超載；拆 S023）<br/>C. AbstractAggregateRoot Path B 用在 Skill 不持久化 entity（無 SPI 觸發 publish；架構錯位） |
+| 11 ★ | SKILL.md `allowed-tools` 升 first-class（2026-04-28 revision） | **加 `SkillVersionReadModel.allowedTools List<String>`** + V2 Flyway migration `ALTER TABLE skill_versions ADD COLUMN allowed_tools TEXT[]`；`SkillVersionPublishedEvent` payload 加 `allowedTools` typed 欄位；`SkillValidator` 嚴格 enforce per spec（`name` lowercase + hyphen regex / `description` ≤ 1024 chars / `compatibility` ≤ 500 chars / `allowed-tools` 語法 split by space） | (a) Skills marketplace client（Claude Code / Cursor / Gemini CLI）激活 skill 時用 `allowed-tools` 授予工具權限；藏 JSONB 無法被 query / index / 顯示；marketplace 必須 expose 此欄位；(b) `SkillValidator` 目前只檢 `name` + `description`，spec 規定的格式 / 長度 constraint 全沒 enforce — 違規 frontmatter 會 silently 入 DB | A. 全部欄位（含 license / compatibility / metadata）一起升 first-class — YAGNI；marketplace 沒 query 需求<br/>B. `allowed-tools` 留 JSONB — client 無法獨立讀；不符合 marketplace 角色<br/>C. 不動 `SkillValidator` — spec 違規 silently 通過；違反 agentskills.io 互通性 |
 
 ### 2.2 與既有架構的契合
 
@@ -233,6 +247,31 @@ SkillReactivated：
    - 後續若要全面加 @Transactional，需獨立 spec + 完整回歸測試
    - Confidence: **Validated**
 
+10. **Spring Data `AbstractAggregateRoot<T>` 評估收尾（2026-04-28）**
+    - **Hypothesis 起點**：用戶提示「Publishing Domain Events - Spring Data 或走 spring modulith publish event」，研究 framework-native event 發佈是否能取代 `SkillCommandService.saveAndPublish()` manual orchestration。
+    - **研究結果（raw source verified）**：
+      - `org.springframework.data.domain.AbstractAggregateRoot<T>` 存在於 `spring-data-commons:4.0.5`（Spring Boot 4.0.6 BOM 帶；[GitHub source](https://github.com/spring-projects/spring-data-commons/blob/main/src/main/java/org/springframework/data/domain/AbstractAggregateRoot.java)）。
+      - 機制：`EventPublishingRepositoryProxyPostProcessor` 在 `RepositoryFactoryBeanSupport.afterPropertiesSet()` 註冊 AOP advice；`EventPublishingMethodInterceptor.invoke()` 在 `repository.save()` 後（在 transaction 內、commit 前）call `@DomainEvents` method 拿 events，逐一 `publisher.publishEvent(event)`，最後 call `@AfterDomainEventPublication` clear buffer。
+      - **Path A（讓 `DomainEvent` extend `AbstractAggregateRoot<DomainEvent>`，aggregate.registerEvent() 後 save）阻擋三點**：
+        1. `DomainEvent` 是 Java `record` — Java 語言硬規定 record 不能 extend 其他 class（implicitly extends `java.lang.Record`）。
+        2. 即使改成 mutable class，`AbstractAggregateRoot` 設計目標是「aggregate 自己 register events、save 時 publish」— 套在 `DomainEvent`（infrastructure event store row）反轉了抽象（aggregate vs 持久化 row 的概念合一）。
+        3. Records 無 mutable buffer，`@AfterDomainEventPublication` no-op → events 在每次 `save()` 重複 publish。
+      - **Path B（讓 `Skill` aggregate extend `AbstractAggregateRoot`）阻擋一點**：`EventPublishingRepositoryProxyPostProcessor` 只透過 Spring Data repository proxy 的 `save()` / `delete()` 觸發；Skill 不是 Spring Data entity，無 repository → 無 SPI 點 invoke pipeline。架構錯位。
+    - **結論**：保留現況 manual orchestration。Spring Data `AbstractAggregateRoot` pattern 適合 traditional persisted-aggregate 架構，**不適合 ES + CQRS where aggregate 不被持久化、只持久化 events**。
+    - 引用：[Spring Data Commons AbstractAggregateRoot.java](https://github.com/spring-projects/spring-data-commons/blob/main/src/main/java/org/springframework/data/domain/AbstractAggregateRoot.java)、[EventPublishingRepositoryProxyPostProcessor.java](https://github.com/spring-projects/spring-data-commons/blob/main/src/main/java/org/springframework/data/repository/core/support/EventPublishingRepositoryProxyPostProcessor.java)
+    - Confidence: **Validated**（research sub-agent raw source verified）
+
+11. **SKILL.md spec compliance audit（2026-04-28）**
+    - **Standard reference**：[agentskills.io specification](https://agentskills.io/specification) 定義 SKILL.md frontmatter 6 欄位：`name`（required, 1-64 chars, lowercase + hyphens regex）、`description`（required, 1-1024 chars）、`license`（optional）、`compatibility`（optional, ≤ 500 chars）、`metadata`（optional, map）、`allowed-tools`（optional, space-separated string）。
+    - **現況 mapping**（research sub-agent audit）：
+      - `name` / `description` ✓ aligned（在 `SkillCreatedEvent` + `SkillReadModel`）
+      - `license` / `compatibility` / `metadata.*` / `allowed-tools` ⚠ 全部塞 `SkillVersionReadModel.frontmatter` 不透明 JSONB；無 typed 欄位 / 無 query / 無 index
+    - **Gap 1：`allowed-tools` 必須 first-class**：Skills marketplace 的 client（Claude Code / Cursor / Gemini CLI）在激活 skill 時讀 `allowed-tools` 授予工具權限；藏 JSONB → client 拿到的 API response 無此欄位，無法做權限提示 / UI badge。本 spec 升 first-class。
+    - **Gap 2：`SkillValidator` 過鬆**：`SkillValidator.REQUIRED_FIELDS` 只檢 `name` + `description` 非空；spec 規定的格式 constraint 全沒 enforce（name regex / description ≤ 1024 / compatibility ≤ 500 / allowed-tools 語法）— 違規 frontmatter 會 silently 入 DB 變成髒資料。本 spec 加嚴。
+    - **不在本 spec 範圍**：`license` / `compatibility` / `metadata.*` 升 first-class 為 YAGNI（marketplace 目前無 query 需求），留 JSONB；`allowed-tools` 語意層驗證（工具白名單）也留未來 spec — 本 spec 只做語法 / 長度 / 格式驗證，不做語意。
+    - 引用：[agentskills.io specification](https://agentskills.io/specification)、`backend/.../skill/validation/SkillValidator.java`（read in research）
+    - Confidence: **Validated**（research sub-agent fetch + raw code audit）
+
 ### 2.5 Research Citations
 
 | 來源 | 對本 spec 的支撐點 |
@@ -244,6 +283,10 @@ SkillReactivated：
 | [State Machine in DDD Context](https://patricsteiner.github.io/state-machine-in-a-ddd-context/) | DDD aggregate 內 state machine 應手寫不引入框架（決策 #3） |
 | [Baeldung — CQRS and Event Sourcing in Java](https://www.baeldung.com/cqrs-event-sourcing-java) | Spring 生態手寫 ES 慣例參考 |
 | [JEP 441 — Pattern Matching for switch (Java 21 finalized)](https://openjdk.org/jeps/441) | Java 25 pattern matching 在本 spec 不採用之原因（Challenge #2） |
+| [Spring Data Commons `AbstractAggregateRoot.java`（GitHub raw source）](https://github.com/spring-projects/spring-data-commons/blob/main/src/main/java/org/springframework/data/domain/AbstractAggregateRoot.java) | 確認 class 存在於 `spring-data-commons:4.0.5`；`registerEvent()` / `domainEvents()` / `clearDomainEvents()` 簽名（決策 #10 否決依據） |
+| [`EventPublishingRepositoryProxyPostProcessor.java`（GitHub raw source）](https://github.com/spring-projects/spring-data-commons/blob/main/src/main/java/org/springframework/data/repository/core/support/EventPublishingRepositoryProxyPostProcessor.java) | 證明只透過 repository proxy 的 `save()` / `delete()` 觸發 publish；Path B 架構錯位之依據（決策 #10） |
+| [Spring Modulith `spring-modulith-starter-core` POM 2.0.6](https://repo1.maven.org/maven2/org/springframework/modulith/spring-modulith-starter-core/2.0.6/spring-modulith-starter-core-2.0.6.pom) | 確認本專案 starter-core **不**含 `spring-modulith-events-jdbc`；outbox 需另加 `spring-modulith-starter-jdbc`（S023 backlog 範圍依據） |
+| [agentskills.io specification](https://agentskills.io/specification) | SKILL.md frontmatter 6 欄位 + 各欄位 type / required / constraint（決策 #11 + Challenge #11 source of truth） |
 
 **既有 codebase 錨點**（git 永久留存）：
 - `backend/.../skill/domain/Skill.java` — aggregate 待重構主體
@@ -367,9 +410,50 @@ Scenario: AC-12 — 未授權使用者無法 suspend（依賴 S016 PermissionEva
   When 呼叫 POST /api/v1/skills/abc-1/suspend
   Then HTTP 403 Forbidden
   And  event store 不變
+
+Scenario: AC-13 — `allowed-tools` 升 first-class column 持久化
+  Given SKILL.md frontmatter 含 "allowed-tools: Read Edit Bash"
+  When 呼叫 uploadSkill(zipBytes)
+  Then SkillVersionPublishedEvent.allowedTools = ["Read", "Edit", "Bash"]
+  And  V2 migration 後 skill_versions.allowed_tools = '{"Read","Edit","Bash"}' (PostgreSQL TEXT[])
+  And  GET /api/v1/skills/{id}/versions/{ver} response JSON 含頂層 "allowedTools": ["Read", "Edit", "Bash"]（非藏 frontmatter）
+
+Scenario: AC-14 — SkillValidator 拒收違反 SKILL.md 規格的 frontmatter
+  Given 三組違規 frontmatter:
+    | 違規項目 | 範例 | 預期錯誤 |
+    | name 大寫 | name: "DockerHelper" | "name must be lowercase + hyphens" |
+    | description 過長 | description: <1025 chars> | "description exceeds 1024 chars" |
+    | compatibility 過長 | compatibility: <501 chars> | "compatibility exceeds 500 chars" |
+  When 呼叫 SkillValidator.validate(content)
+  Then validation.valid() == false
+  And  validation.errors() 含對應錯誤訊息（per spec constraint）
+  And  uploadSkill() 拋 IllegalArgumentException("SKILL.md validation failed: ...")
+
+Scenario: AC-15 — 合規 frontmatter 通過驗證 + 欄位完整持久化
+  Given SKILL.md frontmatter 合規：
+        name: "docker-helper"
+        description: "Helps with Docker"
+        license: "MIT"
+        compatibility: "macOS, Linux"
+        allowed-tools: "Read Edit"
+        metadata:
+          author: "alice"
+          version: "1.2.3"
+  When 呼叫 uploadSkill(zipBytes)
+  Then validation.valid() == true
+  And  SkillVersionReadModel.allowedTools = ["Read", "Edit"]（first-class）
+  And  SkillVersionReadModel.frontmatter（JSONB）仍含 license / compatibility / metadata（不丟資料；其他標準欄位留 JSONB per §2.4 Challenge #11 「不在 spec 範圍」決議）
 ```
 
-每個 AC 必須對應至少一個測試（@DisplayName("AC-N: ...")）。AC-12 在 S016 ship 前先用 `hasRole('admin')` 占位（spec §6 task plan 將標 [needs S016]）。
+每個 AC 必須對應至少一個測試（@DisplayName("AC-N: ...")）。AC-12 在 S016 ship 前先用 `hasRole('admin')` 占位（spec §6 task plan 將標 [needs S016]）。AC-13/14/15 完全不依賴 S016，可獨立驗證。
+
+### 驗收命令
+
+per qa-strategy.md：
+```
+cd backend && ./gradlew test
+```
+**Pass 條件**：所有 15 個 AC 對應的 `@DisplayName("AC-N: ...")` 測試 green；S016 未 ship 期間 AC-12 用 `hasRole('admin')` 占位 PASS。
 
 ---
 
@@ -655,6 +739,124 @@ class SkillProjection {
 }
 ```
 
+### 4.8 SKILL.md `allowed-tools` first-class — schema + record delta（2026-04-28 revision）
+
+#### Flyway V2 migration
+
+```sql
+-- backend/src/main/resources/db/migration/V2__add_allowed_tools.sql
+ALTER TABLE skill_versions
+    ADD COLUMN allowed_tools TEXT[] NOT NULL DEFAULT '{}';
+
+-- 既有 row 從 frontmatter JSONB 抽取（一次性 backfill）：
+UPDATE skill_versions
+SET allowed_tools = COALESCE(
+    string_to_array(
+        NULLIF(frontmatter->>'allowed-tools', ''),
+        ' '
+    ),
+    '{}'
+)
+WHERE allowed_tools = '{}';
+
+CREATE INDEX idx_skill_versions_allowed_tools
+    ON skill_versions USING GIN (allowed_tools);  -- 為 client query "skills using Read tool" 鋪路
+```
+
+#### `SkillVersionReadModel` record 新增欄位
+
+```java
+// backend/.../skill/query/SkillVersionReadModel.java
+@Table("skill_versions")
+public record SkillVersionReadModel(
+    @Id String id,
+    String skillId,
+    String version,
+    String storagePath,
+    long fileSize,
+    Map<String, Object> frontmatter,    // 既有；保留其他標準欄位（license / compatibility / metadata）
+    List<String> allowedTools,           // ★ 新增 first-class（per AC-13）
+    Map<String, Object> riskAssessment,
+    Instant publishedAt
+) implements Persistable<String> {
+    @Override public boolean isNew() { return true; }
+}
+```
+
+#### `SkillVersionPublishedEvent` typed payload 同步
+
+```java
+// backend/.../skill/domain/SkillVersionPublishedEvent.java
+public record SkillVersionPublishedEvent(
+    String aggregateId,
+    String version,
+    String storagePath,
+    long fileSize,
+    Map<String, Object> frontmatter,    // 既有
+    List<String> allowedTools           // ★ 新增；payload 內也 stringify 進 DomainEvent.payload Map
+) {}
+```
+
+`SkillCommandService.uploadSkill()` 從 `validation.metadata().get("allowed-tools")` 解析 space-separated string → `List<String>`，傳入 event constructor。
+
+### 4.9 `SkillValidator` 嚴格化（2026-04-28 revision）
+
+```java
+// backend/.../skill/validation/SkillValidator.java
+@Component
+public class SkillValidator {
+
+    // SKILL.md spec constraints（per agentskills.io specification）
+    private static final Pattern NAME_PATTERN =
+        Pattern.compile("^[a-z][a-z0-9]*(-[a-z0-9]+)*$");  // lowercase + hyphen
+    private static final int NAME_MAX = 64;
+    private static final int DESCRIPTION_MAX = 1024;
+    private static final int COMPATIBILITY_MAX = 500;
+    private static final Pattern ALLOWED_TOOLS_PATTERN =
+        Pattern.compile("^[A-Za-z][A-Za-z0-9_]*(\\s+[A-Za-z][A-Za-z0-9_]*)*$");
+
+    public ValidationResult validate(String content) {
+        var errors = new ArrayList<String>();
+        var metadata = parseFrontmatter(content);  // 既有
+
+        // name
+        var name = (String) metadata.get("name");
+        if (name == null || name.isBlank()) {
+            errors.add("name is required");
+        } else if (name.length() > NAME_MAX) {
+            errors.add("name exceeds " + NAME_MAX + " chars");
+        } else if (!NAME_PATTERN.matcher(name).matches()) {
+            errors.add("name must be lowercase + hyphens (no leading/trailing/consecutive hyphens)");
+        }
+
+        // description
+        var description = (String) metadata.get("description");
+        if (description == null || description.isBlank()) {
+            errors.add("description is required");
+        } else if (description.length() > DESCRIPTION_MAX) {
+            errors.add("description exceeds " + DESCRIPTION_MAX + " chars");
+        }
+
+        // compatibility（optional）
+        var compatibility = (String) metadata.get("compatibility");
+        if (compatibility != null && compatibility.length() > COMPATIBILITY_MAX) {
+            errors.add("compatibility exceeds " + COMPATIBILITY_MAX + " chars");
+        }
+
+        // allowed-tools（optional）— 語法層驗證；語意層（工具白名單）留未來 spec
+        var allowedTools = (String) metadata.get("allowed-tools");
+        if (allowedTools != null && !allowedTools.isBlank()
+                && !ALLOWED_TOOLS_PATTERN.matcher(allowedTools).matches()) {
+            errors.add("allowed-tools must be space-separated identifiers");
+        }
+
+        return new ValidationResult(errors.isEmpty(), errors, metadata);
+    }
+}
+```
+
+> `compatibility` / `metadata.*` / `license` 等其他 SKILL.md optional 欄位本 spec 不做 first-class promotion；validator 也不做 type/format 驗證（YAGNI per §2.4 Challenge #11）。
+
 ---
 
 ## 5. File Plan
@@ -675,8 +877,16 @@ class SkillProjection {
 | `backend/src/test/.../skill/command/SkillSuspendReactivateTest.java` | new | Integration test：command service 完整流程（AC-2, 3, 4, 7, 11） |
 | `backend/src/test/.../skill/command/SkillCommandControllerSecurityTest.java` | new | Controller security test：@PreAuthorize 攔截（AC-12，需與 S016 整合） |
 | `backend/src/test/.../skill/query/SkillProjectionStatusTest.java` | new | Integration test：projection BUG 修復驗證（AC-2 重點） |
+| `backend/src/main/resources/db/migration/V2__add_allowed_tools.sql` | new | Flyway V2 migration — `ALTER TABLE skill_versions ADD COLUMN allowed_tools TEXT[]` + backfill from frontmatter JSONB + GIN index（per §4.8 / AC-13） |
+| `backend/.../skill/query/SkillVersionReadModel.java` | modify | 加 `List<String> allowedTools` first-class 欄位（per §4.8 / AC-13）|
+| `backend/.../skill/domain/SkillVersionPublishedEvent.java` | modify | 加 `List<String> allowedTools` typed payload 欄位（per §4.8 / AC-13）|
+| `backend/.../skill/validation/SkillValidator.java` | modify | 嚴格化：name regex / description ≤ 1024 / compatibility ≤ 500 / allowed-tools 語法（per §4.9 / AC-14）|
+| `backend/.../skill/command/SkillCommandService.java`（追加）| modify | `uploadSkill` 從 `validation.metadata().get("allowed-tools")` 解析 space-separated → `List<String>` 傳入 `SkillVersionPublishedEvent` |
+| `backend/.../skill/query/SkillQueryController.java`（追加）| modify | API response DTO 加頂層 `allowedTools` 欄位（per AC-13 verification）|
+| `backend/src/test/.../skill/validation/SkillValidatorTest.java` | new | Unit test — 6 個 spec constraint cases（AC-14）+ 1 個全合規 case（AC-15）|
+| `backend/src/test/.../skill/command/SkillUploadAllowedToolsTest.java` | new | Integration test — uploadSkill → SkillVersionReadModel.allowedTools first-class 持久化驗證（AC-13）|
 
-**Files: 9 production（4 new + 5 modify）+ 5 test = 14 files。** 落在 scope=2 範圍上限。
+**Files: 14 production（5 new + 9 modify）+ 7 test = 21 files。** scope 從 13 升 21（+SKILL.md alignment 7 檔），對應 size S(11) → M(13)。
 
 ---
 
