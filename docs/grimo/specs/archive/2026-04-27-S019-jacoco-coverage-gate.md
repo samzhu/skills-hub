@@ -1,6 +1,6 @@
 # S019: JaCoCo coverage gate + 80% line threshold
 
-> Spec: S019 | Size: XS(5) | Status: ⏳ Design
+> Spec: S019 | Size: XS(5) | Status: ✅ Done
 > Date: 2026-04-27
 > Depends: — (S014 ✅ 已 ship；本 spec 為 S014 §7.13 列為 IMPORTANT 的 pre-existing project gap follow-up)
 > Blocks: S020（verification command registry / `verify-all.sh` 將把 `jacocoTestCoverageVerification` 編入 registry；S020 V02 awk 解析本 spec 產出的 `jacocoTestReport.csv` — 本 spec §4.1 已加 `csv.required = true`）
@@ -303,4 +303,212 @@ T1: ./gradlew clean test jacocoTestReport
 
 ---
 
-<!-- §6 Task Plan / §7 Implementation Results 由 /planning-tasks 補入 -->
+## 6. Task Plan
+
+> POC: required（per §2.5）— T1 量 baseline 決定 §3 AC-3 minimum threshold；T2 套用 + check wiring + AC 全綠驗證。
+> 由 `/planning-tasks` 於 2026-04-28 拆出 2 個 task；對齊 XS(5) 目標 1-2 tasks 區間。
+
+| Task | Title | AC | Depends | Status |
+|------|-------|----|---------|--------|
+| T1 | POC — JaCoCo plugin + 量 line coverage baseline | （AC-3 minimum 決策依賴）| — | pending |
+| T2 | 加 verification rule + `check` lifecycle wiring + AC 全綠驗證 | AC-1 / AC-2 / AC-3 / AC-4 / AC-5 / AC-6 | T1 | pending |
+
+### POC Findings (T1 — 2026-04-28)
+
+**Design hypothesis verdict** ✅ — Gradle 9.4.1 內建 `jacoco` plugin + `toolVersion = "0.8.14"` 成功解析 Java 25 bytecode；115 tests 全綠；3 種 report（XML/HTML/CSV）皆產出；exclusions 生效。
+
+**Baseline 量測（root `<report>` counter，project-wide）**:
+
+| Counter | Missed | Covered | Total | Coverage |
+|---------|--------|---------|-------|----------|
+| **LINE** | **143** | **1052** | **1195** | **0.8803 (88.03%)** ✅ |
+| INSTRUCTION | 660 | 5162 | 5822 | 0.8867 (88.67%) (informational) |
+| BRANCH | 78 | 184 | 262 | 0.7023 (70.23%) (informational) |
+| METHOD | 25 | 267 | 292 | 0.9144 (91.44%) (informational) |
+| CLASS | 7 | 92 | 99 | 0.9293 (92.93%) (informational) |
+
+**Decision rule 套用**（per §2.5）: baseline = 0.8803 ≥ 0.80 → **T2 minimum = `"0.80"`**；**無**條件性 backlog 條目觸發；M17 done-when「通過 gate」可直接達成且對齊原 80% 終局目標。
+
+**Exclusions 生效驗證**:
+- `**/SkillshubApplication*`: ✅ root package `io.github.samzhu.skillshub` 在 HTML 樹仍可見（因 `SkillshubProperties*` 內部 records 留下），但 `SkillshubApplication.class` 不在 CSV CLASS 欄位
+- `**/config/**`: ✅ CSV PACKAGE 欄位 `sort -u | grep config` 為空（整個 `io.github.samzhu.skillshub.config.*` package tree 被排）
+- `**/*Configuration*`: ✅ CSV 全表 `grep Configuration` 為空
+- `**/db/migration/**`: ✅ N/A — `db/migration/V*.sql` 為 SQL 非 Java，本就不在 JaCoCo input scope（exclusion 仍保留以防未來放 Java migration callback）
+
+**Test suite no-regression**（per AC-6）:
+```
+tests=115 failures=0 errors=0 skipped=0   # 對齊 S014 baseline
+```
+
+**3 reports 產出**（per AC-2）:
+```
+backend/build/reports/jacoco/test/html/index.html      ✅
+backend/build/reports/jacoco/test/jacocoTestReport.xml ✅ (210 KB)
+backend/build/reports/jacoco/test/jacocoTestReport.csv ✅ (9.3 KB; standard 13-column header)
+```
+
+**Reproducible 命令**:
+```
+cd backend && ./gradlew clean test jacocoTestReport
+# BUILD SUCCESSFUL in 1m 55s
+```
+
+**官方 docs 引用**: https://docs.gradle.org/current/userguide/jacoco_plugin.html — 確認 Kotlin DSL `xml.required = true` direct assignment 為 idiomatic 寫法（非 `.set(true)`）。
+
+**T2 就緒前提**: minimum 已決定為 `"0.80"`；T2 補 `jacocoTestCoverageVerification` violation rule + `tasks.check.dependsOn(...)` 即可串完整 gate。
+
+### AC ↔ Task 對應表
+
+| AC | 由哪 task 驗 | 驗證命令 |
+|----|------------|---------|
+| AC-1 | T2 | `./gradlew tasks --group verification` |
+| AC-2 | T2（reports 配置已於 T1 完成）| `./gradlew jacocoTestReport` 後檢查 3 檔存在 + XML/CSV header |
+| AC-3 | T2（threshold 由 T1 POC 決定）| `./gradlew jacocoTestCoverageVerification` |
+| AC-4 | T2 | `./gradlew check --dry-run` + `./gradlew check` |
+| AC-5 | T2（exclusions 已於 T1 接上；T2 共用 classDirectories）| HTML report tree 比對 + CSV 條目比對 |
+| AC-6 | T2（最終整合驗證）| `./gradlew clean test jacocoTestReport jacocoTestCoverageVerification` |
+
+### E2E artifact 驗證
+
+本 spec 為純 build configuration 變動，AC-3 / AC-4 / AC-6 的驗收命令本身即在真實 Gradle build 環境跑（非 stub）— Phase 4 Step 1.5 的 E2E 已被 AC 命令吸收，無需額外步驟。
+
+## 7. Implementation Results (2026-04-28)
+
+### 7.1 Verification
+
+**主驗收命令**（per §3 / qa-strategy.md §Verification Pipeline）:
+```
+$ cd backend && ./gradlew clean test jacocoTestCoverageVerification
+> Task :jacocoTestCoverageVerification
+> Task :jacocoTestReport
+BUILD SUCCESSFUL in 2m 14s
+```
+
+**Test 統計**: tests=115, failures=0, errors=0, skipped=0（與 S014 baseline 完全一致）。
+
+**Coverage baseline**:
+- LINE: 1052 / 1195 = **0.8803 (88.03%)** ≥ 0.80 → gate 通過，無 backlog 條目觸發
+- INSTRUCTION: 5162 / 5822 = 0.8867 (informational)
+- BRANCH: 184 / 262 = 0.7023 (informational — branch gate 不在本 spec 範圍)
+
+### 7.2 AC 結果
+
+| AC | Status | 證據 |
+|----|--------|------|
+| AC-1: jacoco plugin + toolVersion 顯式 pin | ✅ | `./gradlew tasks --group verification` 列出 `jacocoTestReport` + `jacocoTestCoverageVerification` |
+| AC-2: 三 reports（XML+HTML+CSV）| ✅ | `build/reports/jacoco/test/{html/index.html, jacocoTestReport.xml, jacocoTestReport.csv}` 皆產出；XML root `<counter type="LINE" missed="143" covered="1052"/>`；CSV header 13 欄 JaCoCo standard format |
+| AC-3: jacocoTestCoverageVerification 通過 LINE gate | ✅ | exit 0；無 `Rule violated for bundle ...`（baseline 0.8803 > minimum 0.80）|
+| AC-4: 接 check lifecycle | ✅ | `./gradlew check --dry-run` task graph 含 `:test → :jacocoTestCoverageVerification → :jacocoTestReport`（後者為 finalizedBy）|
+| AC-5: classDirectories exclusion 生效 | ✅ | CSV 全表 grep `Application$` / `Configuration` / `\.config` package = 0 / 0 / 0；HTML 包樹無 `io.github.samzhu.skillshub.config.*` |
+| AC-6: 既有 test suite + GraalVM 無 regression | ✅ | tests=115/0/0/0（S014 baseline 完全一致）；`--dry-run` 顯示 `:processAot` / `:nativeCompile` / `:nativeTest` 全未觸發 |
+
+### 7.3 Key Findings
+
+**[Validated]** Gradle 9.4.1 內建 `jacoco` plugin（DEFAULT_JACOCO_VERSION=0.8.14）+ 顯式 `jacoco { toolVersion = "0.8.14" }` pin，成功解析 Java 25 bytecode。Kotlin DSL `xml.required = true` direct assignment 為 idiomatic 寫法（per https://docs.gradle.org/current/userguide/jacoco_plugin.html）。
+
+**[Validated]** 共用 classDirectories 模式 `classDirectories.setFrom(tasks.jacocoTestReport.get().classDirectories)` 讓 verification task 自動繼承 report task 的 4 條 exclusions，避免重複維護。
+
+**[Validated]** GraalVM `org.graalvm.buildtools.native:0.11.5` plugin 不交集 — `:processAot` / `:nativeCompile` / `:nativeTest` 在 `clean test jacocoTestReport jacocoTestCoverageVerification` 全程未被觸發（只有 `:processAotTestResources` SKIPPED — 為 plugin 副 task 且未實際執行，不違反 AC-6）。
+
+**[Decision-rule outcome]** §2.5 baseline 量測落在第一檔（≥ 0.80）→ minimum pin 為 `"0.80"`，**未**觸發 `COV-B1: Coverage ratchet` backlog 條目；M17 done-when「通過 gate」直接達成且對齊原 80% 終局目標。
+
+### 7.4 Correct Usage Patterns
+
+```kotlin
+// 對齊 CLAUDE.md「Ecosystem-Managed Versions」— 顯式 pin 防 Gradle 升版時 toolVersion 跟著漂
+jacoco {
+    toolVersion = "0.8.14"
+}
+
+// JaCoCo plugin 預設不接 check（per Gradle docs）— 須顯式 wire
+tasks.check {
+    dependsOn(tasks.jacocoTestCoverageVerification)
+}
+
+// 共用 classDirectories — verification 與 report 同步排除
+tasks.jacocoTestCoverageVerification {
+    classDirectories.setFrom(tasks.jacocoTestReport.get().classDirectories)
+    // ...
+}
+
+// fileTree exclusion idiom（per Gradle docs R5）
+classDirectories.setFrom(
+    files(classDirectories.files.map {
+        fileTree(it) {
+            exclude("**/SkillshubApplication*", "**/config/**", "**/*Configuration*", "**/db/migration/**")
+        }
+    })
+)
+```
+
+### 7.5 E2E Artifact Verification
+
+**判定**: 不需獨立 E2E 步驟。
+
+**理由**: 本 spec 為純 build configuration 變動。AC-3 (`./gradlew jacocoTestCoverageVerification`) 與 AC-6 (`./gradlew clean test jacocoTestReport jacocoTestCoverageVerification`) 的驗收命令本身即在真實 Gradle daemon + JaCoCo agent + JUnit 5 + Testcontainers 環境跑（非 stub），等同 Phase 4 Step 1.5 要求的 E2E artifact 驗證。Phase 4 Step 1 inline 命令與 AC-3/AC-6 完全等價 — 已被吸收。
+
+### 7.6 Pending Verification
+
+無。所有 AC 已在 deterministic build 中驗證完成；無 IT 因環境缺失被 skip。
+
+### 7.7 Design Drift Check
+
+| § | Spec 原文 | 實作差異 | 處置 |
+|---|----------|---------|------|
+| §2.1 #5 exclusions | 4 patterns（Application / config / Configuration / db.migration）| 完全一致 | 無 drift |
+| §2.5 decision rule | baseline ≥ 0.80 → minimum=0.80 + 無 backlog | baseline=0.8803 落第一檔；minimum=0.80；無 COV-B1 觸發 | 無 drift |
+| §4.1 Kotlin DSL | 30 行增量 | 與 §4.1 完全一致；多 2 行 `// S019 T1/T2:` design-intent comment | 無 drift |
+| §4.2 task graph | `:test → :jacocoTestReport (finalizedBy)`；`:check → :jacocoTestCoverageVerification` | 確認；`:processAotTestResources` 副 task 出現在 graph 但 SKIPPED | 已記於 §7.3 |
+| §5 File Plan | 僅動 `build.gradle.kts` + `spec-roadmap.md` status | 一致 | 無 drift |
+
+§2 / §4 與實作零 drift；§7 為 ground truth。
+
+### 7.8 Tech Debt Register
+
+無新增。`:processAotTestResources` 出現於 task graph 是 GraalVM 0.11.5 plugin 既有行為（SKIPPED 不執行），不是 S019 引入；既有「`bootRun -x processAot` 解 processAot 編譯失敗」follow-up 屬 S020 verify registry workaround 條目範圍。
+
+---
+
+## QA Review (2026-04-28)
+
+**Reviewer**: Independent QA subagent
+**Verdict**: ✅ PASS
+
+### Findings
+
+No CRITICAL or IMPORTANT findings. One MINOR observation:
+
+**[MINOR] qa-strategy.md does not formally codify the "build/config spec = evidence-only AC" exception.**
+The spec §3 note correctly describes the applied pattern and cites S013/S014 precedent. However, `docs/grimo/qa-strategy.md` §AC-to-Test Contract contains no explicit written exception for build/config-only specs — it only illustrates `@DisplayName`/`@Tag` style. The precedent exists in practice (S013 deploy scripts ship as scripts+README; S014 §7 uses build-evidence mode) but is not formally documented. This creates a minor gap: future reviewers must rely on precedent recognition rather than a written rule. Recommendation: add a one-line note to qa-strategy.md §AC-to-Test Contract in a future doc-sync spec (candidate for S021).
+
+This finding does **not** affect the correctness of S019's implementation or its AC coverage.
+
+### Evidence Summary
+
+| Check | Command / Method | Result |
+|-------|-----------------|--------|
+| **Build script integrity — plugins block** | Read `build.gradle.kts` line 7 | `jacoco` present ✅ |
+| **Build script integrity — jacoco block** | Read lines 132-135 | `jacoco { toolVersion = "0.8.14" }` with `// S019 T1:` comment ✅ |
+| **Build script integrity — tasks.test finalizedBy** | Read lines 137-139 | `finalizedBy(tasks.jacocoTestReport)` ✅ |
+| **Build script integrity — jacocoTestReport block** | Read lines 141-160 | `xml.required=true`, `html.required=true`, `csv.required=true`; 4 exclusion patterns exact match §2.1 #5 ✅ |
+| **Build script integrity — jacocoTestCoverageVerification** | Read lines 162-176 | `element="BUNDLE"`, `counter="LINE"`, `value="COVEREDRATIO"`, `minimum="0.80".toBigDecimal()` with `// S019 T2:` comment ✅ |
+| **Build script integrity — check wiring** | Read lines 178-181 | `tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }` with `// S019 T2:` comment ✅ |
+| **Live build** | `./gradlew clean test jacocoTestCoverageVerification` | BUILD SUCCESSFUL in 1m 41s; exit 0 ✅ |
+| **No "Rule violated" line** | grep on build output | 0 matches ✅ |
+| **Test count** | JUnit XML aggregation across test-results/test/ | tests=115, failures=0, errors=0, skipped=0 ✅ |
+| **Report artifact: HTML** | `ls build/reports/jacoco/test/html/index.html` | Exists (14 KB, 2026-04-28) ✅ |
+| **Report artifact: XML** | `ls build/reports/jacoco/test/jacocoTestReport.xml` | Exists (210 KB, 2026-04-28) ✅ |
+| **Report artifact: CSV** | `ls build/reports/jacoco/test/jacocoTestReport.csv` | Exists (9.3 KB, 2026-04-28) ✅ |
+| **CSV header** | `head -1 jacocoTestReport.csv` | Exact 13-column JaCoCo standard header ✅ |
+| **Live LINE coverage** | Python XML parse on root `<counter type="LINE">` | missed=143, covered=1052, total=1195, ratio=0.8803 (88.03%) ≥ 0.80 ✅ |
+| **Exclusion: SkillshubApplication** | CSV CLASS column grep `Application$` | 0 rows ✅ |
+| **Exclusion: *Configuration*** | CSV CLASS column grep `Configuration` | 0 rows ✅ |
+| **Exclusion: config package** | CSV PACKAGE column sort-u grep `\.config` | 0 rows ✅ |
+| **Task graph — jacocoTestCoverageVerification in check** | `./gradlew check --dry-run` | `:jacocoTestCoverageVerification SKIPPED` present ✅ |
+| **Task graph — jacocoTestReport in check** | `./gradlew check --dry-run` | `:jacocoTestReport SKIPPED` present ✅ |
+| **AC-6: processAot/nativeCompile/nativeTest absent** | `./gradlew check --dry-run` grep exact names | 0 matches (`:processAotTestResources` is a pre-existing GraalVM side-task, acknowledged in §7.3) ✅ |
+| **Design-intent comments** | grep `S019` in build.gradle.kts | 3 comments: `// S019 T1:` (jacoco block) + `// S019 T2:` (verification) + `// S019 T2:` (check wiring) ✅ |
+| **Design drift check** | Cross-reference §2/§4/§5 vs actual build.gradle.kts | Zero drift on all 4 dimensions (plugins, blocks, exclusions, threshold) ✅ |
+| **CLAUDE.md: Ecosystem-Managed Versions** | toolVersion = "0.8.14" equals Gradle 9.4.1 default; explicit pin for visibility | ✅ (not a downgrade) |
+| **CLAUDE.md: No Deprecated APIs** | Kotlin DSL `xml.required = true` direct assignment | Confirmed idiomatic per Gradle docs ✅ |
+| **qa-strategy.md: AC-to-Test Contract** | §3 explicit note; build/config evidence pattern cited | Pattern applied consistently with S013/S014 precedent; formal exception not in qa-strategy.md (see MINOR finding) |

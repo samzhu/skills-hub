@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased] — Phase 2.5: Project Infra（M17 進行中）
+
+### Added
+- S019: JaCoCo coverage gate plugin + 80% line threshold — 補 S014 ship 後 `/verifying-quality` 列為 IMPORTANT 的 pre-existing project gap：`qa-strategy.md` L18-21 宣告 80% line coverage 但 `build.gradle.kts` 從未掛 `jacoco` plugin。本 spec 一次補齊：
+  - `plugins {}` + `jacoco`；`jacoco { toolVersion = "0.8.14" }` 顯式 pin（首版官方支援 Java 25 bytecode；對齊 CLAUDE.md「Ecosystem-Managed Versions」）
+  - `tasks.test { finalizedBy(tasks.jacocoTestReport) }` — test 結束自動產 report
+  - `tasks.jacocoTestReport` — `xml.required` / `html.required` / `csv.required` 三 report 全開（CSV 為 S020 verify-all.sh awk 解析來源；cross-spec contract）
+  - `classDirectories.setFrom(...fileTree { exclude(...) })` — 4 條 exclusion：`SkillshubApplication*` / `config/**` / `*Configuration*` / `db/migration/**`
+  - `tasks.jacocoTestCoverageVerification` — `element="BUNDLE"` + `counter="LINE"` + `value="COVEREDRATIO"` + `minimum = "0.80"`（T1 POC 量出 baseline 88.03% ≥ 0.80 → 第一檔 decision rule，無 backlog 條目觸發）；`classDirectories.setFrom(tasks.jacocoTestReport.get().classDirectories)` 共用 exclusion
+  - `tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }` — Gradle JaCoCo plugin 預設不接 check（per [official docs](https://docs.gradle.org/current/userguide/jacoco_plugin.html)），須顯式 wire；接上後 `./gradlew build` / `check` 自動跑 gate，CI/PR 一致行為
+- 6 AC 全綠，全為 build-evidence（與 S013 deploy / S014 §7 evidence 模式一致）：tasks --group verification 列出兩 task / 3 reports 產出 / verification BUILD SUCCESSFUL（無 `Rule violated`）/ check graph 含 verification task / exclusions 生效（CSV grep `Application$` / `Configuration` / `\.config` package = 0/0/0）/ tests=115/0/0/0 與 S014 baseline 一致 + GraalVM `:processAot` / `:nativeCompile` / `:nativeTest` 全未觸發。
+
+### Notes
+- **Coverage baseline**: LINE 88.03%（covered=1052, missed=143, total=1195）；INSTRUCTION 88.67%、BRANCH 70.23%（informational，本 spec 只 gate LINE）。
+- **GraalVM × JaCoCo task graph 零交集**：JaCoCo agent 只 attach JVM `test` task；`:processAotTestResources` 出現於 graph 但 SKIPPED（GraalVM plugin 副 task 不執行），不違反 AC-6。
+- **獨立 QA subagent PASS**：8 項檢查全綠（build script integrity / live build / report artifacts / exclusions / task graph / design drift / CLAUDE.md compliance / live coverage 0.8803 confirmed）；一個 MINOR finding（qa-strategy.md `AC-to-Test Contract` 未明文記錄 build/config evidence-only 例外，已建議 S021 doc-sync 補；不影響 S019 正確性）。
+- **M17 進度**：1/3（S019 ✅；S020 verify-all.sh / S021 PRD+architecture doc-sync 待完）；M17 全綠後一次發 `v1.1.1` 小版本（含 verify-all.sh + Phase 2 doc-sync 一併）。
+
 ## [v1.1.0] - 2026-04-27 — Phase 2 啟動：PostgreSQL 資料層遷移
 
 ### Changed

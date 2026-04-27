@@ -4,6 +4,7 @@ plugins {
 	id("io.spring.dependency-management") version "1.1.7"
 	id("org.graalvm.buildtools.native") version "0.11.5"
 	id("org.cyclonedx.bom") version "3.2.4"
+	jacoco
 }
 
 group = "io.github.samzhu"
@@ -126,4 +127,55 @@ tasks.named("processResources") {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+// S019 T1: JaCoCo coverage gate — pin toolVersion 0.8.14（首版官方支援 Java 25 bytecode）
+jacoco {
+	toolVersion = "0.8.14"
+}
+
+tasks.test {
+	finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+	dependsOn(tasks.test)
+	reports {
+		xml.required = true
+		html.required = true
+		csv.required = true  // S020 verify-all.sh awk 解析來源（cross-spec contract）
+	}
+	classDirectories.setFrom(
+		files(classDirectories.files.map {
+			fileTree(it) {
+				exclude(
+					"**/SkillshubApplication*",
+					"**/config/**",
+					"**/*Configuration*",
+					"**/db/migration/**"
+				)
+			}
+		})
+	)
+}
+
+// S019 T2: project-wide LINE coverage gate；threshold = 0.80（T1 POC baseline = 0.8803 ≥ 0.80）
+tasks.jacocoTestCoverageVerification {
+	dependsOn(tasks.test)
+	classDirectories.setFrom(tasks.jacocoTestReport.get().classDirectories)
+	violationRules {
+		rule {
+			element = "BUNDLE"
+			limit {
+				counter = "LINE"
+				value = "COVEREDRATIO"
+				minimum = "0.80".toBigDecimal()
+			}
+		}
+	}
+}
+
+// S019 T2: 接 check lifecycle — Gradle JaCoCo plugin 預設不接（須顯式宣告）
+tasks.check {
+	dependsOn(tasks.jacocoTestCoverageVerification)
 }
