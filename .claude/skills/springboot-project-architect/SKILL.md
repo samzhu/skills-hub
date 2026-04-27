@@ -1,19 +1,26 @@
 ---
 name: springboot-project-architect
 description: >
-  Spring Boot project setup, configuration design, and optimization.
-  Applies dual-layer profile design (infrastructure × behavior),
-  @ConfigurationProperties with app name as prefix for type-safe property
-  binding, unified secrets management, and Spring AI Manual Configuration
-  patterns. Use when the user says "set up Spring Boot", "optimize config",
-  "organize profiles", "review Spring Boot config", "@ConfigurationProperties",
-  "新建 Spring Boot 專案", "優化設定檔", "整理 profile", "設定檔太亂",
-  "config 分層", "環境配置", "GCP 部署設定", "Spring Boot 最佳實務",
-  or asks about application.yaml design, profile strategy, type-safe
-  properties binding, secrets management, or cloud deployment configuration.
-  Also triggers when reviewing an existing Spring Boot project's configuration
-  health. Do NOT use for general Java coding, non-Spring frameworks, or
-  business logic implementation.
+  Spring Boot project setup, configuration design, and architectural
+  optimization. Applies dual-layer profile design (infrastructure ×
+  behavior), @ConfigurationProperties with app name as prefix for type-safe
+  property binding, unified secrets management, Spring AI Manual
+  Configuration patterns, and design choices around framework integration:
+  starter vs core artifact selection (schema customization gate), bean
+  lifetime decisions (singleton vs per-request builder), and dev fallback
+  obsolescence checks. Use when the user says "set up Spring Boot",
+  "optimize config", "organize profiles", "review Spring Boot config",
+  "@ConfigurationProperties", "starter vs library", "extend Spring AI",
+  "wrap a framework class", "should this be a Bean", "新建 Spring Boot
+  專案", "優化設定檔", "整理 profile", "設定檔太亂", "config 分層",
+  "環境配置", "GCP 部署設定", "Spring Boot 最佳實務", "包裝框架類別",
+  "starter 還是純 library", or asks about application.yaml design, profile
+  strategy, type-safe properties binding, secrets management, cloud
+  deployment configuration, or when to extend/wrap a Spring framework
+  primitive (VectorStore, Repository, Service SPI). Also triggers when
+  reviewing an existing Spring Boot project's configuration or
+  architectural health. Do NOT use for general Java coding, non-Spring
+  frameworks, or business logic implementation.
 allowed-tools:
   - Read
   - Glob
@@ -196,6 +203,9 @@ Full details in `references/config-design-principles.md`. One-line summaries:
 4. **Secrets dot-notation + cloud env var** — Local: `{app}.section.key=value` in `config/application-secrets.properties` (dev/lab import). Cloud: env var `{APP}_SECTION_KEY` (relaxed binding) or cloud-native secret manager. → §4
 5. **Dependency choice = intent declaration** — Artifact 含 `starter` → 讓框架管配置（查官方文件配 YAML 屬性）。不含 `starter`（純 library）→ 自己控制配置（方式自決，不限 `@Bean`）。讀 build file 先於讀 YAML；切換意圖時換 artifact，不要混用。→ §5
 6. **Starter vs Manual Config decision ladder** — Runs locally with Docker/Testcontainers? → Starter. Cannot? → Official switch → exclude → Manual Config → custom. → §5
+7. **Schema customization gate** — When custom schema/SQL/serialization is required, check whether the starter's hardcoded behavior accommodates it (grep auto-config + bean source for hardcoded SQL / final methods / private fields). If not, switch to the core artifact and self-implement; do not stack workarounds on top of the starter. → §5.X
+8. **Bean lifetime decides registration pattern** — State lifetime = application (read-only, shared) → singleton `@Bean`. State lifetime = request / operation (per-call context like user identity, tenant ID) → **don't register a Bean**; call site uses builder/factory `new`, instance GC'd after the operation. Don't stuff per-call context into singletons. → §5.Y
+9. **Fallback obsolescence check** — Each time infrastructure evolves (DB swap, emulator goes live, self-host migration), re-evaluate every "dev convenience" fallback. If the production path is now dev-accessible, delete the fallback to restore dev/prod parity. → §5.Z
 
 ---
 
@@ -214,3 +224,6 @@ Full details in `references/config-design-principles.md`. One-line summaries:
 - **Do NOT** hardcode cloud-specific secret mechanisms (Secret Manager URIs, vault paths) in `application.yaml` — 用 env var 注入; cloud-native 整合放在雲端特定 profile 或部署設定，詳見 `references/cloud-*` 參考文件
 - **Do NOT** trust framework property paths from templates or memory — 框架主版本升級會 rename / deprecate / 搬移屬性路徑。執行時**必須**查證目標版本的官方 Application Properties 索引。`{app}.*` 由 `@ConfigurationProperties` 控制不受影響，但所有框架 namespace（`spring.*`、`management.*` 等）都可能變動
 - **Do NOT** treat "tests pass" as proof that config values are correct — deprecated 屬性在新版仍可運作（向下相容），測試無法捕捉 deprecation。查證手段：讀 JAR 內 `META-INF/spring-configuration-metadata.json` 的 `deprecation` 欄位，或查官方 Application Properties 索引。**設定值一定要查證過再動手，不是測試過就好**
+- **Do NOT** stack workarounds (extra UPDATE statements, `instanceof` guards, post-hoc field patches) on top of a starter when its hardcoded SQL/schema doesn't fit your customization needs — switch to the core artifact and self-implement instead. → §5.X
+- **Do NOT** reflexively register every wrapper class as a Spring `@Bean`. Per-call context (user identity, tenant ID, request-scoped data) belongs in builder-constructed instances at the call site, not as fields on a singleton. → §5.Y
+- **Do NOT** keep a "dev convenience" fallback (in-memory store, no-op service, stubbed adapter) once the production path becomes dev-accessible (Docker Compose container, emulator, self-host). dev/prod parity beats convenience. → §5.Z

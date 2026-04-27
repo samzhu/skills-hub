@@ -414,6 +414,123 @@ spring:
 > 如果 infrastructure profile 需要額外排除項目，必須包含 base 的所有項目。
 > 詳見 §6 配置載入順序。
 
+### 5.X Schema 客製化 Gate（starter vs core artifact）
+
+§5 的決策階梯處理「dev 環境能不能跑」。但還有一個獨立 gate：**starter 的硬編行為（schema、SQL、預設值）能不能吃下你的客製化需求？**
+
+當 starter 跑得起來、auto-config 也能 wire 出 bean，但你需要：
+- **客製 schema**（多加欄位、改型別、加 index）
+- **改寫核心 SQL**（INSERT / UPDATE 的欄位列、ON CONFLICT 行為）
+- **覆寫核心邏輯**（serialization 格式、欄位映射、batch 行為）
+
+→ starter 通常不適合，因為它的 `*AutoConfiguration` 與其建出的 bean 通常是 `final` / 內部欄位 `private` / SQL 寫死在 method body — 沒有乾淨的 override point。
+
+**判斷流程：**
+
+```
+Step 1: 列出本專案需要的所有 schema / SQL / 序列化客製化點
+Step 2: WebFetch starter 的 *AutoConfiguration class 與它建構的核心 class 原始碼
+Step 3: grep 是否有 SQL 字串、寫死的欄位列、final method、private 內部欄位
+Step 4: 對每個客製化點問「starter 的硬編行為吃得下嗎？」
+        → 全部 yes → 用 starter
+        → 任一 no  → 換成不含 starter 的 core artifact，自寫子類或直接實作
+```
+
+**Exit criterion**：能用 yes/no 回答「starter 的硬編行為是否吃下我的所有客製化需求」，並引用 source code 行號。
+
+**範例（Spring AI vector store）：**
+
+```
+情境：本專案 vector_store 表多兩欄 (owner, skill_id) 為 row-level ACL 鋪路。
+
+❌ 走 spring-ai-starter-vector-store-pgvector：
+   PgVectorStore.insertOrUpdateBatch() 的 INSERT SQL 寫死 4 欄
+   (id, content, metadata, embedding)
+   → 每次寫入後須額外 UPDATE 補 owner / skill_id（兩步驟 workaround）
+   → 中間視窗 owner=NULL observable；ACL 場景有風險
+
+✅ 走 spring-ai-pgvector-store（純 library）+ 自寫子類：
+   extends AbstractObservationVectorStore，doAdd() 自寫 6-欄 INSERT
+   一次寫完所有欄位，atomic、無中間視窗
+```
+
+**通則**：依賴名稱含 `starter` 是「讓框架管配置」的意圖宣告（§5 開頭原則）。**如果你的客製化需求超過框架預設提供的 properties 配置範圍，這個意圖宣告本身就不再適用** — 應該換 artifact，不是疊 workaround。
+
+### 5.Y Bean Lifetime 決定註冊模式（singleton vs per-request）
+
+設計 wrapper / adapter / facade 類別時，**先決定 state 的天然生命週期，再決定註冊模式**。反射性註冊 Spring `@Bean` 是常見錯誤。
+
+**判斷問題**：這份 state 的生命週期是 **application** / **request** / **operation**？
+
+| State 生命週期 | 註冊模式 | 範例 |
+|---|---|---|
+| **Application**（read-only、共用） | Singleton `@Bean` | `EmbeddingModel`、`JdbcTemplate`、`ObjectMapper`、Repository |
+| **Request / Operation**（per-call context） | **不註冊 Bean**；呼叫端用 builder / factory `new` | 帶 user identity 的 wrapper、帶 tenant ID 的 query builder、單次操作的 unit-of-work |
+
+**核心原則**：**不要把 per-call context（user identity、tenant、request ID）強塞進 singleton bean**。這會逼出兩個壞 pattern：
+1. ThreadLocal / RequestScope 隱含上下文 — 測試/背景執行緒踩雷
+2. `instanceof` guard / 條件分支處理「context 不存在」場景 — 結構複雜化
+
+正確做法：呼叫端用 builder 建構 instance，把 context 鎖在 instance 屬性裡，操作完即可被 GC。
+
+**範例（per-request VectorStore）：**
+
+```java
+// SearchProjection 注入「application 級」依賴：JdbcTemplate / EmbeddingModel / CurrentUserProvider
+@EventListener
+void onSkillCreated(SkillCreatedEvent event) {
+    SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
+            .owner(currentUserProvider.userId())   // ← per-call context，鎖在 instance
+            .skillId(event.aggregateId())
+            .build()
+            .add(List.of(doc));                    // ← 操作完 instance 即 GC
+}
+```
+
+**反例（singleton bean 強塞 per-call context）：**
+
+```java
+// ❌ 把 owner/skillId 寫進 singleton bean
+@Bean VectorStore vectorStore(...) { ... }
+
+@EventListener
+void onSkillCreated(SkillCreatedEvent event) {
+    vectorStore.add(...);  // 沒有 owner / skillId 注入點
+    // 被迫在 add() 後接 UPDATE 補欄位 → 兩步驟 workaround
+    // 或被迫用 ThreadLocal / instanceof guard → 結構壞掉
+}
+```
+
+**Exit criterion**：能說出明確理由「為什麼 singleton 對」（state 是 read-only 共享）或「為什麼 per-request 對」（state 是 per-call context），不是反射式註冊 `@Bean`。
+
+### 5.Z Fallback Obsolescence Check（dev 路徑變動時重審 fallback）
+
+§5 的「dev 跑不了 → NoOp fallback」處理初始情境。**當基礎設施演進讓 production path 在 dev 也跑得起來時，原本的 fallback 變成 dev/prod 不一致的源頭，必須刪除。**
+
+**典型情境：**
+- 原本：vector store 走外部 SaaS 需 API key → dev 用 in-memory `SimpleVectorStore` fallback
+- 演進後：搬到自管 PgVector，Docker Compose 自動啟 container → dev 也跑真 PgVector
+- **此時 SimpleVectorStore fallback 已過時**：保留只會讓 dev 跑 in-memory 路徑，prod 跑真 SQL 路徑，行為差異可能藏 bug 到上線才暴露
+
+**判斷問題**：這個 fallback 填補的 gap，production path 在 dev 真的填不了？
+
+**Exit criterion**：能用具體場景回答「dev 沒這個 fallback 會怎樣」。如果答不出來（或答案是「現在 dev 也能跑 production path 了」），**刪掉 fallback**。
+
+**為什麼這條容易被忽略**：fallback 加入時是合理的；但它一旦進 codebase，沒人會主動回頭問「現在還需要嗎？」。每次基礎設施重大變動（資料庫切換、API 自管化、emulator 上線）都應該掃一次 fallback。
+
+**反例：**
+
+```yaml
+# 原本 dev 走 SimpleVectorStore，prod 走 SaaS — 合理
+# 演進後 dev 也走 Docker Compose PgVector — fallback 過時但沒人刪
+
+skillshub:
+  search:
+    vector-store: simple   # ← 已過時：dev 也有 PgVector container 可用
+```
+
+**通則**：dev 端能跑 production path 了 → 刪 fallback、刪切換屬性、刪 `@ConditionalOnProperty(havingValue="...")`，讓 dev 與 prod 走同一條路徑（dev/prod parity）。
+
 ## 6. Spring Boot 配置載入順序
 
 ### Config data files 載入優先級（由低到高）

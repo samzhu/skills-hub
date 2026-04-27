@@ -121,6 +121,45 @@ Skipping this step is the #1 cause of multi-round user corrections. The root cau
 
 **Skip ONLY when:** The spec touches exclusively standard library APIs or surfaces already fully mapped by a prior shipped spec's §7 Findings (with raw source citations, not just prose descriptions).
 
+### Wrapper / Subclass Decision Gate (sub-rule of Step 0.5)
+
+**MANDATORY when:** The spec proposes wrapping, subclassing, or replacing a framework primitive (VectorStore, EventBus, Repository, Service SPI, Filter, Interceptor, etc.).
+
+A "wrapper" decision is load-bearing — it commits the spec to a specific extension surface. Choosing the wrong base class (e.g., wrapping a concrete class when the framework has a designated abstract base, or registering a Bean when the framework's builder is per-call) cascades workarounds across all downstream specs.
+
+**Action**: Before writing the wrapper proposal, fetch raw source for:
+1. The class being wrapped — read its constructor, key method bodies, and any Builder
+2. Its parent class or interface chain — find the canonical extension point (often `Abstract*` named base classes designed for subclassing)
+3. Any Builder / factory the framework provides for this primitive — these reveal the framework's intent for instantiation lifetime
+
+**Exit criterion**: Can quote three concrete patterns from the source — constructor signature, key method body (not just signature), Builder API surface — and explain how each constrains the wrapper design. Specifically, can answer:
+- Is there an `Abstract*` base designed for subclassing? (extension point)
+- Does the Builder pattern hint at per-call vs singleton lifetime?
+- Are there `final` methods or `private` fields that block customization?
+
+**Anti-pattern this gate prevents:** Designing a wrapper around the concrete class, then discovering mid-implementation that the framework provides a designated abstract base — and refactoring to the abstract base after task files were already written.
+
+### Source Code, Not Bytecode (sub-rule of Step 0.5 / 0.75)
+
+**MANDATORY when:** Inspecting compiled bytecode (`javap`, `.class` extraction, decompiler output, IDE-rendered method summaries) as a research shortcut.
+
+Bytecode signatures reveal **what methods exist**. They do NOT reveal:
+- **Method body** — the actual SQL templates, conditional logic, side effects
+- **Inline comments / Javadoc design intent** — stripped during compilation
+- **Default field initializers and static blocks** — visible but harder to reason about than source
+- **Lambda body capture semantics** — synthetic method names obscure intent
+
+**Rule**: Bytecode inspection is acceptable for fast triage but **never sufficient evidence for "Validated" confidence**. Whenever bytecode reveals a signature relevant to the design, the next step must be fetching the corresponding `.java` source file from the upstream repo and reading the method body.
+
+**Action**: Whenever a research note cites bytecode (`javap`, decompile, IDE summary):
+1. Fetch the matching source file: `https://raw.githubusercontent.com/{owner}/{repo}/{ref}/{path}.java`
+2. Read the method body for every signature relied on by the design
+3. Cite both the bytecode line AND the source URL with line range in §2.3
+
+**Exit criterion**: Research notes for any "Validated" claim include a source file URL with line range, not bytecode signatures alone.
+
+**Anti-pattern this gate prevents:** Marking a design decision as "Validated" because `javap -p` confirmed a method exists with the expected signature, then discovering during implementation that the method body has constraints (hardcoded SQL columns, mandatory side-effects, parameter ordering) that invalidate the design.
+
 ### Library Surface Completeness Gate (sub-rule of Step 0.5)
 
 Step 0.5 is not complete until EVERY pinned library this spec touches
@@ -512,9 +551,16 @@ decision before writing the spec:
 
 | Confidence | Evidence required | Spec annotation |
 |---|---|---|
-| **Validated** | Raw source confirms API exists with expected signature and behavior. Or a prior shipped spec's §7 proved it in production code. **Or a POC test has exercised the API and confirmed actual runtime behavior.** | Cite source URL in §2.3. No further action. |
+| **Validated** | Raw source confirms API exists with expected signature and behavior. Or a prior shipped spec's §7 proved it in production code. **Or a POC test has exercised the API and confirmed actual runtime behavior.** Citation must include source file URL with line range — **bytecode signatures, doc summaries, or URL alone are insufficient**. | Cite source URL with line range in §2.3. Another reviewer must be able to re-verify each claim without consulting the original author. |
 | **Hypothesis** | Docs suggest it works. Source shows the API exists. But actual runtime behavior (return values, error paths, integration with other APIs) is unproven. | Mark `[needs POC validation]` in §2. Declare `POC: required` with specific test plan. **Do NOT write a committed approach around a hypothesis.** |
 | **Unknown** | Could not determine from docs or source. Behavior depends on runtime interaction, undocumented conventions, or versions we haven't tested. | **Do not design around it.** Either dispatch a targeted research agent to resolve, or ask the user. |
+
+**Validated Evidence Format (mandatory)**:
+- Source URL pointing to a specific revision (`raw.githubusercontent.com/.../{ref}/path/File.java`) with line range
+- A reproducible command, or a worked snippet, when behavior depends on runtime interaction
+- For decisions assigned `Validated` based on POC: cite the POC test class and assertion, not just "POC passed"
+
+If you cannot produce the above format, the claim is **not Validated** — downgrade to Hypothesis and add a POC plan.
 
 ### Rewrite-Same-Interface Pattern
 
@@ -596,6 +642,29 @@ When research during spec planning produces findings that go **beyond the scope 
 - `docs/local/`: broader research that informs the ecosystem, not just one spec
 
 **Anti-pattern:** Research findings that exist only in the conversation context. If the conversation is lost, the research must be re-done. Persist early.
+
+## User-Provided References — Fetch Before Responding
+
+When the user provides reference URLs alongside a design redirection or correction (e.g., "you should use X instead of Y, see {URL}"), **WebFetch every URL in full and quote the specific passage that contradicts the prior choice — before responding with a new design**.
+
+**Rule**: Do not respond with "I see, let me redesign" or any abstract acknowledgment. The response must include:
+
+> "according to {URL}, {exact quote} — this means {implication for our design}"
+
+for at least one quoted passage from the user's references.
+
+**Why this matters**: Acknowledging a redirect without quoting the source produces a redesign based on the assistant's interpretation of the user's words, not based on the source the user actually cited. This re-introduces the same shallow-research failure mode the user is trying to correct.
+
+**Action sequence**:
+1. WebFetch every user-provided URL in parallel
+2. For each URL, identify the specific passage relevant to the redirect
+3. Quote each relevant passage in the response, with the URL
+4. State the implication for the current design
+5. Only after the above, propose the redesign
+
+**Anti-pattern this rule prevents**: User cites GitHub source URLs to point out a design flaw. Assistant says "got it, switching to approach X" and proceeds with redesign — without WebFetching the URLs. The new design carries assumptions the user didn't intend, requiring another correction round.
+
+**Exit criterion**: Every user-provided URL appears in the response with at least one quoted passage. If a URL has no quotable passage relevant to the redirect, state that explicitly (e.g., "the third URL is the GitHub root, no specific passage to quote — used as repo entry point").
 
 ## Spec Change Tracking
 
