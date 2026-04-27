@@ -316,6 +316,62 @@ Designing a query API in isolation leads to naming drift. When the spec's filter
 
 **Example:** You design `EventFilter(lastN, excludeSynthetic)` with 2 fields. A sibling library in the same ecosystem has `EventFilter` with 9 fields (from, to, messageTypes, keyword, lastN, page, pageSize, branch, excludeSynthetic). Aligning upfront avoids a redesign when downstream consumers need the richer query capabilities.
 
+### Deployment Infrastructure Audit (sub-rule of Step 0.75)
+
+**MANDATORY when:** The spec includes any deployment configuration — connection strings, connection pool sizes, secret references, network topology, or any value that depends on the target environment's quotas or limits.
+
+A deployment config's numeric values are not "fill in later" details — they are load-bearing design decisions that depend on the target infrastructure's quotas. Writing a connection pool size without knowing the database's max-connection limit means the value is either guessed or copied from a generic example, neither of which survives production load. Similarly, choosing a connection method (direct IP / proxy / native connector) by anchoring on a popular blog pattern bypasses the cloud provider's currently-recommended pattern for the specific compute-to-data shape.
+
+**Two failure modes this gate catches:**
+
+1. **Architecture chosen by anchoring** — the spec proposes a connection method based on a generic pattern (deepwiki research, library example, prior project) without checking the cloud provider's current recommended method for the specific compute-to-data pairing.
+2. **Resource numbers chosen by default** — the spec writes pool sizes, batch sizes, or rate limits using framework defaults without computing how those numbers fit the target environment's binding constraints.
+
+**Enforcement sequence:**
+
+1. **Identify the deployment shape** as a triple: `compute-service × data-service × network-model`. Examples: "serverless container × managed Postgres × private network", "Kubernetes pod × managed Postgres × public IP via auth proxy".
+2. **Web-search for the cloud provider's latest official guide** for this exact triple. Prefer the cloud provider's own documentation pages over blog posts and library READMEs, even when blog posts rank higher in search results. Cite the specific URL.
+3. **Confirm or ask for the missing infrastructure parameters** that affect numeric config values: instance tier / size class, network mode (public vs private), identity model (password vs IAM auth), expected scaling factor (max replicas / instances). Either ask the user explicitly, or state in the spec "no recommendation until {parameter} is confirmed" and stop.
+4. **Compute every numeric config value from a documented limit** — no bare numbers in the deployment config. Each `pool-size: N` / `max-batch: N` / `timeout: N` must have an inline comment showing the derivation: `quota_limit − reserved ÷ scaling_factor = N`.
+
+**Exit criterion:** Every connection-related setting and every numeric value in the deployment config either (a) cites an official-doc URL for the recommended pattern, or (b) shows an inline budget formula that derives from a documented limit and a confirmed infrastructure parameter.
+
+**Anti-pattern this gate prevents:**
+
+Writing a `maximum-pool-size: 10` from the framework's default value when the target managed database's `max_connections = 25` and the compute service auto-scales to 5+ instances. Discovering connection exhaustion in production after deployment costs more than the 30-minute web search would have. The fix is upstream: ask the deployment-shape and tier first, derive pool size from the limit, and only then write the yaml.
+
+### Custom-vs-Official Implementation Decision Gate (sub-rule of Step 0.75)
+
+**MANDATORY when:** The spec considers either using a framework's official implementation as-is, OR writing a custom implementation that extends the framework's SPI / interface. This includes "should we wrap the official class?", "should we extend the base class?", and "should we re-implement the interface?" decisions.
+
+The decision "use official vs write custom" cannot be made from package descriptions, README files, or summary docs. The gap that justifies a custom implementation lives in the framework's source code — specifically in **which extension points are exposed** and **which behaviors are hardcoded**. Two specific failure modes recur:
+
+1. **Recommend custom by anchoring on a sibling pattern** — the project already has a similar custom implementation for a different domain (e.g., a custom store for system A), and the spec extrapolates to system B without checking if system B's official package already covers the requirement or exposes a sufficient extension point.
+2. **Recommend official by surface-reading** — the official package looks complete in the README, so the spec adopts it; later at implementation time, a hardcoded internal behavior blocks the requirement (e.g., the official insert path doesn't write a custom column the spec needs), forcing a mid-implementation pivot.
+
+**Enforcement sequence:**
+
+1. **Read the framework's actual source for the official implementation** (raw source code, not docs / READMEs / summary blogs). Identify:
+   - The unified interface or SPI the framework defines.
+   - The concrete official implementation's public API (constructor, builder, key methods).
+   - The official implementation's **internal behavior on the dimensions relevant to this spec's requirement**. Examples: for an ACL requirement, does the INSERT/SELECT path support custom filter columns? For a custom embedding store, does the official path expose a native client / decorator hook? Read the relevant private methods.
+
+2. **Map the requirement against the source findings.** Three outcomes:
+
+   | Outcome | Meaning | Decision |
+   |---|---|---|
+   | **No gap** | Official implementation already covers the requirement | Use official as-is. Cite the source line proving coverage in §2 Approach. |
+   | **Gap closeable via SPI / native client / decorator** | Official lacks the feature directly but exposes a documented extension hook | Use official + extension. Cite which hook in §4 Interface Design. |
+   | **Gap requires bypassing the official implementation** | A hardcoded internal behavior blocks the requirement and no extension point bridges it | Custom implementation justified. Cite the specific source line(s) where the gap appears. |
+
+3. **Record the decision in §2 Approach** with the chosen path, the source URL, and (if custom) the specific line(s) proving the gap cannot be bridged.
+
+**Exit criterion:** The recommendation explicitly states either "use official because {gap-X is non-existent / closeable via hook-Y}" or "custom impl because {specific source line proves gap-X cannot be bridged}". A recommendation that compares feature lists from docs, READMEs, or package descriptions is not sufficient — the decision MUST be grounded in source code.
+
+**Anti-pattern this gate prevents:**
+
+Recommending a custom wrapper because the official package "looks limited" from the README, then later discovering the official package has an extension point designed for exactly the use case — wasting the custom implementation's design effort. Or the inverse: recommending the official package because it "should work" from the README, then discovering at implementation time that a hardcoded internal behavior (e.g., a fixed INSERT column list) blocks the requirement — forcing a mid-spec pivot to a custom implementation.
+
 ## Steps 1–5: Dispatch Sequence
 
 1. **List ALL load-bearing APIs this spec touches.** Read the roadmap deliverables, architecture doc, and any SBE drafts. Name each API by library + entrypoint (e.g., `<library>: <class/annotation/function>`). One entry per distinct surface. **Be exhaustive** — under-scoping the API list is the #1 cause of repeated research rounds. **Include interfaces discovered in Step 0.5** — these are often the most important APIs and the ones most likely to be missed if Step 0.5 was skipped.
