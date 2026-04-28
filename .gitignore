@@ -3,3 +3,6 @@
 
 # S020: verify-all.sh 寫到 repo root 避開 './gradlew clean' 摧毀 backend/build/
 verify-all.log
+scheduled_tasks.lock
+
+.vscode/

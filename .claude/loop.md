@@ -1,4 +1,4 @@
-/loop
+/loop 5m
 讀 docs/grimo/specs/spec-roadmap.md 推進所有 active specs 直到全部 ✅。
 
 ## 每個 tick 一個動作
