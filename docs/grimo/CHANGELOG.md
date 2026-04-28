@@ -1,5 +1,35 @@
 # Changelog
 
+## [v1.3.0] — Phase 2: ACL-Aware 語意搜尋（M15 完成；2026-04-29）
+
+### Added
+- **S017: ACL-Aware 語意搜尋**（PgVectorStore SQL composition + Builder.aclPatterns + SemanticSearchService 注入）— Phase 2 M15 落地：把 S016 已就位的 row-level ACL（`vector_store.acl_entries` + `??|` SQL pattern）接到語意搜尋 SQL 路徑，使「搜尋結果集 ⊆ 有 read 權限的 chunk」成為資料層硬約束。
+  - **Vector Store SQL 升級**（`search/SkillshubPgVectorStore`）：
+    - 加 `static final String SIMILARITY_SEARCH_SQL_ACL`（含 `WHERE acl_entries ??| ?::text[] AND embedding <=> ? < ? ORDER BY distance LIMIT ?`；`??|` escape per S016 §2.4 #2 lesson）
+    - 加 `static final int OVERSAMPLE_FACTOR = 5`（per pgvector docs / Supabase blog 2024 慣例 — 解 HNSW post-filter recall 問題）
+    - Builder 加 `aclPatterns(@Nullable List<String>)` setter（與 S016 T6 既有 `aclEntries(...)` 並列：寫入端 vs 查詢端兩語義分流；中文 Javadoc 各自註明用途）
+    - 加 `static String buildPgArrayLiteral(List<String>) → "{a,b,c}"` helper（PostgreSQL `text[]` cast literal；空 list → "{}"）
+    - `doSimilaritySearch(SearchRequest)` 加 ACL 分流：`aclPatterns == null` → 既有 SQL（向後相容）；`非 null（含空 list）` → ACL SQL + oversample 5x + `Math.min` 兜底 + `subList(0, topK)` slice + structured log debug
+  - **Service 層 ACL 展開**（`search/SemanticSearchService`）：
+    - 建構子注入 `CurrentUserProvider currentUserProvider, AclPrincipalExpander aclExpander`
+    - `search(query)` 改：`var aclPatterns = aclExpander.expand(currentUserProvider.current(), "read")` → builder.aclPatterns(aclPatterns) → similaritySearch；structured log atInfo 含 userId / patternsCount / resultsCount
+  - **既有 IT fixture 對齊新 ACL 機制**：`SemanticSearchIntegrationTest` 不驗 ACL 但走 `SemanticSearchService`，TestRestTemplate 不帶 JWT → CurrentUserProvider lab user fallback 後 patterns 含 `role:admin:read`；fixture acl_entries 加 `role:admin:read` 一條對齊（最小變動）
+  - **`search/package-info.java` 已就位**：`allowedDependencies` 含 `"shared :: security"` — S014 T7 為 SearchProjection 注入 CurrentUserProvider 鋪路時已加；S017 受益免修改
+  - **11 個 SBE AC 全綠**（AC-1 Builder API + SQL constant 字面 / AC-2~6 doSimilaritySearch 5 SQL 分流情境 / AC-7~10 端到端 HTTP / AC-11 Modulith verify）；`./scripts/verify-all.sh` V01-V06 全 PASS（199/199 tests / 0 failures / 89.0% LINE coverage / gate 80%）
+  - **獨立 QA subagent verdict REJECT-MINOR with 3 inline fix**（V01-V06 全 PASS；coverage 89.0%）：(a) AC-9 test comment `'sam'` → `'lab-user'`（lab.user-id 對齊 `application.yaml`）；(b) AC-9 加 `andExpect(jsonPath("$").isEmpty())` 硬斷 empty array；(c) AC-6 spec §7.6 註記 SQL LIMIT 綁定值由 OVERSAMPLE_FACTOR 常數斷言 + SQL constant 字面驗證間接證實
+  - **Validated patterns 已寫入 spec §7.5**（給 S018+ 後續 ACL spec 引用）：
+    - ACL-aware vector search SQL（`??|` + `?::text[]` cast literal）
+    - Oversample + Java slice 解 HNSW post-filter recall（`OVERSAMPLE_FACTOR = 5`）
+    - Builder API 雙 setter 命名分流（讀寫路徑）
+    - Test isolation 跨 `@SpringBootTest` Testcontainer（`TRUNCATE skills RESTART IDENTITY CASCADE`）
+    - 既有 IT fixture 對齊新 ACL 機制（minimal pattern：fixture acl_entries 加 `role:admin:read`）
+
+### Notes
+- **Tech debt 入 §7.7**：(a) AC-6 大資料集 EXPLAIN ANALYZE 驗證留 follow-up（trigger：production latency > 200ms 或 recall < 0.95）；(b) `SearchProjection.onVersionPublished` delete-then-add 與 ACL preservation 為 S016 T6 已知 limitation（S017 純讀路徑不引入新風險，留 follow-up 把 vector_store.acl_entries 接到 ACL events）；(c) AC-9 anonymous fail-secure 設計取捨：對「全綠生產 ACL」場景有效，對「為 IT 友善而加 admin role pattern」row 則 anonymous 會搜得到 — per spec §4.4 注解可接受。
+- **Test growth path**：S016 ship 後 baseline 182 → T1 +8 (190) → T2 +5 (195) → T3 +4 (199)。新增 2 個 test class（共 17 個 test method；含 `@Nested` integration cases）。
+- **Spec drift 已就地修正於 §7.4**（per spec table）：(1) `search/package-info.java` 預期 modify 實際 unchanged（S014 T7 已加）；(2) §3 BDD 寫 POST 但實際 controller 為 GET（S007 既有設計）；(3) 既有 IT fixture 修法更輕（acl_entries 加 1 條，無需 `@TestPropertySource`）。
+- **S018 graceful degrade 占位（`hasRole('admin')`）可移除** — S016/S017 ship 後 PermissionEvaluator 完整就位。
+
 ## [v1.2.0] — Phase 2: Row-Level ACL Foundation（M14 完成；2026-04-29）
 
 ### Added

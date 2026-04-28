@@ -107,11 +107,14 @@ class SemanticSearchIntegrationTest {
                     List.of())); // S016 aclEntries — 本 IT 不驗 ACL filter
         }
 
+        // S017：TestRestTemplate 不帶 JWT → CurrentUserProvider fallback (labUserId="lab-user", ["admin"], [])
+        //   → expand = ["user:lab-user:read", "role:admin:read"]
+        // 為讓既有 IT（不驗 ACL）搜得到 seeded doc，acl_entries 需含 "role:admin:read"（lab user 的 admin role 命中）。
         // Seed: 直接用 SkillshubPgVectorStore 寫入真實 vector_store 表
-        // 這跳過 event pipeline（由 SearchProjectionTest 涵蓋），focus 在 HTTP endpoint contract
         SkillshubPgVectorStore.builder(jdbc, embeddingModel)
                 .owner("integration-test-owner")
                 .skillId(TEST_DOC_ID)
+                .aclEntries(List.of("user:integration-test-owner:read", "role:admin:read"))
                 .build()
                 .add(List.of(Document.builder()
                         .id(TEST_DOC_ID)

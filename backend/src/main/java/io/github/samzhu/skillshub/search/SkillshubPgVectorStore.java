@@ -110,6 +110,39 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
              LIMIT ?
             """;
 
+    /**
+     * S017：ACL-aware similarity search SQL — 加 {@code WHERE acl_entries ??| ?::text[]} filter，
+     * 並 oversample {@code LIMIT topK * OVERSAMPLE_FACTOR} 解 HNSW post-filter recall 問題（per spec §2.5 Challenge #1）。
+     *
+     * <p>{@code ??} escape：pgJDBC PgPreparedStatement 在 NamedParameterJdbcTemplate 之下會
+     * 重新 parse {@code ?} 為 placeholder（per S016 §2.4 #2）。{@code ??|} 字面送入 driver。
+     *
+     * <p>placeholder bind 順序（per spec §4.2）：
+     * <ol>
+     *   <li>queryEmbedding（PGvector）— ORDER BY distance</li>
+     *   <li>aclPatternsArrayLiteral（{@code text[]} cast string，如 {@code {user:alice:read,role:admin:read}}）</li>
+     *   <li>queryEmbedding（PGvector）— WHERE distance threshold</li>
+     *   <li>maxDistance（double）</li>
+     *   <li>topK * OVERSAMPLE_FACTOR（int）</li>
+     * </ol>
+     */
+    static final String SIMILARITY_SEARCH_SQL_ACL = """
+            SELECT id, content, metadata, embedding <=> ? AS distance
+              FROM vector_store
+             WHERE acl_entries ??| ?::text[]
+               AND embedding <=> ? < ?
+             ORDER BY distance
+             LIMIT ?
+            """;
+
+    /**
+     * S017：oversample factor — ACL filter + HNSW post-filter 可能少於 topK rows
+     * （per spec §2.5 Challenge #1 + research Q1 Validated）。LIMIT 取 {@code topK * OVERSAMPLE_FACTOR}，
+     * Java 端 sublist 至 topK。值 5 為 pgvector docs + Supabase blog 推薦慣例；
+     * 若實作期 EXPLAIN ANALYZE 揭露大資料集 recall 不足可升級為 application.yaml knob。
+     */
+    static final int OVERSAMPLE_FACTOR = 5;
+
     private static final String VECTOR_STORE_PROVIDER = "skillshub-pgvector";
 
     private static final JsonMapper JSON = JsonMapper.builder()
@@ -120,6 +153,7 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
     private final @Nullable String owner;
     private final @Nullable String skillId;
     private final @Nullable List<String> aclEntries;
+    private final @Nullable List<String> aclPatterns;
 
     private SkillshubPgVectorStore(Builder builder) {
         super(builder);
@@ -127,6 +161,25 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
         this.owner = builder.owner;
         this.skillId = builder.skillId;
         this.aclEntries = builder.aclEntries;
+        this.aclPatterns = builder.aclPatterns;
+    }
+
+    /** Test accessor — 驗 builder 設定的 aclPatterns 正確下放至 instance（per S017 T1 AC-1）。 */
+    @org.jspecify.annotations.Nullable
+    List<String> aclPatternsForTest() {
+        return aclPatterns;
+    }
+
+    /**
+     * S017：把 List<String> 序列化為 PostgreSQL {@code text[]} literal {@code {a,b,c}}。
+     * 元素已通過 spec §4.1 regex 驗證（type:principal:permission 格式），不含逗號或大括號或雙引號，
+     * 不需 escape。空 list → {@code "{}"}。
+     */
+    static String buildPgArrayLiteral(List<String> items) {
+        if (items.isEmpty()) {
+            return "{}";
+        }
+        return "{" + String.join(",", items) + "}";
     }
 
     /** 建構新 builder；呼叫端透過 {@code .owner(...).skillId(...).build()} 取得 instance。 */
@@ -211,9 +264,34 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
         PGvector queryEmbedding = new PGvector(this.embeddingModel.embed(request.getQuery()));
         // similarityThreshold 0..1（1=完全相同）→ distance threshold = 1 - similarity
         double maxDistance = 1 - request.getSimilarityThreshold();
-        return jdbcTemplate.query(SIMILARITY_SEARCH_SQL,
+
+        // S017：ACL 分流（per spec §4.3）
+        //  - aclPatterns == null  → 走既有 SIMILARITY_SEARCH_SQL（向後相容）
+        //  - aclPatterns 非 null → 走 SIMILARITY_SEARCH_SQL_ACL + oversample 5x + Java slice
+        //    （空 list 仍走 ACL 路徑：?| ARRAY[]::text[] 永遠 false → empty result，fail-secure）
+        if (this.aclPatterns == null) {
+            return jdbcTemplate.query(SIMILARITY_SEARCH_SQL,
+                    new DocumentRowMapper(),
+                    queryEmbedding, queryEmbedding, maxDistance, request.getTopK());
+        }
+
+        int oversampleK = request.getTopK() * OVERSAMPLE_FACTOR;
+        String aclArrayLiteral = buildPgArrayLiteral(this.aclPatterns);
+
+        var oversampled = jdbcTemplate.query(SIMILARITY_SEARCH_SQL_ACL,
                 new DocumentRowMapper(),
-                queryEmbedding, queryEmbedding, maxDistance, request.getTopK());
+                queryEmbedding, aclArrayLiteral, queryEmbedding, maxDistance, oversampleK);
+
+        log.atDebug()
+                .addKeyValue("aclPatternsSize", this.aclPatterns.size())
+                .addKeyValue("oversampleK", oversampleK)
+                .addKeyValue("oversampledSize", oversampled.size())
+                .addKeyValue("topK", request.getTopK())
+                .log("SkillshubPgVectorStore doSimilaritySearch ACL path");
+
+        // Math.min 兜底：oversampled 已 < topK 時 subList 會 IndexOutOfBoundsException
+        int actualTopK = Math.min(oversampled.size(), request.getTopK());
+        return oversampled.subList(0, actualTopK);
     }
 
     /**
@@ -243,6 +321,7 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
         private @Nullable String owner;
         private @Nullable String skillId;
         private @Nullable List<String> aclEntries;
+        private @Nullable List<String> aclPatterns;
 
         Builder(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
             super(embeddingModel);
@@ -271,6 +350,22 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
          */
         public Builder aclEntries(@Nullable List<String> aclEntries) {
             this.aclEntries = aclEntries;
+            return self();
+        }
+
+        /**
+         * S017：查詢端 — 設定本次 similaritySearch 的 ACL pattern list（讀路徑專用，與寫路徑
+         * {@link #aclEntries(List)} 設計平行但語意分流）。
+         *
+         * <p>非 null 且非空 → SQL 走 {@link SkillshubPgVectorStore#SIMILARITY_SEARCH_SQL_ACL}
+         * （含 {@code WHERE acl_entries ??| ?::text[]} filter）+ oversample
+         * {@code LIMIT topK * OVERSAMPLE_FACTOR}（per spec §4.3 doSimilaritySearch 分流）。
+         * <p>null → 走既有 {@link SkillshubPgVectorStore#SIMILARITY_SEARCH_SQL}（向後相容；S016 ship 前的 caller 行為不變）。
+         * <p>空 list → 走 ACL 路徑但 patterns array 為空 — {@code ??|} 永遠 false，
+         * 回 empty list（fail-secure；per spec §2.1 #5）。
+         */
+        public Builder aclPatterns(@Nullable List<String> aclPatterns) {
+            this.aclPatterns = aclPatterns;
             return self();
         }
 

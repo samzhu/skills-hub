@@ -11,6 +11,9 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import io.github.samzhu.skillshub.shared.security.AclPrincipalExpander;
+import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+
 /**
  * 語意搜尋服務 — 接收自然語言查詢，透過 {@link SkillshubPgVectorStore} 找出語意相近的技能。
  *
@@ -46,10 +49,15 @@ class SemanticSearchService {
 
     private final JdbcTemplate jdbcTemplate;
     private final EmbeddingModel embeddingModel;
+    private final CurrentUserProvider currentUserProvider;
+    private final AclPrincipalExpander aclExpander;
 
-    SemanticSearchService(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
+    SemanticSearchService(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel,
+            CurrentUserProvider currentUserProvider, AclPrincipalExpander aclExpander) {
         this.jdbcTemplate = jdbcTemplate;
         this.embeddingModel = embeddingModel;
+        this.currentUserProvider = currentUserProvider;
+        this.aclExpander = aclExpander;
     }
 
     /**
@@ -59,20 +67,31 @@ class SemanticSearchService {
      * @return 語意相關的技能清單，若無符合結果則回傳空清單（不拋出例外）
      */
     List<SemanticSearchResult> search(String query) {
-        log.info("Semantic search query={}", query);
+        // S017：展開當前 user 的 read patterns；走 ACL-aware SQL 路徑（fail-secure 由 vector_store.acl_entries 守 — anonymous 走 lab user fallback patterns，
+        // 與既有 vector_store row owner 對不上即回 empty result）
+        var currentUser = currentUserProvider.current();
+        var aclPatterns = aclExpander.expand(currentUser, "read");
+
         var request = SearchRequest.builder()
                 .query(query)
                 .topK(TOP_K)
                 .similarityThreshold(SIMILARITY_THRESHOLD)
                 .build();
-        // Per-request：搜尋場景 owner / skillId 不需要，builder 預設跳過
+
         var results = SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
+                .aclPatterns(aclPatterns)
                 .build()
                 .similaritySearch(request)
                 .stream()
                 .map(this::toResult)
                 .toList();
-        log.info("Semantic search query={} results={}", query, results.size());
+
+        log.atInfo()
+                .addKeyValue("query", query)
+                .addKeyValue("userId", currentUser.userId())
+                .addKeyValue("patternsCount", aclPatterns.size())
+                .addKeyValue("resultsCount", results.size())
+                .log("ACL-aware semantic search 完成");
         return results;
     }
 
