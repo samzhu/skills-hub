@@ -99,7 +99,7 @@ Spring Modulith 的 `ApplicationModules.verify()` 確保：
 
 | 驗證項目 | 方式 |
 |----------|------|
-| Firestore MongoDB 相容性 | Testcontainers + MongoDB image（開發階段）; Firestore Emulator（CI） |
+| PostgreSQL + pgvector | Testcontainers `pgvector/pgvector:pg16`（開發 + CI 一致；本機 Docker Compose 用同 image） |
 | GCS 整合 | Testcontainers + GCS emulator |
 | Spring Modulith 邊界 | `ApplicationModules.verify()` |
 | API 文件一致性 | SpringDoc 自動產生，人工抽驗 |
@@ -154,8 +154,8 @@ describe('AC-1: 用關鍵字搜尋技能', () => {
 cd frontend && npm run dev
 ```
 
-### Testing with Firestore
+### Testing with PostgreSQL
 
-- 開發階段：使用 Testcontainers + MongoDB image（模擬 Firestore MongoDB 相容行為）
-- CI 階段：使用 Firestore Emulator
-- Staging：連接實際 Firestore Enterprise instance
+- 開發階段：使用 Testcontainers + `pgvector/pgvector:pg16` image（與 `backend/compose.yaml` 同 image；dev/test 行為一致）
+- CI 階段：同 Testcontainers image（無 emulator 替代品；OS-portable、無 macOS/CI flakiness）
+- Staging / GCP Production：Cloud SQL（PostgreSQL 18 + `cloudsql.enable_pgvector` instance flag）+ Cloud SQL Auth Proxy sidecar；JDBC URL 與本機相同（dev/prod parity）— 詳 [`architecture.md` §PostgreSQL Configuration](./architecture.md#postgresql-configuration)

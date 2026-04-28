@@ -23,7 +23,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 |------|------|-------|--------|------|--------|
 | 1 | S019 | JaCoCo coverage gate + 80% line threshold | XS(5) | — | ✅ |
 | 2 | S020 | Verification command registry + `scripts/verify-all.sh` | S(10) | S019 ✅ | ✅ |
-| 3 | S021 | Phase 2 doc-sync — PRD.md + architecture.md | S(8) | — (可與 1/2 平行) | ⏳ Design |
+| 3 | S021 | Phase 2 doc-sync — PRD.md + architecture.md | S(8) | — (可與 1/2 平行) | ✅ |
 | 4 | **S022** | **Frontend Verification Baseline**（vitest coverage tooling + 樣板 component test + ESLint root-cause + V06 enrollment）| **S(8)** | **S020**（registry + verify-all.sh 為 V06 enrollment 前提）| **🔲 Planning** |
 | 5 | S016 | Row-Level ACL 基礎建設（JSONB acl_entries + GIN）| M(13) | S014 ✅ | 🔲 Backlog |
 | 6 | S017 | ACL-Aware 語意搜尋（PgVectorStore + ACL SQL composition）| S-M(11) | S016 | 🔲 Backlog |
@@ -55,7 +55,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | MVP | M11: GCP Cloud Run 部署 | S013 | S(11) | 147 | ✅ `v1.0.0` |
 | Phase 1 | M12: PostgreSQL 資料層遷移（含 S015 absorbed） | S014 | L(20) | 167 | ✅ `v1.1.0` |
 | ~~M13~~ | ~~自訂 PgVectorStore~~ | ~~S015~~ | — | — | 🚫 ABSORBED → S014 |
-| **Phase 2.5** | **M17: Project Infra** | **S019 ✅, S020 ✅, S021, S022** | **XS(5)+S(10)+S(8)+S(8) = 31** | **198** | **⏳ 2/4 (S019+S020 shipped)** |
+| **Phase 2.5** | **M17: Project Infra** | **S019 ✅, S020 ✅, S021 ✅, S022** | **XS(5)+S(10)+S(8)+S(8) = 31** | **198** | **⏳ 3/4 (S019+S020+S021 shipped)** |
 | **Phase 2** | **M14: Row-Level ACL 基礎建設** | **S016** | **M(13)** | **211** | **🔲 Backlog** |
 | **Phase 2** | **M15: ACL-Aware 語意搜尋** | **S017** | **S-M(11)** | **222** | **🔲 Backlog** |
 | **Phase 2** | **M16: Skill Aggregate 充血演化 + SKILL.md 對齊** | **S018** | **M(13)** | **235** | **⏳ Design** |
@@ -125,7 +125,7 @@ S014 ✅ ──▶ S016 (Row-Level ACL 基礎建設)
 |---|------|--------|--------------|--------|
 | S019 | JaCoCo coverage gate plugin + 80% line threshold | XS(5) | — | ✅ — `specs/archive/2026-04-27-S019-jacoco-coverage-gate.md`（baseline 88.03%）|
 | S020 | Verification command registry + `scripts/verify-all.sh`（含 `bootRun -x processAot` workaround 編入 registry）| S(10) | S019 ✅ | ✅ — `specs/archive/2026-04-27-S020-verify-registry-and-script.md`（Round 1 REJECT → Round 2 fix → Round 2 QA PASS；4 doc-stale MINOR fixed）|
-| S021 | Phase 2 doc-sync — PRD.md（D3/D8/D9/D14/D22 + MVP scope + 圖示）+ architecture.md（Data Model / Firestore Configuration → PostgreSQL + pgvector + Cloud SQL Auth Proxy sidecar）+ glossary.md + qa-strategy.md（audit 後納入）| S(8) | — | ⏳ Design — `specs/2026-04-27-S021-phase2-doc-sync.md` |
+| S021 | Phase 2 doc-sync — PRD.md（D3/D8/D9/D14/D22 + MVP scope + 圖示）+ architecture.md（Data Model / Firestore Configuration → PostgreSQL + pgvector + Cloud SQL Auth Proxy sidecar）+ glossary.md + qa-strategy.md（audit 後納入）| S(8) | — | ✅ — `specs/archive/2026-04-27-S021-phase2-doc-sync.md` |
 | S022 | Frontend Verification Baseline — `@vitest/coverage-v8` + threshold POC + `setupTests.ts` + 1-2 個真實 component / hook test + ESLint root-cause（拆檔 vs cva exception）+ V06 enrollment 入 registry + qa-strategy.md L23-25 落地 | S(8) | S020（registry / verify-all.sh 為 V06 enrollment 前提；S020 T2 Option A 暫存 placeholder：`smoke.test.ts` + 2 處 `eslint-disable-next-line` 由 S022 取代/正名）| 🔲 Planning |
 
 ### Milestone 14: Row-Level ACL 基礎建設 🔲 Backlog

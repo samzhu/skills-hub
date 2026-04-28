@@ -21,7 +21,7 @@
 | 社群回報 | Community Flag | `Flag` | 使用者對已上架技能提交的問題回報 |
 | 使用數據 | Analytics | `Analytics` | 技能的下載次數、使用頻率等統計數據 |
 | 領域事件 | Domain Event | `DomainEvent` | 記錄領域中發生的不可變事實（如 SkillCreated, SkillVersionPublished） |
-| 事件儲存 | Event Store | `DomainEventRepository` | 持久化 domain events 的 Firestore collection（`domain_events`） |
+| 事件儲存 | Event Store | `DomainEventRepository` | 持久化 domain events 的 PostgreSQL `domain_events` 表（JSONB payload + per-aggregate `(aggregate_id, sequence)` UNIQUE） |
 | 命令 | Command | `*Command` | 表達意圖的請求物件（如 CreateSkillCommand），觸發狀態變更 |
 | 投影 | Projection | `*Projection` | 監聽 domain events 並更新 read model 的元件 |
 | 讀取模型 | Read Model | `*ReadModel` | 由 projection 建構的查詢優化資料結構 |

@@ -6,7 +6,7 @@
 - 模板已配置：Spring Modulith, Spring AI, Spring Security OAuth2 RS, OpenTelemetry, Testcontainers, GCS, SpringDoc OpenAPI, CycloneDX SBOM
 - 模板使用 htmx — 將替換為 React 19 SPA
 - 無前端專案 — 需建立 `frontend/` 目錄
-- 無資料庫依賴 — 需加入 Spring Data MongoDB（連接 Firestore Enterprise）
+- 資料庫依賴：Spring Data JDBC + PostgreSQL 16 + pgvector（GCP 部署採 Cloud SQL Auth Proxy sidecar；本機 Docker Compose 用 `pgvector/pgvector:pg16`；同一條 JDBC URL — dev/prod parity）。Phase 1 已從前期儲存層遷移完成（詳 ADR-001 + S014 archived spec）
 - 無業務邏輯代碼
 
 ## Packaging Target
@@ -67,7 +67,7 @@ Aggregate Root 負責：
                ┌─────────────────┐                  ┌──────────────────┐           ┌─────────────────┐
   HTTP Request │                 │   Domain Events  │                  │  Consume  │                 │
   ───────────▶ │ SkillCommand    │ ────────────────▶ │  domain_events   │ ────────▶ │  Projections    │
-               │ Service         │                  │  (Firestore)     │           │                 │
+               │ Service         │                  │  (PostgreSQL)    │           │                 │
                │                 │                  │                  │           │  skills (read)  │
                │ - validate      │                  │  {aggregateId,   │           │  skill_versions │
                │ - apply event   │                  │   aggregateType, │           │  search index   │
@@ -209,12 +209,18 @@ class SkillProjection {
          ┌──────────────┼──────────────┐
          │              │              │
    ┌─────▼──────┐ ┌─────▼─────┐ ┌─────▼─────┐
-   │ Firestore   │ │   GCS     │ │ Vertex AI │
-   │ Enterprise  │ │ (skill    │ │ (Gemini   │
-   │             │ │  packages)│ │  via      │
-   │ Event Store:│ │ - zip/tar │ │  Spring   │
-   │ - domain_   │ └───────────┘ │  AI)      │
-   │   events    │               └───────────┘
+   │ PostgreSQL  │ │   GCS     │ │ Vertex AI │
+   │ 16 +        │ │ (skill    │ │ (Gemini   │
+   │ pgvector    │ │  packages)│ │  via      │
+   │             │ │ - zip/tar │ │  Spring   │
+   │ (Cloud SQL  │ └───────────┘ │  AI)      │
+   │  Auth Proxy │               └───────────┘
+   │  sidecar)   │
+   │             │
+   │ Event Store:│
+   │ - domain_   │
+   │   events    │
+   │   (JSONB)   │
    │             │
    │ Read Models:│
    │ - skills    │
@@ -224,9 +230,11 @@ class SkillProjection {
    │ - download_ │
    │   events    │
    │             │
-   │ Native SDK: │
-   │ - vectors   │
-   │ - KNN search│
+   │ Vector:     │
+   │ - vector_   │
+   │   store     │
+   │   (HNSW +   │
+   │    cosine)  │
    └─────────────┘
 ```
 
@@ -277,8 +285,8 @@ io.github.samzhu.skillshub
 │   └── FlagController.java
 │
 ├── search/                     ← Read-side projection（無 Aggregate）
-│   ├── SearchService.java      (keyword search via MongoDB query on read model)
-│   ├── SemanticSearchService.java (Spring AI + Gemini + Firestore vector)
+│   ├── SearchService.java      (keyword search via Spring Data JDBC SQL query on read model)
+│   ├── SemanticSearchService.java (Spring AI + Gemini + 自訂 SkillshubPgVectorStore HNSW)
 │   ├── SearchController.java
 │   └── SearchProjection.java   (@ApplicationModuleListener — 更新搜尋索引/embedding)
 │
@@ -313,71 +321,62 @@ SkillCommandService
 
 ---
 
-## Data Model (Firestore / MongoDB)
+## Data Model (PostgreSQL)
+
+> Schema 由 Flyway V1 migration 建立（`backend/src/main/resources/db/migration/V1__initial_schema.sql`）；6 張表 + 2 個 extensions（`vector` for pgvector + `uuid-ossp`）+ HNSW 索引；S016/S017 將以 V2/V3 增量加 `acl_entries` JSONB + GIN 索引。
 
 ### Event Store
 
+```sql
+CREATE TABLE domain_events (
+    id              VARCHAR(36) PRIMARY KEY,
+    aggregate_id    VARCHAR(36) NOT NULL,
+    aggregate_type  VARCHAR(50) NOT NULL,
+    event_type      VARCHAR(100) NOT NULL,
+    payload         JSONB NOT NULL DEFAULT '{}'::jsonb,
+    sequence        BIGINT NOT NULL,
+    occurred_at     TIMESTAMPTZ NOT NULL,
+    metadata        JSONB NOT NULL DEFAULT '{}'::jsonb,
+    UNIQUE (aggregate_id, sequence)
+);
+CREATE INDEX idx_domain_events_aggregate ON domain_events(aggregate_id, sequence);
 ```
-domain_events
-├── _id: String (UUID)
-├── aggregateId: String (skill UUID)
-├── aggregateType: String ("Skill")
-├── eventType: String ("SkillCreated" | "SkillVersionPublished" | ...)
-├── payload: Document (event-specific data, JSON)
-├── sequence: Long (per-aggregate sequential number)
-├── occurredAt: Instant
-└── metadata: Map<String, String> (optional: userId, correlationId)
-```
 
-### Read Model Collections (Projections)
+`(aggregate_id, sequence)` UNIQUE 強制 per-aggregate 嚴格遞增；JSONB payload 存 event-specific schema；transaction 內與 read model 同 commit。
+
+### Read Model Tables (Projections)
+
+4 張 read model 表 — `skills` / `skill_versions` / `flags` / `download_events`，皆以 Spring Data JDBC `@Table` record 表達 + `Persistable<String>.isNew()=true` 強制 INSERT 路徑（避開預設 SELECT-then-UPDATE）；`Map<String,Object>` 欄位（如 `frontmatter`、`risk_findings`）透過 `MapJsonbConverter` 雙向 round-trip JSONB 並保留 nested 型別（per S014 archived §2.1 決策 #5/#6）。
 
 ```
-skills (read model — projected from events)
-├── _id: String (UUID, same as aggregateId)
-├── name: String (unique, lowercase-hyphen)
-├── description: String
-├── author: String
-├── category: String
-├── tags: [String]
-├── latestVersion: String (semver)
-├── riskLevel: String (LOW|MEDIUM|HIGH)
-├── status: String (DRAFT|PUBLISHED|SUSPENDED)
-├── downloadCount: Long
-├── createdAt: Instant
-├── updatedAt: Instant
-└── embedding: [Float] (768-dim, for vector search via native SDK)
+skills (PK: id; UNIQUE: name)
+├── name (lowercase-hyphen) / description / author / category / tags(JSONB)
+├── latest_version (semver) / risk_level / status / download_count
+├── created_at / updated_at TIMESTAMPTZ
+└── INDEX (category, status)
 
-skill_versions (read model — projected from SkillVersionPublished + SkillRiskAssessed)
-├── _id: String (UUID)
-├── skillId: String (ref → skills)
-├── version: String (semver)
-├── storagePath: String (GCS object key)
-├── fileSize: Long
-├── riskAssessment: {
-│     level: String,
-│     findings: [{type, message, file, line}],
-│     scannedAt: Instant
-│   }
-├── frontmatter: Map<String, Object> (raw YAML frontmatter)
-├── publishedAt: Instant
-└── changelog: String
+skill_versions (PK: id; FK → skills)
+├── skill_id / version / storage_path (GCS) / file_size
+├── risk_findings JSONB / frontmatter JSONB
+├── published_at / changelog
+└── INDEX (skill_id, published_at DESC)
 
-flags (read model — projected from SkillFlagged)
-├── _id: String (UUID)
-├── skillId: String (ref → skills)
-├── type: String (SECURITY|QUALITY|MISMATCH|OTHER)
-├── description: String
-├── reportedBy: String (anonymous until auth)
-├── createdAt: Instant
-└── status: String (OPEN|REVIEWED|RESOLVED)
+flags (PK: id; FK → skills)
+├── skill_id / type (SECURITY|QUALITY|MISMATCH|OTHER)
+├── description / reported_by / status
+├── created_at
+└── INDEX (skill_id)
 
-download_events (read model — projected from SkillDownloaded)
-├── _id: String (UUID)
-├── skillId: String (ref → skills)
-├── version: String
-├── downloadedAt: Instant
-└── metadata: Map<String, String> (anonymous tracking)
+download_events (PK: id; FK → skills)
+├── skill_id / version / downloaded_at / metadata JSONB
+└── INDEX (skill_id, downloaded_at)
 ```
+
+### Vector Store
+
+`vector_store` 由自寫 `SkillshubPgVectorStore extends AbstractObservationVectorStore`（Spring AI 2.0.0-M4 core artifact）控制；6 欄 atomic INSERT — `id` / `content` / `metadata` JSONB / `embedding` vector(768) / `owner` / `skill_id`；`owner` 為 S016 row-level ACL 鋪路；`ON CONFLICT (id) DO UPDATE` 冪等；HNSW 索引 + cosine distance（`embedding <=> query` operator）。
+
+詳 S014 archived spec §4 + §2.1 決策 #2 / #12（再修訂 — 採 core artifact + 自寫子類，不用官方 starter 因其 4-欄 INSERT 不支援 owner 自訂欄位）。
 
 ---
 
@@ -465,10 +464,15 @@ Gradle task `buildFrontend` 在 Spring Boot build 之前執行：
 | Java JDK | 25 | — | yes (template) |
 | Gradle | 9.4.1 | — | yes (template) |
 | `org.springframework.boot:spring-boot-starter-webmvc` | BOM | `org.springframework.web.bind.annotation.*` | yes (template) |
-| `org.springframework.boot:spring-boot-starter-data-mongodb` | BOM | `org.springframework.data.mongodb.repository.*` | yes (Spring Boot BOM) |
+| `org.springframework.boot:spring-boot-starter-data-jdbc` | BOM | `org.springframework.data.jdbc.*` | yes (S014) |
+| `org.springframework.boot:spring-boot-starter-jdbc` | BOM | `org.springframework.jdbc.core.*` | yes (S014) |
+| `org.springframework.ai:spring-ai-pgvector-store` | 2.0.0-M4 BOM | `org.springframework.ai.vectorstore.pgvector.*`（core artifact；自寫 `SkillshubPgVectorStore` 子類）| yes (S014) |
+| `org.springframework.boot:spring-boot-flyway` | BOM | — | yes (S014) |
+| `org.flywaydb:flyway-core` | BOM-managed | `org.flywaydb.core.*` | yes (S014) |
+| `org.flywaydb:flyway-database-postgresql` | runtime | — | yes (S014) |
+| `org.postgresql:postgresql` | runtime | JDBC driver | yes (S014) |
 | `com.google.cloud:spring-cloud-gcp-starter` | 8.0.2 BOM | `com.google.cloud.spring.*` | yes (template) |
 | `com.google.cloud:spring-cloud-gcp-starter-storage` | 8.0.2 BOM | `com.google.cloud.storage.*` | yes (template) |
-| `com.google.cloud:google-cloud-firestore` | 3.31.6 | `com.google.cloud.firestore.*` | yes (Maven Central) |
 | `com.google.cloud:google-cloud-vertexai` | 1.24.0 | `com.google.cloud.vertexai.*` | yes (Maven Central) |
 | `org.springframework.ai:spring-ai-*` | 2.0.0-M4 BOM | `org.springframework.ai.*` | yes (template) |
 | `org.springframework.modulith:spring-modulith-*` | 2.0.6 BOM | `org.springframework.modulith.*` | yes (template) |
@@ -496,34 +500,59 @@ Gradle task `buildFrontend` 在 Spring Boot build 之前執行：
 
 ---
 
-## Firestore Configuration
+## PostgreSQL Configuration
 
-### Enterprise Edition + MongoDB Compatibility
+### Local Development（Docker Compose）
 
 ```yaml
-# application.yaml
-spring:
-  data:
-    mongodb:
-      uri: mongodb+srv://${GCP_PROJECT_ID}.firestore.googleapis.com/?retryWrites=false&authMechanism=MONGODB-OIDC
-      database: skillshub
+# backend/compose.yaml — pgvector image
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_DB: skillshub
+      POSTGRES_USER: skillshub
+      POSTGRES_PASSWORD: skillshub
 ```
 
-### Native SDK (for Vector Search)
+### GCP Production（Cloud SQL Auth Proxy sidecar）
 
-```java
-// 透過 Application Default Credentials 自動認證
-FirestoreOptions options = FirestoreOptions.getDefaultInstance().toBuilder()
-    .setProjectId(projectId)
-    .setDatabaseId("skillshub")
-    .build();
-Firestore firestore = options.getService();
+Cloud Run multi-container：main container + `gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest` sidecar；共享 localhost network；應用端透過 `localhost:5432` 連線，**無需 socket-factory dep**。
+
+```yaml
+# scripts/gcp/service.yaml (S013 follow-up spec 實作)
+spec:
+  template:
+    spec:
+      containers:
+        - name: skillshub
+          image: <region>-docker.pkg.dev/<project>/skillshub/skillshub:<tag>
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://localhost:5432/skillshub
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+          args: ["--private-ip", "<project>:<region>:<instance>"]
 ```
+
+**dev/prod parity**：本機 + GCP 同條 JDBC URL `jdbc:postgresql://localhost:5432/<db>`（只差 env var 帶不同 db name / user / password）。
+
+### Connection Pool（HikariCP）
+
+| Env | maximum-pool-size | minimum-idle | 理由 |
+|-----|-------------------|--------------|------|
+| GCP（db-f1-micro） | 3 | 1 | DB `max_connections=25` − 5 reserved = 20 ÷ ~5 instances ≈ 4/inst → 取 3 留 buffer |
+| Local dev | 10 | 2 | 寬鬆 |
+
+### Schema Migration（Flyway）
+
+`backend/src/main/resources/db/migration/V1__initial_schema.sql` 建 6 張表（`domain_events` / `skills` / `skill_versions` / `flags` / `download_events` / `vector_store`）+ `CREATE EXTENSION IF NOT EXISTS vector` + `CREATE EXTENSION IF NOT EXISTS uuid-ossp` + HNSW 索引（vs_emb_idx）；S016/S017 增量 V2/V3 加 `acl_entries` JSONB + GIN(`jsonb_path_ops`)。
 
 ### Key Constraints
 
-- `retryWrites=false` 必須設定（Firestore MongoDB compat 不支援 retryable writes）
-- Change Streams 不支援 — 不能用 MongoDB driver 做即時事件
-- Vector indexes 只能透過 Firestore 原生 SDK 建立和查詢
-- 需要 Firestore **Enterprise** edition（非 Standard）
-- Domain events 設計為 idempotent（因為 retryable writes 關閉，需應用層處理重試）
+- pgvector extension 啟用：Cloud SQL 須在 instance 建立時配置 `cloudsql.enable_pgvector = on`（PostgreSQL 18 支援；V1 migration 含 `CREATE EXTENSION` 但 instance flag 必須先在 GCP 端啟用）
+- IAM 授權自動化：sidecar 用 Cloud Run service account 連 Cloud SQL；無需 DB password 進 Secret Manager（Auth Proxy 自動 IAM token 換 DB token）
+- Domain events 寫入與 read model projection 同 transaction（Spring Modulith `@ApplicationModuleListener` outbox 規劃中 — 詳 Backlog S023）
+
+詳 ADR-001 §4.4。

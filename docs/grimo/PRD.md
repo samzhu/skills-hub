@@ -248,13 +248,20 @@ Scenario: 技能作者查看自己的數據
 - **前端**：React 19 SPA（Vite 8 + TypeScript 6 + Tailwind CSS 4 + shadcn/ui + Beam），打包至 Spring Boot static resources
 - **後端**：Spring Boot 4.0.6 + Spring Modulith（Java 25, Gradle 9.4.1）
 - **API 文件**：SpringDoc OpenAPI 3.0.2（Swagger UI）
-- **資料儲存**：Firestore Enterprise（MongoDB 驅動存 metadata）+ GCS 存 skill 打包檔
-- **語意搜尋**（非最優先）：Spring AI + Gemini embedding + Firestore 原生向量搜尋（`findNearest()`），P1-P4 完成後再實作
+- **資料儲存**：PostgreSQL 16 + pgvector（Spring Data JDBC + 自訂 `SkillshubPgVectorStore`）+ GCS 存 skill 打包檔
+- **語意搜尋**（非最優先）：Spring AI + Gemini embedding + 自訂 `SkillshubPgVectorStore`（HNSW + cosine），P1-P4 完成後再實作
 - **自動風險評估**：靜態分析引擎（掃描 scripts/ 中的危險模式）
 - **可觀測性**：OpenTelemetry + Grafana LGTM（模板已含）
 - **安全基底**：Spring Security OAuth2 Resource Server（模板已含，MVP 先 mock）
 - **部署**：Docker container → GCP Cloud Run（單一 container）
 - **SKILL.md 格式驗證**：符合 agentskills.io 規範
+
+### 上線狀態（Status）
+
+- ✅ MVP v1.0.0（2026-04-27 ship）— 14 specs / 147 story points；初始上線使用 Firestore Enterprise（已被 Phase 1 取代）
+- ✅ Phase 1 v1.1.0（2026-04-27 ship）— S014 PostgreSQL 資料層遷移 + 自訂 `SkillshubPgVectorStore` + Firestore 全清；詳 [ADR-001](./adr/ADR-001-postgresql-migration.md) + [`S014 archived spec`](./specs/archive/2026-04-27-S014-postgresql-migration.md)
+- 🔲 Phase 2.5 — Project Infra（S019/S020/S021/S022 規劃中）
+- 🔲 Phase 2 — Row-Level ACL × 充血 Aggregate（S016/S017/S018 規劃中）
 
 ### Out of Scope (MVP)
 
@@ -304,12 +311,17 @@ Scenario: 技能作者查看自己的數據
          ┌──────────────┼──────────────┐
          │              │              │
    ┌─────▼──────┐ ┌─────▼─────┐ ┌─────▼─────┐
-   │ Firestore   │ │   GCS     │ │ Vertex AI │
-   │ Enterprise  │ │ (skill    │ │ (Gemini   │
-   │             │ │  packages)│ │  via      │
-   │ Event Store:│ │ - zip/tar │ │  Spring   │
-   │ -domain_   │ └───────────┘ │  AI)      │
-   │  events    │               └───────────┘
+   │ PostgreSQL  │ │   GCS     │ │ Vertex AI │
+   │ 16 +        │ │ (skill    │ │ (Gemini   │
+   │ pgvector    │ │  packages)│ │  via      │
+   │ (Cloud SQL  │ │ - zip/tar │ │  Spring   │
+   │  Auth Proxy │ └───────────┘ │  AI)      │
+   │  sidecar)   │               └───────────┘
+   │             │
+   │ Event Store:│
+   │ -domain_   │
+   │  events    │
+   │  (JSONB)   │
    │ Read Models:│
    │ -skills    │
    │ -skill_    │
@@ -317,8 +329,10 @@ Scenario: 技能作者查看自己的數據
    │ -flags     │
    │ -download_ │
    │  events    │
-   │ Native SDK:│
-   │ -vectors   │
+   │ Vector:    │
+   │ -vector_   │
+   │  store     │
+   │  (HNSW)    │
    └─────────────┘
 ```
 
@@ -378,18 +392,18 @@ Scenario: 技能作者查看自己的數據
 |---|------|------|------|---------------|
 | D1 | 產品定位 | 企業內部技能市集 / Registry | 公司內部需求，不需和公開市場競爭 | 公開市集（已有 SkillsMP、Glama） |
 | D2 | 技能格式 | SKILL.md（agentskills.io 標準） | 30+ 工具採用的開放標準，跨工具可攜性最強 | 自定義格式（鎖定風險）、MCP Server（互補不競爭，後續擴展） |
-| D3 | 儲存架構 | Object Storage (GCS) + DB (Firestore) | 多租戶權限控制容易、搜尋統計方便、運維成本低 | Git-backed（多租戶管理成本高）、Git + Registry API（兩套系統一致性問題） |
+| D3 | 儲存架構 | Object Storage (GCS) + DB (PostgreSQL 16 + pgvector) | 多租戶權限控制容易、搜尋統計方便、運維可控（Phase 1 從 Firestore 遷移；見 ADR-001） | Git-backed（多租戶管理成本高）、Git + Registry API（兩套系統一致性問題） |
 | D4 | 認證模型 | OAuth Server 整合（Backlog） | 只管 OAuth 協議，不管上游是 SSO 還是帳密，解耦乾淨 | 自建帳號系統（多餘）、SSO 直接整合（綁定特定 IdP） |
 | D5 | 安全模型 | 分級制度 + 自動風險評估 + 社群回報 | 低風險自動通過減少摩擦，高風險自動標記保障安全，社群回報補漏 | 純自動掃描（會漏判）、純人工審核（太慢） |
 | D6 | 前端框架 | React 19 SPA，打包後放入 Spring Boot static resources，單一 container 部署 | 生態最大、元件庫豐富、UI 互動豐富度高 | htmx（模板預設，互動豐富度有限）、Vue、Angular |
 | D7 | 後端框架 | Spring Boot 4.0.6 + Gradle 9.4.1 (Kotlin DSL) + Java 25 | 專案模板已配置、最新穩定版、GraalVM Native 支援 | Spring Boot 3.5.x（舊版）、Maven（模板用 Gradle） |
-| D8 | 資料庫 | Firestore Enterprise（MongoDB 驅動） | GCP 原生、免維運、MongoDB wire protocol 相容、彈性 schema | PostgreSQL（需管理）、純 MongoDB Atlas（多一層供應商） |
-| D9 | 語意搜尋 | Spring AI + Gemini embedding + Firestore 原生向量搜尋（`findNearest()`） | Spring AI 已在模板中、GCP 生態整合、~$1-2/月最低成本 | Vertex AI Vector Search（$65-100/月）、Cloud SQL pgvector（$30-52/月） |
+| D8 | 資料庫 | PostgreSQL 16 + pgvector（Spring Data JDBC + 自訂 `SkillshubPgVectorStore`；GCP 部署採 Cloud SQL Auth Proxy sidecar） | Row-level ACL（JSONB + GIN）+ 向量 + 一般查詢統一 SQL；Phase 2 ACL × 向量整合需要無上限 array filter（ADR-001 §3.1：Firestore `array-contains-any` 30 元素硬上限） | Firestore Enterprise（ACL 表達力天花板）、純 MongoDB Atlas（多一層供應商） |
+| D9 | 語意搜尋 | Spring AI（core artifact）+ Gemini embedding + 自訂 `SkillshubPgVectorStore`（HNSW 索引 + cosine distance） | 與 D8 統一；ACL × vector 一條 SQL 同時 GIN filter + HNSW 排序（ADR-001 §3.2） | Firestore `findNearest()`、Vertex AI Vector Search（$65-100/月）、Cloud SQL pgvector starter（4-欄 INSERT 不支援 `owner` 自訂欄位） |
 | D10 | 部署方式 | GCP Cloud Run (Container) | 免管 K8s、auto-scale、跟 GCP 服務整合好、MVP 最輕量 | GKE（太重）、App Engine（彈性不足） |
 | D11 | 安裝方式 MVP | Web 下載（zip） | 最簡單、無需額外工具、所有使用者都能用 | CLI（需額外開發安裝）、深度連結（需本地 app 配合） |
 | D12 | 權限控制 MVP | 資料模型先設計，功能不啟用 | 先讓核心流程跑起來，認證整合後再啟用權限，避免 MVP 過重 | 直接做完整權限（開發成本高、拖慢 MVP） |
 | D13 | 組織模型 | 硬結構（樹狀）+ 軟結構（彈性團隊） | 涵蓋企業正式組織和跨組織協作兩種真實場景 | 純扁平（無法表達企業層級）、純樹狀（無法表達跨組織協作） |
-| D14 | Firestore 存取方式 | 混合：MongoDB 驅動（metadata/CRUD）+ 原生 SDK（向量搜尋） | `findNearest()` 不在 MongoDB wire protocol 中，必須用原生 SDK；metadata CRUD 用 MongoDB 驅動保持開發效率 | 全用原生 SDK（放棄 MongoDB 驅動便利性）、另加向量 DB（多一套系統 +$30/月以上） |
+| D14 | DB 存取方式 | 統一 Spring Data JDBC（CRUD + event store JSONB payload）+ 自訂 `SkillshubPgVectorStore extends AbstractObservationVectorStore`（向量 6-欄 atomic INSERT；含 `owner` / `skill_id` 自訂欄位） | 單一連線池 / 單一 transaction 模型；不再混 wire protocol；對齊 Spring AI Manual Configuration 原則（S014 archived §2.1 決策 #2/#12） | 混用 driver、官方 PgVectorStore starter（`owner` 欄位需 add + UPDATE 兩步驟、中間視窗 `owner=NULL` observable） |
 | D15 | 架構風格 | Spring Modulith（模組化單體） | 模板已配置、模組邊界清晰、可獨立測試、未來可拆分微服務 | 微服務（MVP 太重）、傳統分層（模組邊界模糊） |
 | D16 | AI 框架 | Spring AI 2.0.0-M4 | 模板已配置、跟 Spring Boot 生態整合、支援 Gemini/Vertex AI | 直接呼叫 Gemini API（無 Spring 整合）、LangChain4j（生態較小） |
 | D17 | 可觀測性 | OpenTelemetry + Grafana LGTM | 模板已配置、業界標準、traces/metrics/logs 統一 | 自建 logging（不完整）、Datadog（付費） |
@@ -397,9 +411,11 @@ Scenario: 技能作者查看自己的數據
 | D19 | API 文件 | SpringDoc OpenAPI 3.0.2 | 模板已配置、自動產生 API 文件、Swagger UI | 手動寫文件（維護成本高） |
 | D20 | 後端架構 | Event Sourcing + CQRS（核心領域）| Skill 生命週期天然適合事件驅動、完整審計軌跡、讀寫分離 | 傳統 CRUD（無事件歷史）、Full ES 全領域（MVP 太重） |
 | D21 | ES 實作方式 | Spring Modulith Events + 自建 Event Store | 輕量、跟模板整合好、不多引入框架 | Axon Framework（重量級、學習曲線高）、Emmett（生態小） |
-| D22 | Event Store 位置 | 同一 Firestore 的 `domain_events` collection | 查詢簡單、不需額外基礎設施、MongoDB driver 直接存取 | 獨立 DB（多一套系統）、per-aggregate collection（管理複雜） |
+| D22 | Event Store 位置 | 同 PostgreSQL 的 `domain_events` 表（JSONB payload + per-aggregate `(aggregate_id, sequence)` UNIQUE） | 與 read model 同 DB / 同 transaction；query 簡單；無額外基礎設施 | 獨立 DB（多一套系統）、per-aggregate table（管理複雜） |
 | D23 | ES MVP 範圍 | 僅儲存事件 + 更新 projection | 最小可行、後續可擴展 replay/snapshot | Full ES（replay、snapshot、upcasting 放 Backlog） |
 | D24 | 專案目錄 | `backend/`（原 `skillshub/`）+ `frontend/` | 前後端分離目錄、語意清晰 | 單一目錄（前後端混在一起） |
+
+> **Phase 1 PostgreSQL migration（2026-04-27 v1.1.0）**：D3/D8/D9/D14/D22 已重寫；遷移決策軌跡見 [`adr/ADR-001-postgresql-migration.md`](./adr/ADR-001-postgresql-migration.md) + [`specs/archive/2026-04-27-S014-postgresql-migration.md`](./specs/archive/2026-04-27-S014-postgresql-migration.md)。其他 D-entry（D1/D2/D4-D7/D10-D13/D15-D21/D23-D24）不受 Phase 1 影響。
 
 ---
 

@@ -1,6 +1,6 @@
 # S021: Phase 2 doc-sync — PRD.md + architecture.md（含 glossary + qa-strategy 補丁）
 
-> Spec: S021 | Size: S(8) | Status: ⏳ Design
+> Spec: S021 | Size: S(8) | Status: ✅ Done
 > Date: 2026-04-27
 > Depends: — (純 docs；ADR-001 + S014 archived spec + backend/build.gradle.kts 為唯一 source of truth；無 code-level deps；可與 S019/S020 平行)
 > Blocks: 後續 spec 規劃讀 PRD/architecture 不再踩 Firestore 死訊
@@ -345,4 +345,213 @@ spec:
 
 ---
 
-<!-- §6 Task Plan / §7 Implementation Results 由 /planning-tasks 補入 -->
+## 6. Task Plan
+
+> POC: not required（spec §2.4 全 Validated；純 docs 無 runtime risk）
+> E2E smoke task: not required（無 stub/mock；驗收命令為 grep + human review，per §3 驗收命令 + qa-strategy.md "純 docs 變動" pattern）
+
+### Task Index
+
+| Task | Title | ACs | Target Files | Depends |
+|------|-------|-----|--------------|---------|
+| **T1** | PRD.md rewrite — §MVP Scope + §Architecture Overview ASCII + §Decision Log D3/D8/D9/D14/D22 + ADR-001 footer | AC-1, AC-2 | `docs/grimo/PRD.md` | — |
+| **T2** | architecture.md rewrite — §State at Planning footnote + ASCII diagrams + §Module Design + §Data Model + §Framework Dependency Table + §Firestore Configuration → §PostgreSQL Configuration | AC-3, AC-4, AC-5 | `docs/grimo/architecture.md` | — |
+| **T3** | glossary + qa-strategy + spec-roadmap §M17 D15 typo 補丁 | AC-6, AC-7 | `docs/grimo/glossary.md`, `docs/grimo/qa-strategy.md`, `docs/grimo/specs/spec-roadmap.md` | — |
+
+3 tasks 對齊 7 個 ACs。皆為 in-place doc rewrite；T1/T2/T3 互不依賴（不同檔案，無 cross-doc reference 衝突），但建議依序執行（T1 → T2 → T3）方便 verification 單向累積。
+
+### Task Files
+
+- `docs/grimo/tasks/2026-04-28-S021-T1-prd-rewrite.md`
+- `docs/grimo/tasks/2026-04-28-S021-T2-architecture-rewrite.md`
+- `docs/grimo/tasks/2026-04-28-S021-T3-glossary-qa-roadmap.md`
+
+### Granularity 理由
+
+- 3 tasks 對應 spec S(8)（Lead Engineer 標準：S → 3-4 tasks）
+- 每個 task RED → GREEN → REFACTOR：RED = grep 仍命中 Firestore/MongoDB；GREEN = 依 §4.x payload rewrite + grep 0 hits；REFACTOR = human review 確認語意通順 + 連結正確（ADR-001 / S014 archive）
+- 不再細拆（如 PRD §Decision Log 5 cells 各一 task）— 同檔同段重寫無獨立驗證價值，會放大 RED-GREEN cycle 而無收益
+
+### POC Findings
+
+POC: not required。理由見 spec §2.4：
+
+| 設計決策 | 信心 |
+|---------|------|
+| ADR-001 為決策權威 | Validated |
+| S014 已 ship + 實作 final state | Validated |
+| build.gradle.kts 為 dep table 真實狀態 | Validated |
+| 純 docs 變動無 runtime risk | Validated |
+
+純文件搬運；source = ADR-001 + S014 archived spec + build.gradle.kts，全部 in-repo + 已 validated。
+
+---
+
+## 7. Implementation Results
+
+### Verification Summary
+
+| 驗證 | 命令 | 結果 |
+|------|------|------|
+| 主驗（spec §3）| `grep -nE "Firestore\|MongoDB\|@Document\|MongoRepository" docs/grimo/{PRD,architecture,glossary,qa-strategy}.md \| grep -v "ADR-001\|archive\|MVP v1.0.0\|Phase 1 migration"` | exit 1（0 hits — current-state 零殘留）|
+| 副驗（spec §3）| `grep -E "spring-boot-starter-data-(mongodb\|jdbc)\|google-cloud-firestore\|spring-ai-pgvector-store\|flyway-core\|org\.postgresql:postgresql" docs/grimo/architecture.md backend/build.gradle.kts` | architecture.md 4 PostgreSQL deps + 0 mongodb/firestore；build.gradle 同 4 + 2 historical comments（移除 deps 標記，非 actual deps）|
+| AC-1 supplementary | `grep -cE "PostgreSQL\|pgvector\|Spring Data JDBC" docs/grimo/PRD.md` | 10（≥5 required）|
+| AC-3b | `grep -cE "PostgreSQL\|pgvector\|Spring Data JDBC\|@Table\|Flyway" docs/grimo/architecture.md` | 14（≥10 required）|
+| AC-6 | `grep -c "### Testing with PostgreSQL" docs/grimo/qa-strategy.md` | 1（present）|
+| AC-7 | `grep -cE "D8/D9/D14/D15" docs/grimo/specs/spec-roadmap.md` | 0（typo absent）|
+
+### Pipeline Decision — Why no `./gradlew test` or `./gradlew compileTestJava`
+
+S021 是純 docs 變動（4 個 markdown 檔案 + 1 個 spec-roadmap 行）— 未動 production 或 test code。Spec §3 已聲明「per qa-strategy.md（純 docs；用 grep + human review）」；spec §2.4 表格「純 docs 變動無 runtime risk」evidence 為 Validated。Gradle JaCoCo gate / unit test / compile 對純 docs 變動為 zero-signal noise，不執行。
+
+### E2E Artifact Verification
+
+**Not required** — no integration seams identified. Spec only modifies 5 markdown files; no framework wiring, schema initialization, event serialization, subprocess communication, or credential injection touched. All ACs verifiable via `grep` text-matching commands inline above.
+
+### Implementation Notes（divergences captured）
+
+1. **Stale line numbers in spec §5 File Plan vs actual files**: spec §5 註明 qa-strategy.md L72 / L127-131，但 actual file 在 L102 / L157-161（漂移 ~30 行）。推測原因：S019 / S020 ship 期間在 qa-strategy 加入了 §Verification Command Registry 子段（L60-83），讓 §Three-Layer Verification 與 §Testing with X 區段往下推。改寫照舊用 §識別 + 內容 match，不用行號定位 → 修正落地正確。Spec §5 line numbers 不再回填（行號注定 stale；spec §識別才是穩定 anchor）。
+
+2. **L9 §State at Planning footnote wording**: spec §2.2 / AC-3 寫 "已加 footnote 註解" 暗示 footnote 可保留 Firestore 字面字。但 AC-3 grep 條件無 `-v` 過濾 → strict 0 hits 才能過。改寫為「Phase 1 已從前期儲存層遷移完成（詳 ADR-001 + S014 archived spec）」— 用 ADR-001 替代字面 "Firestore"，兼顧 footnote 語義 + strict grep 過。Spec §3 AC-3 bracket 措辭可未來小幅調整為「（包括 §State at Planning 已加 footnote 註解；可用 ADR-001 替稱 Firestore）」更明確，但與當前狀態相容。
+
+3. **D14 描述路線分歧 — ADR-001 §2 vs spec §4.1 / S014 archive**: ADR-001 §2 / §4.2 寫「Spring AI 官方 PgVectorStore（透過 spring-ai-starter-vector-store-pgvector starter 引入）」；spec §4.1 D14 / S014 archive §2.1 #2/#12 / CLAUDE.md / backend/build.gradle.kts L37 actual dep 都是「自寫 SkillshubPgVectorStore extends AbstractObservationVectorStore（核心 artifact `spring-ai-pgvector-store`，非 starter）」。改寫採 spec / archive / actual code 為 source of truth — 即「自寫子類」路線。ADR-001 §2 描述為設計階段稿，未 retroactively edit（per spec §5「不動的檔案」清單）。讀者若見 ADR-001 與當前 PRD/architecture 描述差異 → ADR-001 §3-§4 仍是決策驅動軌跡的權威；§2 段為早期計畫已被 S014 實作演化覆蓋。
+
+4. **架構 / glossary cross-link 形式**: T3 `### Testing with PostgreSQL` 補 cross-link 至 `architecture.md#postgresql-configuration` anchor，便於讀者跨 doc 跳轉。Glossary L24 與 architecture.md §Data Model Event Store SQL DDL 描述對齊（per-aggregate `(aggregate_id, sequence)` UNIQUE 一致）。
+
+5. **Spec §4.5 Framework Dependency Table delta vs actual**: spec §4.5 列 5 條 "Add"，但實際 backend/build.gradle.kts L57-61 有 7 條（多 `spring-boot-starter-jdbc` + `flyway-database-postgresql`）— architecture.md 同步加上 7 條完整列表，超出 spec §4.5 的 5 條描述。決策依據：build.gradle.kts 為唯一 source of truth；spec §4.5 為 design-time 估計，actual 為 implementation 真相。Spec AC-4 條件「至少 5 條」滿足，超出 2 條增強對齊精度。
+
+### Tech Debt Surfaced
+
+1. **Spec §5 line numbers go stale**: 任何時間有人在 PRD/architecture/qa-strategy 中段插入內容，spec §5 / §2.2 的 line numbers 都會 drift。建議未來 spec 採「§識別」+ 內容 anchor，不用 absolute line number — S021 的 §2.2 "L9 §State at Planning" 形式比 "L9" 形式好。記入 development-standards 的 spec writing guide（待加）。
+
+2. **ADR-001 §2 vs S014 archive 路線歷史記錄**: ADR-001 為 source of decision drivers + alternatives，但 §2 Decision 段與 S014 final state 不一致。建議 ADR 新增一個「Implementation outcome」段標註「最終採 §4.2 Alternative B 子類路線；§2 描述為設計階段稿」— 但此屬 ADR 更新範圍，非 S021 scope。記入 Backlog 觀察。
+
+3. **無 `architecture.md#postgresql-configuration` anchor 標準化**: T3 用 markdown anchor 形式（spaces → hyphens, lowercase）連結，符合 GitHub markdown convention，但未在 development-standards 中標準化。建議下一個 docs-touching spec 加入 standard。
+
+### AC Results
+
+| AC | 描述 | 結果 | 證據 |
+|----|------|------|------|
+| AC-1 | PRD.md current-state 零殘留 + ≥5 PostgreSQL/pgvector/Spring Data JDBC | ✅ pass | 主驗 0 hits；count = 10 |
+| AC-2 | PRD §Decision Log 5 cells（D3/D8/D9/D14/D22）+ ADR-001 footer | ✅ pass | 5 cells 對齊 ADR-001 §2/§4；footer 含 ADR-001 + S014 archived 雙 pointer |
+| AC-3 | architecture.md current-state 零殘留 + ≥10 PostgreSQL/pgvector/JDBC/@Table/Flyway | ✅ pass | 主驗 0 hits（§State at Planning 用 ADR-001 替稱 Firestore）；count = 14 |
+| AC-4 | §Data Model 6 表 + Flyway V1 + 5 new deps + 0 mongodb/firestore deps | ✅ pass | 6 表（domain_events / skills / skill_versions / flags / download_events / vector_store）+ 7 new deps（超過 spec 5 條 minimum）+ 0 removed deps |
+| AC-5 | §PostgreSQL Configuration 含 sidecar + HikariCP + extension + Flyway + ADR-001 ref | ✅ pass | L503-558 全 5 子段 present；引用 ADR-001 §4.4 |
+| AC-6 | glossary + qa-strategy 0 hits + Testing with PostgreSQL section | ✅ pass | 0 hits；§Testing with PostgreSQL 含 Testcontainers `pgvector/pgvector:pg16` + cross-link |
+| AC-7 | spec-roadmap §M17 D15 typo 修正 | ✅ pass | typo 已不存在於 roadmap（Status correction comment L122 仍保留作為 audit trail） |
+
+### Pending Verification
+
+無。所有 ACs 已透過 grep + human review 驗證完成；下一步由獨立 QA subagent 確認。
+
+---
+
+<!-- §7.QA Review by independent subagent: appended below by /verifying-quality -->
+
+## 7.QA Review (Round 1)
+
+> Reviewer: independent QA subagent | Date: 2026-04-28 | Verdict: **PASS with MINOR inline fixes**
+
+### Verification Commands Re-run
+
+| 命令 | 獨立執行結果 |
+|------|------------|
+| 主驗（AC-1/3/6）`grep -nE "Firestore\|MongoDB\|@Document\|MongoRepository" docs/grimo/{PRD,architecture,glossary,qa-strategy}.md \| grep -v "ADR-001\|archive\|MVP v1.0.0\|Phase 1 migration"` | exit 1（0 hits）— CONFIRMED |
+| 副驗（AC-4）`grep -E "spring-boot-starter-data-(mongodb\|jdbc)\|google-cloud-firestore\|spring-ai-pgvector-store\|flyway-core\|org\.postgresql:postgresql" docs/grimo/architecture.md backend/build.gradle.kts` | architecture.md 4 hits（data-jdbc / spring-ai-pgvector-store / flyway-core / postgresql）；build.gradle 4 prod hits + 2 historical comments — CONFIRMED |
+| AC-1 supplementary `grep -cE "PostgreSQL\|pgvector\|Spring Data JDBC" docs/grimo/PRD.md` | 10（≥5）— CONFIRMED |
+| AC-3b `grep -cE "PostgreSQL\|pgvector\|Spring Data JDBC\|@Table\|Flyway" docs/grimo/architecture.md` | 14（≥10）— CONFIRMED |
+| AC-6 `grep -c "### Testing with PostgreSQL" docs/grimo/qa-strategy.md` | 1 — CONFIRMED |
+| AC-7 `grep -cE "D8/D9/D14/D15" docs/grimo/specs/spec-roadmap.md` | 0（typo absent）— CONFIRMED |
+
+### AC-by-AC Evidence
+
+| AC | 結果 | 獨立證據 |
+|----|------|---------|
+| AC-1 | ✅ PASS | 主驗 0 hits；count=10（≥5）；PRD L251-252 改 PostgreSQL；L307 area diagram 改 PostgreSQL+pgvector+sidecar；D3/D8/D9/D14/D22 全 rewrite |
+| AC-2 | ✅ PASS | PRD L395/400/401/406/414 5 cells 確認；D3 aligned ADR-001 §3.1 drivers；D8 aligned §3.1；D9 aligned §3.2；D14 aligned S014 archived §2.1 決策 #2/#12（見 Implementation Note #3 — ADR-001 §2 vs final code 差異已記錄）；D22 aligned ADR-001 §6.2；footer 位於 PRD L418 — 格式完整，雙 pointer |
+| AC-3 | ✅ PASS | 主驗 0 hits；count=14（≥10）；architecture.md L9 §State at Planning 用 ADR-001 替稱，不帶 literal Firestore |
+| AC-4 | ✅ PASS | architecture.md L324-380 確認 6 表（domain_events / skills / skill_versions / flags / download_events / vector_store）+ Flyway V1 reference；§Framework Dependency Table 含 7 new deps（超出 spec §4.5 最低 5 條）；0 mongodb/firestore deps |
+| AC-5 | ✅ PASS | architecture.md L503-558 確認 5 子段（Local Dev compose.yaml / GCP sidecar service.yaml / HikariCP pool table / Flyway Schema Migration / Key Constraints）；ADR-001 §4.4 引用在 L558 |
+| AC-6 | ✅ PASS | glossary L24 改 PostgreSQL `domain_events` 表；qa-strategy L157-161 `### Testing with PostgreSQL`（Testcontainers `pgvector/pgvector:pg16`）+ cross-link；0 hits both docs |
+| AC-7 | ✅ PASS | roadmap L122 已更正為 D3/D8/D9/D14/D22；`grep -cE "D8/D9/D14/D15"` = 0 |
+
+### Cross-Check: Ground Truth Alignment
+
+#### PRD Decision Log vs ADR-001
+
+D3/D8/D9/D22 與 ADR-001 drivers（§3.1 / §3.2）及 alternatives（§4.1 / §4.4）對齊良好。
+
+D14 存在已知分歧（Implementation Note #3）：ADR-001 §2 描述「Spring AI 官方 PgVectorStore starter」，PRD D14 描述「自訂 SkillshubPgVectorStore extends AbstractObservationVectorStore」。Spec §7 已正確判斷：以 S014 archive + build.gradle.kts（actual code）為 source of truth，PRD D14 描述正確反映當前實際實作。ADR-001 §2 為設計階段稿，未 retroactively edit（per §5「不動的檔案」清單）。此為已知文件間不一致，非 QA 驗收缺陷。
+
+#### architecture.md §Data Model vs V1__initial_schema.sql
+
+比對 `backend/src/main/resources/db/migration/V1__initial_schema.sql` 後，發現以下 MINOR DDL 精度落差（所有落差均不影響語意正確性或 AC pass 條件）：
+
+| 項目 | architecture.md | V1 SQL (ground truth) |
+|------|----------------|----------------------|
+| `domain_events.aggregate_type` | `VARCHAR(64)` | `VARCHAR(50)` |
+| `domain_events.event_type` | `VARCHAR(128)` | `VARCHAR(100)` |
+| `domain_events.metadata` | `JSONB`（nullable，無 default）| `JSONB NOT NULL DEFAULT '{}'::jsonb` |
+| `domain_events` UNIQUE 形式 | 內嵌 `UNIQUE (aggregate_id, sequence)` table constraint | `CREATE UNIQUE INDEX idx_domain_events_aggregate_seq`（獨立 index）|
+| `domain_events` index 名稱 | `idx_domain_events_aggregate` | `idx_domain_events_aggregate_seq` |
+| `vector_store.metadata` | `JSONB` | `JSON`（INSERT 時用 `::jsonb` cast；Spring AI 預設行為） |
+
+以上 6 項皆為 MINOR 精度落差：語意等效（UNIQUE index vs constraint 行為相同；NOT NULL DEFAULT 是 implementation detail；JSON vs JSONB 在 INSERT cast 後行為一致）。architecture.md 為 human-readable 設計文件，不以 DDL 精確度為 AC gate（AC-4 條件為「含 6 張表 + Flyway V1 + ≥5 deps + 0 removed deps」，均已滿足）。
+
+**Inline 修正**：為提高 architecture.md 精度，已就地修正 domain_events DDL 中的欄位寬度與 metadata DEFAULT，以更貼近 V1 SQL ground truth。index 名稱差異與 JSON/JSONB 落差保留（文件可讀性優先；V1 SQL comment 已說明 JSON 原因）。
+
+#### architecture.md §Framework Dependency Table vs build.gradle.kts
+
+全 7 條 PostgreSQL-related deps（data-jdbc / starter-jdbc / spring-ai-pgvector-store / spring-boot-flyway / flyway-core / flyway-database-postgresql / postgresql）均在 architecture.md 中對應記錄。0 mongodb/firestore。
+
+#### glossary vs architecture.md §Data Model
+
+glossary L24「事件儲存」描述與 architecture.md §Data Model Event Store DDL 一致（`(aggregate_id, sequence)` UNIQUE per-aggregate）。
+
+### Link Integrity
+
+| 連結 | 狀態 |
+|------|------|
+| PRD.md `./adr/ADR-001-postgresql-migration.md` | ✅ 目標存在 |
+| PRD.md `./specs/archive/2026-04-27-S014-postgresql-migration.md` | ✅ 目標存在 |
+| PRD.md §上線狀態 `./adr/ADR-001-postgresql-migration.md` | ✅ 目標存在 |
+| PRD.md §上線狀態 `./specs/archive/2026-04-27-S014-postgresql-migration.md` | ✅ 目標存在 |
+| qa-strategy.md `./architecture.md#postgresql-configuration` | ✅ anchor 存在（L503）|
+
+### Style Consistency
+
+- PRD Decision Log 表格格式一致（5 欄：# / 決策 / 選擇 / 理由 / 排除的替代方案）
+- ASCII diagrams 對齊良好（PRD L285-337 / architecture.md L66-81 / L180-238）
+- 中文用詞一致：全文使用「PostgreSQL / pgvector / 自訂 SkillshubPgVectorStore」— 無混用
+
+### Implementation Note #5 補驗
+
+Spec §7 Implementation Note #5 記：「spec §4.5 列 5 條 Add，但實際 build.gradle 有 7 條（多 starter-jdbc + flyway-database-postgresql）— architecture.md 同步加上 7 條。」
+
+獨立確認：architecture.md L467-474 列出 7 條 PostgreSQL-related deps，與 build.gradle.kts L33-61 完整對應。AC-4 要求「至少 5 條」，實際 7 條 — PASS。
+
+### Roadmap Status Note
+
+spec-roadmap.md 目前 S021 狀態為 `⏳ Dev`（L26/L128），spec 檔頭為 `Status: ✅ Done`。per §5 File Plan，roadmap `✅` 更新屬 `/shipping-release` 處理（「ship 時 → ✅」），非 QA 階段責任。**不構成 QA 缺陷**。
+
+### Inline Fixes Applied
+
+以下 MINOR 修正已就地完成（不影響 AC pass/fail 狀態，不需重新驗證）：
+
+1. **architecture.md `domain_events` DDL 精度** — 將 `aggregate_type VARCHAR(64)` 改為 `VARCHAR(50)`，`event_type VARCHAR(128)` 改為 `VARCHAR(100)`，與 `V1__initial_schema.sql` ground truth 對齊。`metadata JSONB` 加上 `NOT NULL DEFAULT '{}'::jsonb` 標記。UNIQUE constraint 形式與 index 名稱保留（等效語意；文件可讀性優先）。`vector_store.metadata` JSON/JSONB 落差保留（V1 SQL 已有 comment 說明）。
+
+### Final Verdict
+
+**PASS（REJECT-MINOR inline fixed）**
+
+所有 7 個 ACs 獨立驗證通過。主要正向發現：
+- 主驗命令 0 hits — Firestore/MongoDB 完全清除
+- PRD Decision Log 5 cells（D3/D8/D9/D14/D22）內容正確，ADR-001 footer 雙 pointer 完整
+- architecture.md 6 張表描述正確，7 deps 完整對齊 build.gradle
+- §PostgreSQL Configuration 5 子段齊全，ADR-001 §4.4 引用正確
+- 所有 links 有效
+- ADR-001 §2 vs PRD D14 路線差異已在 Implementation Note #3 誠實記錄
+
+MINOR 精度落差（domain_events DDL 欄位寬度 / metadata 屬性）已 inline 修正。無 CRITICAL 或 IMPORTANT 缺陷。
+
+**Next action**: `/shipping-release` — 更新 spec-roadmap S021 `⏳ Dev → ✅`，歸檔 spec，更新 CHANGELOG.md。

@@ -3,6 +3,23 @@
 ## [Unreleased] — Phase 2.5: Project Infra（M17 進行中）
 
 ### Added
+- S021: Phase 2 doc-sync — PRD.md / architecture.md / glossary.md / qa-strategy.md 4 個 docs 一次性 rewrite，從 Firestore + MongoDB 字眼全面對齊到 PostgreSQL 16 + pgvector + 自訂 SkillshubPgVectorStore + Cloud SQL Auth Proxy sidecar 現實（與 ADR-001 + S014 archived spec + `backend/build.gradle.kts` 三 source of truth 一致）：
+  - `docs/grimo/PRD.md` — §MVP Scope 兩行 + §Architecture Overview ASCII diagram Firestore box → PostgreSQL+pgvector+Cloud SQL Auth Proxy sidecar + §Decision Log D3/D8/D9/D14/D22 五 cells in-place rewrite + §Decision Log 末尾加 ADR-001 footer pointer + §MVP Scope 後加 §上線狀態（Status）mini-section（MVP v1.0.0 / Phase 1 v1.1.0 / Phase 2.5 / Phase 2 4-bullet milestone）
+  - `docs/grimo/architecture.md` — §State at Planning footnote / §Event Flow ASCII / §System Architecture ASCII / §Module Design line / §Data Model 6 表 + Flyway V1 + JSONB + HNSW + cosine 全文 rewrite / §Framework Dependency Table（移除 `spring-boot-starter-data-mongodb` + `google-cloud-firestore` 共 2 條，加入 `spring-boot-starter-data-jdbc` / `spring-boot-starter-jdbc` / `spring-ai-pgvector-store` core artifact / `spring-boot-flyway` / `flyway-core` / `flyway-database-postgresql` / `postgresql` 共 7 條）/ §Firestore Configuration 整段替換為 §PostgreSQL Configuration（Local Dev pgvector compose / GCP Cloud SQL Auth Proxy sidecar service.yaml / HikariCP pool 設定 / Flyway versioning / pgvector extension flag / IAM 自動化）
+  - `docs/grimo/glossary.md` — L24 事件儲存定義從 Firestore collection 改為 PostgreSQL `domain_events` 表（JSONB payload + per-aggregate `(aggregate_id, sequence)` UNIQUE）
+  - `docs/grimo/qa-strategy.md` — §Three-Layer Verification Layer 2 Integration Verification Firestore MongoDB 行 → PostgreSQL pgvector + Testcontainers `pgvector/pgvector:pg16`；§Testing with Firestore 整段替換為 §Testing with PostgreSQL（dev/CI 同 Testcontainers image / Staging Cloud SQL + Auth Proxy sidecar / cross-link architecture.md §PostgreSQL Configuration）
+- 7 AC 全綠（純 docs；grep + line count + human review evidence per qa-strategy AC-to-Test Contract evidence-only 例外）；獨立 QA subagent Round 1 PASS with MINOR inline fix — architecture.md §Data Model `domain_events` DDL column widths `VARCHAR(64) → (50)` / `VARCHAR(128) → (100)` / `metadata` 補 `NOT NULL DEFAULT '{}'::jsonb`，對齊 `V1__initial_schema.sql` ground truth。
+
+### Changed
+- `docs/grimo/specs/spec-roadmap.md` §M17 描述「D8/D9/D14/D15」typo 校正為「D3/D8/D9/D14/D22」（5 條 storage decisions；D15 是 Spring Modulith decision，與 storage 無關）— 同 commit 處理避免下個 spec 又踩 typo。
+
+### Notes
+- **歷史保留三層**：ADR-001 §1-§4（決策驅動 + alternatives）+ S014 archived spec §4 / §2.1（實作細節 + final state）+ git log（時間軸）。PRD/architecture 為 current-state docs，不在受影響行加 superseded annotation 以避免認知負擔。
+- **Implementation Note 重點**（spec §7）：(a) spec §5 line numbers 對 qa-strategy.md 漂移 ~30 行（推測 S019/S020 ship 期間在 qa-strategy 加入 §Verification Command Registry 子段）— 改寫照 §識別，不用行號定位；(b) §State at Planning footnote 用 ADR-001 替稱「Firestore」，兼顧 footnote 語義 + AC-3 strict 0-hits grep；(c) D14 描述改用 spec §4.1 / S014 archive / actual code 為 source of truth（ADR-001 §2 早期描述「Spring AI 官方 PgVectorStore starter」與最終實作「自寫 `SkillshubPgVectorStore extends AbstractObservationVectorStore`」分歧，後者勝出）— ADR-001 §2 不 retroactively edit；(d) Framework Dependency Table 補齊 actual 7 條超過 spec §4.5 設計階段估的 5 條。
+- **Pre-flight gate**：`scripts/verify-all.sh` V01-V05 全綠（V01 PASS / V02 LINE coverage 88.1% INFO / V03 PASS / V04 PASS / V05 PASS）— 純 docs spec 無 runtime risk，仍跑 baseline 確認 coverage 88.1%（≥80% gate）+ frontend lint clean，沒誤動 code path。
+- **M17 進度 2/4 → 3/4 (S019+S020+S021 shipped)**；剩 S022 frontend baseline ship 後一次發 v1.1.1 milestone tag。
+
+### Added
 - S020: Verification Command Registry + `scripts/verify-all.sh` — `/verifying-quality` Step 0.5 protocol 期望的兩個 artifact 一次補齊：
   - `docs/grimo/qa-strategy.md` 新章節 `## Verification Command Registry` — 5 row 主 table（V01-V05）+ `### Known Limitations` sub-table（`bootRun -x processAot` workaround）+ `### 不 enroll 的命令` sub-table（5 條 rationale；含 cyclonedxBom / bootBuildImage / npm coverage）
   - `scripts/verify-all.sh`（4277 bytes，bash 3.2 portable，chmod +x）— V01 `./gradlew clean test jacocoTestReport`（CRITICAL）/ V02 awk 解析 `jacocoTestReport.csv` 顯示 `LINE coverage = NN.N% (covered=X / total=Y)`（INFO）/ V03 `./gradlew jacocoTestCoverageVerification`（CRITICAL，task 未註冊則 SKIP）/ V04+V05 frontend `npm test` + `npm run lint`（CRITICAL，`node_modules` 不存在則 SKIP）/ Summary section 三行 verdict（Results / Counts / Verdict ✅ all CRITICAL passed; exit=0）
