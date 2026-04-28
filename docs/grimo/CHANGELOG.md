@@ -3,6 +3,28 @@
 ## [Unreleased] — Phase 2.5: Project Infra（M17 進行中）
 
 ### Added
+- S020: Verification Command Registry + `scripts/verify-all.sh` — `/verifying-quality` Step 0.5 protocol 期望的兩個 artifact 一次補齊：
+  - `docs/grimo/qa-strategy.md` 新章節 `## Verification Command Registry` — 5 row 主 table（V01-V05）+ `### Known Limitations` sub-table（`bootRun -x processAot` workaround）+ `### 不 enroll 的命令` sub-table（5 條 rationale；含 cyclonedxBom / bootBuildImage / npm coverage）
+  - `scripts/verify-all.sh`（4277 bytes，bash 3.2 portable，chmod +x）— V01 `./gradlew clean test jacocoTestReport`（CRITICAL）/ V02 awk 解析 `jacocoTestReport.csv` 顯示 `LINE coverage = NN.N% (covered=X / total=Y)`（INFO）/ V03 `./gradlew jacocoTestCoverageVerification`（CRITICAL，task 未註冊則 SKIP）/ V04+V05 frontend `npm test` + `npm run lint`（CRITICAL，`node_modules` 不存在則 SKIP）/ Summary section 三行 verdict（Results / Counts / Verdict ✅ all CRITICAL passed; exit=0）
+  - `verify-all.log` at repo root — ISO timestamp section header + 各 V0N stdout 完整保留；`gradle clean` 不再摧毀（Round 2 修；spec §7.10）
+- 7 AC 全綠（all build-evidence per qa-strategy AC-to-Test Contract evidence-only 例外）；Round 1 QA REJECT-IMPORTANT（log 路徑被 V01 `clean` 摧毀 + Results trailing space）→ Round 2 fix（log 搬 repo root + `${RESULTS[*]}` IFS-join）→ Round 2 QA PASS。
+- 4 個 doc-only stale-path MINOR（subagent Round 2 額外抓出）已就地修：§1 narrative / §3 AC-3 / §4.2 script header / §7.4 code block / §5 file plan `.gitignore` 條目。
+
+### Changed
+- `frontend/src/components/ui/badge.tsx`、`frontend/src/components/ui/tabs.tsx` — 各加 1 行 `// eslint-disable-next-line react-refresh/only-export-components` 註明 shadcn/ui CLI scaffolding 慣例（cva variants 與 component 同檔便於 CLI 升級；HMR 行為非阻擋）— Option A tactical bridge，由 **S022 Frontend Verification Baseline** 後續 root-cause 取代（拆檔 vs cva exception config 設計決策）。
+- `docs/grimo/specs/spec-roadmap.md` Active Work 順序：S019 ✅ → S020（本次）→ S021 → **S022 (NEW)** → S016/S017/S018；M17 從 3 specs / 23 pts → 4 specs / 31 pts；M17 進度 **2/4 (S019+S020 shipped)**。
+
+### Added (frontend baseline placeholder)
+- `frontend/src/smoke.test.ts`（8 行）— vitest 至少 1 個 test 檔（解 `No test files found, exit 1`）；Option A bridge，將由 S022 真實 component / hook test 取代。
+- 新建 repo root `.gitignore`（5 行）含 `verify-all.log` entry — Round 2 fix 副產物，避免 worktree 污染。
+
+### Notes
+- **Round 2 bug fix lessons learned**（spec §7.10）：(a) 設計階段 § log 路徑時須檢查所有 verify command 副作用，「log 應被自己 verify 的 build 行為摧毀」是邏輯矛盾；(b) bash trailing space 從 array print 出來，預設 `${arr[*]}` IFS-join 是最簡 portable 解；(c) QA subagent evidence-table 模式（每條 check + 結果 + ❌/✅）強制 surface 隱藏 bug，建議入 `/verifying-quality` skill expected output。
+- **Coverage baseline**：V02 顯示 88.1% (1055/1198)；S019 ship 時 88.03% (1052/1195)；浮動 +0.07pp 來自 frontend smoke.test.ts 加入後 backend 測試 instrumentation 微調，遠在 V03 gate 0.80 內。
+- **S021 / S022 待補（已登記）**：(i) qa-strategy.md `## AC-to-Test Contract` 明文新增「build/config spec = evidence-only AC」例外（S019 + S020 兩輪 QA 共識）；(ii) S020 §3 AC-5 文字「rename node_modules 模擬未裝」測法不可行（V01 npmInstall 副作用會重建 node_modules）— 修正為「邏輯設計意圖 + 等價 inline-script 驗證」；(iii) frontend coverage L23-25 文字實作落地（→ S022）。
+- M17 進度 2/4；S021 + S022 ship 後一次發 v1.1.1 milestone tag。
+
+### Added
 - S019: JaCoCo coverage gate plugin + 80% line threshold — 補 S014 ship 後 `/verifying-quality` 列為 IMPORTANT 的 pre-existing project gap：`qa-strategy.md` L18-21 宣告 80% line coverage 但 `build.gradle.kts` 從未掛 `jacoco` plugin。本 spec 一次補齊：
   - `plugins {}` + `jacoco`；`jacoco { toolVersion = "0.8.14" }` 顯式 pin（首版官方支援 Java 25 bytecode；對齊 CLAUDE.md「Ecosystem-Managed Versions」）
   - `tasks.test { finalizedBy(tasks.jacocoTestReport) }` — test 結束自動產 report
