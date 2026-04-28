@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -78,12 +79,19 @@ public class SkillCommandController {
 	/**
 	 * 為既有技能新增版本。版本號不可重複，否則回傳 409 Conflict。
 	 *
+	 * <p>S016：套用 row-level ACL — 呼叫者必須對該 skill 具 {@code write} 權限
+	 * （acl_entries 含 {@code user:<sub>:write} 或 {@code role:<role>:write} 或
+	 * {@code group:<group>:write} 任一 pattern）。授權檢查由
+	 * {@link io.github.samzhu.skillshub.skill.security.SkillPermissionStrategy}
+	 * 經 {@code DelegatingPermissionEvaluator} 路由執行。
+	 *
 	 * @param id      技能 ID
 	 * @param file    新版本的 skill zip 檔
 	 * @param version 新版本號（如 "1.1.0"）
 	 * @return 200 OK
 	 */
 	@PutMapping("/{id}/versions")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'write')")
 	ResponseEntity<Void> addVersion(
 			@PathVariable String id,
 			@RequestParam("file") MultipartFile file,

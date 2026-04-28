@@ -28,9 +28,15 @@ import org.springframework.util.LinkedMultiValueMap;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 
+// S016 T3：PUT /skills/{id}/versions 加 @PreAuthorize 後 anonymous 不過 — 同
+// SkillUploadTest 處理：LAB mode + lab-user-id 對齊 author="tester"。
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 @Import(TestcontainersConfiguration.class)
+@org.springframework.test.context.TestPropertySource(properties = {
+		"skillshub.security.oauth.enabled=false",
+		"skillshub.security.lab.user-id=tester"
+})
 class SkillVersionQueryTest {
 
 	@Autowired

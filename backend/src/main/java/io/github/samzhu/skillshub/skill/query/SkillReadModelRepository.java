@@ -62,4 +62,49 @@ public interface SkillReadModelRepository extends ListCrudRepository<SkillReadMo
 	@Modifying
 	@Query("UPDATE skills SET risk_level = :riskLevel, updated_at = :ts WHERE id = :id")
 	int updateRiskLevel(@Param("id") String id, @Param("riskLevel") String riskLevel, @Param("ts") Instant ts);
+
+	/**
+	 * S016：追加 ACL entry（型如 {@code "type:principal:permission"}）至 {@code skills.acl_entries}。
+	 *
+	 * <p>用於 {@code SkillProjection.on(SkillAclGrantedEvent)} read-side 投影；
+	 * {@code WHERE NOT (acl_entries @> to_jsonb(:entry))} 保證冪等 — 同一 entry 重複事件不疊加。
+	 *
+	 * @param id    技能 ID
+	 * @param entry 完整字串（如 {@code "group:engineering:read"}）
+	 * @param ts    更新時間戳
+	 * @return 更新的 row 數（0 = entry 已存在或 skill 不存在；非 throw，由 listener 視情況 log）
+	 */
+	@Modifying
+	@Query("""
+			UPDATE skills
+			   SET acl_entries = acl_entries || to_jsonb(:entry),
+			       updated_at = :ts
+			 WHERE id = :id
+			   AND NOT (acl_entries @> to_jsonb(:entry))
+			""")
+	int appendAclEntry(@Param("id") String id, @Param("entry") String entry, @Param("ts") Instant ts);
+
+	/**
+	 * S016：從 {@code skills.acl_entries} 移除指定字串 entry。
+	 *
+	 * <p>用 {@code jsonb_array_elements_text} + {@code jsonb_agg} 重組（比 jsonb {@code -} operator
+	 * 對純字串 array 更穩健）；{@code COALESCE(..., '[]'::jsonb)} 處理移除後變空 array 的 NULL 回傳。
+	 *
+	 * @param id    技能 ID
+	 * @param entry 要移除的字串
+	 * @param ts    更新時間戳
+	 * @return 更新的 row 數（0 = skill 不存在）
+	 */
+	@Modifying
+	@Query("""
+			UPDATE skills
+			   SET acl_entries = COALESCE(
+			       (SELECT jsonb_agg(elem)
+			          FROM jsonb_array_elements_text(acl_entries) elem
+			         WHERE elem != :entry),
+			       '[]'::jsonb),
+			       updated_at = :ts
+			 WHERE id = :id
+			""")
+	int removeAclEntry(@Param("id") String id, @Param("entry") String entry, @Param("ts") Instant ts);
 }

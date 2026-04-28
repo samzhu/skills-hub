@@ -1,0 +1,187 @@
+package io.github.samzhu.skillshub.shared.security;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+import java.util.Set;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
+/**
+ * S016 AC-6 — {@link DelegatingPermissionEvaluator} routing + anonymous 短路。
+ *
+ * <p>對應 spec §4.4 / §2.4 Challenge #8：
+ * <ul>
+ *   <li>routing：按 strategy.supports(targetType) 找第一個匹配；無匹配 → false</li>
+ *   <li>anonymous 短路：null / AnonymousAuthenticationToken 直接 false（HTTP layer
+ *       由 ExceptionTranslationFilter 區分 401/403）</li>
+ *   <li>null target / null targetType → false（防 NPE，per spec §4.4 注釋）</li>
+ * </ul>
+ *
+ * <p>純 unit test — 不啟 Spring 容器；用 stub PermissionStrategy。
+ */
+class DelegatingPermissionEvaluatorTest {
+
+    private final Authentication aliceAuth = new UsernamePasswordAuthenticationToken(
+            "alice",
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_user")));
+
+    @Test
+    @DisplayName("AC-6: 找到 supports() 的 strategy → 委派並回傳其結果")
+    @Tag("AC-6")
+    void hasPermission_routesToMatchingStrategy() {
+        var skillStub = new StubStrategy("Skill", true);
+        var evaluator = new DelegatingPermissionEvaluator(List.of(skillStub));
+
+        var allowed = evaluator.hasPermission(aliceAuth, "abc-1", "Skill", "read");
+
+        assertThat(allowed).isTrue();
+        assertThat(skillStub.lastInvokedPermission).isEqualTo("read");
+        assertThat(skillStub.lastInvokedTarget).isEqualTo("abc-1");
+    }
+
+    @Test
+    @DisplayName("AC-6: 無 strategy supports targetType → 直接 false（不丟 exception）")
+    @Tag("AC-6")
+    void hasPermission_noMatchingStrategy_returnsFalse() {
+        var skillStub = new StubStrategy("Skill", true);
+        var evaluator = new DelegatingPermissionEvaluator(List.of(skillStub));
+
+        // 請求的 type 是 Workspace，但只註冊了 Skill strategy
+        var allowed = evaluator.hasPermission(aliceAuth, "ws-1", "Workspace", "read");
+
+        assertThat(allowed).isFalse();
+    }
+
+    @Test
+    @DisplayName("AC-6: 多個 strategies → 取第一個 supports() 為 true 的（ordering by DI 註冊順序）")
+    @Tag("AC-6")
+    void hasPermission_multipleStrategies_picksFirstMatch() {
+        var skillStub = new StubStrategy("Skill", true);
+        var workspaceStub = new StubStrategy("Workspace", false);
+        var evaluator = new DelegatingPermissionEvaluator(List.of(skillStub, workspaceStub));
+
+        // dispatch Workspace → 應命中 workspaceStub（Skill stub 不應被呼叫）
+        var allowed = evaluator.hasPermission(aliceAuth, "ws-1", "Workspace", "read");
+
+        assertThat(allowed).isFalse();
+        assertThat(skillStub.lastInvokedTarget)
+                .as("Skill strategy 不該被叫到（workspace request 不命中 supports)")
+                .isNull();
+        assertThat(workspaceStub.lastInvokedTarget).isEqualTo("ws-1");
+    }
+
+    @Test
+    @DisplayName("AC-6: AnonymousAuthenticationToken → 直接 false 不 dispatch")
+    @Tag("AC-6")
+    void hasPermission_anonymous_shortCircuits() {
+        var skillStub = new StubStrategy("Skill", true);
+        var evaluator = new DelegatingPermissionEvaluator(List.of(skillStub));
+
+        // Spring Security AnonymousAuthenticationFilter 注入此型別
+        var anon = new AnonymousAuthenticationToken(
+                "key", "anonymous",
+                List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS")));
+
+        var allowed = evaluator.hasPermission(anon, "abc-1", "Skill", "read");
+
+        assertThat(allowed).isFalse();
+        assertThat(skillStub.lastInvokedTarget)
+                .as("anonymous 應於 dispatcher 短路；strategy 不應收到請求")
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("AC-6: null Authentication → 直接 false（fail-secure）")
+    @Tag("AC-6")
+    void hasPermission_nullAuthentication_returnsFalse() {
+        var skillStub = new StubStrategy("Skill", true);
+        var evaluator = new DelegatingPermissionEvaluator(List.of(skillStub));
+
+        var allowed = evaluator.hasPermission(null, "abc-1", "Skill", "read");
+
+        assertThat(allowed).isFalse();
+    }
+
+    @Test
+    @DisplayName("AC-6: null targetId / null targetType → 直接 false（防 NPE）")
+    @Tag("AC-6")
+    void hasPermission_nullTargetIdOrType_returnsFalse() {
+        var skillStub = new StubStrategy("Skill", true);
+        var evaluator = new DelegatingPermissionEvaluator(List.of(skillStub));
+
+        assertThat(evaluator.hasPermission(aliceAuth, null, "Skill", "read")).isFalse();
+        assertThat(evaluator.hasPermission(aliceAuth, "abc-1", null, "read")).isFalse();
+    }
+
+    @Test
+    @DisplayName("AC-6: 無 strategies 註冊 → 一律 false（boot 早期 / 純測試環境）")
+    @Tag("AC-6")
+    void hasPermission_noStrategiesRegistered_returnsFalse() {
+        var evaluator = new DelegatingPermissionEvaluator(List.of());
+
+        assertThat(evaluator.hasPermission(aliceAuth, "abc-1", "Skill", "read")).isFalse();
+    }
+
+    @Test
+    @DisplayName("AC-6: 物件型 hasPermission(auth, target, perm) overload → 依 target.getClass().getSimpleName() routing")
+    @Tag("AC-6")
+    void hasPermission_objectOverload_usesSimpleClassName() {
+        var skillStub = new StubStrategy("Sample", true);
+        var evaluator = new DelegatingPermissionEvaluator(List.of(skillStub));
+
+        var sample = new Sample("xyz");
+        // 三參數 overload — 由 target.getClass().getSimpleName() = "Sample" 衍生 targetType
+        var allowed = evaluator.hasPermission(aliceAuth, sample, "read");
+
+        assertThat(allowed).isTrue();
+        assertThat(skillStub.lastInvokedTarget).isSameAs(sample);
+    }
+
+    @Test
+    @DisplayName("AC-6: 物件型 overload + null target → 直接 false")
+    @Tag("AC-6")
+    void hasPermission_objectOverloadNullTarget_returnsFalse() {
+        var skillStub = new StubStrategy("Skill", true);
+        var evaluator = new DelegatingPermissionEvaluator(List.of(skillStub));
+
+        assertThat(evaluator.hasPermission(aliceAuth, null, "read")).isFalse();
+    }
+
+    // ---- helpers ----
+
+    /** Test stub — 紀錄最後一次呼叫；可控制 supports / hasPermission 回傳值。 */
+    private static final class StubStrategy implements PermissionStrategy {
+        private final String supportedType;
+        private final boolean returnValue;
+        Object lastInvokedTarget;
+        String lastInvokedPermission;
+
+        StubStrategy(String supportedType, boolean returnValue) {
+            this.supportedType = supportedType;
+            this.returnValue = returnValue;
+        }
+
+        @Override
+        public boolean supports(String targetType) {
+            return supportedType.equals(targetType);
+        }
+
+        @Override
+        public boolean hasPermission(Set<String> principals, Object target, String permission) {
+            this.lastInvokedTarget = target;
+            this.lastInvokedPermission = permission;
+            return returnValue;
+        }
+    }
+
+    /** Sample target type — 用於 object-overload routing 測試（target.getClass().getSimpleName()）。 */
+    private record Sample(String id) {}
+}

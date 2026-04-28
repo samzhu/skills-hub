@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import io.github.samzhu.skillshub.shared.events.DomainEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
@@ -153,6 +154,46 @@ public class SkillCommandService {
 		saveAndPublish(cmd.skillId(), "SkillVersionPublished",
 				Map.of("version", cmd.version(), "storagePath", cmd.storagePath(), "fileSize", cmd.fileSize()),
 				skill.nextSequence(), versionEvent);
+	}
+
+	/**
+	 * S016：授權 ACL entry — 走 ES 路徑，aggregate 驗業務不變量後產生 SkillAclGranted。
+	 */
+	@Transactional
+	public void grantAcl(GrantAclCommand cmd) {
+		var skill = loadAggregate(cmd.skillId());
+		var event = skill.grantAcl(cmd);
+		saveAndPublish(cmd.skillId(), "SkillAclGranted",
+				Map.of("type", cmd.type(), "principal", cmd.principal(),
+						"permission", cmd.permission(), "grantedBy", cmd.grantedBy()),
+				skill.nextSequence(), event);
+		log.atInfo()
+				.addKeyValue("skillId", cmd.skillId())
+				.addKeyValue("type", cmd.type())
+				.addKeyValue("principal", cmd.principal())
+				.addKeyValue("permission", cmd.permission())
+				.addKeyValue("grantedBy", cmd.grantedBy())
+				.log("ACL entry 授權完成");
+	}
+
+	/**
+	 * S016：撤銷 ACL entry — 走 ES 路徑，aggregate 驗 entry 存在後產生 SkillAclRevoked。
+	 */
+	@Transactional
+	public void revokeAcl(RevokeAclCommand cmd) {
+		var skill = loadAggregate(cmd.skillId());
+		var event = skill.revokeAcl(cmd);
+		saveAndPublish(cmd.skillId(), "SkillAclRevoked",
+				Map.of("type", cmd.type(), "principal", cmd.principal(),
+						"permission", cmd.permission(), "revokedBy", cmd.revokedBy()),
+				skill.nextSequence(), event);
+		log.atInfo()
+				.addKeyValue("skillId", cmd.skillId())
+				.addKeyValue("type", cmd.type())
+				.addKeyValue("principal", cmd.principal())
+				.addKeyValue("permission", cmd.permission())
+				.addKeyValue("revokedBy", cmd.revokedBy())
+				.log("ACL entry 撤銷完成");
 	}
 
 	private Skill loadAggregate(String skillId) {

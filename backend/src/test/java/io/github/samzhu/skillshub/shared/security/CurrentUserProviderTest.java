@@ -51,7 +51,28 @@ class CurrentUserProviderTest {
         CurrentUser user = provider.current();
         assertThat(user.userId()).isEqualTo("alice");
         assertThat(user.roles()).containsExactly("admin", "viewer");
+        assertThat(user.groups()).as("無 groups claim 時應回 empty list").isEmpty();
         assertThat(provider.userId()).isEqualTo("alice");
+    }
+
+    @Test
+    @Tag("AC-4")
+    @DisplayName("AC-4: JwtAuthenticationToken with groups claim → 回完整三段（subject + roles + groups）")
+    void current_jwtWithGroups_returnsAllNamespaces() {
+        Jwt jwt = Jwt.withTokenValue("token")
+                .header("alg", "none")
+                .subject("alice")
+                .claim("roles", List.of("user"))
+                .claim("groups", List.of("engineering", "platform"))
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+
+        CurrentUser user = provider.current();
+        assertThat(user.userId()).isEqualTo("alice");
+        assertThat(user.roles()).containsExactly("user");
+        assertThat(user.groups())
+                .as("OIDC standard groups claim 應原樣抽出")
+                .containsExactly("engineering", "platform");
     }
 
     @Test
@@ -69,6 +90,9 @@ class CurrentUserProviderTest {
         CurrentUser user = provider.current();
         assertThat(user.userId()).isEqualTo(LAB_USER_ID);
         assertThat(user.roles()).containsExactly("admin"); // ROLE_ 前綴已被剝除
+        assertThat(user.groups())
+                .as("LAB 模式無 JWT claim 來源，groups 必為空")
+                .isEmpty();
     }
 
     @Test
@@ -82,6 +106,7 @@ class CurrentUserProviderTest {
         CurrentUser user = provider.current();
         assertThat(user.userId()).isEqualTo(LAB_USER_ID);
         assertThat(user.roles()).containsExactly("admin");
+        assertThat(user.groups()).isEmpty();
     }
 
     @Test
@@ -97,6 +122,7 @@ class CurrentUserProviderTest {
         CurrentUser user = provider.current();
         assertThat(user.userId()).isEqualTo(LAB_USER_ID);
         assertThat(user.roles()).containsExactly("admin");
+        assertThat(user.groups()).isEmpty();
     }
 
     // ---- helpers ----

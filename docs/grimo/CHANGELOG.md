@@ -1,5 +1,32 @@
 # Changelog
 
+## [v1.2.0] — Phase 2: Row-Level ACL Foundation（M14 完成；2026-04-29）
+
+### Added
+- **S016: Row-Level ACL 基礎建設**（JSONB acl_entries + GIN(default `jsonb_ops`) + DelegatingPermissionEvaluator + ACL CRUD endpoints）— Phase 2 M14 落地：
+  - **DB schema**（V2 Flyway migration）— `skills.acl_entries JSONB NOT NULL DEFAULT '[]'::jsonb` + `idx_skills_acl_entries USING GIN (acl_entries)` 配 default `jsonb_ops`（**ADR-001 §3.2/§8 修訂**：`jsonb_path_ops` 不支援 key-existence operator `?|`，per PostgreSQL 16 docs）；`vector_store.acl_entries` 同；backfill 邏輯：`skills.author` → `["user:<author>:read|write|delete"]`、`vector_store.owner` → `["user:<owner>:read"]`（fail-secure on null owner）。
+  - **Permission Evaluator Strategy/Registry**（`shared/security`）— `PermissionStrategy` interface + `DelegatingPermissionEvaluator` dispatcher（DI 收集所有 strategy；Anonymous / null Authentication 直接拒絕）+ `AclPrincipalExpander`（user/role/group 三命名空間展開）+ `SkillPermissionStrategy`（`acl_entries ??| :patterns` SQL；`SqlParameterValue(Types.ARRAY, String[])` 包裝避 IN-list 展開；補 group: patterns from `CurrentUserProvider.current().groups()`）。
+  - **`CurrentUser` 擴 groups field** — JWT `groups` claim 抽取 + LAB 模式空 list fallback；`SecurityConfig` 加 `static @Bean MethodSecurityExpressionHandler` 破除 `PrePostMethodSecurityConfiguration` circular dep。
+  - **ACL CRUD endpoints** — `SkillAclController`：`POST /api/v1/skills/{id}/acl`（201；@PreAuthorize write 守門）+ `DELETE /api/v1/skills/{id}/acl?type=...&principal=...&permission=...`（204）+ `GET /api/v1/skills/{id}/acl`（200；@PreAuthorize read 守門）；`grantedBy` / `revokedBy` 從 `CurrentUserProvider.userId()` 取（防 spoof）。
+  - **ACL ES domain events** — `SkillAclGrantedEvent` / `SkillAclRevokedEvent` + `GrantAclCommand` / `RevokeAclCommand` + `Skill.grantAcl(cmd)` / `revokeAcl(cmd)` aggregate methods（驗 invariant：無重複 grant、revoke 必須有對應 entry）+ `Skill` constructor 加 `currentAclEntries: Set<String>` minimal replay state；`SkillCommandService.grantAcl(cmd)` / `revokeAcl(cmd)` `@Transactional` 走 saveAndPublish 路徑。
+  - **Read-side projection** — `SkillProjection.on(SkillAclGrantedEvent)` → `appendAclEntry`（`acl_entries || to_jsonb(:entry)` + `WHERE NOT @>` 冪等保證）；`on(SkillAclRevokedEvent)` → `removeAclEntry`（`jsonb_array_elements_text` + `jsonb_agg` + `COALESCE(..., '[]'::jsonb)` 防 NOT NULL violation）。`on(SkillCreatedEvent)` 加 owner ACL seed（`["user:author:read|write|delete"]`），對齊 V2 backfill 並讓作者通過 `@PreAuthorize` 自身 PUT。
+  - **既有 PUT /api/v1/skills/{id}/versions 套 @PreAuthorize**；create/upload 路徑無 `#id` 不套 row-level（per spec §4.13）。
+  - **Vector store INSERT_SQL 升 7 欄** — 8 placeholder 設計解 NOT NULL × COALESCE preservation 矛盾（位 7=INSERT VALUES 必非 null；位 8=UPDATE COALESCE 可 null 觸發保留）；`SearchProjection` 從 owner 衍生 initial `["user:" + owner + ":read"]`。
+  - **Spring Modulith allowedDependencies** — `skill/package-info.java` 加 `"shared :: security"`。
+  - **`StringListJsonbConverter`**（`shared/persistence`）— JSONB ↔ List<String> 雙向 converter。
+  - **15 個 SBE AC**：14 ✅ + AC-13 PARTIAL（schema meta + 功能性命中替代 EXPLAIN bitmap，大資料集 EXPLAIN 留 S017 順帶處理）；`./scripts/verify-all.sh` V01-V06 全 PASS（182/182 tests / 0 failures / 88.7% LINE coverage / gate 80%）；E2E smoke 跨 controller→service→aggregate→event store→projection→read model→vector_store 全鏈驗證。
+  - **獨立 QA subagent verdict PASS** with 2 IMPORTANT inline fix：(a) `S016EndToEndSmokeTest.e2e_putVersion_acl_gate` alice 路徑改 `andExpect(status().isOk())` 硬斷（避 500 silently pass）；(b) ADR-001 §3.2/§8 三處 `jsonb_path_ops` → default `jsonb_ops` 修訂（本 commit 一併 ship）。
+
+### Changed
+- **ADR-001 §3.2 / §8 References / §S016 row（line 154）** — 三處 `jsonb_path_ops` 改 default `jsonb_ops`（per S016 ship；PostgreSQL 16 docs 明確 `jsonb_path_ops` 不支援 `?|` operator）；§3.2 加修訂 footer 引用 PostgreSQL 16 docs。
+- **Spec drift 已就地修正於 §2.4 / §2.6 / §4.5 / §4.15 / §4.16**（per spec §7.4 design drift table）：(1) SQL operator `?|` → `??|`（pgJDBC 重 parse）、(2) `MapSqlParameterSource` ARRAY 綁定 stub → `SqlParameterValue(Types.ARRAY, String[])`、(3) vector_store INSERT 7 placeholder → 8 placeholder、(4) `SkillProjection.on(SkillCreatedEvent)` seed ACL、(5) `removeAclEntry` 加 `COALESCE(..., '[]'::jsonb)`、(6) AC-13 EXPLAIN 替代覆蓋路徑。
+
+### Notes
+- **Validated patterns 已寫入 spec §7.5**（給 S017 / 未來 ACL spec 直接複用）：`??|` SQL pattern + 冪等 appendAclEntry SQL + COALESCE removeAclEntry SQL + 8-placeholder INSERT 雙綁設計 + minimal aggregate replay state。
+- **Tech debt 入 §7.7**：(a) AC-13 大資料集 EXPLAIN bitmap 驗證留 S017；(b) 重複 grant 在 controller 層 HTTP 表現（aggregate 拋 IllegalStateException → Spring default 500）— 與 S018 SkillValidator 嚴格化同期處理錯誤碼集中化。
+- **Test growth path**：T2 baseline 142 → T3 +12 (154) → T4 +13 (167) → T5 +9 (176) → T6 +6 (182)。新增 16 個 test class，約 40 個 test method。
+- **S017 unblocked + S018 graceful degrade 占位可移除**（per roadmap M14 collapse note）。
+
 ## [v1.1.1] — Phase 2.5: Project Infra（M17 完成；2026-04-28）
 
 ### Added

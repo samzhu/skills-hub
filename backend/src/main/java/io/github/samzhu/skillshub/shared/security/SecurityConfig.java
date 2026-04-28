@@ -4,6 +4,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.access.PermissionEvaluator;
+import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -130,6 +133,29 @@ class SecurityConfig {
      *
      * <p>{@code @ConditionalOnProperty} (S012)：與 JwtDecoder 同步 gate，LAB 模式不建立。
      */
+    /**
+     * 注入自訂 {@link PermissionEvaluator}（S016 {@link DelegatingPermissionEvaluator}）給
+     * {@code @PreAuthorize("hasPermission(...)")} SpEL 評估器使用。
+     *
+     * <p><b>{@code static} 必要</b>：Spring Security 7 的
+     * {@code PrePostMethodSecurityConfiguration} 用 {@code @Autowired(required=false)} 注入
+     * {@link MethodSecurityExpressionHandler}；若此 bean 是 instance method，會與
+     * {@link EnableMethodSecurity} import 的 config 形成 circular dep（spec §2.4 Challenge #4
+     * 已 raw source verified）。{@code static} 讓 bean 在 instance config 完成前可用，破環。
+     *
+     * <p>{@link DefaultMethodSecurityExpressionHandler} 是 Spring Security 文件指定的擴充點 —
+     * 不直接 {@code @Bean PermissionEvaluator}（Spring Security 7 不會 auto-detect）。
+     *
+     * @see <a href="https://docs.spring.io/spring-security/reference/servlet/authorization/method-security.html#custom-permission-evaluator">Custom Permission Evaluator</a>
+     */
+    @Bean
+    static MethodSecurityExpressionHandler methodSecurityExpressionHandler(
+            PermissionEvaluator permissionEvaluator) {
+        var handler = new DefaultMethodSecurityExpressionHandler();
+        handler.setPermissionEvaluator(permissionEvaluator);
+        return handler;
+    }
+
     @Bean
     @ConditionalOnProperty(prefix = "skillshub.security.oauth", name = "enabled",
                            havingValue = "true", matchIfMissing = true)

@@ -75,10 +75,17 @@ class SearchProjection {
                 null,   // latestVersion — 尚未發布版本
                 null    // riskLevel — 尚未完成評估
         );
-        // Per-request：owner / skillId 鎖在這個 instance 裡，操作完 GC（無 singleton state）
+        // S016：vector_store.acl_entries 從 author 衍生（同 V2 backfill 邏輯，per spec §4.16）；
+        // author 為 null 時用空 list（fail-secure）
+        var initialAcl = event.author() == null
+                ? List.<String>of()
+                : List.of("user:" + event.author() + ":read");
+
+        // Per-request：owner / skillId / aclEntries 鎖在這個 instance 裡，操作完 GC
         SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
                 .owner(currentUserProvider.userId())
                 .skillId(event.aggregateId())
+                .aclEntries(initialAcl)
                 .build()
                 .add(List.of(doc));
         log.info("SearchProjection onSkillCreated done skillId={}", event.aggregateId());
@@ -92,10 +99,18 @@ class SearchProjection {
     void onVersionPublished(SkillVersionPublishedEvent event) {
         log.info("SearchProjection onVersionPublished skillId={} version={}", event.aggregateId(), event.version());
 
-        // delete + re-add 用同一個 instance（owner/skillId context 共享）
+        // S016：re-embed 也帶 owner-derived acl_entries 維持與 onSkillCreated 一致；
+        // delete-then-add 會走新 row 路徑（無 ON CONFLICT 觸發），需顯式提供初始 acl 防止空 array。
+        var owner = currentUserProvider.userId();
+        var initialAcl = owner == null
+                ? List.<String>of()
+                : List.of("user:" + owner + ":read");
+
+        // delete + re-add 用同一個 instance（owner/skillId/aclEntries context 共享）
         var vectorStore = SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
-                .owner(currentUserProvider.userId())
+                .owner(owner)
                 .skillId(event.aggregateId())
+                .aclEntries(initialAcl)
                 .build();
 
         // Delete-then-add: 移除舊向量再建立新向量（有短暫空窗，MVP 可接受）

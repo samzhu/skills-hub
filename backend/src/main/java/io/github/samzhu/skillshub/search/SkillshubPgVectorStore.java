@@ -31,8 +31,8 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Skills Hub 自訂 PgVectorStore — 寫入 vector_store 表 6 欄
- * （id, content, metadata, embedding, owner, skill_id），而非官方
+ * Skills Hub 自訂 PgVectorStore — 寫入 vector_store 表 7 欄
+ * （id, content, metadata, embedding, owner, skill_id, acl_entries），而非官方
  * {@code org.springframework.ai.vectorstore.pgvector.PgVectorStore} 的 4 欄。
  *
  * <p><strong>Per-request instantiation 模式</strong>（不註冊為 Spring Bean）：
@@ -76,16 +76,27 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
 
     private static final Logger log = LoggerFactory.getLogger(SkillshubPgVectorStore.class);
 
-    /** 6-欄 INSERT；ON CONFLICT 用 COALESCE 保留既有 owner/skill_id。 */
+    /**
+     * 7-欄 INSERT，ON CONFLICT 保留 owner/skill_id/acl_entries（per S016 §4.16）。
+     *
+     * <p>{@code acl_entries} 綁兩次（position 7 + 8）解 NOT NULL constraint × COALESCE preservation 矛盾：
+     * <ul>
+     *   <li>position 7 = INSERT VALUES — 必須非 null（{@code acl_entries JSONB NOT NULL}）；
+     *       caller 未設定時 builder 端用 {@code "[]"} 兜底</li>
+     *   <li>position 8 = UPDATE COALESCE — caller 未設定時為 SQL null，COALESCE → 保留既有；
+     *       caller 有設定時 = 與 position 7 同值，UPDATE 套用</li>
+     * </ul>
+     */
     static final String INSERT_SQL = """
-            INSERT INTO vector_store (id, content, metadata, embedding, owner, skill_id)
-            VALUES (?::uuid, ?, ?::jsonb, ?, ?, ?)
+            INSERT INTO vector_store (id, content, metadata, embedding, owner, skill_id, acl_entries)
+            VALUES (?::uuid, ?, ?::jsonb, ?, ?, ?, ?::jsonb)
             ON CONFLICT (id) DO UPDATE
               SET content = EXCLUDED.content,
                   metadata = EXCLUDED.metadata,
                   embedding = EXCLUDED.embedding,
                   owner = COALESCE(EXCLUDED.owner, vector_store.owner),
-                  skill_id = COALESCE(EXCLUDED.skill_id, vector_store.skill_id)
+                  skill_id = COALESCE(EXCLUDED.skill_id, vector_store.skill_id),
+                  acl_entries = COALESCE(?::jsonb, vector_store.acl_entries)
             """;
 
     static final String DELETE_SQL = "DELETE FROM vector_store WHERE id = ?::uuid";
@@ -108,12 +119,14 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
     private final JdbcTemplate jdbcTemplate;
     private final @Nullable String owner;
     private final @Nullable String skillId;
+    private final @Nullable List<String> aclEntries;
 
     private SkillshubPgVectorStore(Builder builder) {
         super(builder);
         this.jdbcTemplate = builder.jdbcTemplate;
         this.owner = builder.owner;
         this.skillId = builder.skillId;
+        this.aclEntries = builder.aclEntries;
     }
 
     /** 建構新 builder；呼叫端透過 {@code .owner(...).skillId(...).build()} 取得 instance。 */
@@ -140,12 +153,20 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
                 String metadataJson = JSON.writeValueAsString(doc.getMetadata());
                 PGvector embedding = new PGvector(embeddings.get(i));
 
+                // S016：acl_entries 雙綁解 NOT NULL × COALESCE preservation 矛盾（per INSERT_SQL Javadoc）
+                //  - aclJsonForInsert：給 position 7（INSERT VALUES），caller 未設定則用 "[]" 兜底
+                //  - aclJsonForUpdate：給 position 8（UPDATE COALESCE），caller 未設定則用 null 觸發保留
+                String aclSerialized = aclEntries == null ? null : JSON.writeValueAsString(aclEntries);
+                String aclJsonForInsert = aclSerialized == null ? "[]" : aclSerialized;
+
                 StatementCreatorUtils.setParameterValue(ps, 1, SqlTypeValue.TYPE_UNKNOWN, id);
                 StatementCreatorUtils.setParameterValue(ps, 2, SqlTypeValue.TYPE_UNKNOWN, content);
                 StatementCreatorUtils.setParameterValue(ps, 3, SqlTypeValue.TYPE_UNKNOWN, metadataJson);
                 StatementCreatorUtils.setParameterValue(ps, 4, SqlTypeValue.TYPE_UNKNOWN, embedding);
                 StatementCreatorUtils.setParameterValue(ps, 5, SqlTypeValue.TYPE_UNKNOWN, owner);
                 StatementCreatorUtils.setParameterValue(ps, 6, SqlTypeValue.TYPE_UNKNOWN, skillId);
+                StatementCreatorUtils.setParameterValue(ps, 7, SqlTypeValue.TYPE_UNKNOWN, aclJsonForInsert);
+                StatementCreatorUtils.setParameterValue(ps, 8, SqlTypeValue.TYPE_UNKNOWN, aclSerialized);
             }
 
             @Override
@@ -221,6 +242,7 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
         private final JdbcTemplate jdbcTemplate;
         private @Nullable String owner;
         private @Nullable String skillId;
+        private @Nullable List<String> aclEntries;
 
         Builder(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
             super(embeddingModel);
@@ -234,6 +256,21 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
 
         public Builder skillId(@Nullable String skillId) {
             this.skillId = skillId;
+            return self();
+        }
+
+        /**
+         * S016：設定本次寫入的 ACL pattern list（如 {@code ["user:alice:read"]}）。
+         *
+         * <p>不設定時 INSERT 端帶 SQL NULL，搭配 {@code ON CONFLICT ... COALESCE(EXCLUDED.acl_entries,
+         * vector_store.acl_entries)} 行為：
+         * <ul>
+         *   <li>新 row：acl_entries 預設 {@code []}（schema default）</li>
+         *   <li>既有 row：保留現有 acl_entries 不被覆寫（re-embed scenario）</li>
+         * </ul>
+         */
+        public Builder aclEntries(@Nullable List<String> aclEntries) {
+            this.aclEntries = aclEntries;
             return self();
         }
 

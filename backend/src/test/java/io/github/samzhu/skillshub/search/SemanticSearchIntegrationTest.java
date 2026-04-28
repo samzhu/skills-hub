@@ -103,7 +103,8 @@ class SemanticSearchIntegrationTest {
         if (skillRepo.findById(TEST_DOC_ID).isEmpty()) {
             skillRepo.save(new SkillReadModel(
                     TEST_DOC_ID, "docker-compose-helper", "管理 Docker Compose 多容器部署",
-                    "sam", "DevOps", "1.0.0", "LOW", "DRAFT", 0L, now, now));
+                    "sam", "DevOps", "1.0.0", "LOW", "DRAFT", 0L, now, now,
+                    List.of())); // S016 aclEntries — 本 IT 不驗 ACL filter
         }
 
         // Seed: 直接用 SkillshubPgVectorStore 寫入真實 vector_store 表

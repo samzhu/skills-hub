@@ -74,7 +74,7 @@ class PgVectorStoreOwnerWriteTest {
         var now = Instant.now();
         skillRepo.save(new SkillReadModel(
                 skillId, "test-skill", "tests 6-col single INSERT", "qa-author", "Testing",
-                null, null, "DRAFT", 0L, now, now));
+                null, null, "DRAFT", 0L, now, now, List.of())); // S016 aclEntries
 
         // Act：用 builder 直接寫入
         SkillshubPgVectorStore.builder(jdbc, embeddingModel)
@@ -108,7 +108,7 @@ class PgVectorStoreOwnerWriteTest {
         var now = Instant.now();
         skillRepo.save(new SkillReadModel(
                 skillId, "preserve-skill", "tests COALESCE preservation", "qa-author", "Testing",
-                null, null, "DRAFT", 0L, now, now));
+                null, null, "DRAFT", 0L, now, now, List.of())); // S016 aclEntries
 
         // 第 1 次寫入：帶 owner
         SkillshubPgVectorStore.builder(jdbc, embeddingModel)

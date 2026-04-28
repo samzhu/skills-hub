@@ -3,6 +3,7 @@ package io.github.samzhu.skillshub.skill.query;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -54,7 +55,8 @@ class AtomicDownloadCountTest {
 				"PUBLISHED",
 				0L, // 起始 downloadCount = 0
 				now,
-				now));
+				now,
+				List.of())); // S016: aclEntries — 本測試不關心 ACL，留空
 
 		var executor = Executors.newFixedThreadPool(10);
 		var latch = new CountDownLatch(100);

@@ -2,6 +2,7 @@ package io.github.samzhu.skillshub.skill.query;
 
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -11,6 +12,8 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import io.github.samzhu.skillshub.skill.domain.SkillAclGrantedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillAclRevokedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
@@ -26,6 +29,8 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
  *   <li>{@link SkillCreatedEvent} → 建立 {@link SkillReadModel}（初始狀態 DRAFT）</li>
  *   <li>{@link SkillVersionPublishedEvent} → 更新 latestVersion + 新增 {@link SkillVersionReadModel}</li>
  *   <li>{@link SkillDownloadedEvent} → 累加 downloadCount</li>
+ *   <li>{@link SkillAclGrantedEvent} → 將 {@code "type:principal:permission"} 字串 append 到 acl_entries（冪等）</li>
+ *   <li>{@link SkillAclRevokedEvent} → 從 acl_entries 移除指定字串</li>
  * </ul>
  */
 @Component
@@ -52,6 +57,14 @@ class SkillProjection {
 	@Order(Ordered.HIGHEST_PRECEDENCE)
 	void on(SkillCreatedEvent event) {
 		var now = Instant.now();
+		// S016 T3: 新 skill 建立時 author 即 owner — 同 V2 backfill 邏輯（per spec §4.2 + §3 AC-7
+		// BDD 預設 acl_entries 已含 user:<author>:read|write|delete）。@PreAuthorize 對 PUT /versions
+		// 套上後，若創建端不 seed ACL，作者自己也無法 PUT 自己的 skill。
+		var ownerAclEntries = List.of(
+				"user:" + event.author() + ":read",
+				"user:" + event.author() + ":write",
+				"user:" + event.author() + ":delete");
+
 		var readModel = new SkillReadModel(
 				event.aggregateId(),
 				event.name(),
@@ -63,7 +76,8 @@ class SkillProjection {
 				"DRAFT",
 				0L,
 				now,
-				now
+				now,
+				ownerAclEntries
 		);
 		repo.save(readModel);
 
@@ -126,6 +140,41 @@ class SkillProjection {
 				.addKeyValue("skillId", event.aggregateId())
 				.addKeyValue("version", event.version())
 				.log("投影已累加下載次數（atomic）");
+	}
+
+	/**
+	 * S016：ACL 授權事件 → atomic append 至 {@code skills.acl_entries}（冪等）。
+	 *
+	 * <p>0 row 影響時不 throw — 可能因 entry 已存在（重送 event）或 skill row 不存在
+	 * （read-side 落後 / 異常順序）；aggregate 端已驗業務 invariant，此處只負責 read model 一致性。
+	 */
+	@EventListener
+	void on(SkillAclGrantedEvent event) {
+		var entry = event.type() + ":" + event.principal() + ":" + event.permission();
+		var rows = repo.appendAclEntry(event.aggregateId(), entry, Instant.now());
+
+		log.atInfo()
+				.addKeyValue("skillId", event.aggregateId())
+				.addKeyValue("entry", entry)
+				.addKeyValue("rowsAffected", rows)
+				.log("投影已 append ACL entry");
+	}
+
+	/**
+	 * S016：ACL 撤銷事件 → 從 {@code skills.acl_entries} 移除指定字串。
+	 *
+	 * <p>jsonb_array_elements_text 重組策略對「entry 不存在」結果不變；不視為錯誤。
+	 */
+	@EventListener
+	void on(SkillAclRevokedEvent event) {
+		var entry = event.type() + ":" + event.principal() + ":" + event.permission();
+		var rows = repo.removeAclEntry(event.aggregateId(), entry, Instant.now());
+
+		log.atInfo()
+				.addKeyValue("skillId", event.aggregateId())
+				.addKeyValue("entry", entry)
+				.addKeyValue("rowsAffected", rows)
+				.log("投影已 remove ACL entry");
 	}
 
 }

@@ -61,7 +61,7 @@ class SearchProjectionTest {
         // FK skill_id → skills.id 前置
         skillRepo.save(new SkillReadModel(
                 skillId, skillName, "管理 Docker 容器", "sam", "DevOps",
-                null, null, "DRAFT", 0L, now, now));
+                null, null, "DRAFT", 0L, now, now, List.of())); // S016 aclEntries
         when(currentUserProvider.userId()).thenReturn("test-owner");
     }
 
@@ -118,7 +118,7 @@ class SearchProjectionTest {
         var skillName2 = "k8s-helper-" + UUID.randomUUID();
         skillRepo.save(new SkillReadModel(
                 skillId2, skillName2, "管理 K8s", "jane", "DevOps",
-                null, null, "DRAFT", 0L, Instant.now(), Instant.now()));
+                null, null, "DRAFT", 0L, Instant.now(), Instant.now(), List.of())); // S016 aclEntries
 
         // 第 1 次寫入：owner=test-owner（setUp 預設）
         projection.onSkillCreated(new SkillCreatedEvent(skillId, skillName, "...", "sam", "DevOps"));

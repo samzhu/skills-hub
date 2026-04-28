@@ -44,7 +44,11 @@ public class JdbcConfiguration extends AbstractJdbcConfiguration {
     protected List<?> userConverters() {
         return List.of(
                 new MapToPGobjectConverter(objectMapper),
-                new PGobjectToMapConverter(objectMapper)
+                new PGobjectToMapConverter(objectMapper),
+                // S016: ACL 用 List<String> ↔ JSONB array converter（與 Map converter 並列；
+                // Spring Data JDBC 依 generic 型別參數區分路由，不會衝突）
+                new StringListJsonbConverter.Writing(objectMapper),
+                new StringListJsonbConverter.Reading(objectMapper)
         );
     }
 

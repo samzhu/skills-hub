@@ -22,6 +22,9 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+
 import io.github.samzhu.skillshub.shared.events.DomainEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
@@ -51,22 +54,29 @@ public class SkillQueryService {
 	private static final Set<String> SORTABLE_PROPERTIES = Set.of(
 			"name", "createdAt", "updatedAt", "downloadCount", "category", "status");
 
+	// raw JDBC rowMapper 不會走 Spring Data JDBC 的 user converter；S016 後 SkillReadModel
+	// 多了 acl_entries（List<String>）需要手動 JSONB → List<String> 反序列化，故注入 ObjectMapper。
+	private static final TypeReference<List<String>> ACL_ENTRIES_TYPE = new TypeReference<>() {};
+
 	private final SkillReadModelRepository repo;
 	private final SkillVersionReadModelRepository versionRepo;
 	private final NamedParameterJdbcTemplate jdbc;
 	private final StorageService storageService;
 	private final DomainEventRepository eventStore;
 	private final ApplicationEventPublisher events;
+	private final ObjectMapper objectMapper;
 
 	public SkillQueryService(SkillReadModelRepository repo, SkillVersionReadModelRepository versionRepo,
 			NamedParameterJdbcTemplate jdbc, StorageService storageService,
-			DomainEventRepository eventStore, ApplicationEventPublisher events) {
+			DomainEventRepository eventStore, ApplicationEventPublisher events,
+			ObjectMapper objectMapper) {
 		this.repo = repo;
 		this.versionRepo = versionRepo;
 		this.jdbc = jdbc;
 		this.storageService = storageService;
 		this.eventStore = eventStore;
 		this.events = events;
+		this.objectMapper = objectMapper;
 	}
 
 	/**
@@ -100,7 +110,7 @@ public class SkillQueryService {
 		var sql = new StringBuilder("""
 				SELECT id, name, description, author, category,
 				       latest_version, risk_level, status, download_count,
-				       created_at, updated_at
+				       created_at, updated_at, acl_entries
 				  FROM skills
 				 WHERE 1=1
 				""");
@@ -193,7 +203,25 @@ public class SkillQueryService {
 				rs.getString("status"),
 				rs.getLong("download_count"),
 				rs.getTimestamp("created_at").toInstant(),
-				rs.getTimestamp("updated_at").toInstant());
+				rs.getTimestamp("updated_at").toInstant(),
+				parseAclEntries(rs.getString("acl_entries")));
+	}
+
+	/**
+	 * 將 JSONB 字串反序列化為 {@code List<String>} —
+	 * raw JDBC rowMapper 不過 Spring Data JDBC 的 reading converter，故須手動處理。
+	 * null / 空 / blank 還原為 {@link List#of()}（fail-secure 對齊
+	 * {@code StringListJsonbConverter.Reading} 行為）。
+	 */
+	private List<String> parseAclEntries(String json) {
+		if (json == null || json.isBlank()) {
+			return List.of();
+		}
+		try {
+			return objectMapper.readValue(json, ACL_ENTRIES_TYPE);
+		} catch (Exception e) {
+			throw new IllegalStateException("Failed to parse acl_entries JSONB: " + json, e);
+		}
 	}
 
 	/**

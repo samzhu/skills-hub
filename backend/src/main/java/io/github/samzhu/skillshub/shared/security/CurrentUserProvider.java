@@ -51,7 +51,12 @@ public class CurrentUserProvider {
         if (auth instanceof JwtAuthenticationToken jwt) {
             var token = jwt.getToken();
             var roles = token.getClaimAsStringList("roles");
-            return new CurrentUser(jwt.getName(), roles == null ? List.of() : roles);
+            // S016: groups 走 OIDC standard claim「groups」（per spec §4.7）；無 claim 時空 list
+            var groups = token.getClaimAsStringList("groups");
+            return new CurrentUser(
+                    jwt.getName(),
+                    roles == null ? List.of() : roles,
+                    groups == null ? List.of() : groups);
         }
 
         // (2) LAB / 其他認證模式：principal 非 anonymous 且已認證
@@ -63,11 +68,12 @@ public class CurrentUserProvider {
             var roles = auth.getAuthorities().stream()
                     .map(a -> a.getAuthority().replaceFirst("^ROLE_", ""))
                     .toList();
-            return new CurrentUser(auth.getName(), roles);
+            // S016: LAB / non-JWT 認證無 OIDC claim 來源，groups 預設空 list
+            return new CurrentUser(auth.getName(), roles, List.of());
         }
 
         // (3) 安全 fallback：無 SecurityContext（背景執行緒、test 未注入）— 不丟 NPE
-        return new CurrentUser(labUserId, List.of("admin"));
+        return new CurrentUser(labUserId, List.of("admin"), List.of());
     }
 
     /** Audit 欄位常用 shortcut — 等同 {@code current().userId()}。 */

@@ -45,7 +45,9 @@ Skills Hub MVP（v1.0.0，14 specs / 147 points）已於 2026-04-27 上線，採
 
 > 「使用者隸屬於 N 個 group / org / dept / team；查出所有 ACL entry 至少匹配一個的 row」
 
-PostgreSQL JSONB 用 `?|` 運算子搭配 GIN(`jsonb_path_ops`) 索引，**任意數量 patterns 都是一次 SQL**，無上限。
+PostgreSQL JSONB 用 `?|` 運算子搭配 GIN(default `jsonb_ops`) 索引，**任意數量 patterns 都是一次 SQL**，無上限。
+
+> **2026-04-29 修訂（per S016 ship）**：原寫 `jsonb_path_ops` 為錯誤 — PostgreSQL 16 [官方 docs §JSON Indexing](https://www.postgresql.org/docs/16/datatype-json.html#JSON-INDEXING) 明確：`jsonb_path_ops` operator class **不支援** key-existence operators（`?` / `?|` / `?&`），只支援 containment（`@>` / `@?` / `@@`）。S016 V2 migration 已採 default `jsonb_ops`（即 `USING GIN (acl_entries)` 不加 operator class 後綴）。
 
 Firestore 的對應運算子是 `array-contains-any`，[官方明文上限 30 個元素](https://firebase.google.com/docs/firestore/query-data/queries#array-contains-any)。
 
@@ -151,7 +153,7 @@ S014 T2 ship 後修訂評估三種 GCP 連線方式：
 |------|------|------|---------|------|
 | **S014** | PostgreSQL 資料層遷移 + PgVectorStore 接管 + Firestore 全清（無 ACL） | L(20) | Spring Data JDBC + 4 read models（`skills` / `skill_versions` / `flags` / `download_events`）+ `domain_events` 表 + Spring AI 官方 `PgVectorStore` 接管寫入（`metadata` 含 `owner`、`skillId`，schema-validation=false）+ Testcontainers `pgvector/pgvector:pg16` + GCP Cloud SQL Auth Proxy sidecar 連線 + 移除 `google-cloud-firestore` + `FirestoreVectorStore.java`；功能等同 v1.0.0 | ADR-001 |
 | ~~**S015**~~ | ~~引入 Spring AI `PgVectorStore` 並接管向量寫入路徑~~ | — | **ABSORBED INTO S014（2026-04-27 修訂）** — 拆 deps 不分批、避免死碼；詳 §4.5 | — |
-| **S016** | Row-Level ACL 基礎建設 | M | `acl_entries JSONB` + GIN(`jsonb_path_ops`) 索引、`PermissionEvaluator` Strategy/Registry、`CurrentUser` 擴充 groups/orgs/depts、`@PreAuthorize` 套上 `SkillCommandService`、`SkillAclGranted/Revoked` events、ACL CRUD API | S014 |
+| **S016** | Row-Level ACL 基礎建設 | M | `acl_entries JSONB` + GIN(default `jsonb_ops`) 索引、`PermissionEvaluator` Strategy/Registry、`CurrentUser` 擴充 groups/orgs/depts、`@PreAuthorize` 套上 `SkillCommandService`、`SkillAclGranted/Revoked` events、ACL CRUD API | S014 |
 | **S017** | ACL-Aware 語意搜尋 | S–M | `vector_store` 表加 `acl_entries`；`PgVectorStore.doSimilaritySearch` 擴充 ACL SQL composition；composite query 一次完成 GIN filter + HNSW 排序 | S016 |
 
 S015 併入 S014 後，總計三個 spec 處理整段遷移 + ACL 功能（原四個）。
@@ -211,7 +213,7 @@ PRD 決策日誌更新時保留原條目並加註 `Superseded by ADR-001 (2026-0
 
 **權威外部來源**：
 - [Spring AI PgVector reference (2.0)](https://docs.spring.io/spring-ai/reference/2.0/api/vectordbs/pgvector.html) — `spring-ai-starter-vector-store-pgvector` 用法、`initialize-schema` 行為、HNSW/IVFFlat 索引選項
-- [PostgreSQL JSONB Indexing](https://www.postgresql.org/docs/current/datatype-json.html#JSON-INDEXING) — `jsonb_path_ops` GIN index（S016 用）
+- [PostgreSQL JSONB Indexing](https://www.postgresql.org/docs/16/datatype-json.html#JSON-INDEXING) — default `jsonb_ops` GIN index（S016 用，支援 `?|` operator）
 - [Firestore Vector Search docs](https://firebase.google.com/docs/firestore/vector-search) — `findNearest()` API；本 ADR 的 §3.2 引用其 `array-contains-any` 30 元素限制反證
 - [samzhu/spring-acl-jsonb](https://github.com/samzhu/spring-acl-jsonb) — ACL JSONB pattern 公開範例（`type:principal:permission` + `?\|` GIN 查詢；S016 範本）
 - [Implementing RLS in Vector DBs (Hannecke)](https://medium.com/@michael.hannecke/implementing-row-level-security-in-vector-dbs-for-rag-applications-fdbccb63d464) — RLS × pgvector pattern（本 ADR §4.3 引用）

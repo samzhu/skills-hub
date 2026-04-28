@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.skill.query;
 
 import java.time.Instant;
+import java.util.List;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.domain.Persistable;
@@ -28,6 +29,10 @@ import org.springframework.data.relational.core.mapping.Table;
  * @param downloadCount 累計下載次數
  * @param createdAt     技能建立時間戳
  * @param updatedAt     最後更新時間戳
+ * @param aclEntries    Row-level ACL flat string array（型如 {@code ["user:alice:read",
+ *                      "role:admin:write", "group:eng:read"]}）— 由 S016 引入；空 list
+ *                      代表「沒人可存取」（fail-secure 預設）。實際過濾走
+ *                      {@code WHERE acl_entries ?| ARRAY[...]} + GIN(jsonb_ops) index。
  */
 @Table("skills")
 public record SkillReadModel(
@@ -41,7 +46,8 @@ public record SkillReadModel(
 		@Column("status") String status,
 		@Column("download_count") long downloadCount,
 		@Column("created_at") Instant createdAt,
-		@Column("updated_at") Instant updatedAt
+		@Column("updated_at") Instant updatedAt,
+		@Column("acl_entries") List<String> aclEntries
 ) implements Persistable<String> {
 
 	/**

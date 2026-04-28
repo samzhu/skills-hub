@@ -26,9 +26,17 @@ import org.springframework.util.LinkedMultiValueMap;
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 
+// S016 T3：PUT /skills/{id}/versions 加 @PreAuthorize 後，anonymous TestRestTemplate
+// 拿不到 ACL 通過權；切 LAB 模式並把 lab-user-id 對齊測試 fixture 的 author="sam"，
+// 讓 LabSecurityFilter 注入的 principal 與 SkillProjection seed 的 user:sam:write
+// pattern 一致 → @PreAuthorize 通過。
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 @Import(TestcontainersConfiguration.class)
+@org.springframework.test.context.TestPropertySource(properties = {
+		"skillshub.security.oauth.enabled=false",
+		"skillshub.security.lab.user-id=sam"
+})
 class SkillUploadTest {
 
 	@Autowired
