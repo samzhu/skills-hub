@@ -21,9 +21,11 @@ cd frontend && npm test           # Vitest
 # Threshold: 80% line coverage on new code
 
 # Frontend (Vitest coverage)
-cd frontend && npm run coverage
-# Threshold: 80% line coverage on new code
+cd frontend && npm test -- --coverage
+# Threshold: 80% line coverage on new code（漸進加入 gate — `coverage.include` 鎖定有對應 test 的 source 檔；S022 落地）
 ```
+
+> Backend 由 V03（`./gradlew jacocoTestCoverageVerification`，S019 ship）執行 80% line coverage gate；Frontend 由 V06（`npm test -- --coverage`，S022 ship）執行同 80% line coverage gate。Cross-stack 相同 LINE coverage 標準（80%）；不同實作（JaCoCo BUNDLE / vitest project-wide aggregate over include whitelist）。
 
 ### Architecture / Boundary
 
@@ -64,6 +66,7 @@ Spring Modulith 的 `ApplicationModules.verify()` 確保：
 | V03 | `./gradlew jacocoTestCoverageVerification` | CRITICAL | task 未註冊（S019 未 ship 之歷史環境） | Threshold 在 `build.gradle.kts` 為 single source；`./gradlew check` 同 gate |
 | V04 | `cd frontend && npm test` | CRITICAL | `frontend/node_modules` 不存在 | Vitest run；frontend test gate |
 | V05 | `cd frontend && npm run lint` | CRITICAL | `frontend/node_modules` 不存在 | ESLint；frontend lint gate |
+| V06 | `cd frontend && npm test -- --coverage` | CRITICAL | `frontend/node_modules` 不存在 | vitest `coverage.thresholds.lines: 80` gate；text reporter inline 印 coverage table 到 stdout；`coverage.include` whitelist 鎖定有對應 test 的 source 檔（漸進加入 gate）；S022 落地 |
 
 ### Known Limitations
 
@@ -139,6 +142,20 @@ describe('AC-1: 用關鍵字搜尋技能', () => {
 ```
 
 一個 spec 被視為 "covered" 的條件：每個 AC id 至少有一個對應的測試。
+
+### Build / Config Spec — Evidence-Only AC 例外（S019 + S020 + S022 共識）
+
+純 build / config / docs spec（無 production code 變動）可採 **evidence-only AC** 不需 `@DisplayName` / `describe` 對應 test 方法，AC 由以下 evidence 證明：
+
+- `grep` / `cat` / `ls` 等檔案存在性與內容檢查
+- `./gradlew tasks --all` / `npm test -- --version` 等 task / binary 註冊檢查
+- `./scripts/verify-all.sh` exit code + Summary 輸出
+- live build / live run 產出的 stdout 證據（`BUILD SUCCESSFUL` / `Tests N passed` 等）
+- 人工 review（檔案內容對齊 ground truth）
+
+範例 spec：S019（JaCoCo gate；6 AC 全 build-evidence）/ S020（verify-all.sh；7 AC 全 evidence）/ S021（PostgreSQL doc-sync；7 AC 全 grep + human review）。
+
+此例外僅適用「無 production code 變動」spec；任何加新 service / listener / projection / component / hook 的 spec 必須回到本 §AC-to-Test Contract 主規則（每個 AC 至少對應 1 個 test）。
 
 ---
 

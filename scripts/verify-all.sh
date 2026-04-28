@@ -7,7 +7,7 @@
 #   - timestamped log → backend/build/verify-all.log
 #
 # Usage:
-#   ./scripts/verify-all.sh            # 跑全部 V01-V05
+#   ./scripts/verify-all.sh            # 跑全部 V01-V06
 #   ./scripts/verify-all.sh --help     # 印 usage
 #
 # Exit:
@@ -94,6 +94,12 @@ run_skip_if "V04" "cd frontend && npm test" \
 run_skip_if "V05" "cd frontend && npm run lint" \
   "[ ! -d '${REPO_ROOT}/frontend/node_modules' ]" \
   "(cd '${REPO_ROOT}/frontend' && npm run lint)"
+
+# V06: frontend coverage gate (S022) — vitest threshold lines:80 → exit 1 if below
+# include whitelist 鎖定有對應 test 的 source 檔（漸進加入 gate；spec §2.1 #2）
+run_skip_if "V06" "cd frontend && npm test -- --coverage" \
+  "[ ! -d '${REPO_ROOT}/frontend/node_modules' ]" \
+  "(cd '${REPO_ROOT}/frontend' && npm test -- --coverage)"
 
 # Summary
 PASS=0; FAIL=0; SKIP=0

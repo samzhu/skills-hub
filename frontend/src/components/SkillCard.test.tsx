@@ -1,0 +1,63 @@
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
+import { SkillCard } from './SkillCard'
+import type { Skill } from '@/types/skill'
+
+const mockSkill: Skill = {
+  id: 'skill-001',
+  name: 'k8s-helper',
+  description: 'Kubernetes 排錯助理 — 自動分析 Pod 失敗、Service 未連通與 Ingress 設定錯誤的常見根因。',
+  author: 'samzhu',
+  category: '雲端維運',
+  latestVersion: '0.3.1',
+  riskLevel: 'LOW',
+  status: 'PUBLISHED',
+  downloadCount: 42,
+  createdAt: '2026-04-01T00:00:00Z',
+  updatedAt: '2026-04-20T00:00:00Z',
+}
+
+describe('AC-2: SkillCard 渲染', () => {
+  // SkillCard 包 <Link> — 必 MemoryRouter wrap 解 router context
+  const renderCard = (skill: Skill, score?: number) =>
+    render(
+      <MemoryRouter>
+        <SkillCard skill={skill} score={score} />
+      </MemoryRouter>,
+    )
+
+  it('顯示 skill 基本欄位（name / author / description / category）', () => {
+    renderCard(mockSkill)
+    expect(screen.getByText('k8s-helper')).toBeInTheDocument()
+    expect(screen.getByText('samzhu')).toBeInTheDocument()
+    expect(screen.getByText(/Kubernetes 排錯助理/)).toBeInTheDocument()
+    expect(screen.getByText('雲端維運')).toBeInTheDocument()
+  })
+
+  it('latestVersion 顯示為 `v{semver}` 格式', () => {
+    renderCard(mockSkill)
+    expect(screen.getByText('v0.3.1')).toBeInTheDocument()
+  })
+
+  it('latestVersion 為 null 不渲染版本 span', () => {
+    renderCard({ ...mockSkill, latestVersion: null })
+    expect(screen.queryByText(/^v[\d.]+$/)).not.toBeInTheDocument()
+  })
+
+  it('Link 包覆整張卡片 → /skills/{id}', () => {
+    renderCard(mockSkill)
+    const link = screen.getByRole('link')
+    expect(link).toHaveAttribute('href', '/skills/skill-001')
+  })
+
+  it('條件 score badge — 傳入 score 顯示「XX% 相符」', () => {
+    renderCard(mockSkill, 0.873)
+    expect(screen.getByText('87% 相符')).toBeInTheDocument()
+  })
+
+  it('條件 score badge — 不傳 score 不顯示相符 badge', () => {
+    renderCard(mockSkill)
+    expect(screen.queryByText(/% 相符/)).not.toBeInTheDocument()
+  })
+})

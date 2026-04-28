@@ -86,5 +86,4 @@ function TabsContent({
   )
 }
 
-// eslint-disable-next-line react-refresh/only-export-components -- shadcn 慣例：cva variants 與 component 同檔便於 CLI 升級；HMR 行為非阻擋
 export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
