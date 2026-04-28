@@ -1,14 +1,14 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-04-29（S017 ship `v1.3.0` 後 — Phase 2 M15 完成；ACL-Aware 語意搜尋接入；剩 S018 ⏳ Design）
+> 最後更新：2026-04-29（S018 ship `v1.4.0` 後 — **Phase 2 全部完成**；M14/M15/M16 三個 milestone 連續達成 v1.2.0/v1.3.0/v1.4.0；無 active 未 ✅ spec）
 
 ---
 
 ## 🎯 Active Work — Sequenced (Next Up)
 
-**Phase 2.5（Project Infra）已於 `v1.1.1`（2026-04-28）完成 ✅**；**Phase 2 M14 Row-Level ACL `v1.2.0`（2026-04-29）✅**；**Phase 2 M15 ACL-Aware 語意搜尋 `v1.3.0`（2026-04-29）✅** — Phase 2 剩 S018（Skill Aggregate 充血演化 + SKILL.md 對齊 + Suspend/Reactivate Events）一條路徑。
+**Phase 2 全部完成 ✅** — M14/M15/M16 三個 milestone 連續於 2026-04-29 達成（v1.2.0/v1.3.0/v1.4.0）；當前無 active 未 ✅ spec。Phase 2.5 Project Infra 於 v1.1.1（2026-04-28）完成。
 
-### Recommended Execution Order
+### Recommended Execution Order（歷史記錄）
 
 ```
 S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 31 pts · ✅ v1.1.1）
@@ -16,7 +16,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
                           ▼
                      S016 ✅ ─▶ S017 ✅   Phase 2（Domain · M14 ✅ v1.2.0 / M15 ✅ v1.3.0）
                               │
-                              └─▶ S018 (unpaused — S016/S017 已 ship；可移除 graceful degrade 占位)
+                              └─▶ S018 ✅ (M16 ✅ v1.2.0 → graceful degrade 占位已移除)
 ```
 
 | 順序 | Spec | Title | Points | Deps | Status |
@@ -27,7 +27,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | 4 | **S022** | **Frontend Verification Baseline**（vitest coverage tooling + 樣板 component test + ESLint root-cause + V06 enrollment）| **S(8)** | **S020**（registry + verify-all.sh 為 V06 enrollment 前提）| **✅ — `specs/archive/2026-04-28-S022-frontend-verification-baseline.md`** |
 | 5 | S016 | Row-Level ACL 基礎建設（JSONB acl_entries + GIN）| M(13) | S014 ✅ | ✅ — `specs/archive/2026-04-28-S016-row-level-acl-foundation.md`（v1.2.0 / 2026-04-29）|
 | 6 | S017 | ACL-Aware 語意搜尋（PgVectorStore + ACL SQL composition）| S-M(11) | S016 ✅ | ✅ — `specs/archive/2026-04-29-S017-acl-aware-semantic-search.md`（v1.3.0 / 2026-04-29）|
-| 7 | S018 | Skill Aggregate 充血演化 + SKILL.md 對齊 + Suspend/Reactivate Events | M(13) | S014 ✅ + S016 ✅ + S017 ✅ | ⏳ Design — `specs/2026-04-27-S018-skill-aggregate-rich-domain.md`（revised 2026-04-28）|
+| 7 | S018 | Skill Aggregate 充血演化 + SKILL.md 對齊 + Suspend/Reactivate Events | M(13) | S014 ✅ + S016 ✅ + S017 ✅ | ✅ — `specs/archive/2026-04-27-S018-skill-aggregate-rich-domain.md`（v1.4.0 / 2026-04-29）|
 
 > **S022 緣由（2026-04-28）**：S020 T2 主驗收命令首次跑出 V04（vitest「No test files found」exit 1）+ V05（`badge.tsx:48` / `tabs.tsx:89` 兩處 `react-refresh/only-export-components` 錯誤）pre-existing 故障；user 選 Option A 在 S020 內最小修正（`smoke.test.ts` + 2 處 `eslint-disable-next-line`）讓 V04/V05 過 happy-path gate。但這是 tactical band-aid，未建立 frontend testing baseline；故獨立 S022 補：(a) `@vitest/coverage-v8` 安裝 + threshold POC（鏡像 S019 模式）；(b) `setupTests.ts` + `@testing-library/react/jest-dom` 引用樣板（既有 deps 未用）；(c) 1-2 個真實 component / hook test（如 `SkillCard`、`useSemanticSearch`）；(d) ESLint root-cause 決策（拆檔 vs cva exception config）— 收尾 S020 Option A 的 `eslint-disable` 占位；(e) qa-strategy.md L23-25「80% line coverage on new code」實作落地 + V06 加入 registry。
 
@@ -58,12 +58,12 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 2.5 | M17: Project Infra | S019 ✅, S020 ✅, S021 ✅, S022 ✅ | XS(5)+S(10)+S(8)+S(8) = 31 | 198 | ✅ `v1.1.1` (2026-04-28) |
 | Phase 2 | M14: Row-Level ACL 基礎建設 | S016 | M(13) | 211 | ✅ `v1.2.0` (2026-04-29) |
 | Phase 2 | M15: ACL-Aware 語意搜尋 | S017 | S-M(11) | 222 | ✅ `v1.3.0` (2026-04-29) |
-| **Phase 2** | **M16: Skill Aggregate 充血演化 + SKILL.md 對齊** | **S018** | **M(13)** | **235** | **⏳ Design**（unpaused — S016/S017 ship；可移除 graceful degrade 占位） |
+| Phase 2 | M16: Skill Aggregate 充血演化 + SKILL.md 對齊 | S018 | M(13) | 235 | ✅ `v1.4.0` (2026-04-29) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）
 **Phase 2.5（Project Infra）**：4 specs / 31 story points 已完成 `v1.1.1`（2026-04-28）— S019 JaCoCo gate / S020 verification registry + verify-all.sh / S021 PostgreSQL doc-sync / S022 Frontend verification baseline
-**Phase 2（Row-Level ACL + Aggregate 充血）**：2/3 specs 已完成（S016 ✅ `v1.2.0` + S017 ✅ `v1.3.0`，2026-04-29 / 共 24 story points）；剩 S018 ⏳ Design
+**Phase 2（Row-Level ACL + Aggregate 充血）**：3/3 specs 全部完成 — S016 ✅ `v1.2.0` + S017 ✅ `v1.3.0` + S018 ✅ `v1.4.0`（2026-04-29 同日連續 ship / 共 37 story points）
 
 ---
 
@@ -98,13 +98,11 @@ ADR-001 ──▶ S014 (PostgreSQL 資料層遷移 + 自訂 SkillshubPgVectorSto
 S019 ✅ (JaCoCo gate) ──▶ S020 ✅ (verify registry + verify-all.sh) ──▶ S022 ✅ (frontend baseline + V06)
 S021 ✅ (PRD/architecture.md doc-sync · 獨立、可平行)
 
-── Phase 2（Domain · Row-Level ACL + Aggregate · M14/M15 ✅；M16 Design）─
+── Phase 2（Domain · Row-Level ACL + Aggregate · M14/M15/M16 全 ✅；2026-04-29 同日連續 ship）─
 S014 ✅ ──▶ S016 ✅ (Row-Level ACL 基礎建設；v1.2.0 2026-04-29)
                  │
                  ├──▶ S017 ✅ (ACL-Aware 語意搜尋；v1.3.0 2026-04-29)
-                 └──▶ S018 ⏳ Design (Skill Aggregate 充血演化 + Suspend/Reactivate)
-                          ↑
-                          S014 ✅ + S016 ✅ + S017 ✅ — graceful degrade 占位 hasRole('admin') 可移除
+                 └──▶ S018 ✅ (Skill Aggregate 充血演化 + SKILL.md alignment；v1.4.0 2026-04-29)
 ```
 
 ---
@@ -127,19 +125,9 @@ S014 ✅ ──▶ S016 ✅ (Row-Level ACL 基礎建設；v1.2.0 2026-04-29)
 |---|------|--------|--------------|--------|
 | S017 | ACL-Aware 語意搜尋（PgVectorStore + ACL SQL composition） | S-M(11) | S016 ✅ | 🔲 Planning |
 
-### Milestone 16: Skill Aggregate 充血演化 + SKILL.md 對齊 ⏳ Design
+### Milestone 16: Skill Aggregate 充血演化 + SKILL.md 對齊 ✅ `v1.4.0` (2026-04-29)
 
-**Goal**: Skill aggregate 從「部分重建」演化為完整充血模型；對齊 [agentskills.io](https://agentskills.io/) SKILL.md 標準（`allowed-tools` 升 first-class + `SkillValidator` 嚴格化）；新增 suspend/reactivate 業務動作；修 SkillProjection 的 status 不轉換 BUG + hardcoded sequence
-
-**Done when**: S018 done；新增 15 個 AC 全綠；既有 read model status 從「永遠 DRAFT」改為正確轉換；`SkillVersionReadModel.allowedTools` 為 first-class column；`SkillValidator` 拒收違反 SKILL.md spec 的 frontmatter
-
-**Driver**: PRD §Backlog B1（管理者下架不合規 skill）+ development-standards §27（aggregate 狀態轉換合法性）+ agentskills.io 互通性（client 讀 `allowed-tools` 授權）
-
-**Spec**: `docs/grimo/specs/2026-04-27-S018-skill-aggregate-rich-domain.md`（initial 2026-04-27；revised 2026-04-28）
-
-| # | Spec | Points | Dependencies | Status |
-|---|------|--------|--------------|--------|
-| S018 | Skill Aggregate 充血演化 + SKILL.md 對齊 + Suspend/Reactivate Events | M(13) | S014 ✅（event store JDBC）+ S016 ✅（PermissionEvaluator 已 ship；可移除 graceful degrade 占位） | ⏳ Design |
+1/1 specs complete. Details → `specs/archive/2026-04-27-S018-skill-aggregate-rich-domain.md`；T1+T2+T3+T4+T5 全 PASS（234/234 tests / 89.9% coverage）；validated patterns（enum-method override state machine + aggregate guard 不 mutate state + uploadSkill reload from events + SKILL.md `allowed-tools` 解析 + 嚴格化 regex）已寫入 spec §7.5 給未來 spec 引用。
 
 ---
 
@@ -163,6 +151,7 @@ S014 ✅ ──▶ S016 ✅ (Row-Level ACL 基礎建設；v1.2.0 2026-04-29)
 | M17: Project Infra（coverage gate + verify registry + frontend baseline） | `v1.1.1` | 2026-04-28 | S019, S020, S021, S022 | `specs/archive/2026-04-27-S019-*` / `2026-04-27-S020-*` / `2026-04-27-S021-*` / `2026-04-28-S022-*` |
 | M14: Row-Level ACL 基礎建設（JSONB acl_entries + GIN + ACL CRUD endpoints） | `v1.2.0` | 2026-04-29 | S016 | `specs/archive/2026-04-28-S016-row-level-acl-foundation.md` |
 | M15: ACL-Aware 語意搜尋（PgVectorStore + ?| filter + oversample HNSW recall fix） | `v1.3.0` | 2026-04-29 | S017 | `specs/archive/2026-04-29-S017-acl-aware-semantic-search.md` |
+| M16: Skill Aggregate 充血演化 + SKILL.md 對齊 + Suspend/Reactivate Events | `v1.4.0` | 2026-04-29 | S018 | `specs/archive/2026-04-27-S018-skill-aggregate-rich-domain.md` |
 
 ---
 

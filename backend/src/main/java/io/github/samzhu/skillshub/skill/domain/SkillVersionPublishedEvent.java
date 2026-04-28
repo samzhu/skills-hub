@@ -1,5 +1,6 @@
 package io.github.samzhu.skillshub.skill.domain;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,11 +15,16 @@ import java.util.Map;
  * @param storagePath  套件在 GCS 中的完整物件路徑
  * @param fileSize     上傳套件的位元組大小
  * @param frontmatter  從 SKILL.md YAML frontmatter 解析出的 metadata 鍵值對
+ * @param allowedTools S018：從 frontmatter {@code allowed-tools} space-separated 字串解析後的
+ *                     typed payload 欄位（per agentskills.io spec；空 list 為合法）。
+ *                     既有 events 在 store 中無此 field，replay 時 payload.get("allowed-tools")
+ *                     為 null 由 caller fallback empty list（per spec §6 Open Risks #2）。
  */
 public record SkillVersionPublishedEvent(
 		String aggregateId,
 		String version,
 		String storagePath,
 		long fileSize,
-		Map<String, Object> frontmatter
+		Map<String, Object> frontmatter,
+		List<String> allowedTools
 ) {}

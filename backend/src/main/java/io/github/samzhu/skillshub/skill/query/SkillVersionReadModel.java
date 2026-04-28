@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.skill.query;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.annotation.Id;
@@ -42,6 +43,10 @@ import org.springframework.data.relational.core.mapping.Table;
  * @param frontmatter    SKILL.md frontmatter 解析後的 metadata 鍵值對（JSONB）
  * @param riskAssessment S010 多引擎掃描結果（含 SARIF），尚未掃描時為 {@code null}（JSONB）
  * @param publishedAt    版本發布時間戳
+ * @param allowedTools   S018：SKILL.md frontmatter 的 {@code allowed-tools} 解析後的 first-class
+ *                       字串 list（per agentskills.io spec；e.g. {@code ["Bash(git:*)", "Edit", "Read"]}）。
+ *                       原始 frontmatter 仍保留 raw string，但本 column 提供結構化查詢支援
+ *                       （如未來語意搜尋過濾「需要 Edit 工具的 skill」）。空 list 為合法（無 allowed-tools）。
  */
 @Table("skill_versions")
 public record SkillVersionReadModel(
@@ -52,7 +57,8 @@ public record SkillVersionReadModel(
 		@Column("file_size") long fileSize,
 		@Column("frontmatter") Map<String, Object> frontmatter,
 		@Column("risk_assessment") Map<String, Object> riskAssessment,
-		@Column("published_at") Instant publishedAt
+		@Column("published_at") Instant publishedAt,
+		@Column("allowed_tools") List<String> allowedTools
 ) implements Persistable<String> {
 
 	/** 永遠回 true — projection 透過 save() 只建立新 row；risk_assessment 更新走 @Modifying @Query。 */

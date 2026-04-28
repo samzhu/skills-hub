@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
@@ -27,6 +28,24 @@ public class SkillValidator {
 
 	/** SKILL.md frontmatter 中必須存在的欄位名稱。 */
 	private static final List<String> REQUIRED_FIELDS = List.of("name", "description");
+
+	/** S018 AC-14：name 必須符合 lowercase + digits + hyphen，1-64 字元（agentskills.io spec）。 */
+	private static final Pattern NAME_REGEX = Pattern.compile("^[a-z0-9-]{1,64}$");
+
+	/** S018 AC-14：description 上限 1024 字元。 */
+	private static final int DESCRIPTION_MAX = 1024;
+
+	/** S018 AC-14：compatibility 上限 500 字元。 */
+	private static final int COMPATIBILITY_MAX = 500;
+
+	/**
+	 * S018 AC-14：allowed-tools 各 token 的合法語法：
+	 * - 單純名稱（{@code Edit} / {@code Read} / {@code Bash}）
+	 * - 帶 args 形式（{@code Bash(git:*)} / {@code Bash(npm:test)}）
+	 * 拒收 shell 控制字元（{@code ; & | $ ` > <}）+ 路徑（{@code /} 除括號內）+ 空字元等。
+	 */
+	private static final Pattern ALLOWED_TOOL_TOKEN_REGEX =
+			Pattern.compile("^[A-Z][a-zA-Z0-9_]{0,30}(\\([a-zA-Z0-9_:.* /,-]{1,200}\\))?$");
 
 	/**
 	 * 驗證 SKILL.md 文字內容。
@@ -67,6 +86,9 @@ public class SkillValidator {
 			}
 		}
 
+		// S018 AC-14：嚴格化驗證 — 必填欄位有值時才檢查格式（避免 null 造成 NullPointerException）
+		validateFieldConstraints(parsed, errors);
+
 		if (!errors.isEmpty()) {
 			// 驗證失敗：回傳部分解析結果供錯誤診斷，metadata 以不可變 Map 封裝
 			return new ValidationResult(false, Collections.unmodifiableMap(new LinkedHashMap<>(parsed)), List.copyOf(errors));
@@ -74,6 +96,41 @@ public class SkillValidator {
 
 		// 驗證通過：以 LinkedHashMap 保留欄位宣告順序，再封裝為不可變 Map 回傳
 		return new ValidationResult(true, Collections.unmodifiableMap(new LinkedHashMap<>(parsed)), List.of());
+	}
+
+	/**
+	 * S018 AC-14：嚴格化檢查 — name regex / description-length / compatibility-length /
+	 * allowed-tools-syntax。違規累積至 errors list，不短路（讓 caller 一次看到所有違規）。
+	 */
+	private void validateFieldConstraints(Map<String, Object> parsed, List<String> errors) {
+		// name：lowercase + digits + hyphen，1-64 字元
+		var name = parsed.get("name");
+		if (name != null && !NAME_REGEX.matcher(name.toString()).matches()) {
+			errors.add("Field 'name' fails regex ^[a-z0-9-]{1,64}$ (got: " + name + ")");
+		}
+
+		// description：≤ 1024 字元
+		var description = parsed.get("description");
+		if (description != null && description.toString().length() > DESCRIPTION_MAX) {
+			errors.add("Field 'description' exceeds " + DESCRIPTION_MAX + " characters");
+		}
+
+		// compatibility：≤ 500 字元（optional）
+		var compatibility = parsed.get("compatibility");
+		if (compatibility != null && compatibility.toString().length() > COMPATIBILITY_MAX) {
+			errors.add("Field 'compatibility' exceeds " + COMPATIBILITY_MAX + " characters");
+		}
+
+		// allowed-tools：space-separated tokens，每個 token 必符合白名單 regex（拒收 shell injection）
+		var allowedTools = parsed.get("allowed-tools");
+		if (allowedTools != null && !allowedTools.toString().isBlank()) {
+			for (var token : allowedTools.toString().trim().split("\\s+")) {
+				if (!ALLOWED_TOOL_TOKEN_REGEX.matcher(token).matches()) {
+					errors.add("Field 'allowed-tools' contains invalid token: " + token);
+					break;   // 一個違規足以拒收，不重複報相同 root cause
+				}
+			}
+		}
 	}
 
 	/**

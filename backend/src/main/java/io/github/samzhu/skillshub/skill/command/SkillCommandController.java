@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import io.github.samzhu.skillshub.shared.api.ErrorResponse;
+import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 
 /**
  * 技能寫入端 REST Controller — 處理所有修改技能狀態的操作。
@@ -37,9 +38,12 @@ import io.github.samzhu.skillshub.shared.api.ErrorResponse;
 public class SkillCommandController {
 
 	private final SkillCommandService commandService;
+	private final CurrentUserProvider currentUserProvider;
 
-	public SkillCommandController(SkillCommandService commandService) {
+	public SkillCommandController(SkillCommandService commandService,
+			CurrentUserProvider currentUserProvider) {
 		this.commandService = commandService;
+		this.currentUserProvider = currentUserProvider;
 	}
 
 	/**
@@ -100,11 +104,49 @@ public class SkillCommandController {
 		return ResponseEntity.ok().build();
 	}
 
+	/**
+	 * S018：停用 skill — 將 PUBLISHED skill 轉至 SUSPENDED 狀態。
+	 *
+	 * <p>{@code @PreAuthorize("hasPermission(#id, 'Skill', 'suspend')")} 守門：呼叫者
+	 * 須對該 skill 具 {@code suspend} 權限（acl_entries 含 {@code role:admin:suspend} 或
+	 * {@code user:<sub>:suspend} pattern）。{@code suspendedBy} 從
+	 * {@link CurrentUserProvider#userId()} 取得，不採用 request body 任何欄位以防 spoof。
+	 *
+	 * @return 200 OK；非 PUBLISHED skill 會由 aggregate 拋 IllegalStateException → 由
+	 *         全域 handler 處理（目前 Spring default → 500，後續可加 @ExceptionHandler 轉 409）
+	 */
+	@PostMapping("/{id}/suspend")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'suspend')")
+	ResponseEntity<Void> suspend(@PathVariable String id, @RequestBody SuspendRequest req) {
+		commandService.suspend(new SuspendCommand(id, req.reason(), currentUserProvider.userId()));
+		return ResponseEntity.ok().build();
+	}
+
+	/**
+	 * S018：重啟 skill — 將 SUSPENDED skill 轉回 PUBLISHED 狀態。
+	 *
+	 * <p>{@code @PreAuthorize("hasPermission(#id, 'Skill', 'reactivate')")} 守門。
+	 *
+	 * @return 200 OK；非 SUSPENDED skill 由 aggregate state machine 拋例外
+	 */
+	@PostMapping("/{id}/reactivate")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'reactivate')")
+	ResponseEntity<Void> reactivate(@PathVariable String id, @RequestBody ReactivateRequest req) {
+		commandService.reactivate(new ReactivateCommand(id, req.reason()));
+		return ResponseEntity.ok().build();
+	}
+
 	/** 攔截版本重複例外，轉換為 HTTP 409 Conflict。 */
 	@ExceptionHandler(VersionExistsException.class)
 	ResponseEntity<ErrorResponse> handleVersionExists(VersionExistsException ex) {
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(new ErrorResponse("VERSION_EXISTS", ex.getMessage(), Instant.now()));
 	}
+
+	/** S018：Suspend endpoint request body — single field reason。 */
+	public record SuspendRequest(String reason) {}
+
+	/** S018：Reactivate endpoint request body — single field reason。 */
+	public record ReactivateRequest(String reason) {}
 
 }

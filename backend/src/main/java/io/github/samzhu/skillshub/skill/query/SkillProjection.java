@@ -16,6 +16,9 @@ import io.github.samzhu.skillshub.skill.domain.SkillAclGrantedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillAclRevokedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillReactivatedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillStatus;
+import io.github.samzhu.skillshub.skill.domain.SkillSuspendedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 
 /**
@@ -27,10 +30,12 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
  * <p>處理的事件：</p>
  * <ul>
  *   <li>{@link SkillCreatedEvent} → 建立 {@link SkillReadModel}（初始狀態 DRAFT）</li>
- *   <li>{@link SkillVersionPublishedEvent} → 更新 latestVersion + 新增 {@link SkillVersionReadModel}</li>
+ *   <li>{@link SkillVersionPublishedEvent} → 更新 latestVersion + 新增 {@link SkillVersionReadModel}；首版觸發 status DRAFT→PUBLISHED（S018 BUG fix）</li>
  *   <li>{@link SkillDownloadedEvent} → 累加 downloadCount</li>
  *   <li>{@link SkillAclGrantedEvent} → 將 {@code "type:principal:permission"} 字串 append 到 acl_entries（冪等）</li>
  *   <li>{@link SkillAclRevokedEvent} → 從 acl_entries 移除指定字串</li>
+ *   <li>{@link SkillSuspendedEvent} → status='SUSPENDED'（S018）</li>
+ *   <li>{@link SkillReactivatedEvent} → status='PUBLISHED'（S018）</li>
  * </ul>
  */
 @Component
@@ -99,13 +104,21 @@ class SkillProjection {
 	@EventListener
 	@Order(Ordered.HIGHEST_PRECEDENCE)
 	void on(SkillVersionPublishedEvent event) {
+		var now = Instant.now();
 		// 更新 skills read model 的最新版本 — atomic UPDATE，避免 Spring Data JDBC 對
 		// record + non-null id 的「save → UPDATE」誤判路徑（既有 read-modify-write 在
 		// Persistable.isNew()=true 後會走 INSERT 變 PK 衝突）
-		repo.updateLatestVersion(event.aggregateId(), event.version(), Instant.now());
+		repo.updateLatestVersion(event.aggregateId(), event.version(), now);
+
+		// S018 AC-2 BUG fix：首版發布觸發 status DRAFT→PUBLISHED（idempotent for 後續發版 — UPDATE
+		// 設成 PUBLISHED 不論原 status 為何；DRAFT 升級、PUBLISHED 維持、SUSPENDED 該不轉但
+		// publishVersion 在 aggregate 端已被 state machine guard 擋下不會走到這裡）
+		repo.updateStatus(event.aggregateId(), SkillStatus.PUBLISHED.name(), now);
 
 		// 建立版本 read model 記錄；riskAssessment 在此為 null，由 S010 ScanOrchestrator
 		// 完成多引擎掃描後透過 SkillVersionReadModelRepository.updateRiskAssessment 寫入。
+		// S018 AC-13: allowedTools 為 first-class field（既有 events replay 時可能 null → fallback empty）
+		var allowedTools = event.allowedTools() != null ? event.allowedTools() : List.<String>of();
 		var versionEntry = new SkillVersionReadModel(
 				UUID.randomUUID().toString(),
 				event.aggregateId(),
@@ -114,14 +127,15 @@ class SkillProjection {
 				event.fileSize(),
 				event.frontmatter(),
 				null,
-				Instant.now()
+				now,
+				allowedTools
 		);
 		versionRepo.save(versionEntry);
 
 		log.atInfo()
 				.addKeyValue("skillId", event.aggregateId())
 				.addKeyValue("version", event.version())
-				.log("投影已更新版本記錄");
+				.log("投影已更新版本記錄 + status 轉為 PUBLISHED");
 	}
 
 	/**
@@ -175,6 +189,35 @@ class SkillProjection {
 				.addKeyValue("entry", entry)
 				.addKeyValue("rowsAffected", rows)
 				.log("投影已 remove ACL entry");
+	}
+
+	/**
+	 * S018：Skill 停用事件 → read model status='SUSPENDED'。
+	 */
+	@EventListener
+	void on(SkillSuspendedEvent event) {
+		var rows = repo.updateStatus(event.aggregateId(), SkillStatus.SUSPENDED.name(), Instant.now());
+
+		log.atInfo()
+				.addKeyValue("skillId", event.aggregateId())
+				.addKeyValue("reason", event.reason())
+				.addKeyValue("suspendedBy", event.suspendedBy())
+				.addKeyValue("rowsAffected", rows)
+				.log("投影已將 status 更新為 SUSPENDED");
+	}
+
+	/**
+	 * S018：Skill 重啟事件 → read model status='PUBLISHED'。
+	 */
+	@EventListener
+	void on(SkillReactivatedEvent event) {
+		var rows = repo.updateStatus(event.aggregateId(), SkillStatus.PUBLISHED.name(), Instant.now());
+
+		log.atInfo()
+				.addKeyValue("skillId", event.aggregateId())
+				.addKeyValue("reason", event.reason())
+				.addKeyValue("rowsAffected", rows)
+				.log("投影已將 status 更新為 PUBLISHED");
 	}
 
 }

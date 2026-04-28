@@ -64,6 +64,21 @@ public interface SkillReadModelRepository extends ListCrudRepository<SkillReadMo
 	int updateRiskLevel(@Param("id") String id, @Param("riskLevel") String riskLevel, @Param("ts") Instant ts);
 
 	/**
+	 * S018：更新 skill 的 status（atomic UPDATE）。
+	 *
+	 * <p>用於 {@code SkillProjection} 對 SkillVersionPublishedEvent 首版 transition（DRAFT→PUBLISHED）
+	 * + SkillSuspendedEvent / SkillReactivatedEvent 的 read-side projection。
+	 *
+	 * @param id     技能 ID
+	 * @param status 新狀態（{@code DRAFT} / {@code PUBLISHED} / {@code SUSPENDED}）
+	 * @param ts     更新時間戳（同步寫入 updated_at）
+	 * @return 更新的 row 數（找不到 id 時為 0）
+	 */
+	@Modifying
+	@Query("UPDATE skills SET status = :status, updated_at = :ts WHERE id = :id")
+	int updateStatus(@Param("id") String id, @Param("status") String status, @Param("ts") Instant ts);
+
+	/**
 	 * S016：追加 ACL entry（型如 {@code "type:principal:permission"}）至 {@code skills.acl_entries}。
 	 *
 	 * <p>用於 {@code SkillProjection.on(SkillAclGrantedEvent)} read-side 投影；

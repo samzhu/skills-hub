@@ -1,5 +1,41 @@
 # Changelog
 
+## [v1.4.0] — Phase 2: Skill Aggregate 充血演化 + SKILL.md 對齊（M16 完成 + Phase 2 全部完成；2026-04-29）
+
+### Added
+- **S018: Skill Aggregate 充血演化 + SKILL.md 對齊 + Suspend/Reactivate Events**（M16 落地；同時 Phase 2 全部完成 — M14/M15/M16 三個 milestone 同日連續 ship）：
+  - **State machine 集中於 enum**（`skill/domain/SkillStatus`）— 改寫為 enum-method override pattern：每 enum value（DRAFT/PUBLISHED/SUSPENDED）獨立 override 合法 transition；default 拋 IllegalStateException with status name；class-level Javadoc 加 ASCII state machine diagram。
+  - **Skill aggregate 充血演化**（`skill/domain/Skill`）— 加 `private SkillStatus status` field；constructor replay switch 加 4 個新 arm（SkillCreated/SkillVersionPublished/SkillSuspended/SkillReactivated）；`publishVersion()` 加 state machine guard `this.status.publish()`（SUSPENDED 拋例外 — guard 先於版本不變量）；新 business methods `suspend(SuspendCommand)` / `reactivate(ReactivateCommand)`；新 accessor `status()`；新 helper `parseAllowedTools(frontmatter)`。
+  - **Suspend/Reactivate ES 流程**（4 new records）— `SkillSuspendedEvent(aggregateId, reason, suspendedBy)` + `SkillReactivatedEvent(aggregateId, reason)` + `SuspendCommand(skillId, reason, suspendedBy)` + `ReactivateCommand(skillId, reason)`；`SkillCommandService` 加 `suspend()` / `reactivate()` `@Transactional` methods（mirror S016 grantAcl/revokeAcl 模式）。
+  - **REST endpoints + @PreAuthorize 整合 S016 PermissionEvaluator**（`skill/command/SkillCommandController`）— `POST /{id}/suspend` + `/{id}/reactivate` + `@PreAuthorize("hasPermission(#id, 'Skill', 'suspend|reactivate')")` 守門（用 S016 spec §2.1 #4 預備的兩 verb）；nested records `SuspendRequest(reason)` / `ReactivateRequest(reason)`；建構子注入 `CurrentUserProvider`，suspendedBy 從 SecurityContext 取（防 spoof）。
+  - **SkillProjection BUG 修 + 新 listeners**（`skill/query/SkillProjection`）— `on(SkillVersionPublishedEvent)` 加 `repo.updateStatus(id, "PUBLISHED", now)` 修「永遠 DRAFT」BUG（首版觸發 DRAFT→PUBLISHED；後續發版 idempotent）；新 `on(SkillSuspendedEvent)` / `on(SkillReactivatedEvent)` listeners；`SkillReadModelRepository` 加 `updateStatus(id, status, ts)` `@Modifying @Query`。
+  - **Hardcoded sequence 移除**（`skill/command/SkillCommandService`）— `createSkill` / `uploadSkill` 走 `aggregate.nextSequence()`（new aggregate=1；uploadSkill 第二步 reload from DB events → nextSequence=2）；對齊「aggregate 為 sequence source of truth」原則。
+  - **SKILL.md 對齊**（`skill/validation/SkillValidator` + `skill/query/SkillVersionReadModel` + V3 Flyway migration）— 加 NAME_REGEX (`^[a-z0-9-]{1,64}$`) / DESCRIPTION_MAX=1024 / COMPATIBILITY_MAX=500 / ALLOWED_TOOL_TOKEN_REGEX 嚴格化（白名單拒收 shell injection 如 `;rm -rf`）；`SkillVersionReadModel` 加 `@Column("allowed_tools") List<String> allowedTools` first-class column（用 JSONB 與既有 acl_entries 同模式重用 `StringListJsonbConverter`）；`SkillVersionPublishedEvent` record 加 `List<String> allowedTools` typed payload；V3 migration backfill from existing frontmatter；uploadSkill 解析 space-separated → List。
+  - **15 個 SBE AC 全綠**：AC-1 (DRAFT default) / AC-2 (BUG 修：首版→PUBLISHED) / AC-3 (idempotent) / AC-4-9 (state machine guards) / AC-10 (apply 多型分派 replay) / AC-11 (sequence chain) / AC-12 (@PreAuthorize 整合 S016) / AC-13 (allowed_tools first-class) / AC-14 (Validator 嚴格化 6 違規場景) / AC-15 (合規 frontmatter)；`./scripts/verify-all.sh` V01-V06 全 PASS（234/234 tests / 0 failures / 89.9% LINE coverage / gate 80%）。
+  - **獨立 QA subagent verdict PASS**（234/234 tests / 89.9% coverage / V01-V06 全綠；1 MINOR follow-up — AC-13 HTTP wire-level assertion 缺；非 production defect — controller 直接回 SkillVersionReadModel 含 allowedTools field；已記 spec §7.9）
+  - **Validated patterns 已寫入 spec §7.5**（給未來 spec 引用）：
+    - Enum-method override 為 Java state machine 標準實作
+    - Aggregate state machine guard 不 mutate state（state 由 replay 改變）
+    - `uploadSkill` 兩步 saveAndPublish 走 reload aggregate 從 events
+    - SKILL.md `allowed-tools` 解析 + 嚴格化 regex（拒收 shell injection）
+    - 既有 record evolution 對 test caller minimal update（加 `List.of()` 一參）
+
+### Changed
+- **`SkillProjection.on(SkillCreatedEvent)`**：read model `status="DRAFT"` 不變；但 `on(SkillVersionPublishedEvent)` 現會 atomic `updateStatus("PUBLISHED")` — 修復「永遠 DRAFT」BUG（spec §3 AC-2）
+- **`SkillCommandService.createSkill / uploadSkill`**：移除 hardcoded `1L`/`2L` literal — 走 `aggregate.nextSequence()`；uploadSkill 第二步加 `loadAggregate(...)` reload 取 nextSequence=2
+- **`SkillVersionPublishedEvent` record evolved**：加第 6 field `List<String> allowedTools`；既有 3 個 test caller 連帶更新加 `List.of()` 引數（SearchProjectionTest / ScanOrchestratorTest / SarifReporterTest）
+- **`SkillValidator` 嚴格化**：除既有 missing-required-field 檢查外，加 4 大 constraint（name regex / description-1024 / compatibility-500 / allowed-tools 白名單 token regex）
+
+### Notes
+- **Tech debt 入 §7.7**：
+  - 重複 `parseAllowedTools` helper（aggregate + service 兩處 9 line 重複）— 可抽 `AllowedToolsParser` utility for follow-up
+  - IllegalStateException → HTTP 500 而非 409（S016 T4 + S018 T4 共題；建議統一 controller advice 為 409 Conflict）
+  - SkillVersionPublishedEvent record evolution 對既有 events store 中無 `allowedTools` key 的 replay 行為待 production V01 跑後驗（已加 null guard）
+  - Modulith outbox migration 拆出至 S023（per spec header + roadmap Backlog）
+  - AC-13 HTTP wire-level assertion 缺（QA finding；非 production defect — controller 直接回 ReadModel 含 first-class field）
+- **Test growth path**：S017 ship 後 baseline 199 → T1 +12 (211) → T2 +3 (214) → T3 +7 (221) → T4 +4 (225) → T5 +9 (234)。新增 6 個 test class，~28 個 test method。
+- **Phase 2 全部完成 ✅**：M14（S016 v1.2.0）+ M15（S017 v1.3.0）+ M16（S018 v1.4.0）三個 milestone 於 2026-04-29 同日連續 ship；共 37 story points + 41 個 SBE AC + 30+ 個 test method。
+
 ## [v1.3.0] — Phase 2: ACL-Aware 語意搜尋（M15 完成；2026-04-29）
 
 ### Added

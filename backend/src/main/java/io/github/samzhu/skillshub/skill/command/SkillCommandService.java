@@ -46,10 +46,12 @@ public class SkillCommandService {
 
 	public String createSkill(CreateSkillCommand cmd) {
 		var event = Skill.create(cmd.name(), cmd.description(), cmd.author(), cmd.category());
+		// S018 AC-11：sequence 從 aggregate 取（new aggregate 的 nextSequence() = 1）— 移除 hardcoded 1L
+		var aggregate = new Skill(event.aggregateId(), java.util.List.of());
 		saveAndPublish(event.aggregateId(), "SkillCreated",
 				Map.of("name", cmd.name(), "description", cmd.description(),
 						"author", cmd.author(), "category", cmd.category()),
-				1L, event);
+				aggregate.nextSequence(), event);
 		log.atInfo()
 				.addKeyValue("skillId", event.aggregateId())
 				.addKeyValue("name", cmd.name())
@@ -89,15 +91,22 @@ public class SkillCommandService {
 
 		storageService.upload(storagePath, zipBytes);
 
+		// S018 AC-11：sequence 從 aggregate 取 — 移除 hardcoded 1L/2L
+		var aggregate = new Skill(aggregateId, java.util.List.of());
 		saveAndPublish(aggregateId, "SkillCreated",
 				Map.of("name", name, "description", description, "author", author, "category", category),
-				1L, createdEvent);
+				aggregate.nextSequence(), createdEvent);
 
+		// reload aggregate 從剛 save 的 events，nextSequence 自動遞增至 2
+		var reloaded = loadAggregate(aggregateId);
+		// S018 AC-13：從 frontmatter 解析 allowed-tools 至 typed payload field
+		var allowedTools = parseAllowedTools(validation.metadata());
 		var versionEvent = new SkillVersionPublishedEvent(
-				aggregateId, version, storagePath, zipBytes.length, validation.metadata());
+				aggregateId, version, storagePath, zipBytes.length, validation.metadata(), allowedTools);
 		saveAndPublish(aggregateId, "SkillVersionPublished",
-				Map.of("version", version, "storagePath", storagePath, "fileSize", (long) zipBytes.length),
-				2L, versionEvent);
+				Map.of("version", version, "storagePath", storagePath, "fileSize", (long) zipBytes.length,
+						"allowedTools", allowedTools),
+				reloaded.nextSequence(), versionEvent);
 
 		log.atInfo()
 				.addKeyValue("skillId", aggregateId)
@@ -196,12 +205,61 @@ public class SkillCommandService {
 				.log("ACL entry 撤銷完成");
 	}
 
+	/**
+	 * S018：停用 skill — 走 ES 路徑，aggregate 驗 state machine 不變量
+	 *（PUBLISHED → SUSPENDED 唯一合法 transition）後產生 SkillSuspended event。
+	 */
+	@Transactional
+	public void suspend(SuspendCommand cmd) {
+		var skill = loadAggregate(cmd.skillId());
+		var event = skill.suspend(cmd);
+		saveAndPublish(cmd.skillId(), "SkillSuspended",
+				Map.of("reason", cmd.reason(), "suspendedBy", cmd.suspendedBy()),
+				skill.nextSequence(), event);
+		log.atInfo()
+				.addKeyValue("skillId", cmd.skillId())
+				.addKeyValue("reason", cmd.reason())
+				.addKeyValue("suspendedBy", cmd.suspendedBy())
+				.log("Skill 停用完成");
+	}
+
+	/**
+	 * S018：重啟 skill — 走 ES 路徑，aggregate 驗 state machine 不變量
+	 *（SUSPENDED → PUBLISHED 唯一合法 transition）後產生 SkillReactivated event。
+	 */
+	@Transactional
+	public void reactivate(ReactivateCommand cmd) {
+		var skill = loadAggregate(cmd.skillId());
+		var event = skill.reactivate(cmd);
+		saveAndPublish(cmd.skillId(), "SkillReactivated",
+				Map.of("reason", cmd.reason()),
+				skill.nextSequence(), event);
+		log.atInfo()
+				.addKeyValue("skillId", cmd.skillId())
+				.addKeyValue("reason", cmd.reason())
+				.log("Skill 重啟完成");
+	}
+
 	private Skill loadAggregate(String skillId) {
 		var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
 		if (events.isEmpty()) {
 			throw new IllegalArgumentException("Skill not found: " + skillId);
 		}
 		return new Skill(skillId, events);
+	}
+
+	/**
+	 * S018：從 frontmatter Map 解析 {@code allowed-tools} space-separated 字串為 List<String>。
+	 * 與 {@link io.github.samzhu.skillshub.skill.domain.Skill#parseAllowedTools} 同邏輯，分屬不同層
+	 * 為避免暴露 aggregate private API；行為一致。
+	 */
+	private static java.util.List<String> parseAllowedTools(Map<String, Object> frontmatter) {
+		if (frontmatter == null) return java.util.List.of();
+		var raw = frontmatter.get("allowed-tools");
+		if (raw == null) return java.util.List.of();
+		var asString = raw.toString().trim();
+		if (asString.isEmpty()) return java.util.List.of();
+		return java.util.List.of(asString.split("\\s+"));
 	}
 
 	private void saveAndPublish(String aggregateId, String eventType, Map<String, Object> payload,

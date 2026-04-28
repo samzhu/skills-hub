@@ -42,7 +42,7 @@ class ScanOrchestratorTest {
 
 	private static final SkillVersionPublishedEvent EVT =
 			new SkillVersionPublishedEvent("agg-1", "1.0.0", "gs://b/x.zip", 100,
-					Map.of("name", "demo", "description", "x"));
+					Map.of("name", "demo", "description", "x"), java.util.List.of());
 
 	private static SecurityAnalyzer fakeAnalyzer(String name, Phase phase, AnalysisOutput output) {
 		return new SecurityAnalyzer() {

@@ -94,7 +94,7 @@ class SearchProjectionTest {
                 "author", "sam",
                 "category", "DevOps");
         var event = new SkillVersionPublishedEvent(
-                skillId, "2.0.0", "skills/" + skillId + "/2.0.0.zip", 1024L, frontmatter);
+                skillId, "2.0.0", "skills/" + skillId + "/2.0.0.zip", 1024L, frontmatter, java.util.List.of());
 
         projection.onVersionPublished(event);
 
