@@ -22,9 +22,9 @@ import tools.jackson.databind.ObjectMapper;
 import io.github.samzhu.skillshub.security.scan.sarif.SarifReporter;
 import io.github.samzhu.skillshub.shared.events.DomainEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
-import io.github.samzhu.skillshub.skill.query.SkillVersionReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
 import io.github.samzhu.skillshub.storage.PackageService;
 import io.github.samzhu.skillshub.storage.StorageService;
 
@@ -69,8 +69,9 @@ class ScanOrchestrator {
 	private final StorageService storageService;
 	private final PackageService packageService;
 	private final DomainEventRepository eventStore;
-	private final SkillReadModelRepository skillRepo;
-	private final SkillVersionReadModelRepository versionRepo;
+	// S024 T5: 改注入新 aggregate repositories（取代既有 SkillReadModelRepository / SkillVersionReadModelRepository）
+	private final SkillRepository skillRepo;
+	private final SkillVersionRepository versionRepo;
 	private final ObjectMapper objectMapper;
 	private final SarifReporter sarifReporter;
 
@@ -84,8 +85,8 @@ class ScanOrchestrator {
 			StorageService storageService,
 			PackageService packageService,
 			DomainEventRepository eventStore,
-			SkillReadModelRepository skillRepo,
-			SkillVersionReadModelRepository versionRepo,
+			SkillRepository skillRepo,
+			SkillVersionRepository versionRepo,
 			ObjectMapper objectMapper,
 			SarifReporter sarifReporter) {
 		this.analyzers = analyzers;
@@ -288,7 +289,7 @@ class ScanOrchestrator {
 				Instant.now(),
 				Map.of()));
 
-		// 2. skills.risk_level — 與 S005 行為相容（read model 同一欄位）
+		// 2. skills.risk_level — cross-aggregate projection（per SkillRepository.updateRiskLevel Javadoc）
 		skillRepo.updateRiskLevel(event.aggregateId(), finalLevel.name(), Instant.now());
 
 		// 3. skill_versions.risk_assessment — 完整 SARIF + findings + notices
@@ -304,9 +305,17 @@ class ScanOrchestrator {
 		// S023 idempotency key — retry 透過此值知道 scan 已完成（per ScanOrchestrator.on Javadoc）
 		riskAssessment.put("sourceEventId", event.sourceEventId());
 
-		// JSON 序列化後由 PostgreSQL 透過 CAST(... AS jsonb) 寫入；
-		// 找對應 row 用 (skill_id, version) — UNIQUE 約束保證最多一筆
-		String riskJson = objectMapper.writeValueAsString(riskAssessment);
-		versionRepo.updateRiskAssessment(event.aggregateId(), event.version(), riskJson);
+		// S024 T5：改走 SkillVersion aggregate 充血路徑（attachRiskAssessment + save 觸發
+		// SkillRiskAssessedEvent publish 至 outbox；T7 完整 AuditEventListener 接管後 audit row 由
+		// listener 寫入）。原 @Modifying @Query 直接 UPDATE risk_assessment 模式廢除（per ADR-002 §2.6）。
+		var sv = versionRepo.findBySkillIdAndVersion(event.aggregateId(), event.version())
+				.orElseThrow(() -> new IllegalStateException(
+						"SkillVersion not found for scan persist: " + event.aggregateId() + " v" + event.version()));
+		sv.attachRiskAssessment(riskAssessment);
+		versionRepo.save(sv);
+		// objectMapper 保留：T7 移除舊 SkillVersionReadModelRepository 後本欄位可拆掉（目前
+		// 為 T5 transitional state；建構子保留 dependency 不影響行為）
+		@SuppressWarnings("unused")
+		String riskJsonForDocumentation = objectMapper.writeValueAsString(riskAssessment);
 	}
 }

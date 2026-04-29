@@ -73,6 +73,16 @@ class SkillProjection {
 	@EventListener
 	@Order(Ordered.HIGHEST_PRECEDENCE)
 	void on(SkillCreatedEvent event) {
+		// S024 T1 transitional gate — Skill aggregate path 已透過 skillRepo.save 在同 TX
+		// 內 INSERT skills row（Spring Data JDBC interceptor 在 SQL 之後 publish event；
+		// 本 sync listener 同 TX 內可看見 row）。命中則 skip 避免 PK 衝突。
+		// T5 整檔刪除 SkillProjection 後本 gate 隨之消失。
+		if (repo.existsById(event.aggregateId())) {
+			log.atDebug()
+					.addKeyValue("skillId", event.aggregateId())
+					.log("Skipping legacy SkillProjection.on(SkillCreatedEvent) — row exists (S024 aggregate path)");
+			return;
+		}
 		var now = Instant.now();
 		// S016 T3: 新 skill 建立時 author 即 owner — 同 V2 backfill 邏輯（per spec §4.2 + §3 AC-7
 		// BDD 預設 acl_entries 已含 user:<author>:read|write|delete）。@PreAuthorize 對 PUT /versions
@@ -116,6 +126,18 @@ class SkillProjection {
 	@EventListener
 	@Order(Ordered.HIGHEST_PRECEDENCE)
 	void on(SkillVersionPublishedEvent event) {
+		// S024 T1 transitional gate — SkillVersion aggregate path 已透過 skillVersionRepo.save
+		// INSERT skill_versions row + Skill aggregate 已 UPDATE skills.latest_version + status。
+		// 命中則 skip 避免 UNIQUE(skill_id, version) constraint 衝突。
+		// T5 整檔刪除 SkillProjection 後本 gate 隨之消失。
+		if (versionRepo.findBySkillIdOrderByPublishedAtDesc(event.aggregateId()).stream()
+				.anyMatch(v -> v.version().equals(event.version()))) {
+			log.atDebug()
+					.addKeyValue("skillId", event.aggregateId())
+					.addKeyValue("version", event.version())
+					.log("Skipping legacy SkillProjection.on(SkillVersionPublishedEvent) — row exists (S024 aggregate path)");
+			return;
+		}
 		var now = Instant.now();
 		// 更新 skills read model 的最新版本 — atomic UPDATE，避免 Spring Data JDBC 對
 		// record + non-null id 的「save → UPDATE」誤判路徑（既有 read-modify-write 在

@@ -27,7 +27,7 @@ S023 (Modulith Outbox Foundation) ─▶ S024 (Skill State-Based Aggregate)
 | 順序 | Spec | Title | Points | Deps | Status |
 |------|------|-------|--------|------|--------|
 | 1 | S023 | Spring Modulith Outbox Foundation | M(12) | S018 ✅ + ADR-002 | ✅ — `v1.5.0` (M18) |
-| 2 | **S024** | **Skill State-Based Aggregate Migration** | **M(13)** | S023 ✅ + S016 ✅ + S018 ✅ + ADR-002 | **🔲 Design** (target `v2.0.0` — major bump per ADR-002 §5.1) |
+| 2 | **S024** | **Skill State-Based Aggregate Migration** | **M(13)** | S023 ✅ + S016 ✅ + S018 ✅ + ADR-002 | **⏳ Dev** — T01 PASS（POC validated；3 listener entries 觀察證實）；T02-T06 pending；target `v2.0.0` (major bump per ADR-002 §5.1) |
 | 3 | **S025** | **Test Pyramid Realignment + Scenario migration** | **L(15-18)** | S023 ✅（known limitation 來源）| **🔲 Design** |
 
 > **S023 / S024 拆分緣由**：原 Backlog S023 範圍僅「outbox migration」，研究後（`docs/deepwiki/spring-data-jdbc-modulith/` 6 份 source-level 檔案）發現整體架構轉向更有價值，但合併為單一 spec 估算 **L(16)** 接近 XL 強制拆分線；ADR-002 §5 拆為 S023（基礎建設）+ S024（領域層改寫）— 各 M(12-13)，可獨立 ship 與 verify、blast radius 小。

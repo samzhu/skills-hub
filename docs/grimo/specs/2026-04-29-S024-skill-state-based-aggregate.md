@@ -1,6 +1,6 @@
 # S024: Skill State-Based Aggregate Migration
 
-> Spec: S024 | Size: M(13) | Status: ⏳ Design
+> Spec: S024 | Size: M(13) | Status: ⏳ Plan
 > Date: 2026-04-29
 > ADR: [ADR-002 — Skill aggregate state-based migration](../adr/ADR-002-skill-aggregate-state-based.md)
 > Research: `docs/deepwiki/spring-data-jdbc-modulith/`
@@ -782,4 +782,82 @@ S024 ship 後 24 小時內監控：
 
 ---
 
-<!-- Sections 6 (Task Plan) + 7 (Implementation Results) added by /planning-tasks -->
+## 6. Task Plan
+
+> 由 `/planning-tasks` 於 2026-04-29 寫入。Task files 位於 `docs/grimo/tasks/2026-04-29-S024-T0{1..6}.md`（temporary；ship 後刪除，結果合併進 §7）。
+
+### POC Decision
+
+**POC: required**（per §2.9 hypothesis：跨 aggregate 同 TX `@DomainEvents` publish 行為）
+
+**Strategy**: **folded into T1 first RED test**（不開獨立 `poc/S024/` dir）
+
+**Rationale**:
+- 原 spec POC plan 的 `SkillCommandServiceCrossAggregateTest` 需要 Skill aggregate 已轉 `@Table + AbstractAggregateRoot` 才能跑 — 開獨立 POC dir 等於 duplicate T1 implementation work
+- TDD RED→GREEN cycle 自然驗 hypothesis：T1 first failing test 即 POC
+- 若 T1 RED→GREEN 失敗（即 hypothesis 不成立）→ escalate `/planning-spec S024` 改設計，**不**繼續推 T2-T6
+
+**POC Findings**:（T1 task ship 後填入；含實際 listener row count + 跨 aggregate publish 順序觀察 + 任何 spec drift）
+
+### Task Granularity Check
+
+| 維度 | Score | Rationale |
+|---|---|---|
+| Task count | 6 | M(13) target 4-6 task；6 task 對齊複雜度（spec §5.1 列 28 file net change）|
+| Per-task RED→GREEN→REFACTOR 工作量 | 30-90 min | 每 task 1 個主要 AC + 1-2 個 partial AC；不過 splittable |
+| Per-task 對應 AC | 1-3 | T1=AC-1/2/3/13 partial（POC 重）；T2=AC-2 full + AC-6 + AC-8；T3=AC-5/AC-7 partial；T4=AC-4 + AC-7 full；T5=AC-9/AC-10 + AC-11/AC-3 partial；T6=AC-11 full + AC-12 + AC-13 full |
+| Splittable | no | 嚴格序列依賴（T1 → T2 → T3 → T4 → T5 → T6），各 task 自包含但下游 depend on 上游 production code 存在 |
+
+### Task Plan Index
+
+| Task | Subject | Primary AC | Partial AC | Est. effort | Status |
+|---|---|---|---|---|---|
+| **T1** | Infrastructure + Skill aggregate skeleton + cross-aggregate POC RED test | AC-1, AC-3 (POC) | AC-2 (partial), AC-13 (partial) | 60-90 min | **PASS** ✅ |
+| **T2** | Skill 完整充血方法 + state machine 守護 + ACL JSONB inline | AC-2 (full), AC-6, AC-8 | AC-3 (extended) | 30-60 min | **PASS** ✅ (15 unit tests) |
+| **T3** | SkillVersion 獨立 aggregate 完整化 + repository derived queries + attachRiskAssessment | AC-5 | AC-7 (partial via DB UNIQUE) | 45-60 min | **PASS** ✅ (4 unit + 6 integration) |
+| **T4** | SkillCommandService 縮減為 3 行 orchestration | AC-4, AC-7 (full) | AC-3 (extended) | 60 min | **PASS** ✅ (dual-write transitional；4 tests @Disabled，T5 接管) |
+| **T5** | Scaffolding subset: AuditEventListener stub + SkillRepository.updateRiskLevel + ScanOrchestrator 改造 | AC-3 (extended) | AC-10 (partial — listener exists, real write deferred) | 30 min | **PASS** ✅ (scaffolding only) |
+| **T7** | (new) AuditEventListener 真實 audit write + 刪 read-models + Query side 切換 + remove saveDomainEventOnly + 修 4 @Disabled tests + ScanOrchestratorTest rewrite | AC-9, AC-10 (full), AC-4 (full) | AC-11 (partial) | 90-120 min | pending（split from T5）|
+| **T6** | API contract regression + ApplicationModules.verify + 文件同步（architecture / CLAUDE / standards / roadmap）| AC-11 (full), AC-12, AC-13 (full) | — | 60 min | pending |
+
+### Task Sequencing Constraints
+
+```
+T1 (infrastructure)
+  └─▶ T2 (Skill 充血)
+        └─▶ T3 (SkillVersion 獨立 aggregate)
+              └─▶ T4 (SkillCommandService 縮減)
+                    └─▶ T5 (read-side cleanup + Audit)
+                          └─▶ T6 (cleanup + doc sync)
+```
+
+每 task 完成 RED→GREEN→REFACTOR + verify-all 跑通才進入下一 task。Phase 4 verify-all 3x stability check 在 T6 後跑。
+
+### E2E Smoke Test Decision
+
+**Required**: no（沒有 explicit smoke test task）
+
+**Rationale per Phase 2 instruction**：
+- T1-T6 全部 test 用 `@SpringBootTest + Testcontainers`（real PostgreSQL container）— 非 unit-only stub
+- Cross-aggregate publish 路徑（T1 first RED test）即 integration test 驗 outbox + listener
+- T6 含 API contract test（real MockMvc HTTP layer）
+- ScanOrchestrator multi-engine pipeline 既有 `RiskAssessmentIntegrationTest` 覆蓋
+- Phase 4 step 1.5 actuator E2E 驗證已在 S023 做過；S024 不引入新 actuator path（per spec）
+
+如 Phase 4 actuator boundary 條件變動（如 metrics 名稱、`/actuator/modulith` module count），會在 T6 補 boundary verification。
+
+### Task Files
+
+每 task 一個檔案於 `docs/grimo/tasks/`：
+- `2026-04-29-S024-T01.md`
+- `2026-04-29-S024-T02.md`
+- `2026-04-29-S024-T03.md`
+- `2026-04-29-S024-T04.md`
+- `2026-04-29-S024-T05.md`
+- `2026-04-29-S024-T06.md`
+
+Task files 為 temporary work item — ship 後刪除，所有 result（含 POC findings）consolidated 進 §7。
+
+---
+
+<!-- Section 7 (Implementation Results) added by /planning-tasks Phase 4 -->
