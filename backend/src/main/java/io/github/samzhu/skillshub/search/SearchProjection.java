@@ -8,8 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
@@ -31,13 +31,18 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
  * {@link SkillshubPgVectorStore#builder} 建構 instance，owner / skillId 鎖在 instance 裡，
  * 操作完即可被 GC。無 Spring Bean 註冊、無 thread-safety 顧慮、無 singleton state leak。
  *
- * <p>採用同步 {@code @EventListener}（與 {@code SkillProjection} 一致）—
- * {@code spring-modulith-events-api} 未納入 classpath，
- * {@code @ApplicationModuleListener} 需要額外依賴。
+ * <p>S023：升級為 {@link ApplicationModuleListener}（async + AFTER_COMMIT +
+ * REQUIRES_NEW + outbox 追蹤）。embedding API call（Gemini）為 I/O bound，
+ * async 避免阻塞 publisher 線程；async executor 容量限 2（per AsyncListenerConfig POC）。
  *
  * <p>FK 順序：vector_store.skill_id → skills.id (ON DELETE CASCADE)；
- * {@code SkillProjection.on(SkillCreatedEvent)} 已加 {@code @Order(HIGHEST_PRECEDENCE)}
- * 確保 skills row 先寫入再給本 listener 寫 vector_store。
+ * {@code SkillProjection.on(SkillCreatedEvent)} 仍為 sync {@code @EventListener} +
+ * {@code @Order(HIGHEST_PRECEDENCE)}（per S023 spec §2.2 hybrid migration）—
+ * 在 publisher TX 內寫 skills row，commit 後本 async listener 才觸發，FK 必滿足。
+ * S024 後 Skill 變 stateful aggregate 自己 INSERT skills row，hybrid 結構即可廢除。
+ *
+ * <p>Idempotency：vector store 既有 {@code ON CONFLICT (id) DO UPDATE}（per S014
+ * 自寫 SkillshubPgVectorStore）保證重投時 row 內容覆寫一致；無需新加 dedup 機制。
  *
  * @see SkillshubPgVectorStore
  * @see SearchConfig
@@ -63,7 +68,7 @@ class SearchProjection {
      * 處理 SkillCreatedEvent — 新增技能 embedding 至 vector_store。
      * 文字格式：「name description」，供 embedding 模型理解技能用途。
      */
-    @EventListener
+    @ApplicationModuleListener
     void onSkillCreated(SkillCreatedEvent event) {
         log.info("SearchProjection onSkillCreated skillId={} name={}", event.aggregateId(), event.name());
         var doc = buildDocument(
@@ -95,7 +100,7 @@ class SearchProjection {
      * 處理 SkillVersionPublishedEvent — 刪除舊 embedding 並以 frontmatter 重建。
      * frontmatter 可能含更新後的 description，因此必須重新 embed。
      */
-    @EventListener
+    @ApplicationModuleListener
     void onVersionPublished(SkillVersionPublishedEvent event) {
         log.info("SearchProjection onVersionPublished skillId={} version={}", event.aggregateId(), event.version());
 

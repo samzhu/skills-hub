@@ -1,12 +1,63 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-04-29（S018 ship `v1.4.0` 後 — **Phase 2 全部完成**；M14/M15/M16 三個 milestone 連續達成 v1.2.0/v1.3.0/v1.4.0；無 active 未 ✅ spec）
+> 最後更新：2026-04-29（**S023 ✅ Shipped v1.5.0 (M18)** — Spring Modulith Outbox Foundation 完成；Active 推進至 S024（Skill 充血聚合改寫，target v2.0.0）+ S025（Test Pyramid Realignment，由 S023 T07 known limitation 觸發）。**ADR-002 Phase 1 落地完成。**）
 
 ---
 
 ## 🎯 Active Work — Sequenced (Next Up)
 
-**Phase 2 全部完成 ✅** — M14/M15/M16 三個 milestone 連續於 2026-04-29 達成（v1.2.0/v1.3.0/v1.4.0）；當前無 active 未 ✅ spec。Phase 2.5 Project Infra 於 v1.1.1（2026-04-28）完成。
+**Phase 3 — 架構轉向（ADR-002 driven）**：詳 [`adr/ADR-002-skill-aggregate-state-based.md`](../adr/ADR-002-skill-aggregate-state-based.md)。S023 → S024 sequential ship；S023 為 outbox 基礎建設、S024 為 Skill 充血聚合改寫。
+
+### Recommended Execution Order
+
+```
+S023 (Modulith Outbox Foundation) ─▶ S024 (Skill State-Based Aggregate)
+     M(12)、ship as v1.5.0              M(13)、ship as v2.0.0（major bump per ADR-002 §5.1）
+     ├─ spring-modulith-starter-jdbc    ├─ Skill = @Table + extends AbstractAggregateRoot
+     ├─ V4 event_publication            ├─ SkillVersion 獨立 aggregate
+     ├─ V5 shedlock                     ├─ AclEntry 維持 jsonb（per ADR-002 §2.2）
+     ├─ Hybrid listener migration       ├─ AuditEventListener (domain_events 退 audit log)
+     │   - 9 → @ApplicationModuleListener │   - SkillReadModel 等整組刪除
+     │   - 2 保留 @EventListener         │   - SkillCommandService 縮為 3 行/method
+     │     (FK target row 創建者)        ├─ V6 ALTER TABLE skills ADD version BIGINT
+     ├─ ShedLock 7.7.0 + retry         └─ architecture.md / CLAUDE.md 同步改寫
+     └─ event_publication metrics
+```
+
+| 順序 | Spec | Title | Points | Deps | Status |
+|------|------|-------|--------|------|--------|
+| 1 | S023 | Spring Modulith Outbox Foundation | M(12) | S018 ✅ + ADR-002 | ✅ — `v1.5.0` (M18) |
+| 2 | **S024** | **Skill State-Based Aggregate Migration** | **M(13)** | S023 ✅ + S016 ✅ + S018 ✅ + ADR-002 | **🔲 Design** (target `v2.0.0` — major bump per ADR-002 §5.1) |
+| 3 | **S025** | **Test Pyramid Realignment + Scenario migration** | **L(15-18)** | S023 ✅（known limitation 來源）| **🔲 Design** |
+
+> **S023 / S024 拆分緣由**：原 Backlog S023 範圍僅「outbox migration」，研究後（`docs/deepwiki/spring-data-jdbc-modulith/` 6 份 source-level 檔案）發現整體架構轉向更有價值，但合併為單一 spec 估算 **L(16)** 接近 XL 強制拆分線；ADR-002 §5 拆為 S023（基礎建設）+ S024（領域層改寫）— 各 M(12-13)，可獨立 ship 與 verify、blast radius 小。
+>
+> **S025 觸發**：S023 T07 揭露測試金字塔倒置（53/77 tests 用 `@SpringBootTest`，cache key 爆炸 → LRU evict + container churn）+ Awaitility 30s timeout band-aid + 2 個 e2e MockMvc test `@Disabled`；S025 系統重整 4 範圍 — cache key 收斂 / Scenario migration / slice 重組 / workaround 移除（詳 §Backlog `Project Infrastructure` 段）。
+>
+> **過往 (歷史) Phase 2.5 + Phase 2 執行記錄移至 §Shipped Milestones 表格**
+
+---
+
+## 🎯 Phase 2 / 2.5 完成記錄（歷史）
+
+```
+S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 31 pts · ✅ v1.1.1）
+                          │
+                          ▼
+                     S016 ✅ ─▶ S017 ✅   Phase 2（Domain · M14 ✅ v1.2.0 / M15 ✅ v1.3.0）
+                              │
+                              └─▶ S018 ✅ (M16 ✅ v1.4.0 — Skill aggregate 充血演化純 ES path)
+```
+
+| 順序 | Spec | Title | Points | Deps | Status |
+|------|------|-------|--------|------|--------|
+| 1 | S019 | JaCoCo coverage gate + 80% line threshold | XS(5) | — | ✅ |
+| 2 | S020 | Verification command registry + `scripts/verify-all.sh` | S(10) | S019 ✅ | ✅ |
+| 3 | S021 | Phase 2 doc-sync — PRD.md + architecture.md | S(8) | — (可與 1/2 平行) | ✅ |
+| 4 | S022 | Frontend Verification Baseline | S(8) | S020 ✅ | ✅ |
+| 5 | S016 | Row-Level ACL 基礎建設（JSONB acl_entries + GIN）| M(13) | S014 ✅ | ✅ — `v1.2.0` |
+| 6 | S017 | ACL-Aware 語意搜尋（PgVectorStore + ACL SQL composition）| S-M(11) | S016 ✅ | ✅ — `v1.3.0` |
+| 7 | S018 | Skill Aggregate 充血演化 + SKILL.md 對齊 + Suspend/Reactivate Events | M(13) | S014/S016/S017 ✅ | ✅ — `v1.4.0` |
 
 ### Recommended Execution Order（歷史記錄）
 
@@ -59,6 +110,8 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 2 | M14: Row-Level ACL 基礎建設 | S016 | M(13) | 211 | ✅ `v1.2.0` (2026-04-29) |
 | Phase 2 | M15: ACL-Aware 語意搜尋 | S017 | S-M(11) | 222 | ✅ `v1.3.0` (2026-04-29) |
 | Phase 2 | M16: Skill Aggregate 充血演化 + SKILL.md 對齊 | S018 | M(13) | 235 | ✅ `v1.4.0` (2026-04-29) |
+| Phase 3 | M18: Spring Modulith Outbox Foundation | S023 | M(12) | 247 | ✅ `v1.5.0` (2026-04-29) |
+| Phase 3 | M19: Skill State-Based Aggregate Migration | S024 | M(13) | 260 | 🔲 Design (target `v2.0.0` — major bump per ADR-002 §5.1) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）
@@ -185,17 +238,25 @@ S014 ✅ ──▶ S016 ✅ (Row-Level ACL 基礎建設；v1.2.0 2026-04-29)
 | SEC-B8 | LLM Guardrails 強化 | LangChain4j Guardrails 整合（jailbreak 偵測、PII masking） | `langchain4j-guardrails:1.13.1` Apache-2.0 |
 | SEC-B9 | SARIF GitHub 整合 | 掃描結果上傳 GitHub Advanced Security Code Scanning alerts | SARIF 2.1.0 upload API |
 
-### Event Sourcing 進階功能
+### ~~Event Sourcing 進階功能~~ — **OBSOLETE pending S024 ship（per ADR-002）**
 
-| 優先級 | 功能 | 說明 |
-|--------|------|------|
-| ES-B1 | Event Replay | 從 domain_events 重建 read model |
-| ES-B2 | Aggregate Snapshot | 定期快照 aggregate 狀態，加速載入 |
-| ES-B3 | Event Upcasting | 事件 schema 版本遷移 |
-| ES-B4 | Saga / Process Manager | 跨 aggregate 的長流程協調 |
+> **狀態變更（2026-04-29）**：ADR-002 Accepted — Skills Hub Core Domain 從純 Event Sourcing 轉向 Spring Data JDBC 充血聚合 + Modulith Outbox。`domain_events` 表退化為 audit log（由新增的 `AuditEventListener` 寫入），不再是 source of truth。
+>
+> 以下 ES 進階功能因此 **obsoleted**：
+>
+> | 原項目 | 為何 obsolete |
+> |---|---|
+> | ~~ES-B1 Event Replay（從 domain_events 重建 read model）~~ | Read model 與 aggregate 合一，不再需要 replay；如需重建 state，從 `skills` 表直接讀；audit trail 仍由 `domain_events` 提供（read-only） |
+> | ~~ES-B2 Aggregate Snapshot~~ | Aggregate 不再 replay events 重建，無 snapshot 必要 — `repo.findById()` 即 O(1) row read |
+> | ~~ES-B3 Event Upcasting~~ | 事件 schema 演化由 `event_publication` outbox 與 audit 各自處理；不需框架式 upcasting |
+> | ~~ES-B4 Saga / Process Manager~~ | 若未來確有跨 aggregate 流程協調需求（如企業級 B7/B8 組織管理），重新評估獨立技術選型（可能用 Spring Modulith + state machine 而非 Saga 框架） |
+>
+> 以上若 S024 ship 後仍有需求，可重新建立新的 backlog 項目（時點屆時架構已不同，原描述已不適用）。
 
 ### Project Infrastructure（拆自其他 spec 的 follow-up）
 
-| ID | 標題 | 觸發來源 | 範圍預估 | 主要動機 |
-|----|------|---------|---------|---------|
-| **S023** | **Spring Modulith outbox migration**（全模組 `@EventListener` → `@ApplicationModuleListener`、加 `spring-modulith-starter-jdbc` dep、啟用 `EVENT_PUBLICATION` outbox 表）| S018 revise（2026-04-28）— Modulith outbox 屬全模組 scope，不適合塞 S018 | M-L(12-15) | (a) Listener 失敗從「propagate 回 publisher → save rollback」改為「event 留 outbox `status=FAILED` 待 retry」（strong → eventual consistency；observable）；(b) 統一 `@ApplicationModuleListener` 對齊 development-standards §29；(c) 失敗 retry 機制免手動 ops。**取捨**：失敗語義改變需審慎評估每個既有 listener 對 strong consistency 的依賴 |
+> **2026-04-29 update**：原 backlog S023「Spring Modulith outbox migration」已升級為 Active spec — 詳 §Active Work。經 deepwiki 研究後拆為 **S023（基礎建設）+ S024（Skill 充血聚合）**；ADR-002 為架構決策依據。原 backlog 描述（M-L 12-15 pts、僅 listener migration）已過期；實際 S023 範圍為純基礎建設（M 12 pts），S024 為架構轉向（M 13 pts，target `v2.0.0`）。
+
+| ID | Spec 方向 | 估算 | 觸發條件 / 依據 |
+|---|---|---|---|
+| **S025** | **Test Pyramid Realignment**（測試金字塔重整 + Scenario migration）| **L(15-18)** | **觸發**：S023 T07 揭露 ~50+ distinct context cache key → LRU evict + container churn + heap pressure（workaround：`maxHeapSize=3g + cache.maxSize=8`）；T07 採 Awaitility 30s 暫穩，但「30s timeout」是 timing race band-aid 非設計級正確。<br><br>**範圍 1 — Cache key 收斂**：53 個 `@SpringBootTest` 收到 5-7 個 cache key；`@MockitoBean EmbeddingModel/CurrentUserProvider`（8 file）收進 `TestcontainersConfiguration` 共用 `@Bean @Primary`；JSON converter 改 `@DataJdbcTest` slice；LabMode profile 收斂評估。<br>**範圍 2 — Scenario API migration**：所有 `@ApplicationModuleListener` async test 改 `@ApplicationModuleTest + Scenario` + 顯式 FK seed（已於 S023 T07 pilot 確認 cross-module FK 需手動 seed —— pilot revert 因 scope creep；詳 S023 spec §7.7）；Awaitility timeout 從 30s 收回 5s；2 個 disabled e2e MockMvc test 重撰。<br>**範圍 3 — Slice 重組**：repository test → `@DataJdbcTest`、controller test → `@WebMvcTest`、保留 ≤5 個 e2e `@SpringBootTest`；目標純單元測試比例 ≥50%。<br>**範圍 4 — workaround 移除**：`build.gradle.kts` 移除 `cache.maxSize=8` + heap 收回預設；`TestcontainersConfiguration` 移除 known-limitation comment。<br><br>**完成條件**：cache key ≤10、container 啟動 ≤3 次/run、Awaitility 5s 全綠、verify-all.sh 連續 3 次 PASS。<br><br>**研究基礎**：[Spring Boot 4 Testing Reference](https://docs.spring.io/spring-boot/reference/testing/spring-boot-applications.html) + [Spring Modulith Testing](https://docs.spring.io/spring-modulith/reference/testing.html) + Drotbohm "Introducing Spring Modulith" + S023 T07 pilot findings（FK seed 為 module-isolated test 必要）。 |

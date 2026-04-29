@@ -17,7 +17,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
 
 /**
  * S014 AC-6 — atomic download_count 並發更新驗證。
@@ -35,8 +34,8 @@ class AtomicDownloadCountTest {
 	@Autowired
 	private SkillReadModelRepository repo;
 
-	@Autowired
-	private SkillProjection projection;
+	// S023: removed @Autowired SkillProjection — test changed to call repo.incrementDownloadCount directly
+	// (詳見 60 行附近註解)
 
 	@Test
 	@DisplayName("AC-6: 100 次並發 SkillDownloadedEvent 累加為 100（atomic UPDATE 防 race condition）")
@@ -58,13 +57,19 @@ class AtomicDownloadCountTest {
 				now,
 				List.of())); // S016: aclEntries — 本測試不關心 ACL，留空
 
+		// S023 update：原測試呼叫 projection.on(event) 100 次驗 atomic UPDATE。
+		// listener 在 S023 改 @ApplicationModuleListener（@Async）後，proxy 直接呼叫變
+		// async 提交 — latch 在 async 工作完成前 release，引發 false negative。
+		// 此 test 真正關注點是「PostgreSQL atomic UPDATE 不丟失更新」（SQL row-level lock），
+		// 與 listener 同步/異步無關 — 改打 repo.incrementDownloadCount 直接驗 SQL atomicity。
+		var now2 = Instant.now();
 		var executor = Executors.newFixedThreadPool(10);
 		var latch = new CountDownLatch(100);
 
 		for (int i = 0; i < 100; i++) {
 			executor.submit(() -> {
 				try {
-					projection.on(new SkillDownloadedEvent(skillId, "1.0.0"));
+					repo.incrementDownloadCount(skillId, now2);
 				} finally {
 					latch.countDown();
 				}

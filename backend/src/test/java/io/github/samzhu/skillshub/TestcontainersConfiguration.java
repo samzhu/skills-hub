@@ -15,6 +15,10 @@ public class TestcontainersConfiguration {
 	// S014: PostgreSQL 16 + pgvector — 與本機 compose pgvector/pgvector:pg16 對齊；
 	// asCompatibleSubstituteFor("postgres") 告訴 Testcontainers 此 image 為 postgres-compatible。
 	// @ServiceConnection 自動注入連線到 spring.datasource.{url,username,password}。
+	// 官方 pattern：container lifecycle 綁定 Spring context；跨 test class 共用靠 context cache
+	// 命中（同 cache key 的 test 自然共用同一個 context = 同一個 container）。
+	// 53 個 distinct cache key 導致 cache miss 與 container churn 是 known limitation；
+	// 系統性解法見 S025 (Test Pyramid Realignment) — 改用 slice / @ApplicationModuleTest 減少 cache key。
 	@Bean
 	@ServiceConnection
 	PostgreSQLContainer<?> pgvectorContainer() {

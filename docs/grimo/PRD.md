@@ -260,8 +260,10 @@ Scenario: 技能作者查看自己的數據
 
 - ✅ MVP v1.0.0（2026-04-27 ship）— 14 specs / 147 story points；初始上線使用 Firestore Enterprise（已被 Phase 1 取代）
 - ✅ Phase 1 v1.1.0（2026-04-27 ship）— S014 PostgreSQL 資料層遷移 + 自訂 `SkillshubPgVectorStore` + Firestore 全清；詳 [ADR-001](./adr/ADR-001-postgresql-migration.md) + [`S014 archived spec`](./specs/archive/2026-04-27-S014-postgresql-migration.md)
-- 🔲 Phase 2.5 — Project Infra（S019/S020/S021/S022 規劃中）
-- 🔲 Phase 2 — Row-Level ACL × 充血 Aggregate（S016/S017/S018 規劃中）
+- ✅ Phase 2.5 — Project Infra（S019/S020/S021/S022 已 ship）
+- ✅ Phase 2 — Row-Level ACL × 充血 Aggregate（S016/S017/S018 已 ship）
+- ✅ Phase 3a v1.5.0（2026-04-29 ship）— S023 Spring Modulith Outbox Foundation（transactional outbox + 9 listener async migration + ShedLock retry + Micrometer metrics）；詳 [ADR-002](./adr/ADR-002-skill-aggregate-state-based.md) + [`S023 archived spec`](./specs/archive/2026-04-29-S023-modulith-outbox-foundation.md)
+- 🔲 Phase 3b — S024 Skill state-based aggregate migration（M19，target v2.0.0）
 
 ### Out of Scope (MVP)
 

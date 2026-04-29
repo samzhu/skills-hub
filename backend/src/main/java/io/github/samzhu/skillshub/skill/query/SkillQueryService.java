@@ -241,6 +241,7 @@ public class SkillQueryService {
 	 * @return zip 檔案的原始位元組
 	 * @throws NoSuchElementException 該技能沒有任何已發佈版本
 	 */
+	@org.springframework.transaction.annotation.Transactional
 	public byte[] downloadLatest(String skillId) {
 		var versions = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
 		if (versions.isEmpty()) {
@@ -257,6 +258,7 @@ public class SkillQueryService {
 	 * @return zip 檔案的原始位元組
 	 * @throws NoSuchElementException 找不到該版本
 	 */
+	@org.springframework.transaction.annotation.Transactional
 	public byte[] downloadVersion(String skillId, String version) {
 		var versions = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
 		var target = versions.stream()
@@ -268,6 +270,11 @@ public class SkillQueryService {
 
 	/**
 	 * 從 GCS 下載 zip 並發佈 SkillDownloaded 事件（供 analytics projection 消費）。
+	 *
+	 * <p>S023-T07：呼叫端 ({@link #downloadLatest} / {@link #downloadVersion}) 已加
+	 * `@Transactional` — `@ApplicationModuleListener`（內含
+	 * `@TransactionalEventListener AFTER_COMMIT`）在 TX 外 publish 會 silently drop；
+	 * 加上 TX boundary 確保 listener 觸發。
 	 */
 	private byte[] downloadAndRecord(String skillId, SkillVersionReadModel version) {
 		var zipBytes = storageService.download(version.storagePath());
@@ -281,7 +288,7 @@ public class SkillQueryService {
 				UUID.randomUUID().toString(), skillId, "Skill", "SkillDownloaded",
 				payload, nextSequence, Instant.now(), Map.of());
 		eventStore.save(domainEvent);
-		events.publishEvent(new SkillDownloadedEvent(skillId, version.version()));
+		events.publishEvent(SkillDownloadedEvent.of(skillId, version.version()));
 
 		log.atInfo()
 				.addKeyValue("skillId", skillId)

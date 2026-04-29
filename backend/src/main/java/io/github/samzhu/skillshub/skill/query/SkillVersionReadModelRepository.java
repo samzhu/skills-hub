@@ -51,4 +51,32 @@ public interface SkillVersionReadModelRepository extends ListCrudRepository<Skil
 			@Param("version") String version,
 			@Param("riskJson") String riskJson);
 
+	/**
+	 * S023 idempotency check — 是否已存在 risk_assessment 對應指定 sourceEventId？
+	 *
+	 * <p>用於 {@link io.github.samzhu.skillshub.security.scan.ScanOrchestrator#on}
+	 * @ApplicationModuleListener retry 場景：若已掃描過該事件對應的版本，跳過完整
+	 * scan pipeline（成本 + 一致性考量；per S023 spec §4.9）。
+	 *
+	 * <p>SQL 用 {@code risk_assessment->>'sourceEventId' = :sourceEventId} 比對
+	 * JSONB 內欄位；若 risk_assessment 為 NULL（從未掃描）→ 子查詢回 false。
+	 *
+	 * @param skillId       技能 aggregate ID
+	 * @param version       版本字串
+	 * @param sourceEventId 來源 SkillVersionPublishedEvent.sourceEventId
+	 * @return true = 已掃描過此事件；false = 尚未或不存在對應 row
+	 */
+	@Query("""
+			SELECT EXISTS (
+				SELECT 1 FROM skill_versions
+				 WHERE skill_id = :skillId
+				   AND version = :version
+				   AND risk_assessment->>'sourceEventId' = :sourceEventId
+			)
+			""")
+	boolean hasRiskAssessmentFromEvent(
+			@Param("skillId") String skillId,
+			@Param("version") String version,
+			@Param("sourceEventId") String sourceEventId);
+
 }

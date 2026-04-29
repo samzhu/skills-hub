@@ -101,7 +101,7 @@ public class SkillCommandService {
 		var reloaded = loadAggregate(aggregateId);
 		// S018 AC-13：從 frontmatter 解析 allowed-tools 至 typed payload field
 		var allowedTools = parseAllowedTools(validation.metadata());
-		var versionEvent = new SkillVersionPublishedEvent(
+		var versionEvent = SkillVersionPublishedEvent.of(
 				aggregateId, version, storagePath, zipBytes.length, validation.metadata(), allowedTools);
 		saveAndPublish(aggregateId, "SkillVersionPublished",
 				Map.of("version", version, "storagePath", storagePath, "fileSize", (long) zipBytes.length,

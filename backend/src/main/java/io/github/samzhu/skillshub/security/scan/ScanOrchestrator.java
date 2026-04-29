@@ -14,9 +14,7 @@ import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import tools.jackson.databind.ObjectMapper;
@@ -101,14 +99,28 @@ class ScanOrchestrator {
 	}
 
 	/**
-	 * 必須在 SkillProjection (skill::query) 寫入 skill_versions row 之後才執行 —
-	 * ScanOrchestrator 透過 {@link SkillVersionReadModelRepository#updateRiskAssessment}
-	 * 寫 risk_assessment，需要該 row 已存在（依 (skill_id, version) 找）。
-	 * Spring 同步 @EventListener 預設順序由 bean scan 決定，不保證；用 LOWEST_PRECEDENCE 強制最後跑。
+	 * S023：升級為 {@link ApplicationModuleListener}（async + AFTER_COMMIT + REQUIRES_NEW
+	 * + outbox 追蹤）。原 {@code @Order(LOWEST_PRECEDENCE)} 移除 — async 跨 listener 無
+	 * 順序保證，FK target row（{@code skill_versions}）由 SkillProjection 同步 listener
+	 * 在 publisher TX 內已寫入；commit 後本 async listener 才觸發，FK 必滿足。
+	 *
+	 * <p><b>Idempotency</b>（S023）：以 {@code SkillVersionPublishedEvent.sourceEventId}
+	 * 為 key 檢查 {@code risk_assessment->>'sourceEventId'}；若已掃描過則 early return，
+	 * 避免重投時重新呼叫 LLM（成本）+ 重新寫 SkillRiskAssessed event（一致性）。
 	 */
-	@EventListener
-	@Order(Ordered.LOWEST_PRECEDENCE)
+	@ApplicationModuleListener
 	void on(SkillVersionPublishedEvent event) {
+		// S023 idempotency check — retry 重投時若已掃描過此事件，跳過完整 pipeline
+		if (versionRepo.hasRiskAssessmentFromEvent(
+				event.aggregateId(), event.version(), event.sourceEventId())) {
+			log.atDebug()
+					.addKeyValue("skillId", event.aggregateId())
+					.addKeyValue("version", event.version())
+					.addKeyValue("sourceEventId", event.sourceEventId())
+					.log("Skipping duplicate scan trigger (already scanned for this sourceEventId)");
+			return;
+		}
+
 		log.info("Multi-engine scan triggered for skill {} version {} ({} engines)",
 				event.aggregateId(), event.version(), analyzers.size());
 
@@ -289,6 +301,8 @@ class ScanOrchestrator {
 		riskAssessment.put("notices", allNotices);
 		riskAssessment.put("sarif", sarif);
 		riskAssessment.put("scannedAt", Instant.now());
+		// S023 idempotency key — retry 透過此值知道 scan 已完成（per ScanOrchestrator.on Javadoc）
+		riskAssessment.put("sourceEventId", event.sourceEventId());
 
 		// JSON 序列化後由 PostgreSQL 透過 CAST(... AS jsonb) 寫入；
 		// 找對應 row 用 (skill_id, version) — UNIQUE 約束保證最多一筆

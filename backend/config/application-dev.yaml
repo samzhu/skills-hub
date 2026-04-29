@@ -22,11 +22,12 @@ springdoc:
     enabled: true
 
 # 開發環境開放完整 actuator endpoint，方便診斷
+# S023：加 modulith endpoint（spring-modulith-actuator runtime dep）
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,env,configprops,beans,mappings
+        include: health,info,metrics,env,configprops,beans,mappings,modulith
 
 # ----- 向量搜尋（S014 T7 後 dev 也走 PgVectorStore，與 production parity） -----
 # 本機 Docker Compose 已經啟動 pgvector container（service-connection 自動注入 datasource），

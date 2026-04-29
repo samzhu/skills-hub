@@ -31,7 +31,7 @@ class SarifReporterTest {
 	}
 
 	private static SkillVersionPublishedEvent evt() {
-		return new SkillVersionPublishedEvent("agg-1", "1.0.0", "gs://bucket/x.zip", 100, Map.of(), java.util.List.of());
+		return SkillVersionPublishedEvent.of("agg-1", "1.0.0", "gs://bucket/x.zip", 100, Map.of(), java.util.List.of());
 	}
 
 	@Test

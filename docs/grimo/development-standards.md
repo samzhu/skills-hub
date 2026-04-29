@@ -31,6 +31,20 @@
 - Event payload 必須自包含（不依賴外部查詢即可建構 read model）
 - security, search, analytics 的 listener 直接操作自己的 read model，不經過 aggregate
 
+### Spring Modulith Outbox 規範（S023 起）
+
+- **Outbox 機制**：所有 domain event 透過 `event_publication` 表（Modulith managed）做 transactional outbox；publisher TX rollback → outbox row 同 rollback；at-least-once 投遞語義
+- **Listener Annotation**：`@ApplicationModuleListener` = `@Async + @Transactional(REQUIRES_NEW) + @TransactionalEventListener(AFTER_COMMIT)`；publish 必須在 `@Transactional` 內否則 listener silently drop
+- **Hybrid migration 規則**：FK target row 創建者（如 `SkillProjection.onSkillCreated/onVersionPublished`）保留 sync `@EventListener`；其他 listener 用 async `@ApplicationModuleListener`
+- **`@Transactional` 對 private method 無效**：Spring AOP 不 proxy private；publish path 上 `@Transactional` 必須加在 public method 入口
+- **async listener 失去 SecurityContext**：必須以 `DelegatingSecurityContextAsyncTaskExecutor` wrap `applicationTaskExecutor`，否則新 thread 內 `SecurityContextHolder.getContext()` 為空
+- **AOP proxy field 不透明**：test 不可直接讀 bean field（拿到 proxy class 同名未初始化 field）；用 method-level access (`getValue()`) 走 proxy delegation
+- **`applicationTaskExecutor` 容量設計**：`corePoolSize=2 / maxPoolSize=2 / queueCapacity=200`，對齊 GCP HikariCP `maximum-pool-size=3`（留 1 connection 給主請求 thread）；bean name 必須 `applicationTaskExecutor`（Spring `@Async` 預設查找名稱）
+- **YAML profile override = replace（不是 merge）**：`management.endpoints.web.exposure.include` 等屬性在 `config/application-dev.yaml` 完全覆蓋 base；要新增端點需兩處同改
+- **PostgreSQL JDBC `Instant` binding**：`JdbcTemplate.update(...)` 不接受直接 bind `Instant`；必須轉 `Timestamp.from(now)`（production code 走 Spring Data converter chain 不受影響）
+- **idempotency 設計**：async 並行 listener 順序未定；不可依賴另一 listener 先寫 row 做 dedup 子查詢；用 UNIQUE constraint + `ON CONFLICT DO NOTHING` 是嚴格冪等的正解
+- **multi-instance retry 互斥**：用 ShedLock + `JdbcTemplateLockProvider.usingDbTime()` 規避 cluster clock skew；GCP Cloud Run 多 instance 部署為必要設定
+
 ### TypeScript (Frontend)
 
 - Strict mode enabled (`"strict": true`)

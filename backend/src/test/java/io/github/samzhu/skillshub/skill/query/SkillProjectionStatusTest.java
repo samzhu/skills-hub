@@ -1,7 +1,9 @@
 package io.github.samzhu.skillshub.skill.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
+import java.time.Duration;
 import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
@@ -9,11 +11,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
+import io.github.samzhu.skillshub.shared.events.TestEventTxHelper;
 import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
 import io.github.samzhu.skillshub.skill.command.PublishVersionCommand;
 import io.github.samzhu.skillshub.skill.command.ReactivateCommand;
@@ -48,7 +50,7 @@ class SkillProjectionStatusTest {
     private DomainEventRepository eventStore;
 
     @Autowired
-    private ApplicationEventPublisher publisher;
+    private TestEventTxHelper txHelper;
 
     @Test
     @DisplayName("AC-1: SkillCreated → read model status='DRAFT'（既有；不退步）")
@@ -58,6 +60,8 @@ class SkillProjectionStatusTest {
                 new CreateSkillCommand("status-draft-" + uniqueSuffix(),
                         "DRAFT fixture", "owner", "Testing"));
 
+        // SkillCreatedEvent listener (SkillProjection.on) 仍是 sync @EventListener，
+        // 在 createSkill TX 內就完成；無需 Awaitility
         var readModel = skillRepo.findById(skillId).orElseThrow();
         assertThat(readModel.status()).isEqualTo("DRAFT");
     }
@@ -73,6 +77,8 @@ class SkillProjectionStatusTest {
         commandService.publishVersion(new PublishVersionCommand(
                 skillId, "1.0.0", "gs://b/p", 0L, Map.of()));
 
+        // SkillVersionPublished 的 SkillProjection.on 仍是 sync @EventListener（FK target row 創建者）
+        // 在 publishVersion TX 內就完成 status 更新；無需 Awaitility
         var readModel = skillRepo.findById(skillId).orElseThrow();
         assertThat(readModel.status()).isEqualTo("PUBLISHED");
     }
@@ -140,11 +146,14 @@ class SkillProjectionStatusTest {
         commandService.publishVersion(new PublishVersionCommand(
                 skillId, "1.0.0", "gs://b/p", 0L, Map.of()));
 
-        publisher.publishEvent(new SkillSuspendedEvent(
+        txHelper.publishInTx(new SkillSuspendedEvent(
                 skillId, "policy violation", "admin"));
 
-        var readModel = skillRepo.findById(skillId).orElseThrow();
-        assertThat(readModel.status()).isEqualTo("SUSPENDED");
+        // SkillSuspendedEvent 的 SkillProjection.on 改 @ApplicationModuleListener async；用 Awaitility 等
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            var readModel = skillRepo.findById(skillId).orElseThrow();
+            assertThat(readModel.status()).isEqualTo("SUSPENDED");
+        });
     }
 
     @Test
@@ -156,12 +165,17 @@ class SkillProjectionStatusTest {
                         "...", "owner", "Testing"));
         commandService.publishVersion(new PublishVersionCommand(
                 skillId, "1.0.0", "gs://b/p", 0L, Map.of()));
-        publisher.publishEvent(new SkillSuspendedEvent(skillId, "v", "admin"));
+        txHelper.publishInTx(new SkillSuspendedEvent(skillId, "v", "admin"));
+        // 等 SUSPEND 先寫入再 reactivate（async 順序保證）
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
+                assertThat(skillRepo.findById(skillId).orElseThrow().status()).isEqualTo("SUSPENDED"));
 
-        publisher.publishEvent(new SkillReactivatedEvent(skillId, "manual review approved"));
+        txHelper.publishInTx(new SkillReactivatedEvent(skillId, "manual review approved"));
 
-        var readModel = skillRepo.findById(skillId).orElseThrow();
-        assertThat(readModel.status()).isEqualTo("PUBLISHED");
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            var readModel = skillRepo.findById(skillId).orElseThrow();
+            assertThat(readModel.status()).isEqualTo("PUBLISHED");
+        });
     }
 
     private static String uniqueSuffix() {

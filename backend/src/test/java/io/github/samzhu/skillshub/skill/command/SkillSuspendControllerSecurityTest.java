@@ -87,9 +87,14 @@ class SkillSuspendControllerSecurityTest {
         var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
         assertThat(events).extracting(DomainEvent::eventType).contains("SkillSuspended");
 
-        // E2E projection 端 — status 應已轉 SUSPENDED
-        var readModel = skillRepo.findById(skillId).orElseThrow();
-        assertThat(readModel.status()).isEqualTo("SUSPENDED");
+        // S023-T07 follow-up: SkillProjection.on(SkillSuspendedEvent) 改 @ApplicationModuleListener async；
+        // MockMvc 回 200 後 listener 仍可能 in-flight，用 Awaitility 等
+        org.awaitility.Awaitility.await()
+                .atMost(java.time.Duration.ofSeconds(30))
+                .untilAsserted(() -> {
+                    var readModel = skillRepo.findById(skillId).orElseThrow();
+                    assertThat(readModel.status()).isEqualTo("SUSPENDED");
+                });
     }
 
     @Test
@@ -128,9 +133,14 @@ class SkillSuspendControllerSecurityTest {
         var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
         assertThat(events).extracting(DomainEvent::eventType).contains("SkillReactivated");
 
-        // E2E projection 端 — status 應已轉回 PUBLISHED
-        var readModel = skillRepo.findById(skillId).orElseThrow();
-        assertThat(readModel.status()).isEqualTo("PUBLISHED");
+        // S023-T07 follow-up: SkillProjection.on(SkillReactivatedEvent) 改 @ApplicationModuleListener async；
+        // MockMvc 回 200 後 listener 仍可能 in-flight，用 Awaitility 等
+        org.awaitility.Awaitility.await()
+                .atMost(java.time.Duration.ofSeconds(30))
+                .untilAsserted(() -> {
+                    var readModel = skillRepo.findById(skillId).orElseThrow();
+                    assertThat(readModel.status()).isEqualTo("PUBLISHED");
+                });
     }
 
     /**

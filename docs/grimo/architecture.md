@@ -344,6 +344,21 @@ CREATE INDEX idx_domain_events_aggregate ON domain_events(aggregate_id, sequence
 
 `(aggregate_id, sequence)` UNIQUE 強制 per-aggregate 嚴格遞增；JSONB payload 存 event-specific schema；transaction 內與 read model 同 commit。
 
+> **Transitional state（S023 ship 後 / S024 ship 前）**：`domain_events` 仍是寫入端的事件記錄表，但 listener 投遞改走 Spring Modulith Event Publication Registry（`event_publication` 表，V4 Flyway migration）— 由本 spec S023 引入；S024 將 `domain_events` 退化為純 audit log，由 `AuditEventListener` 寫入。詳 [ADR-002](./adr/ADR-002-skill-aggregate-state-based.md)。
+
+### Spring Modulith Outbox（S023 起）
+
+V4 migration 加入 `event_publication` + `event_publication_archive` 表（per Spring Modulith 2.0.6 V2 schema）— transactional outbox 取代手動 `ApplicationEventPublisher.publishEvent()` 的 best-effort 投遞：
+
+- `event_publication` INSERT 與業務 entity SQL **同 transaction**（atomic outbox）
+- 失敗 listener 留 `status='FAILED'` 可由 `IncompleteEventRepublishTask`（@Scheduled + @SchedulerLock）排程重投
+- `applicationTaskExecutor`（`AsyncListenerConfig`）為有界 `ThreadPoolTaskExecutor`（corePool=2 / maxPool=2 / queue=200）— 對齊 GCP Cloud SQL `db-f1-micro` HikariCP `maximum-pool-size: 3`
+- 觀測：`event_publication.failed.count` + `event_publication.incomplete.count` Micrometer gauge；`/actuator/modulith` 列模組依賴
+
+V5 migration 加 `shedlock` 表 — 多 Cloud Run instance 排程 retry 互斥（ShedLock 7.7.0 + `JdbcTemplateLockProvider` + `usingDbTime()` 規避 cluster clock skew）。
+
+S023 採 hybrid listener migration — 11 個 listener 中 9 個改 `@ApplicationModuleListener`（async + AFTER_COMMIT + REQUIRES_NEW），2 個 FK target row 創建者（`SkillProjection.on(SkillCreatedEvent / SkillVersionPublishedEvent)`）保留 `@EventListener`（同步寫 row 給後續 async listener FK 參考），S024 廢除。詳見 S023 spec §2.2 hybrid migration 表 + ADR-002 §5。
+
 ### Read Model Tables (Projections)
 
 4 張 read model 表 — `skills` / `skill_versions` / `flags` / `download_events`，皆以 Spring Data JDBC `@Table` record 表達 + `Persistable<String>.isNew()=true` 強制 INSERT 路徑（避開預設 SELECT-then-UPDATE）；`Map<String,Object>` 欄位（如 `frontmatter`、`risk_findings`）透過 `MapJsonbConverter` 雙向 round-trip JSONB 並保留 nested 型別（per S014 archived §2.1 決策 #5/#6）。

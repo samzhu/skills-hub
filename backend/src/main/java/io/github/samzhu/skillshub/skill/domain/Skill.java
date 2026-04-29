@@ -95,7 +95,7 @@ public class Skill {
 		if (publishedVersions.contains(version)) {
 			throw new VersionExistsException("Version " + version + " already exists");
 		}
-		return new SkillVersionPublishedEvent(aggregateId, version, storagePath, fileSize, frontmatter,
+		return SkillVersionPublishedEvent.of(aggregateId, version, storagePath, fileSize, frontmatter,
 				parseAllowedTools(frontmatter));
 	}
 

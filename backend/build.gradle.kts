@@ -24,6 +24,8 @@ extra["springAiVersion"] = "2.0.0-M4"
 extra["springCloudGcpVersion"] = "8.0.2"
 extra["springCloudVersion"] = "2025.1.1"
 extra["springModulithVersion"] = "2.0.6"
+// S023: ShedLock — 多 instance @Scheduled 互斥；無 BOM 須顯式版本（ShedLock 7.x 支援 Spring Boot 4.x）
+extra["shedlockVersion"] = "7.7.0"
 
 dependencies {
 	// implementation("org.springframework.boot:spring-boot-micrometer-tracing-brave")
@@ -50,6 +52,11 @@ dependencies {
 	implementation("org.springframework.ai:spring-ai-client-chat")
 	implementation("org.springframework.ai:spring-ai-vector-store")
 	implementation("org.springframework.modulith:spring-modulith-starter-core")
+	// S023: Spring Modulith Event Publication Registry (transactional outbox)
+	implementation("org.springframework.modulith:spring-modulith-starter-jdbc")
+	// S023: ShedLock — 多 Cloud Run instance @Scheduled retry 互斥
+	implementation("net.javacrumbs.shedlock:shedlock-spring:${property("shedlockVersion")}")
+	implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:${property("shedlockVersion")}")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	developmentOnly("org.springframework.boot:spring-boot-docker-compose")
 	// S014: Flyway schema migration（V1 建立 6 張表 + extensions + indexes）
@@ -136,6 +143,11 @@ jacoco {
 
 tasks.test {
 	finalizedBy(tasks.jacocoTestReport)
+	// S023 T07 quick win — 53 個 @SpringBootTest 同 JVM 跑時 OOM。
+	// 真因：context cache LRU 預設 32，>32 distinct context 導致持續 evict + 重建，peak heap 撐多個 live context。
+	// 治標：擴 heap + 縮 cache 早 evict；治本待後續 spec 重整測試金字塔（slice / @ApplicationModuleTest）。
+	maxHeapSize = "3g"
+	jvmArgs("-Dspring.test.context.cache.maxSize=8")
 }
 
 tasks.jacocoTestReport {

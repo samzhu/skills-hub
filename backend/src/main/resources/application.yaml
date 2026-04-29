@@ -56,6 +56,26 @@ spring:
     virtual:
       enabled: true
 
+  # ----- Spring Modulith Event Publication Registry (S023) -----
+  # 啟用 transactional outbox：@ApplicationModuleListener 觸發時，event_publication 表
+  # 在 publisher TX 內 INSERT；listener 在 AFTER_COMMIT 新 TX async 執行；失敗 row
+  # 留 status='FAILED'，由 IncompleteEventRepublishTask scheduled retry 重投。
+  # 詳見 ADR-002 + docs/deepwiki/spring-data-jdbc-modulith/event-publication-registry.md
+  modulith:
+    events:
+      jdbc:
+        schema-initialization:
+          # 由 Flyway V4 管 schema，starter auto-init 關閉避免衝突（陷阱 9）
+          enabled: false
+      # 多 instance 部署改用 ShedLock + IncompleteEventRepublishTask 排程 retry（陷阱 7）
+      # 啟動時不自動 republish，避免多 instance 同時觸發風暴
+      republish-outstanding-events-on-restart: false
+      # Staleness monitor — 卡住的 PROCESSING / PUBLISHED row 達閾值即標 FAILED
+      # 由 monitor scheduled task 處理；不重試，只標註，由 retry task 後續重投
+      staleness:
+        published: 60m
+        processing: 30m
+
   # ----- OAuth2 Resource Server (S011) -----
   # issuer-uri 為 base default，指向 backend/compose.yaml 啟動的 mock-oauth2-server。
   # `application-gcp.yaml` 之後可覆寫為企業 IdP。Spring Security 7 採 lazy discovery，
@@ -67,11 +87,12 @@ spring:
           issuer-uri: http://localhost:9000/skills-hub-dev
 
 # ----- Actuator（基礎曝露，各環境 profile 可擴充） -----
+# S023：加入 modulith endpoint 暴露模組依賴關係 + event publication 統計（給 ops dashboard）
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,modulith
   endpoint:
     health:
       show-details: always
@@ -117,6 +138,13 @@ skillshub:
       enabled: true
     lab:
       user-id: lab-user
+
+  # ----- Scheduled retry / republish (S023) -----
+  # IncompleteEventRepublishTask 用此設定 fixedDelay 與 olderThan threshold；
+  # ShedLock 互斥於多 Cloud Run instance（per ADR-002 + S023 §4.5）
+  scheduler:
+    republish-delay: PT1M       # 每分鐘檢查一次
+    republish-older-than: PT5M  # 只重投 5 分鐘前還沒完成的（避免追平正在處理的）
 
   # ----- 多引擎安全掃描 Pipeline (S010) -----
   # 每個引擎可獨立開關；關閉的引擎 bean 不建立、不出現在 SARIF runs[]、

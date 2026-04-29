@@ -1,10 +1,12 @@
 package io.github.samzhu.skillshub.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -17,12 +19,13 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.events.TestEventTxHelper;
+import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 
 /**
@@ -35,10 +38,14 @@ import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 @Import(TestcontainersConfiguration.class)
 class SearchProjectionAclWriteTest {
 
-    @Autowired private ApplicationEventPublisher publisher;
+    // S023-T07: 改用 TestEventTxHelper 以便 @ApplicationModuleListener 在 publisher TX commit 後觸發
+    @Autowired private TestEventTxHelper txHelper;
     @Autowired private JdbcTemplate jdbc;
 
     @MockitoBean private EmbeddingModel embeddingModel;
+    // S023-T07: SecurityContextHolder 在 async thread 為空（test 無 JWT），
+    // 必須 mock CurrentUserProvider 否則 listener 拿到 null owner 拋例外
+    @MockitoBean private CurrentUserProvider currentUserProvider;
 
     @BeforeEach
     void setUp() {
@@ -48,6 +55,7 @@ class SearchProjectionAclWriteTest {
             List<?> docs = inv.getArgument(0);
             return docs.stream().map(d -> randomVector(768)).toList();
         });
+        when(currentUserProvider.userId()).thenReturn("alice");
     }
 
     @Test
@@ -56,14 +64,18 @@ class SearchProjectionAclWriteTest {
     void searchProjectionWritesAclEntriesFromAuthor() {
         var skillId = UUID.randomUUID().toString();
 
-        publisher.publishEvent(new SkillCreatedEvent(
+        txHelper.publishInTx(new SkillCreatedEvent(
                 skillId, "search-acl-" + skillId.substring(0, 8),
                 "search projection ACL write fixture", "alice", "Testing"));
 
-        var aclJson = jdbc.queryForObject(
-                "SELECT acl_entries::text FROM vector_store WHERE id = ?::uuid",
-                String.class, skillId);
-        assertThat(aclJson).contains("user:alice:read");
+        // S023-T07: SearchProjection.onSkillCreated 改 @ApplicationModuleListener async；用 Awaitility 等
+        // S023-T07 follow-up: 30s timeout 是熱機/ container churn 下的安全 buffer；S025 改 Scenario 後可收回 5s
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            var aclJson = jdbc.queryForObject(
+                    "SELECT acl_entries::text FROM vector_store WHERE id = ?::uuid",
+                    String.class, skillId);
+            assertThat(aclJson).contains("user:alice:read");
+        });
     }
 
     private static float[] randomVector(int dim) {

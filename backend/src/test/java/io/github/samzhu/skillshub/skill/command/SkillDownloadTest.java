@@ -55,13 +55,18 @@ class SkillDownloadTest {
 		assertThat(response.getBody()).isNotNull();
 		assertThat(response.getBody().length).isGreaterThan(0);
 
-		// Verify SkillDownloaded event
+		// Verify SkillDownloaded event — eventStore 寫入是 sync（@Transactional 內），可立即驗
 		var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
 		assertThat(events).anyMatch(e -> "SkillDownloaded".equals(e.eventType()));
 
-		// Verify downloadCount incremented
-		var skill = skillRepo.findById(skillId).orElseThrow();
-		assertThat(skill.downloadCount()).isGreaterThanOrEqualTo(1);
+		// S023-T07: SkillProjection.on(SkillDownloadedEvent) 改 @ApplicationModuleListener async；
+		// downloadCount 增量在 AFTER_COMMIT 後 async 完成；Awaitility 等
+		org.awaitility.Awaitility.await()
+				.atMost(java.time.Duration.ofSeconds(30))
+				.untilAsserted(() -> {
+					var skill = skillRepo.findById(skillId).orElseThrow();
+					assertThat(skill.downloadCount()).isGreaterThanOrEqualTo(1);
+				});
 	}
 
 	@Test

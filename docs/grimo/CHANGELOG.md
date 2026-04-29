@@ -1,5 +1,41 @@
 # Changelog
 
+## [v1.5.0] — Phase 3a: Spring Modulith Outbox Foundation（M18 完成；2026-04-29）
+
+### Added
+- **S023: Spring Modulith Outbox Foundation**（M18 落地）：
+  - **Transactional outbox**（`spring-modulith-starter-jdbc`）— V4 Flyway migration 建 `event_publication` + `event_publication_archive` 表；publisher TX rollback → outbox row 同 rollback（atomic）；listener 失敗 → status='FAILED'。
+  - **9 個 listener async migration**（`@EventListener` → `@ApplicationModuleListener`）：5 個 `SkillProjection` non-FK handlers + 2 個 `SearchProjection` + 1 個 `AnalyticsProjection.on(SkillDownloaded)` + 1 個 `ScanOrchestrator.on(SkillVersionPublished)`。Hybrid migration：保留 2 個 sync `@EventListener`（`SkillProjection.onSkillCreated/onVersionPublished` — FK target row 創建者）。
+  - **Async infra**（`shared/config/AsyncListenerConfig` + `SchedulerConfig`）— `applicationTaskExecutor` (`ThreadPoolTaskExecutor` corePool=2/maxPool=2/queue=200) wrapped by `DelegatingSecurityContextAsyncTaskExecutor`（解 async thread `SecurityContextHolder` 為空 production bug）。
+  - **Multi-instance retry 互斥**（V5 Flyway + ShedLock 7.7.0）— `IncompleteEventRepublishTask` `@Scheduled(PT1M) + @SchedulerLock(name="republish-incomplete-events")`；`JdbcTemplateLockProvider.usingDbTime()` 規避 cluster clock skew。
+  - **Idempotency 保護**：`AnalyticsProjection.saveIdempotent` 用 `download_events.event_id UNIQUE + ON CONFLICT DO NOTHING` 嚴格冪等；`ScanOrchestrator` 用 `risk_assessment.sourceEventId` 比對；`SkillProjection.on(SkillDownloaded)` drop idempotency（async race 設計修正）。
+  - **Observability**（`shared/events/EventPublicationMetrics`）— `event_publication.failed.count` + `incomplete.count` Micrometer gauges；`/actuator/modulith` 顯示 6 modules + EVENT_LISTENER edges。
+  - **Production bugs fixed**：`AsyncListenerConfig` `DelegatingSecurityContextAsyncTaskExecutor` wrap；`SkillQueryService.downloadLatest/Version` 加 `@Transactional`（`@ApplicationModuleListener` 在 TX 外 silently drop；`@Transactional` 對 private method 無效）。
+  - **12 個 SBE AC 全綠**：AC-1~AC-12；verify-all.sh V01-V06 **連續 3 次全綠**；JaCoCo line coverage 89.53% ≥ 80% gate；262 tests / 0 failed / 5 skipped。
+  - **獨立 QA subagent verdict PASS**（3 連綠 stability + 程式碼品質 + 設計 sync check）— follow-up 由 S025 處理。
+  - **Validated patterns 寫入 development-standards**：`@ApplicationModuleListener` 規範、Hybrid migration、`applicationTaskExecutor` 容量設計、`DelegatingSecurityContextAsyncTaskExecutor` wrap、YAML profile override=replace、PostgreSQL JDBC `Instant` binding 限制、AOP proxy field 不透明、UNIQUE + ON CONFLICT 嚴格冪等、ShedLock `usingDbTime()`。
+
+### Changed
+- **架構轉向**（per ADR-002 Accepted）：Skills Hub Core Domain 從純 Event Sourcing 路線轉向「Spring Data JDBC 充血聚合 + Modulith Outbox」；`domain_events` 表退化為 audit log（S024 起由 `AuditEventListener` 寫入），不再是 source of truth。S023 為 phase 1 基礎建設；S024（target v2.0.0）為 phase 2。
+- **`SkillDownloadedEvent` / `SkillVersionPublishedEvent`** records 加 `eventId` / `sourceEventId` + static factory `of(...)`。
+- **Actuator exposure** 加 `modulith`（base + dev profile 兩處）。
+- **Build infrastructure**：`tasks.test { maxHeapSize = "3g" }` + `-Dspring.test.context.cache.maxSize=8`（解 17+ `@SpringBootTest` 同 JVM Java heap OOM）。
+
+### Known Limitations
+- **2 個 e2e MockMvc test method `@Disabled`**（`S016EndToEndSmokeTest` + `RiskAssessmentIntegrationTest` × 3）— MockMvc + `@ApplicationModuleListener` async dispatch 時序不可靠；功能由其他 test 分散覆蓋；S025 改寫為 `@ApplicationModuleTest + Scenario API`。
+- **Awaitility 30s timeout**（T07 採用）— 熱機 + container churn 下穩定；S025 重整後可收回 5s。
+- **53 distinct context cache key** → LRU evict + container churn；`maxHeapSize=3g + cache.maxSize=8` 為 transitional workaround；S025 系統解。
+
+### Documentation
+- `docs/grimo/architecture.md` 加「Spring Modulith Outbox」段落 + ADR-002 引用 + `domain_events` 標 transitional state
+- `docs/grimo/adr/ADR-002-skill-aggregate-state-based.md`（架構決策依據；S023/S024 拆分）
+- `docs/grimo/development-standards.md` 加「Spring Modulith Outbox 規範」段落（10 條 validated patterns）
+- `docs/grimo/PRD.md` Phase 3a v1.5.0 上線狀態
+- `docs/grimo/specs/spec-roadmap.md` Phase 3 milestone (M18 ✅ / M19 design)；S025 Backlog entry（Test Pyramid Realignment）
+- `docs/deepwiki/spring-data-jdbc-modulith/`（6 份 source-level 研究檔案）
+
+---
+
 ## [v1.4.0] — Phase 2: Skill Aggregate 充血演化 + SKILL.md 對齊（M16 完成 + Phase 2 全部完成；2026-04-29）
 
 ### Added

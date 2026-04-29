@@ -1,7 +1,9 @@
 package io.github.samzhu.skillshub.skill.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -11,10 +13,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.events.TestEventTxHelper;
 import io.github.samzhu.skillshub.skill.domain.SkillAclGrantedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillAclRevokedEvent;
 
@@ -28,8 +30,9 @@ import io.github.samzhu.skillshub.skill.domain.SkillAclRevokedEvent;
 @Import(TestcontainersConfiguration.class)
 class SkillProjectionAclTest {
 
+    // S023-T07: TestEventTxHelper 確保 publish 在 @Transactional 內，AFTER_COMMIT listener 才觸發
     @Autowired
-    private ApplicationEventPublisher publisher;
+    private TestEventTxHelper txHelper;
 
     @Autowired
     private SkillReadModelRepository skillRepo;
@@ -40,12 +43,14 @@ class SkillProjectionAclTest {
     void grantedEvent_appendsEntryToReadModel() {
         var skillId = seedSkill(List.of("user:alice:read", "user:alice:write"));
 
-        publisher.publishEvent(new SkillAclGrantedEvent(
+        txHelper.publishInTx(new SkillAclGrantedEvent(
                 skillId, "group", "engineering", "read", "alice"));
 
-        var entries = skillRepo.findById(skillId).orElseThrow().aclEntries();
-        assertThat(entries).contains("group:engineering:read");
-        assertThat(entries).hasSize(3);
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            var entries = skillRepo.findById(skillId).orElseThrow().aclEntries();
+            assertThat(entries).contains("group:engineering:read");
+            assertThat(entries).hasSize(3);
+        });
     }
 
     @Test
@@ -54,13 +59,16 @@ class SkillProjectionAclTest {
     void grantedEvent_duplicateEntry_isIdempotent() {
         var skillId = seedSkill(List.of("user:alice:read", "group:engineering:read"));
 
-        publisher.publishEvent(new SkillAclGrantedEvent(
+        txHelper.publishInTx(new SkillAclGrantedEvent(
                 skillId, "group", "engineering", "read", "alice"));
 
-        var entries = skillRepo.findById(skillId).orElseThrow().aclEntries();
-        assertThat(entries).hasSize(2);
-        assertThat(entries).containsExactlyInAnyOrder(
-                "user:alice:read", "group:engineering:read");
+        // 等 async listener 跑完（即使 idempotent skip，也要等它執行完才能斷言）
+        await().pollDelay(Duration.ofMillis(500)).atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            var entries = skillRepo.findById(skillId).orElseThrow().aclEntries();
+            assertThat(entries).hasSize(2);
+            assertThat(entries).containsExactlyInAnyOrder(
+                    "user:alice:read", "group:engineering:read");
+        });
     }
 
     @Test
@@ -70,14 +78,16 @@ class SkillProjectionAclTest {
         var skillId = seedSkill(List.of(
                 "user:alice:read", "user:alice:write", "group:engineering:read"));
 
-        publisher.publishEvent(new SkillAclRevokedEvent(
+        txHelper.publishInTx(new SkillAclRevokedEvent(
                 skillId, "group", "engineering", "read", "alice"));
 
-        var entries = skillRepo.findById(skillId).orElseThrow().aclEntries();
-        assertThat(entries).hasSize(2);
-        assertThat(entries).doesNotContain("group:engineering:read");
-        assertThat(entries).containsExactlyInAnyOrder(
-                "user:alice:read", "user:alice:write");
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            var entries = skillRepo.findById(skillId).orElseThrow().aclEntries();
+            assertThat(entries).hasSize(2);
+            assertThat(entries).doesNotContain("group:engineering:read");
+            assertThat(entries).containsExactlyInAnyOrder(
+                    "user:alice:read", "user:alice:write");
+        });
     }
 
     @Test
@@ -86,11 +96,14 @@ class SkillProjectionAclTest {
     void revokedEvent_missingEntry_keepsReadModelUnchanged() {
         var skillId = seedSkill(List.of("user:alice:read"));
 
-        publisher.publishEvent(new SkillAclRevokedEvent(
+        txHelper.publishInTx(new SkillAclRevokedEvent(
                 skillId, "user", "ghost", "read", "alice"));
 
-        var entries = skillRepo.findById(skillId).orElseThrow().aclEntries();
-        assertThat(entries).containsExactly("user:alice:read");
+        // ghost entry 不存在 — listener 跑完仍是不變；給 async 一段時間執行再驗證
+        await().pollDelay(Duration.ofMillis(500)).atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            var entries = skillRepo.findById(skillId).orElseThrow().aclEntries();
+            assertThat(entries).containsExactly("user:alice:read");
+        });
     }
 
     private String seedSkill(List<String> aclEntries) {
