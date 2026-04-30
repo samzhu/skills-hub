@@ -99,7 +99,7 @@ class EventPublicationOutboxBehaviorTest {
         txBoundary.publishInTx(new TestOutboxEvent(marker));
 
         // 等待 async listener 執行 + Modulith outbox markFailed 完成
-        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
             assertThat(failingListener.getInvocations())
                     .as("failing listener 應被 async 觸發過")
                     .isGreaterThan(0);

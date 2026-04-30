@@ -54,7 +54,7 @@ class SkillAclCommandServiceTest {
                 .contains("group:engineering:read");
 
         // async audit
-        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
             var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
             var granted = events.stream()
                     .filter(e -> "SkillAclGranted".equals(e.eventType())
@@ -83,7 +83,7 @@ class SkillAclCommandServiceTest {
         assertThat(skillRepo.findById(skillId).orElseThrow().getAclEntries())
                 .doesNotContain("group:engineering:read");
 
-        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
             var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
             var revoked = events.stream()
                     .filter(e -> "SkillAclRevoked".equals(e.eventType())

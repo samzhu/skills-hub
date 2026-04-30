@@ -54,7 +54,7 @@ class SkillSuspendReactivateTest {
         assertThat(loadSkill(skillId).getStatus()).isEqualTo(SkillStatus.SUSPENDED);
 
         // async audit
-        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
             var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
             var suspended = events.stream()
                     .filter(e -> "SkillSuspended".equals(e.eventType())).findFirst();
@@ -76,7 +76,7 @@ class SkillSuspendReactivateTest {
 
         assertThat(loadSkill(skillId).getStatus()).isEqualTo(SkillStatus.PUBLISHED);
 
-        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
             var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
             var reactivated = events.stream()
                     .filter(e -> "SkillReactivated".equals(e.eventType())).findFirst();

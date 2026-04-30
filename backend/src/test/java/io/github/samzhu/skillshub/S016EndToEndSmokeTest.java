@@ -12,22 +12,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -37,7 +30,6 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
@@ -58,21 +50,15 @@ class S016EndToEndSmokeTest {
     @Autowired private DomainEventRepository eventStore;
     @Autowired private JdbcTemplate jdbc;
 
-    @MockitoBean private EmbeddingModel embeddingModel;
-
-    @BeforeEach
-    void setUp() {
-        when(embeddingModel.embed(any(Document.class))).thenAnswer(inv -> randomVector(768));
-        when(embeddingModel.embed(anyString())).thenAnswer(inv -> randomVector(768));
-        when(embeddingModel.embed(any(List.class), any(), any())).thenAnswer(inv -> {
-            List<?> docs = inv.getArgument(0);
-            return docs.stream().map(d -> randomVector(768)).toList();
-        });
-    }
+    // S025a-T03: 移除 @MockitoBean EmbeddingModel — TestcontainersConfiguration.@Bean @Primary
+    // mockEmbeddingModel() 提供共用 stub。本檔的 disabled e2e test 不直接 inject embeddingModel；
+    // 若日後重啟用此 test，可改 @Autowired 注入 lifted mock。
 
     @org.junit.jupiter.api.Disabled("""
-            S023-T07: MockMvc + @ApplicationModuleListener async 行為在 SpringBootTest WebEnvironment.MOCK 下
-            不可靠（async listener 在 test 結束前可能未完成 / vector_store row 寫入時序與 MockMvc 響應 race）。
+            S023-T07 + S025a-T03 deferred to S025b: MockMvc + @ApplicationModuleListener async 行為
+            在 SpringBootTest WebEnvironment.MOCK 下不可靠。S025a-T03 已移除 EmbeddingModel @MockitoBean
+            （cache key 收斂）但本 e2e test 的完整重寫（含跨 module 整合 + 多 step + JWT auth）需要
+            較大改動，per spec §3 AC-6 allow deferral：屬 S025b WebEnv refactor 範圍。
             S023 outbox + listener migration 的功能已由以下 test 分散覆蓋：
             - EventPublicationOutboxBehaviorTest (TX rollback + listener fail → status=FAILED)
             - IncompleteEventRepublishTaskWiringTest (retry 機制 wiring)
@@ -80,7 +66,9 @@ class S016EndToEndSmokeTest {
               / AnalyticsProjectionListenerAnnotationsTest / ScanOrchestratorListenerAnnotationsTest
               (annotation reflection)
             - HikariPoolUnderLoadTest (50 並發 listener 不耗盡 pool)
-            S024 重寫 Skill 為 stateful aggregate 後，本 e2e flow 將重新撰寫對齊新架構。
+            - RiskAssessmentIntegrationTest (S025a-T02 改 Scenario，e2e ScanOrchestrator pipeline)
+            - SemanticSearchAclTest (HTTP + ACL e2e via MockMvc + JWT — S025a-T03 移除 mock)
+            S025b 計畫：改 @ApplicationModuleTest + Scenario 模式驗 e2e flow，去掉 MockMvc + async race。
             """)
     @Test
     @DisplayName("AC-1~15: end-to-end smoke — upload → grant → list → revoke 跨模組驗證")
@@ -115,7 +103,7 @@ class S016EndToEndSmokeTest {
 
         // 驗 event store 有 SkillCreated + SkillVersionPublished — S024 T05B 改 async via AuditEventListener
         org.awaitility.Awaitility.await()
-                .atMost(java.time.Duration.ofSeconds(30))
+                .atMost(java.time.Duration.ofSeconds(5))
                 .untilAsserted(() -> {
                     var afterUploadEvents = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
                     assertThat(afterUploadEvents).extracting("eventType")
@@ -125,7 +113,7 @@ class S016EndToEndSmokeTest {
         // 驗 vector_store row 含 acl_entries 衍生自 author
         // S023-T07: SearchProjection 改 @ApplicationModuleListener async；用 Awaitility 等
         org.awaitility.Awaitility.await()
-                .atMost(java.time.Duration.ofSeconds(30))
+                .atMost(java.time.Duration.ofSeconds(5))
                 .untilAsserted(() -> {
                     var vectorAcl = jdbc.queryForObject(
                             "SELECT acl_entries::text FROM vector_store WHERE skill_id = ?",
@@ -211,7 +199,7 @@ class S016EndToEndSmokeTest {
         // S024 T05B: AuditEventListener async 寫入，sequence 順序不再嚴格遞增（可能 race）；
         // 改驗各 event_type 至少出現一次
         org.awaitility.Awaitility.await()
-                .atMost(java.time.Duration.ofSeconds(30))
+                .atMost(java.time.Duration.ofSeconds(5))
                 .untilAsserted(() -> {
                     var allEvents = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
                     assertThat(allEvents).extracting("eventType")
@@ -281,12 +269,5 @@ class S016EndToEndSmokeTest {
         return baos.toByteArray();
     }
 
-    private static float[] randomVector(int dim) {
-        var v = new float[dim];
-        var r = new Random(42);
-        for (int i = 0; i < dim; i++) {
-            v[i] = r.nextFloat() * 2 - 1;
-        }
-        return v;
-    }
+    // S025a-T03: randomVector helper removed — lifted to TestcontainersConfiguration.
 }

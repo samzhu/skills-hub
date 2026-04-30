@@ -1,35 +1,43 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-04-30（**S024 ✅ Shipped v2.0.0 (M19)** — Skill State-Based Aggregate Migration 完成；ADR-002 Phase 2 落地完成；Skill domain 由 ES POJO 轉為 Spring Data JDBC 充血聚合 + Modulith outbox。Active 推進至 S025（Test Pyramid Realignment，由 S023 T07 + S024 T05B test cascade 觸發）。）
+> 最後更新：2026-04-30（**S024 ✅ Shipped v2.0.0 (M19)** — Skill State-Based Aggregate Migration 完成；ADR-002 Phase 2 落地完成。Active 推進至 **S025a + S025b**（Test Pyramid Realignment，由 S023 T07 + S024 T05B test cascade 觸發；於 `/planning-spec S025` Phase 3 grill #1 用戶選 C 場景後拆分為 a/b 兩 spec — XL 強制拆，per estimation-scale.md L18+）。）
 
 ---
 
 ## 🎯 Active Work — Sequenced (Next Up)
 
-**Phase 3 — 架構轉向（ADR-002 driven）**：詳 [`adr/ADR-002-skill-aggregate-state-based.md`](../adr/ADR-002-skill-aggregate-state-based.md)。S023 → S024 sequential ship；S023 為 outbox 基礎建設、S024 為 Skill 充血聚合改寫。
+**Phase 4 — Test Pyramid Realignment（C 場景：徹底重整）**：詳 §Active Work `S025a / S025b` 拆分緣由。原單一 S025 在 `/planning-spec` Phase 3 grill #1 評估後落為 XL（17-18 pts），須拆為 S025a（mock lift + Scenario migration）+ S025b（slice 重組 + workaround 移除）兩 spec sequential ship。
 
 ### Recommended Execution Order
 
 ```
-S023 (Modulith Outbox Foundation) ─▶ S024 (Skill State-Based Aggregate)
-     M(12)、ship as v1.5.0              M(13)、ship as v2.0.0（major bump per ADR-002 §5.1）
-     ├─ spring-modulith-starter-jdbc    ├─ Skill = @Table + extends AbstractAggregateRoot
-     ├─ V4 event_publication            ├─ SkillVersion 獨立 aggregate
-     ├─ V5 shedlock                     ├─ AclEntry 維持 jsonb（per ADR-002 §2.2）
-     ├─ Hybrid listener migration       ├─ AuditEventListener (domain_events 退 audit log)
-     │   - 9 → @ApplicationModuleListener │   - SkillReadModel 等整組刪除
-     │   - 2 保留 @EventListener         │   - SkillCommandService 縮為 3 行/method
-     │     (FK target row 創建者)        ├─ V6 ALTER TABLE skills ADD version BIGINT
-     ├─ ShedLock 7.7.0 + retry         └─ architecture.md / CLAUDE.md 同步改寫
-     └─ event_publication metrics
+S025a (Mock Lift + Scenario Migration) ─▶ S025b (Slice 重組 + Workaround 移除)
+     M(13)、ship as v2.1.0                   M(12-13)、ship as v2.2.0
+     ├─ Lift EmbeddingModel mock (8處統一)    ├─ 解 AOT ApplicationModulesRuntime blocker
+     │   → TestcontainersConfig @Bean @Primary   (StringListJsonbConverterTest known)
+     ├─ CurrentUserProvider 策略落地           ├─ 13 個 Repository → @DataJdbcTest
+     │   (per-test stub vs @WithMockUser)        + @AutoConfigureTestDatabase(replace=NONE)
+     ├─ 14 個 Listener test                  ├─ 13 個 Controller → @WebMvcTest
+     │   → @ApplicationModuleTest + Scenario    + @WithMockUser
+     │   (mode=DIRECT_DEPENDENCIES)          ├─ @SpringBootTest 收斂至 ≤3 e2e
+     ├─ 38 個 Awaitility 30s → Scenario 5s    ├─ 移除 maxHeapSize=3g + cache.maxSize=8
+     ├─ 5 個 @Disabled 全部恢復                  + 升回 cache.maxSize 預設 32
+     │   (3× RiskAssessment + 1× SearchProj  └─ verify-all.sh × 5 連續 PASS
+     │    + 1× S016EndToEndSmoke)
+     └─ AuditEventListenerTest 為 POC pilot
 ```
 
 | 順序 | Spec | Title | Points | Deps | Status |
 |------|------|-------|--------|------|--------|
 | 1 | S023 | Spring Modulith Outbox Foundation | M(12) | S018 ✅ + ADR-002 | ✅ — `v1.5.0` (M18) |
 | 2 | S024 | Skill State-Based Aggregate Migration | M(13) | S023 ✅ + S016 ✅ + S018 ✅ + ADR-002 | ✅ — `v2.0.0` (M19) — 2026-04-30 |
-| 3 | **S025** | **Test Pyramid Realignment + Scenario migration** | **L(15-18)** | S023 ✅（known limitation 來源）| **🔲 Design** |
+| 3 | S025a | Mock Lift + Scenario Migration | M(13) | S023 ✅ | ✅ — `v2.1.0` (M20) — 2026-04-30 |
+| 4 | **S025b** | **Slice 重組 + Workaround 移除**（@DataJdbcTest / @WebMvcTest + AOT blocker + heap/cache workaround 清除） | **M(12-13)** | **S025a ✅** | **🔲 Planning** |
 
+> **S025a / S025b 拆分緣由**（2026-04-30 於 `/planning-spec S025` Phase 3 grill #1）：原 S025 用戶選 C 場景（cache key ≤5 / Awaitility 100% 移除 / `@SpringBootTest` ≤3 / 5 個 disabled 全恢復 / workaround 全清）→ 估算 17-18 = XL，per estimation-scale.md 強制拆。拆分依風險與 reversibility：
+> - **S025a**（M(13)，two-way door）：mock lift + Scenario migration 為純 test infrastructure 改動，可單 PR ship；blast radius 小（test 改動只影響 test pipeline）
+> - **S025b**（M(12-13)，two-way door但需先解 AOT blocker）：slice 重組需先解決 `StringListJsonbConverterTest` / `MapJsonbConverterTest` Javadoc 記載的 AOT `ApplicationModulesRuntime` bean missing 問題；若 S025a ship 後 cache key 已降至預期 → S025b 範圍可重新評估（可能 absorb workaround 移除為 S025a follow-up，留 slice 重組為獨立 spec）
+>
 > **S023 / S024 拆分緣由**：原 Backlog S023 範圍僅「outbox migration」，研究後（`docs/deepwiki/spring-data-jdbc-modulith/` 6 份 source-level 檔案）發現整體架構轉向更有價值，但合併為單一 spec 估算 **L(16)** 接近 XL 強制拆分線；ADR-002 §5 拆為 S023（基礎建設）+ S024（領域層改寫）— 各 M(12-13)，可獨立 ship 與 verify、blast radius 小。
 >
 > **S025 觸發**：S023 T07 揭露測試金字塔倒置（53/77 tests 用 `@SpringBootTest`，cache key 爆炸 → LRU evict + container churn）+ Awaitility 30s timeout band-aid + 2 個 e2e MockMvc test `@Disabled`；S025 系統重整 4 範圍 — cache key 收斂 / Scenario migration / slice 重組 / workaround 移除（詳 §Backlog `Project Infrastructure` 段）。
@@ -112,6 +120,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 2 | M16: Skill Aggregate 充血演化 + SKILL.md 對齊 | S018 | M(13) | 235 | ✅ `v1.4.0` (2026-04-29) |
 | Phase 3 | M18: Spring Modulith Outbox Foundation | S023 | M(12) | 247 | ✅ `v1.5.0` (2026-04-29) |
 | Phase 3 | M19: Skill State-Based Aggregate Migration | S024 | M(13) | 260 | ✅ `v2.0.0` (2026-04-30) |
+| Phase 4 | M20: Mock Lift + Scenario Migration | S025a | M(13) | 273 | ✅ `v2.1.0` (2026-04-30) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

@@ -95,8 +95,44 @@ Spring Modulith 的 `ApplicationModules.verify()` 確保：
 | Unit Test | JUnit 5 / Vitest | 單一 class/function 的邏輯驗證 |
 | Integration Test | Spring Boot Test + Testcontainers | 跨元件整合（DB, GCS） |
 | Module Test | Spring Modulith `@ApplicationModuleTest` | 單一 module 的完整測試（含 DB） |
+| Async Listener Test | Spring Modulith `Scenario` API | async event listener 行為驗證（取代 Awaitility 30s） |
 | API Test | MockMvc / WebTestClient | REST API 請求/回應驗證 |
 | Frontend Component Test | Vitest + React Testing Library | React 元件渲染 + 互動 |
+
+#### Async Listener 驗證標準 pattern（S025a 起）
+
+`@ApplicationModuleListener` async listener 驗證**首選 Spring Modulith `Scenario` API**，**禁用 30s Awaitility band-aid**。
+
+**標準 pattern**：
+
+```java
+@SpringBootTest
+@Import(TestcontainersConfiguration.class)
+@EnableScenarios   // @SpringBootTest 不自動 include；@ApplicationModuleTest 已內建
+class FooListenerTest {
+
+    @Test
+    void publishEvent_triggersListener_writesRow(Scenario scenario) {
+        scenario.publish(new SkillCreatedEvent(...))
+                .andWaitForStateChange(() -> repo.findById(id).orElse(null))
+                .andVerify(row -> assertThat(row.getX()).isEqualTo(...));
+    }
+}
+```
+
+**全域 timeout default 5s**（per `TestcontainersConfiguration.scenarioTimeout()` `@Bean ScenarioCustomizer`）；個別 listener 需更長（如 ScanOrchestrator 完整 SARIF pipeline）顯式 `.andWaitAtMost(Duration.ofSeconds(N))` override。
+
+**何時改用 Awaitility**：infra 計數類測試（`HikariPoolUnderLoadTest` 等待 connection counter 達標、outbox row status 變化）— Scenario 不直接適用。timeout 上限 **5s**（同步於 Scenario default）。
+
+**Anti-pattern**：
+- `Awaitility.await().atMost(Duration.ofSeconds(30))` — S023-T07 cache key 爆炸時的 timing race band-aid，per S025a-T01 POC validated（async listener p95 < 1s）已不需要
+- 個別 file 散佈 `@MockitoBean EmbeddingModel` / `@MockitoBean CurrentUserProvider` — Spring TestContext customizer 變異 → cache key 爆炸；改 lift 至 `TestcontainersConfiguration.@Bean @Primary` 或 `@WithMockUser`
+
+**測試金字塔目標**（per S025a + S025b roadmap）：
+- 純 unit（JUnit 5 / Vitest，無 Spring context）：≥ 50%
+- Slice（`@DataJdbcTest` / `@WebMvcTest` / `@ApplicationModuleTest`）：~30%
+- E2E `@SpringBootTest`（保留至 ≤ 5）：~20%
+- Cache key 上限：S025a 後 ≤ 25；S025b ship 後目標 ≤ 10
 
 ### Layer 2: Integration Verification
 

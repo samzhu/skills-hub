@@ -70,7 +70,7 @@ class SkillAclControllerTest {
 
         // S024 T05B: AuditEventListener async 寫 domain_events row — Awaitility 等
         org.awaitility.Awaitility.await()
-                .atMost(Duration.ofSeconds(30))
+                .atMost(Duration.ofSeconds(5))
                 .untilAsserted(() -> {
                     var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
                     var grantedExists = events.stream()
@@ -100,7 +100,7 @@ class SkillAclControllerTest {
                 .andExpect(status().isNoContent());
 
         org.awaitility.Awaitility.await()
-                .atMost(Duration.ofSeconds(30))
+                .atMost(Duration.ofSeconds(5))
                 .untilAsserted(() -> {
                     var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
                     var revokedExists = events.stream()

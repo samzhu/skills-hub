@@ -6,16 +6,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +26,6 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
@@ -62,21 +57,15 @@ class SemanticSearchAclTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private SkillRepository skillRepo;
-
-    @MockitoBean private EmbeddingModel embeddingModel;
+    // S025a-T03: 從 @MockitoBean 改 @Autowired — TestcontainersConfiguration.@Bean @Primary
+    // mockEmbeddingModel() 提供固定 seed 42 768-dim stub（cosine sim ≈ 1.0 > 0.3 threshold）；
+    // test 需傳給 SkillshubPgVectorStore.builder()。
+    @Autowired private EmbeddingModel embeddingModel;
 
     @BeforeEach
     void setUp() {
         // 隔離：跨 test class 共享 Testcontainer，TRUNCATE skills CASCADE 自動清 vector_store
         jdbc.update("TRUNCATE TABLE skills RESTART IDENTITY CASCADE");
-
-        // 固定 seed 768-dim 向量；query 與 doc 同向量 → cosine sim ≈ 1.0 > 0.3 threshold
-        when(embeddingModel.embed(any(Document.class))).thenAnswer(inv -> randomVector(768));
-        when(embeddingModel.embed(anyString())).thenAnswer(inv -> randomVector(768));
-        when(embeddingModel.embed(any(List.class), any(), any())).thenAnswer(inv -> {
-            List<?> docs = inv.getArgument(0);
-            return docs.stream().map(d -> randomVector(768)).toList();
-        });
     }
 
     @Test
@@ -193,12 +182,5 @@ class SemanticSearchAclTest {
         return skillId;
     }
 
-    private static float[] randomVector(int dim) {
-        var v = new float[dim];
-        var r = new Random(42);
-        for (int i = 0; i < dim; i++) {
-            v[i] = r.nextFloat() * 2 - 1;
-        }
-        return v;
-    }
+    // S025a-T03: randomVector helper removed — lifted to TestcontainersConfiguration.
 }

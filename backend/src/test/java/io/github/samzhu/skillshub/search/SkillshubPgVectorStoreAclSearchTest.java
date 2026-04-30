@@ -1,14 +1,10 @@
 package io.github.samzhu.skillshub.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.mockito.Mockito;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
@@ -139,21 +134,15 @@ class SkillshubPgVectorStoreAclSearchTest {
 
         @Autowired private JdbcTemplate jdbc;
         @Autowired private SkillRepository skillRepo;
-        @MockitoBean private EmbeddingModel embeddingModel;
+        // S025a-T03: 從 @MockitoBean 改 @Autowired — TestcontainersConfiguration.@Bean @Primary
+        // mockEmbeddingModel() 提供 stub；test 需傳給 SkillshubPgVectorStore.builder()。
+        @Autowired private EmbeddingModel embeddingModel;
 
         @BeforeEach
         void setUp() {
             // 隔離：跨 test class 共享 Testcontainer，其他 test 留 vector_store row 會 poison topK ranking。
             // TRUNCATE skills CASCADE 自動清 vector_store（FK ON DELETE CASCADE）。
             jdbc.update("TRUNCATE TABLE skills RESTART IDENTITY CASCADE");
-
-            // mock embed 回固定 768-dim 隨機向量；T2 不驗 ranking 正確性，只驗 ACL filter 正確
-            when(embeddingModel.embed(any(Document.class))).thenAnswer(inv -> randomVector(768));
-            when(embeddingModel.embed(anyString())).thenAnswer(inv -> randomVector(768));
-            when(embeddingModel.embed(any(List.class), any(), any())).thenAnswer(inv -> {
-                List<?> docs = inv.getArgument(0);
-                return docs.stream().map(d -> randomVector(768)).toList();
-            });
         }
 
         @Test
@@ -276,12 +265,5 @@ class SkillshubPgVectorStoreAclSearchTest {
         }
     }
 
-    private static float[] randomVector(int dim) {
-        var v = new float[dim];
-        var r = new Random(42);
-        for (int i = 0; i < dim; i++) {
-            v[i] = r.nextFloat() * 2 - 1;
-        }
-        return v;
-    }
+    // S025a-T03: randomVector helper removed — lifted to TestcontainersConfiguration.
 }

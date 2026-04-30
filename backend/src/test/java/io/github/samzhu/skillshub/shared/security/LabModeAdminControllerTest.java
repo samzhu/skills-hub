@@ -8,26 +8,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
 
 /**
  * AC-2 (/admin/echo 部分)：LAB 模式下 {@code /api/v1/admin/echo} 行為。
+ *
+ * <p>S025a-T04: extends {@link LabModeTestBase} 收斂 cache key（per spec §4.2）。
  *
  * <p>關鍵驗證：lab user 帶 ROLE_admin，{@code @PreAuthorize("hasRole('admin')")} 通過；
  * AdminController 改用 {@link CurrentUserProvider} 後，回傳 by 欄位為 lab user
  * （非 JWT subject，避免 LAB 模式 NPE）。
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
-@TestPropertySource(properties = "skillshub.security.oauth.enabled=false")
-class LabModeAdminControllerTest {
+class LabModeAdminControllerTest extends LabModeTestBase {
 
     @Autowired
     private MockMvc mockMvc;

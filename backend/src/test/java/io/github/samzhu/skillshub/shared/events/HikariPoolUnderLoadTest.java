@@ -62,7 +62,7 @@ class HikariPoolUnderLoadTest {
         loadPublisher.publishBatch(50, batchMarker);
 
         // 等所有 listener 完成（最多 30 秒）
-        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
             assertThat(listener.getInvocations())
                     .as("50 events 應全部觸發 listener")
                     .isEqualTo(50);

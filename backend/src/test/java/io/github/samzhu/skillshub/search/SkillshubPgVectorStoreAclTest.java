@@ -1,17 +1,12 @@
 package io.github.samzhu.skillshub.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.UUID;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -21,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.skill.domain.Skill;
@@ -41,18 +35,9 @@ class SkillshubPgVectorStoreAclTest {
 
     @Autowired private JdbcTemplate jdbc;
     @Autowired private SkillRepository skillRepo;
-
-    @MockitoBean private EmbeddingModel embeddingModel;
-
-    @BeforeEach
-    void setUp() {
-        when(embeddingModel.embed(any(Document.class))).thenAnswer(inv -> randomVector(768));
-        when(embeddingModel.embed(anyString())).thenAnswer(inv -> randomVector(768));
-        when(embeddingModel.embed(any(List.class), any(), any())).thenAnswer(inv -> {
-            List<?> docs = inv.getArgument(0);
-            return docs.stream().map(d -> randomVector(768)).toList();
-        });
-    }
+    // S025a-T03: 從 @MockitoBean 改 @Autowired — TestcontainersConfiguration.@Bean @Primary
+    // mockEmbeddingModel() 提供 stub；test 需傳給 SkillshubPgVectorStore.builder()。
+    @Autowired private EmbeddingModel embeddingModel;
 
     @Test
     @DisplayName("AC-1 vector_store: SkillshubPgVectorStore.add() 一次 7-欄 INSERT 含 acl_entries")
@@ -138,12 +123,5 @@ class SkillshubPgVectorStoreAclTest {
         return skillId;
     }
 
-    private static float[] randomVector(int dim) {
-        var v = new float[dim];
-        var r = new Random(42);
-        for (int i = 0; i < dim; i++) {
-            v[i] = r.nextFloat() * 2 - 1;
-        }
-        return v;
-    }
+    // S025a-T03: randomVector helper removed — lifted to TestcontainersConfiguration.
 }

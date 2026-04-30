@@ -100,6 +100,46 @@
 - Frontend: Vitest + React Testing Library
 - Module 邊界測試：Spring Modulith `@ApplicationModuleTest`
 
+### 測試金字塔規範（S025a 起；per spec §3 + qa-strategy.md §Layer 1 細則）
+
+**Async listener test → `@ApplicationModuleTest + Scenario` 為首選**：
+
+- `@SpringBootTest + Awaitility 30s` 為 S023-T07 cache key 爆炸時的 timing race band-aid → **禁用**
+- `@ApplicationModuleTest(mode = BootstrapMode.DIRECT_DEPENDENCIES)` 自動載入 cross-module 依賴；`Scenario` 注入透過 `ScenarioParameterResolver`（`@ApplicationModuleTest` 內建；`@SpringBootTest` 需顯式 `@EnableScenarios`）
+- 全域 timeout default 5s（`TestcontainersConfiguration.@Bean ScenarioCustomizer scenarioTimeout()`）；個別 expensive listener 用 `.andWaitAtMost(Duration.ofSeconds(N))` override
+
+**`@MockitoBean` 散佈為 anti-pattern**：
+
+每個 `@MockitoBean` 經 `BeanOverrideContextCustomizer.handlers` Set 進入 Spring TestContext cache key；不同 file 的同名 mock field 因 reflection `Field` 物件不等 → customizer 不等 → cache key 不等 → context cache 大量 evict + container churn。修法：
+
+- **Stub 邏輯一致** → lift 至 `TestcontainersConfiguration.@Bean @Primary`（per S025a-T01 EmbeddingModel 範例）
+- **依賴 SecurityContext 的 mock**（如 `CurrentUserProvider`）→ 改 `@WithMockUser` + 真 Spring Security context（per S025a-T03 模式；`AsyncListenerConfig` 用 `DelegatingSecurityContextAsyncTaskExecutor` 自動 propagate 至 async thread）
+- **共用 properties 的 test class**（如 LabMode）→ 抽 abstract base class（per S025a-T04 `LabModeTestBase` 模式）
+
+**`@Async` bean alias 規則**（S025a-T03 production fix）：
+
+`AsyncListenerConfig.applicationTaskExecutor()` 必須以 alias `taskExecutor` 註冊：
+
+```java
+@Bean(name = {"applicationTaskExecutor", "taskExecutor"})
+public TaskExecutor applicationTaskExecutor() {
+    var executor = new ThreadPoolTaskExecutor();
+    // ...
+    return new DelegatingSecurityContextAsyncTaskExecutor(executor);
+}
+```
+
+理由：Spring 7.0 `AsyncExecutionInterceptor` 的 `DEFAULT_TASK_EXECUTOR_BEAN_NAME = "taskExecutor"`；多 `TaskExecutor` bean（`applicationTaskExecutor` + `taskScheduler`）造成 by-type lookup 失敗 → fallback `SimpleAsyncTaskExecutor` → `DelegatingSecurityContextAsyncTaskExecutor` 包裝旁路 → SecurityContext 不 propagate 到 async listener thread。
+
+**Test cache key 上限**（per S025a + S025b roadmap）：
+- S025a ship 後：≤ 25 distinct（baseline 53）
+- S025b ship 後（slice 重組）：≤ 10
+- 量測指令：`./gradlew clean test -Dlogging.level.org.springframework.test.context.cache=DEBUG > test-cache.log`，grep `Storing ApplicationContext` 計數
+
+### 移除 `Duration.ofSeconds(30)` Awaitility timeout（S025a-T04）
+
+全 backend test 中 `Duration.ofSeconds(30) + Awaitility` 為禁用 anti-pattern。Standard timeout 為 5s（搭配 Scenario default）。Infra 計數類（`HikariPoolUnderLoadTest`）保留 Awaitility 但 timeout ≤ 5s。
+
 ## Configuration Best Practices (S009)
 
 - **Pure values in YAML** — `skillshub.*` properties must not use `${...}` placeholder indirection. Relaxed binding handles env var override automatically (e.g., `SKILLSHUB_GENAI_API_KEY`).

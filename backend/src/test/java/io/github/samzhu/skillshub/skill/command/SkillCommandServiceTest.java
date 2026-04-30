@@ -42,7 +42,7 @@ class SkillCommandServiceTest {
 
 		var skillId = (String) response.getBody().get("id");
 		// S024 T05B: AuditEventListener async — Awaitility 等
-		org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+		org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
 			var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
 			assertThat(events).hasSize(1);
 
@@ -68,7 +68,7 @@ class SkillCommandServiceTest {
 
 		// S024 T05B: 等候 SkillCreated + SkillVersionPublished 兩筆 audit row（async）；
 		// 不依賴 sequence 順序（可能 SkillStateAdvancedToPublished 加進 audit）
-		org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+		org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
 			var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
 			var types = events.stream().map(e -> e.eventType()).toList();
 			assertThat(types).contains("SkillCreated", "SkillVersionPublished");

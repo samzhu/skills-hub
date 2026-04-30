@@ -1,5 +1,57 @@
 # Changelog
 
+## [v2.1.0] — Phase 4a: Mock Lift + Scenario Migration（M20 完成；2026-04-30）
+
+> **Minor bump** — 純 internal test infrastructure 重整 + 1 行 production bug fix（S023-T07 真因）。User-facing API contract 完全不變；資料庫 schema 不變；Spring Modulith module 邊界不變。運維端取得：async listener test 5s timeout（取代 30s band-aid）+ 4/5 disabled tests 恢復 + production async listener SecurityContext propagation 真正生效（S023-T07 wrapper 從旁路復活）。
+
+### Added
+- **S025a: Mock Lift + Scenario Migration**（M20 落地）：
+  - **`TestcontainersConfiguration` 加 2 個共用 `@Bean`**：(a) `@Primary EmbeddingModel mockEmbeddingModel()` 三個 overload stub 完整（fixed seed 42 → cosine sim ≈ 1.0 > 0.3 threshold）取代散佈在 8 file 的 `@MockitoBean EmbeddingModel`；(b) `ScenarioCustomizer scenarioTimeout()` global default Awaitility timeout 5s（per Spring Modulith `ScenarioParameterResolver` 自動 pickup），取代 S023-T07 30s band-aid。
+  - **`LabModeTestBase`（new abstract base class）**— `@SpringBootTest + @AutoConfigureMockMvc + @Import(TestcontainersConfiguration.class) + @TestPropertySource(oauth.enabled=false)` 收斂；3 LabMode test（`LabModeMeControllerTest` / `LabModeAdminControllerTest` / `JwtDecoderConditionalTest`）extends 後共用同一 cache key。
+  - **`@WithMockUser` 取代 `@MockitoBean CurrentUserProvider`**（2 file：`SearchProjectionTest` + `SearchProjectionAclWriteTest`）— `CurrentUserProvider` production code 早已從 `SecurityContextHolder` 取（line 41），`AsyncListenerConfig` 已 wrap `DelegatingSecurityContextAsyncTaskExecutor`；改 `@WithMockUser` 為**零 production code change** 的更貼近 prod 行為驗證路徑。
+  - **AuditEventListenerTest 改 `@ApplicationModuleTest(DIRECT_DEPENDENCIES) + Scenario`**（S025a-T01 POC pilot）— 8 個 30s `Awaitility.await` → `scenario.publish(event).andWaitForStateChange(...).andVerify(...)` pattern；p95 latency = 0.318s（Scenario 5s default 大量 headroom）。
+  - **`RiskAssessmentIntegrationTest` 3 個 `@Disabled` 恢復**（S023-T07 標記）— 改 `@SpringBootTest + @EnableScenarios + Scenario.stimulate(() -> uploadHttp).andWaitForStateChange(...)` 取代 MockMvc + Awaitility 30s；ScanOrchestrator 完整 SARIF pipeline p95 = 0.559s（5s default 即可，但保守用 15s override per spec §4.5）。
+  - **`SearchProjectionTest:127` disabled 恢復** — 用 programmatic `SecurityContextHolder.setAuthentication(...)` 切換 + Scenario 序列化兩次發布，驗 per-request builder owner isolation（修復 S023-T07 mock 切換 + async race 問題）。
+  - **All `Duration.ofSeconds(30)` → `Duration.ofSeconds(5)`** 全 `src/test/java`（`grep` = 0）— 含 `SkillUploadTest` / `SkillCommandServiceTest` / `SkillAclCommandServiceTest` / `SkillSuspendReactivateTest` / `SkillDownloadTest` / `SkillAclControllerTest` / `SkillSuspendControllerSecurityTest` / `EventPublicationOutboxBehaviorTest` / `HikariPoolUnderLoadTest` / `S016EndToEndSmokeTest`。
+  - **12 個 SBE AC 全綠**（10 FULL + 2 PARTIAL deferred-by-design）：AC-1~AC-12；verify-all.sh V01-V06 全綠 × 3 連續 0 flakiness；269 tests / 0 failed / 1 skipped（S016 deferred per AC-6）；JaCoCo line coverage **89.7%** ≥ 80% gate。
+  - **獨立 QA subagent verdict PASS**（10/12 FULL + 2/12 PARTIAL by design；1 minor Javadoc finding deferred to S025b doc pass）。
+
+### Fixed
+- **S023-T07 production bug 真因修正**（`AsyncListenerConfig.applicationTaskExecutor` bean alias）— S023 加的 `DelegatingSecurityContextAsyncTaskExecutor` wrapper 在 Spring 7.0 + Spring Boot 4.0.6 多 `TaskExecutor` bean（`applicationTaskExecutor` + `taskScheduler`）環境下被 `@Async` `AsyncExecutionInterceptor` by-type lookup 跳過，fallback `SimpleAsyncTaskExecutor` → wrapper **從未生效** → SecurityContext 不 propagate 至 async listener thread → `vector_store.owner = "lab-user"`（fallback 而非真實 user）。S023-T07 沒抓到是因當時所有 SearchProjection tests 用 `@MockitoBean CurrentUserProvider` 直接 stub return value 完全 bypass 了 SecurityContext 路徑。S025a-T03 的 `@WithMockUser` test 揭露此問題。**修法**：bean 加 alias `taskExecutor`（`@Async DEFAULT_TASK_EXECUTOR_BEAN_NAME`）強制 by-name lookup：
+  ```java
+  @Bean(name = {"applicationTaskExecutor", "taskExecutor"})
+  public TaskExecutor applicationTaskExecutor() {
+      var executor = new ThreadPoolTaskExecutor();
+      // ...
+      return new DelegatingSecurityContextAsyncTaskExecutor(executor);
+  }
+  ```
+  Production async listener（`SearchProjection` / `AnalyticsProjection` / `ScanOrchestrator` / `AuditEventListener`）SecurityContext propagation 從 S025a 起真正生效。
+
+### Performance
+- **`./gradlew clean test` 從 S023 baseline 2m 37s → 2m 3s**（-22%；含全部 269 tests + JaCoCo report）— cache key 從 baseline 53 estimated 降至 ~42-45（mock lift -10 + LabModeTestBase -2）；最終 ≤ 25 / ≤ 10 deferred S025b。
+
+### Documentation
+- `docs/grimo/qa-strategy.md` — § Layer 1 表格新增「Async Listener Test → Spring Modulith Scenario API」；新增 § Async Listener 驗證標準 pattern 段（含 standard pattern code、global timeout default 5s、Awaitility 何時使用、anti-pattern 列表、測試金字塔目標）。
+- `docs/grimo/development-standards.md` — § Testing Standards 新增「測試金字塔規範（S025a 起）」；含 `@ApplicationModuleTest + Scenario` 為 async test 首選 + `@MockitoBean` 散佈為 anti-pattern + 修法（lift / @WithMockUser / base class）+ `@Async` bean alias 規則 + cache key 上限 + `Duration.ofSeconds(30)` 禁用。
+- `docs/grimo/specs/spec-roadmap.md` — S025a entry → ✅；M20 milestone 新增 + `v2.1.0` 標記。
+
+### Known Limitations
+- **Cache key 仍 ~42-45（≤ 25 / ≤ 10 未達）**— 設計上由 S025b（slice 重組 @DataJdbcTest / @WebMvcTest）落地。
+- **`S016EndToEndSmokeTest:57` 仍 disabled** — per spec §3 AC-6 allowed deferral；S025b 將改 `@ApplicationModuleTest + Scenario` 重寫 e2e flow。
+- **`build.gradle.kts` workaround `maxHeapSize=3g + cache.maxSize=8` 仍存在** — S025b ship 後可移除（cache key ≤ 10 後不再需要）。
+- **AC-4 listener migration count 設計與實作落差**（spec design 期待 12+，實作 1）— HTTP-driven tests + infra tests 不適合 `@ApplicationModuleTest`；落差已 documented in spec §7.4，S025b 評估 slice 替代。
+- **AsyncListenerConfig.applicationTaskExecutor `/**` Javadoc 缺 `taskExecutor` alias 說明**（QA subagent 指出 minor finding）— inline comment 完整解釋；S025b doc pass 補。
+
+### Verification
+- `./gradlew test` — 269 tests / 0 failed / 1 expected skipped（S016 per spec deferral）
+- `./gradlew jacocoTestCoverageVerification` — 89.7% line coverage ≥ 80% gate
+- `./gradlew test --tests "*ModularityTests*"` — Spring Modulith 7 module（含 audit）邊界全合規 PASS
+- `./scripts/verify-all.sh` × 3 連續 — V01-V06 全 PASS，0 flakiness
+- 獨立 QA subagent — verdict PASS
+
+---
+
 ## [v2.0.0] — Phase 3b: Skill State-Based Aggregate Migration（M19 完成；2026-04-30）
 
 > **Major bump**（per ADR-002 §5.1）— Skill domain 內部架構模式根本性改變（ES POJO → Spring Data JDBC 充血聚合）。API contract 不變（Skill / SkillVersion JSON shape 與 v1.5.0 一致；`@Version` 欄位由 `@JsonIgnore` 隱藏）。資料庫 schema 向前相容（V6 migration 加 `skills.version` BIGINT；歷史 ES events row 在 `domain_events` 保留可 read-only 查詢）。

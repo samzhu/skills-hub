@@ -74,7 +74,7 @@ class SkillUploadTest {
 
 		var skillId = (String) response.getBody().get("id");
 		// async audit — 等候 SkillCreated + SkillVersionPublished 兩筆 audit row
-		org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+		org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
 			var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
 			var created = events.stream()
 					.filter(e -> "SkillCreated".equals(e.eventType())).findFirst();
@@ -150,7 +150,7 @@ class SkillUploadTest {
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
 		// async audit — 等候兩筆 SkillVersionPublished
-		org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+		org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
 			var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
 			var versionEvents = events.stream()
 					.filter(e -> "SkillVersionPublished".equals(e.eventType()))
@@ -200,7 +200,7 @@ class SkillUploadTest {
 
 		// 確認 SkillVersionPublished audit 仍只有 1 筆（dedup by sourceEventId；同 version 不重複寫）
 		// 等夠久讓 async 完成；filter by event_type 避免 ScanOrchestrator 寫入干擾
-		org.awaitility.Awaitility.await().pollDelay(Duration.ofSeconds(2)).atMost(Duration.ofSeconds(30))
+		org.awaitility.Awaitility.await().pollDelay(Duration.ofSeconds(2)).atMost(Duration.ofSeconds(5))
 				.untilAsserted(() -> {
 					var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
 					var versionEvents = events.stream()

@@ -52,7 +52,7 @@ public class AsyncListenerConfig {
      * <p>外層用 {@link DelegatingSecurityContextAsyncTaskExecutor} wrap，
      * 確保 async thread 仍能存取呼叫端 SecurityContext（per S023-T07 production bug fix）。
      */
-    @Bean
+    @Bean(name = {"applicationTaskExecutor", "taskExecutor"})
     public TaskExecutor applicationTaskExecutor() {
         var executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);
@@ -62,6 +62,13 @@ public class AsyncListenerConfig {
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);
         executor.initialize();
+        // S025a-T03 production fix（深層 root cause from S023-T07）：
+        // Spring 7.0 + Spring Boot 4 環境下，多 TaskExecutor bean（applicationTaskExecutor +
+        // taskScheduler）造成 @Async 無法 by-type 解析 → fallback SimpleAsyncTaskExecutor →
+        // DelegatingSecurityContextAsyncTaskExecutor 包裝失效 → CurrentUserProvider 在 async
+        // listener 拿到空 SecurityContext → fallback labUserId。修法：對 bean 加 alias
+        // "taskExecutor"（@Async DEFAULT_TASK_EXECUTOR_BEAN_NAME）— 透過 by-name lookup 強制
+        // 使用此 wrapped executor。S023-T07 spec §7.3 production bug 真因落地。
         return new DelegatingSecurityContextAsyncTaskExecutor(executor);
     }
 }

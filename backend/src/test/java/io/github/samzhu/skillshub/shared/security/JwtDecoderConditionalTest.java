@@ -6,26 +6,22 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.context.TestPropertySource;
-
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
 
 /**
  * AC-3：LAB 模式下 {@link JwtDecoder} bean 不應存在於容器，{@link SecurityFilterChain} 仍存在。
+ *
+ * <p>S025a-T04: extends {@link LabModeTestBase} 收斂 cache key（per spec §4.2）。
+ * 雖本 test 不用 MockMvc（base class 含 {@code @AutoConfigureMockMvc} 為冗餘），但加入 base 收斂
+ * 3 LabMode test 共用同一 cache entry 的收益遠大於該 customizer 成本。
  *
  * <p>驗證 SecurityConfig 透過 {@code @ConditionalOnProperty} 正確 gate 掉
  * JwtDecoder + JwtAuthenticationConverter 兩個 bean，避免 LAB 模式仍嘗試 OIDC discovery
  * 或建立未使用的 OAuth 解碼基礎設施。
  */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-@TestPropertySource(properties = "skillshub.security.oauth.enabled=false")
-class JwtDecoderConditionalTest {
+class JwtDecoderConditionalTest extends LabModeTestBase {
 
     @Autowired
     private ApplicationContext context;

@@ -56,7 +56,7 @@ class SkillDownloadTest {
 
 		// S024 T05B: AuditEventListener async 寫 SkillDownloaded audit row + Skill aggregate downloadCount sync 增量
 		org.awaitility.Awaitility.await()
-				.atMost(java.time.Duration.ofSeconds(30))
+				.atMost(java.time.Duration.ofSeconds(5))
 				.untilAsserted(() -> {
 					var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
 					assertThat(events).anyMatch(e -> "SkillDownloaded".equals(e.eventType()));

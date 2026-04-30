@@ -92,7 +92,7 @@ class SkillSuspendControllerSecurityTest {
 
         // S024 T05B: AuditEventListener async 寫 domain_events row — 用 Awaitility 等 SkillSuspended
         org.awaitility.Awaitility.await()
-                .atMost(Duration.ofSeconds(30))
+                .atMost(Duration.ofSeconds(5))
                 .untilAsserted(() -> {
                     var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
                     assertThat(events).extracting(DomainEvent::eventType).contains("SkillSuspended");
@@ -137,7 +137,7 @@ class SkillSuspendControllerSecurityTest {
 
         // async audit row
         org.awaitility.Awaitility.await()
-                .atMost(Duration.ofSeconds(30))
+                .atMost(Duration.ofSeconds(5))
                 .untilAsserted(() -> {
                     var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
                     assertThat(events).extracting(DomainEvent::eventType).contains("SkillReactivated");
