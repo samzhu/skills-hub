@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -17,11 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
-import tools.jackson.databind.ObjectMapper;
-
 import io.github.samzhu.skillshub.security.scan.sarif.SarifReporter;
-import io.github.samzhu.skillshub.shared.events.DomainEvent;
-import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
@@ -53,9 +48,9 @@ import io.github.samzhu.skillshub.storage.StorageService;
  *       避免循環依賴；不發第二個 SkillRiskAssessed application event）</li>
  * </ul>
  *
- * <p>S014 從 MongoTemplate 遷至 Spring Data JDBC — 寫入路徑改走
- * {@link SkillReadModelRepository#updateRiskLevel} +
- * {@link SkillVersionReadModelRepository#updateRiskAssessment}（皆 @Modifying @Query）。
+ * <p>S024 T05B：S014 的 {@code SkillReadModelRepository} / {@code SkillVersionReadModelRepository}
+ * 已刪除；寫入路徑改走 {@link SkillRepository#updateRiskLevel}（@Modifying @Query）+
+ * {@link SkillVersionRepository#findBySkillIdAndVersion} → {@code SkillVersion.attachRiskAssessment} → {@code versionRepo.save}。
  *
  * @see SecurityAnalyzer
  * @see SarifReporter
@@ -68,11 +63,9 @@ class ScanOrchestrator {
 	private final List<SecurityAnalyzer> analyzers;
 	private final StorageService storageService;
 	private final PackageService packageService;
-	private final DomainEventRepository eventStore;
-	// S024 T5: 改注入新 aggregate repositories（取代既有 SkillReadModelRepository / SkillVersionReadModelRepository）
+	// S024 T05B: aggregate repositories（取代 v1.5.0 read-model repositories）
 	private final SkillRepository skillRepo;
 	private final SkillVersionRepository versionRepo;
-	private final ObjectMapper objectMapper;
 	private final SarifReporter sarifReporter;
 
 	/**
@@ -84,26 +77,22 @@ class ScanOrchestrator {
 	ScanOrchestrator(List<SecurityAnalyzer> analyzers,
 			StorageService storageService,
 			PackageService packageService,
-			DomainEventRepository eventStore,
 			SkillRepository skillRepo,
 			SkillVersionRepository versionRepo,
-			ObjectMapper objectMapper,
 			SarifReporter sarifReporter) {
 		this.analyzers = analyzers;
 		this.storageService = storageService;
 		this.packageService = packageService;
-		this.eventStore = eventStore;
 		this.skillRepo = skillRepo;
 		this.versionRepo = versionRepo;
-		this.objectMapper = objectMapper;
 		this.sarifReporter = sarifReporter;
 	}
 
 	/**
 	 * S023：升級為 {@link ApplicationModuleListener}（async + AFTER_COMMIT + REQUIRES_NEW
 	 * + outbox 追蹤）。原 {@code @Order(LOWEST_PRECEDENCE)} 移除 — async 跨 listener 無
-	 * 順序保證，FK target row（{@code skill_versions}）由 SkillProjection 同步 listener
-	 * 在 publisher TX 內已寫入；commit 後本 async listener 才觸發，FK 必滿足。
+	 * 順序保證，FK target row（{@code skill_versions}）由 {@code SkillCommandService} 在 publisher TX
+	 * 內已直接寫入（S024 後 SkillProjection 已刪除）；commit 後本 async listener 才觸發，FK 必滿足。
 	 *
 	 * <p><b>Idempotency</b>（S023）：以 {@code SkillVersionPublishedEvent.sourceEventId}
 	 * 為 key 檢查 {@code risk_assessment->>'sourceEventId'}；若已掃描過則 early return，
@@ -257,14 +246,15 @@ class ScanOrchestrator {
 	}
 
 	/**
-	 * 三路寫入：
+	 * S024 T05B：兩路寫入（audit log 由 AuditEventListener 訂閱事件處理，本 method 不直接寫）：
 	 * <ol>
-	 *   <li>{@code domain_events} 新增一筆 SkillRiskAssessed event（aggregate 內 sequence 自增）</li>
-	 *   <li>{@code skills.{aggregateId}.riskLevel} 更新</li>
-	 *   <li>{@code skill_versions.{...}.riskAssessment} 寫入完整 sarif + findings + notices</li>
+	 *   <li>{@code skills.risk_level} 更新（cross-aggregate projection；per ADR-002 §2.6）</li>
+	 *   <li>{@code skill_versions.{...}.risk_assessment} 透過 SkillVersion aggregate 充血方法
+	 *       {@code attachRiskAssessment + versionRepo.save} 寫入 + register
+	 *       {@code SkillRiskAssessedEvent}。Spring Data JDBC 透過 {@code @DomainEvents}
+	 *       自動 publish 至 Modulith outbox；{@link io.github.samzhu.skillshub.shared.events.audit.AuditEventListener}
+	 *       訂閱後 async 寫 {@code domain_events} audit row（dedupKey idempotent）</li>
 	 * </ol>
-	 * 直接呼叫 Spring Data JDBC repository 的 @Modifying @Query
-	 * （per S005 §7：避免發第二個 application event 造成循環依賴）。
 	 */
 	private void persist(SkillVersionPublishedEvent event,
 			Severity finalLevel,
@@ -272,27 +262,11 @@ class ScanOrchestrator {
 			Map<String, AnalysisOutput> perEngine,
 			Map<String, Object> sarif) {
 
-		// 1. domain_events
-		long nextSequence = eventStore.findTopByAggregateIdOrderBySequenceDesc(event.aggregateId())
-				.map(e -> e.sequence() + 1).orElse(1L);
-		var payload = Map.<String, Object>of(
-				"version", event.version(),
-				"riskLevel", finalLevel.name(),
-				"findingsCount", allFindings.size());
-		eventStore.save(new DomainEvent(
-				UUID.randomUUID().toString(),
-				event.aggregateId(),
-				"Skill",
-				"SkillRiskAssessed",
-				payload,
-				nextSequence,
-				Instant.now(),
-				Map.of()));
-
-		// 2. skills.risk_level — cross-aggregate projection（per SkillRepository.updateRiskLevel Javadoc）
+		// 1. skills.risk_level — cross-aggregate projection（per SkillRepository.updateRiskLevel Javadoc）
 		skillRepo.updateRiskLevel(event.aggregateId(), finalLevel.name(), Instant.now());
 
-		// 3. skill_versions.risk_assessment — 完整 SARIF + findings + notices
+		// 2. skill_versions.risk_assessment — 完整 SARIF + findings + notices；
+		//    SkillVersion aggregate 充血路徑（attachRiskAssessment + save 觸發 SkillRiskAssessedEvent publish）
 		var allNotices = new ArrayList<ScanNotice>();
 		for (var output : perEngine.values()) allNotices.addAll(output.notices());
 
@@ -305,17 +279,10 @@ class ScanOrchestrator {
 		// S023 idempotency key — retry 透過此值知道 scan 已完成（per ScanOrchestrator.on Javadoc）
 		riskAssessment.put("sourceEventId", event.sourceEventId());
 
-		// S024 T5：改走 SkillVersion aggregate 充血路徑（attachRiskAssessment + save 觸發
-		// SkillRiskAssessedEvent publish 至 outbox；T7 完整 AuditEventListener 接管後 audit row 由
-		// listener 寫入）。原 @Modifying @Query 直接 UPDATE risk_assessment 模式廢除（per ADR-002 §2.6）。
 		var sv = versionRepo.findBySkillIdAndVersion(event.aggregateId(), event.version())
 				.orElseThrow(() -> new IllegalStateException(
 						"SkillVersion not found for scan persist: " + event.aggregateId() + " v" + event.version()));
 		sv.attachRiskAssessment(riskAssessment);
 		versionRepo.save(sv);
-		// objectMapper 保留：T7 移除舊 SkillVersionReadModelRepository 後本欄位可拆掉（目前
-		// 為 T5 transitional state；建構子保留 dependency 不影響行為）
-		@SuppressWarnings("unused")
-		String riskJsonForDocumentation = objectMapper.writeValueAsString(riskAssessment);
 	}
 }

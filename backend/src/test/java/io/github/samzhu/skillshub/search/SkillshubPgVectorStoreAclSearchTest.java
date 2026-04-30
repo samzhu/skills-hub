@@ -27,8 +27,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.mockito.Mockito;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * S017 T1 — Builder.aclPatterns setter + SIMILARITY_SEARCH_SQL_ACL constant +
@@ -138,7 +138,7 @@ class SkillshubPgVectorStoreAclSearchTest {
     class DoSimilaritySearchAclRoutingIntegration {
 
         @Autowired private JdbcTemplate jdbc;
-        @Autowired private SkillReadModelRepository skillRepo;
+        @Autowired private SkillRepository skillRepo;
         @MockitoBean private EmbeddingModel embeddingModel;
 
         @BeforeEach
@@ -255,10 +255,10 @@ class SkillshubPgVectorStoreAclSearchTest {
             // FK 前置 — vector_store.skill_id REFERENCES skills(id)
             var skillId = UUID.randomUUID().toString();
             var now = Instant.now();
-            skillRepo.save(new SkillReadModel(
+            skillRepo.save(Skill.fromRow(
                     skillId, "vec-acl-search-" + skillId.substring(0, 8),
                     "T2 ACL search fixture", owner, "Testing",
-                    null, null, "DRAFT", 0L, now, now, List.of()));
+                    null, null, "DRAFT", 0L, now, now, List.of(), null));
 
             // 寫 vector_store row 帶 acl_entries（用 SkillshubPgVectorStore writer 路徑）
             SkillshubPgVectorStore.builder(jdbc, embeddingModel)

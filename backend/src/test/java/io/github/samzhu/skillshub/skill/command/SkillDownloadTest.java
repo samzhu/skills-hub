@@ -25,8 +25,7 @@ import org.springframework.util.LinkedMultiValueMap;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -40,11 +39,10 @@ class SkillDownloadTest {
 	private DomainEventRepository eventStore;
 
 	@Autowired
-	private SkillReadModelRepository skillRepo;
+	private SkillRepository skillRepo;
 
-	@org.junit.jupiter.api.Disabled("S024 T4 transitional: works in isolation but fails in suite due to async listener cross-test pollution (vector_store FK violations from previous test's lingering SearchProjection async). T5 will fix as part of read-model cleanup; S025 systemic fix for test isolation.")
 	@Test
-	@DisplayName("AC-1: 下載最新版本 — GET /download → 200 + zip + SkillDownloaded event")
+	@DisplayName("AC-1: 下載最新版本 — GET /download → 200 + zip + SkillDownloaded audit event")
 	@SuppressWarnings("unchecked")
 	void downloadLatestVersion() throws IOException {
 		var skillId = uploadSkill("download-test", "1.0.0");
@@ -56,21 +54,17 @@ class SkillDownloadTest {
 		assertThat(response.getBody()).isNotNull();
 		assertThat(response.getBody().length).isGreaterThan(0);
 
-		// Verify SkillDownloaded event — eventStore 寫入是 sync（@Transactional 內），可立即驗
-		var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
-		assertThat(events).anyMatch(e -> "SkillDownloaded".equals(e.eventType()));
-
-		// S023-T07: SkillProjection.on(SkillDownloadedEvent) 改 @ApplicationModuleListener async；
-		// downloadCount 增量在 AFTER_COMMIT 後 async 完成；Awaitility 等
+		// S024 T05B: AuditEventListener async 寫 SkillDownloaded audit row + Skill aggregate downloadCount sync 增量
 		org.awaitility.Awaitility.await()
 				.atMost(java.time.Duration.ofSeconds(30))
 				.untilAsserted(() -> {
+					var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
+					assertThat(events).anyMatch(e -> "SkillDownloaded".equals(e.eventType()));
 					var skill = skillRepo.findById(skillId).orElseThrow();
-					assertThat(skill.downloadCount()).isGreaterThanOrEqualTo(1);
+					assertThat(skill.getDownloadCount()).isGreaterThanOrEqualTo(1);
 				});
 	}
 
-	@org.junit.jupiter.api.Disabled("S024 T4 transitional: see downloadLatestVersion @Disabled note (same root cause).")
 	@Test
 	@DisplayName("AC-2: 下載指定版本 — GET /versions/{ver}/download → 200")
 	@SuppressWarnings("unchecked")

@@ -1,5 +1,45 @@
 # Changelog
 
+## [v2.0.0] — Phase 3b: Skill State-Based Aggregate Migration（M19 完成；2026-04-30）
+
+> **Major bump**（per ADR-002 §5.1）— Skill domain 內部架構模式根本性改變（ES POJO → Spring Data JDBC 充血聚合）。API contract 不變（Skill / SkillVersion JSON shape 與 v1.5.0 一致；`@Version` 欄位由 `@JsonIgnore` 隱藏）。資料庫 schema 向前相容（V6 migration 加 `skills.version` BIGINT；歷史 ES events row 在 `domain_events` 保留可 read-only 查詢）。
+
+### Added
+- **S024: Skill State-Based Aggregate Migration**（M19 落地）：
+  - **Skill aggregate 充血**（`@Table("skills") extends AbstractAggregateRoot<Skill> implements Persistable<String>`）— 業務方法 mutate state + `registerEvent(...)`；6 個充血方法（`recordVersionPublished` / `suspend` / `reactivate` / `grantAcl` / `revokeAcl` / `recordDownload`）；`@Version Long version` 樂觀鎖（V6 Flyway migration）；`isNew()` 自訂以對應 client-generated UUID PK。
+  - **SkillVersion 獨立 aggregate**（`@Table("skill_versions") extends AbstractAggregateRoot<SkillVersion>`）— 與 Skill 透過 plain `String skillId` FK 引用（**不**用 `@MappedCollection`，避開 `WritingContext.update()` delete-and-reinsert 雷）；`publish` factory + `attachRiskAssessment` 充血方法；4 個 derived queries。
+  - **SkillCommandService 縮為 3-line orchestration**（load → mutate → save）— 移除 `eventStore` 注入 + `saveDomainEventOnly` / `nextEventSequence` / `loadAggregate` 等 ES path helpers。
+  - **AuditEventListener**（新 `audit` 頂層 module）— 9 個 `@ApplicationModuleListener` 訂閱所有 Skill domain events 寫 `domain_events` audit row；冪等性三層保險：`UUID.nameUUIDFromBytes(dedupKey)` 確定性 row id + `INSERT ... ON CONFLICT (id) DO NOTHING` + 同 aggregate `pg_advisory_xact_lock(hashtext('audit:' || aggregateId)::bigint)` 序列化；`FlagService` 共用同 advisory lock 避免 `MAX(sequence)+1` race。
+  - **Query side 簡化** — `SkillQueryController` response type 改為 `Skill` / `SkillVersion` aggregate（取代 `SkillReadModel` / `SkillVersionReadModel` records）；`SkillQueryService` 直打 `SkillRepository` / `SkillVersionRepository`；search 動態 SQL 透過 `Skill.fromRow(...)` 物化 row 為 aggregate。
+  - **ScanOrchestrator 改 attachRiskAssessment 路徑** — 移除 `eventStore.save(SkillRiskAssessed)` + `objectMapper` 注入；改 `versionRepo.findBySkillIdAndVersion + sv.attachRiskAssessment + versionRepo.save`（透過 `@DomainEvents` publish `SkillRiskAssessedEvent` 至 outbox；audit row 由 AuditEventListener 統一處理）。
+  - **新增 audit module**（`io.github.samzhu.skillshub.audit`）— `@ApplicationModule(allowedDependencies = {"shared :: events", "skill :: domain"})`；移到獨立頂層 module 避開 `shared → skill` Modulith cycle。
+  - **API contract regression test**（`SkillQueryControllerApiContractTest`）— jsonPath 鎖定 v1.5.0 fields；驗證無 `version` 欄位 expose（`@JsonIgnore` on `Skill.version` 生效）。
+  - **13 個 SBE AC 全綠**：AC-1~AC-13；verify-all.sh V01-V06 全綠；269 tests / 0 failed / 5 skipped；JaCoCo line coverage 89.6% ≥ 80% gate。
+  - **獨立 QA subagent verdict PASS**（with minor Javadoc fix in-place）— 13 ACs 全部驗證；audit module 邊界乾淨。
+
+### Changed
+- **架構轉向**（per ADR-002 Phase 2）：Skills Hub Core Domain 從純 Event Sourcing 路線完成轉向「Spring Data JDBC 充血聚合 + Modulith Outbox」。`domain_events` 表角色重新定位為 **event log**（保留完整 ES 精神 — events 不可變、`(aggregate_id, sequence)` 嚴格遞增、理論上可 replay 還原任意時點 aggregate state；只是寫入路徑改為 AuditEventListener async 統一寫入，平時用 `repo.findById()` O(1) read 而非 events fold replay）。
+- **DomainEventRepository 加 `saveAuditIdempotent`** `@Modifying @Query` — 原子 `INSERT INTO domain_events ... SELECT COALESCE(MAX(seq), 0)+1 ... ON CONFLICT (id) DO NOTHING`。
+- **FlagService.createFlag** 加同 listener 的 advisory lock（避免與 audit listener race）+ `@Transactional` annotation。
+
+### Removed
+- **5 個 read-model 檔案**：`SkillProjection.java` / `SkillReadModel.java` / `SkillReadModelRepository.java` / `SkillVersionReadModel.java` / `SkillVersionReadModelRepository.java`（per AC-9）。
+- **7 個 obsolete test 檔案**：`SkillProjectionAclTest` / `SkillProjectionStatusTest` / `SkillProjectionListenerAnnotationsTest` / `SkillReadModelAclTest` / `AtomicDownloadCountTest`（read-model listener tests）+ `SkillAclTest` / `SkillStateMachineTest`（v1.5.0 ES replay constructor 測試；功能由新 `SkillAggregateTest` 覆蓋）。
+- **`SkillCommandService.saveDomainEventOnly`** transitional bridge + `nextEventSequence` helper + `loadAggregate` ES replay method + `eventStore` field injection。
+- **`Skill` 類所有 ES path API**：`Skill(String, List<DomainEvent>)` replay constructor、`create(String,String,String,String)` event-returning factory、deprecated `publishVersion/suspend/reactivate/grantAcl/revokeAcl` overloads、`nextSequence()`、`@Transient publishedVersions/currentAclEntries/latestSequence` fields。
+- **`ScanOrchestrator`** 直接 `eventStore.save(SkillRiskAssessed)` 路徑 + `DomainEventRepository` / `ObjectMapper` 注入（audit 由 listener 處理）。
+
+### Known Limitations
+- **無 emergency replay 路徑**：`Skill.fromHistory(events)` factory 已隨 ES path API 完整移除；如需 emergency rebuild aggregate from `domain_events`，可寫 private static factory（events 序列保留 → 隨時可加）。本 spec §7 KF-8 + architecture.md 已記載此設計選項。
+
+### Documentation
+- `docs/grimo/architecture.md` — Architecture Pattern 段（L22-174）整段改寫為「Spring Data JDBC Rich Aggregate + Modulith Outbox」；Event Store 段改為「Event Log」（保留 ES 精神 + 不主動 replay 設計取捨說明）；System Architecture box / Module Design 同步更新；audit module 新增。
+- `CLAUDE.md` — Architecture pattern 段完整改寫；Modulith modules 加 `audit (S024)`；架構描述強調 ES 精神保留 + 不主動 replay 取捨。
+- `docs/grimo/development-standards.md` — § 「Event Sourcing + CQRS 規範」段整段改寫為「Spring Data JDBC Rich Aggregate + Modulith Outbox 規範」（14 條標準）；保留 § Spring Modulith Outbox 規範段（S023 既有）不變。
+- `docs/grimo/specs/spec-roadmap.md` — S024 entry → ✅；M19 milestone → ✅ `v2.0.0`；ES backlog ES-B1~B4 strikethrough（既有 pending S024 ship 標註）。
+
+---
+
 ## [v1.5.0] — Phase 3a: Spring Modulith Outbox Foundation（M18 完成；2026-04-29）
 
 ### Added

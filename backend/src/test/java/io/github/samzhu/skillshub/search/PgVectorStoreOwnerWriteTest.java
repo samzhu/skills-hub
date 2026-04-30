@@ -24,8 +24,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * AC-10 + AC-13 整合驗證 — {@link SkillshubPgVectorStore} 一次 6-欄 INSERT
@@ -49,7 +49,7 @@ import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
 class PgVectorStoreOwnerWriteTest {
 
     @Autowired private JdbcTemplate jdbc;
-    @Autowired private SkillReadModelRepository skillRepo;
+    @Autowired private SkillRepository skillRepo;
 
     @MockitoBean private EmbeddingModel embeddingModel;
 
@@ -72,9 +72,9 @@ class PgVectorStoreOwnerWriteTest {
         // FK 前置
         var skillId = UUID.randomUUID().toString();
         var now = Instant.now();
-        skillRepo.save(new SkillReadModel(
+        skillRepo.save(Skill.fromRow(
                 skillId, "test-skill", "tests 6-col single INSERT", "qa-author", "Testing",
-                null, null, "DRAFT", 0L, now, now, List.of())); // S016 aclEntries
+                null, null, "DRAFT", 0L, now, now, List.of(), null)); // S016 aclEntries
 
         // Act：用 builder 直接寫入
         SkillshubPgVectorStore.builder(jdbc, embeddingModel)
@@ -106,9 +106,9 @@ class PgVectorStoreOwnerWriteTest {
     void onConflictPreservesExistingOwnerViaCoalesce() {
         var skillId = UUID.randomUUID().toString();
         var now = Instant.now();
-        skillRepo.save(new SkillReadModel(
+        skillRepo.save(Skill.fromRow(
                 skillId, "preserve-skill", "tests COALESCE preservation", "qa-author", "Testing",
-                null, null, "DRAFT", 0L, now, now, List.of())); // S016 aclEntries
+                null, null, "DRAFT", 0L, now, now, List.of(), null)); // S016 aclEntries
 
         // 第 1 次寫入：帶 owner
         SkillshubPgVectorStore.builder(jdbc, embeddingModel)

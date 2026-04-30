@@ -36,10 +36,9 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
  * async 避免阻塞 publisher 線程；async executor 容量限 2（per AsyncListenerConfig POC）。
  *
  * <p>FK 順序：vector_store.skill_id → skills.id (ON DELETE CASCADE)；
- * {@code SkillProjection.on(SkillCreatedEvent)} 仍為 sync {@code @EventListener} +
- * {@code @Order(HIGHEST_PRECEDENCE)}（per S023 spec §2.2 hybrid migration）—
- * 在 publisher TX 內寫 skills row，commit 後本 async listener 才觸發，FK 必滿足。
- * S024 後 Skill 變 stateful aggregate 自己 INSERT skills row，hybrid 結構即可廢除。
+ * S024 起 Skill aggregate 在 publisher TX 內透過 {@code skillRepo.save(skill)} 同步 INSERT
+ * skills row，commit 後本 async listener 才觸發，FK 必滿足。S023 hybrid SkillProjection
+ * sync listener 結構已隨 T05B read-model 刪除廢除。
  *
  * <p>Idempotency：vector store 既有 {@code ON CONFLICT (id) DO UPDATE}（per S014
  * 自寫 SkillshubPgVectorStore）保證重投時 row 內容覆寫一致；無需新加 dedup 機制。

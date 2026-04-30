@@ -24,8 +24,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * S016 T6 — {@link SkillshubPgVectorStore} INSERT_SQL 升 7 欄（含 acl_entries）+
@@ -40,7 +40,7 @@ import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
 class SkillshubPgVectorStoreAclTest {
 
     @Autowired private JdbcTemplate jdbc;
-    @Autowired private SkillReadModelRepository skillRepo;
+    @Autowired private SkillRepository skillRepo;
 
     @MockitoBean private EmbeddingModel embeddingModel;
 
@@ -131,10 +131,10 @@ class SkillshubPgVectorStoreAclTest {
     private String seedSkillFk() {
         var skillId = UUID.randomUUID().toString();
         var now = Instant.now();
-        skillRepo.save(new SkillReadModel(
+        skillRepo.save(Skill.fromRow(
                 skillId, "vec-acl-" + skillId.substring(0, 8),
                 "vector_store ACL test fixture", "alice", "Testing",
-                null, null, "DRAFT", 0L, now, now, List.of()));
+                null, null, "DRAFT", 0L, now, now, List.of(), null));
         return skillId;
     }
 

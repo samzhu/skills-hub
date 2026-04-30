@@ -15,7 +15,6 @@ import org.springframework.http.HttpStatus;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -36,18 +35,19 @@ class SkillIntegrationTest {
 
 		var skillId = (String) postResponse.getBody().get("id");
 
-		var getResponse = restTemplate.getForEntity("/api/v1/skills/{id}", SkillReadModel.class, skillId);
+		// S024 T05B: response 改為 Skill aggregate JSON — 用 Map 解析（Skill 無 @JsonCreator）
+		var getResponse = restTemplate.getForEntity("/api/v1/skills/{id}", Map.class, skillId);
 		assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
 		var skill = getResponse.getBody();
 		assertThat(skill).isNotNull();
-		assertThat(skill.id()).isEqualTo(skillId);
-		assertThat(skill.name()).isEqualTo("test-skill");
-		assertThat(skill.description()).isEqualTo("A test skill");
-		assertThat(skill.author()).isEqualTo("tester");
-		assertThat(skill.category()).isEqualTo("Testing");
-		assertThat(skill.status()).isEqualTo("DRAFT");
-		assertThat(skill.createdAt()).isNotNull();
+		assertThat(skill.get("id")).isEqualTo(skillId);
+		assertThat(skill.get("name")).isEqualTo("test-skill");
+		assertThat(skill.get("description")).isEqualTo("A test skill");
+		assertThat(skill.get("author")).isEqualTo("tester");
+		assertThat(skill.get("category")).isEqualTo("Testing");
+		assertThat(skill.get("status")).isEqualTo("DRAFT");
+		assertThat(skill.get("createdAt")).isNotNull();
 	}
 
 }

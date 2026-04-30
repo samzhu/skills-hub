@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -25,8 +26,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * S016 T4 — POST/DELETE {@code /api/v1/skills/{id}/acl} endpoints 行為驗證。
@@ -34,9 +35,8 @@ import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
  * <p>對應 spec §4.12：grant 端點 201 Created；revoke 端點 204 No Content；
  * 無 write 權限呼叫者 → 403 Forbidden（{@code @PreAuthorize} gate）。
  *
- * <p>測試策略 mirror {@link SkillCommandControllerSecurityTest}：
- * MockMvc {@code .with(jwt())} 合成 JwtAuthenticationToken，須顯式 set authorities
- * 對齊 production JwtAuthenticationConverter 行為。
+ * <p>S024 T05B：seed 改直接 save Skill aggregate（取代 read-model + event store dual seed）；
+ * audit event 斷言加 Awaitility wrap（AuditEventListener async 寫入 domain_events）。
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -47,19 +47,16 @@ class SkillAclControllerTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private SkillReadModelRepository skillRepo;
+    private SkillRepository skillRepo;
 
     @Autowired
     private DomainEventRepository eventStore;
-
-    @Autowired
-    private SkillCommandService commandService;
 
     @Test
     @DisplayName("AC-9: alice (write) POST /skills/{id}/acl → 201 + SkillAclGranted event 寫入")
     @Tag("AC-9")
     void grantAcl_ownerPost_returns201AndPersistsEvent() throws Exception {
-        var skillId = seedSkillWithEvent(List.of("user:alice:read", "user:alice:write"));
+        var skillId = seedSkill(List.of("user:alice:read", "user:alice:write"));
 
         mockMvc.perform(post("/api/v1/skills/" + skillId + "/acl")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -71,24 +68,25 @@ class SkillAclControllerTest {
                         .authorities(new SimpleGrantedAuthority("ROLE_user"))))
                 .andExpect(status().isCreated());
 
-        var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
-        var grantedExists = events.stream()
-                .anyMatch(e -> "SkillAclGranted".equals(e.eventType())
-                        && "engineering".equals(e.payload().get("principal")));
-        org.assertj.core.api.Assertions.assertThat(grantedExists).isTrue();
+        // S024 T05B: AuditEventListener async 寫 domain_events row — Awaitility 等
+        org.awaitility.Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .untilAsserted(() -> {
+                    var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
+                    var grantedExists = events.stream()
+                            .anyMatch(e -> "SkillAclGranted".equals(e.eventType())
+                                    && "engineering".equals(e.payload().get("principal")));
+                    org.assertj.core.api.Assertions.assertThat(grantedExists).isTrue();
+                });
     }
 
-    @org.junit.jupiter.api.Disabled("S024 T4 transitional: seedSkillWithEvent direct DB-seeds skills.acl_entries which Skill aggregate now reads as state. Subsequent commandService.grantAcl(group:engineering:read) sees pre-existing entry → IllegalStateException 'already exists'. T5 will rewrite test setup to use commandService.createSkill + grantAcl path consistently after read-model deletion.")
     @Test
     @DisplayName("AC-10: alice (write) DELETE /skills/{id}/acl?type=...&principal=...&permission=... → 204 + SkillAclRevoked event")
     @Tag("AC-10")
     void revokeAcl_ownerDelete_returns204AndPersistsEvent() throws Exception {
-        var skillId = seedSkillWithEvent(List.of(
+        // seed skill 含目標 entry — controller 端 revoke 會找到
+        var skillId = seedSkill(List.of(
                 "user:alice:read", "user:alice:write", "group:engineering:read"));
-
-        // 先把 group:engineering:read 變成 aggregate 已知狀態（透過 event store seed grant event）
-        commandService.grantAcl(new GrantAclCommand(
-                skillId, "group", "engineering", "read", "system-fixture"));
 
         mockMvc.perform(delete("/api/v1/skills/" + skillId + "/acl")
                 .param("type", "group")
@@ -101,18 +99,22 @@ class SkillAclControllerTest {
                         .authorities(new SimpleGrantedAuthority("ROLE_user"))))
                 .andExpect(status().isNoContent());
 
-        var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
-        var revokedExists = events.stream()
-                .anyMatch(e -> "SkillAclRevoked".equals(e.eventType())
-                        && "engineering".equals(e.payload().get("principal")));
-        org.assertj.core.api.Assertions.assertThat(revokedExists).isTrue();
+        org.awaitility.Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .untilAsserted(() -> {
+                    var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
+                    var revokedExists = events.stream()
+                            .anyMatch(e -> "SkillAclRevoked".equals(e.eventType())
+                                    && "engineering".equals(e.payload().get("principal")));
+                    org.assertj.core.api.Assertions.assertThat(revokedExists).isTrue();
+                });
     }
 
     @Test
     @DisplayName("AC-11: alice (read) GET /skills/{id}/acl → 200 + 解析後的 entry list")
     @Tag("AC-11")
     void listAcl_owner_returns200WithEntries() throws Exception {
-        var skillId = seedSkillWithEvent(List.of(
+        var skillId = seedSkill(List.of(
                 "user:alice:read", "user:alice:write", "group:engineering:read"));
 
         mockMvc.perform(get("/api/v1/skills/" + skillId + "/acl")
@@ -132,7 +134,7 @@ class SkillAclControllerTest {
     @DisplayName("AC-11: carol（無任何 ACL）GET /skills/{id}/acl → 403 Forbidden")
     @Tag("AC-11")
     void listAcl_nonReader_returns403() throws Exception {
-        var skillId = seedSkillWithEvent(List.of("user:alice:read", "user:alice:write"));
+        var skillId = seedSkill(List.of("user:alice:read", "user:alice:write"));
 
         mockMvc.perform(get("/api/v1/skills/" + skillId + "/acl")
                 .with(jwt()
@@ -147,7 +149,7 @@ class SkillAclControllerTest {
     @DisplayName("AC-7: bob (無 write) POST /skills/{id}/acl → 403 Forbidden")
     @Tag("AC-7")
     void grantAcl_nonOwner_returns403() throws Exception {
-        var skillId = seedSkillWithEvent(List.of("user:alice:read", "user:alice:write"));
+        var skillId = seedSkill(List.of("user:alice:read", "user:alice:write"));
 
         mockMvc.perform(post("/api/v1/skills/" + skillId + "/acl")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -161,13 +163,12 @@ class SkillAclControllerTest {
     }
 
     /**
-     * 同時 seed：(a) skills read model row 含 acl_entries（讓 SkillPermissionStrategy `??|` 命中）；
-     * (b) domain_events 一筆 SkillCreated（讓 SkillCommandService.loadAggregate 能 replay）。
+     * Seed Skill aggregate 含目標 acl_entries — S024 T05B 取代 read-model + event store dual seed。
      */
-    private String seedSkillWithEvent(List<String> aclEntries) {
+    private String seedSkill(List<String> aclEntries) {
         var id = UUID.randomUUID().toString();
         var now = Instant.now();
-        skillRepo.save(new SkillReadModel(
+        skillRepo.save(Skill.fromRow(
                 id,
                 "acl-ctrl-" + id.substring(0, 8),
                 "ACL controller test fixture",
@@ -178,14 +179,8 @@ class SkillAclControllerTest {
                 "PUBLISHED",
                 0L,
                 now, now,
-                aclEntries));
-
-        var seedEvent = new io.github.samzhu.skillshub.shared.events.DomainEvent(
-                UUID.randomUUID().toString(), id, "Skill", "SkillCreated",
-                java.util.Map.of("name", "acl-ctrl-" + id.substring(0, 8),
-                        "description", "fixture", "author", "alice", "category", "Testing"),
-                1L, now, java.util.Map.of());
-        eventStore.save(seedEvent);
+                aclEntries,
+                null));
         return id;
     }
 }

@@ -1,18 +1,14 @@
 package io.github.samzhu.skillshub.skill.query;
 
 import java.lang.invoke.MethodHandles;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -20,27 +16,33 @@ import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.samzhu.skillshub.shared.events.DomainEvent;
-import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
-import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillVersion;
+import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
 import io.github.samzhu.skillshub.storage.StorageService;
 
 /**
  * 技能查詢服務 — CQRS 讀取端的核心入口（Spring Data JDBC + PostgreSQL）。
  *
- * <p>負責：關鍵字搜尋、分類篩選、技能詳情查詢、版本歷史、下載（含事件記錄）。
- * 動態搜尋使用 {@link NamedParameterJdbcTemplate} 動態組 SQL，
- * 因為 Spring Data JDBC 的 derived query 無法表達 optional filters + dynamic sort。
+ * <p>S024 ship 後改為直接打 {@link SkillRepository} / {@link SkillVersionRepository} 兩個
+ * aggregate repository（取代既有 SkillReadModelRepository / SkillVersionReadModelRepository
+ * 的 read-model 設計；ADR-002 §2.4 — 「single skills row 同時為 write model + read model」）。
  *
- * <p>下載操作雖然是讀取，但附帶副作用（記錄 {@link SkillDownloadedEvent}），
- * 因此在此服務中同時處理讀取 + 事件發佈。
+ * <p>動態關鍵字搜尋仍用 {@link NamedParameterJdbcTemplate}（Spring Data JDBC derived query
+ * 無法表達 optional filters + dynamic sort），但 row mapping 改用 {@link Skill#fromRow}
+ * 物化 aggregate 物件，與 {@code findById} 等 path 共用同一回傳型別。
  *
- * <p>S014 從 Firestore（MongoTemplate）遷至 PostgreSQL（NamedParameterJdbcTemplate）。
+ * <p>下載操作改走 aggregate 充血方法 {@link Skill#recordDownload}：
+ * load → mutate downloadCount + register {@code SkillDownloadedEvent} → save。
+ * Spring Data JDBC 透過 {@code @DomainEvents} 自動 publish 至 Modulith outbox；
+ * 既有 v1.5.0 直接 publishEvent + 寫 domain_events 路徑同 T05B 一併移除。
  */
 @Service
 public class SkillQueryService {
@@ -49,45 +51,40 @@ public class SkillQueryService {
 
 	/**
 	 * Sort 屬性白名單 — 防 SQL 注入（dynamic ORDER BY 必須白名單比對）。
-	 * 使用 SkillReadModel 的 Java 屬性名（camelCase），對應到 SQL snake_case 欄位。
+	 * 使用 Skill aggregate 的 Java 屬性名（camelCase），對應到 SQL snake_case 欄位。
 	 */
 	private static final Set<String> SORTABLE_PROPERTIES = Set.of(
 			"name", "createdAt", "updatedAt", "downloadCount", "category", "status");
 
-	// raw JDBC rowMapper 不會走 Spring Data JDBC 的 user converter；S016 後 SkillReadModel
-	// 多了 acl_entries（List<String>）需要手動 JSONB → List<String> 反序列化，故注入 ObjectMapper。
+	// raw JDBC rowMapper 不會走 Spring Data JDBC 的 user converter；
+	// acl_entries（List<String>）需手動 JSONB → List<String> 反序列化，故注入 ObjectMapper。
 	private static final TypeReference<List<String>> ACL_ENTRIES_TYPE = new TypeReference<>() {};
 
-	private final SkillReadModelRepository repo;
-	private final SkillVersionReadModelRepository versionRepo;
+	private final SkillRepository skillRepo;
+	private final SkillVersionRepository skillVersionRepo;
 	private final NamedParameterJdbcTemplate jdbc;
 	private final StorageService storageService;
-	private final DomainEventRepository eventStore;
-	private final ApplicationEventPublisher events;
 	private final ObjectMapper objectMapper;
 
-	public SkillQueryService(SkillReadModelRepository repo, SkillVersionReadModelRepository versionRepo,
+	public SkillQueryService(SkillRepository skillRepo, SkillVersionRepository skillVersionRepo,
 			NamedParameterJdbcTemplate jdbc, StorageService storageService,
-			DomainEventRepository eventStore, ApplicationEventPublisher events,
 			ObjectMapper objectMapper) {
-		this.repo = repo;
-		this.versionRepo = versionRepo;
+		this.skillRepo = skillRepo;
+		this.skillVersionRepo = skillVersionRepo;
 		this.jdbc = jdbc;
 		this.storageService = storageService;
-		this.eventStore = eventStore;
-		this.events = events;
 		this.objectMapper = objectMapper;
 	}
 
 	/**
-	 * 依 ID 查詢單一技能的 read model。
+	 * 依 ID 查詢單一技能。
 	 *
 	 * @param id 技能的 aggregate ID
-	 * @return 技能讀取模型
+	 * @return 技能 aggregate
 	 * @throws NoSuchElementException 找不到該技能
 	 */
-	public SkillReadModel findById(String id) {
-		return repo.findById(id)
+	public Skill findById(String id) {
+		return skillRepo.findById(id)
 				.orElseThrow(() -> new NoSuchElementException("Skill not found: " + id));
 	}
 
@@ -106,11 +103,11 @@ public class SkillQueryService {
 	 * @param pageable 分頁 + 排序參數
 	 * @return 分頁結果
 	 */
-	public Page<SkillReadModel> search(String keyword, String category, Pageable pageable) {
+	public Page<Skill> search(String keyword, String category, Pageable pageable) {
 		var sql = new StringBuilder("""
 				SELECT id, name, description, author, category,
 				       latest_version, risk_level, status, download_count,
-				       created_at, updated_at, acl_entries
+				       created_at, updated_at, acl_entries, version
 				  FROM skills
 				 WHERE 1=1
 				""");
@@ -161,10 +158,10 @@ public class SkillQueryService {
 	 */
 	private static String buildOrderByClause(Sort sort) {
 		if (sort == null || sort.isUnsorted()) {
-			return "ORDER BY created_at DESC"; // 安全預設，與 Firestore 行為一致
+			return "ORDER BY created_at DESC"; // 安全預設
 		}
 		var parts = new ArrayList<String>();
-		// 用 LinkedHashSet 保留順序但去重（防同欄位多次注入）
+		// LinkedHashSet 保留順序但去重（防同欄位多次注入）
 		var seen = new HashSet<String>();
 		for (var order : sort) {
 			var prop = order.getProperty();
@@ -191,8 +188,10 @@ public class SkillQueryService {
 		return sb.toString();
 	}
 
-	private SkillReadModel mapSkillRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
-		return new SkillReadModel(
+	private Skill mapSkillRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		var versionVal = rs.getObject("version");
+		Long version = versionVal == null ? null : ((Number) versionVal).longValue();
+		return Skill.fromRow(
 				rs.getString("id"),
 				rs.getString("name"),
 				rs.getString("description"),
@@ -204,7 +203,8 @@ public class SkillQueryService {
 				rs.getLong("download_count"),
 				rs.getTimestamp("created_at").toInstant(),
 				rs.getTimestamp("updated_at").toInstant(),
-				parseAclEntries(rs.getString("acl_entries")));
+				parseAclEntries(rs.getString("acl_entries")),
+				version);
 	}
 
 	/**
@@ -230,20 +230,20 @@ public class SkillQueryService {
 	 * @param skillId 技能 ID
 	 * @return 版本列表（最新在前）
 	 */
-	public List<SkillVersionReadModel> findVersionsBySkillId(String skillId) {
-		return versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
+	public List<SkillVersion> findVersionsBySkillId(String skillId) {
+		return skillVersionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
 	}
 
 	/**
-	 * 下載某技能的最新版本 zip，並記錄下載事件。
+	 * 下載某技能的最新版本 zip，並透過 aggregate 充血方法觸發下載事件。
 	 *
 	 * @param skillId 技能 ID
 	 * @return zip 檔案的原始位元組
 	 * @throws NoSuchElementException 該技能沒有任何已發佈版本
 	 */
-	@org.springframework.transaction.annotation.Transactional
+	@Transactional
 	public byte[] downloadLatest(String skillId) {
-		var versions = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
+		var versions = skillVersionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
 		if (versions.isEmpty()) {
 			throw new NoSuchElementException("No versions found for skill: " + skillId);
 		}
@@ -251,48 +251,35 @@ public class SkillQueryService {
 	}
 
 	/**
-	 * 下載某技能的指定版本 zip，並記錄下載事件。
+	 * 下載某技能的指定版本 zip，並透過 aggregate 充血方法觸發下載事件。
 	 *
 	 * @param skillId 技能 ID
 	 * @param version 指定版本號（如 "1.0.0"）
 	 * @return zip 檔案的原始位元組
 	 * @throws NoSuchElementException 找不到該版本
 	 */
-	@org.springframework.transaction.annotation.Transactional
+	@Transactional
 	public byte[] downloadVersion(String skillId, String version) {
-		var versions = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
-		var target = versions.stream()
-				.filter(v -> version.equals(v.version()))
-				.findFirst()
+		var target = skillVersionRepo.findBySkillIdAndVersion(skillId, version)
 				.orElseThrow(() -> new NoSuchElementException("Version " + version + " not found"));
 		return downloadAndRecord(skillId, target);
 	}
 
 	/**
-	 * 從 GCS 下載 zip 並發佈 SkillDownloaded 事件（供 analytics projection 消費）。
-	 *
-	 * <p>S023-T07：呼叫端 ({@link #downloadLatest} / {@link #downloadVersion}) 已加
-	 * `@Transactional` — `@ApplicationModuleListener`（內含
-	 * `@TransactionalEventListener AFTER_COMMIT`）在 TX 外 publish 會 silently drop；
-	 * 加上 TX boundary 確保 listener 觸發。
+	 * S024 T05B：下載成功 + 透過 aggregate 充血方法計數 + register {@code SkillDownloadedEvent}。
+	 * Spring Data JDBC {@code skillRepo.save} 透過 {@code @DomainEvents} 自動 publish 至 Modulith
+	 * outbox，由 AnalyticsProjection / AuditEventListener 等 listener 接收。
 	 */
-	private byte[] downloadAndRecord(String skillId, SkillVersionReadModel version) {
-		var zipBytes = storageService.download(version.storagePath());
-
-		// 計算下一個 event sequence — Aggregate 樂觀鎖控制
-		var latestEvent = eventStore.findTopByAggregateIdOrderBySequenceDesc(skillId);
-		long nextSequence = latestEvent.map(e -> e.sequence() + 1).orElse(1L);
-
-		var payload = Map.<String, Object>of("version", version.version());
-		var domainEvent = new DomainEvent(
-				UUID.randomUUID().toString(), skillId, "Skill", "SkillDownloaded",
-				payload, nextSequence, Instant.now(), Map.of());
-		eventStore.save(domainEvent);
-		events.publishEvent(SkillDownloadedEvent.of(skillId, version.version()));
+	private byte[] downloadAndRecord(String skillId, SkillVersion version) {
+		var zipBytes = storageService.download(version.getStoragePath());
+		var skill = skillRepo.findById(skillId)
+				.orElseThrow(() -> new NoSuchElementException("Skill not found: " + skillId));
+		skill.recordDownload();
+		skillRepo.save(skill);
 
 		log.atInfo()
 				.addKeyValue("skillId", skillId)
-				.addKeyValue("version", version.version())
+				.addKeyValue("version", version.getVersion())
 				.addKeyValue("fileSize", zipBytes.length)
 				.log("技能下載完成，已記錄下載事件");
 

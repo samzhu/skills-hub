@@ -104,7 +104,7 @@ class SkillAggregateTest {
         skill.recordVersionPublished("1.0.0");   // DRAFT → PUBLISHED
         clearDomainEvents(skill);
 
-        skill.recordSuspended(new SuspendCommand(skill.getId(), "policy violation", "admin"));
+        skill.suspend(new SuspendCommand(skill.getId(), "policy violation", "admin"));
 
         assertThat(skill.getStatus()).isEqualTo(SkillStatus.SUSPENDED);
         assertThat(skill.getUpdatedAt()).isNotNull();
@@ -123,10 +123,10 @@ class SkillAggregateTest {
     void recordReactivatedOnSuspended() {
         var skill = Skill.create(new CreateSkillCommand("reactivate-test", "desc", "alice", "DevOps"));
         skill.recordVersionPublished("1.0.0");
-        skill.recordSuspended(new SuspendCommand(skill.getId(), "policy", "admin"));
+        skill.suspend(new SuspendCommand(skill.getId(), "policy", "admin"));
         clearDomainEvents(skill);
 
-        skill.recordReactivated(new ReactivateCommand(skill.getId(), "manual review approved"));
+        skill.reactivate(new ReactivateCommand(skill.getId(), "manual review approved"));
 
         assertThat(skill.getStatus()).isEqualTo(SkillStatus.PUBLISHED);
         var events = retrieveDomainEvents(skill);
@@ -146,7 +146,7 @@ class SkillAggregateTest {
     void recordVersionPublishedOnSuspendedThrows() {
         var skill = Skill.create(new CreateSkillCommand("suspended-test", "desc", "alice", "DevOps"));
         skill.recordVersionPublished("1.0.0");
-        skill.recordSuspended(new SuspendCommand(skill.getId(), "policy", "admin"));
+        skill.suspend(new SuspendCommand(skill.getId(), "policy", "admin"));
         clearDomainEvents(skill);
 
         assertThatThrownBy(() -> skill.recordVersionPublished("1.1.0"))
@@ -167,7 +167,7 @@ class SkillAggregateTest {
         var skill = Skill.create(new CreateSkillCommand("draft-suspend", "desc", "alice", "DevOps"));
         clearDomainEvents(skill);
 
-        assertThatThrownBy(() -> skill.recordSuspended(new SuspendCommand(skill.getId(), "premature", "admin")))
+        assertThatThrownBy(() -> skill.suspend(new SuspendCommand(skill.getId(), "premature", "admin")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DRAFT");
 
@@ -183,7 +183,7 @@ class SkillAggregateTest {
         skill.recordVersionPublished("1.0.0");
         clearDomainEvents(skill);
 
-        assertThatThrownBy(() -> skill.recordReactivated(new ReactivateCommand(skill.getId(), "ineffective")))
+        assertThatThrownBy(() -> skill.reactivate(new ReactivateCommand(skill.getId(), "ineffective")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("PUBLISHED");
 
@@ -203,7 +203,7 @@ class SkillAggregateTest {
         assertThat(skill.getAclEntries()).isEmpty();
         clearDomainEvents(skill);
 
-        skill.recordAclGranted(new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin"));
+        skill.grantAcl(new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin"));
 
         assertThat(skill.getAclEntries()).containsExactly("user:alice:read");
         var events = retrieveDomainEvents(skill);
@@ -213,13 +213,13 @@ class SkillAggregateTest {
 
     @Test
     @Tag("AC-8")
-    @DisplayName("AC-8: recordAclGranted 重複 entry → IllegalStateException + state 不變")
-    void recordAclGrantedDuplicateThrows() {
+    @DisplayName("AC-8: grantAcl 重複 entry → IllegalStateException + state 不變")
+    void grantAclDuplicateThrows() {
         var skill = Skill.create(new CreateSkillCommand("acl-dup-test", "desc", null, "DevOps"));
-        skill.recordAclGranted(new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin"));
+        skill.grantAcl(new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin"));
         clearDomainEvents(skill);
 
-        assertThatThrownBy(() -> skill.recordAclGranted(
+        assertThatThrownBy(() -> skill.grantAcl(
                 new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("already exists");
@@ -231,13 +231,13 @@ class SkillAggregateTest {
 
     @Test
     @Tag("AC-8")
-    @DisplayName("AC-8: recordAclRevoked 移除 entry + register SkillAclRevokedEvent")
-    void recordAclRevokedRemovesAndRegistersEvent() {
+    @DisplayName("AC-8: revokeAcl 移除 entry + register SkillAclRevokedEvent")
+    void revokeAclRemovesAndRegistersEvent() {
         var skill = Skill.create(new CreateSkillCommand("acl-revoke-test", "desc", null, "DevOps"));
-        skill.recordAclGranted(new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin"));
+        skill.grantAcl(new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin"));
         clearDomainEvents(skill);
 
-        skill.recordAclRevoked(new RevokeAclCommand(skill.getId(), "user", "alice", "read", "admin"));
+        skill.revokeAcl(new RevokeAclCommand(skill.getId(), "user", "alice", "read", "admin"));
 
         assertThat(skill.getAclEntries()).isEmpty();
         var events = retrieveDomainEvents(skill);
@@ -247,12 +247,12 @@ class SkillAggregateTest {
 
     @Test
     @Tag("AC-8")
-    @DisplayName("AC-8: recordAclRevoked entry 不存在 → IllegalStateException")
-    void recordAclRevokedNotFoundThrows() {
+    @DisplayName("AC-8: revokeAcl entry 不存在 → IllegalStateException")
+    void revokeAclNotFoundThrows() {
         var skill = Skill.create(new CreateSkillCommand("acl-nonex-test", "desc", null, "DevOps"));
         clearDomainEvents(skill);
 
-        assertThatThrownBy(() -> skill.recordAclRevoked(
+        assertThatThrownBy(() -> skill.revokeAcl(
                 new RevokeAclCommand(skill.getId(), "user", "alice", "read", "admin")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("not found");

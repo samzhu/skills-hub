@@ -1,6 +1,6 @@
 # S024: Skill State-Based Aggregate Migration
 
-> Spec: S024 | Size: M(13) | Status: ⏳ Plan
+> Spec: S024 | Size: M(13) | Status: ⏳ Verify (待 QA subagent + `/shipping-release`)
 > Date: 2026-04-29
 > ADR: [ADR-002 — Skill aggregate state-based migration](../adr/ADR-002-skill-aggregate-state-based.md)
 > Research: `docs/deepwiki/spring-data-jdbc-modulith/`
@@ -817,8 +817,8 @@ S024 ship 後 24 小時內監控：
 | **T3** | SkillVersion 獨立 aggregate 完整化 + repository derived queries + attachRiskAssessment | AC-5 | AC-7 (partial via DB UNIQUE) | 45-60 min | **PASS** ✅ (4 unit + 6 integration) |
 | **T4** | SkillCommandService 縮減為 3 行 orchestration | AC-4, AC-7 (full) | AC-3 (extended) | 60 min | **PASS** ✅ (dual-write transitional；4 tests @Disabled，T5 接管) |
 | **T5** | Scaffolding subset: AuditEventListener stub + SkillRepository.updateRiskLevel + ScanOrchestrator 改造 | AC-3 (extended) | AC-10 (partial — listener exists, real write deferred) | 30 min | **PASS** ✅ (scaffolding only) |
-| **T7** | (new) AuditEventListener 真實 audit write + 刪 read-models + Query side 切換 + remove saveDomainEventOnly + 修 4 @Disabled tests + ScanOrchestratorTest rewrite | AC-9, AC-10 (full), AC-4 (full) | AC-11 (partial) | 90-120 min | pending（split from T5）|
-| **T6** | API contract regression + ApplicationModules.verify + 文件同步（architecture / CLAUDE / standards / roadmap）| AC-11 (full), AC-12, AC-13 (full) | — | 60 min | pending |
+| **T5B** | (split from T5) AuditEventListener 真實 audit write + 刪 read-models + Query side 切換 + remove saveDomainEventOnly + 修 4 @Disabled tests + ScanOrchestratorTest rewrite | AC-9, AC-10 (full), AC-4 (full) | AC-11 (partial) | 90-120 min | **PASS** ✅ (audit module 拆分；advisory lock 序列化 sequence；20+ tests refactor) |
+| **T6** | API contract regression + ApplicationModules.verify + 文件同步（architecture / CLAUDE / standards / roadmap）| AC-11 (full), AC-12, AC-13 (full) | — | 60 min | **PASS** ✅ (3 new tests + 4 docs sync + FlagService advisory lock fix) |
 
 ### Task Sequencing Constraints
 
@@ -860,4 +860,300 @@ Task files 為 temporary work item — ship 後刪除，所有 result（含 POC 
 
 ---
 
-<!-- Section 7 (Implementation Results) added by /planning-tasks Phase 4 -->
+## 7. Implementation Results
+
+> Consolidated from `docs/grimo/tasks/2026-04-29-S024-T0{1..6,5B}.md` after all tasks PASS（task files cleaned up post-consolidation；source of truth 為本節）。
+
+### Verification
+
+- `./gradlew test`：**269 tests / 0 failures / 5 skipped** — 連續穩定通過（cold + rerun）
+- `./gradlew compileTestJava`：BUILD SUCCESSFUL
+- `./gradlew compileJava`：BUILD SUCCESSFUL
+- ModularityTests.verifyModuleStructure：通過 — `ApplicationModules.of(SkillshubApplication.class).verify()` 不拋例外
+- ModularityTests.shouldHaveAuditModuleWithCorrectDependencies：通過 — audit module 邊界乾淨
+
+**E2E artifact verification rationale**: skipped。本 spec 整體為純 production 程式碼演化（aggregate state mapping、Spring Data JDBC `@DomainEvents` proxy、Modulith outbox listener wiring），所有 integration seam 已由 269 個 Spring Boot test（Testcontainers PostgreSQL + 全 Spring context）full-stack 覆蓋：`AuditEventListenerTest` (8 tests)、`SkillCommandServiceCrossAggregateTest` (3 tests)、`S016EndToEndSmokeTest` (multi-step E2E)、`SkillQueryControllerApiContractTest` (2 tests JSON shape regression)。Manual artifact 啟動無新增 boundary condition 可揭露。
+
+### Key Findings
+
+#### KF-1：Spring Data JDBC `@Id` + isNew default 對 client-generated UUID 的雷
+
+**問題**：客戶端產生 UUID 作為 `@Id`，預設 `isNew()` 規則「@Id 非 null = existing」→ `repo.save()` 走 UPDATE → 0 rows affected → 拋 `IncorrectResultSizeDataAccessException`。
+
+**解法**：Aggregate 必須 `implements Persistable<String>` + 自訂 `isNew()`：
+- `Skill`：用 `@Version Long version` 是否 null 判斷（factory 設 null → INSERT；DB load 後框架寫回 0 → UPDATE）
+- `SkillVersion`：用 `@Transient boolean isNew` flag（factory 設 true；`@PersistenceCreator` no-arg 預設 false）
+
+**參考**：[`docs/deepwiki/spring-data-jdbc-modulith/aggregate-design.md` §1.@Version + §4.isNew](../deepwiki/spring-data-jdbc-modulith/aggregate-design.md)
+
+#### KF-2：Spring Modulith cycle 限制 — AuditEventListener 必須獨立 module
+
+**問題**：原計劃放 `shared.events.audit.AuditEventListener`，但 `ApplicationModules.verify()` 拒絕：`shared → skill.domain`（events 引用）+ `skill → shared.security/events`（既有）→ 形成 cycle。
+
+**解法**：移到獨立頂層 module `audit`（`@ApplicationModule(allowedDependencies = {"shared :: events", "skill :: domain"})`）。
+
+**通則**：listener 訂閱 cross-module event 應放在「訂閱者所屬 module」，而非 event 提供者所屬 module。
+
+**Drift 紀錄**：spec §4 描述 AuditEventListener 應位於 `shared :: events :: audit`；實際移至 `audit` 頂層 module。development-standards.md / architecture.md 已反映實作；ModularityTests 註記原因。
+
+#### KF-3：Audit log idempotency — deterministic UUID + ON CONFLICT + advisory lock 三層保險
+
+**問題**：AuditEventListener 9 個 listener method 訂閱不同 events；同 aggregate 上多 listener 並發執行 → `MAX(sequence) + 1` race → `(aggregate_id, sequence)` UNIQUE 衝突 → Modulith 標 publication incomplete + 不自動 retry。
+
+**解法**（per [`AuditEventListener.java`](../../backend/src/main/java/io/github/samzhu/skillshub/audit/AuditEventListener.java) + [`DomainEventRepository.saveAuditIdempotent`](../../backend/src/main/java/io/github/samzhu/skillshub/shared/events/DomainEventRepository.java)）：
+1. `UUID.nameUUIDFromBytes(dedupKey.getBytes(UTF-8))` 確定性映射 row id（dedupKey 構成依事件特性：含 unique id 的用其 UUID；其餘用 `aggregateId + event_type + content`）
+2. `INSERT ... ON CONFLICT (id) DO NOTHING` — Modulith retry 重投同事件不產生 duplicate row
+3. `SELECT pg_advisory_xact_lock(hashtext('audit:' || aggregate_id)::bigint)` 在獨立 SQL 取鎖（同 TX 持有至 commit）— 同 aggregate 上多 listener 排隊；不同 aggregate 平行；獨立 statement 關鍵原因：`MAX(sequence)` 子查詢需在 lock 取得後的新 statement snapshot 中計算（READ COMMITTED 下，後續 SQL 才看得到 lock holder 已 commit 的 row）
+
+**衍生 fix**：`FlagService.createFlag` 同樣寫 `domain_events` row → 與 audit listener 共用 advisory lock 才不會 race（per T6 fix）。
+
+#### KF-4：PostgreSQL CTE inline + transaction snapshot 互動
+
+**Failed attempt**：`WITH _lock AS (SELECT pg_advisory_xact_lock(...)) INSERT ... SELECT MAX(...) FROM _lock` 即使加 `MATERIALIZED` 也無效 — `MAX(sequence)` 子查詢在 INSERT 同 statement 內計算，使用 statement-start snapshot，**看不到** lock 期間 commit 的競爭 row。
+
+**通則**：需要 「先取鎖 → 後讀最新 state」 必須拆兩個 statement（不同 statement snapshot）— 不能依賴單一 SQL CTE 順序。
+
+#### KF-5：`pg_advisory_xact_lock(integer)` overload 不存在
+
+**坑**：`hashtext` 回 `int4`；`pg_advisory_xact_lock` 只有 `(bigint)` 與 `(integer, integer)` 簽名 → 直接傳 `int4` 嘗試解析為 `(int, int)` 失敗。
+
+**解法**：顯式 cast — `pg_advisory_xact_lock(hashtext('audit:' || x)::bigint)`。
+
+#### KF-6：Awaitility `untilAsserted` 例外處理盲點
+
+**問題**：預設僅捕 `AssertionError`；其他 `RuntimeException`（如 `EmptyResultDataAccessException` from `queryForObject` on empty result）會立即中斷 polling 而非重試。
+
+**解法**：用 `queryForList` + `assertThat(rows).hasSize(1)` 取代 `queryForObject`（empty list 不拋；assertion 失敗才會被捕並 retry）。
+
+#### KF-7：Test cascade 規模遠超預期
+
+T05B 共改寫 ~20 test 檔（Awaitility wrap、setup pattern 改 `commandService.create` / `Skill.fromRow` seed、response type 改 `Map`）+ 刪除 7 test 檔（5 read-model listener tests + 2 ES path replay constructor tests）。Cascade 主因：v1.5.0 ES path 的 sync `eventStore` write → S024 async listener write 的 timing 變化，所有 sync `eventStore.findByAggregateId` 斷言都需 Awaitility wrap。
+
+**Lesson**：架構轉向類 spec（write path 從 sync 變 async）的 test cascade 規模 ≈ 直接 production 改動的 1.5-2x。下次估算需 budget。
+
+#### KF-8：domain_events 角色重新定位（user feedback）
+
+**Initial framing**：T6 doc updates 描述 `domain_events` 為「audit log（非 source of truth）」。
+
+**User feedback**：「domain_events 理論上 event 可以還原出當時聚合的狀態, 這個精神不變, 只是實務上小專案不用這麼重的快照等機制」。
+
+**Revised framing**：`domain_events` 為 **event log** — 保留完整 ES 精神（events 不可變、`(aggregate_id, sequence)` 嚴格遞增、理論上可 replay 還原任意時點 aggregate state）；只是寫入路徑改變（不再是業務寫入端的 source of truth，由 AuditEventListener async 接收 outbox 統一寫入）+ **不主動 replay**（小專案 read-heavy；`repo.findById()` O(1) 顯著快於 events fold）。三份文件（architecture / CLAUDE / standards）一致更新；明確標註「為何不主動 replay」設計取捨 + 「保留 events 序列以備未來 fromHistory factory 重建」。
+
+### Correct Usage Patterns（最有價值的 snippet）
+
+#### Pattern 1：Spring Data JDBC 充血聚合 minimal template
+
+```java
+@Table("skills")
+public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<String> {
+    @Id private String id;
+    @Version @JsonIgnore private Long version;       // 樂觀鎖；不 expose API JSON
+    private SkillStatus status;
+
+    @PersistenceCreator
+    private Skill() {}                                // Spring Data 用此 constructor 載入
+
+    public static Skill create(CreateSkillCommand cmd) {
+        var skill = new Skill();
+        skill.id = UUID.randomUUID().toString();
+        skill.version = null;                          // → isNew()=true → INSERT
+        // ... mutate state
+        skill.registerEvent(new SkillCreatedEvent(...));
+        return skill;
+    }
+
+    public void suspend(SuspendCommand cmd) {
+        this.status = this.status.suspend();           // state machine guard
+        registerEvent(new SkillSuspendedEvent(id, cmd.reason(), cmd.suspendedBy()));
+    }
+
+    @Override public String getId() { return id; }
+    @Override public boolean isNew() { return this.version == null; }
+}
+```
+
+#### Pattern 2：Service 3-line orchestration
+
+```java
+@Service
+public class SkillCommandService {
+    @Transactional
+    public void suspend(SuspendCommand cmd) {
+        var skill = skillRepo.findById(cmd.skillId()).orElseThrow();
+        skill.suspend(cmd);
+        skillRepo.save(skill);
+        // @DomainEvents proxy interceptor → events 進 event_publication outbox（同 TX）
+        // → AFTER_COMMIT async listeners 觸發
+    }
+}
+```
+
+#### Pattern 3：Idempotent audit INSERT（advisory lock + ON CONFLICT）
+
+```java
+// AuditEventListener.recordAudit (single TX from @ApplicationModuleListener REQUIRES_NEW)
+private void recordAudit(String aggregateId, String eventType,
+        Map<String, Object> payload, String dedupKey) {
+    // Step 1: per-aggregate 序列化鎖（同 TX 持有；新 statement snapshot）
+    jdbc.queryForList(
+            "SELECT pg_advisory_xact_lock(hashtext('audit:' || :aggregateId)::bigint)",
+            Collections.singletonMap("aggregateId", aggregateId));
+
+    // Step 2: 確定性 UUID + ON CONFLICT DO NOTHING
+    var rowId = UUID.nameUUIDFromBytes(dedupKey.getBytes(UTF-8)).toString();
+    var payloadJson = objectMapper.writeValueAsString(payload);
+    eventRepo.saveAuditIdempotent(rowId, aggregateId, "Skill", eventType, payloadJson, Instant.now());
+}
+```
+
+```java
+// DomainEventRepository
+@Modifying
+@Query("""
+    INSERT INTO domain_events (id, aggregate_id, aggregate_type, event_type, payload, sequence, occurred_at, metadata)
+    SELECT :id, :aggregateId, :aggregateType, :eventType, CAST(:payloadJson AS jsonb),
+           COALESCE((SELECT MAX(sequence) FROM domain_events WHERE aggregate_id = :aggregateId), 0) + 1,
+           :occurredAt, '{}'::jsonb
+    ON CONFLICT (id) DO NOTHING
+    """)
+int saveAuditIdempotent(...);
+```
+
+### AC Results
+
+| AC | Description | Status | Test Coverage |
+|---|---|---|---|
+| AC-1 | V6 Flyway migration 加 `skills.version` BIGINT | ✅ | `V6__skills_optimistic_lock.sql` + Skill 載入觸發 framework 寫入 |
+| AC-2 | Skill `@Table` aggregate + 充血方法 mutate state | ✅ | `SkillAggregateTest` (15 unit tests) |
+| AC-3 | `skillRepo.save(skill)` → @DomainEvents publish 至 outbox | ✅ | `SkillCommandServiceCrossAggregateTest` (3 tests; T1 POC validated) |
+| AC-4 | SkillCommandService 縮為 3 行 orchestration；`saveDomainEventOnly` 已刪除 | ✅ | `SkillCommandService.java` 每 method ≤ 4 statements；無 `eventStore.save` 直接呼叫 |
+| AC-5 | SkillVersion 獨立 aggregate；publishVersion 同 TX 寫兩 aggregate | ✅ | `SkillVersionAggregateTest` (4 unit) + `SkillVersionRepositoryTest` (6 integration) |
+| AC-6 | Skill.publishVersion / suspend on SUSPENDED 拋例外 | ✅ | `SkillAggregateTest.recordSuspendedOnDraftThrows` etc |
+| AC-7 | publishVersion 對重複版本拋 `VersionExistsException` | ✅ | `SkillUploadTest.duplicateVersionRejected` (re-enabled in T05B) + `SkillVersionRepositoryTest.existsBySkillIdAndVersion` |
+| AC-8 | ACL grant/revoke 透過充血方法 + acl_entries jsonb 行內 UPDATE | ✅ | `SkillAggregateTest.grantAcl*` etc + `SkillAclCommandServiceTest` (4 tests) |
+| AC-9 | SkillProjection / SkillReadModel / SkillVersionReadModel + repos 整組刪除 | ✅ | 5 production files + 5 test files 已 `rm`；compile pass |
+| AC-10 | AuditEventListener async 寫 domain_events + idempotent | ✅ | `AuditEventListenerTest` (8 tests / 9 events × idempotency) |
+| AC-11 | API contract regression：JSON shape 與 v1.5.0 一致 | ✅ | `SkillQueryControllerApiContractTest` (2 tests; jsonPath assertions for findById + search) |
+| AC-12 | architecture.md / CLAUDE.md / development-standards.md / spec-roadmap.md 同步 | ✅ | 4 docs updated；ES backlog ES-B1~B4 已 strikethrough（既有）|
+| AC-13 | `ApplicationModules.verify()` 通過；audit module 邊界乾淨 | ✅ | `ModularityTests` 2 tests（含 audit module location 斷言）|
+
+### Tech Debt
+
+| Type | Description | Future Action |
+|---|---|---|
+| **drift** | spec §4 描述 AuditEventListener 在 `shared :: events :: audit`；實作因 Modulith cycle 限制移至獨立 `audit` 頂層 module（per KF-2）。development-standards.md / architecture.md 已反映實作 | 無需 action — 設計取捨已記錄；spec §4 設計意圖文字保留供 audit trail |
+| **skip** | `Skill.fromHistory` deprecated test（spec §6.7 為可選）— T05B 已完整移除 ES path API；emergency rollback path 不存在 → 無 deprecated method 需驗 | 若未來真有 emergency replay 需求，可寫 `Skill.fromHistory(events)` private factory + 對應 test。架構文件已記載此選項 |
+| **drift** | spec §2.6 描述 `__dedup` metadata key 為 idempotency 機制；實作改為「確定性 UUID + ON CONFLICT (id)」更直接（per KF-3）。spec §2.6 文字未即時更新；§7 為 ground truth | 無需 action — §7 KF-3 + Pattern 3 已詳載 |
+| **drift** | spec §2.7 描述 SkillCommandService 終態為 3 行 orchestration；實作達成 ≤ 4 statements（含 logging line）— spec 字面要求滿足 | 無 |
+
+### Pending Verification
+
+無。所有 AC 在本 session 內 verified；無 integration test compiled-but-not-run。
+
+### Pending Verification (E2E artifact)
+
+無 — 已有 269 Spring Boot tests 覆蓋所有 integration seam（per `verification` 段 rationale）。
+
+---
+
+### QA Review (independent subagent verification)
+
+> Reviewed: 2026-04-30 by independent QA subagent (claude-sonnet-4-6)
+
+**Verdict**: PASS (with minor Javadoc fix applied in-place)
+
+---
+
+#### Build Pipeline Results
+
+| Command | Result |
+|---|---|
+| `./gradlew test` | BUILD SUCCESSFUL — **269 tests / 0 failures / 5 skipped** ✅ |
+| `./gradlew compileTestJava` | BUILD SUCCESSFUL ✅ |
+| `./gradlew test --tests "*ModularityTests*"` | BUILD SUCCESSFUL (2 tests pass) ✅ |
+| `./gradlew test --tests "*.AuditEventListenerTest"` | BUILD SUCCESSFUL (8 tests pass) ✅ |
+| `./gradlew test --tests "*.SkillQueryControllerApiContractTest"` | BUILD SUCCESSFUL (2 tests pass) ✅ |
+
+All five mandatory pipeline steps pass. Test counts match spec §7 claim exactly.
+
+---
+
+#### AC Coverage Verification
+
+| AC | Claimed Test | Verified | Notes |
+|---|---|---|---|
+| AC-1 | `SkillCommandServiceCrossAggregateTest#v6MigrationAddsVersionColumn` @Tag("AC-1") | ✅ | Test queries `skills.version` column directly; passes |
+| AC-2 | `SkillAggregateTest` (15 unit tests) @Tag("AC-2") | ✅ | All state mutation + event registration paths covered |
+| AC-3 | `SkillCommandServiceCrossAggregateTest` (3 tests) @Tag("AC-3") | ✅ | Cross-aggregate same-TX outbox publish verified |
+| AC-4 | `SkillCommandService.java` method bodies ≤ 4 statements; no `eventStore.save`; `saveDomainEventOnly` absent | ✅ | Code-level inspection confirmed |
+| AC-5 | `SkillVersionAggregateTest` (4 unit) + `SkillVersionRepositoryTest` (6 integration) @Tag("AC-5") | ✅ | Pass |
+| AC-6 | `SkillAggregateTest.recordVersionPublishedOnSuspendedThrows` etc @Tag("AC-6") | ✅ | 3 state-machine guard tests pass |
+| AC-7 | `SkillUploadTest.duplicateVersionRejected` + `SkillVersionRepositoryTest` @Tag("AC-7") | ✅ | Both service-layer + DB UNIQUE guard verified |
+| AC-8 | `SkillAggregateTest.grantAcl*` + `SkillAclCommandServiceTest` (4 tests) @Tag("AC-8") | ✅ | Pass |
+| AC-9 | `SkillProjection.java` / `SkillReadModel.java` / `SkillReadModelRepository.java` / `SkillVersionReadModel.java` / `SkillVersionReadModelRepository.java` — all absent from filesystem | ✅ | `find` returns empty; compile passes |
+| AC-10 | `AuditEventListenerTest` (8 tests covering 9 event types) @Tag("AC-10") | ✅ | Pass; note: SkillVersionPublishedFromAggregate replaces SkillFlaggedEvent from §2.6 design (acknowledged design drift) |
+| AC-11 | `SkillQueryControllerApiContractTest` (2 tests) @Tag("AC-11") | ✅ | JSON shape regression passes; `version` field correctly @JsonIgnore-d |
+| AC-12 | `architecture.md` L22 heading is "Spring Data JDBC Rich Aggregate + Modulith Outbox"; `CLAUDE.md` L100 updated; `development-standards.md` §Spring Data JDBC updated; `spec-roadmap.md` ES-B1~B4 strikethrough | ✅ | All 4 docs verified |
+| AC-13 | `ModularityTests.verifyModuleStructure` + `shouldHaveAuditModuleWithCorrectDependencies` | ✅ | audit module at `io.github.samzhu.skillshub.audit`; `allowedDependencies = {"shared :: events", "skill :: domain"}` |
+
+---
+
+#### Production Code Inspection
+
+| File | Key Checks | Result |
+|---|---|---|
+| `skill/domain/Skill.java` | `@Table("skills")` ✅; `extends AbstractAggregateRoot<Skill>` ✅; `implements Persistable<String>` ✅; `@Version @JsonIgnore Long version` ✅; `isNew()` = `version == null` ✅; factory + 6 mutator methods ✅; Javadoc matches actual methods ✅ | PASS |
+| `skill/domain/SkillVersion.java` | `@Table("skill_versions")` ✅; `extends AbstractAggregateRoot<SkillVersion>` ✅; `implements Persistable<String>` ✅; `@Transient boolean isNew` flag ✅; `publish` factory + `attachRiskAssessment` ✅ | PASS |
+| `skill/domain/SkillRepository.java` | `extends ListCrudRepository<Skill, String>` ✅; `updateRiskLevel @Modifying @Query` ✅ | PASS |
+| `skill/domain/SkillVersionRepository.java` | `existsBySkillIdAndVersion` ✅; `findBySkillIdOrderByPublishedAtDesc` ✅; `findBySkillIdAndVersion` ✅ | PASS |
+| `skill/command/SkillCommandService.java` | No `eventStore` field ✅; No `saveDomainEventOnly` method ✅; No `loadAggregate` method ✅; each command method ≤ 4 statements ✅; Logger present ✅ | PASS |
+| `skill/query/SkillQueryService.java` | Uses `SkillRepository.findById()` ✅; returns `Skill` aggregate ✅; Logger present ✅ | PASS |
+| `audit/AuditEventListener.java` | 9 `@ApplicationModuleListener` methods ✅; advisory lock (`pg_advisory_xact_lock`) ✅; deterministic UUID + `ON CONFLICT DO NOTHING` via `saveAuditIdempotent` ✅; Logger present ✅; class-level Javadoc ✅ | PASS |
+| `shared/events/DomainEventRepository.java` | `saveAuditIdempotent` `@Modifying @Query` with idempotent INSERT ✅ | PASS |
+| `security/scan/ScanOrchestrator.java` | No `eventStore` field ✅; No `objectMapper` field ✅; persist via `versionRepo.findBySkillIdAndVersion + attachRiskAssessment + save` ✅ | PASS (see Finding F-1) |
+| `security/FlagService.java` | Advisory lock acquisition (`pg_advisory_xact_lock`) before `eventStore.save` ✅ | PASS |
+
+---
+
+#### Deleted Files Verification (AC-9)
+
+All five files confirmed absent from filesystem (`find` returns empty):
+- `skill/query/SkillProjection.java` — deleted ✅
+- `skill/query/SkillReadModel.java` — deleted ✅
+- `skill/query/SkillReadModelRepository.java` — deleted ✅
+- `skill/query/SkillVersionReadModel.java` — deleted ✅
+- `skill/query/SkillVersionReadModelRepository.java` — deleted ✅
+
+---
+
+#### Design Drift Check
+
+| Drift | Acknowledged in §7? | Status |
+|---|---|---|
+| AuditEventListener 位於 `audit` 頂層 module（非 `shared :: events :: audit`，per spec §4/§13 描述）| ✅ KF-2 | Documented; architecture.md + ModularityTests 反映實際位置 |
+| Idempotency 機制為「確定性 UUID + ON CONFLICT」（非 spec §2.6 的 `__dedup` metadata key）| ✅ KF-3 + Tech Debt | Documented |
+| AuditEventListener 訂閱 `SkillVersionPublishedFromAggregate`（非 spec §2.6 所列 `SkillFlaggedEvent`）作為第 9 個 event | ⚠ **未在 §7 明確記錄**（但 AuditEventListenerTest 8 tests / 9 events 的說明隱含此差異）| Minor — FlagService 仍直接寫 domain_events（非走 AuditEventListener），架構一致；僅 Javadoc 表 caption 描述與實作稍有出入 |
+
+---
+
+#### Findings
+
+**F-1 (MINOR — fixed in-place):** `security/scan/ScanOrchestrator.java` class-level Javadoc at lines 51-53 referenced deleted classes `SkillReadModelRepository#updateRiskLevel` and `SkillVersionReadModelRepository#updateRiskAssessment`; line 94-95 referenced deleted `SkillProjection`. These classes were removed as part of AC-9. **Fixed**: Javadoc updated to reference `SkillRepository#updateRiskLevel` and `SkillVersionRepository#findBySkillIdAndVersion → SkillVersion.attachRiskAssessment → versionRepo.save`, and `SkillProjection` reference replaced with `SkillCommandService` explanation. `compileJava` passes after fix.
+
+**F-2 (COSMETIC — no action needed):** `SkillAggregateTest.java` `@DisplayName` strings use legacy naming `recordSuspended` / `recordReactivated` (matching v1.4.0 ES method names) while actual `Skill` methods are `suspend()` / `reactivate()`. Test bodies call the correct methods and pass; naming is legacy documentation artifact from TDD write phase. Not a defect.
+
+**F-3 (COSMETIC — no action needed):** `CLAUDE.md` line 115 still refers to "event store" in the database description (`Spring Data JDBC for CRUD + event store`). This refers to `domain_events` which KF-8 repositions as "event log"; the sentence is in the Tech Stack description (infrastructure-level, pre-ADR-002 wording) and does not contradict the architecture pattern section which correctly uses "event log" terminology. Low impact.
+
+---
+
+#### Summary
+
+- 全部 5 個 mandatory build pipeline 步驟通過
+- 269 tests / 0 failures / 5 skipped — 與 spec §7 完全一致
+- AC-1 至 AC-13 全部有對應測試且通過
+- 刪除清單驗證完整（5 個 production files、5 個 test files 均已消失）
+- 2 個設計 drift 均已在 §7 Tech Debt 記錄；1 個小 drift（SkillFlaggedEvent → SkillVersionPublishedFromAggregate）未記錄但不影響正確性
+- 發現 1 個 Javadoc 殘留引用（刪除類別的 @link）已在本次 review 修正（ScanOrchestrator.java）
+- 無 CRITICAL 或 IMPORTANT 問題
+
+

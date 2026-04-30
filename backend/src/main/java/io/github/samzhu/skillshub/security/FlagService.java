@@ -2,6 +2,7 @@ package io.github.samzhu.skillshub.security;
 
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -9,7 +10,9 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import io.github.samzhu.skillshub.shared.events.DomainEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
@@ -31,12 +34,14 @@ public class FlagService {
 
 	private final FlagReadModelRepository flagRepo;
 	private final DomainEventRepository eventStore;
+	private final NamedParameterJdbcTemplate jdbc;
 	private final ApplicationEventPublisher events;
 
 	public FlagService(FlagReadModelRepository flagRepo, DomainEventRepository eventStore,
-			ApplicationEventPublisher events) {
+			NamedParameterJdbcTemplate jdbc, ApplicationEventPublisher events) {
 		this.flagRepo = flagRepo;
 		this.eventStore = eventStore;
+		this.jdbc = jdbc;
 		this.events = events;
 	}
 
@@ -48,8 +53,15 @@ public class FlagService {
 	 * @param description 舉報原因說明
 	 * @return 新建立的 Flag UUID 字串
 	 */
+	@Transactional
 	public String createFlag(String skillId, String type, String description) {
 		var flagId = UUID.randomUUID().toString();
+
+		// S024 T05B: 與 AuditEventListener 共用 per-aggregate advisory lock 序列化 sequence 計算，
+		// 避免 race condition（兩者各自讀 MAX → 算同 next_seq → (aggregate_id, sequence) UNIQUE 衝突）
+		jdbc.queryForList(
+				"SELECT pg_advisory_xact_lock(hashtext('audit:' || :aggregateId)::bigint)",
+				Collections.singletonMap("aggregateId", skillId));
 
 		var latestEvent = eventStore.findTopByAggregateIdOrderBySequenceDesc(skillId);
 		long nextSequence = latestEvent.map(e -> e.sequence() + 1).orElse(1L);

@@ -29,8 +29,8 @@ import org.springframework.util.LinkedMultiValueMap;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
-import io.github.samzhu.skillshub.skill.query.SkillVersionReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
 
 /**
  * S010 多引擎安全掃描 e2e 整合測試。
@@ -49,10 +49,10 @@ class RiskAssessmentIntegrationTest {
 	private TestRestTemplate restTemplate;
 
 	@Autowired
-	private SkillReadModelRepository skillRepo;
+	private SkillRepository skillRepo;
 
 	@Autowired
-	private SkillVersionReadModelRepository versionRepo;
+	private SkillVersionRepository versionRepo;
 
 	@Autowired
 	private DomainEventRepository eventStore;
@@ -69,7 +69,7 @@ class RiskAssessmentIntegrationTest {
 		// S023-T07: ScanOrchestrator 改 @ApplicationModuleListener async；用 Awaitility 等
 		await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
 			var skill = skillRepo.findById(skillId).orElseThrow();
-			assertThat(skill.riskLevel()).isEqualTo("LOW");
+			assertThat(skill.getRiskLevel()).isEqualTo("LOW");
 		});
 	}
 
@@ -87,7 +87,7 @@ class RiskAssessmentIntegrationTest {
 
 		await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
 			var skill = skillRepo.findById(skillId).orElseThrow();
-			assertThat(skill.riskLevel()).isEqualTo("HIGH");
+			assertThat(skill.getRiskLevel()).isEqualTo("HIGH");
 		});
 	}
 
@@ -120,13 +120,13 @@ class RiskAssessmentIntegrationTest {
 		// AC-8.2: skills.risk_level = HIGH — ScanOrchestrator persist() 內 sequential 寫入；
 		// SkillRiskAssessed 已在 eventStore 即代表 risk_level + risk_assessment 也已寫入
 		var skill = skillRepo.findById(skillId).orElseThrow();
-		assertThat(skill.riskLevel()).isEqualTo("HIGH");
+		assertThat(skill.getRiskLevel()).isEqualTo("HIGH");
 
 		// AC-8.1: skill_versions.{version}.risk_assessment 結構驗證
 		var version = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId).stream()
-				.filter(v -> "1.0.0".equals(v.version()))
+				.filter(v -> "1.0.0".equals(v.getVersion()))
 				.findFirst().orElseThrow();
-		var riskAssessment = version.riskAssessment();
+		var riskAssessment = version.getRiskAssessment();
 		assertThat(riskAssessment)
 				.as("skill_versions.risk_assessment must be populated by ScanOrchestrator")
 				.isNotNull();

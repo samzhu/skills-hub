@@ -14,11 +14,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillVersion;
+
 /**
  * 技能讀取端 REST Controller — 處理所有唯讀查詢。
  *
- * <p>遵循 CQRS 原則，此 Controller 只接受 GET 請求（讀取端），
- * 資料來源為 {@link SkillProjection} 維護的 read model。</p>
+ * <p>遵循 CQRS 原則，此 Controller 只接受 GET 請求（讀取端）。S024 ship 後
+ * response type 改為 {@link Skill} / {@link SkillVersion} aggregate（取代原 ReadModel record；
+ * per ADR-002 §2.4 — single skills row 同時為 write/read model）。{@code @Version} 欄位
+ * 由 {@code @JsonIgnore} 隱藏，API contract shape 與 v1.5.0 保持一致。
  *
  * <h3>端點一覽</h3>
  * <ul>
@@ -42,7 +47,7 @@ public class SkillQueryController {
 
 	/** 依 ID 取得單一技能詳情。找不到時回傳 404。 */
 	@GetMapping("/skills/{id}")
-	SkillReadModel getById(@PathVariable String id) {
+	Skill getById(@PathVariable String id) {
 		return queryService.findById(id);
 	}
 
@@ -51,7 +56,7 @@ public class SkillQueryController {
 	 * 兩個參數皆為可選，都不帶則回傳全部。
 	 */
 	@GetMapping("/skills")
-	Page<SkillReadModel> search(
+	Page<Skill> search(
 			@RequestParam(required = false) String keyword,
 			@RequestParam(required = false) String category,
 			@PageableDefault(size = 20) Pageable pageable) {
@@ -60,13 +65,13 @@ public class SkillQueryController {
 
 	/** 取得某技能的版本歷史，按發佈時間降序排列。 */
 	@GetMapping("/skills/{id}/versions")
-	List<SkillVersionReadModel> getVersions(@PathVariable String id) {
+	List<SkillVersion> getVersions(@PathVariable String id) {
 		return queryService.findVersionsBySkillId(id);
 	}
 
 	/**
 	 * 下載某技能的最新版本 zip。回傳 {@code application/octet-stream}。
-	 * 同時記錄 {@code SkillDownloaded} 領域事件供 analytics 消費。
+	 * 同時透過 aggregate 充血方法 {@code Skill.recordDownload} 觸發 {@code SkillDownloaded} 事件供 analytics 消費。
 	 */
 	@GetMapping("/skills/{id}/download")
 	ResponseEntity<byte[]> downloadLatest(@PathVariable String id) {

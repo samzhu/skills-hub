@@ -14,6 +14,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * S016 T5 — SkillAclQueryService 解析邏輯驗證。
@@ -29,7 +31,7 @@ class SkillAclQueryServiceTest {
     private SkillAclQueryService queryService;
 
     @Autowired
-    private SkillReadModelRepository skillRepo;
+    private SkillRepository skillRepo;
 
     @Test
     @DisplayName("AC-11: listEntries 解析 colon-separated 字串為 AclEntryResponse list")
@@ -83,7 +85,7 @@ class SkillAclQueryServiceTest {
     private String seedSkill(List<String> aclEntries) {
         var id = UUID.randomUUID().toString();
         var now = Instant.now();
-        skillRepo.save(new SkillReadModel(
+        skillRepo.save(Skill.fromRow(
                 id,
                 "qs-acl-" + id.substring(0, 8),
                 "Query service test fixture",
@@ -94,7 +96,8 @@ class SkillAclQueryServiceTest {
                 "PUBLISHED",
                 0L,
                 now, now,
-                aclEntries));
+                aclEntries,
+                null));
         return id;
     }
 }

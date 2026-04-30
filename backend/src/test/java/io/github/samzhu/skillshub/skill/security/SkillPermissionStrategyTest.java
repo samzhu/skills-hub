@@ -20,8 +20,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * S016 AC-7 / AC-8 / AC-13 / AC-15 — {@link SkillPermissionStrategy} 整合測試。
@@ -45,7 +45,7 @@ class SkillPermissionStrategyTest {
     private SkillPermissionStrategy strategy;
 
     @Autowired
-    private SkillReadModelRepository skillRepo;
+    private SkillRepository skillRepo;
 
     @AfterEach
     void clearContext() {
@@ -210,7 +210,7 @@ class SkillPermissionStrategyTest {
     private String seedSkill(java.util.List<String> aclEntries) {
         var id = UUID.randomUUID().toString();
         var now = Instant.now();
-        skillRepo.save(new SkillReadModel(
+        skillRepo.save(Skill.fromRow(
                 id,
                 "acl-test-" + id.substring(0, 8),
                 "test description",
@@ -220,7 +220,8 @@ class SkillPermissionStrategyTest {
                 "DRAFT",
                 0L,
                 now, now,
-                aclEntries));
+                aclEntries,
+                null));
         return id;
     }
 

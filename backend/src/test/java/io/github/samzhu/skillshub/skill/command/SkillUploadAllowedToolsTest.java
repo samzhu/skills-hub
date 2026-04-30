@@ -17,7 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.query.SkillVersionReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
 
 /**
  * S018 T5 — uploadSkill → SkillVersionReadModel.allowedTools first-class 持久化驗證（AC-13）。
@@ -33,7 +33,7 @@ class SkillUploadAllowedToolsTest {
     private SkillCommandService commandService;
 
     @Autowired
-    private SkillVersionReadModelRepository versionRepo;
+    private SkillVersionRepository versionRepo;
 
     @Test
     @DisplayName("AC-13: uploadSkill with allowed-tools → SkillVersionReadModel.allowedTools 含對應 list")
@@ -50,7 +50,7 @@ class SkillUploadAllowedToolsTest {
         var version = versions.get(0);
 
         // AC-13：allowedTools 為 first-class field（非 frontmatter Map 中的 entry）
-        assertThat(version.allowedTools())
+        assertThat(version.getAllowedTools())
                 .containsExactly("Bash(git:*)", "Edit", "Read", "Write");
     }
 
@@ -64,7 +64,7 @@ class SkillUploadAllowedToolsTest {
         var skillId = commandService.uploadSkill(zip, "1.0.0", "owner", "Testing");
 
         var versions = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
-        assertThat(versions.get(0).allowedTools()).isEmpty();
+        assertThat(versions.get(0).getAllowedTools()).isEmpty();
     }
 
     /**

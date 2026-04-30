@@ -19,158 +19,137 @@
 
 ---
 
-## Architecture Pattern: Event Sourcing + CQRS (Core Domain)
+## Architecture Pattern: Spring Data JDBC Rich Aggregate + Modulith Outbox (Core Domain)
+
+> 本段於 v2.0.0（S024 ship 2026-04-29）改寫；前身為 ES + CQRS 模式（v1.4.0 為止）。
+> 詳 [ADR-002 — Skill Aggregate State-Based](../grimo/adr/ADR-002-skill-aggregate-state-based.md)（Accepted 2026-04-29）。
+> v1.5.0 為止仍採 ES + CQRS 模式為「過渡狀態」；S024 起 Skill domain 完成轉向。
 
 ### 策略
 
 | 領域 | 模式 | Aggregate | 說明 |
 |------|------|-----------|------|
-| **skill（核心域）** | **ES + CQRS + Aggregate** | `Skill` (Aggregate Root) | 唯一使用 Aggregate 設計的模組。Skill 為 Aggregate Root，封裝 SkillVersion，維護不變量，產生 domain events |
-| **security** | **Event-driven service** | 無 | 監聽 skill events 觸發風險評估，結果以 event 發佈。無自己的 aggregate |
+| **skill（核心域）** | **Spring Data JDBC 充血聚合 + Modulith Outbox** | `Skill` / `SkillVersion`（獨立 aggregate） | S024 起轉向；`@Table` + `extends AbstractAggregateRoot` + `@Version` 樂觀鎖；`repo.save()` 透過 `@DomainEvents` 自動 publish events 至 outbox（同 TX） |
+| **security** | **Event-driven service** | 無 | 訂閱 `SkillVersionPublishedEvent` 觸發風險評估，透過 `SkillVersion.attachRiskAssessment` 回寫 |
 | **search** | **Read-side projection** | 無 | 消費 skill events 建構搜尋索引（keyword + semantic） |
 | **analytics** | **Read-side projection** | 無 | 消費 download events 建構統計數據 |
+| **audit** | **Cross-cutting listener** | 無 | 訂閱所有 9 個 Skill domain events 寫入 `domain_events` audit log（async + idempotent；S024 引入） |
 | **storage** | **Infrastructure service** | 無 | 傳統 service，GCS 操作 |
 
-### Skill Aggregate 設計
+### Core Concepts
+
+**Skill aggregate**（`@Table("skills") extends AbstractAggregateRoot<Skill>`）
+- `@Id` / `@Version` / `@Column` 直接綁定 PostgreSQL `skills` 表 row（1:1 mapping）
+- 業務 method 充血：mutate state field + `registerEvent(domainEvent)`
+- `repository.save(skill)` 自動觸發 `@DomainEvents` proxy interceptor → events 進 Modulith `event_publication` outbox（同 TX）
+- 業務不變量內建（`status.suspend()` state machine guard、`aclEntries.contains` 重複檢查 etc）
+
+**SkillVersion aggregate**（獨立 `@Table("skill_versions")`）
+- 與 Skill 透過 plain `String skillId` FK 引用（**不**用 `@MappedCollection` / `AggregateReference`）
+- 避開 Spring Data JDBC `WritingContext.update()` delete-and-reinsert 雷（per [deepwiki/aggregate-design.md §2](../deepwiki/spring-data-jdbc-modulith/aggregate-design.md)）
+- `attachRiskAssessment(Map)` 充血方法 + `ScanOrchestrator` AFTER_COMMIT async 路徑
+
+### Aggregate State Mutation Flow
 
 ```
-Skill (Aggregate Root)
-├── aggregateId: UUID
-├── name: String (invariant: unique, lowercase-hyphen, max 64 chars)
-├── description: String
-├── author: String
-├── category: String
-├── status: SkillStatus (DRAFT → PUBLISHED → SUSPENDED)
-├── versions: List<SkillVersion> (managed by aggregate)
-│   └── SkillVersion (Value Object within aggregate)
-│       ├── version: String (semver)
-│       ├── storagePath: String
-│       └── riskLevel: RiskLevel
-└── Business Rules (invariants enforced by aggregate):
-    - name 不可重複
-    - version 必須遞增（semver）
-    - SUSPENDED 狀態不可發佈新版本
-    - 同一版本號不可重複發佈
+Command → Service.@Transactional method:
+  1. skillRepo.findById(id).orElseThrow()       # O(1) row read（vs ES O(events) replay）
+  2. skill.businessMethod(cmd)                   # mutate state + registerEvent
+  3. skillRepo.save(skill)                       # @DomainEvents proxy interceptor:
+                                                 #   ① UPDATE skills SET ... WHERE id=? AND version=?
+                                                 #   ② publish events → event_publication outbox INSERT 同 TX
+  TX commit:
+    - skills row UPDATED
+    - event_publication row INSERTED（completion_date NULL → 等待 listener）
+  AFTER_COMMIT async（@ApplicationModuleListener）：
+    - SearchProjection 訂閱 → vector_store INSERT/UPDATE
+    - AnalyticsProjection 訂閱 → download_events INSERT (idempotent via eventId)
+    - AuditEventListener 訂閱 → domain_events INSERT (audit log；deterministic UUID + ON CONFLICT DO NOTHING)
+    - ScanOrchestrator 訂閱（SkillVersionPublishedEvent only）→ multi-engine scan pipeline
+    - 各 listener 完成 → event_publication.completion_date = now()
 ```
 
-Aggregate Root 負責：
-1. **接收 Command** → 驗證業務規則
-2. **產生 Domain Event** → 不可變的領域事實
-3. **維護不變量** → 確保 aggregate 內部一致性
-
-其他 module（security, search, analytics, storage）**不使用 aggregate pattern**，直接以 service / listener 形式運作。
-
-### Event Flow
-
-```
-                    Command Side                          Event Store                     Query Side
-               ┌─────────────────┐                  ┌──────────────────┐           ┌─────────────────┐
-  HTTP Request │                 │   Domain Events  │                  │  Consume  │                 │
-  ───────────▶ │ SkillCommand    │ ────────────────▶ │  domain_events   │ ────────▶ │  Projections    │
-               │ Service         │                  │  (PostgreSQL)    │           │                 │
-               │                 │                  │                  │           │  skills (read)  │
-               │ - validate      │                  │  {aggregateId,   │           │  skill_versions │
-               │ - apply event   │                  │   aggregateType, │           │  search index   │
-               │ - publish       │                  │   eventType,     │           │  analytics      │
-               └─────────────────┘                  │   payload,       │           └────────┬────────┘
-                                                    │   sequence,      │                    │
-                                                    │   occurredAt}    │              ┌─────▼──────┐
-                                                    └──────────────────┘   HTTP GET   │ Query      │
-                                                                          ◀────────── │ Controller │
-                                                                                      └────────────┘
-```
-
-### Domain Events（skill aggregate）
+### Domain Events（skill domain；9 個）
 
 | Event | Trigger | Payload |
 |-------|---------|---------|
-| `SkillCreated` | 新 skill 建立 | name, description, author, category, tags |
-| `SkillVersionPublished` | 上傳新版本 | version, storagePath, fileSize, frontmatter |
-| `SkillRiskAssessed` | 風險評估完成 | version, riskLevel, findings[] |
-| `SkillFlagged` | 社群回報 | flagType, description, reportedBy |
-| `SkillSuspended` | 管理者停用 | reason |
-| `SkillReactivated` | 管理者重新啟用 | reason |
-| `SkillDownloaded` | 使用者下載 | version, metadata |
+| `SkillCreatedEvent` | `Skill.create(cmd)` | name, description, author, category |
+| `SkillVersionPublishedEvent` | `SkillVersion.publish(cmd)` | version, storagePath, fileSize, allowedTools, sourceEventId |
+| `SkillVersionPublishedFromAggregate` | `Skill.recordVersionPublished(version)`（state-change marker） | version |
+| `SkillSuspendedEvent` | `Skill.suspend(cmd)` | reason, suspendedBy |
+| `SkillReactivatedEvent` | `Skill.reactivate(cmd)` | reason |
+| `SkillAclGrantedEvent` | `Skill.grantAcl(cmd)` | type, principal, permission, grantedBy |
+| `SkillAclRevokedEvent` | `Skill.revokeAcl(cmd)` | type, principal, permission, revokedBy |
+| `SkillDownloadedEvent` | `Skill.recordDownload()` | version, eventId |
+| `SkillRiskAssessedEvent` | `SkillVersion.attachRiskAssessment(map)` | skillId, version, level, findings |
 
-### Spring Modulith Event Integration
+### Code Pattern
 
 ```java
-// Aggregate Root — 封裝業務規則、產生 events
-public class Skill {
-    private UUID id;
-    private String name;
+// Aggregate — Spring Data JDBC 充血聚合
+@Table("skills")
+public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<String> {
+    @Id private String id;
+    @Version @JsonIgnore private Long version;       // 樂觀鎖；不 expose API JSON
     private SkillStatus status;
-    private List<SkillVersion> versions;
+    private List<String> aclEntries;                  // JSONB column
 
-    // 業務方法 → 驗證不變量 → 回傳 domain event
-    public SkillVersionPublished publishVersion(PublishVersionCommand cmd) {
-        if (this.status == SkillStatus.SUSPENDED) {
-            throw new IllegalStateException("Cannot publish to suspended skill");
-        }
-        if (versions.stream().anyMatch(v -> v.version().equals(cmd.version()))) {
-            throw new IllegalArgumentException("Version already exists: " + cmd.version());
-        }
-        return new SkillVersionPublished(this.id, cmd.version(), cmd.storagePath(), ...);
+    public static Skill create(CreateSkillCommand cmd) {
+        var skill = new Skill();
+        skill.id = UUID.randomUUID().toString();
+        // ... mutate state
+        skill.registerEvent(new SkillCreatedEvent(...));
+        return skill;
     }
 
-    // Factory method — 建立新 aggregate
-    public static SkillCreated create(CreateSkillCommand cmd) {
-        // validate name format, description length, etc.
-        return new SkillCreated(UUID.randomUUID(), cmd.name(), cmd.description(), ...);
+    public void suspend(SuspendCommand cmd) {
+        this.status = this.status.suspend();          // state machine guard
+        registerEvent(new SkillSuspendedEvent(id, cmd.reason(), cmd.suspendedBy()));
     }
+    // ... grantAcl / revokeAcl / recordDownload / etc — 同樣 mutate + register pattern
 }
 
-// Command Service — 協調 aggregate + event store + publish
+// Service — 3-line orchestration
 @Service
 public class SkillCommandService {
-    private final ApplicationEventPublisher events;
-    private final DomainEventRepository eventStore;
-
-    public UUID createSkill(CreateSkillCommand cmd) {
-        var event = Skill.create(cmd);           // Aggregate 驗證 + 產生 event
-        eventStore.append(event);                 // 持久化到 domain_events
-        events.publishEvent(event);               // 通知 projections
-        return event.aggregateId();
-    }
-
-    public void publishVersion(UUID skillId, PublishVersionCommand cmd) {
-        var skill = loadAggregate(skillId);        // 從 event store 重建 aggregate
-        var event = skill.publishVersion(cmd);     // Aggregate 驗證不變量
-        eventStore.append(event);
-        events.publishEvent(event);
+    @Transactional
+    public void suspend(SuspendCommand cmd) {
+        var skill = skillRepo.findById(cmd.skillId()).orElseThrow();
+        skill.suspend(cmd);
+        skillRepo.save(skill);   // @DomainEvents → outbox → AFTER_COMMIT listeners
     }
 }
 
-// Query side — projection listener（無 Aggregate，直接更新 read model）
+// AuditEventListener — 訂閱事件寫 audit log（async）
 @Component
-class SkillProjection {
-    private final SkillReadModelRepository readModelRepo;
-
+public class AuditEventListener {
     @ApplicationModuleListener
-    void on(SkillCreated event) {
-        // 直接寫入 read model document（不經過 aggregate）
-        readModelRepo.save(new SkillReadModel(event));
-    }
-
-    @ApplicationModuleListener
-    void on(SkillVersionPublished event) {
-        readModelRepo.updateLatestVersion(event.aggregateId(), event.version());
+    void on(SkillSuspendedEvent event) {
+        // 確定性 UUID + per-aggregate advisory lock + ON CONFLICT DO NOTHING
+        recordAudit(event.aggregateId(), "SkillSuspended", payload, dedupKey);
     }
 }
 ```
 
-**注意：只有 skill module 的 command side 使用 Aggregate。** security, search, analytics, storage 都是普通的 service / listener，不走 aggregate pattern。
+### v1.5.0 ES path 殘留 / 仍保留的能力
 
-### MVP 範圍 vs Backlog
+- **歷史 events 完整保留**：v1.4.0 之前的 `domain_events` row 仍在 DB；ES 精神不變 — 序列化的 events 理論上仍可 replay 出任何時點的 aggregate state
+- **不再主動 replay**：S024 起寫入端走 aggregate state，平時 `repo.findById()` 即足夠（O(1) row read，小專案 read-heavy 場景下顯著快於 events fold）
+- **ES path API 已移除**：`Skill(String, List<DomainEvent>)` replay constructor、`create(String,...)` event-returning factory、deprecated `publishVersion/suspend/...` overloads 於 S024 T05B 完整刪除（如需 emergency replay，可在後續 spec 補回 `Skill.fromHistory(events)` 私有 factory，從 `domain_events` 重建 state）
+- **security domain 簡化 ES**：`SkillFlaggedEvent` 由 `FlagService` 直接寫 `domain_events`（流量低、event 簡單；無轉向計畫）
 
-| 功能 | MVP | Backlog |
-|------|-----|---------|
-| 儲存 domain events | V | |
-| 更新 projection (read model) | V | |
-| Event replay（從 events 重建 read model） | | V |
-| Snapshot（aggregate 快照） | | V |
-| Event upcasting（事件版本遷移） | | V |
-| Saga / Process Manager | | V |
+### MVP 範圍 vs 機制取捨（updated v2.0.0）
+
+實務小專案不為 hypothetical 場景預先建構 ES 重型機制；當需求真實出現再評估：
+
+| 機制 | MVP | 狀態 |
+|------|-----|------|
+| 充血聚合 + Modulith outbox | V | S024 ship v2.0.0 |
+| Audit log / event log（domain_events 表）— ES 精神保留 | V | S024 by AuditEventListener；理論上可 replay |
+| Event replay（重建 state） | — | **不主動使用** — `repo.findById()` O(1) 取代；events 序列保留，需要時可寫 `fromHistory` factory |
+| Aggregate Snapshot | — | **不需** — replay 不在熱路徑，無快照優化必要 |
+| Event Upcasting | — | **不需** — 小專案 schema 演化用 Flyway migration + 反序列化 fallback；不引入 upcaster 框架 |
+| Saga / Process Manager | — | **延後** — 若未來企業級組織管理需求出現再評估獨立技術選型 |
 
 ---
 
@@ -181,7 +160,7 @@ class SkillProjection {
 │                     GCP Cloud Run (single container)         │
 │                                                              │
 │  ┌────────────────────────────────────────────────────────┐  │
-│  │    Spring Boot 4.0.6 + Spring Modulith + ES/CQRS      │  │
+│  │    Spring Boot 4.0.6 + Spring Modulith + 充血聚合      │  │
 │  │                                                        │  │
 │  │  React 19 SPA → src/main/resources/static/             │  │
 │  │  (Vite 8 + shadcn/ui + Beam + Tailwind 4)             │  │
@@ -217,15 +196,17 @@ class SkillProjection {
    │  Auth Proxy │               └───────────┘
    │  sidecar)   │
    │             │
-   │ Event Store:│
-   │ - domain_   │
-   │   events    │
-   │   (JSONB)   │
-   │             │
-   │ Read Models:│
+   │ Aggregates  │
+   │ + Audit Log:│
    │ - skills    │
    │ - skill_    │
    │   versions  │
+   │ - domain_   │
+   │   events    │
+   │   (audit)   │
+   │ - event_    │
+   │   publication│
+   │   (outbox)  │
    │ - flags     │
    │ - download_ │
    │   events    │
@@ -246,33 +227,36 @@ class SkillProjection {
 io.github.samzhu.skillshub
 │
 ├── shared/                     ← 共用基礎設施
-│   ├── events/                 ← Domain Event 基底類別、Event Store
-│   │   ├── DomainEvent.java    (abstract base: aggregateId, eventType, occurredAt, sequence)
-│   │   ├── DomainEventRepository.java (append, findByAggregateId)
-│   │   └── EventStoreConfig.java
+│   ├── events/                 ← Domain Event 基礎 + audit log repository
+│   │   ├── DomainEvent.java    (record: aggregateId, eventType, occurredAt, sequence, payload jsonb)
+│   │   ├── DomainEventRepository.java (CRUD + saveAuditIdempotent for AuditEventListener)
+│   │   └── (audit log；S024 起非 source of truth)
 │   └── api/                    ← 共用 API 錯誤處理
 │       └── ErrorResponse.java
 │
-├── skill/                      ← 核心域（ES + CQRS + Aggregate）
-│   ├── domain/                 ← Aggregate + Domain Events
-│   │   ├── Skill.java          (Aggregate Root — 封裝業務規則、產生 events)
-│   │   ├── SkillVersion.java   (Value Object — aggregate 內部)
-│   │   ├── SkillStatus.java    (enum: DRAFT, PUBLISHED, SUSPENDED)
-│   │   ├── SkillCreated.java   (domain event)
-│   │   ├── SkillVersionPublished.java
-│   │   ├── SkillDownloaded.java
-│   │   └── SkillFlagged.java
-│   ├── command/                ← Command Side
-│   │   ├── CreateSkillCommand.java
-│   │   ├── PublishVersionCommand.java
-│   │   ├── SkillCommandService.java (載入 aggregate → 執行 command → 存 event)
+├── audit/                      ← S024 引入：audit log async 寫入（避開 shared → skill cycle）
+│   └── AuditEventListener.java  (@ApplicationModuleListener × 9 — 訂閱所有 Skill domain events
+│                                  寫 domain_events row；deterministic UUID + ON CONFLICT)
+│
+├── skill/                      ← 核心域（Spring Data JDBC 充血聚合 + Modulith outbox）
+│   ├── domain/                 ← Aggregate + Repository + Domain Events
+│   │   ├── Skill.java          (@Table extends AbstractAggregateRoot — 充血方法 mutate state + registerEvent)
+│   │   ├── SkillVersion.java   (獨立 aggregate；plain String skillId FK)
+│   │   ├── SkillRepository.java (Spring Data JDBC ListCrudRepository + updateRiskLevel @Modifying @Query)
+│   │   ├── SkillVersionRepository.java (CRUD + 4 derived queries: existsBySkillIdAndVersion etc)
+│   │   ├── SkillStatus.java    (enum: DRAFT → PUBLISHED → SUSPENDED；state machine guard)
+│   │   ├── SkillCreatedEvent / SkillVersionPublishedEvent / SkillVersionPublishedFromAggregate
+│   │   ├── SkillSuspendedEvent / SkillReactivatedEvent
+│   │   ├── SkillAclGrantedEvent / SkillAclRevokedEvent
+│   │   ├── SkillDownloadedEvent / SkillRiskAssessedEvent
+│   ├── command/                ← Command Side（3-line orchestration）
+│   │   ├── CreateSkillCommand / PublishVersionCommand / SuspendCommand / etc
+│   │   ├── SkillCommandService.java (load → mutate → save；無 eventStore.save 直接寫)
 │   │   └── SkillCommandController.java (POST, PUT)
-│   ├── query/                  ← Query Side
-│   │   ├── SkillReadModel.java (read projection document)
-│   │   ├── SkillVersionReadModel.java
-│   │   ├── SkillQueryService.java
-│   │   ├── SkillQueryController.java (GET)
-│   │   └── SkillProjection.java (@ApplicationModuleListener → 更新 read model)
+│   ├── query/                  ← Query Side（直打 aggregate repositories；S024 起無 read-model 中介）
+│   │   ├── SkillQueryService.java (skillRepo.findById / search via NamedParameterJdbcTemplate + Skill.fromRow)
+│   │   ├── SkillQueryController.java (GET — response type Skill / SkillVersion；@JsonIgnore version)
+│   │   └── SkillAclQueryService.java (skillRepo.findById → ACL entry 拆解)
 │   └── validation/             ← SKILL.md 驗證
 │       └── SkillValidator.java (agentskills.io 規範)
 │
@@ -325,7 +309,7 @@ SkillCommandService
 
 > Schema 由 Flyway V1 migration 建立（`backend/src/main/resources/db/migration/V1__initial_schema.sql`）；6 張表 + 2 個 extensions（`vector` for pgvector + `uuid-ossp`）+ HNSW 索引；S016/S017 將以 V2/V3 增量加 `acl_entries` JSONB + GIN 索引。
 
-### Event Store
+### Event Log（domain_events 表）
 
 ```sql
 CREATE TABLE domain_events (
@@ -342,9 +326,13 @@ CREATE TABLE domain_events (
 CREATE INDEX idx_domain_events_aggregate ON domain_events(aggregate_id, sequence);
 ```
 
-`(aggregate_id, sequence)` UNIQUE 強制 per-aggregate 嚴格遞增；JSONB payload 存 event-specific schema；transaction 內與 read model 同 commit。
+> **S024 ship 後（v2.0.0）的角色**：`domain_events` 仍保留完整 ES 精神 — 每筆 row 為不可變 domain event，`(aggregate_id, sequence)` 嚴格遞增，**理論上可從 events replay 還原任意時點的 aggregate state**。但寫入路徑改變：不再是「業務寫入端的 source of truth」，而是 [`AuditEventListener`](../../backend/src/main/java/io/github/samzhu/skillshub/audit/AuditEventListener.java) async 訂閱 Modulith outbox 後統一寫入。詳 [ADR-002](./adr/ADR-002-skill-aggregate-state-based.md)。
+>
+> **為何拆寫入端**：Skill aggregate state 改由 `skills` 表直接持有（`@Table` mapping + `@Version` 樂觀鎖；`repo.findById()` O(1) 取代 ES O(events) replay）— **平時不 replay**（小專案規模 read-heavy；O(1) row read 顯著快於 events fold）。但事件序列保留 → emergency replay / audit trail / 未來 read model 重建仍可用 events 做（當需求出現再做，現階段不為 hypothetical 場景投入快照、upcaster、saga 等重型機制）。
 
-> **Transitional state（S023 ship 後 / S024 ship 前）**：`domain_events` 仍是寫入端的事件記錄表，但 listener 投遞改走 Spring Modulith Event Publication Registry（`event_publication` 表，V4 Flyway migration）— 由本 spec S023 引入；S024 將 `domain_events` 退化為純 audit log，由 `AuditEventListener` 寫入。詳 [ADR-002](./adr/ADR-002-skill-aggregate-state-based.md)。
+**冪等性設計**：AuditEventListener 用 `UUID.nameUUIDFromBytes(dedupKey)` 確定性映射 row id + `INSERT ... ON CONFLICT (id) DO NOTHING` — Modulith retry 同事件不產生 duplicate row。同一 aggregate 上多 listener 並發以 `pg_advisory_xact_lock(hashtext('audit:' || aggregate_id))` 序列化，避免 `MAX(sequence) + 1` race（`FlagService` 寫 `SkillFlaggedEvent` 同樣加入此 lock 避免跨 listener 衝突）。
+
+**security domain 簡化路徑**：`SkillFlaggedEvent` 由 `FlagService` 直接寫 `domain_events`（不走 aggregate；流量低、event 簡單；S024 T05B 後保留無變動）。歷史 v1.4.0 之前 ES write events row 仍在表中；新 events 由 AuditEventListener 補齊統一格式，整段序列保持完整可 replay。
 
 ### Spring Modulith Outbox（S023 起）
 

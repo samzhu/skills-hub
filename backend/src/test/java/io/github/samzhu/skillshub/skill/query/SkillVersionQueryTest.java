@@ -51,20 +51,20 @@ class SkillVersionQueryTest {
 		// Add v1.1.0
 		addVersion(skillId, "1.1.0");
 
-		// Query versions
+		// Query versions — Skill aggregate API exposes via getter naming（version, storagePath, fileSize）
 		var response = restTemplate.exchange(
 				"/api/v1/skills/" + skillId + "/versions",
 				HttpMethod.GET, null,
-				new ParameterizedTypeReference<List<SkillVersionReadModel>>() {});
+				new ParameterizedTypeReference<List<Map<String, Object>>>() {});
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 		var versions = response.getBody();
 		assertThat(versions).hasSize(2);
 		// Sorted by publishedAt DESC — newest first
-		assertThat(versions.get(0).version()).isEqualTo("1.1.0");
-		assertThat(versions.get(1).version()).isEqualTo("1.0.0");
-		assertThat(versions.get(0).storagePath()).contains(skillId);
-		assertThat(versions.get(0).fileSize()).isGreaterThan(0);
+		assertThat(versions.get(0).get("version")).isEqualTo("1.1.0");
+		assertThat(versions.get(1).get("version")).isEqualTo("1.0.0");
+		assertThat((String) versions.get(0).get("storagePath")).contains(skillId);
+		assertThat(((Number) versions.get(0).get("fileSize")).longValue()).isGreaterThan(0);
 	}
 
 	@SuppressWarnings("unchecked")

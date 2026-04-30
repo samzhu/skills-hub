@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -29,11 +30,11 @@ class SkillSearchTest {
 	private TestRestTemplate restTemplate;
 
 	@Autowired
-	private SkillReadModelRepository readModelRepo;
+	private SkillRepository skillRepo;
 
 	@BeforeEach
 	void setUp() {
-		readModelRepo.deleteAll();
+		skillRepo.deleteAll();
 		// Seed test data via POST API (triggers event → projection → read model)
 		restTemplate.postForEntity("/api/v1/skills",
 				new CreateSkillCommand("docker-helper", "Docker compose helper", "sam", "DevOps"), Map.class);

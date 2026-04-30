@@ -26,8 +26,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * S016 AC-7 — {@link SkillCommandController#addVersion} 加 {@code @PreAuthorize}
@@ -49,7 +49,7 @@ class SkillCommandControllerSecurityTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private SkillReadModelRepository skillRepo;
+    private SkillRepository skillRepo;
 
     @Test
     @DisplayName("AC-7: alice (user:alice:write 已 grant) PUT /skills/{id}/versions → 通過 @PreAuthorize gate（非 403）")
@@ -99,7 +99,7 @@ class SkillCommandControllerSecurityTest {
         var id = UUID.randomUUID().toString();
         var now = Instant.now();
         // skills.name 有 UNIQUE constraint — 用 id 前綴避免跨測試衝突
-        skillRepo.save(new SkillReadModel(
+        skillRepo.save(Skill.fromRow(
                 id,
                 "acl-test-skill-" + id.substring(0, 8),
                 "ACL gate test fixture",
@@ -110,7 +110,8 @@ class SkillCommandControllerSecurityTest {
                 "PUBLISHED",
                 0L,
                 now, now,
-                aclEntries));
+                aclEntries,
+                null));
         return id;
     }
 

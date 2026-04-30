@@ -18,18 +18,24 @@
 - `@RestController` + `@RequestMapping` 用於 API endpoints
 - Module 之間透過 `ApplicationEvent` 通訊，不直接注入跨 module 的 service
 
-### Event Sourcing + CQRS 規範
+### Spring Data JDBC Rich Aggregate + Modulith Outbox 規範（S024 起；per ADR-002）
 
-- **核心域（skill）** 使用 Aggregate + ES + CQRS：Aggregate Root 封裝業務規則 → 產生 domain event → 存入 event store → publish → projection 更新 read model
-- **非核心模組**（security, search, analytics, storage）**不使用 Aggregate**，直接以 service / listener 形式運作
-- Domain Events 為不可變 Record，命名用過去式（`SkillCreated`, `SkillVersionPublished`）
+- **Skill domain** 改用 Spring Data JDBC 充血聚合：`@Table` + `extends AbstractAggregateRoot<T>` + `@Version` 樂觀鎖；`Persistable.isNew()` 自訂以對應 client-generated UUID PK（per [deepwiki §1.@Version + §4.isNew](../deepwiki/spring-data-jdbc-modulith/aggregate-design.md)）
+- Aggregate method 充血：先驗證不變量（throw `IllegalStateException` 若違規）→ mutate state field → `registerEvent(domainEvent)`
+- Service 層每 command 方法 3-line orchestration：`load → mutate → save`；無 `eventStore.save` / `events.publishEvent` 直接呼叫
+- `repository.save(aggregate)` 透過 Spring Data proxy interceptor `@DomainEvents` 自動 publish 至 Modulith `event_publication` outbox（同 TX）
+- 跨 aggregate 一致性由 application service `@Transactional` 邊界內 `existsBy*` 預檢 + DB UNIQUE / FK constraint 兜底（如 `SkillVersionRepository.existsBySkillIdAndVersion + UNIQUE (skill_id, version)`）
+- Aggregate 內**不**用 `@MappedCollection` / `AggregateReference` 引用其他 aggregate（per ADR-002 §2.3：避開 `WritingContext.update()` delete-and-reinsert 雷）；用 plain `String foreignKey` 欄位
+- 高頻寫子集合（如 `acl_entries`）用 `jsonb` 欄位行內 UPDATE，不拆獨立 aggregate（per ADR-002 §2.4）
+- `domain_events` 表為 **event log**（保留 ES 精神，理論上可 replay 還原任意時點 aggregate state；不主動使用）— 新事件由 `AuditEventListener` async 訂閱 outbox 統一寫入；寫入端 source of truth 改為 `skills` aggregate state；emergency replay 場景可寫 `fromHistory` factory 從 events 重建
+- Domain event class 視為公開 API，**不得**任意改名（per [deepwiki §3 陷阱 8](../deepwiki/spring-data-jdbc-modulith/design-decisions.md) — 反序列化失敗）
+- Domain event payload 只序列化 ID + 關鍵欄位，**不**含大型 SARIF / frontmatter（per deepwiki §3 陷阱 10 — 8191 byte limit）
+- Domain Events 為不可變 Record，命名用過去式（`SkillCreatedEvent`, `SkillVersionPublishedEvent`）
 - Commands 為 Record，命名用動詞（`CreateSkillCommand`, `PublishVersionCommand`）
-- Aggregate Root 負責驗證不變量（uniqueness, semver 遞增, 狀態轉換合法性）
-- 每個 event 必須存入 `domain_events` collection，再透過 Spring Modulith publish
-- Projection listener 用 `@ApplicationModuleListener`，冪等處理（同一 event 重複消費不會產生副作用）
-- Command controller 和 Query controller 分開（寫入和讀取分離）
-- Event payload 必須自包含（不依賴外部查詢即可建構 read model）
-- security, search, analytics 的 listener 直接操作自己的 read model，不經過 aggregate
+- **非核心模組**（security `SkillFlaggedEvent` 路徑）保留簡化 sync ES write；流量低、event 簡單；無轉向計畫
+- search / analytics / audit listener 用 `@ApplicationModuleListener`，冪等處理（同一 event 重複消費不疊加；UNIQUE constraint + `ON CONFLICT DO NOTHING` 或 deterministic UUID 是正解）
+- Audit listener idempotency：用 `UUID.nameUUIDFromBytes(dedupKey)` 確定性映射 row id；同 aggregate 多 listener 並發以 `pg_advisory_xact_lock(hashtext('audit:' || aggregate_id)::bigint)` 序列化避免 `MAX(seq)+1` race
+- Command controller 和 Query controller 分開（寫入和讀取分離）；Query response type 直接用 aggregate（`@JsonIgnore` on `@Version` 欄位避免 expose internal lock）
 
 ### Spring Modulith Outbox 規範（S023 起）
 

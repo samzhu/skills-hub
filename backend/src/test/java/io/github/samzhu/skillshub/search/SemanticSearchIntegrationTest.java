@@ -29,8 +29,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * E2E Integration test for the semantic search HTTP endpoint — verifies AC-1 and AC-2
@@ -70,7 +70,7 @@ class SemanticSearchIntegrationTest {
 
     @Autowired private TestRestTemplate restTemplate;
     @Autowired private JdbcTemplate jdbc;
-    @Autowired private SkillReadModelRepository skillRepo;
+    @Autowired private SkillRepository skillRepo;
 
     /**
      * Replaces any auto-configured EmbeddingModel (including the noOp fallback and any
@@ -101,10 +101,10 @@ class SemanticSearchIntegrationTest {
         // FK 前置：skills row 必須存在（vector_store.skill_id REFERENCES skills.id）
         var now = Instant.now();
         if (skillRepo.findById(TEST_DOC_ID).isEmpty()) {
-            skillRepo.save(new SkillReadModel(
+            skillRepo.save(Skill.fromRow(
                     TEST_DOC_ID, "docker-compose-helper", "管理 Docker Compose 多容器部署",
                     "sam", "DevOps", "1.0.0", "LOW", "DRAFT", 0L, now, now,
-                    List.of())); // S016 aclEntries — 本 IT 不驗 ACL filter
+                    List.of(), null)); // S016 aclEntries — 本 IT 不驗 ACL filter
         }
 
         // S017：TestRestTemplate 不帶 JWT → CurrentUserProvider fallback (labUserId="lab-user", ["admin"], [])

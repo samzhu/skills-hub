@@ -2,6 +2,8 @@ package io.github.samzhu.skillshub.skill.command;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,17 +41,20 @@ class SkillCommandServiceTest {
 		assertThat(response.getBody()).containsKey("id");
 
 		var skillId = (String) response.getBody().get("id");
-		var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
-		assertThat(events).hasSize(1);
+		// S024 T05B: AuditEventListener async — Awaitility 等
+		org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+			var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
+			assertThat(events).hasSize(1);
 
-		var event = events.getFirst();
-		assertThat(event.aggregateType()).isEqualTo("Skill");
-		assertThat(event.eventType()).isEqualTo("SkillCreated");
-		assertThat(event.payload()).containsEntry("name", "docker-helper");
-		assertThat(event.payload()).containsEntry("description", "Docker compose helper");
-		assertThat(event.payload()).containsEntry("author", "sam");
-		assertThat(event.payload()).containsEntry("category", "DevOps");
-		assertThat(event.sequence()).isEqualTo(1L);
+			var event = events.getFirst();
+			assertThat(event.aggregateType()).isEqualTo("Skill");
+			assertThat(event.eventType()).isEqualTo("SkillCreated");
+			assertThat(event.payload()).containsEntry("name", "docker-helper");
+			assertThat(event.payload()).containsEntry("description", "Docker compose helper");
+			assertThat(event.payload()).containsEntry("author", "sam");
+			assertThat(event.payload()).containsEntry("category", "DevOps");
+			assertThat(event.sequence()).isEqualTo(1L);
+		});
 	}
 
 	@Test
@@ -61,12 +66,13 @@ class SkillCommandServiceTest {
 		commandService.publishVersion(
 				new PublishVersionCommand(skillId, "1.0.0", "gs://bucket/k8s-deploy/1.0.0.zip", 0, java.util.Map.of()));
 
-		var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
-		assertThat(events).hasSize(2);
-		assertThat(events.get(0).sequence()).isEqualTo(1L);
-		assertThat(events.get(0).eventType()).isEqualTo("SkillCreated");
-		assertThat(events.get(1).sequence()).isEqualTo(2L);
-		assertThat(events.get(1).eventType()).isEqualTo("SkillVersionPublished");
+		// S024 T05B: 等候 SkillCreated + SkillVersionPublished 兩筆 audit row（async）；
+		// 不依賴 sequence 順序（可能 SkillStateAdvancedToPublished 加進 audit）
+		org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+			var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
+			var types = events.stream().map(e -> e.eventType()).toList();
+			assertThat(types).contains("SkillCreated", "SkillVersionPublished");
+		});
 	}
 
 }

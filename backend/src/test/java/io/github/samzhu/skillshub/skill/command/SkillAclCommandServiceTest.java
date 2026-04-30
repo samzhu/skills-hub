@@ -3,6 +3,8 @@ package io.github.samzhu.skillshub.skill.command;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Duration;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -12,15 +14,16 @@ import org.springframework.context.annotation.Import;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * S016 T4 — SkillCommandService.grantAcl / revokeAcl 整合測試。
  *
- * <p>對應 spec §4.11：grant/revoke 走 saveAndPublish 路徑，event store 新增
- * SkillAclGranted / SkillAclRevoked record；ApplicationEventPublisher publish 對應 application event。
- *
- * <p>使用 Testcontainer + 完整 Spring Context 確保 (a) 真實 PostgreSQL 寫入；
- * (b) JSONB 序列化路徑可運作；(c) sequence UNIQUE 約束被正確套用。
+ * <p>對應 spec §4.11。S024 T05B：
+ * <ul>
+ *   <li>aggregate state（aclEntries）由 SkillRepository 同步驗證</li>
+ *   <li>audit row 由 AuditEventListener async 寫入 — Awaitility 等候</li>
+ * </ul>
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -30,12 +33,15 @@ class SkillAclCommandServiceTest {
     private SkillCommandService commandService;
 
     @Autowired
+    private SkillRepository skillRepo;
+
+    @Autowired
     private DomainEventRepository eventStore;
 
     @Test
-    @DisplayName("AC-9: grantAcl → eventStore 含 SkillAclGranted + sequence=N+1")
+    @DisplayName("AC-9: grantAcl → aclEntries 含新 entry + SkillAclGranted audit")
     @Tag("AC-9")
-    void grantAcl_persistsEventAndAdvancesSequence() {
+    void grantAcl_persistsAggregateAndAudit() {
         var skillId = commandService.createSkill(
                 new CreateSkillCommand("acl-grant-svc-" + uniqueSuffix(),
                         "grant via service", "owner", "Testing"));
@@ -43,23 +49,28 @@ class SkillAclCommandServiceTest {
         commandService.grantAcl(new GrantAclCommand(
                 skillId, "group", "engineering", "read", "owner"));
 
-        var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
-        assertThat(events).hasSize(2);
+        // sync — aggregate state 直接讀
+        assertThat(skillRepo.findById(skillId).orElseThrow().getAclEntries())
+                .contains("group:engineering:read");
 
-        var grantedEvent = events.get(1);
-        assertThat(grantedEvent.eventType()).isEqualTo("SkillAclGranted");
-        assertThat(grantedEvent.aggregateType()).isEqualTo("Skill");
-        assertThat(grantedEvent.sequence()).isEqualTo(2L);
-        assertThat(grantedEvent.payload()).containsEntry("type", "group");
-        assertThat(grantedEvent.payload()).containsEntry("principal", "engineering");
-        assertThat(grantedEvent.payload()).containsEntry("permission", "read");
-        assertThat(grantedEvent.payload()).containsEntry("grantedBy", "owner");
+        // async audit
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
+            var granted = events.stream()
+                    .filter(e -> "SkillAclGranted".equals(e.eventType())
+                            && "engineering".equals(e.payload().get("principal")))
+                    .findFirst();
+            assertThat(granted).isPresent();
+            assertThat(granted.get().payload()).containsEntry("type", "group");
+            assertThat(granted.get().payload()).containsEntry("permission", "read");
+            assertThat(granted.get().payload()).containsEntry("grantedBy", "owner");
+        });
     }
 
     @Test
-    @DisplayName("AC-10: revokeAcl 移除既存 entry → eventStore 含 SkillAclRevoked")
+    @DisplayName("AC-10: revokeAcl 移除既存 entry → SkillAclRevoked audit")
     @Tag("AC-10")
-    void revokeAcl_persistsEvent() {
+    void revokeAcl_persistsAggregateAndAudit() {
         var skillId = commandService.createSkill(
                 new CreateSkillCommand("acl-revoke-svc-" + uniqueSuffix(),
                         "revoke via service", "owner", "Testing"));
@@ -69,17 +80,22 @@ class SkillAclCommandServiceTest {
         commandService.revokeAcl(new RevokeAclCommand(
                 skillId, "group", "engineering", "read", "owner"));
 
-        var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
-        assertThat(events).hasSize(3);
+        assertThat(skillRepo.findById(skillId).orElseThrow().getAclEntries())
+                .doesNotContain("group:engineering:read");
 
-        var revokedEvent = events.get(2);
-        assertThat(revokedEvent.eventType()).isEqualTo("SkillAclRevoked");
-        assertThat(revokedEvent.sequence()).isEqualTo(3L);
-        assertThat(revokedEvent.payload()).containsEntry("revokedBy", "owner");
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
+            var revoked = events.stream()
+                    .filter(e -> "SkillAclRevoked".equals(e.eventType())
+                            && "engineering".equals(e.payload().get("principal")))
+                    .findFirst();
+            assertThat(revoked).isPresent();
+            assertThat(revoked.get().payload()).containsEntry("revokedBy", "owner");
+        });
     }
 
     @Test
-    @DisplayName("AC-9: 重複 grant 同 entry → IllegalStateException + event store 不變")
+    @DisplayName("AC-9: 重複 grant 同 entry → IllegalStateException + aggregate 不變")
     @Tag("AC-9")
     void grantAcl_duplicateEntry_throwsAndDoesNotPersist() {
         var skillId = commandService.createSkill(
@@ -88,15 +104,15 @@ class SkillAclCommandServiceTest {
 
         commandService.grantAcl(new GrantAclCommand(
                 skillId, "user", "alice", "read", "owner"));
-
-        var beforeCount = eventStore.findByAggregateIdOrderBySequenceAsc(skillId).size();
+        var entriesBefore = skillRepo.findById(skillId).orElseThrow().getAclEntries();
 
         assertThatThrownBy(() -> commandService.grantAcl(new GrantAclCommand(
                 skillId, "user", "alice", "read", "owner")))
                 .isInstanceOf(IllegalStateException.class);
 
-        var afterCount = eventStore.findByAggregateIdOrderBySequenceAsc(skillId).size();
-        assertThat(afterCount).isEqualTo(beforeCount);
+        // aggregate state 不變
+        assertThat(skillRepo.findById(skillId).orElseThrow().getAclEntries())
+                .containsExactlyInAnyOrderElementsOf(entriesBefore);
     }
 
     @Test

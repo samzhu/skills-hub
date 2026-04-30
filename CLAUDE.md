@@ -54,7 +54,7 @@ skills-hub/
 ├── CLAUDE.md                          ← 你在這裡
 ├── docs/grimo/
 │   ├── PRD.md                         ← 產品需求文件
-│   ├── architecture.md                ← 架構設計（ES + CQRS）
+│   ├── architecture.md                ← 架構設計（Spring Data JDBC 充血聚合 + Modulith Outbox；per ADR-002）
 │   ├── development-standards.md       ← 開發標準
 │   ├── qa-strategy.md                 ← QA 策略
 │   ├── glossary.md                    ← 術語表（中英文 + code naming）
@@ -97,13 +97,16 @@ skills-hub/
 
 ## Architecture pattern
 
-- **Core domain (skill, security):** Event Sourcing + CQRS
-  - Command side: validate → produce domain event → persist to `domain_events` → publish
-  - Query side: `@ApplicationModuleListener` consumes events → update read model projections
-- **Supporting (search, analytics):** Read-side projections consuming domain events
-- **Infrastructure (storage):** Traditional service (GCS operations)
-- **Event bus:** Spring Modulith `ApplicationEventPublisher`
-- **Event store:** `domain_events` table in PostgreSQL (Spring Data JDBC; JSONB payload）
+- **Core domain (skill):** Spring Data JDBC 充血聚合 + Modulith Outbox（per ADR-002 / S024 ship v2.0.0）
+  - Aggregate method 充血：mutate state + `registerEvent(...)`；service 端 3-line orchestration（load → mutate → save）
+  - `repo.save()` 透過 `@DomainEvents` proxy interceptor 自動 publish 至 Modulith `event_publication` outbox（同 TX；at-least-once）
+  - AFTER_COMMIT async listeners 訂閱 domain events 維護衍生資料（vector_store / download_events / domain_events audit log）
+- **Security domain (security):** 簡化 ES path 保留（`SkillFlaggedEvent` 由 `FlagService` 直接寫；流量低、event 簡單；無轉向計畫）
+- **Audit (cross-cutting):** `AuditEventListener` 訂閱 9 個 Skill domain events 寫 `domain_events` audit log（async + idempotent；獨立 module 避開 shared → skill cycle）
+- **Supporting (search, analytics):** Read-side projections consuming domain events（不變）
+- **Infrastructure (storage):** Traditional service (GCS operations)（不變）
+- **Event bus:** Spring Modulith `ApplicationEventPublisher` + Event Publication Registry outbox（`event_publication` 表）
+- **Event log:** `domain_events` 表 PostgreSQL — 保留 ES 精神（events 不可變、`(aggregate_id, sequence)` 嚴格遞增，理論上可 replay 還原任意時點 aggregate state）；S024 後寫入端改為 `AuditEventListener` async 接收 outbox 事件統一寫入（deterministic UUID + ON CONFLICT idempotency）。**不主動 replay**（小專案 read-heavy；`repo.findById()` O(1) 取代）；emergency 場景可寫 `fromHistory` factory 走 events 重建
 
 ## Tech stack
 
@@ -123,7 +126,7 @@ skills-hub/
 - REST API prefix: `/api/v1/`
 - Command API: POST, PUT (write operations → produce events)
 - Query API: GET (read from projections)
-- Spring Modulith modules: shared, skill, security, search, analytics, storage
+- Spring Modulith modules: shared, skill, security, search, analytics, storage, audit (S024)
 - Package base: `io.github.samzhu.skillshub`
 - Domain events: `domain_events` PostgreSQL table（aggregate_id + sequence UNIQUE，JSONB payload）
 - Skill format: agentskills.io SKILL.md specification

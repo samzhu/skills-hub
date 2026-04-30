@@ -24,8 +24,8 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * AC-3, AC-4 驗證：SearchProjection 監聽領域事件並透過 {@link SkillshubPgVectorStore}
@@ -46,7 +46,7 @@ import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
 class SearchProjectionTest {
 
     @Autowired private SearchProjection projection;
-    @Autowired private SkillReadModelRepository skillRepo;
+    @Autowired private SkillRepository skillRepo;
     @Autowired private JdbcTemplate jdbc;
 
     @MockitoBean private CurrentUserProvider currentUserProvider;
@@ -61,9 +61,9 @@ class SearchProjectionTest {
         skillName = "docker-helper-" + UUID.randomUUID();
         var now = Instant.now();
         // FK skill_id → skills.id 前置
-        skillRepo.save(new SkillReadModel(
+        skillRepo.save(Skill.fromRow(
                 skillId, skillName, "管理 Docker 容器", "sam", "DevOps",
-                null, null, "DRAFT", 0L, now, now, List.of())); // S016 aclEntries
+                null, null, "DRAFT", 0L, now, now, List.of(), null)); // S016 aclEntries
         when(currentUserProvider.userId()).thenReturn("test-owner");
     }
 
@@ -133,9 +133,9 @@ class SearchProjectionTest {
         // 不會被前一次寫入污染）
         var skillId2 = UUID.randomUUID().toString();
         var skillName2 = "k8s-helper-" + UUID.randomUUID();
-        skillRepo.save(new SkillReadModel(
+        skillRepo.save(Skill.fromRow(
                 skillId2, skillName2, "管理 K8s", "jane", "DevOps",
-                null, null, "DRAFT", 0L, Instant.now(), Instant.now(), List.of())); // S016 aclEntries
+                null, null, "DRAFT", 0L, Instant.now(), Instant.now(), List.of(), null)); // S016 aclEntries
 
         // 第 1 次寫入：owner=test-owner（setUp 預設）— 等 async 完成再切換 mock，否則 race
         projection.onSkillCreated(new SkillCreatedEvent(skillId, skillName, "...", "sam", "DevOps"));

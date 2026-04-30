@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-04-29（**S023 ✅ Shipped v1.5.0 (M18)** — Spring Modulith Outbox Foundation 完成；Active 推進至 S024（Skill 充血聚合改寫，target v2.0.0）+ S025（Test Pyramid Realignment，由 S023 T07 known limitation 觸發）。**ADR-002 Phase 1 落地完成。**）
+> 最後更新：2026-04-30（**S024 ✅ Shipped v2.0.0 (M19)** — Skill State-Based Aggregate Migration 完成；ADR-002 Phase 2 落地完成；Skill domain 由 ES POJO 轉為 Spring Data JDBC 充血聚合 + Modulith outbox。Active 推進至 S025（Test Pyramid Realignment，由 S023 T07 + S024 T05B test cascade 觸發）。）
 
 ---
 
@@ -27,7 +27,7 @@ S023 (Modulith Outbox Foundation) ─▶ S024 (Skill State-Based Aggregate)
 | 順序 | Spec | Title | Points | Deps | Status |
 |------|------|-------|--------|------|--------|
 | 1 | S023 | Spring Modulith Outbox Foundation | M(12) | S018 ✅ + ADR-002 | ✅ — `v1.5.0` (M18) |
-| 2 | **S024** | **Skill State-Based Aggregate Migration** | **M(13)** | S023 ✅ + S016 ✅ + S018 ✅ + ADR-002 | **⏳ Dev** — T01 PASS（POC validated；3 listener entries 觀察證實）；T02-T06 pending；target `v2.0.0` (major bump per ADR-002 §5.1) |
+| 2 | S024 | Skill State-Based Aggregate Migration | M(13) | S023 ✅ + S016 ✅ + S018 ✅ + ADR-002 | ✅ — `v2.0.0` (M19) — 2026-04-30 |
 | 3 | **S025** | **Test Pyramid Realignment + Scenario migration** | **L(15-18)** | S023 ✅（known limitation 來源）| **🔲 Design** |
 
 > **S023 / S024 拆分緣由**：原 Backlog S023 範圍僅「outbox migration」，研究後（`docs/deepwiki/spring-data-jdbc-modulith/` 6 份 source-level 檔案）發現整體架構轉向更有價值，但合併為單一 spec 估算 **L(16)** 接近 XL 強制拆分線；ADR-002 §5 拆為 S023（基礎建設）+ S024（領域層改寫）— 各 M(12-13)，可獨立 ship 與 verify、blast radius 小。
@@ -111,7 +111,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 2 | M15: ACL-Aware 語意搜尋 | S017 | S-M(11) | 222 | ✅ `v1.3.0` (2026-04-29) |
 | Phase 2 | M16: Skill Aggregate 充血演化 + SKILL.md 對齊 | S018 | M(13) | 235 | ✅ `v1.4.0` (2026-04-29) |
 | Phase 3 | M18: Spring Modulith Outbox Foundation | S023 | M(12) | 247 | ✅ `v1.5.0` (2026-04-29) |
-| Phase 3 | M19: Skill State-Based Aggregate Migration | S024 | M(13) | 260 | 🔲 Design (target `v2.0.0` — major bump per ADR-002 §5.1) |
+| Phase 3 | M19: Skill State-Based Aggregate Migration | S024 | M(13) | 260 | ✅ `v2.0.0` (2026-04-30) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

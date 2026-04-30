@@ -8,11 +8,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
+
 /**
- * S016：Skill ACL 查詢服務 — 從 read model 取出 acl_entries 並拆成 type/principal/permission tuples。
+ * Skill ACL 查詢服務 — 從 Skill aggregate 取出 acl_entries 並拆成 type/principal/permission tuples。
  *
- * <p>來源是 {@link SkillReadModelRepository#findById} 取出的 {@code aclEntries: List<String>}
- * （已由 {@code StringListJsonbConverter} 把 JSONB 反序列化）。本 service 負責 colon split + 畸形 entry skip。
+ * <p>S024 ship 後改打 {@link SkillRepository}（aggregate 直接做查詢；ADR-002 §2.4）—
+ * {@code Skill.getAclEntries()} 已回 {@code List.copyOf(aclEntries)} 防外部 mutate。
+ * 本 service 負責 colon split + 畸形 entry skip。
  *
  * @see AclEntryResponse
  */
@@ -21,9 +24,9 @@ public class SkillAclQueryService {
 
     private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    private final SkillReadModelRepository skillRepo;
+    private final SkillRepository skillRepo;
 
-    public SkillAclQueryService(SkillReadModelRepository skillRepo) {
+    public SkillAclQueryService(SkillRepository skillRepo) {
         this.skillRepo = skillRepo;
     }
 
@@ -37,12 +40,12 @@ public class SkillAclQueryService {
      */
     public List<AclEntryResponse> listEntries(String skillId) {
         var skill = skillRepo.findById(skillId);
-        if (skill.isEmpty() || skill.get().aclEntries() == null) {
+        if (skill.isEmpty() || skill.get().getAclEntries() == null) {
             return List.of();
         }
 
         var result = new ArrayList<AclEntryResponse>();
-        for (var entry : skill.get().aclEntries()) {
+        for (var entry : skill.get().getAclEntries()) {
             // 限 3 段 split — principal 內可能含 dot/email 等字元但不可含 colon（per spec §4.1 regex）；
             // 用 limit=3 確保格式違規時 fast-fail，而非把 permission 段誤切。
             var parts = entry.split(":", 3);

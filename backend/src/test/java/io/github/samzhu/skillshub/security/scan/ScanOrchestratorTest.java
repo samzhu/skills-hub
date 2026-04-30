@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +14,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.DisplayName;
@@ -20,13 +22,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import tools.jackson.databind.ObjectMapper;
-
 import io.github.samzhu.skillshub.security.scan.sarif.SarifReporter;
-import io.github.samzhu.skillshub.shared.events.DomainEvent;
-import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
-import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
+import io.github.samzhu.skillshub.skill.command.PublishVersionCommand;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillVersion;
+import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
 import io.github.samzhu.skillshub.storage.PackageService;
 import io.github.samzhu.skillshub.storage.StorageService;
@@ -34,17 +34,14 @@ import io.github.samzhu.skillshub.storage.StorageService;
 /**
  * S010 多引擎安全掃描編排測試（Spring Data JDBC 版）。
  *
- * <p>S014 從 MongoTemplate mock 改為 SkillReadModelRepository + SkillVersionReadModelRepository
- * + ObjectMapper mock — 驗證 ScanOrchestrator 透過 @Modifying @Query 寫入
- * skills.risk_level 與 skill_versions.risk_assessment（取代 mongoTemplate.updateFirst）。
- *
- * <p><b>S024 T5 transitional</b>：ScanOrchestrator 已改為 SkillRepository / SkillVersionRepository
- * + attachRiskAssessment 充血路徑；本 test 仍 mock 舊 SkillReadModelRepository /
- * SkillVersionReadModelRepository（既有 v1.5.0 設計），且 verify {@code versionRepo.updateRiskAssessment}
- * 等已不存在於 SkillVersionRepository 的方法。T7 read-model 刪除階段 rewrite — 改 mock 新 repos +
- * verify {@code versionRepo.findBySkillIdAndVersion / save}（攔截 SkillVersion aggregate state 改變）。
+ * <p>S024 T05B 重寫：移除 v1.5.0 read-model + 直接 eventStore.save 路徑。新驗證模型：
+ * <ul>
+ *   <li>{@code skillRepo.updateRiskLevel(skillId, level, ts)} — cross-aggregate projection</li>
+ *   <li>{@code versionRepo.save(SkillVersion)} — 攔截 aggregate state（attachRiskAssessment 後 riskAssessment field 寫入）</li>
+ * </ul>
+ * SkillRiskAssessed 進 audit log 由 {@link io.github.samzhu.skillshub.shared.events.audit.AuditEventListener}
+ * 訂閱事件後 async 處理 — 屬於整合測試範疇（{@code AuditEventListenerTest} 覆蓋），本 unit test 不驗。
  */
-@org.junit.jupiter.api.Disabled("S024 T5 transitional: ScanOrchestrator migrated to SkillRepository / SkillVersionRepository (attachRiskAssessment + save path); test still mocks SkillReadModelRepository / SkillVersionReadModelRepository old types and verifies updateRiskAssessment which no longer exists. T7 will rewrite this test alongside read-model deletion + sync→async write migration.")
 class ScanOrchestratorTest {
 
 	private static final SkillVersionPublishedEvent EVT =
@@ -79,10 +76,8 @@ class ScanOrchestratorTest {
 	}
 
 	private record Mocks(
-			DomainEventRepository eventStore,
 			SkillRepository skillRepo,
-			SkillVersionRepository versionRepo,
-			ObjectMapper objectMapper) {}
+			SkillVersionRepository versionRepo) {}
 
 	private ScanOrchestrator buildOrchestrator(List<SecurityAnalyzer> analyzers, Mocks m) throws IOException {
 		var storage = mock(StorageService.class);
@@ -91,23 +86,29 @@ class ScanOrchestratorTest {
 		when(pkg.extractSkillMd(any())).thenReturn("# md");
 		when(pkg.extractScripts(any())).thenReturn(Map.of());
 		var sarif = new SarifReporter();
-		return new ScanOrchestrator(analyzers, storage, pkg, m.eventStore,
-				m.skillRepo, m.versionRepo, m.objectMapper, sarif);
+		return new ScanOrchestrator(analyzers, storage, pkg,
+				m.skillRepo, m.versionRepo, sarif);
 	}
 
 	private Mocks newMocks() {
-		var eventStore = mock(DomainEventRepository.class);
-		when(eventStore.findTopByAggregateIdOrderBySequenceDesc(any())).thenReturn(java.util.Optional.empty());
 		var skillRepo = mock(SkillRepository.class);
 		var versionRepo = mock(SkillVersionRepository.class);
-		var objectMapper = new ObjectMapper(); // 真實實例，序列化邏輯測試需要
-		return new Mocks(eventStore, skillRepo, versionRepo, objectMapper);
+		// 預設不曾掃描過此事件 — let pipeline run
+		when(versionRepo.hasRiskAssessmentFromEvent(anyString(), anyString(), anyString())).thenReturn(false);
+		// findBySkillIdAndVersion 回傳一個真實 SkillVersion aggregate（透過 publish factory 建立）
+		var sv = SkillVersion.publish(new PublishVersionCommand(
+				"agg-1", "1.0.0", "gs://b/x.zip", 100, Map.of("name", "demo")));
+		when(versionRepo.findBySkillIdAndVersion(eq("agg-1"), eq("1.0.0")))
+				.thenReturn(Optional.of(sv));
+		// save 直接 echo argument（aggregate state mutation 在傳入物件上完成）
+		when(versionRepo.save(any(SkillVersion.class))).thenAnswer(inv -> inv.getArgument(0));
+		return new Mocks(skillRepo, versionRepo);
 	}
 
 	@Test
-	@DisplayName("AC-1.1: pipeline → DomainEvent SkillRiskAssessed + skills.risk_level + skill_versions.risk_assessment")
+	@DisplayName("AC-1.1: pipeline → skills.risk_level + SkillVersion.attachRiskAssessment 充血路徑")
 	@Tag("AC-1")
-	void pipelinePersistsToAllThreeStores() throws IOException {
+	void pipelinePersistsRiskLevelAndAggregateState() throws IOException {
 		var pattern = fakeAnalyzer("pattern", Phase.STATIC, new AnalysisOutput(
 				List.of(new SecurityFinding("R1", Severity.HIGH, "x", "f", 1, "e", "pattern", "AST06")),
 				List.of()));
@@ -117,18 +118,16 @@ class ScanOrchestratorTest {
 		var orch = buildOrchestrator(List.of(pattern, meta), m);
 		orch.on(EVT);
 
-		// 1. DomainEvent saved
-		var domainEventCaptor = ArgumentCaptor.forClass(DomainEvent.class);
-		verify(m.eventStore).save(domainEventCaptor.capture());
-		assertThat(domainEventCaptor.getValue().eventType()).isEqualTo("SkillRiskAssessed");
-		assertThat(domainEventCaptor.getValue().aggregateId()).isEqualTo("agg-1");
-
-		// 2. skills.risk_level updated
+		// 1. skills.risk_level updated
 		verify(m.skillRepo, atLeastOnce()).updateRiskLevel(eq("agg-1"), anyString(), any(Instant.class));
 
-		// 3. skill_versions.risk_assessment updated — T5 transitional: SkillVersionRepository no longer has
-		//    updateRiskAssessment（attachRiskAssessment + save 路徑取代）；T7 rewrite test。Class @Disabled。
-		// verify(m.versionRepo, atLeastOnce()).updateRiskAssessment(eq("agg-1"), eq("1.0.0"), anyString());
+		// 2. SkillVersion aggregate 充血 — versionRepo.save 攔截後 riskAssessment field 寫入 + SkillRiskAssessedEvent registered
+		var captor = ArgumentCaptor.forClass(SkillVersion.class);
+		verify(m.versionRepo, atLeastOnce()).save(captor.capture());
+		var saved = captor.getValue();
+		assertThat(saved.getRiskAssessment()).isNotNull();
+		assertThat(saved.getRiskAssessment().get("level")).isEqualTo("HIGH");
+		assertThat(saved.getRiskAssessment().get("sourceEventId")).isEqualTo(EVT.sourceEventId());
 	}
 
 	@Test
@@ -146,7 +145,6 @@ class ScanOrchestratorTest {
 		var orch = buildOrchestrator(List.of(pattern, secret), m);
 		orch.on(EVT);
 
-		// skill_repo.updateRiskLevel(skillId, "HIGH", ts)
 		verify(m.skillRepo, atLeastOnce()).updateRiskLevel(eq("agg-1"), eq("HIGH"), any(Instant.class));
 	}
 
@@ -202,10 +200,10 @@ class ScanOrchestratorTest {
 	}
 
 	@Test
-	@DisplayName("AC-2.1: 關閉的 engine 不在 SARIF runs[]")
+	@DisplayName("AC-2.1: 關閉的 engine 不在 SARIF runs[]（透過攔截 SkillVersion aggregate riskAssessment 驗證）")
 	@Tag("AC-2")
 	void disabledEngineNotInSarif() throws IOException {
-		// 模擬 metadata bean 沒被建立 — 只給 pattern + meta
+		// 只啟用 pattern + meta；模擬 metadata bean 未建立
 		var pattern = fakeAnalyzer("pattern", Phase.STATIC, AnalysisOutput.empty());
 		var meta = fakeAnalyzer("meta", Phase.META, AnalysisOutput.empty());
 
@@ -213,15 +211,31 @@ class ScanOrchestratorTest {
 		var orch = buildOrchestrator(List.of(pattern, meta), m);
 		orch.on(EVT);
 
-		// T5 transitional: SARIF JSON 由 attachRiskAssessment + save 路徑透過 Map<String, Object>
-		// 直接寫入 risk_assessment column；T7 rewrite test 改 verify versionRepo.save 攔截
-		// SkillVersion aggregate's domainEvents() 與 riskAssessment field state。Class @Disabled。
-		// var jsonCaptor = ArgumentCaptor.forClass(String.class);
-		// verify(m.versionRepo, atLeastOnce()).updateRiskAssessment(eq("agg-1"), eq("1.0.0"), jsonCaptor.capture());
-		// var json = jsonCaptor.getValue();
-		// assertThat(json).contains("\"name\":\"pattern\"");
-		// assertThat(json).contains("\"name\":\"meta\"");
-		// assertThat(json).doesNotContain("\"name\":\"metadata\"");
+		var captor = ArgumentCaptor.forClass(SkillVersion.class);
+		verify(m.versionRepo, atLeastOnce()).save(captor.capture());
+		var saved = captor.getValue();
+		var sarif = (Map<?, ?>) saved.getRiskAssessment().get("sarif");
+		assertThat(sarif).isNotNull();
+		var runs = (List<?>) sarif.get("runs");
+		assertThat(runs).hasSize(2);  // pattern + meta only — metadata not present
+	}
+
+	@Test
+	@DisplayName("AC-2: idempotency — sourceEventId 已掃描 → skip pipeline（versionRepo.save 不被呼叫）")
+	@Tag("AC-2")
+	void idempotencySkipsAlreadyScanned() throws IOException {
+		var pattern = fakeAnalyzer("pattern", Phase.STATIC, AnalysisOutput.empty());
+
+		var m = newMocks();
+		when(m.versionRepo.hasRiskAssessmentFromEvent(eq("agg-1"), eq("1.0.0"), anyString()))
+				.thenReturn(true);  // 已掃描過
+		var orch = buildOrchestrator(List.of(pattern), m);
+
+		orch.on(EVT);
+
+		// pipeline 應跳過 — skillRepo / versionRepo.save 都不被呼叫
+		verify(m.skillRepo, never()).updateRiskLevel(anyString(), anyString(), any(Instant.class));
+		verify(m.versionRepo, never()).save(any(SkillVersion.class));
 	}
 
 	@Test

@@ -3,6 +3,7 @@ package io.github.samzhu.skillshub.skill.command;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.Duration;
 import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
@@ -14,12 +15,19 @@ import org.springframework.context.annotation.Import;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillStatus;
 
 /**
  * S018 T2 — SkillCommandService.suspend / reactivate 整合測試。
  *
- * <p>對應 spec §3 AC-4 / AC-7：service 走 ES saveAndPublish 路徑寫 SkillSuspended /
- * SkillReactivated event；@Transactional 確保失敗時 event store 不變。
+ * <p>對應 spec §3 AC-4 / AC-7。S024 T05B：
+ * <ul>
+ *   <li>aggregate state 變化（SUSPENDED / PUBLISHED）由 {@link SkillRepository#findById}
+ *       同步驗證（{@code skills} 表 commit 後即可讀）</li>
+ *   <li>audit row 由 AuditEventListener async 寫入 — 用 Awaitility 等候</li>
+ * </ul>
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -29,29 +37,36 @@ class SkillSuspendReactivateTest {
     private SkillCommandService commandService;
 
     @Autowired
+    private SkillRepository skillRepo;
+
+    @Autowired
     private DomainEventRepository eventStore;
 
     @Test
-    @DisplayName("AC-4: PUBLISHED skill suspend → eventStore 含 SkillSuspended sequence=N+1")
+    @DisplayName("AC-4: PUBLISHED skill suspend → aggregate SUSPENDED + SkillSuspended audit")
     @Tag("AC-4")
     void suspendPublishedSkill_persistsEvent() {
         var skillId = createPublishedSkill();
-        var beforeCount = eventStore.findByAggregateIdOrderBySequenceAsc(skillId).size();
 
         commandService.suspend(new SuspendCommand(skillId, "policy violation", "admin-user"));
 
-        var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
-        assertThat(events).hasSize(beforeCount + 1);
+        // sync state — aggregate 改為 SUSPENDED
+        assertThat(loadSkill(skillId).getStatus()).isEqualTo(SkillStatus.SUSPENDED);
 
-        var suspendedEvent = events.get(events.size() - 1);
-        assertThat(suspendedEvent.eventType()).isEqualTo("SkillSuspended");
-        assertThat(suspendedEvent.aggregateType()).isEqualTo("Skill");
-        assertThat(suspendedEvent.payload()).containsEntry("reason", "policy violation");
-        assertThat(suspendedEvent.payload()).containsEntry("suspendedBy", "admin-user");
+        // async audit
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
+            var suspended = events.stream()
+                    .filter(e -> "SkillSuspended".equals(e.eventType())).findFirst();
+            assertThat(suspended).isPresent();
+            assertThat(suspended.get().aggregateType()).isEqualTo("Skill");
+            assertThat(suspended.get().payload()).containsEntry("reason", "policy violation");
+            assertThat(suspended.get().payload()).containsEntry("suspendedBy", "admin-user");
+        });
     }
 
     @Test
-    @DisplayName("AC-7: SUSPENDED skill reactivate → eventStore 含 SkillReactivated")
+    @DisplayName("AC-7: SUSPENDED skill reactivate → aggregate PUBLISHED + SkillReactivated audit")
     @Tag("AC-7")
     void reactivateSuspendedSkill_persistsEvent() {
         var skillId = createPublishedSkill();
@@ -59,28 +74,37 @@ class SkillSuspendReactivateTest {
 
         commandService.reactivate(new ReactivateCommand(skillId, "manual review approved"));
 
-        var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
-        var reactivatedEvent = events.get(events.size() - 1);
-        assertThat(reactivatedEvent.eventType()).isEqualTo("SkillReactivated");
-        assertThat(reactivatedEvent.payload()).containsEntry("reason", "manual review approved");
+        assertThat(loadSkill(skillId).getStatus()).isEqualTo(SkillStatus.PUBLISHED);
+
+        org.awaitility.Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
+            var reactivated = events.stream()
+                    .filter(e -> "SkillReactivated".equals(e.eventType())).findFirst();
+            assertThat(reactivated).isPresent();
+            assertThat(reactivated.get().payload()).containsEntry("reason", "manual review approved");
+        });
     }
 
     @Test
-    @DisplayName("AC-5 (service): DRAFT skill suspend → IllegalStateException + event store 不變")
+    @DisplayName("AC-5 (service): DRAFT skill suspend → IllegalStateException + state 不變")
     @Tag("AC-5")
     void suspendDraftSkill_throwsAndDoesNotPersist() {
         var skillId = commandService.createSkill(
                 new CreateSkillCommand("draft-suspend-" + uniqueSuffix(),
                         "DRAFT skill", "owner", "Testing"));
-        var beforeCount = eventStore.findByAggregateIdOrderBySequenceAsc(skillId).size();
+        assertThat(loadSkill(skillId).getStatus()).isEqualTo(SkillStatus.DRAFT);
 
         assertThatThrownBy(() -> commandService.suspend(
                 new SuspendCommand(skillId, "...", "admin")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DRAFT");
 
-        var afterCount = eventStore.findByAggregateIdOrderBySequenceAsc(skillId).size();
-        assertThat(afterCount).isEqualTo(beforeCount);
+        // aggregate state 仍為 DRAFT
+        assertThat(loadSkill(skillId).getStatus()).isEqualTo(SkillStatus.DRAFT);
+    }
+
+    private Skill loadSkill(String skillId) {
+        return skillRepo.findById(skillId).orElseThrow();
     }
 
     private String createPublishedSkill() {

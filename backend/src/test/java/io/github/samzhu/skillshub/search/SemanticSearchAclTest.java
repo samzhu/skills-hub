@@ -34,8 +34,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.query.SkillReadModel;
-import io.github.samzhu.skillshub.skill.query.SkillReadModelRepository;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * S017 T3 — 端對端 ACL 語意搜尋驗證。
@@ -61,7 +61,7 @@ class SemanticSearchAclTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private JdbcTemplate jdbc;
-    @Autowired private SkillReadModelRepository skillRepo;
+    @Autowired private SkillRepository skillRepo;
 
     @MockitoBean private EmbeddingModel embeddingModel;
 
@@ -163,10 +163,10 @@ class SemanticSearchAclTest {
     private String seedVectorWithAcl(String owner, List<String> aclEntries, String name) {
         var skillId = UUID.randomUUID().toString();
         var now = Instant.now();
-        skillRepo.save(new SkillReadModel(
+        skillRepo.save(Skill.fromRow(
                 skillId, name + "-" + skillId.substring(0, 8),
                 "S017 ACL E2E test fixture", owner, "Testing",
-                "1.0.0", "LOW", "PUBLISHED", 0L, now, now, List.of()));
+                "1.0.0", "LOW", "PUBLISHED", 0L, now, now, List.of(), null));
 
         SkillshubPgVectorStore.builder(jdbc, embeddingModel)
                 .owner(owner)
