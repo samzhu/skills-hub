@@ -126,6 +126,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M23: Dev Mode Admin Bypass | S027 | XS(5) | 295 | ✅ `v2.4.0` (2026-05-01 — local profile 預設 LAB mode；DelegatingPermissionEvaluator 對 ROLE_admin 短路；dev 全 mutation 不需 JWT；prod 行為不變) |
 | Phase 4 | M24: Frontend SUSPENDED Status Rendering | S028 | XS(5) | 300 | ✅ `v2.5.0` (2026-05-01 — type union 補 SUSPENDED；SkillDetailPage 中譯 + variant；SkillCard 對非 PUBLISHED 顯示 badge) |
 | Phase 4 | M25: Block Suspended Skill Download | S029 | XS(5) | 305 | ✅ `v2.6.0` (2026-05-01 — SkillSuspendedException + SkillQueryService.downloadAndRecord guard；403 SKILL_SUSPENDED；admin 也不能下載 SUSPENDED skill) |
+| Phase 4 | M26: Conflict-Class Error Mapping | S030 | XS(5) | 310 | ✅ `v2.7.0` (2026-05-01 — IllegalStateException → 409 STATE_CONFLICT；OptimisticLockingFailureException → 409 CONCURRENT_MODIFICATION + retry hint) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

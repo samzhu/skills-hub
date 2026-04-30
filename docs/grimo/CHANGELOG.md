@@ -1,5 +1,27 @@
 # Changelog
 
+## [v2.7.0] — Conflict-Class Error Mapping（M26 完成；2026-05-01）
+
+> **Minor bump** — HTTP 錯誤映射修正：將 conflict 類例外（state machine 違規 / 樂觀鎖競態）從 HTTP 500（with stacktrace 暴露）統一映射至 HTTP 409 Conflict + 結構化 ErrorResponse。延伸已建立的 `VersionExistsException` → 409 pattern。
+
+### Added
+- **S030: Conflict-Class Error Mapping**（M26 落地）：
+  - **`@ExceptionHandler(IllegalStateException.class)` → 409 STATE_CONFLICT**：覆蓋 aggregate state machine 違規（duplicate ACL grant / revoke missing ACL / suspend DRAFT / reactivate non-SUSPENDED）。aggregate 仍拋 IllegalStateException + descriptive message — 只 HTTP 層映射改變。
+  - **`@ExceptionHandler(OptimisticLockingFailureException.class)` → 409 CONCURRENT_MODIFICATION**：覆蓋 Spring Data `@Version` 樂觀鎖競態；attached retry hint message。
+  - **6 個 SBE AC 全綠**（duplicate / revoke missing / suspend DRAFT / reactivate PUBLISHED / 並行 5 grants / 既有 test 不破）。
+
+### Trigger
+- 2026-05-01 /loop tick 5 系統測試 — duplicate grant 回 500 + stacktrace 暴露；5 並行 grants 4/5 → 500。
+
+### Verification
+- `./gradlew test` — 292 tests 不破
+- E2E HTTP：4 種 state conflict 都 409 STATE_CONFLICT；5 並行 grant 1×201 + 4×409（0×5xx）；同 principal race 1×201 + 1×409 CONCURRENT_MODIFICATION
+
+### Tech Debt
+- 自動 retry on OptimisticLock 留 future spec — auto retry 可能 mask 真正衝突；屬 idempotency-key middleware 或 server-side bounded retry 設計範疇
+
+---
+
 ## [v2.6.0] — Block Suspended Skill Download（M25 完成；2026-05-01）
 
 > **Minor bump** — 安全性修正：被 suspend 的 skill 不可下載。原 API 對 SUSPENDED skill 仍回 200 + zip，違反 `SkillStatus.SUSPENDED` 設計意圖「因安全風險或違規而下架，不可下載」。

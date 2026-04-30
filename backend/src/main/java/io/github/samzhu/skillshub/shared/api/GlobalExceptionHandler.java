@@ -6,6 +6,7 @@ import java.util.NoSuchElementException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -73,6 +74,44 @@ public class GlobalExceptionHandler {
 				.log("Download blocked: skill suspended");
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
 				.body(new ErrorResponse("SKILL_SUSPENDED", ex.getMessage(), Instant.now()));
+	}
+
+	/**
+	 * S030：處理 aggregate state machine 違規（{@link IllegalStateException}）。
+	 *
+	 * <p>涵蓋：duplicate ACL grant、revoke missing ACL、suspend DRAFT、reactivate non-SUSPENDED 等。
+	 * aggregate 統一拋 {@code IllegalStateException} with descriptive message；HTTP 層映射至
+	 * 409 Conflict（per RFC 9110 §15.5.10：「conflict with the current state of the target resource」）。
+	 */
+	@ExceptionHandler(IllegalStateException.class)
+	ResponseEntity<ErrorResponse> handleStateConflict(IllegalStateException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "STATE_CONFLICT")
+				.addKeyValue("message", ex.getMessage())
+				.log("State conflict");
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(new ErrorResponse("STATE_CONFLICT", ex.getMessage(), Instant.now()));
+	}
+
+	/**
+	 * S030：處理 Spring Data {@link OptimisticLockingFailureException}（{@code @Version} 競態）。
+	 *
+	 * <p>並行 update 同一 aggregate 時版本號衝突；client 應重試（idempotent operation 的話）或
+	 * 重新讀取最新狀態後再嘗試。HTTP 409 Conflict + retry hint message。
+	 *
+	 * <p>不在此處 auto-retry — 自動 retry 可能 mask 真正衝突（同一 client 連發兩次該 fail），
+	 * 屬 future spec scope。
+	 */
+	@ExceptionHandler(OptimisticLockingFailureException.class)
+	ResponseEntity<ErrorResponse> handleConcurrentModification(OptimisticLockingFailureException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "CONCURRENT_MODIFICATION")
+				.addKeyValue("message", ex.getMessage())
+				.log("Optimistic lock conflict");
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(new ErrorResponse("CONCURRENT_MODIFICATION",
+						"Resource was modified concurrently. Retry the request.",
+						Instant.now()));
 	}
 
 }
