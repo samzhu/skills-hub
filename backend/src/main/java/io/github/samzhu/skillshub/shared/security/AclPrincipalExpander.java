@@ -38,6 +38,12 @@ public class AclPrincipalExpander {
         for (var group : user.groups()) {
             patterns.add("group:" + group + ":" + permission);
         }
+        // S026: read permission 一律附 "*:read" public pseudo-principal — 與 Skill aggregate /
+        // vector_store.acl_entries 預設加的 "*:read" `??|` 命中；達成「skill 預設對所有使用者開放
+        // 讀取」。write/delete/suspend/reactivate 不附 — mutation 仍 owner/role/group ACL 守。
+        if ("read".equals(permission)) {
+            patterns.add("*:read");
+        }
         return patterns;
     }
 

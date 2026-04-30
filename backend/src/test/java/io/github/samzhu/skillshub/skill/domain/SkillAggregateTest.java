@@ -59,8 +59,9 @@ class SkillAggregateTest {
         assertThat(skill.isNew()).isTrue();
 
         // S016 自動 seed author 為 owner — 與 legacy SkillProjection.on(SkillCreatedEvent) 同邏輯
+        // S026: 加 "*:read" public-read pseudo-principal — skill 預設對所有使用者開放讀取
         assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
-                "user:alice:read", "user:alice:write", "user:alice:delete");
+                "user:alice:read", "user:alice:write", "user:alice:delete", "*:read");
 
         Collection<Object> events = retrieveDomainEvents(skill);
         assertThat(events).hasSize(1);
@@ -198,14 +199,15 @@ class SkillAggregateTest {
     @Tag("AC-8")
     @DisplayName("AC-8: recordAclGranted append entry to aclEntries + register SkillAclGrantedEvent")
     void recordAclGrantedAppendsAndRegistersEvent() {
-        // 用 null author 避免 S016 自動 seed 干擾本 test
+        // 用 null author 避免 S016 自動 seed user-namespace ACL 干擾本 test
+        // S026: null author 仍 seed "*:read" public-read pseudo-principal
         var skill = Skill.create(new CreateSkillCommand("acl-grant-test", "desc", null, "DevOps"));
-        assertThat(skill.getAclEntries()).isEmpty();
+        assertThat(skill.getAclEntries()).containsExactly("*:read");
         clearDomainEvents(skill);
 
         skill.grantAcl(new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin"));
 
-        assertThat(skill.getAclEntries()).containsExactly("user:alice:read");
+        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder("*:read", "user:alice:read");
         var events = retrieveDomainEvents(skill);
         assertThat(events).hasSize(1);
         assertThat(events.iterator().next()).isInstanceOf(SkillAclGrantedEvent.class);
@@ -224,8 +226,8 @@ class SkillAggregateTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("already exists");
 
-        // aclEntries 不變
-        assertThat(skill.getAclEntries()).containsExactly("user:alice:read");
+        // aclEntries 不變（S026: null author 預設含 "*:read"）
+        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder("*:read", "user:alice:read");
         assertThat(retrieveDomainEvents(skill)).isEmpty();
     }
 
@@ -239,7 +241,8 @@ class SkillAggregateTest {
 
         skill.revokeAcl(new RevokeAclCommand(skill.getId(), "user", "alice", "read", "admin"));
 
-        assertThat(skill.getAclEntries()).isEmpty();
+        // S026: null author 預設 seed "*:read"；alice grant 後 revoke 只移 user:alice:read，"*:read" 保留
+        assertThat(skill.getAclEntries()).containsExactly("*:read");
         var events = retrieveDomainEvents(skill);
         assertThat(events).hasSize(1);
         assertThat(events.iterator().next()).isInstanceOf(SkillAclRevokedEvent.class);
@@ -257,7 +260,8 @@ class SkillAggregateTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("not found");
 
-        assertThat(skill.getAclEntries()).isEmpty();
+        // S026: null author 預設 seed "*:read"；revoke 失敗後狀態維持
+        assertThat(skill.getAclEntries()).containsExactly("*:read");
         assertThat(retrieveDomainEvents(skill)).isEmpty();
     }
 

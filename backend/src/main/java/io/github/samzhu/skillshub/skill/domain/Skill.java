@@ -98,13 +98,16 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         skill.latestVersion = null;
         skill.riskLevel = null;
         skill.downloadCount = 0;
-        // S016 自動 seed owner ACL（owner 為 author；無 author 時不 seed）
+        // S016 自動 seed owner ACL（owner 為 author；無 author 時仍 seed public read）
+        // S026: 加 "*:read" public-read pseudo-principal — skill 預設對所有使用者開放讀取
+        // （write/delete/suspend/reactivate 仍 owner-only）。
         skill.aclEntries = cmd.author() == null
-                ? new ArrayList<>()
+                ? new ArrayList<>(List.of("*:read"))
                 : new ArrayList<>(List.of(
                         "user:" + cmd.author() + ":read",
                         "user:" + cmd.author() + ":write",
-                        "user:" + cmd.author() + ":delete"));
+                        "user:" + cmd.author() + ":delete",
+                        "*:read"));
         skill.createdAt = Instant.now();
         skill.updatedAt = skill.createdAt;
         // version=null → Persistable.isNew()=true → INSERT path；Spring Data prepareVersionForInsert

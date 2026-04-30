@@ -80,10 +80,11 @@ class SearchProjection {
                 null    // riskLevel — 尚未完成評估
         );
         // S016：vector_store.acl_entries 從 author 衍生（同 V2 backfill 邏輯，per spec §4.16）；
-        // author 為 null 時用空 list（fail-secure）
+        // S026: 加 "*:read" public-read pseudo-principal — vector_store 對所有使用者開放讀取
+        // （與 Skill aggregate 預設 ACL 一致；anonymous lab-user fallback 走 search 也命中）。
         var initialAcl = event.author() == null
-                ? List.<String>of()
-                : List.of("user:" + event.author() + ":read");
+                ? List.of("*:read")
+                : List.of("user:" + event.author() + ":read", "*:read");
 
         // Per-request：owner / skillId / aclEntries 鎖在這個 instance 裡，操作完 GC
         SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
@@ -106,9 +107,13 @@ class SearchProjection {
         // S016：re-embed 也帶 owner-derived acl_entries 維持與 onSkillCreated 一致；
         // delete-then-add 會走新 row 路徑（無 ON CONFLICT 觸發），需顯式提供初始 acl 防止空 array。
         var owner = currentUserProvider.userId();
+        // S026: 加 "*:read" public-read pseudo-principal — version 重建時保持公開
+        // （注意：onVersionPublished 在 async listener 內 currentUserProvider.userId() 走 labUserId
+        // fallback；S025b §7 已登記 architecture tech debt — 應改用 event 帶的 author
+        // 或讀既有 row 的 owner。S026 暫只補 "*:read"；owner ACL 一致性留 future spec）。
         var initialAcl = owner == null
-                ? List.<String>of()
-                : List.of("user:" + owner + ":read");
+                ? List.of("*:read")
+                : List.of("user:" + owner + ":read", "*:read");
 
         // delete + re-add 用同一個 instance（owner/skillId/aclEntries context 共享）
         var vectorStore = SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)

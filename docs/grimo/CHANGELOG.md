@@ -1,5 +1,29 @@
 # Changelog
 
+## [v2.3.0] — Public-Read Default ACL（M22 完成；2026-05-01）
+
+> **Minor bump** — 新功能：skill 上傳後預設對所有使用者開放讀取（PRD MVP 設計意圖落地）。User-facing 行為改變：anonymous / 任意 user 都能 read 任何 skill；write/delete/suspend/reactivate mutation 仍 owner-only ACL 守。
+
+### Added
+- **S026: Public-Read Default ACL**（M22 落地）：
+  - **`"*:read"` public-read pseudo-principal**：約定 unix glob「any」語意，不撞 `user:`/`role:`/`group:` 命名空間；Postgres `?|` array overlap 純字串比對，零 escaping 風險。
+  - **`Skill.create()` 預設 aclEntries 加 `*:read`**：author 非 null 時 4 entries（`user:{author}:{read,write,delete}` + `*:read`）；author null 時仍 seed `["*:read"]` 維持公開。
+  - **`SearchProjection.onSkillCreated` + `onVersionPublished` initialAcl 加 `*:read`**：vector_store row 對所有使用者開放讀取，semantic search 命中。
+  - **`AclPrincipalExpander.expand` 對 `read` permission 附 `*:read`**：caller patterns 含 `*:read` → 與 vector_store 內 `*:read` `?|` 命中；write/delete/suspend/reactivate **不**附（mutation 仍 owner-only）。
+  - **5 個 SBE AC 全綠**：AC-1（Skill aggregate 預設）+ AC-2（vector_store 預設）+ AC-3（expander）+ AC-4（anonymous overlap，via DB SQL — local profile NoOpEmbeddingModel 無法走 HTTP 端到端）+ AC-5（write 仍 owner-only）。
+
+### Changed
+- 既有 7 個 test 斷言更新加 `*:read` 預期值（`SkillAggregateTest` 5 處 + `AclPrincipalExpanderTest` 2 處）— 行為對齊新預設。
+
+### Trigger
+- 2026-05-01 /loop tick 1 系統測試：anonymous user 對 alice 上傳的 skill 執行 `GET /api/v1/search/semantic` 回 `[]`，違反 PRD MVP「skill 預設公開」設計意圖；S026 補正預設 ACL。
+
+### Verification
+- `./gradlew test` — 291 tests / 0 fail / 0 disabled
+- DB direct `?|` overlap query: anonymous (lab-user) `["user:lab-user:read", "role:admin:read", "*:read"]` matches uploaded skill `["user:lab-user:read", "*:read"]` → t；任意 bob (`["user:bob:read", "role:user:read", "*:read"]`) 同 t
+
+---
+
 ## [v2.2.0] — Phase 4b: Slice 重組 + Workaround 移除（M21 完成；2026-04-30）
 
 > **Minor bump** — 純 internal test infrastructure 重整。User-facing API contract 完全不變；資料庫 schema 不變；Spring Modulith module 邊界不變。運維端取得：13 REPO test 切 `@DataJdbcTest` slice + 11 Controller test 切 `@WebMvcTest` slice + 2 SearchProjection async test 切 `@ApplicationModuleTest` + E2E 12→3 收斂；S025a 留下的 `S016EndToEndSmokeTest:57 @Disabled` 恢復；`cache.maxSize=8` workaround 全清；`maxHeapSize` 從 3g 降至 2g。
