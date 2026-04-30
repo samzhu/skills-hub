@@ -14,6 +14,25 @@ import { FileDropZone } from '@/components/FileDropZone'
 import { useSkill } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
 import { addVersion } from '@/api/skills'
+import type { SkillStatus } from '@/types/skill'
+
+/**
+ * S028 — 技能狀態中譯 + Badge variant 對應。
+ * 對齊 backend SkillStatus enum 三狀態（DRAFT / PUBLISHED / SUSPENDED）。
+ */
+const STATUS_LABEL: Record<SkillStatus, string> = {
+  DRAFT: '草稿',
+  PUBLISHED: '已發佈',
+  SUSPENDED: '已停用',
+}
+
+function statusBadgeVariant(s: SkillStatus): 'default' | 'secondary' | 'destructive' {
+  switch (s) {
+    case 'DRAFT': return 'secondary'
+    case 'PUBLISHED': return 'default'
+    case 'SUSPENDED': return 'destructive'
+  }
+}
 
 /**
  * 技能詳情頁：顯示單一技能的完整資訊、版本歷史及風險評估結果。
@@ -69,9 +88,9 @@ export function SkillDetailPage() {
               <Badge variant="secondary">v{skill.latestVersion}</Badge>
             )}
             <RiskBadge level={skill.riskLevel} />
-            {/* DRAFT 顯示次要樣式，PUBLISHED 顯示主要樣式 */}
-            <Badge variant={skill.status === 'DRAFT' ? 'secondary' : 'default'}>
-              {skill.status === 'DRAFT' ? '草稿' : skill.status === 'PUBLISHED' ? '已發佈' : skill.status}
+            {/* S028: DRAFT secondary / PUBLISHED default / SUSPENDED destructive；中譯 via STATUS_LABEL */}
+            <Badge variant={statusBadgeVariant(skill.status)}>
+              {STATUS_LABEL[skill.status]}
             </Badge>
             {skill.latestVersion && (
               // 使用原生 <a> 而非 React Router <Link>，觸發瀏覽器直接下載行為，

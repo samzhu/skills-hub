@@ -1,5 +1,28 @@
 # Changelog
 
+## [v2.5.0] — Frontend SUSPENDED Status Rendering（M24 完成；2026-05-01）
+
+> **Minor bump** — 純 frontend type + UI rendering 修正，對齊 backend `SkillStatus` enum 三狀態。User-facing 改變：SUSPENDED skill 在 SkillDetailPage 顯示「已停用」+ destructive variant；SkillCard 在 list 上對 DRAFT / SUSPENDED 顯示 badge。
+
+### Added
+- **S028: Frontend SUSPENDED Status Rendering**（M24 落地）：
+  - **`SkillStatus` type union 補齊**：`'DRAFT' | 'PUBLISHED' | 'SUSPENDED'` 對齊 backend enum
+  - **`SkillDetailPage` label 中譯**：加 `STATUS_LABEL: Record<SkillStatus, string>` map（DRAFT '草稿' / PUBLISHED '已發佈' / SUSPENDED '已停用'）+ `statusBadgeVariant()` switch（DRAFT secondary / PUBLISHED default / SUSPENDED destructive）；取代既有 ternary fallback 直接顯示英文 raw string
+  - **`SkillCard` 對非 PUBLISHED 顯示 badge**：DRAFT outline / SUSPENDED destructive；happy path PUBLISHED 不顯示避免視覺噪音
+
+### Trigger
+- 2026-05-01 /loop tick 3 系統測試 — frontend type 與 backend enum drift；SUSPENDED skill 在 detail page 顯示英文 'SUSPENDED'，SkillCard 完全不顯示狀態。
+
+### Verification
+- `npm test` — 10/10 tests PASS
+- `npx tsc -b` — 0 type errors（exhaustive Record + switch 防漏）
+- `npm run lint` — 0 errors / 0 warnings
+
+### Tech Debt
+- backend `SkillQueryService.search` 不過濾 status — DRAFT 與 SUSPENDED 都出現在公開 list；屬產品決策，留 future spec（S029 admin panel 設計時整體決定）
+
+---
+
 ## [v2.4.0] — Dev Mode Admin Bypass（M23 完成；2026-05-01）
 
 > **Minor bump** — 新增 `ROLE_admin` super-admin 短路 + `local` profile 預設 LAB mode。對 prod 行為零影響（OIDC `roles: ["admin"]` claim 才會帶此 authority；攻擊者無法 spoof）。對齊 PRD「Feature First, Security Later」+ user instruction「dev 先不做授權認證」。

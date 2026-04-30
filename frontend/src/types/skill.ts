@@ -1,9 +1,10 @@
 /**
- * 技能生命週期狀態。
+ * 技能生命週期狀態（對齊 backend `SkillStatus` enum；S018 三狀態機）。
  * - DRAFT：草稿，尚未對外發佈
  * - PUBLISHED：已上架，可供搜尋與下載
+ * - SUSPENDED：已停用，因安全風險或違規而下架，不可下載（S028 frontend sync）
  */
-export type SkillStatus = 'DRAFT' | 'PUBLISHED'
+export type SkillStatus = 'DRAFT' | 'PUBLISHED' | 'SUSPENDED'
 
 /**
  * 風險評估等級（由後端 RiskScanner 分析 scripts/ 目錄後設定）。
