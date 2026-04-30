@@ -12,9 +12,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.modulith.test.ApplicationModuleTest;
+import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
@@ -30,7 +31,13 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
  * sourceEventId，期望 listener 內部 idempotency check 觸發 early return — 整個
  * scan pipeline 不執行，domain_events 對應 SkillRiskAssessed 計數不增。
  */
-@SpringBootTest
+/**
+ * S025b T02 — {@code @SpringBootTest} → {@code @ApplicationModuleTest(DIRECT_DEPENDENCIES)}：
+ * security module slice 自動載 ScanOrchestrator + 全部 SecurityAnalyzer + PackageService +
+ * SarifReporter；test 直接 sync 呼叫 {@code orchestrator.on(...)} 觸發 idempotency early return，
+ * 無跨 module event flow。
+ */
+@ApplicationModuleTest(mode = BootstrapMode.DIRECT_DEPENDENCIES)
 @Import(TestcontainersConfiguration.class)
 class ScanOrchestratorIdempotencyTest {
 

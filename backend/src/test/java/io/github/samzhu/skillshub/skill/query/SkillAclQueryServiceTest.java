@@ -10,10 +10,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
@@ -22,10 +21,12 @@ import io.github.samzhu.skillshub.skill.domain.SkillRepository;
  *
  * <p>對應 spec §4.12 GET endpoint 的 service 層：把 colon-separated 字串陣列拆回
  * type/principal/permission tuple，畸形 entry 跳過不 throw。
+ *
+ * <p>S025b T02 — extends {@link RepositorySliceTestBase} + {@code @Import(SkillAclQueryService.class)}
+ * （{@code @DataJdbcTest} slice 預設不掃 {@code @Service}）。
  */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-class SkillAclQueryServiceTest {
+@Import(SkillAclQueryService.class)
+class SkillAclQueryServiceTest extends RepositorySliceTestBase {
 
     @Autowired
     private SkillAclQueryService queryService;

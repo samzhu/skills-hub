@@ -13,8 +13,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.modulith.test.ApplicationModuleTest;
+import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
@@ -24,8 +25,14 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
  *
  * <p>對應 spec §3 AC-13：SKILL.md frontmatter 含 {@code allowed-tools: "Bash(git:*) Edit Read"}
  * → uploadSkill 解析 space-separated → 存於 first-class column（非僅 frontmatter JSONB）。
+ *
+ * <p>S025b T02 — {@code @SpringBootTest} → {@code @ApplicationModuleTest(DIRECT_DEPENDENCIES)}：
+ * skill module slice 自動載 SkillCommandService + 全部 {@code @Component} deps（PackageService /
+ * SkillValidator / StorageService 來自 TestcontainersConfiguration）— 對齊 S025a
+ * {@code AuditEventListenerTest} pattern；assertion 純 sync state（不涉跨 module audit listener），
+ * skill module 自含足夠 deps。
  */
-@SpringBootTest
+@ApplicationModuleTest(mode = BootstrapMode.DIRECT_DEPENDENCIES)
 @Import(TestcontainersConfiguration.class)
 class SkillUploadAllowedToolsTest {
 

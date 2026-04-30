@@ -2,25 +2,23 @@ package io.github.samzhu.skillshub.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.Timestamp;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.modulith.test.EnableScenarios;
+import org.springframework.modulith.test.ApplicationModuleTest;
+import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
 import org.springframework.modulith.test.Scenario;
 import org.springframework.security.test.context.support.WithMockUser;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
-import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * S016 T6 / S025a-T03 — SearchProjection 處理 SkillCreatedEvent 時把 owner 衍生 acl_entries 寫入 vector_store。
@@ -42,15 +40,15 @@ import io.github.samzhu.skillshub.skill.domain.SkillRepository;
  * @see io.github.samzhu.skillshub.shared.security.CurrentUserProvider
  * @see io.github.samzhu.skillshub.shared.config.AsyncListenerConfig
  */
-@SpringBootTest
+/**
+ * S025b T02 — 同 {@link SearchProjectionTest} 模式：MODULE slice 對齊 S025a {@code AuditEventListenerTest}。
+ */
+@ApplicationModuleTest(mode = BootstrapMode.DIRECT_DEPENDENCIES)
 @Import(TestcontainersConfiguration.class)
-@EnableScenarios
 @WithMockUser(username = "alice")
 class SearchProjectionAclWriteTest {
 
     @Autowired private JdbcTemplate jdbc;
-    // S024 T05B: vector_store.skill_id FK 前置 — SearchProjection 寫入時需要 skills row 存在
-    @Autowired private SkillRepository skillRepo;
 
     @Test
     @DisplayName("AC-1 vector_store: SearchProjection 處理 SkillCreatedEvent → vector_store.acl_entries 衍生自 author")
@@ -58,11 +56,15 @@ class SearchProjectionAclWriteTest {
     void searchProjectionWritesAclEntriesFromAuthor(Scenario scenario) {
         var skillId = UUID.randomUUID().toString();
         var name = "search-acl-" + skillId.substring(0, 8);
-        // FK 前置：vector_store.skill_id REFERENCES skills.id；S024 T05B 後 SearchProjection
-        // 不再依賴 SkillProjection 預先寫 skills row（已刪除），test 自行 seed
-        var now = Instant.now();
-        skillRepo.save(Skill.fromRow(skillId, name, "search projection ACL write fixture",
-                "alice", "Testing", null, null, "DRAFT", 0L, now, now, List.of(), null));
+        // S025b T02：MODULE slice 不載 skill module beans，FK 前置改 raw JdbcTemplate INSERT
+        // （取代既有 skillRepo.save(Skill.fromRow(...))，行為等價，避開 cross-module bean 依賴）
+        var ts = Timestamp.from(Instant.now());
+        jdbc.update("""
+                INSERT INTO skills (id, name, description, author, category, status, download_count,
+                                    created_at, updated_at, acl_entries)
+                VALUES (?, ?, 'search projection ACL write fixture', 'alice', 'Testing',
+                        'DRAFT', 0, ?, ?, '[]'::jsonb)
+                """, skillId, name, ts, ts);
 
         scenario.publish(new SkillCreatedEvent(skillId, name,
                         "search projection ACL write fixture", "alice", "Testing"))

@@ -10,11 +10,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 
 /**
  * S023-T03 — 驗證 {@link DownloadEventRepository#saveIdempotent} 的 ON CONFLICT 行為。
@@ -22,10 +20,11 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
  * <p>對應 S023 spec §3 AC-3 idempotency 部分：相同 {@code eventId} 重投只產生 1 筆 row。
  * 此 test 直接驗證 SQL 層 idempotency；async listener pipeline 由 T05/T06 的 outbox
  * 整合測試覆蓋。
+ *
+ * <p>S025b T02 — extends {@link RepositorySliceTestBase}：pure repo test。
+ * Note: skills row seed via raw {@code JdbcTemplate} 走 V1 schema FK 不需 cleanup（test-scoped UUID）。
  */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-class DownloadEventRepositoryIdempotencyTest {
+class DownloadEventRepositoryIdempotencyTest extends RepositorySliceTestBase {
 
 	@Autowired
 	private DownloadEventRepository repo;

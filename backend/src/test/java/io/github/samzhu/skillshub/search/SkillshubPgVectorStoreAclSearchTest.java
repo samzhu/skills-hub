@@ -16,12 +16,10 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.mockito.Mockito;
 
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
@@ -125,12 +123,14 @@ class SkillshubPgVectorStoreAclSearchTest {
 
     /**
      * S017 T2 — Testcontainer integration：doSimilaritySearch 分流 + oversample slice
-     * 真 PostgreSQL `??|` 行為驗證。`@Nested` 與 outer pure-unit cases 共存於同 class。
+     * 真 PostgreSQL `??|` 行為驗證。
+     *
+     * <p>S025b T04 demote — 從 {@code @Nested @SpringBootTest} 改 inner {@code @Nested}
+     * extends {@link RepositorySliceTestBase}（{@code @DataJdbcTest} slice 共用 cache key）；
+     * ranking SQL 邏輯不需 full Spring context。
      */
     @Nested
-    @SpringBootTest
-    @Import(TestcontainersConfiguration.class)
-    class DoSimilaritySearchAclRoutingIntegration {
+    class DoSimilaritySearchAclRoutingIntegration extends RepositorySliceTestBase {
 
         @Autowired private JdbcTemplate jdbc;
         @Autowired private SkillRepository skillRepo;

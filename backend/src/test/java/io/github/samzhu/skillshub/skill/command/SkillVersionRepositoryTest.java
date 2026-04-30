@@ -11,12 +11,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersion;
@@ -33,10 +32,13 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
  *   <li>AC-7 partial — DB UNIQUE (skill_id, version) constraint 兜底（bypass service 預檢場景）</li>
  *   <li>AC-5 — attachRiskAssessment + skillVersionRepo.save UPDATE risk_assessment column</li>
  * </ul>
+ *
+ * <p>S025b T02 — extends {@link RepositorySliceTestBase}；{@link S024CrossAggregateSaveHelper}
+ * 為 {@code @Component}（test source root），slice 不掃 {@code @Component}/{@code @Service}
+ * stereotype，需顯式 {@code @Import}。
  */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-class SkillVersionRepositoryTest {
+@Import(S024CrossAggregateSaveHelper.class)
+class SkillVersionRepositoryTest extends RepositorySliceTestBase {
 
     @Autowired SkillRepository skillRepo;
     @Autowired SkillVersionRepository skillVersionRepo;

@@ -12,26 +12,30 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
 
 /**
  * AC-4 + AC-5：{@code /api/v1/me} 的 JWT 驗證行為。
  *
+ * <p>S025b T03 — pilot：{@code @SpringBootTest + @AutoConfigureMockMvc} → {@code @WebMvcTest}
+ * slice extends {@link WebMvcSliceTestBase}（提供 {@code SecurityConfig + JwtDecoder mock +
+ * PermissionEvaluator mock + ConfigProperties + AOT fix}）。子類僅宣告 {@code @WebMvcTest(MeController.class)}
+ * + controller-specific deps mock（{@code CurrentUserProvider}）。
+ *
  * <p>用 {@link org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors#jwt() jwt()}
- * post-processor 注入 stub JWT，避免依賴真實 mock-oauth2-server（那是 T2 的 E2E 測試範圍）。
+ * post-processor 注入 stub JWT — 直接旁路 JwtDecoder（per Spring Security 7 OAuth2 MockMvc reference）。
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
-class MeControllerTest {
+@WebMvcTest(MeController.class)
+class MeControllerTest extends WebMvcSliceTestBase {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private CurrentUserProvider currentUserProvider;
 
     @Test
     @Tag("AC-4")

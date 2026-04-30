@@ -24,6 +24,14 @@ import io.github.samzhu.skillshub.skill.domain.SkillRepository;
  *   <li>aggregate state（aclEntries）由 SkillRepository 同步驗證</li>
  *   <li>audit row 由 AuditEventListener async 寫入 — Awaitility 等候</li>
  * </ul>
+ *
+ * <p>S025b T02 — <b>deviation from spec REPO migration target</b>：本 test 跨 skill +
+ * audit module（commandService 寫入 → outbox publish → AuditEventListener 跨 module 訂閱
+ * 寫 audit row）；{@code @ApplicationModuleTest(skill, DIRECT_DEPENDENCIES)} 不載 audit consumer
+ * （audit imports skill events 為單向依賴），async assertion 必失敗。保留 {@code @SpringBootTest}
+ * 為跨 module event-driven 整合測試的合理 CONFIG bucket（per S025a {@code AuditEventListenerTest}
+ * 採 audit-side test 模式：在 audit module 內用 {@code Scenario.publish(event)} 直接觸發
+ * listener，繞過 skill module 的 commandService 鏈）。記入 §7 deviation。
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)

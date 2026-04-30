@@ -131,8 +131,46 @@ class FooListenerTest {
 **測試金字塔目標**（per S025a + S025b roadmap）：
 - 純 unit（JUnit 5 / Vitest，無 Spring context）：≥ 50%
 - Slice（`@DataJdbcTest` / `@WebMvcTest` / `@ApplicationModuleTest`）：~30%
-- E2E `@SpringBootTest`（保留至 ≤ 5）：~20%
-- Cache key 上限：S025a 後 ≤ 25；S025b ship 後目標 ≤ 10
+- E2E `@SpringBootTest(WebEnvironment=RANDOM_PORT)`：≤ 3（S025b 落地）
+- Cache key 上限：baseline ~42 → S025b ship 後 ~18（pgvector container 啟動 18 次/run）；目標 ≤ 10 留 S025c
+- JVM heap：S023-T07 quick-win 設 3g；S025b T01 移除 cache.maxSize=8；T05 降至 2g（仍需 — 18 個 CONFIG bucket `@SpringBootTest` 各自獨立 customizer set）；default 還原留 S025c
+
+#### REPO slice via `RepositorySliceTestBase`（S025b 起）
+
+純 repo / service 整合測試（無 HTTP、無 async listener 斷言）首選 `@DataJdbcTest` slice + 共用 base class 收斂 cache key：
+
+```java
+@Import(MyService.class)   // service 依賴 — slice 不掃 @Service
+class MyServiceTest extends RepositorySliceTestBase {
+    @Autowired private MyService service;
+    @Autowired private MyRepository repo;
+    // 驗 sync TX state；async audit log 屬 module test / e2e 範圍
+}
+```
+
+`RepositorySliceTestBase` 已綁 `@DataJdbcTest + @Import(TestcontainersConfiguration) + @TestPropertySource("management.tracing.enabled=false") + @ImportAutoConfiguration`（解 Spring Modulith AOT blocker；詳 base class Javadoc）+ `@Transactional(propagation=NOT_SUPPORTED)`。14 個 REPO slice 共用同一 cache entry。
+
+#### WEB slice via `WebMvcSliceTestBase`（S025b 起）
+
+純 controller HTTP / auth gate 測試（無 DB seed、無 async event 斷言）首選 `@WebMvcTest` slice + 共用 base class：
+
+```java
+@WebMvcTest(MyController.class)
+class MyControllerTest extends WebMvcSliceTestBase {
+    @Autowired MockMvc mockMvc;
+    @MockitoBean MyService service;   // controller-specific dep
+
+    @Test
+    void getEndpoint_returns200() throws Exception {
+        mockMvc.perform(get("/api/v1/foo")
+                .with(jwt().jwt(j -> j.subject("alice"))
+                        .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+            .andExpect(status().isOk());
+    }
+}
+```
+
+`WebMvcSliceTestBase` 已綁 `@Import(SecurityConfig) + @EnableConfigurationProperties(SkillshubProperties) + @MockitoBean JwtDecoder + @MockitoBean PermissionEvaluator + @ImportAutoConfiguration + @TestPropertySource("management.tracing.enabled=false")`。OAuth2 RS 用 `.with(jwt())` post-processor，**不**用 `@WithMockUser`（後者注入 `UsernamePasswordAuthenticationToken` 走錯 path）。
 
 ### Layer 2: Integration Verification
 

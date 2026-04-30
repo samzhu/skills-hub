@@ -8,120 +8,112 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
-import io.github.samzhu.skillshub.skill.domain.Skill;
-import io.github.samzhu.skillshub.skill.domain.SkillRepository;
+import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+import io.github.samzhu.skillshub.shared.security.WebMvcSliceTestBase;
+import io.github.samzhu.skillshub.skill.query.SkillAclQueryService;
 
 /**
- * S016 T4 — POST/DELETE {@code /api/v1/skills/{id}/acl} endpoints 行為驗證。
+ * S016 T4 — POST/DELETE/GET {@code /api/v1/skills/{id}/acl} endpoints 行為驗證。
  *
  * <p>對應 spec §4.12：grant 端點 201 Created；revoke 端點 204 No Content；
  * 無 write 權限呼叫者 → 403 Forbidden（{@code @PreAuthorize} gate）。
  *
- * <p>S024 T05B：seed 改直接 save Skill aggregate（取代 read-model + event store dual seed）；
- * audit event 斷言加 Awaitility wrap（AuditEventListener async 寫入 domain_events）。
+ * <p>S025b T03 split — {@code @SpringBootTest + DB seed + Awaitility audit} → {@code @WebMvcTest}
+ * slice 拆解（per spec §2.3）：保留 HTTP route + auth + {@code @PreAuthorize} gate；
+ * SkillAclGranted/Revoked event store assertion 移除（已 covered by SkillAclCommandServiceTest
+ * @SpringBootTest deviation 整合測試 + AuditEventListenerTest MODULE）。
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
-class SkillAclControllerTest {
+@WebMvcTest(SkillAclController.class)
+class SkillAclControllerTest extends WebMvcSliceTestBase {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private SkillRepository skillRepo;
+    @MockitoBean
+    private SkillCommandService commandService;
 
-    @Autowired
-    private DomainEventRepository eventStore;
+    @MockitoBean
+    private SkillAclQueryService queryService;
+
+    @MockitoBean
+    private CurrentUserProvider currentUserProvider;
 
     @Test
-    @DisplayName("AC-9: alice (write) POST /skills/{id}/acl → 201 + SkillAclGranted event 寫入")
+    @DisplayName("AC-9: alice (write) POST /skills/{id}/acl → 201")
     @Tag("AC-9")
-    void grantAcl_ownerPost_returns201AndPersistsEvent() throws Exception {
-        var skillId = seedSkill(List.of("user:alice:read", "user:alice:write"));
+    void grantAcl_ownerPost_returns201() throws Exception {
+        var skillId = "test-skill-id";
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq(skillId),
+                        ArgumentMatchers.eq("Skill"), ArgumentMatchers.eq("write")))
+                .thenReturn(true);
+        Mockito.when(currentUserProvider.userId()).thenReturn("alice");
 
         mockMvc.perform(post("/api/v1/skills/" + skillId + "/acl")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"type\":\"group\",\"principal\":\"engineering\",\"permission\":\"read\"}")
                 .with(jwt()
-                        .jwt(j -> j.subject("alice")
-                                .claim("roles", List.of("user"))
-                                .claim("groups", List.<String>of()))
+                        .jwt(j -> j.subject("alice").claim("roles", List.of("user")))
                         .authorities(new SimpleGrantedAuthority("ROLE_user"))))
                 .andExpect(status().isCreated());
-
-        // S024 T05B: AuditEventListener async 寫 domain_events row — Awaitility 等
-        org.awaitility.Awaitility.await()
-                .atMost(Duration.ofSeconds(5))
-                .untilAsserted(() -> {
-                    var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
-                    var grantedExists = events.stream()
-                            .anyMatch(e -> "SkillAclGranted".equals(e.eventType())
-                                    && "engineering".equals(e.payload().get("principal")));
-                    org.assertj.core.api.Assertions.assertThat(grantedExists).isTrue();
-                });
     }
 
     @Test
-    @DisplayName("AC-10: alice (write) DELETE /skills/{id}/acl?type=...&principal=...&permission=... → 204 + SkillAclRevoked event")
+    @DisplayName("AC-10: alice (write) DELETE /skills/{id}/acl?... → 204")
     @Tag("AC-10")
-    void revokeAcl_ownerDelete_returns204AndPersistsEvent() throws Exception {
-        // seed skill 含目標 entry — controller 端 revoke 會找到
-        var skillId = seedSkill(List.of(
-                "user:alice:read", "user:alice:write", "group:engineering:read"));
+    void revokeAcl_ownerDelete_returns204() throws Exception {
+        var skillId = "test-skill-id";
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq(skillId),
+                        ArgumentMatchers.eq("Skill"), ArgumentMatchers.eq("write")))
+                .thenReturn(true);
+        Mockito.when(currentUserProvider.userId()).thenReturn("alice");
 
         mockMvc.perform(delete("/api/v1/skills/" + skillId + "/acl")
                 .param("type", "group")
                 .param("principal", "engineering")
                 .param("permission", "read")
                 .with(jwt()
-                        .jwt(j -> j.subject("alice")
-                                .claim("roles", List.of("user"))
-                                .claim("groups", List.<String>of()))
+                        .jwt(j -> j.subject("alice").claim("roles", List.of("user")))
                         .authorities(new SimpleGrantedAuthority("ROLE_user"))))
                 .andExpect(status().isNoContent());
-
-        org.awaitility.Awaitility.await()
-                .atMost(Duration.ofSeconds(5))
-                .untilAsserted(() -> {
-                    var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
-                    var revokedExists = events.stream()
-                            .anyMatch(e -> "SkillAclRevoked".equals(e.eventType())
-                                    && "engineering".equals(e.payload().get("principal")));
-                    org.assertj.core.api.Assertions.assertThat(revokedExists).isTrue();
-                });
     }
 
     @Test
-    @DisplayName("AC-11: alice (read) GET /skills/{id}/acl → 200 + 解析後的 entry list")
+    @DisplayName("AC-11: alice (read) GET /skills/{id}/acl → 200 + 解析後 entry list")
     @Tag("AC-11")
     void listAcl_owner_returns200WithEntries() throws Exception {
-        var skillId = seedSkill(List.of(
-                "user:alice:read", "user:alice:write", "group:engineering:read"));
+        var skillId = "test-skill-id";
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq(skillId),
+                        ArgumentMatchers.eq("Skill"), ArgumentMatchers.eq("read")))
+                .thenReturn(true);
+        Mockito.when(queryService.listEntries(skillId))
+                .thenReturn(List.of(
+                        new io.github.samzhu.skillshub.skill.query.AclEntryResponse(
+                                "user", "alice", "read"),
+                        new io.github.samzhu.skillshub.skill.query.AclEntryResponse(
+                                "user", "alice", "write"),
+                        new io.github.samzhu.skillshub.skill.query.AclEntryResponse(
+                                "group", "engineering", "read")));
 
         mockMvc.perform(get("/api/v1/skills/" + skillId + "/acl")
                 .with(jwt()
-                        .jwt(j -> j.subject("alice")
-                                .claim("roles", List.of("user"))
-                                .claim("groups", List.<String>of()))
+                        .jwt(j -> j.subject("alice").claim("roles", List.of("user")))
                         .authorities(new SimpleGrantedAuthority("ROLE_user"))))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -134,13 +126,15 @@ class SkillAclControllerTest {
     @DisplayName("AC-11: carol（無任何 ACL）GET /skills/{id}/acl → 403 Forbidden")
     @Tag("AC-11")
     void listAcl_nonReader_returns403() throws Exception {
-        var skillId = seedSkill(List.of("user:alice:read", "user:alice:write"));
+        var skillId = "test-skill-id";
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq(skillId),
+                        ArgumentMatchers.eq("Skill"), ArgumentMatchers.eq("read")))
+                .thenReturn(false);
 
         mockMvc.perform(get("/api/v1/skills/" + skillId + "/acl")
                 .with(jwt()
-                        .jwt(j -> j.subject("carol")
-                                .claim("roles", List.of("user"))
-                                .claim("groups", List.<String>of()))
+                        .jwt(j -> j.subject("carol").claim("roles", List.of("user")))
                         .authorities(new SimpleGrantedAuthority("ROLE_user"))))
                 .andExpect(status().isForbidden());
     }
@@ -149,38 +143,18 @@ class SkillAclControllerTest {
     @DisplayName("AC-7: bob (無 write) POST /skills/{id}/acl → 403 Forbidden")
     @Tag("AC-7")
     void grantAcl_nonOwner_returns403() throws Exception {
-        var skillId = seedSkill(List.of("user:alice:read", "user:alice:write"));
+        var skillId = "test-skill-id";
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq(skillId),
+                        ArgumentMatchers.eq("Skill"), ArgumentMatchers.eq("write")))
+                .thenReturn(false);
 
         mockMvc.perform(post("/api/v1/skills/" + skillId + "/acl")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"type\":\"group\",\"principal\":\"engineering\",\"permission\":\"read\"}")
                 .with(jwt()
-                        .jwt(j -> j.subject("bob")
-                                .claim("roles", List.of("user"))
-                                .claim("groups", List.<String>of()))
+                        .jwt(j -> j.subject("bob").claim("roles", List.of("user")))
                         .authorities(new SimpleGrantedAuthority("ROLE_user"))))
                 .andExpect(status().isForbidden());
-    }
-
-    /**
-     * Seed Skill aggregate 含目標 acl_entries — S024 T05B 取代 read-model + event store dual seed。
-     */
-    private String seedSkill(List<String> aclEntries) {
-        var id = UUID.randomUUID().toString();
-        var now = Instant.now();
-        skillRepo.save(Skill.fromRow(
-                id,
-                "acl-ctrl-" + id.substring(0, 8),
-                "ACL controller test fixture",
-                "alice",
-                "Testing",
-                "1.0.0",
-                "LOW",
-                "PUBLISHED",
-                0L,
-                now, now,
-                aclEntries,
-                null));
-        return id;
     }
 }

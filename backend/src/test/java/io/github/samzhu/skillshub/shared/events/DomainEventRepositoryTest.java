@@ -9,14 +9,15 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-class DomainEventRepositoryTest {
+/**
+ * S025b T02 — Pure repository test 遷至 {@code @DataJdbcTest} slice via
+ * {@link RepositorySliceTestBase}。Spring Data JDBC 自動 picked up
+ * {@link DomainEventRepository}（{@code @Repository} stereotype），無需顯式 {@code @Import}。
+ */
+class DomainEventRepositoryTest extends RepositorySliceTestBase {
 
 	@Autowired
 	private DomainEventRepository repository;

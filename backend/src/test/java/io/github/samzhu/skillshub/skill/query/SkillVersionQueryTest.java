@@ -2,109 +2,59 @@ package io.github.samzhu.skillshub.skill.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.util.LinkedMultiValueMap;
 
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
+import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
+import io.github.samzhu.skillshub.skill.command.PublishVersionCommand;
+import io.github.samzhu.skillshub.skill.command.SkillCommandService;
+import io.github.samzhu.skillshub.skill.validation.SkillValidator;
+import io.github.samzhu.skillshub.storage.PackageService;
 
-// S016 T3：PUT /skills/{id}/versions 加 @PreAuthorize 後 anonymous 不過 — 同
-// SkillUploadTest 處理：LAB mode + lab-user-id 對齊 author="tester"。
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@AutoConfigureTestRestTemplate
-@Import(TestcontainersConfiguration.class)
-@org.springframework.test.context.TestPropertySource(properties = {
-		"skillshub.security.oauth.enabled=false",
-		"skillshub.security.lab.user-id=tester"
-})
-class SkillVersionQueryTest {
+/**
+ * S025b T04 demote — 從 {@code @SpringBootTest(RANDOM_PORT) + TestRestTemplate + LAB mode}
+ * 改 {@link RepositorySliceTestBase}（{@code @DataJdbcTest} slice）。原 HTTP-bound
+ * upload + PUT version assertion 已被 {@link io.github.samzhu.skillshub.S016EndToEndSmokeTest}
+ * E2E 涵蓋；本 test 收斂為 {@link SkillQueryService#findVersionsBySkillId} 純 SQL 邏輯
+ * 驗證（version sort by publishedAt DESC + storagePath/fileSize 投影完整性）。
+ *
+ * <p>Seed 直接走 {@link SkillCommandService#publishVersion} 避開 multipart 上傳與 storage
+ * 行為（已由 S016 e2e 覆蓋）；publishedAt 由 {@code SkillVersion.publish} 內 {@code Instant.now()}
+ * 自動產生 — 兩次 publish 之間需 1ms 才能保證 sort 穩定。
+ */
+@Import({SkillQueryService.class, SkillCommandService.class, PackageService.class, SkillValidator.class})
+class SkillVersionQueryTest extends RepositorySliceTestBase {
 
-	@Autowired
-	private TestRestTemplate restTemplate;
+    @Autowired
+    private SkillQueryService queryService;
 
-	@Test
-	@DisplayName("AC-5: 取得版本歷史 — GET /skills/{id}/versions returns sorted versions")
-	void getVersionHistory() throws IOException {
-		// Upload skill with v1.0.0
-		var skillId = uploadSkill("version-query-skill", "1.0.0");
+    @Autowired
+    private SkillCommandService commandService;
 
-		// Add v1.1.0
-		addVersion(skillId, "1.1.0");
+    @Test
+    @DisplayName("AC-5: 取得版本歷史 — findVersionsBySkillId returns sorted by publishedAt DESC")
+    void getVersionHistory() throws InterruptedException {
+        var skillId = commandService.createSkill(
+                new CreateSkillCommand("version-query-skill", "Test", "tester", "Testing"));
 
-		// Query versions — Skill aggregate API exposes via getter naming（version, storagePath, fileSize）
-		var response = restTemplate.exchange(
-				"/api/v1/skills/" + skillId + "/versions",
-				HttpMethod.GET, null,
-				new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+        commandService.publishVersion(new PublishVersionCommand(
+                skillId, "1.0.0", "gs://bucket/" + skillId + "/1.0.0.zip", 100L, Map.of()));
+        // Ensure distinct publishedAt timestamps for stable DESC sort
+        Thread.sleep(2);
+        commandService.publishVersion(new PublishVersionCommand(
+                skillId, "1.1.0", "gs://bucket/" + skillId + "/1.1.0.zip", 150L, Map.of()));
 
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-		var versions = response.getBody();
-		assertThat(versions).hasSize(2);
-		// Sorted by publishedAt DESC — newest first
-		assertThat(versions.get(0).get("version")).isEqualTo("1.1.0");
-		assertThat(versions.get(1).get("version")).isEqualTo("1.0.0");
-		assertThat((String) versions.get(0).get("storagePath")).contains(skillId);
-		assertThat(((Number) versions.get(0).get("fileSize")).longValue()).isGreaterThan(0);
-	}
+        var versions = queryService.findVersionsBySkillId(skillId);
 
-	@SuppressWarnings("unchecked")
-	private String uploadSkill(String name, String version) throws IOException {
-		var zip = createZip("---\nname: " + name + "\ndescription: Test\n---\n# " + name);
-		var body = new LinkedMultiValueMap<String, Object>();
-		body.add("file", new ByteArrayResource(zip) {
-			@Override public String getFilename() { return "skill.zip"; }
-		});
-		body.add("version", version);
-		body.add("author", "tester");
-		body.add("category", "Testing");
-		var headers = new HttpHeaders();
-		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-		var response = restTemplate.postForEntity(
-				"/api/v1/skills/upload", new HttpEntity<>(body, headers), Map.class);
-		return (String) response.getBody().get("id");
-	}
-
-	private void addVersion(String skillId, String version) throws IOException {
-		var zip = createZip("---\nname: skill\ndescription: Updated\n---\n# V" + version);
-		var body = new LinkedMultiValueMap<String, Object>();
-		body.add("file", new ByteArrayResource(zip) {
-			@Override public String getFilename() { return "v.zip"; }
-		});
-		body.add("version", version);
-		var headers = new HttpHeaders();
-		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-		restTemplate.exchange("/api/v1/skills/" + skillId + "/versions",
-				HttpMethod.PUT, new HttpEntity<>(body, headers), Void.class);
-	}
-
-	private byte[] createZip(String skillMdContent) throws IOException {
-		var baos = new ByteArrayOutputStream();
-		try (var zos = new ZipOutputStream(baos)) {
-			zos.putNextEntry(new ZipEntry("SKILL.md"));
-			zos.write(skillMdContent.getBytes(StandardCharsets.UTF_8));
-			zos.closeEntry();
-		}
-		return baos.toByteArray();
-	}
-
+        assertThat(versions).hasSize(2);
+        assertThat(versions.get(0).getVersion()).isEqualTo("1.1.0");
+        assertThat(versions.get(1).getVersion()).isEqualTo("1.0.0");
+        assertThat(versions.get(0).getStoragePath()).contains(skillId);
+        assertThat(versions.get(0).getFileSize()).isGreaterThan(0L);
+    }
 }

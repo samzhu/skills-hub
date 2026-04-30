@@ -1,0 +1,2 @@
+org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration
+org.springframework.modulith.runtime.autoconfigure.SpringModulithRuntimeAutoConfiguration

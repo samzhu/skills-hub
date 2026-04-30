@@ -9,13 +9,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.TestPropertySource;
 
 import tools.jackson.databind.ObjectMapper;
-
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
 
 /**
  * S016-T1 — {@code List<String>} ↔ PostgreSQL JSONB array round-trip 驗證。
@@ -24,15 +19,11 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
  * pair 必須與既有 {@code JdbcConfiguration.MapToPGobjectConverter} 行為一致：
  * null / 空字串還原為 {@link List#of()}（不可變空 list；fail-secure 對齊 ACL 預設拒絕）。
  *
- * <p>採 {@code @SpringBootTest} 載入 Spring Boot 4 AOT 必要的
- * {@code ApplicationModulesRuntime} bean — {@code @DataJdbcTest} slice 在 AOT 階段失敗
- * （per 既有 {@code MapJsonbConverterTest} 經驗）。{@code spring.flyway.enabled=false}
- * 隔離本測試於 V1/V2 schema 之外，僅驗 converter 本身行為。
+ * <p>S025b T02 — extends {@link RepositorySliceTestBase}：{@code @DataJdbcTest} slice
+ * 共用 cache key；本 test 純 converter 邏輯（無 DB I/O 也無 service dep），slice
+ * Flyway V1-V6 啟用後仍正常（converter test 不依 schema）。
  */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-@TestPropertySource(properties = "spring.flyway.enabled=false")
-class StringListJsonbConverterTest {
+class StringListJsonbConverterTest extends RepositorySliceTestBase {
 
     @Autowired
     private ObjectMapper objectMapper;

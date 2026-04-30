@@ -143,11 +143,12 @@ jacoco {
 
 tasks.test {
 	finalizedBy(tasks.jacocoTestReport)
-	// S023 T07 quick win — 53 個 @SpringBootTest 同 JVM 跑時 OOM。
-	// 真因：context cache LRU 預設 32，>32 distinct context 導致持續 evict + 重建，peak heap 撐多個 live context。
-	// 治標：擴 heap + 縮 cache 早 evict；治本待後續 spec 重整測試金字塔（slice / @ApplicationModuleTest）。
-	maxHeapSize = "3g"
-	jvmArgs("-Dspring.test.context.cache.maxSize=8")
+	// S025b T05 ship — slice 重組落地後 cache key 從 baseline ~42 降至 ~18（per T05 indirect
+	// measurement: pgvector container 啟動 18 次/run）。S023 T07 quick-win 的 cache.maxSize=8 已
+	// 移除（T01）；maxHeapSize 從 3g 降至 2g（仍需 — 18 個 @SpringBootTest CONFIG bucket 受限於
+	// 既有 customizer 多樣性）。後續 S025c 進一步 consolidate CONFIG bucket 至 ≤10 keys + 還原
+	// default heap。詳 spec §7 AC-8 / AC-9 deviation rationale。
+	maxHeapSize = "2g"
 }
 
 tasks.jacocoTestReport {

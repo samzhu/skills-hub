@@ -1,5 +1,52 @@
 # Changelog
 
+## [v2.2.0] — Phase 4b: Slice 重組 + Workaround 移除（M21 完成；2026-04-30）
+
+> **Minor bump** — 純 internal test infrastructure 重整。User-facing API contract 完全不變；資料庫 schema 不變；Spring Modulith module 邊界不變。運維端取得：13 REPO test 切 `@DataJdbcTest` slice + 11 Controller test 切 `@WebMvcTest` slice + 2 SearchProjection async test 切 `@ApplicationModuleTest` + E2E 12→3 收斂；S025a 留下的 `S016EndToEndSmokeTest:57 @Disabled` 恢復；`cache.maxSize=8` workaround 全清；`maxHeapSize` 從 3g 降至 2g。
+
+### Added
+- **S025b: Slice 重組 + Workaround 移除**（M21 落地）：
+  - **`RepositorySliceTestBase`（new abstract base class）**— `@DataJdbcTest + @Import(TestcontainersConfiguration) + @TestPropertySource("management.tracing.enabled=false") + @ImportAutoConfiguration + @Transactional(NOT_SUPPORTED)` + `META-INF/spring/<fqn>.imports` 帶 `SpringModulithRuntimeAutoConfiguration` FQN。13 REPO slice test 共用同一 cache key。
+  - **`WebMvcSliceTestBase`（new abstract base class）**— `@Import(SecurityConfig) + @EnableConfigurationProperties(SkillshubProperties) + @MockitoBean JwtDecoder + @MockitoBean PermissionEvaluator + @ImportAutoConfiguration + @TestPropertySource("management.tracing.enabled=false")`。11 Controller slice test 共用同一 cache key。
+  - **Spring Modulith AOT blocker 雙條 path 解法**（POC 揭露 spec §2.4 hypothesis 不完整）：(a) `management.tracing.enabled=false` 解 `ModuleObservabilityAutoConfiguration` 對 `ApplicationModulesRuntime` hard dep；(b) bare `@ImportAutoConfiguration` + 同名 `META-INF/spring/<class-fqn>.imports` resource file 解 `ApplicationModulesFileGeneratingProcessor` classpath-level 註冊（`spring-modulith-runtime` `aot.factories`，非 auto-config 無屬性可關）。
+  - **13 REPO test 遷移 `extends RepositorySliceTestBase`** — converter (Map/StringList JSONB) / event store (DomainEvent / sequence uniqueness) / skill repo+service (SkillVersion / SkillAcl / SkillUploadAllowedTools / SkillSuspendReactivate) / analytics (DownloadEvent idempotency) / search (Skillshub PgVectorStore ACL / Owner write) / S025b T04 demote (SkillCommandService / SkillSearch / SkillVersionQuery)。
+  - **11 Controller test 遷移 `@WebMvcTest` extends `WebMvcSliceTestBase`** — Me/Admin/LabModeMe/LabModeAdmin/SkillsApiAnonymous/Analytics/Flag/SkillQueryControllerApiContract + 3 ACL/Security 拆解（SkillCommand/SkillSuspend/SkillAcl — HTTP/auth gate 留 slice，DB seed + async event 移除已被 S016 e2e 涵蓋）；JwtDecoderConditionalTest 保留 `@SpringBootTest` 因與 `@MockitoBean JwtDecoder` 強制注入 fundamental conflict（CONFIG bucket）。
+  - **2 SearchProjection async test 遷移 `@ApplicationModuleTest(BootstrapMode.DIRECT_DEPENDENCIES)`** — `SearchProjectionTest` + `SearchProjectionAclWriteTest`；對齊 S025a `AuditEventListenerTest` pilot pattern；`@WithMockUser` + Scenario API 保留。
+  - **E2E 12→3 收斂**（per spec §4.8）：保留 `RiskAssessmentIntegrationTest` + `S016EndToEndSmokeTest`（吸收 `SkillIntegrationTest` + `SkillUploadTest` + `SkillDownloadTest` 7 個 method）+ `SemanticSearchIntegrationTest`（吸收 `SemanticSearchAclTest` 4 個 ACL test）；4 個 demote REPO（SkillCommandService / SkillSearch / SkillVersionQuery / SkillshubPgVectorStoreAclSearch inner）；4 個 file delete。`ModulithActuatorTest` 從 `RANDOM_PORT + TestRestTemplate` 改 `MOCK + MockMvc`（per AC-5 ≤3 RANDOM_PORT 收斂）。
+  - **`S016EndToEndSmokeTest:57 @Disabled` 恢復**（S025a §7.7 deferred）— 切 `@SpringBootTest(WebEnvironment.RANDOM_PORT) + @AutoConfigureMockMvc + @EnableScenarios`；移除 `@Disabled`；多次 `scenario.stimulate(action).andWaitForStateChange(query)` chain 取代 `Awaitility.await(N).untilAsserted(...)`（Modulith Scenario API 支援同 test 多次 stimulate）。設計修正：`vector_store.acl_entries` 含 author ACL 假設不成立（`SearchProjection.onVersionPublished` async listener 用 `currentUserProvider.userId()` 走 `labUserId` fallback 覆寫），改用 `domain_events` + `skills.acl_entries`（sync TX）作為 sync point。
+  - **`cache.maxSize=8` jvmArg 全清（T01）** — `grep "spring.test.context.cache.maxSize" build.gradle.kts` = 0。
+  - **12 個 SBE AC**：9 FULL（AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-10, AC-11）+ 3 PARTIAL with documented deviation（AC-8 / AC-9 / AC-12，皆有 S025c tech debt 登記）。
+  - **獨立 QA subagent verdict PASS**（所有 PARTIAL 屬 documented deviation；4 個 MINOR finding 屬 cosmetic，非 blocking）。
+
+### Changed
+- **`build.gradle.kts` `tasks.test {}`**：移除 `cache.maxSize=8` jvmArg（T01）；`maxHeapSize` 從 `"3g"` 降至 `"2g"`（T05 — full default 還原 blocked by 18 個 CONFIG bucket `@SpringBootTest`）；移除 S023-T07 過時 comment block。
+
+### Performance
+- **Cache key 從 baseline ~42-45 降至 ~18**（pgvector container 啟動 18 次/run；indirect measurement — `-Dlogging.level.org.springframework.test.context.cache=DEBUG` 在 Gradle test fork JVM 不 propagate，改數 Testcontainer 啟動次數）。
+- **`./gradlew clean test` 2m 50s**（vs S025a baseline 2m 3s — 增 23s 因 RANDOM_PORT e2e 啟 Tomcat 比 MOCK 略慢；仍在 +10% 容忍範圍）。
+- **JaCoCo line coverage 86.9%**（covered=1423 / total=1637；V03 gate ≥80% PASS）。
+
+### Documentation
+- `docs/grimo/qa-strategy.md` — § Layer 1 加 REPO slice via `RepositorySliceTestBase` + WEB slice via `WebMvcSliceTestBase` 兩段 pattern；測試金字塔目標更新（cache key ~18 / S025c 再降 ≤10；E2E ≤3 對齊實況）。
+- `docs/grimo/development-standards.md` — 新增「REPO slice via RepositorySliceTestBase」段（含 5 點設計理由：`@AutoConfigureTestDatabase(replace=NON_TEST)` SB4 default / Flyway 自動啟用 / `AbstractJdbcConfiguration` `KNOWN_INCLUDES` / Spring Modulith AOT 雙 path fix / `@Transactional(NOT_SUPPORTED)` 反 `@DataJdbcTest` default）+ 「WEB slice via WebMvcSliceTestBase」段（OAuth2 RS test pattern 用 `.with(jwt())` 而非 `@WithMockUser`）；cache key 上限更新至 ~18 with S025c tech debt path。
+- `docs/grimo/specs/spec-roadmap.md` — S025b entry → ✅；M21 milestone 新增 + `v2.2.0` 標記；S025c tech debt 登記（CONFIG bucket consolidation + JVM heap default 還原）。
+
+### Known Limitations
+- **Cache key ~18（≤ 10 未達）** — 設計上由 S025c（CONFIG bucket consolidation）落地：18 個 `@SpringBootTest` 進一步合併 / 共用 customizer / 抽 base class，目標 ≤10。
+- **`maxHeapSize=2g` 仍存在**（從 3g 降低，未完全還原 default）— 同上 S025c 解。
+- **Test pyramid UNIT 19 / target 21（-2）& CONFIG 19 / target ≤13（+6）** — 同 cache key 議題；S025c 解。
+- **`SearchProjection.onVersionPublished` async listener ACL 一致性 architecture tech debt**：用 `currentUserProvider.userId()` 在 async thread 走 `labUserId` fallback；應改用 event 帶的 author 或讀既有 row 的 owner（per spec §7 揭露）。
+
+### Verification
+- `./gradlew clean test` — 291 tests / 0 failed / 0 skipped / 0 disabled
+- `./gradlew test --tests "*ModularityTests*"` — Spring Modulith 7 module 邊界全合規 PASS
+- `./scripts/verify-all.sh` × 5 連續 — V01-V06 全 PASS，0 flakiness
+- JaCoCo line coverage 86.9% ≥ 80% gate
+- E2E grep `WebEnvironment.RANDOM_PORT` = 3 file（RiskAssessment / S016 / SemanticSearchIntegration），AC-5 PASS
+- `@Disabled` 在 active `@Test` method = 0（S016 內僅 javadoc 歷史脈絡），AC-6 PASS
+
+---
+
 ## [v2.1.0] — Phase 4a: Mock Lift + Scenario Migration（M20 完成；2026-04-30）
 
 > **Minor bump** — 純 internal test infrastructure 重整 + 1 行 production bug fix（S023-T07 真因）。User-facing API contract 完全不變；資料庫 schema 不變；Spring Modulith module 邊界不變。運維端取得：async listener test 5s timeout（取代 30s band-aid）+ 4/5 disabled tests 恢復 + production async listener SecurityContext propagation 真正生效（S023-T07 wrapper 從旁路復活）。

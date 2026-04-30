@@ -28,6 +28,10 @@ import io.github.samzhu.skillshub.skill.domain.SkillStatus;
  *       同步驗證（{@code skills} 表 commit 後即可讀）</li>
  *   <li>audit row 由 AuditEventListener async 寫入 — 用 Awaitility 等候</li>
  * </ul>
+ *
+ * <p>S025b T02 — <b>deviation from spec REPO migration target</b>：同 {@link SkillAclCommandServiceTest}
+ * 場景，cross-module 整合（skill commandService → outbox → audit listener）；slice / module
+ * 範圍皆無法包含跨 module 的 listener consumer，保留 {@code @SpringBootTest}。記入 §7。
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)

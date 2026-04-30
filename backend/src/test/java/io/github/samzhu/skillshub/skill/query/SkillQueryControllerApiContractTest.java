@@ -1,25 +1,27 @@
 package io.github.samzhu.skillshub.skill.query;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import tools.jackson.databind.ObjectMapper;
-
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.security.WebMvcSliceTestBase;
+import io.github.samzhu.skillshub.skill.domain.Skill;
 
 /**
  * S024 T6 AC-11 — API contract regression：S024 將 response type 從 SkillReadModel record 改為
@@ -27,27 +29,31 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
  *
  * <p>用 jsonPath assertions 鎖定 shape — 比 snapshot 字串更穩定（Jackson 欄位排序可能 JVM 實作
  * 異動），且不引入第三方 snapshot library（per spec §6 anti-pattern 提示）。
+ *
+ * <p>S025b T03 — {@code @SpringBootTest + @AutoConfigureMockMvc + lab profile} → {@code @WebMvcTest}
+ * slice + extends {@link WebMvcSliceTestBase} + {@code @MockitoBean SkillQueryService}：
+ * 原 test 透過 POST 真 skill row 走 SkillCommandController → DB → 查 SkillQueryController 屬 E2E；
+ * slice 後僅驗 query controller JSON contract（同 v1.5.0 shape + 無 internal version 欄位 expose），
+ * service 層由 SkillVersionRepositoryTest / SkillAclQueryServiceTest 涵蓋。
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
-@org.springframework.test.context.TestPropertySource(properties = {
-        "skillshub.security.oauth.enabled=false",
-        "skillshub.security.lab.user-id=alice"
-})
-class SkillQueryControllerApiContractTest {
+@WebMvcTest(SkillQueryController.class)
+class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @MockitoBean
+    private SkillQueryService skillQueryService;
 
     @Test
     @DisplayName("AC-11: GET /api/v1/skills/{id} JSON 含 v1.5.0 fields，無 internal version 欄位")
     @Tag("AC-11")
     void apiContractRegression_findById() throws Exception {
-        var skillId = createSkillViaApi("contract-test-" + uniqueSuffix(), "alice", "DevOps");
+        var skillId = "contract-" + uniqueSuffix();
+        var fixture = Skill.fromRow(skillId, "contract-test", "fixture", "alice", "DevOps",
+                null, null, "DRAFT", 0L, Instant.now(), Instant.now(),
+                List.of("user:alice:read", "user:alice:write", "user:alice:delete"), null);
+        Mockito.when(skillQueryService.findById(skillId)).thenReturn(fixture);
 
         mockMvc.perform(get("/api/v1/skills/{id}", skillId))
                 .andExpect(status().isOk())
@@ -73,35 +79,22 @@ class SkillQueryControllerApiContractTest {
     @DisplayName("AC-11: GET /api/v1/skills (search) Page<Skill> JSON shape — content[].id / pageable / totalElements")
     @Tag("AC-11")
     void apiContractRegression_search() throws Exception {
-        var skillId = createSkillViaApi("search-contract-" + uniqueSuffix(), "alice", "Testing");
+        var skillId = "search-" + uniqueSuffix();
+        var fixture = Skill.fromRow(skillId, "search-test", "fixture", "alice", "Testing",
+                null, null, "DRAFT", 0L, Instant.now(), Instant.now(),
+                List.of(), null);
+        Page<Skill> page = new PageImpl<>(List.of(fixture));
+        Mockito.when(skillQueryService.search(
+                        ArgumentMatchers.isNull(), ArgumentMatchers.eq("Testing"),
+                        ArgumentMatchers.any())).thenReturn(page);
 
-        mockMvc.perform(get("/api/v1/skills")
-                        .param("category", "Testing"))
+        mockMvc.perform(get("/api/v1/skills").param("category", "Testing"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')]").exists())
                 .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].version").doesNotExist())
-                // 不嚴格鎖定 page metadata 欄位（Spring Boot 4 內部序列化欄位名與 v1.5.0 等價但 key 名可能異動；
-                // content shape 一致 + 無 internal version 欄位 expose 是核心契約）
                 .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].name").exists())
                 .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].status").exists());
-    }
-
-    private String createSkillViaApi(String name, String author, String category) throws Exception {
-        var body = objectMapper.writeValueAsString(java.util.Map.of(
-                "name", name,
-                "description", "API contract regression fixture",
-                "author", author,
-                "category", category));
-        var response = mockMvc.perform(post("/api/v1/skills")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isCreated())
-                .andReturn();
-        var json = response.getResponse().getContentAsString();
-        @SuppressWarnings("unchecked")
-        var map = objectMapper.readValue(json, java.util.Map.class);
-        return (String) map.get("id");
     }
 
     private static String uniqueSuffix() {

@@ -10,14 +10,12 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
 
 /**
  * AC-6 + AC-7：{@code /api/v1/admin/echo} 的 method-level role 授權判斷。
@@ -25,14 +23,18 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
  * <p>{@code @PreAuthorize("hasRole('admin')")} 比對的 authority 來自 {@code roles} claim 透過
  * {@link org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter
  * JwtGrantedAuthoritiesConverter} 自動轉換成 {@code ROLE_admin}。
+ *
+ * <p>S025b T03 — extends {@link WebMvcSliceTestBase}（slice + SecurityConfig + JwtDecoder mock
+ * + PermissionEvaluator mock + AOT fix）。
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
-class AdminControllerTest {
+@WebMvcTest(AdminController.class)
+class AdminControllerTest extends WebMvcSliceTestBase {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private CurrentUserProvider currentUserProvider;
 
     // 注意：MockMvc 的 `.with(jwt())` post-processor **不會跑自訂的 JwtAuthenticationConverter** —
     // 它直接合成 JwtAuthenticationToken 並由 .authorities(...) 指定 GrantedAuthority。
@@ -54,6 +56,9 @@ class AdminControllerTest {
     @Tag("AC-7")
     @DisplayName("AC-7: /api/v1/admin/echo admin token → 200 + {echo, by}")
     void adminEcho_withAdminJwt_returns200() throws Exception {
+        // AdminController 透過 CurrentUserProvider.userId() 取得 audit 欄位；mock 回 JWT subject
+        Mockito.when(currentUserProvider.userId()).thenReturn("admin-001");
+
         mockMvc.perform(get("/api/v1/admin/echo")
                 .param("msg", "hello")
                 .with(jwt()

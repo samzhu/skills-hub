@@ -11,15 +11,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.test.context.TestPropertySource;
 
 import tools.jackson.databind.ObjectMapper;
-
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
 
 /**
  * S014-T1 POC + AC-2 回歸測試 — 驗證 {@code Map<String,Object>} 透過自訂
@@ -30,20 +25,21 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
  * 失敗即代表整套 Converter 設計需要 fallback 為 String wrapper。POC 失敗
  * 應 halt T2 之前的所有後續 task。
  *
- * <p>採 {@code @SpringBootTest} 載入完整 ApplicationContext — 因 Spring Modulith
- * 在 Spring Boot 4 AOT 處理階段需要 {@code ApplicationModulesRuntime} bean，
- * {@code @DataJdbcTest} slice 不包含此 bean 會 AOT 失敗。
+ * <p>採 {@code @DataJdbcTest} slice 透過 {@link RepositorySliceTestBase} — per S025b
+ * （取代 S014-T1 既有「{@code @DataJdbcTest} slice 不可用」過時敘述）：
+ * {@code management.tracing.enabled=false} 從根因解 Spring Modulith
+ * {@code ModuleObservabilityAutoConfiguration}（獨立 {@code AutoConfiguration.imports}
+ * 載入；{@code @ConditionalOnProperty} 守 tracing flag）對 {@code ApplicationModulesRuntime}
+ * 的 hard dep。詳見 {@link RepositorySliceTestBase} Javadoc。
  *
- * <p>{@code spring.flyway.enabled=false} 暫時關閉 Flyway 以隔離本測試 —
- * 我們只在 setup 動態建立 {@code jsonb_test} 臨時表，不需 V1 migration。
+ * <p>{@code @BeforeEach setupTable()} 動態建立 {@code jsonb_test} 臨時表 — 與 V1 migration
+ * 的 6 張正式表互不影響（不同 table name），slice 預設啟用的 Flyway V1-V6 不衝突。
  *
  * @see JdbcConfiguration.MapToPGobjectConverter
  * @see JdbcConfiguration.PGobjectToMapConverter
+ * @see RepositorySliceTestBase
  */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-@TestPropertySource(properties = "spring.flyway.enabled=false")
-class MapJsonbConverterTest {
+class MapJsonbConverterTest extends RepositorySliceTestBase {
 
     @Autowired
     private NamedParameterJdbcTemplate jdbc;

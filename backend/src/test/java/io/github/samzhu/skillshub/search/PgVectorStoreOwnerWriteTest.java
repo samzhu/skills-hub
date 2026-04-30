@@ -13,11 +13,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
@@ -36,11 +34,13 @@ import io.github.samzhu.skillshub.skill.domain.SkillRepository;
  *
  * <p>FK 前置：vector_store.skill_id REFERENCES skills(id) ON DELETE CASCADE。
  *
+ * <p>S025b T02 — extends {@link RepositorySliceTestBase}：vector_store 6-col INSERT 直接驗
+ * （不經 SearchProjection async listener）；{@link EmbeddingModel} 由 base class 帶入的
+ * {@code TestcontainersConfiguration.@Bean @Primary} 提供 768-dim fixed-seed stub。
+ *
  * @see SkillshubPgVectorStore#doAdd
  */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-class PgVectorStoreOwnerWriteTest {
+class PgVectorStoreOwnerWriteTest extends RepositorySliceTestBase {
 
     @Autowired private JdbcTemplate jdbc;
     @Autowired private SkillRepository skillRepo;

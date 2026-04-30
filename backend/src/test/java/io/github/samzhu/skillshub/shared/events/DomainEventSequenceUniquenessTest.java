@@ -11,11 +11,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 
 /**
  * S014 AC-3 — Aggregate sequence UNIQUE constraint + replay 順序測試。
@@ -26,10 +24,10 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
  *
  * <p>取代既有 Mongo 上的「@CompoundIndex 不 unique」設計 — Mongo 版本沒有
  * 強制 UNIQUE，這是 S014 順手修的「靜默 race condition」。
+ *
+ * <p>S025b T02 — extends {@link RepositorySliceTestBase}：pure repo test，無 service dep。
  */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-class DomainEventSequenceUniquenessTest {
+class DomainEventSequenceUniquenessTest extends RepositorySliceTestBase {
 
 	@Autowired
 	private DomainEventRepository repo;

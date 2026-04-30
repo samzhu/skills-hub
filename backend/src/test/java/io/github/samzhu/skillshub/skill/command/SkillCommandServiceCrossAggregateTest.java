@@ -39,6 +39,14 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
  *       （SkillVersionPublishedFromAggregate 在 T1 無 subscriber，T5 由 AuditEventListener 訂閱）</li>
  * </ul>
  */
+/**
+ * S025b T02 — <b>deviation from spec REPO migration target</b>：本 test 屬「outbox 基礎設施
+ * 整合測試」，驗 Spring Modulith {@code event_publication} 表 INSERT 時序 + cross-aggregate
+ * {@code @DomainEvents} 行為。{@code @ApplicationModuleTest(DIRECT_DEPENDENCIES)} 在 skill
+ * module slice 內 outbox 不 fire（疑 ContextCustomizer 排除 modulith-events-jdbc auto-config
+ * 或 @DomainEvents extraction 範圍受限）— 保留 {@code @SpringBootTest} 為 outbox / cross-aggregate
+ * 整合測試的合理 CONFIG bucket。記入 §7 deviation rationale。
+ */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 class SkillCommandServiceCrossAggregateTest {

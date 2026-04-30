@@ -13,11 +13,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
@@ -28,10 +26,12 @@ import io.github.samzhu.skillshub.skill.domain.SkillRepository;
  * <p>對應 spec §4.16：{@code INSERT INTO vector_store (..., acl_entries)} 7-col 寫入；
  * {@code ON CONFLICT (id) DO UPDATE SET acl_entries = COALESCE(EXCLUDED.acl_entries, vector_store.acl_entries)}
  * 確保 re-embed 場景不覆蓋已 grant 的 entries。
+ *
+ * <p>S025b T02 — extends {@link RepositorySliceTestBase}：用 builder pattern 直接寫
+ * vector_store；{@link EmbeddingModel} 由 {@code TestcontainersConfiguration.@Bean @Primary}
+ * 提供（slice 透過 base class @Import 帶入）。
  */
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-class SkillshubPgVectorStoreAclTest {
+class SkillshubPgVectorStoreAclTest extends RepositorySliceTestBase {
 
     @Autowired private JdbcTemplate jdbc;
     @Autowired private SkillRepository skillRepo;

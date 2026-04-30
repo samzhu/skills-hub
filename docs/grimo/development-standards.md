@@ -133,8 +133,57 @@ public TaskExecutor applicationTaskExecutor() {
 
 **Test cache key 上限**（per S025a + S025b roadmap）：
 - S025a ship 後：≤ 25 distinct（baseline 53）
-- S025b ship 後（slice 重組）：≤ 10
-- 量測指令：`./gradlew clean test -Dlogging.level.org.springframework.test.context.cache=DEBUG > test-cache.log`，grep `Storing ApplicationContext` 計數
+- S025b ship 後（slice 重組）：~18（pgvector container 啟動 18 次/run；indirect measurement，per S025b §7 deviation）
+- S025c 目標：≤ 10（進一步 consolidate CONFIG bucket `@SpringBootTest`）
+- 量測指令：`./gradlew clean test > test-cache.log 2>&1; grep -c "Container pgvector/pgvector:pg16 started" test-cache.log`（indirect — `-Dlogging.level.org.springframework.test.context.cache=DEBUG` 在 Gradle test fork JVM 不 propagate；改數 Testcontainer 啟動次數）
+
+### REPO slice via `RepositorySliceTestBase`（S025b 起）
+
+`@DataJdbcTest` slice 共用 base class 收斂 cache key — 14 個 REPO test 共用同一 Spring TestContext cache entry：
+
+```java
+@Import(MyService.class)   // service 依賴 — slice 不掃 @Service
+class MyServiceTest extends RepositorySliceTestBase {
+    @Autowired private MyService service;
+    @Autowired private MyRepository repo;
+    // 驗 sync TX state（aggregate 寫入後立即可讀）；
+    // async audit log（@ApplicationModuleListener）不在 slice 啟用 — 屬 module test / e2e 範圍
+}
+```
+
+`RepositorySliceTestBase` 設計理由：
+- `@DataJdbcTest` 預設 `@AutoConfigureTestDatabase(replace=NON_TEST)`（SB 4 起；SB 3 是 `Replace.ANY`）— `@ServiceConnection` 容器自動 detected，無需顯式 `replace=NONE`
+- Flyway V1-V6 自動啟用（via `spring-boot-flyway` jar `AutoConfigureDataSourceInitialization.imports`）
+- `JdbcConfiguration extends AbstractJdbcConfiguration` 由 `DataJdbcTypeExcludeFilter.KNOWN_INCLUDES` 自動 picked up — JSONB converters 自動可用
+- `management.tracing.enabled=false` 解 Spring Modulith AOT blocker — `ModuleObservabilityAutoConfiguration` 由獨立 `AutoConfiguration.imports` 載入（不受 `@DataJdbcTest @OverrideAutoConfiguration` 控制）；其 `@ConditionalOnProperty(name="management.tracing.enabled" havingValue="true" matchIfMissing=true)` 設 false 後整個 class 不啟用 → 不需要 `ApplicationModulesRuntime` bean
+- `@ImportAutoConfiguration` (bare) + `META-INF/spring/<class>.imports` file 帶 `SpringModulithRuntimeAutoConfiguration` FQN — 解第二條 AOT path（`spring-modulith-runtime` `aot.factories` classpath-level 註冊 `ApplicationModulesFileGeneratingProcessor` 對 `ApplicationModulesRuntime` hard dep）
+- `@Transactional(propagation=NOT_SUPPORTED)` — 反 `@DataJdbcTest` 預設 meta-annotated `@Transactional`（auto-wrap test method 為 TX）；REPO slice test 對齊 既有 `@SpringBootTest` 既有語意（test 自管 TX、helper 自 commit；async listener AFTER_COMMIT 觸發必須 commit）
+
+### WEB slice via `WebMvcSliceTestBase`（S025b 起）
+
+`@WebMvcTest` slice 共用 base class — 11 個 controller test 大幅收斂 cache key：
+
+```java
+@WebMvcTest(MyController.class)
+class MyControllerTest extends WebMvcSliceTestBase {
+    @Autowired MockMvc mockMvc;
+    @MockitoBean MyService service;   // controller-specific dep
+
+    @Test
+    void getEndpoint_returns200() throws Exception {
+        mockMvc.perform(get("/api/v1/foo")
+                .with(jwt().jwt(j -> j.subject("alice"))
+                        .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+            .andExpect(status().isOk());
+    }
+}
+```
+
+OAuth2 Resource Server controller test：
+- **用 `.with(jwt())` post-processor**，**不**用 `@WithMockUser`（後者注入 `UsernamePasswordAuthenticationToken` 走 form-login path，繞過 OAuth2 RS filter chain；`jwt()` 注入 `JwtAuthenticationToken`，但不過 `JwtAuthenticationConverter`，需顯式 `.authorities(...)` 對齊 production）
+- `@Import(SecurityConfig.class)` — slice 不掃 `@Configuration`；測 OAuth2 RS filter chain 必須引入 prod `SecurityConfig`
+- `@MockitoBean JwtDecoder` + `@MockitoBean PermissionEvaluator` — base 已宣告；無需子類重複
+- `@MockitoBean CurrentUserProvider`（如 controller 注入）— 子類自行宣告 + stub `userId()` / `current()`
 
 ### 移除 `Duration.ofSeconds(30)` Awaitility timeout（S025a-T04）
 

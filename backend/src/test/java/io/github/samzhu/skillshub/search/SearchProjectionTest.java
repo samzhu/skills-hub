@@ -2,6 +2,7 @@ package io.github.samzhu.skillshub.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -12,19 +13,17 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.modulith.test.EnableScenarios;
+import org.springframework.modulith.test.ApplicationModuleTest;
+import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
 import org.springframework.modulith.test.Scenario;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
-import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
-import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 
 /**
@@ -50,13 +49,17 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
  * @see SkillshubPgVectorStore
  * @see io.github.samzhu.skillshub.shared.security.CurrentUserProvider
  */
-@SpringBootTest
+/**
+ * S025b T02 — {@code @SpringBootTest + @EnableScenarios} → {@code @ApplicationModuleTest(DIRECT_DEPENDENCIES)}：
+ * 對齊 S025a {@link io.github.samzhu.skillshub.audit.AuditEventListenerTest} pattern，slice 載 search
+ * module + 直接依賴；{@code @ApplicationModuleTest} 內建 {@code ScenarioParameterResolver}（{@code @EnableScenarios}
+ * 不再需要）。{@code @WithMockUser} 維持 — 不影響 cache key（TestExecutionListener，非 ContextCustomizer）。
+ */
+@ApplicationModuleTest(mode = BootstrapMode.DIRECT_DEPENDENCIES)
 @Import(TestcontainersConfiguration.class)
-@EnableScenarios
 @WithMockUser(username = "test-owner")
 class SearchProjectionTest {
 
-    @Autowired private SkillRepository skillRepo;
     @Autowired private JdbcTemplate jdbc;
 
     private String skillId;
@@ -67,11 +70,18 @@ class SearchProjectionTest {
         // 每個 test 用獨立 UUID + 隨機 name（skills.name 有 UNIQUE constraint，避免跨測試衝突）
         skillId = UUID.randomUUID().toString();
         skillName = "docker-helper-" + UUID.randomUUID();
-        var now = Instant.now();
-        // FK skill_id → skills.id 前置
-        skillRepo.save(Skill.fromRow(
-                skillId, skillName, "管理 Docker 容器", "sam", "DevOps",
-                null, null, "DRAFT", 0L, now, now, List.of(), null));
+        // S025b T02：MODULE slice 不載 skill module beans，FK 前置改 raw JdbcTemplate INSERT。
+        seedSkillRow(skillId, skillName, "管理 Docker 容器", "sam", "DevOps");
+    }
+
+    private void seedSkillRow(String id, String name, String description,
+                              String author, String category) {
+        var ts = Timestamp.from(Instant.now());
+        jdbc.update("""
+                INSERT INTO skills (id, name, description, author, category, status, download_count,
+                                    created_at, updated_at, acl_entries)
+                VALUES (?, ?, ?, ?, ?, 'DRAFT', 0, ?, ?, '[]'::jsonb)
+                """, id, name, description, author, category, ts, ts);
     }
 
     @Test
@@ -137,9 +147,7 @@ class SearchProjectionTest {
     void onSkillCreated_multipleSkillsHaveIndependentOwnerState(Scenario scenario) {
         var skillId2 = UUID.randomUUID().toString();
         var skillName2 = "k8s-helper-" + UUID.randomUUID();
-        skillRepo.save(Skill.fromRow(
-                skillId2, skillName2, "管理 K8s", "jane", "DevOps",
-                null, null, "DRAFT", 0L, Instant.now(), Instant.now(), List.of(), null));
+        seedSkillRow(skillId2, skillName2, "管理 K8s", "jane", "DevOps");
 
         // Phase 1: SecurityContext = test-owner → publish event for skillId → wait → verify owner
         SecurityContextHolder.getContext().setAuthentication(
