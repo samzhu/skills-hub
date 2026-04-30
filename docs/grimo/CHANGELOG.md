@@ -1,5 +1,25 @@
 # Changelog
 
+## [v2.4.0] — Dev Mode Admin Bypass（M23 完成；2026-05-01）
+
+> **Minor bump** — 新增 `ROLE_admin` super-admin 短路 + `local` profile 預設 LAB mode。對 prod 行為零影響（OIDC `roles: ["admin"]` claim 才會帶此 authority；攻擊者無法 spoof）。對齊 PRD「Feature First, Security Later」+ user instruction「dev 先不做授權認證」。
+
+### Added
+- **S027: Dev Mode Admin Bypass**（M23 落地）：
+  - **`DelegatingPermissionEvaluator` admin bypass**：`evaluate()` 加短路 — `Authentication.authorities` 含 `ROLE_admin` 時 `hasPermission` 直接 return true，不查 strategy。對齊 RBAC 慣例（GitHub org admin / Atlassian site admin / 多數 SaaS admin role 均 cross-resource bypass）。
+  - **`application-local.yaml` LAB mode**：預設 `skillshub.security.oauth.enabled: false`。`SecurityConfig.filterChain` 走 LAB 分支（`anyRequest().permitAll()` + `LabSecurityFilter` 注入 `lab-user` with `ROLE_admin`）。配合 admin bypass，所有 `@PreAuthorize` ACL gate 在 dev 自動通過，無需手動 JWT。
+  - **5 個 SBE AC 全綠**（AC-1~AC-5）：local LAB 啟動 / ACL grant 通過 / mutation 全通過 / prod 行為不變 / 既有 9 個 unit test 不破。
+
+### Trigger
+- 2026-05-01 /loop tick 2 系統測試：anonymous 對 alice 的 skill 執行 `POST /api/v1/skills/{id}/acl` 回 HTTP 401；違反「dev 先不做授權認證」意圖。S027 補正。
+
+### Verification
+- `./gradlew test` — 292 tests / 0 fail / 0 disabled（含新加 admin bypass test）
+- E2E HTTP（local LAB mode）：`POST /api/v1/skills/{id}/acl` HTTP 201（tick 1 為 401）；suspend / reactivate / PUT version / DELETE acl 全通過
+- 對 prod 模式（oauth.enabled=true）零影響：`DelegatingPermissionEvaluatorTest` 既有 9 test 全綠
+
+---
+
 ## [v2.3.0] — Public-Read Default ACL（M22 完成；2026-05-01）
 
 > **Minor bump** — 新功能：skill 上傳後預設對所有使用者開放讀取（PRD MVP 設計意圖落地）。User-facing 行為改變：anonymous / 任意 user 都能 read 任何 skill；write/delete/suspend/reactivate mutation 仍 owner-only ACL 守。

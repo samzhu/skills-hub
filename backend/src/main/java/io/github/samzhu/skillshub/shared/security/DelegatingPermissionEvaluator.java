@@ -84,12 +84,25 @@ public class DelegatingPermissionEvaluator implements PermissionEvaluator {
     }
 
     private boolean evaluate(Authentication auth, Object target, String targetType, String permission) {
+        // S027: ROLE_admin 全 permission bypass — admin 為 organization-level super-admin role
+        // （RBAC 慣例如 GitHub org admin / Atlassian site admin）；對所有 aggregate 都有完整
+        // read/write/delete/suspend/reactivate 權限，不查 ACL strategy。
+        // dev 模式（local profile LAB mode）lab-user 預設帶 ROLE_admin → 自動通過 @PreAuthorize；
+        // prod 模式只有 OIDC claim roles=["admin"] 的真實 user 才會帶此 authority（無法 spoof）。
+        if (hasAdminRole(auth)) {
+            return true;
+        }
         var principals = expandPrincipals(auth, permission);
         return strategies.stream()
                 .filter(s -> s.supports(targetType))
                 .findFirst()
                 .map(s -> s.hasPermission(principals, target, permission))
                 .orElse(false);
+    }
+
+    private boolean hasAdminRole(Authentication auth) {
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_admin".equals(a.getAuthority()));
     }
 
     /**

@@ -123,6 +123,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M20: Mock Lift + Scenario Migration | S025a | M(13) | 273 | ✅ `v2.1.0` (2026-04-30) |
 | Phase 4 | M21: Slice 重組 + Workaround 移除 | S025b | M(12-13) | 285 | ✅ `v2.2.0` (2026-04-30 — partial: cache key ~18 達標 baseline 大幅下降；heap 3g → 2g；full default heap 還原留 S025c) |
 | Phase 4 | M22: Public-Read Default ACL | S026 | XS(5) | 290 | ✅ `v2.3.0` (2026-05-01 — `*:read` public pseudo-principal 加入預設 ACL；read 普及；mutation 仍 owner-only) |
+| Phase 4 | M23: Dev Mode Admin Bypass | S027 | XS(5) | 295 | ✅ `v2.4.0` (2026-05-01 — local profile 預設 LAB mode；DelegatingPermissionEvaluator 對 ROLE_admin 短路；dev 全 mutation 不需 JWT；prod 行為不變) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

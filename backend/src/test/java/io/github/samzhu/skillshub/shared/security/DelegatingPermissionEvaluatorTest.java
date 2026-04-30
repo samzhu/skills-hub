@@ -155,6 +155,27 @@ class DelegatingPermissionEvaluatorTest {
         assertThat(evaluator.hasPermission(aliceAuth, null, "read")).isFalse();
     }
 
+    @Test
+    @DisplayName("AC-6 / S027: ROLE_admin authority → 短路 true，不 dispatch 至 strategy")
+    @Tag("AC-6")
+    void hasPermission_adminRole_bypassesStrategy() {
+        var skillStub = new StubStrategy("Skill", false);  // strategy 即使回 false 也應被 bypass
+        var evaluator = new DelegatingPermissionEvaluator(List.of(skillStub));
+        var adminAuth = new UsernamePasswordAuthenticationToken(
+                "lab-user",
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_admin")));
+
+        // admin 對任何 permission 都 true（write/delete/suspend/reactivate 等 mutation 也通過）
+        assertThat(evaluator.hasPermission(adminAuth, "abc-1", "Skill", "read")).isTrue();
+        assertThat(evaluator.hasPermission(adminAuth, "abc-1", "Skill", "write")).isTrue();
+        assertThat(evaluator.hasPermission(adminAuth, "abc-1", "Skill", "suspend")).isTrue();
+
+        assertThat(skillStub.lastInvokedTarget)
+                .as("ROLE_admin bypass 應於 evaluator 層短路；strategy 不應收到請求")
+                .isNull();
+    }
+
     // ---- helpers ----
 
     /** Test stub — 紀錄最後一次呼叫；可控制 supports / hasPermission 回傳值。 */

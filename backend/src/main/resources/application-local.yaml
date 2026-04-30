@@ -38,3 +38,15 @@ spring:
       # T7 後 google-cloud-firestore dep 已移除，無需 firestore.enabled 設定。
       storage:
         enabled: false
+
+# ----- S027: dev 模式 LAB security path -----
+# 本機開發跳過 OAuth Resource Server JWT 要求；SecurityConfig.filterChain 走 LAB 分支：
+#   - anyRequest permitAll
+#   - LabSecurityFilter 注入 lab-user with ROLE_admin authority
+# 配合 DelegatingPermissionEvaluator 對 ROLE_admin 的短路 bypass（per S027 §2.2），
+# 所有 @PreAuthorize ACL gate 在 dev 自動通過，無需手動 JWT。
+# Prod (gcp profile) 預設 oauth.enabled=true（base application.yaml line 137），不受影響。
+skillshub:
+  security:
+    oauth:
+      enabled: false
