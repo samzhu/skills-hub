@@ -58,4 +58,21 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse("NOT_FOUND", ex.getMessage(), Instant.now()));
 	}
 
+	/**
+	 * S029：處理 SUSPENDED skill 下載被拒（{@link SkillSuspendedException}）。
+	 *
+	 * <p>回傳 HTTP 403 Forbidden + {@code SKILL_SUSPENDED} error code，與 generic 403
+	 * （auth fail）做語意區分。403 而非 410：SUSPENDED 可被 admin reactivate（非永久），
+	 * 與 410 Gone「permanent removal」語意不符。
+	 */
+	@ExceptionHandler(SkillSuspendedException.class)
+	ResponseEntity<ErrorResponse> handleSuspended(SkillSuspendedException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "SKILL_SUSPENDED")
+				.addKeyValue("skillId", ex.getSkillId())
+				.log("Download blocked: skill suspended");
+		return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				.body(new ErrorResponse("SKILL_SUSPENDED", ex.getMessage(), Instant.now()));
+	}
+
 }

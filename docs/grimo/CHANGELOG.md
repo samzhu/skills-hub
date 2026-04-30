@@ -1,5 +1,28 @@
 # Changelog
 
+## [v2.6.0] — Block Suspended Skill Download（M25 完成；2026-05-01）
+
+> **Minor bump** — 安全性修正：被 suspend 的 skill 不可下載。原 API 對 SUSPENDED skill 仍回 200 + zip，違反 `SkillStatus.SUSPENDED` 設計意圖「因安全風險或違規而下架，不可下載」。
+
+### Added
+- **S029: Block Suspended Skill Download**（M25 落地）：
+  - **`SkillSuspendedException`（new）**：sentinel exception，攜 skillId；class Javadoc 說明 403 vs 410 的選擇（403 因 SUSPENDED 可被 admin reactivate）。
+  - **`SkillQueryService.downloadAndRecord` guard**：service 層 single chokepoint；先 `findById` + status check，fail-fast 早於 storage download；兩條 endpoint（`downloadLatest` + `downloadVersion`）均受保護。
+  - **`GlobalExceptionHandler` 加 `@ExceptionHandler(SkillSuspendedException.class)`**：HTTP 403 + `ErrorResponse{code:"SKILL_SUSPENDED", message:..., timestamp:...}`；structured log 含 skillId。
+  - **4 個 SBE AC 全綠**（AC-1~4：SUSPENDED 兩 endpoint 都 403 / PUBLISHED regression / reactivate 恢復）。
+
+### Trigger
+- 2026-05-01 /loop tick 4 系統測試 — `GET /api/v1/skills/{id}/download` 對 SUSPENDED skill 仍回 200 + zip bytes，違反 PRD 設計意圖。S029 補正。
+
+### Verification
+- `./gradlew test` — 292 tests / 0 fail / 0 disabled
+- E2E HTTP（local LAB mode）：PUBLISHED 200 → suspend → SUSPENDED download 403 SKILL_SUSPENDED → reactivate → download 200
+
+### Security note
+- guard 在 service layer 而非 ACL `@PreAuthorize` — S027 admin bypass 對 `@PreAuthorize` 短路不影響此 status guard；admin 也不能下載 SUSPENDED skill（除非先 reactivate），符合 audit trail 要求
+
+---
+
 ## [v2.5.0] — Frontend SUSPENDED Status Rendering（M24 完成；2026-05-01）
 
 > **Minor bump** — 純 frontend type + UI rendering 修正，對齊 backend `SkillStatus` enum 三狀態。User-facing 改變：SUSPENDED skill 在 SkillDetailPage 顯示「已停用」+ destructive variant；SkillCard 在 list 上對 DRAFT / SUSPENDED 顯示 badge。

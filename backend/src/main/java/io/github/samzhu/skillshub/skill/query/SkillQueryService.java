@@ -22,8 +22,10 @@ import org.springframework.util.StringUtils;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
+import io.github.samzhu.skillshub.shared.api.SkillSuspendedException;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillStatus;
 import io.github.samzhu.skillshub.skill.domain.SkillVersion;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
 import io.github.samzhu.skillshub.storage.StorageService;
@@ -271,9 +273,14 @@ public class SkillQueryService {
 	 * outbox，由 AnalyticsProjection / AuditEventListener 等 listener 接收。
 	 */
 	private byte[] downloadAndRecord(String skillId, SkillVersion version) {
-		var zipBytes = storageService.download(version.getStoragePath());
+		// S029: SUSPENDED skill 不可下載（per SkillStatus.SUSPENDED Javadoc）。
+		// fail-fast：先 findById + status guard，避免無謂 storage download bandwidth。
 		var skill = skillRepo.findById(skillId)
 				.orElseThrow(() -> new NoSuchElementException("Skill not found: " + skillId));
+		if (skill.getStatus() == SkillStatus.SUSPENDED) {
+			throw new SkillSuspendedException(skillId);
+		}
+		var zipBytes = storageService.download(version.getStoragePath());
 		skill.recordDownload();
 		skillRepo.save(skill);
 

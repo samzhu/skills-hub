@@ -14,10 +14,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.api.SkillSuspendedException;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillStatus;
+import io.github.samzhu.skillshub.skill.query.SkillQueryService;
 
 /**
  * S018 T2 — SkillCommandService.suspend / reactivate 整合測試。
@@ -45,6 +47,9 @@ class SkillSuspendReactivateTest {
 
     @Autowired
     private DomainEventRepository eventStore;
+
+    @Autowired
+    private SkillQueryService queryService;
 
     @Test
     @DisplayName("AC-4: PUBLISHED skill suspend → aggregate SUSPENDED + SkillSuspended audit")
@@ -105,6 +110,23 @@ class SkillSuspendReactivateTest {
 
         // aggregate state 仍為 DRAFT
         assertThat(loadSkill(skillId).getStatus()).isEqualTo(SkillStatus.DRAFT);
+    }
+
+    @Test
+    @DisplayName("AC-S029: SUSPENDED skill download → SkillSuspendedException（fail-fast 早於 storage download）")
+    @Tag("AC-S029")
+    void suspendedSkillBlocksDownload() {
+        var skillId = createPublishedSkill();
+        commandService.suspend(new SuspendCommand(skillId, "policy violation", "admin-user"));
+        assertThat(loadSkill(skillId).getStatus()).isEqualTo(SkillStatus.SUSPENDED);
+
+        // SUSPENDED → 拒絕下載；S029 guard 在 storage.download 之前觸發，
+        // 因此即使 storagePath 為 fixture 的虛擬路徑（"gs://bucket/p"）也不會走到 storage layer。
+        assertThatThrownBy(() -> queryService.downloadLatest(skillId))
+                .isInstanceOf(SkillSuspendedException.class)
+                .hasMessageContaining(skillId);
+        assertThatThrownBy(() -> queryService.downloadVersion(skillId, "1.0.0"))
+                .isInstanceOf(SkillSuspendedException.class);
     }
 
     private Skill loadSkill(String skillId) {
