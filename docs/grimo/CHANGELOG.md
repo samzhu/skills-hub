@@ -1,5 +1,22 @@
 # Changelog
 
+## [v2.56.1] — `SkillSuspendedException` message 改 operation-agnostic（M75 完成；2026-05-01）
+
+> **Polish** — S074 引入 `/files` endpoint 後，shared `SkillSuspendedException` 的 message 還是寫死「cannot be downloaded」（S029 設計時只服務 `/download`）。對 file-browser 場景的 API debug log / response 訊息誤導。FE i18n 用 error code 對應 localized string，**不依賴 backend message**——故 user 不受影響，純為清理 API debug 觀感。E2E test loop tick 70 polish round。
+
+### Polished
+- **S079: `SkillSuspendedException` 改 operation-agnostic**（M75）：
+  - constructor message: `"Skill is suspended and cannot be downloaded: " + id` → `"Skill is suspended and not accessible: " + id`
+  - Javadoc 同步更新：涵蓋 `/download` 與 S074 `/files` 兩 endpoint
+  - 無 test 釘住此字串 → 299 tests / 0 fail
+
+### Verification
+- `/download` SUSPENDED → 403 + 「is not accessible」 ✓
+- `/files` SUSPENDED → 403 + 「is not accessible」 ✓
+- error code (`SKILL_SUSPENDED`) / status (403) 不變 — FE i18n mapping 無需調整
+
+---
+
 ## [v2.56.0] — `Skill.riskLevel` `@ReadOnlyProperty`（preemptive defense；M74 完成；2026-05-01）
 
 > **Defense-in-depth** — S077 fix lost-update on `download_count`，audit 後發現 `risk_level` 同模式：`ScanOrchestrator.updateRiskLevel`（atomic SQL UPDATE）+ aggregate save 並發時，後者 full-row UPDATE 帶上 in-memory 舊值（多為 null）覆蓋 scan 寫入的 HIGH/MEDIUM/LOW。`updateRiskLevel` SQL 不增加 `version`，aggregate 的 `@Version` optimistic lock 偵測不到此衝突。E2E test loop tick 67 Round 24 audit + 5 trial 嘗試重現未觸發（dev 環境 timing 太緊）但架構漏洞與 S077 完全相同（bug AL pattern）。Preemptive ship — 不留地雷。

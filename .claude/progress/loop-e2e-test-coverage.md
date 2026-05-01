@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 69 (2026-05-01) — Round 26 bare POST /skills + name regex boundaries, **0 bugs** / 17 cases all match documented regex
+> Latest tick: 70 (2026-05-01) — Polish round → ship S079 v2.56.1 (M75) `SkillSuspendedException` message operation-agnostic
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -155,6 +155,14 @@
 >     **0 new bugs** — name regex 行為與 documented spec `^[a-z0-9-]{1,64}$` 完全一致。
 >     **Observation polish candidate**：regex 允許 `-` 單獨 / 連續 `--` / 邊界 hyphen `-foo` / `foo-`。技術上 valid 但會造成奇怪 filename（如 `-1.0.0.zip`）。Docker-tag-style 慣例會額外拒邊界 hyphen。Future polish spec：tighten regex 為 `^[a-z0-9]+(-[a-z0-9]+)*$`（拒邊界 hyphen + 拒空字串）。
 >     **Bare POST /skills 確認用途**：建立 "shell" skill（無 zip / version / embedding / risk assessment）僅供 testing & seeding；不能 download；不出現在 PUBLISHED-filtered list。
+>   tick 70 (loop cron 10m fc4a79bb, polish round, 2026-05-01):
+>     **Polish ship S079 — `SkillSuspendedException` message operation-agnostic**：S074 引入 `/files` endpoint 後 shared exception 的 message 仍寫死「cannot be downloaded」（S029 設計時只服務 `/download`）。對 file-browser 場景 API debug 訊息誤導；FE i18n 用 error code `SKILL_SUSPENDED` 對應 localized string，不依賴 backend message → user 不受影響，純 polish。
+>     - constructor message: `"...cannot be downloaded: " + id` → `"...is not accessible: " + id`
+>     - Javadoc 同步更新（涵蓋 `/download` + `/files` 兩 endpoint）
+>     - 299 tests / 0 fail（無 test 釘字串）
+>     - Smoke 3 paths（/download / /files / /files/SKILL.md）全回新 message ✓
+>     - error code / status (403) 不變 → FE i18n 無需調整
+>     - ship v2.56.1 (M75)。本輪不做新 testing round；polish 結束。
 
 ## Coverage Summary (as of v2.46.0)
 
