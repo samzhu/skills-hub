@@ -157,6 +157,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M54: Flag Input Validation | S058 | XS(5) | 452 | ✅ `v2.35.0` (2026-05-01 — POST flags 缺 type 不再 500 NPE；type 預驗 + payload HashMap 允許 null description；解 Map.of NPE 陷阱) |
 | Phase 4 | M55: Semantic Search PUBLISHED-Only Visibility | S059 | XS(5) | 457 | ✅ `v2.36.0` (2026-05-01 — semantic SQL 加 JOIN skills + status='PUBLISHED' filter；對齊 S031；DRAFT/SUSPENDED 不再公開呈現於 semantic 結果) |
 | Phase 4 | M56: SkillCard Status Badge Defensive | S060 | XS(5) | 462 | ✅ `v2.37.0` (2026-05-01 — SkillCard truthy guard skill.status；undefined → 不主張；解 semantic 結果誤顯「草稿」badge) |
+| Phase 4 | M57: Download Filename Includes Skill Name | S061 | XS(5) | 467 | ✅ `v2.38.0` (2026-05-01 — Content-Disposition filename 動態組 {skillName}-{version}.zip；多下載不再檔名衝撞) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

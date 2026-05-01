@@ -1,5 +1,24 @@
 # Changelog
 
+## [v2.38.0] — Download Filename Includes Skill Name（M57 完成；2026-05-01）
+
+> **Patch-class minor** — `/api/v1/skills/{id}/download` 與 `/skills/{id}/versions/{ver}/download` 的 Content-Disposition filename 從 hardcoded `skill.zip` / `skill-{ver}.zip` 改為動態 `{skillName}-{version}.zip`。user 同時下載多個 skill 不再檔名衝撞。
+
+### Changed
+- **S061: Download Filename Includes Skill Name**（M57）：
+  - 兩個 download endpoint 動態組 filename
+  - skill name regex `[a-z0-9-]{1,64}`（S041）已限為 filename 安全字元
+  - **4 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 34 — Content-Disposition filename 與 skill name 無關，多下載衝撞
+
+### Verification
+- `./gradlew test` — 286 / 0 fail
+- E2E：`filename=tick34-cn-4257-1.0.0.zip` 包含 skill name + version
+
+---
+
 ## [v2.37.0] — SkillCard Status Badge Defensive Undefined Check（M56 完成；2026-05-01）
 
 > **Patch-class minor** — `SkillCard` status badge 條件加 truthy guard：`skill.status && skill.status !== 'PUBLISHED'`。先前 semantic 結果（`SemanticSearchResult` 缺 `status` field → undefined）誤評估為「非 PUBLISHED」→ 全部誤顯「草稿」badge。S059 invariant 已保證 semantic 結果皆 PUBLISHED；undefined → 不主張。

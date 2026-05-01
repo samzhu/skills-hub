@@ -75,20 +75,26 @@ public class SkillQueryController {
 	 */
 	@GetMapping("/skills/{id}/download")
 	ResponseEntity<byte[]> downloadLatest(@PathVariable String id) {
+		// S061: filename 含 skill name + version 區分 — name 已限 [a-z0-9-]{1,64}（S041）filename 安全
+		var skill = queryService.findById(id);
 		var bytes = queryService.downloadLatest(id);
 		return ResponseEntity.ok()
 				.contentType(MediaType.APPLICATION_OCTET_STREAM)
-				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=skill.zip")
+				.header(HttpHeaders.CONTENT_DISPOSITION,
+						"attachment; filename=" + skill.getName() + "-" + skill.getLatestVersion() + ".zip")
 				.body(bytes);
 	}
 
 	/** 下載某技能的指定版本 zip。 */
 	@GetMapping("/skills/{id}/versions/{version}/download")
 	ResponseEntity<byte[]> downloadVersion(@PathVariable String id, @PathVariable String version) {
+		// S061: filename 含 skill name + 指定 version
+		var skill = queryService.findById(id);
 		var bytes = queryService.downloadVersion(id, version);
 		return ResponseEntity.ok()
 				.contentType(MediaType.APPLICATION_OCTET_STREAM)
-				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=skill-" + version + ".zip")
+				.header(HttpHeaders.CONTENT_DISPOSITION,
+						"attachment; filename=" + skill.getName() + "-" + version + ".zip")
 				.body(bytes);
 	}
 
