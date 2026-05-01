@@ -222,3 +222,29 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - S033 vector store invariant 在 suspend/reactivate 兩個方向都正確 async 維護
 - state machine guards 對稱（two-way 409 STATE_CONFLICT）
 
+---
+
+## Tick 62 — Ship S074 Skill Files Browser API (2026-05-01)
+
+7 ACs smoke verified（合併在 tick 62 ship 流程，case 表略；詳 progress log）。
+
+---
+
+## Tick 63 — Round 20: S074 deeper coverage (2026-05-01)
+
+| # | 類別 | Case | Result |
+|---|------|------|--------|
+| 20.1 | 正例 | multi-version `pdf` (3 versions, 12 files) /files | PASS — 200 + latest 12 entries（含 reference.md / forms.md / scripts/*.py） |
+| 20.2 | 反例 | DRAFT skill (no PUBLISHED) /files | PASS — 404 「No versions found for skill: ...」 |
+| 20.3 | 邊緣 | HEAD /files/SKILL.md | PASS — 200 + Content-Type + Content-Length 與 GET 一致 + body=0 bytes（Spring 自動 GET→HEAD） |
+| 20.4 | 邊緣 | OPTIONS /files (CORS preflight) | PASS — 200 + `Allow: GET,HEAD,POST,...`；無 Access-Control（dev vite proxy 同 origin） |
+| 20.5 | 邊緣 | 5 concurrent readers 同檔 | PASS — 5/5 200 + 同 size + 同 head bytes，無 race |
+| 20.6 | 反例 | bogus UUID /files | PASS — 404 NOT_FOUND |
+
+**Bonus**：anthropics/pdf 包 12 檔案含 6 個 Python scripts — 檔案瀏覽器對這類 multi-script skill UX value 高，user 可預覽 script 才決定下載。
+
+### Tick 63 Summary
+- Round 20: 6 cases / **0 new bugs**
+- S074 在 multi-version / DRAFT / HEAD / OPTIONS / 並發 / bogus-id 場景全 robust
+- 新 tech debt：production CORS 配置（platform-level，不限 S074）
+

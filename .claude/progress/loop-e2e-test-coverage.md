@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 62 (2026-05-01) — User-driven feature 「skill 明細頁面瀏覽各檔案內容」→ ship S074 v2.52.0 (M70) Skill Files Browser API
+> Latest tick: 63 (2026-05-01) — Round 20 S074 deeper coverage (HEAD/OPTIONS/multi-version/concurrency), **0 new bugs**
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -81,6 +81,16 @@
 >     **Smoke test 7/7 AC PASS**：list multi-file zip → 5 entries；read SKILL.md/binary/nested 全 200；non-existent → 404；SUSPENDED → 403；path traversal → 400 (Tomcat layer)；1.5MB file → 413「File 'big.bin' is 1560576 bytes, exceeds preview limit of 1048576 bytes」
 >     **Cosmetic note**：`SkillSuspendedException` message「Skill is suspended and cannot be downloaded」對 /files endpoint 略不貼切（message 該改成 「is suspended and not accessible」），polish round 處理。
 >     ship v2.52.0 (M70)。FE 渲染（檔案瀏覽器 UI）留 S076。
+>   tick 63 (loop cron 10m fc4a79bb, Round 20 S074 deeper coverage, 2026-05-01):
+>     R20 (6 cases — HEAD / OPTIONS / multi-version / concurrency / DRAFT 反例)：
+>     - 20.1 正例：multi-version skill `pdf` (3 versions, 12 files) /files → 200 + latest version 12 entries (reference.md / forms.md / scripts/*.py 等) ✓
+>     - 20.2 反例：DRAFT skill (no PUBLISHED) /files → 404「No versions found for skill: ...」（fail-fast in `loadZipBytes`）✓
+>     - 20.3 邊緣：HEAD /files/SKILL.md → 200 + Content-Type + Content-Length 與 GET 一致 + **body=0 bytes**（Spring 自動處理 GET handler 為 HEAD，spec compliant）✓
+>     - 20.4 邊緣：OPTIONS /files → 200 + `Allow: GET,HEAD,POST,PUT,DELETE,OPTIONS,TRACE,PATCH`（Spring 預設）；**無** `Access-Control-*` headers — dev vite proxy 同 origin OK；production CORS 配置留 platform-level tech debt（不限 S074）
+>     - 20.5 邊緣：5 並發 readers 同檔 → 5/5 同 HTTP 200 + 同 size + 同 head bytes，unique_signatures=1 ✓ 無 race
+>     - 20.6 反例：bogus UUID /files → 404 NOT_FOUND ✓
+>     **0 new bugs** — S074 endpoint 在 multi-version / DRAFT / HEAD / OPTIONS / 並發場景全 robust。
+>     **Bonus discovery**：anthropics/pdf skill 包 12 檔案含 reference.md + 6 個 Python scripts — 檔案瀏覽器對這類 multi-script skill UX value 很高，user 可預覽 script 內容才決定下載。
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -152,6 +162,7 @@
 - ACL DELETE non-existent grant → 409 STATE_CONFLICT (state-machine 哲學) vs 404 NOT_FOUND (REST 慣例)。語意可辯，保留現狀。
 - FE i18n VALIDATION_ERROR 訊息過於 generic（tick 60 R18.3）：所有 backend validation error 都對應到「zip 套件驗證失敗，請確認格式正確」，不顯示具體 field（如 "Missing required field: name" / "Field 'name' fails regex"）。UX 改善方向是把 backend `message` 欄位作為 fallback subtitle 顯示（i18n 框架不變）。
 - `SkillSuspendedException` message 對 /files endpoint 略不貼切（tick 62 S074）：寫死「cannot be downloaded」，在新增的 file-browser 場景下 message 不準。改為 generic「is suspended and not accessible」可同時適用 /download + /files 路徑。
+- Production CORS 配置未啟用（tick 63 R20.4）：OPTIONS /files 回 `Allow:` header 但無 `Access-Control-*`。dev vite proxy 同 origin OK，production 跨 origin（例如靜態前端不同 host）需 `WebMvcConfigurer.addCorsMappings` 或 `@CrossOrigin`。Platform-level 問題，不限 S074；ship 上 Cloud Run 前必補。
 
 ## Current Health (Tick 45 baseline)
 - **Backend tests**: 286 / 0 fail
