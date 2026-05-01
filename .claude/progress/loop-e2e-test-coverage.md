@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 46 (2026-05-01) — outbox health verified after S069 drain
+> Latest tick: 47 (2026-05-01) — vector_store orphans cleaned via Flyway V7
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -59,6 +59,7 @@
 - AB: console pollution (S064)
 - AC: React Query paused state (S065 hotfix v2.43.0)
 - AD: outbox stuck SkillAclGrantedEvent pre-S055 (S069 v2.47.0)
+- AE: vector_store orphans for pre-S033 SUSPENDED skills (S070 v2.48.0 Flyway V7)
 
 ### Known Tech Debt (low priority)
 - DB 既有畸形 entries（畸形 ACL/version "foo" 等）需 future migration
