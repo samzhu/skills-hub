@@ -1,5 +1,24 @@
 # Changelog
 
+## [v2.33.0] — Version Semver Validation（M52 完成；2026-05-01）
+
+> **Minor bump** — `Skill.recordVersionPublished` 加嚴格 semver 預驗：`MAJOR.MINOR.PATCH` 三段數字（optional 連字 pre-release suffix）。違反 → 400 VALIDATION_ERROR。先前 `version=foo` / `version=` 都 200 創建畸形 row；超長 version 觸 DB constraint → 500 + raw SQL leak。三個 bug 由單一 fix 一次解決。
+
+### Added
+- **S056: Version Semver Validation**（M52 落地）：
+  - `VERSION_REGEX = ^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$`（npm/Cargo/pip 慣例）
+  - `recordVersionPublished` 第一行 regex 驗證
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 29 — `PUT /skills/{id}/versions` 接受 `version=foo` 200 創建 / 接受空 200 / 超長 → 500 + SQL leak
+
+### Verification
+- `./gradlew test` — 286 / 0 fail
+- E2E：foo / 空 / 超長 全 400；1.2.3 與 2.0.0-rc.1 仍 200
+
+---
+
 ## [v2.32.0] — ACL Tuple Input Validation（M51 完成；2026-05-01）
 
 > **Minor bump** — `Skill` aggregate 加 ACL tuple 預驗：`type ∈ {user, role, group}`、`principal` 非 blank、`permission ∈ {read, write, delete, suspend, reactivate}`。違反 → 400 VALIDATION_ERROR。先前 POST `/acl` 接受任意 permission 字串 / 缺 type 仍 201 創建，畸形 ACL entry 入 DB。

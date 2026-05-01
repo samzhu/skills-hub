@@ -159,6 +159,13 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     /** S042: description 長度上限（與 {@code SkillValidator.DESCRIPTION_MAX} 同值）。 */
     private static final int DESCRIPTION_MAX = 1024;
 
+    /**
+     * S056: 嚴格 semver MAJOR.MINOR.PATCH 三段（optional 連字 pre-release suffix）。
+     * 對齊 npm / Cargo / pip 慣例；DB column varchar(50) 邊界保護。
+     */
+    private static final java.util.regex.Pattern VERSION_REGEX =
+            java.util.regex.Pattern.compile("^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$");
+
     /** S055: ACL principal 命名空間 — controller 預期 user/role/group 三類，aggregate 守 invariant。 */
     private static final java.util.Set<String> ACL_TYPES =
             java.util.Set.of("user", "role", "group");
@@ -225,6 +232,11 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * {@code UNIQUE (skill_id, version)} constraint 兜底。
      */
     public void recordVersionPublished(String version) {
+        // S056: semver 預驗 — 違反 → IllegalArgumentException → 400 VALIDATION_ERROR
+        if (version == null || !VERSION_REGEX.matcher(version).matches()) {
+            throw new IllegalArgumentException(
+                    "Version must match semver MAJOR.MINOR.PATCH (got: " + version + ")");
+        }
         SkillStatus next = this.status.publish();
         this.latestVersion = version;
         this.status = next;
