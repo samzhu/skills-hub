@@ -86,6 +86,22 @@ spring:
         jwt:
           issuer-uri: http://localhost:9000/skills-hub-dev
 
+  # ----- 錯誤回應安全（S045）-----
+  # 未被 GlobalExceptionHandler 攔截的錯誤（如 415 / unknown path 404）會落 Spring
+  # 預設 BasicErrorController；其預設 body 含 12-14KB stack trace + filter chain
+  # 內部 class name（LabSecurityFilter / FilterChainProxy 等）— 屬資訊洩漏。
+  # 此處關閉 trace / exception class name / binding errors 暴露，保留 message。
+  #
+  # 注意：Spring Boot 4 將 `server.error.*` 重命名為 `spring.web.error.*`（per
+  # spring-boot-autoconfigure-4.0.6 spring-configuration-metadata.json）— 沿用舊
+  # property 名 yaml parse 不報錯但完全沒生效，必須用新前綴。
+  web:
+    error:
+      include-stacktrace: never
+      include-exception: false
+      include-message: always
+      include-binding-errors: never
+
 # ----- Actuator（基礎曝露，各環境 profile 可擴充） -----
 # S023：加入 modulith endpoint 暴露模組依賴關係 + event publication 統計（給 ops dashboard）
 management:

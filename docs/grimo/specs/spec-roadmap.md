@@ -141,6 +141,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M38: Aggregate description / category Validation | S042 | XS(5) | 370 | ✅ `v2.19.0` (2026-05-01 — Skill.create 補 description trim + blank + ≤1024，category trim + blank reject；S041+S042 完成 4 欄位 invariant 守門) |
 | Phase 4 | M39: Keyword Search Also Matches Category | S043 | XS(5) | 375 | ✅ `v2.20.0` (2026-05-01 — SkillQueryService keyword LIKE clause 加 `LOWER(category)` 第三個 OR；對齊 GitHub/npm 通用 catalog 搜尋；HomePage 搜尋「DevOps」從 0 → 25 skills) |
 | Phase 4 | M40: Keyword Trim Whitespace | S044 | XS(5) | 380 | ✅ `v2.21.0` (2026-05-01 — keyword 做 `.trim()` 預處理；複製貼上含 leading/trailing space 不再回 0 結果；trim 與 sanitizeLikePattern SQL escape 職責正交) |
+| Phase 4 | M41: Strip Error Stack Trace + 405 Handler | S045 | XS(5) | 385 | ✅ `v2.22.0` (2026-05-01 — `spring.web.error.include-stacktrace: never` 全局；405 加 explicit handler；405/415/404 response 從 12-14KB 收斂至 138-180B 不含 stack trace；解 tick 19 §7.5 資訊洩漏) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

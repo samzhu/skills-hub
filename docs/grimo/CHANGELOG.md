@@ -1,5 +1,35 @@
 # Changelog
 
+## [v2.22.0] — Strip Error Stack Trace + 405 Handler（M41 完成；2026-05-01）
+
+> **Minor bump** — 收斂 Spring Boot fallback 錯誤回應的 stack trace leak（12-14KB → 138-180B）。`spring.web.error.include-stacktrace: never` 為全局 defense；`HttpRequestMethodNotSupportedException` 加 explicit handler 把 405 normalize 至 `{error: "METHOD_NOT_ALLOWED", message, timestamp}`。
+
+### Added
+- **S045: Strip Error Stack Trace + 405 Handler**（M41 落地）：
+  - **`spring.web.error.{include-stacktrace, include-exception, include-message, include-binding-errors}`** 4 toggle（注意 Spring Boot 4 將 `server.error.*` 重命名為 `spring.web.error.*` — 沿用舊 prefix yaml parse 不報錯但完全沒生效）
+  - **`@ExceptionHandler(HttpRequestMethodNotSupportedException.class)`** → 405 METHOD_NOT_ALLOWED + ErrorResponse 格式
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 19 §7.5 + tick 20 baseline — `POST /api/v1/skills/{id}/versions`、`DELETE /api/v1/skills`、`POST text/plain`、未知 path 等回應均含 12-14KB body 暴露 `LabSecurityFilter`、`FilterChainProxy` 等內部 class name；屬資訊洩漏
+
+### Verification
+- `./gradlew test` — 286 tests / 0 failures / 0 errors
+- E2E HTTP：405 12.9KB → 138B；415 13.9KB → 180B；404 unknown path 12.7KB → 157B；所有 response 不含 `trace` field
+- 既有 GlobalExceptionHandler 路徑（VALIDATION_ERROR、SKILL_SUSPENDED、PAYLOAD_TOO_LARGE 等）格式不變
+
+### Spring Boot 4 Property Rename Note
+- Spring Boot 4 將 `server.error.*` 改名 `spring.web.error.*`（per spring-boot-autoconfigure-4.0.6 spring-configuration-metadata.json）
+- yaml parse 不會 warn — 寫錯 prefix 完全 silent
+- application.yaml 加註解警示未來不再踩
+
+### Tech Debt（同 tick 20 發現）
+- **Bug C**：HomePage semantic search 回 0 結果（不是 error）時停在「未找到匹配的技能 試試換個描述方式」死巷，沒 fallback 至 keyword search；prod 環境 embedding 真找不到時 user 也卡住。Frontend UX bug — 留下一輪
+- 搜尋框 placeholder「名稱或描述」未對齊 S043 後行為（已含 category）
+- 415 / NoResourceFoundException 404 仍走 Spring 預設格式（無 trace 已安全；格式不一致為小問題）
+
+---
+
 ## [v2.21.0] — Keyword Trim Whitespace（M40 完成；2026-05-01）
 
 > **Minor bump** — `SkillQueryService.search` 的 `keyword` 參數做 `.trim()` 預處理；user 從複製貼上常含 leading/trailing whitespace（先前 `keyword=t17 ` 回 0、`keyword= DevOps` 回 0），現在與 `keyword=t17` / `keyword=DevOps` 結果一致。對齊 GitHub / npm / Google 通用搜尋 trim 慣例。

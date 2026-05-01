@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -134,6 +135,26 @@ public class GlobalExceptionHandler {
 				.log("State conflict");
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(new ErrorResponse("STATE_CONFLICT", ex.getMessage(), Instant.now()));
+	}
+
+	/**
+	 * S045：處理 HTTP method 不允許（{@link HttpRequestMethodNotSupportedException}）。
+	 *
+	 * <p>未顯式攔截時 Spring 落 BasicErrorController；其預設 body 含完整 stack trace
+	 * （filter chain class name 屬資訊洩漏）。本 handler 攔截後 normalize 至既有
+	 * ErrorResponse 格式。yaml `server.error.include-stacktrace: never` 為 defense-in-depth
+	 * — 即使其他未攔截錯誤落 BasicErrorController 也不噴 trace。
+	 */
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "METHOD_NOT_ALLOWED")
+				.addKeyValue("method", ex.getMethod())
+				.log("HTTP method not supported");
+		return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+				.body(new ErrorResponse("METHOD_NOT_ALLOWED",
+						"HTTP method '" + ex.getMethod() + "' is not supported for this resource",
+						Instant.now()));
 	}
 
 	/**
