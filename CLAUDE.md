@@ -19,6 +19,7 @@ IMPORTANT: Follow these in every session.
 - **Ecosystem-Managed Versions**: When adding dependencies, check the build system's managed versions first. Never pin an explicit version that downgrades a managed one — upgrade is free, downgrade creates bugs.
 - **Scope-Check Before Applying**: When applying a security or compliance finding, verify the current code falls within the finding's stated scope before changing anything. Search for the distinguishing identifier in the codebase.
 - **Clean Experiments**: When debugging, create a restore point before each attempt. Revert failed experiments before trying the next one. When the fix is confirmed, audit the complete changeset — every line must trace to the actual fix, not to leftover experiments.
+- **Finish-Current-First**: 把手上的 spec / task 做完再開新的。User mid-flight 提新需求時，acknowledge → 先收尾當前（test + ship + commit）→ 再啟動新需求。Stack-not-overlap：避免半成品累積、context 丟失、PR 混雜。
 
 ## Workflow Skills
 
