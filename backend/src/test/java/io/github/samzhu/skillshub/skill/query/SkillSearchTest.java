@@ -37,15 +37,16 @@ class SkillSearchTest extends RepositorySliceTestBase {
     void setUp() {
         skillRepo.deleteAll();
         var now = Instant.now();
+        // S031: search/categories 過濾 status=PUBLISHED；fixture 改 PUBLISHED 對齊公開查詢預期
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "docker-helper", "Docker compose helper",
-                "sam", "DevOps", null, null, "DRAFT", 0L, now, now, List.of(), null));
+                "sam", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of(), null));
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "k8s-deploy", "Kubernetes deployment skill",
-                "jane", "DevOps", null, null, "DRAFT", 0L, now, now, List.of(), null));
+                "jane", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of(), null));
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "test-runner", "Run unit tests automatically",
-                "bob", "Testing", null, null, "DRAFT", 0L, now, now, List.of(), null));
+                "bob", "Testing", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of(), null));
     }
 
     @Test

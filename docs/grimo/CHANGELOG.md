@@ -1,5 +1,31 @@
 # Changelog
 
+## [v2.8.0] — Public PUBLISHED-Only Visibility（M27 完成；2026-05-01）
+
+> **Minor bump** — 公開查詢過濾 status：list / keyword / categories / analytics 端只回 PUBLISHED skill。落地 S028 §7.5 已登記的 tech debt。對 frontend 行為 user-facing 改變：DRAFT/SUSPENDED 不再出現在公開列表、搜尋、分類計數、analytics 排行。
+
+### Added
+- **S031: Public PUBLISHED-Only Visibility**（M27 落地）：
+  - **`SkillQueryService.search` SQL 加 `WHERE status = 'PUBLISHED'`**（含 countSql）— list / keyword / category 三種查詢統一過濾
+  - **`SkillQueryService.getCategoryCounts` 加 `AND status = 'PUBLISHED'`** — sidebar 計數對齊 list 結果
+  - **`AnalyticsService.getOverview` totalSkills + newSkillsThisWeek SQL 加 status filter**
+  - **`AnalyticsService.getTopSkills` SQL 加 status filter** — 排行不含 SUSPENDED
+  - **`findById` 不過濾**（detail page）— admin / owner 仍可看 SUSPENDED / DRAFT 做 reactivate 決定；對齊 S028 frontend 三狀態渲染
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 6 系統測試 — 列表 17 個 skills 含 2 SUSPENDED + 2 DRAFT；categories DevOps count=16 含 SUSPENDED；analytics topSkills 含 `suspend-download-test`、`draft-skill-tick5`；違反 PRD 公開瀏覽端只看 PUBLISHED 設計（per S028 §7.5 tech debt）
+
+### Verification
+- `./gradlew test` — 292 tests 全綠（`SkillSearchTest` fixture 從 DRAFT 改 PUBLISHED 對齊新規則）
+- E2E HTTP（local LAB mode）：list 17→13；keyword 含 SUSPENDED 名 1→0；categories DevOps 16→13；analytics totalSkills 17→13 + topSkills 排除 SUSPENDED；detail page 仍 200 對 SUSPENDED
+
+### Tech Debt
+- **Semantic search vector cleanup**：當前 SUSPENDED skill 的 vector_store row 仍在；future spec（S032 SearchProjection status sync）加 `onSkillSuspended` listener 刪 vector + `onSkillReactivated` 重 embed
+- **Admin panel endpoint**：`/api/v1/admin/skills` with full status visibility — 屬 future S033+ 設計
+
+---
+
 ## [v2.7.0] — Conflict-Class Error Mapping（M26 完成；2026-05-01）
 
 > **Minor bump** — HTTP 錯誤映射修正：將 conflict 類例外（state machine 違規 / 樂觀鎖競態）從 HTTP 500（with stacktrace 暴露）統一映射至 HTTP 409 Conflict + 結構化 ErrorResponse。延伸已建立的 `VersionExistsException` → 409 pattern。

@@ -106,14 +106,16 @@ public class SkillQueryService {
 	 * @return 分頁結果
 	 */
 	public Page<Skill> search(String keyword, String category, Pageable pageable) {
+		// S031: 公開查詢只回 PUBLISHED — DRAFT（owner 未發版）與 SUSPENDED（admin 下架）皆隱藏
+		// （admin / owner 可透過 GET /skills/{id} 直接看 detail；admin panel 將為獨立 endpoint）
 		var sql = new StringBuilder("""
 				SELECT id, name, description, author, category,
 				       latest_version, risk_level, status, download_count,
 				       created_at, updated_at, acl_entries, version
 				  FROM skills
-				 WHERE 1=1
+				 WHERE status = 'PUBLISHED'
 				""");
-		var countSql = new StringBuilder("SELECT COUNT(*) FROM skills WHERE 1=1");
+		var countSql = new StringBuilder("SELECT COUNT(*) FROM skills WHERE status = 'PUBLISHED'");
 		var params = new MapSqlParameterSource();
 
 		if (StringUtils.hasText(keyword)) {
@@ -302,10 +304,12 @@ public class SkillQueryService {
 	 * @return 分類計數列表
 	 */
 	public List<CategoryCount> getCategoryCounts() {
+		// S031: 與 search() 一致，只計 PUBLISHED；避免 sidebar 顯示「DevOps (16)」但 list 只給 13 的不一致
 		return jdbc.query("""
 				SELECT category AS name, COUNT(*) AS count
 				  FROM skills
 				 WHERE category IS NOT NULL
+				   AND status = 'PUBLISHED'
 				 GROUP BY category
 				 ORDER BY count DESC
 				""",

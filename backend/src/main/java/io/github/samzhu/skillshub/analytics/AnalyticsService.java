@@ -38,12 +38,15 @@ public class AnalyticsService {
 	 * @return 包含各項統計指標的 {@link OverviewStats}
 	 */
 	public OverviewStats getOverview() {
-		long totalSkills = countOrZero("SELECT COUNT(*) FROM skills", new MapSqlParameterSource());
+		// S031: 公開統計只計 PUBLISHED — DRAFT（未發版）與 SUSPENDED（下架）不該影響「平台規模」呈現
+		long totalSkills = countOrZero(
+				"SELECT COUNT(*) FROM skills WHERE status = 'PUBLISHED'",
+				new MapSqlParameterSource());
 		long totalDownloads = countOrZero("SELECT COUNT(*) FROM download_events", new MapSqlParameterSource());
 
 		var oneWeekAgo = Instant.now().minus(7, ChronoUnit.DAYS);
 		long newSkillsThisWeek = countOrZero(
-				"SELECT COUNT(*) FROM skills WHERE created_at >= :since",
+				"SELECT COUNT(*) FROM skills WHERE created_at >= :since AND status = 'PUBLISHED'",
 				new MapSqlParameterSource("since", java.sql.Timestamp.from(oneWeekAgo)));
 
 		var topSkills = getTopSkills(10);
@@ -65,10 +68,12 @@ public class AnalyticsService {
 	 * @return 依下載數降冪排序的 {@link OverviewStats.TopSkill} 清單
 	 */
 	private List<OverviewStats.TopSkill> getTopSkills(int limit) {
+		// S031: top skills 只回 PUBLISHED — SUSPENDED 不該出現在公開排行
 		return jdbc.query(
 				"""
 				SELECT name, download_count
 				  FROM skills
+				 WHERE status = 'PUBLISHED'
 				 ORDER BY download_count DESC
 				 LIMIT :limit
 				""",

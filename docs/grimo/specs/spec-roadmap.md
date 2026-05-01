@@ -127,6 +127,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M24: Frontend SUSPENDED Status Rendering | S028 | XS(5) | 300 | ✅ `v2.5.0` (2026-05-01 — type union 補 SUSPENDED；SkillDetailPage 中譯 + variant；SkillCard 對非 PUBLISHED 顯示 badge) |
 | Phase 4 | M25: Block Suspended Skill Download | S029 | XS(5) | 305 | ✅ `v2.6.0` (2026-05-01 — SkillSuspendedException + SkillQueryService.downloadAndRecord guard；403 SKILL_SUSPENDED；admin 也不能下載 SUSPENDED skill) |
 | Phase 4 | M26: Conflict-Class Error Mapping | S030 | XS(5) | 310 | ✅ `v2.7.0` (2026-05-01 — IllegalStateException → 409 STATE_CONFLICT；OptimisticLockingFailureException → 409 CONCURRENT_MODIFICATION + retry hint) |
+| Phase 4 | M27: Public PUBLISHED-Only Visibility | S031 | XS(5) | 315 | ✅ `v2.8.0` (2026-05-01 — list / categories / analytics 5 處 SQL 加 WHERE status='PUBLISHED'；落地 S028 §7.5 tech debt；findById 不過濾保留 admin/owner 看詳情能力) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）
