@@ -1,5 +1,31 @@
 # Changelog
 
+## [v2.16.0] — Frontend Typed ApiError + 404 vs Server Error（M35 完成；2026-05-01）
+
+> **Minor bump** — frontend `apiFetch` 拋自訂 `ApiError`（含 `status` + `code`）；`SkillDetailPage` 區分 404 not-found 與其他 server / network error。改善 server 中斷時誤導 user「skill 不存在」的 UX。
+
+### Added
+- **S039: Frontend Typed `ApiError` + 區分 404 vs server error**（M35 落地）：
+  - **`ApiError extends Error`**：含 `readonly status: number` + `readonly code?: string`（從 backend `ErrorResponse.error` 解析）
+  - **`apiFetch` 改 throw `ApiError`**：保留 `error.message` 兼容既有 callers；新增 `error.status` / `error.code` 路徑
+  - **`SkillDetailPage` error block case-split**：`error instanceof ApiError && error.status === 404` → 「找不到此技能」；其他 → 「載入技能時發生錯誤，請稍後重試或重新整理頁面」
+  - **4 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 14 — `SkillDetailPage` 對 任何 error（404 / 500 / network）都顯示「找不到此技能」；server 中斷時誤導 user
+
+### Verification
+- `npm test` — 10/10 PASS（既有 callers 用 `error.message` 路徑不破；ApiError 是 Error 子類）
+- `tsc -b` — 0 errors
+- `npm run lint` — 0 warnings
+- backend 404 sanity：`{"error":"NOT_FOUND","message":"...","timestamp":"..."}` 匹配 ApiError 構造
+
+### Tech Debt
+- 其他 page（HomePage / AnalyticsPage / PublishPage）可漸進採用 ApiError 做更精細 UX 區分
+- S031 §7.5 admin panel endpoint 仍待設計
+
+---
+
 ## [v2.15.0] — ACL List Recognizes `*:read`（M34 完成；2026-05-01）
 
 > **Minor bump** — `SkillAclQueryService.listEntries` 識別 S026 公開讀取 pseudo-principal `"*:read"` 為 synthetic entry，消除 WARN log spam，讓 frontend 可呈現「公開讀取」狀態。

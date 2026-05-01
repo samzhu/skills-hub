@@ -14,6 +14,7 @@ import { FileDropZone } from '@/components/FileDropZone'
 import { useSkill } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
 import { addVersion } from '@/api/skills'
+import { ApiError } from '@/api/client'
 import type { RiskLevel, SkillStatus } from '@/types/skill'
 
 /**
@@ -72,10 +73,17 @@ export function SkillDetailPage() {
   }
 
   if (error || !skill) {
+    // S039: 區分 404 not-found 與其他 server / network error；先前所有 error 都顯示「找不到」誤導 user
+    const isNotFound = error instanceof ApiError && error.status === 404
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <p className="text-lg font-medium">找不到此技能</p>
+          <p className="text-lg font-medium">
+            {isNotFound ? '找不到此技能' : '載入技能時發生錯誤'}
+          </p>
+          {!isNotFound && (
+            <p className="mt-1 text-sm">請稍後重試或重新整理頁面</p>
+          )}
           <Link to="/" className="mt-2 text-sm text-primary hover:underline">
             返回首頁
           </Link>

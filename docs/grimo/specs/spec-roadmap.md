@@ -135,6 +135,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M32: Frontend MEDIUM Risk Message | S036 | XS(5) | 340 | ✅ `v2.13.0` (2026-05-01 — Risk tab 補 MEDIUM 段落說明；改用 Record<RiskLevel,string> exhaustive map；mirror S028 STATUS_LABEL pattern) |
 | Phase 4 | M33: Upload Size 413 + Frontend Size Pre-check | S037 | XS(5) | 345 | ✅ `v2.14.0` (2026-05-01 — MaxUploadSizeExceededException → 413 PAYLOAD_TOO_LARGE；MultipartException → 400 MULTIPART_ERROR；FileDropZone 加 client-side 10MB pre-check) |
 | Phase 4 | M34: ACL List Recognizes `*:read` | S038 | XS(5) | 350 | ✅ `v2.15.0` (2026-05-01 — listEntries 識別 `*:read` 為 synthetic public entry；消除 WARN log spam；frontend 可呈現公開讀取狀態) |
+| Phase 4 | M35: Frontend Typed ApiError + 404 vs Server Error | S039 | XS(5) | 355 | ✅ `v2.16.0` (2026-05-01 — apiFetch 拋 ApiError 含 status+code；SkillDetailPage 區分 404 not-found vs server/network error；改善誤導 UX) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）
