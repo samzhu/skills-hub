@@ -1,5 +1,21 @@
 # Changelog
 
+## [v2.48.0] — Flyway V7 Cleanup Pre-S033 Vector Orphans（M66 完成；2026-05-01）
+
+> **Patch-class minor** — Flyway V7 migration `DELETE FROM vector_store WHERE skill_id IN (SELECT id FROM skills WHERE status='SUSPENDED')`。S033 (M29 v2.10.0) 加 `SearchProjection.onSkillSuspended` 之前的 SUSPENDED events 從未過 listener → vector_store 內留 orphan。S059 filter 確保 user-visible impact=0；本 migration 清 storage 累積。
+
+### Added
+- **S070: Cleanup Pre-S033 SUSPENDED Vector Orphans**（M66）：
+  - Flyway `V7__cleanup_pre_s033_suspended_vectors.sql`
+  - Idempotent — clean DB 跑 no-op
+
+### Verification
+- `flyway_schema_history` V7 success
+- 2 個 orphan rows cleaned；當前 SUSPENDED join vector_store count = 0
+- `./gradlew test` — 286 / 0 fail
+
+---
+
 ## [v2.47.0] — AuditEventListener Null-Defense for ACL Events（M65 完成；2026-05-01）
 
 > **Patch-class minor** — `AuditEventListener.on(SkillAclGrantedEvent)` + `on(SkillAclRevokedEvent)` 加 null-coalesce defense。Tick 46 outbox 探查發現 2 個 pre-S055 (tick 28) 卡住的 SkillAclGrantedEvent（type=null）— `Map.of(null)` 拋 NPE → republish task 重投仍 fail → 永久 stuck。fix 後 backend restart → republish 自動 drain → outbox pending 從 2 → 0。
