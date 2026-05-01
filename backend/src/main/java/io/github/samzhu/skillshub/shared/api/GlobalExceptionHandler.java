@@ -7,6 +7,7 @@ import java.util.zip.ZipException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -136,6 +137,26 @@ public class GlobalExceptionHandler {
 				.log("State conflict");
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(new ErrorResponse("STATE_CONFLICT", ex.getMessage(), Instant.now()));
+	}
+
+	/**
+	 * S051：處理 unique constraint 違反（{@link DuplicateKeyException}）。
+	 *
+	 * <p>RFC 9110 §15.5.10 — 「conflict with the current state of the target resource」屬
+	 * 409 Conflict。Spring 預設未攔此例外，response 暴露完整 SQL（INSERT 語句、column 列、
+	 * constraint 名）— 屬資訊洩漏。本 handler 固定 user-friendly message 不暴露 DB detail；
+	 * raw `ex.getMessage()` 留至 log 利 ops 排查。
+	 */
+	@ExceptionHandler(DuplicateKeyException.class)
+	ResponseEntity<ErrorResponse> handleDuplicateKey(DuplicateKeyException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "DUPLICATE_RESOURCE")
+				.addKeyValue("rawMessage", ex.getMessage())
+				.log("Duplicate key violation");
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(new ErrorResponse("DUPLICATE_RESOURCE",
+						"A resource with the same identifier already exists",
+						Instant.now()));
 	}
 
 	/**

@@ -1,5 +1,26 @@
 # Changelog
 
+## [v2.28.0] — DuplicateKeyException → 409 DUPLICATE_RESOURCE（M47 完成；2026-05-01）
+
+> **Minor bump** — 重複 skill name 提交不再回 500 + 暴露完整 SQL exception 訊息（含 INSERT 語句、column list、constraint 名稱）；改 normalize 為 409 + `DUPLICATE_RESOURCE` code + 固定 user-friendly message。Frontend i18n 加「此名稱已被使用，請換一個名稱。」
+
+### Added
+- **S051: DuplicateKeyException → 409 DUPLICATE_RESOURCE**（M47 落地）：
+  - `@ExceptionHandler(DuplicateKeyException.class)` → 409 Conflict
+  - 固定 message「A resource with the same identifier already exists」（不暴露 ex.getMessage SQL detail）
+  - i18n map 加 `DUPLICATE_RESOURCE: '此名稱已被使用，請換一個名稱。'`
+  - **5 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 25 API probe — POST /api/v1/skills 重複 name 回 HTTP 500 + 完整 SQL：「PreparedStatementCallback; SQL [INSERT INTO "skills" ("acl_entries", "author", ...) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]; ERROR: duplicate key value violates unique constraint "skills_name_key"」— 三層 bug：資訊洩漏 + 錯誤 status code + SQL 黑話訊息
+
+### Verification
+- `./gradlew test` — 286 / 0 fail
+- `npm test` — 10 / 0 fail
+- E2E：dup name 500→409 / 135B body 不含 SQL；new name 仍 201
+
+---
+
 ## [v2.27.0] — SearchBar Placeholder 對齊 S043（M46 完成；2026-05-01）
 
 > **Patch-class minor** — `SearchBar` placeholder 從「搜尋技能名稱或描述...」改為「搜尋名稱、描述或分類...」對齊 S043 後 keyword search 已涵蓋 category 比對的行為。S043/S044/S046 三個 spec 累積的 UI copy 待辦清掉。

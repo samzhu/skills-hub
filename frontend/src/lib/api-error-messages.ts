@@ -15,6 +15,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   MULTIPART_ERROR: '上傳請求格式不正確，請重新整理頁面後重試。',
   VERSION_EXISTS: '此版本號已存在，請改用其他版本號。',
   STATE_CONFLICT: '操作與目前狀態衝突，請重新整理後重試。',
+  DUPLICATE_RESOURCE: '此名稱已被使用，請換一個名稱。',
   CONCURRENT_MODIFICATION: '資源被其他請求同時修改，請重試。',
   NOT_FOUND: '找不到指定的資源。',
   SKILL_SUSPENDED: '此技能已被停用，無法操作。',
