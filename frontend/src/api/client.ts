@@ -18,6 +18,15 @@ export class ApiError extends Error {
     this.status = status
     this.code = code
   }
+
+  /**
+   * S065: name-based 替代 `instanceof ApiError` — Vite HMR 模組重載會生多個 class
+   * instance；不同 module 載入的 ApiError 之間 instanceof 不共享 prototype chain。
+   * 用 name 字串檢查穩定，兼具 type guard。
+   */
+  static is(err: unknown): err is ApiError {
+    return err instanceof Error && err.name === 'ApiError'
+  }
 }
 
 /**

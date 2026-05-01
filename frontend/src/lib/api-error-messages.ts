@@ -32,7 +32,8 @@ const ERROR_MESSAGES: Record<string, string> = {
  * - 非 Error → 「未知錯誤」
  */
 export function localizeApiError(err: unknown): string {
-  if (err instanceof ApiError && err.code && ERROR_MESSAGES[err.code]) {
+  // S065: ApiError.is name-based check — HMR 安全
+  if (ApiError.is(err) && err.code && ERROR_MESSAGES[err.code]) {
     return ERROR_MESSAGES[err.code]
   }
   if (err instanceof Error) return err.message

@@ -160,6 +160,8 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M57: Download Filename Includes Skill Name | S061 | XS(5) | 467 | ✅ `v2.38.0` (2026-05-01 — Content-Disposition filename 動態組 {skillName}-{version}.zip；多下載不再檔名衝撞) |
 | Phase 4 | M58: SkillVersion JSON Hide Internals | S062 | XS(5) | 472 | ✅ `v2.39.0` (2026-05-01 — getStoragePath + isNew 加 @JsonIgnore；frontend type 移除 storagePath；資訊洩漏 + 髒 API surface 解) |
 | Phase 4 | M59: Skill Aggregate isNew JsonIgnore | S063 | XS(5) | 477 | ✅ `v2.40.0` (2026-05-01 — Skill.isNew() 加 @JsonIgnore；延伸 S062 至 Skill aggregate；JSON 不再含 new artifact) |
+| Phase 4 | M60: QueryCache Logger Skip 4xx ApiError | S064 | XS(5) | 482 | ✅ `v2.42.0` (2026-05-01 — main.tsx QueryCache 跳過 4xx ApiError；console pollution 降；UI 已負責處理) |
+| Phase 4 | M61: ApiError HMR-Safe + Query networkMode | S065 | XS(5) | 487 | ✅ `v2.42.0` (2026-05-01 — ApiError.is() 替代 instanceof；3 處 caller 統一；QueryClient networkMode='always' 預設) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

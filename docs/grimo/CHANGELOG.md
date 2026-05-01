@@ -1,5 +1,31 @@
 # Changelog
 
+## [v2.42.0] — ApiError HMR-Safe Instance Check + QueryCache 4xx Skip（M61 完成；2026-05-01）
+
+> **Patch-class minor** — 兩個並行修：
+> 1. **S064 (M60)**：QueryCache 全域 logger 跳過 4xx ApiError —  UI 已負責處理（404 friendly state per S039、400/409 i18n banner per S040），console pollution 大幅降低
+> 2. **S065 (M61)**：`ApiError.is(err)` static type guard 取代 3 處 `instanceof ApiError` — Vite HMR 模組重載產生多個 ApiError class instance 時 instanceof 不可靠；name-based check 穩定。同時 QueryClient 預設 `networkMode: 'always'`
+
+### Added
+- **S064: QueryCache Logger Skip 4xx ApiError**（M60 落地）
+- **S065: ApiError Resilient Instance Check (HMR-safe) + Query networkMode='always'**（M61 落地）：
+  - `ApiError.is(err): err is ApiError` — name-based duck-typed check
+  - 3 處 `instanceof ApiError` 替換（main.tsx / api-error-messages.ts / SkillDetailPage.tsx）
+  - QueryClient `networkMode: 'always'` 預設
+  - **9 個 SBE AC 全綠**（S064 3 + S065 4 + 一致性檢查）
+
+### Trigger
+- 2026-05-01 /loop tick 37 — Chrome console 大量 [QueryCache] 噪音；deep debug 訪問 invalid skill UUID 揭露 React Query fetchStatus='paused' 卡死 + HMR instanceof 失效兩層問題
+
+### Verification
+- `npm test` — 10 / 0 fail
+- E2E：4xx ApiError 不再 console pollution；ApiError.is 直接 invocation 正確 type guard
+
+### Tech Debt（Bug AC 留下一輪）
+- Vite dev mode React Query v5.100.1 偶發 `fetchStatus='paused'` 卡死即使 networkMode='always`設定生效；prod build reproducibility 待驗
+
+---
+
 ## [v2.40.0] — Skill Aggregate isNew JsonIgnore（M59 完成；2026-05-01）
 
 > **Patch-class minor** — 延伸 S062 修復至 `Skill` aggregate：`isNew()` 加 `@JsonIgnore`。先前 GET `/skills/{id}` 與 list endpoint 仍暴露 `new: false` artifact；S062 只修了 SkillVersion 同類欄位。

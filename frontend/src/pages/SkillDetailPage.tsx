@@ -75,7 +75,8 @@ export function SkillDetailPage() {
 
   if (error || !skill) {
     // S039: 區分 404 not-found 與其他 server / network error；先前所有 error 都顯示「找不到」誤導 user
-    const isNotFound = error instanceof ApiError && error.status === 404
+    // S065: ApiError.is name-based check — HMR 安全；instanceof 在 module 重載後不可靠
+    const isNotFound = ApiError.is(error) && error.status === 404
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
