@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 80 (2026-05-02) — Round 33 audit log + outbox + vector + download invariants. 0 new bugs；偵測到 R23.5 historical Bug AK residue 但 fix 已 ship
+> Latest tick: 81 (2026-05-02) — Round 34 anthropic skill re-scan w/ LLM Judge → **Bug AN ship S091 v2.61.0 (M81)** LlmJudge prompt calibration
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -253,6 +253,20 @@
 >     - 33.9 download events accuracy: 165 events vs sum(download_count)=149 → **16 gap** in 2 fixtures (`r23-dlsus-...` gap 9 + `r23b-race-...` gap 7)
 >     **Diagnosis 33.9**：tick 66 R23.5 race test 的 historical residue — 當時用這 2 fixtures 重現 Bug AK lost-update，counter 被覆蓋到 3 / 1。**S077 fix ship 後新 uploads 不受影響**，但 dev DB 中已壞資料未自動修正（無 reconciliation job）。Not a new bug。
 >     **0 new bugs** — system invariants 全 GREEN（audit log monotonic / outbox drain / vector S033 守住 / event count 精確）；R23 historical residue 不需 fix（dev test fixtures only；production 不受影響）。
+>   tick 81 (loop cron 10m fc4a79bb, Round 34 anthropic skill re-scan w/ LLM Judge, 2026-05-02):
+>     R34 (3 anthropic canonical skills uploaded with `-r34-{ts}` suffix to trigger fresh scan with LLM Judge enabled)：
+>     - handover (pre-LLM LOW, 0 findings) → **HIGH** (2 findings, sev 5.0+8.5)
+>     - planning-project (pre-LLM LOW) → **HIGH** (5 findings, sev 5.0+8.5)
+>     - deep-research (pre-LLM LOW) → still scanning，但 pattern 一致
+>     **Bug AN (HIGH / production-relevance)**：LLM Judge 對任何宣告 `allowed-tools: Bash` 的 skill 都打 OWASP-AS4 sev=8.5（theoretical command injection），無視是否真有 dangerous command。**Anthropic 自家 canonical skills 全 HIGH** → user trust 受損、rating 失訊號意義。
+>     **Root cause**：`SYSTEM_PROMPT` 沒區分 demonstrated vs theoretical risk。LLM 把 capability declaration 視為 risk。
+>     **Fix S091**：重寫 SYSTEM_PROMPT 加 severity 分級指引（HIGH 7-10 demonstrated / MEDIUM 4-7 concrete concern / LOW 1-4 minor）+ explicit「Skills with allowed-tools using those for routine info gathering are LOW unless specific dangerous commands appear」+ anti-pattern 列表「Theoretical 'X could be misused if Y' is NOT a finding」。
+>     **5 fixtures 5/5 AC PASS** post-fix：
+>     - handover / planning-project / deep-research：HIGH → **LOW** ✓
+>     - real-high (rm -rf + secrets) regression：**HIGH 維持 14 findings** ✓ — 真風險不漏
+>     - pure-docs regression：LOW 維持 ✓
+>     **設計領悟**：LLM 系統 default behavior 是「找問題」— 不給 severity 分級指引，會把 theoretical concerns 全標 HIGH。Calibration 必須在 prompt 層直接定義「what counts as HIGH」。anti-pattern 列表（什麼 NOT 是 finding）和正面定義一樣關鍵。
+>     ship v2.61.0 (M81)。Bug ledger A→AN（14 個 bug shipped）。
 >   tick 71 (loop cron 10m fc4a79bb, Round 27 API consistency audit, 2026-05-01):
 >     R27.1 跨 6 個 endpoint 探測 error response shape：5/6 標準 `{error, message, timestamp}` JSON shape ✓；**1 個發現 Bug AM**：`POST /api/v1/skills/upload` 缺 `version` form param 時 Spring 預設 error handler 直接回 `{timestamp, status, error: "Bad Request", message, path}` shape，繞過 GlobalExceptionHandler 的 ErrorResponse 結構。
 >     **影響**：FE i18n（S066 / S041）用 `error` code 對應 localized message；「Bad Request」(HTTP reason phrase) 不在 12 個 backend code 白名單 → silent fallthrough，user 看到 raw EN 訊息或泛用 fallback。
@@ -325,6 +339,7 @@
 - AK: S076 regression — concurrent suspend/reactivate save 用 full-row UPDATE 覆蓋並發 atomic increment（Spring Data JDBC 無 dirty tracking）；10 dl + 1 sus 觀察 7/10 增量 lost；fix 用 `@ReadOnlyProperty` 排除 `downloadCount` 從 save write set (S077 v2.55.0)
 - AL (theoretical): `Skill.riskLevel` 同 AK pattern — `ScanOrchestrator.updateRiskLevel`（atomic SQL）+ aggregate save 並發 → save 覆蓋 scan 結果（HIGH/MEDIUM/LOW 變回 null）；`updateRiskLevel` SQL 不增加 version → optimistic lock 偵測不到；dev 環境重現失敗（timing 太緊）但架構漏洞與 AK 完全相同；preemptive fix 用 `@ReadOnlyProperty` (S078 v2.56.0)
 - AM: `MissingServletRequestParameterException` / `MissingServletRequestPartException` 沒 handler，Spring 預設 error 繞過 ErrorResponse 標準 shape；`error` 變「Bad Request」(HTTP reason) 而非 VALIDATION_ERROR (semantic code)，FE i18n silently fallthrough；fix 加兩個 binding 例外的 handler (S080 v2.57.0)
+- AN: LlmJudge SYSTEM_PROMPT 沒區分 demonstrated vs theoretical risk；任何 `allowed-tools: Bash` skill 都被打 OWASP-AS4 sev=8.5 → Anthropic canonical skills 全 HIGH；fix 重寫 prompt 加 severity 分級規則 + anti-pattern 列表 (S091 v2.61.0)
 
 ### Missing Features (tick 68 R25.7) — ✅ closed by S090 (tick 79)
 - ~~`/search/semantic` endpoint：API contract 只有 `q` 參數，TOP_K=10 hardcoded；client `?limit=` 被 silently dropped（Spring 預期行為）。Future feature: 暴露 `?limit=` query param（合理 default 10、cap 50）讓 client 控制結果數。~~ **Shipped as S090 v2.60.0 (tick 79)**：default 10, cap 50, validate ≥ 1。

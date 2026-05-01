@@ -1,5 +1,27 @@
 # Changelog
 
+## [v2.61.0] — LlmJudge prompt calibration（M81 完成；2026-05-02）
+
+> **Bug fix** — LlmJudge engine 對任何 `allowed-tools: Bash` 的 skill 都打 OWASP-AS4 sev=8.5（theoretical command injection）→ Anthropic canonical skills (handover / planning-project / deep-research) 全變 HIGH。Real production impact: 所有正規 skill imports 顯示「高風險」→ user trust 受損，rating 失去訊號意義。E2E test loop tick 81 R34 anthropic skill re-scan 系統發現（bug AN）。
+
+### Fixed
+- **S091: LlmJudge prompt calibration**（M81）：
+  - `LlmJudge.SYSTEM_PROMPT` 重寫，明確區分 demonstrated vs theoretical risk
+  - HIGH (sev 7-10): demonstrated dangerous behavior（rm -rf / curl|bash / hardcoded secrets / /etc/passwd / obvious injection）
+  - MEDIUM (sev 4-7): concrete concerns short of harm（writes to system paths / description-vs-impl mismatch）
+  - LOW (sev 1-4): minor noteworthy（broad tool decl with focused use / 描述模糊）
+  - 「Skills with allowed-tools using those tools for routine information gathering... are LOW unless specific dangerous commands appear」
+  - 加 anti-pattern 列表：「Theoretical 'X could be misused if attacker manages Y' is NOT a finding」
+  - 299 backend tests / 0 fail (LlmJudge tests mock-based 不受 prompt 影響)
+
+### Verification
+- 5 fixtures 5/5 AC PASS:
+  - handover / planning-project / deep-research：HIGH → **LOW** ✓
+  - real-high regression (rm -rf + secrets)：HIGH 維持 ✓ (14 findings — 真風險不漏)
+  - pure-docs regression：LOW 維持 ✓ (unchanged)
+
+---
+
 ## [v2.60.0] — Semantic search `?limit=` configurable（M80 完成；2026-05-02）
 
 > **Polish** — close R25.7 missing-feature observation。`/api/v1/search/semantic` 之前 hardcoded TOP_K=10；client `?limit=` silently dropped (Spring default for unknown param)。FE 想做「show more」UX 沒辦法。
