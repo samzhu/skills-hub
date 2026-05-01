@@ -1,5 +1,28 @@
 # Changelog
 
+## [v2.35.0] — Flag Input Validation（M54 完成；2026-05-01）
+
+> **Minor bump** — `POST /api/v1/skills/{id}/flags` 缺 `type` 不再噴 NPE 500「No message available」；改 400 + VALIDATION_ERROR + 友善訊息。`FlagService.createFlag` 預驗 type/description；payload 改 HashMap 構築允許 nullable description。
+
+### Added
+- **S058: Flag Input Validation**（M54 落地）：
+  - type 預驗（非 null + 非 blank + length ≤ 20 對齊 DB column）
+  - description trim（允許 null）
+  - payload `Map.of` → `HashMap`（避 null value NPE）
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 31 endpoint sweep — `/actuator/mappings` 揭未測 `/flags` endpoint；POST 缺 type → 500 NPE「No message available」；`Map.of` 不接受 null values
+
+### Resolved
+- semantic 系統性回 0 — 自行解決（vector_store row 累積至 52 後達 similarity threshold 0.3 命中）
+
+### Verification
+- `./gradlew test` — 286 / 0 fail
+- E2E：缺 type 400、空 type 400、超長 type 400、合法 + description 201、null description 201
+
+---
+
 ## [v2.34.0] — DataIntegrityViolationException Catch-All Handler（M53 完成；2026-05-01）
 
 > **Minor bump** — 為 `DataIntegrityViolationException` 加 catch-all handler → 400 + `CONSTRAINT_VIOLATION`。先前 long category（DB varchar(50)）/ NOT NULL / FK violation 等 DataIntegrity 子類落 Spring 預設 500 + 暴露完整 SQL exception。S051 既有 DuplicateKeyException handler 優先匹配仍 409 不 regress。

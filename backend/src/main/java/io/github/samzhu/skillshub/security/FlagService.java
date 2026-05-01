@@ -55,6 +55,18 @@ public class FlagService {
 	 */
 	@Transactional
 	public String createFlag(String skillId, String type, String description) {
+		// S058: 預驗 — type 為 DB NOT NULL varchar(20)；description nullable；
+		// Map.of 不接受 null values 也是 NPE 來源
+		if (type == null || type.isBlank()) {
+			throw new IllegalArgumentException("Flag type must not be blank");
+		}
+		var trimmedType = type.trim();
+		if (trimmedType.length() > 20) {
+			throw new IllegalArgumentException(
+					"Flag type exceeds 20 characters (got: " + trimmedType.length() + ")");
+		}
+		var trimmedDescription = description == null ? null : description.trim();
+
 		var flagId = UUID.randomUUID().toString();
 
 		// S024 T05B: 與 AuditEventListener 共用 per-aggregate advisory lock 序列化 sequence 計算，
@@ -66,11 +78,13 @@ public class FlagService {
 		var latestEvent = eventStore.findTopByAggregateIdOrderBySequenceDesc(skillId);
 		long nextSequence = latestEvent.map(e -> e.sequence() + 1).orElse(1L);
 
-		var payload = Map.<String, Object>of(
-				"flagId", flagId,
-				"type", type,
-				"description", description
-		);
+		// S058: 改 HashMap allow null description（Map.of 不接受 null values）
+		var payload = new java.util.HashMap<String, Object>();
+		payload.put("flagId", flagId);
+		payload.put("type", trimmedType);
+		if (trimmedDescription != null) {
+			payload.put("description", trimmedDescription);
+		}
 
 		var domainEvent = new DomainEvent(
 				UUID.randomUUID().toString(),
@@ -84,14 +98,14 @@ public class FlagService {
 		);
 		eventStore.save(domainEvent);
 
-		var flag = new FlagReadModel(flagId, skillId, type, description, "anonymous", Instant.now(), "OPEN");
+		var flag = new FlagReadModel(flagId, skillId, trimmedType, trimmedDescription, "anonymous", Instant.now(), "OPEN");
 		flagRepo.save(flag);
 
-		events.publishEvent(new SkillFlaggedEvent(skillId, type, description, "anonymous"));
+		events.publishEvent(new SkillFlaggedEvent(skillId, trimmedType, trimmedDescription, "anonymous"));
 
 		log.atInfo()
 				.addKeyValue("skillId", skillId)
-				.addKeyValue("type", type)
+				.addKeyValue("type", trimmedType)
 				.addKeyValue("flagId", flagId)
 				.log("Flag 建立成功");
 
