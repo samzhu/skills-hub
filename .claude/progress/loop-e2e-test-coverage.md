@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 68 (2026-05-01) — Round 25 semantic search edges + data quality invariants, **0 bugs** / 1 missing-feature observation
+> Latest tick: 69 (2026-05-01) — Round 26 bare POST /skills + name regex boundaries, **0 bugs** / 17 cases all match documented regex
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -143,6 +143,18 @@
 >     - 25.8 反例 q=`suspend-download-test`（一個 SUSPENDED skill 名稱）→ 0 results；S059 filter 工作正確 ✓
 >     - 25.9 邊緣 q='   ' 全 whitespace → 400（同 R25.3）；q='!!!'/'%%%'/':::' → 200 + 10 random（embedding model 對 noise 給 best-effort match，acceptable）✓
 >     **0 new bugs** — 9 cases 全部行為符合 documented contract / design intent。
+>   tick 69 (loop cron 10m fc4a79bb, Round 26 bare POST + name regex boundaries, 2026-05-01):
+>     R26 (17 cases — bare POST /skills（測試/seeding 端點）+ 完整 name regex `^[a-z0-9-]{1,64}$` 邊界)：
+>     - 1 char min `a` → 201 ✓
+>     - 64 char max `a*64` → 201；65 chars → 400 ✓ (boundary 精確)
+>     - empty → 400「name is required」✓
+>     - ABCDEF → 400 (regex 拒大寫) ✓
+>     - 單一 `-` / 雙 `--` / 起首 `-foo` / 結尾 `foo-` → **201 (per regex spec — `-` 在 char class 中)**
+>     - 數字 `123-...` → 201 ✓
+>     - 反例：`_` underscore / `.` dot / `/` slash / 中文 / space / `+` → 全 400 ✓
+>     **0 new bugs** — name regex 行為與 documented spec `^[a-z0-9-]{1,64}$` 完全一致。
+>     **Observation polish candidate**：regex 允許 `-` 單獨 / 連續 `--` / 邊界 hyphen `-foo` / `foo-`。技術上 valid 但會造成奇怪 filename（如 `-1.0.0.zip`）。Docker-tag-style 慣例會額外拒邊界 hyphen。Future polish spec：tighten regex 為 `^[a-z0-9]+(-[a-z0-9]+)*$`（拒邊界 hyphen + 拒空字串）。
+>     **Bare POST /skills 確認用途**：建立 "shell" skill（無 zip / version / embedding / risk assessment）僅供 testing & seeding；不能 download；不出現在 PUBLISHED-filtered list。
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -211,6 +223,9 @@
 
 ### Missing Features (tick 68 R25.7)
 - `/search/semantic` endpoint：API contract 只有 `q` 參數，TOP_K=10 hardcoded；client `?limit=` 被 silently dropped（Spring 預期行為）。Future feature: 暴露 `?limit=` query param（合理 default 10、cap 50）讓 client 控制結果數。
+
+### Polish Candidates (tick 69 R26)
+- Name regex `^[a-z0-9-]{1,64}$` 過於寬鬆 — 接受單一 `-`、`--`、邊界 hyphen `-foo` / `foo-`。技術 valid 但 filename 顯示奇怪。Docker-tag-style 慣例 `^[a-z0-9]+(-[a-z0-9]+)*$` 較嚴謹（拒邊界與連續 hyphen）。風險：可能拒既有 DB 中的 weird-name skills（雖然不太可能）。
 
 ### Known Tech Debt (low priority)
 - DB 既有畸形 entries（畸形 ACL/version "foo" 等）需 future migration

@@ -369,5 +369,40 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - 系統 health 全綠（無 orphan / outbox 0 / vector invariant 守住）
 - 1 個 missing-feature observation（semantic search limit）→ 排入 tech debt
 
+---
+
+## Tick 69 — Round 26: bare POST /skills + name regex boundaries (2026-05-01)
+
+### Bare POST /skills endpoint discovery
+- 接受 JSON body `CreateSkillCommand{name, description, author, category}`
+- 建立 "shell" skill（無 zip/version/embedding/risk assessment）；用途註記「測試和資料 seeding，正式發佈請使用 uploadSkill」
+
+### Name regex `^[a-z0-9-]{1,64}$` 17 boundary cases — all PASS
+
+| # | name | expected | got |
+|---|------|----------|-----|
+| 1 | `a` (1 char min) | 201 | 201 ✓ |
+| 2 | `a*64` (max len) | 201 | 201 ✓ |
+| 3 | `a*65` (over) | 400 | 400 ✓ |
+| 4 | `""` (empty) | 400 | 400 ✓ |
+| 5 | `ABCDEF` (uppercase) | 400 | 400 ✓ |
+| 6 | `-` (single hyphen) | 201 | 201 ✓ |
+| 7 | `--` (double hyphen) | 201 | 201 ✓ |
+| 8 | `foo-1777...` (trailing) | 201 | 201 ✓ |
+| 9 | `-foo-1777...` (leading) | 201 | 201 ✓ |
+| 10 | `123-1777...` (numbers) | 201 | 201 ✓ |
+| 11 | `foo_bar` (underscore) | 400 | 400 ✓ |
+| 12 | `foo.bar` (dot) | 400 | 400 ✓ |
+| 13 | `foo/bar` (slash) | 400 | 400 ✓ |
+| 14 | `中文-...` (CJK) | 400 | 400 ✓ |
+| 15 | `foo bar` (space) | 400 | 400 ✓ |
+| 16 | `foo+bar` (plus) | 400 | 400 ✓ |
+| 17 | `r26-test-...` (happy path) | 201 | 201 ✓ |
+
+### Tick 69 Summary
+- Round 26: 17 cases / **0 new bugs**
+- name regex 行為與 documented spec 完全一致
+- Polish candidate logged：regex 接受邊界 hyphen / 連續 hyphen，Docker-style 慣例會更嚴謹
+
 
 
