@@ -68,10 +68,13 @@ public class SkillCommandService {
 	}
 
 	@Transactional
-	public String uploadSkill(byte[] zipBytes, String version, String author, String category) throws IOException {
+	public String uploadSkill(byte[] uploadedBytes, String version, String author, String category) throws IOException {
+		// S053: normalize plain .md → 合法 zip；若已是 zip 原樣返回。下游流程一致 zip contract。
+		var zipBytes = packageService.normalizeToZip(uploadedBytes);
 		log.atInfo()
 				.addKeyValue("version", version)
 				.addKeyValue("author", author)
+				.addKeyValue("uploadedSize", uploadedBytes.length)
 				.addKeyValue("zipSize", zipBytes.length)
 				.log("開始處理技能上傳");
 
@@ -117,10 +120,13 @@ public class SkillCommandService {
 	}
 
 	@Transactional
-	public void addVersion(String skillId, byte[] zipBytes, String version) throws IOException {
+	public void addVersion(String skillId, byte[] uploadedBytes, String version) throws IOException {
+		// S053: normalize plain .md / subfolder zip → 標準化 zip（SKILL.md 在根）
+		var zipBytes = packageService.normalizeToZip(uploadedBytes);
 		log.atInfo()
 				.addKeyValue("skillId", skillId)
 				.addKeyValue("version", version)
+				.addKeyValue("uploadedSize", uploadedBytes.length)
 				.addKeyValue("zipSize", zipBytes.length)
 				.log("開始新增版本");
 

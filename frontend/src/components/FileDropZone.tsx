@@ -11,7 +11,7 @@ interface FileDropZoneProps {
   onFileSelect: (file: File) => void
   /** 目前已選取的檔案；null 表示尚未選取，元件顯示提示文字 */
   selectedFile: File | null
-  /** 允許的副檔名（傳給 input[accept]），預設為 `.zip` */
+  /** 允許的副檔名（傳給 input[accept]），預設為 `.zip,.md`（S053：支援純 markdown 上傳） */
   accept?: string
   /**
    * S037：檔案大小上限（bytes）；預設 10MB（對齊 backend）。
@@ -32,7 +32,7 @@ interface FileDropZoneProps {
 export function FileDropZone({
   onFileSelect,
   selectedFile,
-  accept = '.zip',
+  accept = '.zip,.md',
   maxSizeBytes = DEFAULT_MAX_SIZE_BYTES,
 }: FileDropZoneProps) {
   const [isDragging, setIsDragging] = useState(false)
@@ -44,13 +44,16 @@ export function FileDropZone({
    * S037：集中 file 處理 — drag 與 click 兩條 path 都先過 guard。
    * 超限或副檔名錯誤時 set inline error；通過則 clear error 並呼叫 caller `onFileSelect`。
    *
-   * S048：副檔名 guard 補在最前 — `accept` prop 預設 `.zip`；drag-drop 不受 input[accept]
-   * 限制，必須 JS 擋。case-insensitive 比對；`File.type` MIME 不可靠（OS 差異）所以不查。
+   * S048：副檔名 guard 補在最前 — drag-drop 不受 input[accept] 限制，必須 JS 擋。
+   * S053：accept 支援 comma-separated（`.zip,.md`）— split 後逐個比對；case-insensitive。
+   * `File.type` MIME 不可靠（OS 差異）所以不查；後端 magic-byte 嚴驗 + normalize。
    */
   const handleFile = (file: File) => {
-    const ext = accept.replace(/^\./, '').toLowerCase()
-    if (!file.name.toLowerCase().endsWith('.' + ext)) {
-      setSizeError(`只接受 .${ext} 檔，目前是 ${file.name}`)
+    const allowedExts = accept.split(',').map((s) => s.trim().replace(/^\./, '').toLowerCase())
+    const fileName = file.name.toLowerCase()
+    if (!allowedExts.some((ext) => fileName.endsWith('.' + ext))) {
+      const acceptedDisplay = allowedExts.map((e) => '.' + e).join(' / ')
+      setSizeError(`只接受 ${acceptedDisplay} 檔，目前是 ${file.name}`)
       return
     }
     if (file.size > maxSizeBytes) {

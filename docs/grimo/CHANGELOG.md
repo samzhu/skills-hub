@@ -1,5 +1,34 @@
 # Changelog
 
+## [v2.30.0] — Flexible Upload Formats + Canonical Zip Structure（M49 完成；2026-05-01）
+
+> **Minor bump** — 上傳支援 3 種格式（zip-root / zip-subfolder / plain `.md`），平台統一 normalize 至「SKILL.md 在 zip 根」標準結構。下載安裝體驗一致：所有 skill 解開都是 root SKILL.md（+ optional 兄弟檔）。
+
+### Added
+- **S053: Flexible Upload Formats + Canonical Zip Structure**（M49 落地）：
+  - `PackageService.normalizeToZip` — magic-byte 偵測 + 三種上傳場景統一輸出：
+    - **Case 1** zip root SKILL.md → pass-through
+    - **Case 2** zip `sss/SKILL.md` 等 subfolder → strip wrapping folder repack 至 root（兄弟檔保留）
+    - **Case 3** plain `.md` 純文字 → wrap 為單檔 zip 含 root SKILL.md
+  - `FileDropZone` default accept `.zip,.md`；多副檔名 guard split-by-comma；inline error「只接受 .zip / .md 檔」
+  - **8 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 user request — 「上傳的 zip 檔有可能解開就是 SKILL.md 也有可能有人是連資料夾都打包進去, 打開是 sss 資料夾 md 檔在 sss/SKILL.md 邊緣案例要防呆, 也有可能有人是很簡單的 文字檔複製貼上就完成的 SKILL 也要思考到」
+- 二次 clarification：「但是平台收到都會整理成一致的資料夾檔案結構 下載的安裝體驗才會一致」— 範圍擴至 Case 2 也 normalize
+
+### Verification
+- `./gradlew test` — 286 / 0 fail
+- `npm test` — 10 / 0 fail
+- E2E 三 case 上傳→下載皆「SKILL.md 在 zip 根」一致
+
+### Design Rationale
+- magic-byte 偵測（ZIP `PK\x03\x04` / RFC 1951）— Content-Type 與副檔名 client 可控；server 必驗實際內容
+- wrap 至 zip 而非直接存 `.md`：保留 `skills/{id}/{ver}/skill.zip` 路徑契約；fileSize / 下載 / 後續 scripts/ 提取 contract 一致
+- Case 2 取「整個包都是這個 skill 的資料夾」語意 — 只保留與 SKILL.md 同 prefix 的兄弟檔，避免合併不相關 sibling
+
+---
+
 ## [v2.29.0] — HttpMessageNotReadableException → 400 INVALID_REQUEST_BODY（M48 完成；2026-05-01）
 
 > **Minor bump** — 修補預設訊息洩漏 controller method 完整 fully-qualified class name + 巢狀類別 + 參數 type list（屬資訊洩漏）。涵蓋 missing body、malformed JSON、type mismatch 三種 Jackson-wrapped 情境，frontend i18n 顯繁中。

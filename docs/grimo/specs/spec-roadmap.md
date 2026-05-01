@@ -149,6 +149,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M46: SearchBar Placeholder Include Category | S050 | XS(5) | 410 | ✅ `v2.27.0` (2026-05-01 — placeholder 對齊 S043；S043/S044/S046 累積 UI copy 待辦清掉) |
 | Phase 4 | M47: DuplicateKeyException → 409 DUPLICATE_RESOURCE | S051 | XS(5) | 415 | ✅ `v2.28.0` (2026-05-01 — 重複 name 不再 500 + SQL leak；改 409 + 固定 friendly message + i18n 翻譯) |
 | Phase 4 | M48: HttpMessageNotReadableException → 400 INVALID_REQUEST_BODY | S052 | XS(5) | 420 | ✅ `v2.29.0` (2026-05-01 — missing body / malformed JSON 不再洩 controller method 簽名；統一 INVALID_REQUEST_BODY + 繁中 i18n) |
+| Phase 4 | M49: Flexible Upload Formats + Canonical Zip Structure | S053 | S(7) | 427 | ✅ `v2.30.0` (2026-05-01 — 三種上傳場景皆 normalize 至 SKILL.md root；plain .md 直接接受；subfolder zip 自動脫 wrapping；下載結構一致) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）
