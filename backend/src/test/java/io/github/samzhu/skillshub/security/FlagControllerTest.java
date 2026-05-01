@@ -69,4 +69,34 @@ class FlagControllerTest extends WebMvcSliceTestBase {
             .andExpect(jsonPath("$[0].type").value("SECURITY"))
             .andExpect(jsonPath("$[0].status").value("OPEN"));
     }
+
+    @Test
+    @DisplayName("S072: type 不在白名單 → service 拋 IllegalArgumentException → 400")
+    void rejectInvalidType() throws Exception {
+        Mockito.when(flagService.createFlag(
+                        ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+                .thenThrow(new IllegalArgumentException("Flag type must be one of [...] (got: bogus)"));
+
+        mockMvc.perform(post("/api/v1/skills/some-skill-id/flags")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"type":"bogus","description":"x"}
+                        """))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("S072: description 超 500 字元 → service 拋 IllegalArgumentException → 400")
+    void rejectLongDescription() throws Exception {
+        Mockito.when(flagService.createFlag(
+                        ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+                .thenThrow(new IllegalArgumentException("Flag description exceeds 500 characters"));
+
+        mockMvc.perform(post("/api/v1/skills/some-skill-id/flags")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"type":"security","description":"x"}
+                        """))
+            .andExpect(status().isBadRequest());
+    }
 }

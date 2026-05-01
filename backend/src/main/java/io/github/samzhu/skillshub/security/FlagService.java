@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -31,6 +32,16 @@ import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 public class FlagService {
 
 	private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
+	/**
+	 * S072: 合法 flag type 白名單 — 對齊 docs/grimo/glossary.md 與前端後續 flag UI 的 enum。
+	 * 缺白名單時 admin review 困難（任意字串都能進 DB），且 spam vector。
+	 */
+	private static final Set<String> ALLOWED_TYPES = Set.of(
+			"malicious", "spam", "inappropriate", "copyright", "security", "other");
+
+	/** S072: description 上限 500 字元 — 防 DB 撐爆與 UI 排版破壞。 */
+	private static final int DESCRIPTION_MAX = 500;
 
 	private final FlagReadModelRepository flagRepo;
 	private final DomainEventRepository eventStore;
@@ -65,7 +76,18 @@ public class FlagService {
 			throw new IllegalArgumentException(
 					"Flag type exceeds 20 characters (got: " + trimmedType.length() + ")");
 		}
+		// S072: type 白名單 — 沒這道閘任何字串都進 DB（"bogus"、"x"），admin review 不可能
+		if (!ALLOWED_TYPES.contains(trimmedType)) {
+			throw new IllegalArgumentException(
+					"Flag type must be one of " + ALLOWED_TYPES + " (got: " + trimmedType + ")");
+		}
 		var trimmedDescription = description == null ? null : description.trim();
+		// S072: description 長度上限 — 5000-char 描述能進 DB，UI 排版破壞 + 儲存成本
+		if (trimmedDescription != null && trimmedDescription.length() > DESCRIPTION_MAX) {
+			throw new IllegalArgumentException(
+					"Flag description exceeds " + DESCRIPTION_MAX + " characters (got: "
+							+ trimmedDescription.length() + ")");
+		}
 
 		var flagId = UUID.randomUUID().toString();
 

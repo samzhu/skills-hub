@@ -1,5 +1,24 @@
 # Changelog
 
+## [v2.50.0] — Flag Type Allowlist + Description Length Cap（M68 完成；2026-05-01）
+
+> **Patch-class minor** — `FlagService.createFlag` 兩道閘：(1) `type` 必須屬白名單 `{malicious, spam, inappropriate, copyright, security, other}`；(2) `description` ≤ 500 字元。E2E test session Round 10 flag flow 探查發現 `type="bogus"` 任意字串接受、`description="xxx" * 5000` 接受 — DB 髒、admin review 不可能、儲存成本。S058 修 `Map.of` null 時沒做型別白名單；S055 ACL aggregate validation 也沒同步覆蓋 Flag aggregate。本 spec 補齊。
+
+### Changed
+- **S072: Flag Type Allowlist + Description Length Cap**（M68）：
+  - `FlagService` 加 `ALLOWED_TYPES` Set + `DESCRIPTION_MAX = 500`
+  - `createFlag` 違反 → `IllegalArgumentException` → 400 VALIDATION_ERROR
+  - `FlagControllerTest` 加 2 個 reject test
+  - 288 backend tests / 0 fail（286 → 288）
+
+### Verification
+- bogus type → 400 with allowlist message ✓
+- 5000 chars description → 400 ✓
+- boundary 500 / 6 個 valid types / empty description → 201 ✓
+- 既有 SkillFlagged event store / read-model write 行為不變
+
+---
+
 ## [v2.49.0] — App Routing `/skills` Alias + NotFound Fallback（M67 完成；2026-05-01）
 
 > **Patch-class minor** — React Router 兩個 routing gap 一次補：(1) `/skills` 沒對應 route → 加 alias 指 HomePage；(2) unmatched URL 沒 fallback → 加 NotFoundPage（`*` route）。E2E test session Round 5 navigation edge case 直接打 `http://localhost:5173/skills` 整頁空白 — user 看不到 navbar 也沒任何提示。同樣影響任何拼錯 URL / 舊書籤。

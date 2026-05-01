@@ -168,6 +168,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M65: AuditEventListener Null-Defense for ACL | S069 | XS(5) | 507 | ✅ `v2.47.0` (2026-05-01 — on(SkillAcl[Granted|Revoked]Event) null-coalesce；drain 2 個 pre-S055 stuck outbox events) |
 | Phase 4 | M66: Flyway V7 Cleanup Pre-S033 Vector Orphans | S070 | XS(5) | 512 | ✅ `v2.48.0` (2026-05-01 — DELETE SUSPENDED vector orphans；S059 filter 已防 user 看到，本 migration 清 storage 累積) |
 | Phase 4 | M67: App Routing /skills Alias + NotFound Fallback | S071 | XS(3) | 515 | ✅ `v2.49.0` (2026-05-01 — `/skills` alias 接 HomePage + `*` wildcard 接 NotFoundPage；fix unmatched URL 整頁空白 bug AF) |
+| Phase 4 | M68: Flag Type Allowlist + Description Length Cap | S072 | XS(3) | 518 | ✅ `v2.50.0` (2026-05-01 — FlagService 加 `ALLOWED_TYPES` 白名單 6 種 + `description ≤ 500`；fix bogus type 與 5000-char description 接受 bug AG) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）
