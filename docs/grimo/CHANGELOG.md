@@ -1,5 +1,21 @@
 # Changelog
 
+## [v2.53.0] — `FlagReadModel.isNew()` `@JsonIgnore`（M71 完成；2026-05-01）
+
+> **Patch-class minor** — `GET /api/v1/skills/{id}/flags` 回應 JSON 多一個 `"new": true` 欄位（Spring Data JDBC `Persistable.isNew()` framework artifact），不該洩漏到 API contract。完全平行於 Bug AA / S063（Skill aggregate `isNew()` JsonIgnore）— 那次 fix 沒覆蓋獨立的 `FlagReadModel`。E2E test session Round 21 flag flow 深入測試發現。
+
+### Fixed
+- **S075: `FlagReadModel.isNew()` `@JsonIgnore`**（M71）：
+  - `FlagReadModel.isNew()` 加 `@JsonIgnore`（method-level；Jackson 優先 method 注解過 record property 推斷）
+  - `FlagControllerTest` 加 1 個 S075 test（`getFlagsExcludesIsNewArtifact`）— assert `$[0].new` doesNotExist
+  - 298 → 299 backend tests / 0 fail
+
+### Verification
+- API JSON keys: ['id', 'skillId', 'type', 'description', 'reportedBy', 'createdAt', 'status']（少了 `new`）✓
+- Spring Data JDBC INSERT 行為不變（仍走 `isNew()=true` path，只是 Jackson 不 serialize）
+
+---
+
 ## [v2.52.0] — Skill Files Browser API（M70 完成；2026-05-01）
 
 > **Feature** — 使用者要在 SkillDetailPage 上瀏覽 skill 包裡個別檔案內容（references / 子腳本 / 設定範例），不必下載整包再解壓。本 spec 補 backend API 兩個 endpoint：list / read single。FE rendering（檔案瀏覽器 UI）留 S076。

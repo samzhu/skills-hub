@@ -248,3 +248,22 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - S074 在 multi-version / DRAFT / HEAD / OPTIONS / 並發 / bogus-id 場景全 robust
 - 新 tech debt：production CORS 配置（platform-level，不限 S074）
 
+---
+
+## Tick 64 — Round 21: flag flow lifecycle (2026-05-01)
+
+| # | 類別 | Case | Result | Spec |
+|---|------|------|--------|------|
+| 21.1 | 正例 | POST flag → GET /flags → 1 entry | 200 — **但 entry 含 `"new": true` framework artifact** | **S075 v2.53.0** |
+| 21.2 | 邊緣 | 同 user 同 skill 同 type 連 5 次 | DB 5 筆 (no dedup, intentional MVP) | — |
+| 21.3 | 邊緣 | accumulate 後 GET /flags | 200 — 6 entries grouped (copyright:5, spam:1) | — |
+| 21.4 | 邊緣 | flag 後 skill status | 仍 PUBLISHED (flags = passive signal) | — |
+| 21.5 | 反例 | GET /flags on bogus UUID | 200 + `[]` (同 ACL endpoint design choice — already tech debt) | — |
+| 21.6 | 邊緣 | 6 flags status 統計 | 全 OPEN (no admin endpoint to change — MVP design) | — |
+
+**Bug AI shipped**：S075 — `FlagReadModel.isNew()` 加 `@JsonIgnore`。完全平行於 Bug AA / S063（Skill aggregate）；S063 修法當時沒覆蓋 Flag。FlagControllerTest +1 (`getFlagsExcludesIsNewArtifact`)。298 → 299 backend tests / 0 fail。
+
+### Tick 64 Summary
+- Round 21: 6 cases / **1 new bug shipped (AI / S075 v2.53.0)**
+- Flag flow 既有 design 確認：no dedup（intentional）、status='OPEN' 固定（admin queue 是 future spec）、bogus UUID → 200 [] (same as ACL — known tech debt)
+

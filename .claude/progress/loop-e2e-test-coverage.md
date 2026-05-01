@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 63 (2026-05-01) — Round 20 S074 deeper coverage (HEAD/OPTIONS/multi-version/concurrency), **0 new bugs**
+> Latest tick: 64 (2026-05-01) — Round 21 flag flow lifecycle → Bug AI ship S075 v2.53.0 (M71)
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -91,6 +91,15 @@
 >     - 20.6 反例：bogus UUID /files → 404 NOT_FOUND ✓
 >     **0 new bugs** — S074 endpoint 在 multi-version / DRAFT / HEAD / OPTIONS / 並發場景全 robust。
 >     **Bonus discovery**：anthropics/pdf skill 包 12 檔案含 reference.md + 6 個 Python scripts — 檔案瀏覽器對這類 multi-script skill UX value 很高，user 可預覽 script 內容才決定下載。
+>   tick 64 (loop cron 10m fc4a79bb, Round 21 flag flow lifecycle, 2026-05-01):
+>     R21 (6 cases — flag list / accumulation / dedup / status / bogus skill / 並發場景)：
+>     - 21.1 正例：POST flag 後 GET /flags → 200 + 1 entry，**發現 entry keys 包含 `"new": true`** — Spring Data JDBC `Persistable.isNew()` framework artifact，不該在 API contract（**Bug AI**）
+>     - 21.2 邊緣：同 user 同 skill 同 type 連 flag 5 次 → DB 5 筆 (no dedup, 與 R10 觀察一致)
+>     - 21.3 邊緣：accumulate 後 GET /flags → 6 entries grouped by type（copyright:5, spam:1）✓
+>     - 21.4 邊緣：flag 累積後 skill status 仍 PUBLISHED（flags 是 passive signal 非 enforcement，符合 MVP design）
+>     - 21.5 反例：GET /flags 對 bogus UUID → 200 + `[]`（與 ACL endpoint 同 design choice — 已 known tech debt，不再記）
+>     - 21.6 邊緣：所有 flags status='OPEN'（沒 admin endpoint 改 status；正常 MVP design — admin review queue 是 future spec）
+>     **Bug AI (LOW)**：完全平行於 Bug AA / S063（Skill aggregate `isNew()`）— 上次 fix 沒覆蓋獨立的 `FlagReadModel`。寫 S075 spec（XS/3）→ `FlagReadModel.isNew()` 加 `@JsonIgnore` → `FlagControllerTest` 加 1 個 S075 test (`getFlagsExcludesIsNewArtifact` assert `$[0].new` doesNotExist) → 298 → 299 backend tests / 0 fail → 重啟 backend → 真實 curl GET `/flags` → 6 entries 全部 7 domain fields，無 `new` ✓ → ship v2.53.0 (M71)。
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -152,6 +161,7 @@
 - AF: App.tsx 缺 `/skills` route + 無 NotFound wildcard → unmatched URL 整頁空白 (S071 v2.49.0)
 - AG: Flag endpoint 缺 type 白名單與 description 長度上限 → bogus type / 5000-char description 接受 (S072 v2.50.0)
 - AH: `SkillValidator` 對 `allowed-tools` YAML list 形狀（canonical Anthropic）全 400；用 ArrayList.toString() 餵 regex 切出 `[Read,` 等不合法 token (S073 v2.51.0)
+- AI: `FlagReadModel.isNew()` 序列化為 `"new": true` 洩漏到 GET /flags API 回應；與 Bug AA / S063 同 root cause（Spring Data JDBC `Persistable` framework hook）但 Skill 修了沒覆蓋 Flag (S075 v2.53.0)
 
 ### Known Tech Debt (low priority)
 - DB 既有畸形 entries（畸形 ACL/version "foo" 等）需 future migration

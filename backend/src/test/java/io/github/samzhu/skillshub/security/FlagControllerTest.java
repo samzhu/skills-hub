@@ -86,6 +86,20 @@ class FlagControllerTest extends WebMvcSliceTestBase {
     }
 
     @Test
+    @DisplayName("S075: GET /flags 回應 JSON 不應出現 Persistable.isNew() 的 'new' 欄位")
+    void getFlagsExcludesIsNewArtifact() throws Exception {
+        var fixture = new FlagReadModel(
+                "flag-1", "skill-1", "SECURITY", "test", "anonymous", Instant.now(), "OPEN");
+        Mockito.when(flagService.getFlagsBySkillId(ArgumentMatchers.any()))
+                .thenReturn(List.of(fixture));
+
+        mockMvc.perform(get("/api/v1/skills/skill-1/flags"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].new").doesNotExist())
+            .andExpect(jsonPath("$[0].id").value("flag-1"));
+    }
+
+    @Test
     @DisplayName("S072: description 超 500 字元 → service 拋 IllegalArgumentException → 400")
     void rejectLongDescription() throws Exception {
         Mockito.when(flagService.createFlag(

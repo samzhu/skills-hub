@@ -7,6 +7,8 @@ import org.springframework.data.domain.Persistable;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 /**
  * Flag 讀取模型（Read Model），對應 PostgreSQL {@code flags} 表。
  *
@@ -35,7 +37,13 @@ public record FlagReadModel(
 		@Column("status") String status
 ) implements Persistable<String> {
 
-	/** 永遠回 true — Flag 為 append-only，由 FlagService 收 SkillFlagged 事件時建立。 */
+	/**
+	 * 永遠回 true — Flag 為 append-only，由 FlagService 收 SkillFlagged 事件時建立。
+	 *
+	 * <p>S075：{@code @JsonIgnore} 隱藏此 framework hook，避免 API JSON 出現
+	 * {@code "new": true} 干擾 client。完全平行於 Skill aggregate 的 S063 fix。
+	 */
+	@JsonIgnore
 	@Override
 	public boolean isNew() {
 		return true;
