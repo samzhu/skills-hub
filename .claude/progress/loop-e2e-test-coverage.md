@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 59 (2026-05-01) — Round 17 download bytes integrity, **0 new bugs**
+> Latest tick: 60 (2026-05-01) — Round 18 frontend publish-flow with S073 list-style allowed-tools, **0 new bugs**
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -52,6 +52,14 @@
 >     - 17.5 反例：non-existent version → 404 NOT_FOUND「Version 9.9.9 not found」✓
 >     - 17.6 邊緣：3 次連續 download 同一 latest → SHA256 完全一致 ✓（GCS / 本地 storage 無 byte-drift）
 >     **0 new bugs** — byte 層級 round-trip 在單檔/多檔/含 binary/多版本 場景全保證；suspend/missing version 邊界正確區分。
+>   tick 60 (loop cron 10m fc4a79bb, Round 18 frontend publish-flow with S073, 2026-05-01):
+>     R18 (3 cases — 從 user-facing UI 視角驗 S073)：
+>     - 18.1 正例：在 `/publish` 頁面 build minimal STORED zip（list-style `allowed-tools: [Read, Edit, Bash(git:*)]`）+ React-controlled input setter（`Object.getOwnPropertyDescriptor(...).set` + dispatchEvent）+ submit → 「發佈成功！Skill ID: 216ade4c...」+「查看技能 →」link 出現 ✓
+>     - 18.2 邊緣：點「查看技能 →」→ 跳到 `/skills/{id}` detail page → 顯示 `低風險` badge + `已發佈` + 3 tabs（概要 / 版本歷史 / 風險評估）+ description 完整 + 安裝指引（PUBLISHED gating per S047）✓
+>     - 18.3 反例：`Name:` 大寫 frontmatter → 400 → FE 顯示「發佈失敗 zip 套件驗證失敗，請確認格式正確」（i18n localized）✓
+>     **發現**：FE i18n 把所有 VALIDATION_ERROR 都對應到「zip 套件驗證失敗」generic 訊息，不顯示具體 field（如「Missing required field: name」）。為 UX 簡潔的 design choice（per S066 i18n coverage），非 bug；但記為 tech debt — 改善方向是讓 FE 抽 backend `message` 欄位顯示具體欄位名（保 i18n 框架不變）。
+>     **遇到狀況**：第一次 JS build zip 漏寫 LFH header 後的 `data` segment（114 bytes 太小）→ backend 回 400「Invalid zip file: cannot read package contents」（S049 zip 解析錯誤訊息正確）。修正後 308 bytes → 201。
+>     **0 new bugs** — UI 端 publish flow 對 S073 list-style 完全相容；reverse case i18n 訊息 mapping 正確；download 與 detail page 渲染無誤。
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -121,6 +129,7 @@
 - analytics「本週新增」rolling 7 days（vs calendar week）— 文字選擇
 - ACL endpoints REST status code 不一致（tick 56 R12）：GET on bogus skill → 200 [] (intentional)；POST/DELETE on bogus skill → 400 VALIDATION_ERROR；REST 慣例應全為 404。改 GET 為 404 為 breaking change（frontend 可能依「empty list」語意），暫保留。
 - ACL DELETE non-existent grant → 409 STATE_CONFLICT (state-machine 哲學) vs 404 NOT_FOUND (REST 慣例)。語意可辯，保留現狀。
+- FE i18n VALIDATION_ERROR 訊息過於 generic（tick 60 R18.3）：所有 backend validation error 都對應到「zip 套件驗證失敗，請確認格式正確」，不顯示具體 field（如 "Missing required field: name" / "Field 'name' fails regex"）。UX 改善方向是把 backend `message` 欄位作為 fallback subtitle 顯示（i18n 框架不變）。
 
 ## Current Health (Tick 45 baseline)
 - **Backend tests**: 286 / 0 fail

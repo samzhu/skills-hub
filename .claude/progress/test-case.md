@@ -176,3 +176,25 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - suspended skill download 防護生效（403 SKILL_SUSPENDED）
 - 多版本三條 download 路徑（latest / explicit-v1.0.0 / explicit-v1.1.0）互不污染
 
+---
+
+## Tick 60 — Round 18: frontend publish-flow with S073 list-style allowed-tools (2026-05-01)
+
+從 UI 視角驗 S073 fix：在 `/publish` 頁面實際拖檔上傳 + 提交 + 跳轉到 detail page。
+
+| # | 類別 | Case | Result |
+|---|------|------|--------|
+| 18.1 | 正例 | UI build STORED zip with `allowed-tools: [Read, Edit, Bash(git:*)]` (list shape) + DataTransfer + React value setter + submit | PASS — 「發佈成功！Skill ID: 216ade4c...」+「查看技能 →」 |
+| 18.2 | 邊緣 | 點「查看技能 →」→ `/skills/{id}` detail page | PASS — `低風險` badge + `已發佈` + 3 tabs + 描述完整 + 安裝指引 PUBLISHED gating ✓ |
+| 18.3 | 反例 | 上傳 `Name:` 大寫 frontmatter | PASS — FE 顯示「發佈失敗 zip 套件驗證失敗」i18n localized message |
+
+**Notes**：
+- FE 沒有專門 UI 渲染 `allowed-tools` 欄位（by design — UI 用 risk badge 取代具體 tool list，更 user-friendly）
+- 18.3 i18n 訊息泛用化（tech debt 已記）— 不顯示具體 field 名稱
+- JS 第一次 build zip 漏寫 LFH 後的 data segment → 114 bytes → backend 回「Invalid zip file: cannot read package contents」(S049 訊息正確)。修正後 308 bytes 順利上傳
+
+### Tick 60 Summary
+- Round 18: 3 cases / **0 new bugs**
+- S073 fix 從 UI 端到 detail page 全 pipeline 渲染正確
+- i18n 訊息 mapping 對 VALIDATION_ERROR 路徑正確觸發
+
