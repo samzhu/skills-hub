@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.skill.query;
 
 import java.lang.invoke.MethodHandles;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +26,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import io.github.samzhu.skillshub.shared.api.SkillSuspendedException;
 import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillStatus;
 import io.github.samzhu.skillshub.skill.domain.SkillVersion;
@@ -67,15 +70,17 @@ public class SkillQueryService {
 	private final NamedParameterJdbcTemplate jdbc;
 	private final StorageService storageService;
 	private final ObjectMapper objectMapper;
+	private final ApplicationEventPublisher eventPublisher;
 
 	public SkillQueryService(SkillRepository skillRepo, SkillVersionRepository skillVersionRepo,
 			NamedParameterJdbcTemplate jdbc, StorageService storageService,
-			ObjectMapper objectMapper) {
+			ObjectMapper objectMapper, ApplicationEventPublisher eventPublisher) {
 		this.skillRepo = skillRepo;
 		this.skillVersionRepo = skillVersionRepo;
 		this.jdbc = jdbc;
 		this.storageService = storageService;
 		this.objectMapper = objectMapper;
+		this.eventPublisher = eventPublisher;
 	}
 
 	/**
@@ -289,8 +294,14 @@ public class SkillQueryService {
 			throw new SkillSuspendedException(skillId);
 		}
 		var zipBytes = storageService.download(version.getStoragePath());
-		skill.recordDownload();
-		skillRepo.save(skill);
+
+		// S076: 原子計數遞增（非 aggregate read-modify-write），避免並行下載 OptimisticLockingFailureException
+		// 級聯（pre-S076: N=2 → 50% 失敗，N=10 → 90% 失敗）。Counter 不是 state-machine concern，PG row-level
+		// lock 即正確語意。事件改用 ApplicationEventPublisher 顯式發；Modulith Event Publication Registry
+		// 攔截 transactional context 任何 event，outbox at-least-once 不變。
+		// `recordDownload()` aggregate method 仍保留供單元測試與其他 caller（若有）使用。
+		skillRepo.incrementDownloadCount(skillId, Instant.now());
+		eventPublisher.publishEvent(SkillDownloadedEvent.of(skillId, version.getVersion()));
 
 		log.atInfo()
 				.addKeyValue("skillId", skillId)

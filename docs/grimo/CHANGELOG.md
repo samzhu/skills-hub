@@ -1,5 +1,28 @@
 # Changelog
 
+## [v2.54.0] — Download Counter Atomic Increment（M72 完成；2026-05-01）
+
+> **Production-grade fix** — 並行下載同一 skill 觸發 OptimisticLockingFailureException 級聯：N=2 並行 → 50% 失敗，N=10 → 90% 失敗。一般使用情境（兩 user 同時點下載）就會踩到。E2E test session Round 22 concurrent download 探測量化（bug AJ）。Counter 不是 state-machine concern，aggregate `@Version` 樂觀鎖過度保護。
+
+### Fixed
+- **S076: Download Counter Atomic Increment**（M72）：
+  - `SkillRepository.incrementDownloadCount` 新增 `@Modifying @Query` 原子 SQL UPDATE（pattern 同 S024 T5 既有 `updateRiskLevel`）
+  - `SkillQueryService.downloadAndRecord` 改：
+    - 不再 `skill.recordDownload(); skillRepo.save(skill)`（aggregate read-modify-write）
+    - 改 `skillRepo.incrementDownloadCount(skillId, ts)` + `eventPublisher.publishEvent(SkillDownloadedEvent.of(...))`
+  - Modulith Event Publication Registry 透過 `@TransactionalEventListener` 攔截 ApplicationEventPublisher events，outbox at-least-once 保證不變
+  - Aggregate `recordDownload()` method 保留（`SkillAggregateTest` 仍測它示範 invariant）；只是 service 不再走它
+  - 299 backend tests / 0 fail（無 regression）
+
+### Verification
+- N=10 parallel downloads → 10/10 HTTP 200（pre-fix: 1/10）
+- N=30 parallel downloads → 30/30 HTTP 200（pre-fix: 4/30）
+- counter delta == HTTP 200 count ✓
+- download_events projection delta == HTTP 200 count ✓
+- outbox 0 pending 收尾
+
+---
+
 ## [v2.53.0] — `FlagReadModel.isNew()` `@JsonIgnore`（M71 完成；2026-05-01）
 
 > **Patch-class minor** — `GET /api/v1/skills/{id}/flags` 回應 JSON 多一個 `"new": true` 欄位（Spring Data JDBC `Persistable.isNew()` framework artifact），不該洩漏到 API contract。完全平行於 Bug AA / S063（Skill aggregate `isNew()` JsonIgnore）— 那次 fix 沒覆蓋獨立的 `FlagReadModel`。E2E test session Round 21 flag flow 深入測試發現。

@@ -267,3 +267,26 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - Round 21: 6 cases / **1 new bug shipped (AI / S075 v2.53.0)**
 - Flag flow 既有 design 確認：no dedup（intentional）、status='OPEN' 固定（admin queue 是 future spec）、bogus UUID → 200 [] (same as ACL — known tech debt)
 
+---
+
+## Tick 65 — Round 22: concurrent download counter → ship S076 (2026-05-01)
+
+| # | 類別 | Case | Pre-fix | Post-fix | Spec |
+|---|------|------|---------|----------|------|
+| 22.1 | 邊緣 | N=1 download | 100% | 100% | — |
+| 22.2 | 邊緣 | **N=2 parallel** | **50%** | **100%** | **S076 v2.54.0** |
+| 22.3 | 邊緣 | N=3 parallel | 33% | 100% | S076 |
+| 22.4 | 邊緣 | N=5 parallel | 20% | 100% | S076 |
+| 22.5 | 邊緣 | N=10 parallel | 10% | 100% | S076 |
+| 22.6 | 邊緣 | N=30 parallel | 13% | 100% | S076 |
+
+**Bug AJ (HIGH / production-grade)** — aggregate `@Version` optimistic locking 對 counter 過度保護。fix 改用 `@Modifying @Query` 原子 SQL UPDATE + `ApplicationEventPublisher`；Modulith 透過 `@TransactionalEventListener` 攔截，outbox at-least-once 保證不變。Aggregate `recordDownload()` 保留供 SkillAggregateTest 覆蓋。299 tests / 0 fail。
+
+**Bonus discovery**：AuditEventListener 不訂閱 SkillDownloadedEvent（by design — volume）；download_events 表才是消費點，delta == HTTP 200 count 確認事件路徑完整。
+
+### Tick 65 Summary
+- Round 22: 6 cases / **1 new production-grade bug shipped (AJ / S076 v2.54.0)**
+- 並行下載成功率從 N=2 50% / N=10 10% → 全 N **100%**
+- Modulith outbox 對 ApplicationEventPublisher 與 @DomainEvents 路徑同效驗證
+
+

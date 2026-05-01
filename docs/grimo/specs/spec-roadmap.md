@@ -172,6 +172,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M69: `allowed-tools` YAML list interop | S073 | XS(3) | 521 | ✅ `v2.51.0` (2026-05-01 — `SkillValidator` 用 type pattern matching 分流 list/scalar；fix canonical Anthropic SKILL.md 形狀無法上傳 bug AH) |
 | Phase 4 | M70: Skill Files Browser API | S074 | S(5) | 526 | ✅ `v2.52.0` (2026-05-01 — `GET /skills/{id}/files` list + `/files/{*path}` read；zip-slip 防禦 + 1MB preview cap；feature for 「skill 明細頁面瀏覽各檔案內容」；FE rendering 留 S077) |
 | Phase 4 | M71: `FlagReadModel.isNew()` `@JsonIgnore` | S075 | XS(3) | 529 | ✅ `v2.53.0` (2026-05-01 — `FlagReadModel.isNew()` 加 `@JsonIgnore`；fix `GET /flags` 回傳 `"new": true` 干擾 client bug AI；S063 Skill 修法的 Flag 平行覆蓋) |
+| Phase 4 | M72: Download Counter Atomic Increment | S076 | S(5) | 534 | ✅ `v2.54.0` (2026-05-01 — `incrementDownloadCount` 原子 SQL UPDATE + ApplicationEventPublisher；fix 並行下載 50% / 90% 失敗 bug AJ；N=10 從 1/10 → 10/10 success rate) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

@@ -59,4 +59,23 @@ public interface SkillRepository extends ListCrudRepository<Skill, String> {
     @Modifying
     @Query("UPDATE skills SET risk_level = :riskLevel, updated_at = :ts WHERE id = :id")
     int updateRiskLevel(@Param("id") String id, @Param("riskLevel") String riskLevel, @Param("ts") Instant ts);
+
+    /**
+     * S076: 原子計數遞增（取代 aggregate {@code recordDownload + save} 的 read-modify-write
+     * 樂觀鎖路徑）— 並行下載同 skill 不再觸發 OptimisticLockingFailureException。
+     *
+     * <p>Counter 增量不是 state-machine concern；不需「先看到他人 update 才合併」的語意。
+     * 走原子 SQL UPDATE 讓 PG row-level lock 處理併發，避開 aggregate {@code @Version} 衝突。
+     *
+     * <p><b>不走 aggregate event publish path</b>：caller 端用 ApplicationEventPublisher 顯式發
+     * {@code SkillDownloadedEvent}。Modulith Event Publication Registry 會 intercept transactional
+     * context 中所有 events 寫入 outbox，與 {@code @DomainEvents} 路徑共用 at-least-once 保證。
+     *
+     * @param id 技能 aggregate ID
+     * @param ts 更新時間戳（同步寫入 updated_at）
+     * @return 更新的 row 數（找不到 id 時為 0）
+     */
+    @Modifying
+    @Query("UPDATE skills SET download_count = download_count + 1, updated_at = :ts WHERE id = :id")
+    int incrementDownloadCount(@Param("id") String id, @Param("ts") Instant ts);
 }

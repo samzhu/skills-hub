@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 64 (2026-05-01) — Round 21 flag flow lifecycle → Bug AI ship S075 v2.53.0 (M71)
+> Latest tick: 65 (2026-05-01) — Round 22 concurrent download counter → **Bug AJ (production-grade)** ship S076 v2.54.0 (M72)
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -100,6 +100,14 @@
 >     - 21.5 反例：GET /flags 對 bogus UUID → 200 + `[]`（與 ACL endpoint 同 design choice — 已 known tech debt，不再記）
 >     - 21.6 邊緣：所有 flags status='OPEN'（沒 admin endpoint 改 status；正常 MVP design — admin review queue 是 future spec）
 >     **Bug AI (LOW)**：完全平行於 Bug AA / S063（Skill aggregate `isNew()`）— 上次 fix 沒覆蓋獨立的 `FlagReadModel`。寫 S075 spec（XS/3）→ `FlagReadModel.isNew()` 加 `@JsonIgnore` → `FlagControllerTest` 加 1 個 S075 test (`getFlagsExcludesIsNewArtifact` assert `$[0].new` doesNotExist) → 298 → 299 backend tests / 0 fail → 重啟 backend → 真實 curl GET `/flags` → 6 entries 全部 7 domain fields，無 `new` ✓ → ship v2.53.0 (M71)。
+>   tick 65 (loop cron 10m fc4a79bb, Round 22 concurrent download counter, 2026-05-01):
+>     R22 量化 production-grade bug AJ：fire N parallel downloads same skill 觀察 success rate：
+>     - N=1 → 100% / N=2 → **50%** / N=3 → 33% / N=5 → 20% / N=10 → 10% / N=30 → 13%
+>     - 每個「下載 window」最多 1 個成功；其他全 OptimisticLockingFailureException → 409 STATE_CONFLICT
+>     - **N=2 就半數失敗** — 兩個 user 同時點下載按鈕的正常情境就 broken
+>     - Counter accuracy 雖正確（無 over-count）但 UX 嚴重退化
+>     **Bug AJ (HIGH / production-grade)**：aggregate `@Version` 樂觀鎖對 counter 是 over-engineering — counter 不需 state-machine read-modify-write 語意。寫 S076 spec（S/5）→ `SkillRepository.incrementDownloadCount` 加 `@Modifying @Query` 原子 SQL UPDATE（pattern 同 S024 T5 `updateRiskLevel`）→ `SkillQueryService.downloadAndRecord` 改用 atomic increment + `ApplicationEventPublisher.publishEvent` → Modulith Event Publication Registry 透過 `@TransactionalEventListener` 攔截 ApplicationEventPublisher events，outbox at-least-once 不變 → aggregate `recordDownload()` 保留供 `SkillAggregateTest` 覆蓋（仍示範 invariant）→ 299 tests / 0 fail（無 regression）→ 重啟 backend → smoke：N=1/2/3/5/10/30 **全 100% 成功率**（pre：100%/50%/33%/20%/10%/13%）→ ship v2.54.0 (M72)。
+>     **Bonus**：`AuditEventListener` 不訂閱 `SkillDownloadedEvent`（不在 domain_events 留 audit log），by design 為 volume control（download 是高頻事件）；test 中 domain_events delta=0 是預期；download_events 表（AnalyticsProjection）delta == HTTP 200 count 確認事件路徑完整 — 也驗證 Modulith outbox 對 ApplicationEventPublisher events 與 @DomainEvents 路徑同效。
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -162,6 +170,7 @@
 - AG: Flag endpoint 缺 type 白名單與 description 長度上限 → bogus type / 5000-char description 接受 (S072 v2.50.0)
 - AH: `SkillValidator` 對 `allowed-tools` YAML list 形狀（canonical Anthropic）全 400；用 ArrayList.toString() 餵 regex 切出 `[Read,` 等不合法 token (S073 v2.51.0)
 - AI: `FlagReadModel.isNew()` 序列化為 `"new": true` 洩漏到 GET /flags API 回應；與 Bug AA / S063 同 root cause（Spring Data JDBC `Persistable` framework hook）但 Skill 修了沒覆蓋 Flag (S075 v2.53.0)
+- AJ: 並行下載同一 skill OptimisticLockingFailureException 級聯（N=2 即 50% 失敗）；aggregate `@Version` 樂觀鎖對 counter 過度保護；改用原子 SQL UPDATE + ApplicationEventPublisher (S076 v2.54.0)
 
 ### Known Tech Debt (low priority)
 - DB 既有畸形 entries（畸形 ACL/version "foo" 等）需 future migration
