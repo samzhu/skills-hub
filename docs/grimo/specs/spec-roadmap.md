@@ -145,6 +145,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M42: Semantic Search Fallback to Keyword | S046 | XS(5) | 390 | ✅ `v2.23.0` (2026-05-01 — HomePage isSemanticMode 加 `length > 0` 條件；semantic 回空時自動 fallback keyword mode；解 Chrome E2E 死巷 dev/prod 一致 graceful) |
 | Phase 4 | M43: Installation Guide Only for PUBLISHED | S047 | XS(5) | 395 | ✅ `v2.24.0` (2026-05-01 — SkillDetailPage 安裝指引 conditional render；DRAFT/SUSPENDED 隱藏；對齊 download button 隱藏邏輯) |
 | Phase 4 | M44: FileDropZone Reject Non-`.zip` | S048 | XS(5) | 400 | ✅ `v2.25.0` (2026-05-01 — FileDropZone handleFile 加擴展名 guard；drag-drop `.txt` 不再 bypass；對齊 S037 size guard 模式) |
+| Phase 4 | M45: ZipException → 400 VALIDATION_ERROR | S049 | XS(5) | 405 | ✅ `v2.26.0` (2026-05-01 — GlobalExceptionHandler 加 ZipException handler；corrupt zip 不再噴 raw Java 訊息；frontend 走既有 i18n map) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

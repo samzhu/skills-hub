@@ -1,5 +1,24 @@
 # Changelog
 
+## [v2.26.0] — ZipException → 400 VALIDATION_ERROR（M45 完成；2026-05-01）
+
+> **Minor bump** — 上傳 corrupt zip 時 `java.util.zip.ZipException` 不再落 Spring 預設 500 / 暴露 raw 訊息（如「invalid stored block lengths」）；改 normalize 為 400 VALIDATION_ERROR + 固定 user-friendly message。Frontend 走既有 i18n map 顯繁中「zip 套件驗證失敗，請確認格式正確。」
+
+### Added
+- **S049: ZipException → 400 VALIDATION_ERROR**（M45 落地）：
+  - `@ExceptionHandler(ZipException.class)` 加進 GlobalExceptionHandler；most-specific-first 規則保證優先匹配
+  - 固定 message「Invalid zip file: cannot read package contents」（不暴露 ex.getMessage 內 Java 內部 detail）
+  - **4 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 24 Chrome happy-path E2E — base64 編碼 zip 損毀，user 看到 raw「invalid stored block lengths」（Java 內部訊息），i18n VALIDATION_ERROR 友善翻譯未生效（`err.code` undefined 因為 backend 回 500 而非 400）
+
+### Verification
+- `./gradlew test` — 286 tests / 0 fail
+- E2E：valid zip 201；invalid zip → frontend 顯示「zip 套件驗證失敗，請確認格式正確。」
+
+---
+
 ## [v2.25.0] — FileDropZone — Reject Non-`.zip` Files Client-Side（M44 完成；2026-05-01）
 
 > **Minor bump** — `FileDropZone.handleFile` 加擴展名 guard：drag-drop 非 `.zip` 檔（如 `malicious.txt`）顯示 inline「只接受 .zip 檔」並不呼叫 `onFileSelect`。先前 `accept=".zip"` 只 hint file picker；drag-drop bypass 該限制 — user 須等到後端 400 才知錯。對齊 S037 size guard 模式（同 funnel point；drag + click 路徑共用）。

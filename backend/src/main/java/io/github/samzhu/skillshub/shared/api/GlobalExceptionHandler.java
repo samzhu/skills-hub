@@ -3,6 +3,7 @@ package io.github.samzhu.skillshub.shared.api;
 import java.lang.invoke.MethodHandles;
 import java.time.Instant;
 import java.util.NoSuchElementException;
+import java.util.zip.ZipException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -135,6 +136,26 @@ public class GlobalExceptionHandler {
 				.log("State conflict");
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(new ErrorResponse("STATE_CONFLICT", ex.getMessage(), Instant.now()));
+	}
+
+	/**
+	 * S049：處理 corrupt / 無效 zip 上傳（{@link ZipException}）。
+	 *
+	 * <p>{@code ZipException} extends {@code IOException}；most-specific-first 規則保證
+	 * 此 handler 優先匹配。固定 user-friendly message，不暴露 ex.getMessage()
+	 * （含 Java 內部「invalid stored block lengths」/ ZIP magic offset 等 detail）。
+	 * Frontend 走既有 `VALIDATION_ERROR` i18n map 顯繁中「zip 套件驗證失敗，請確認格式正確。」
+	 */
+	@ExceptionHandler(ZipException.class)
+	ResponseEntity<ErrorResponse> handleInvalidZip(ZipException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "VALIDATION_ERROR")
+				.addKeyValue("zipError", ex.getMessage())
+				.log("Invalid zip upload");
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ErrorResponse("VALIDATION_ERROR",
+						"Invalid zip file: cannot read package contents",
+						Instant.now()));
 	}
 
 	/**
