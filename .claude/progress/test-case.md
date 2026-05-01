@@ -512,6 +512,26 @@ Pre-condition: LlmJudge engine enabled in dev profile (commit 97cc24b)
 - LLM reasoning 智商高，真有抓到 supply chain attack pattern
 - Calibration 是 design choice (conservative security-first)；future S090+ 可考慮 weighted scoring
 
+---
+
+## Tick 77 — Round 31: HTTP method + encoding edges (2026-05-01)
+
+| # | 類別 | Case | Result |
+|---|------|------|--------|
+| 31.1 | 反例 | PATCH /skills/{id} | PASS — 405 METHOD_NOT_ALLOWED |
+| 31.2 | 反例 | PUT /skills (collection root, no id) | PASS — 405 |
+| 31.3 | 邊緣 | GET /skills/{id} with `%20` (URL-encoded) | PASS — 404 with decoded "abc def" |
+| 31.4 | 邊緣 | OPTIONS /skills/{id} (CORS preflight) | PASS — 200 + Allow + Spring Security hardened headers (X-Content-Type-Options nosniff, X-Frame-Options DENY, X-XSS-Protection, Cache-Control no-store) |
+| 31.5 | 邊緣 | `?keyword=docx&keyword=pdf` (duplicate param) | PASS — Spring joins as "docx,pdf" → 0 hits |
+| 31.6 | 反例 | URL-encoded path traversal `%2E%2E%2F` in /files | PASS — 400 Tomcat HTML page (per 既有 tech debt) |
+| 31.7 | 反例 | SQL injection `'; DROP TABLE skills; --` in keyword | PASS — 200 + 0 results；DB 122 skills 完整 |
+
+### Tick 77 Summary
+- Round 31: 7 cases / **0 new bugs**
+- security boundaries 全守住（method whitelist / URL decoding / SQL injection prevention / Spring Security hardened headers）
+- 連續 4 ticks 0 bugs (74/75/76/77) — testing surface 確認 saturation
+
+
 
 
 

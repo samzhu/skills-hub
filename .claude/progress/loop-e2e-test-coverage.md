@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 76 (2026-05-01) — Round 30 MEDIUM tier reachability probe. **MEDIUM IS reachable**（R29 sample bias）；LLM reasoning 智能識別 description-vs-impl mismatch + command injection 向量；calibration 是 design choice（0 active bugs）
+> Latest tick: 77 (2026-05-01) — Round 31 HTTP method + encoding edges. 7 cases / 0 bugs；同步驗證 Spring Security 預設 hardened headers
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -209,6 +209,16 @@
 >     **重大發現 2：LLM reasoning 真有智商** — 識別 description-vs-impl mismatch (claims "read-only" 但 Bash full access)，識別 empty-scripts-but-Bash 不對勁，識別 command injection 向量（user input + shell）。這些都是真實 supply chain attack 模式。
 >     **判定**：不是 bug，是 conservative-by-design — LLM 對「Bash + user input」嚴重度給 8.5 反映企業 registry 安全優先；可未來改 weighted scoring (count×severity matrix) 但需更大 corpus 驗證。
 >     **0 new bugs**。Calibration 觀察 already in tech debt for future S090+ severity calibration spec.
+>   tick 77 (loop cron 10m fc4a79bb, Round 31 HTTP method + encoding edges, 2026-05-01):
+>     R31 (7 quick edges)：
+>     - 31.1 PATCH /skills/{id} → 405 METHOD_NOT_ALLOWED ✓
+>     - 31.2 PUT /skills (collection root) → 405 ✓
+>     - 31.3 GET /skills/{id} with `%20`（URL-encoded space）→ 404「Skill not found: abc def」(URL decode 正確；無 double-decode 漏洞) ✓
+>     - 31.4 OPTIONS /skills/{id} → 200 + Allow header + **完整 Spring Security 預設 hardened headers**（X-Content-Type-Options nosniff / X-Frame-Options DENY / X-XSS-Protection 0 / Cache-Control no-cache no-store / Pragma no-cache）；無 Access-Control-* (production CORS 待 future spec) ✓
+>     - 31.5 duplicate query params (`?keyword=docx&keyword=pdf`) → Spring 將 dup String params 接成 `"docx,pdf"` → 0 hits；behavior reasonable，非 bug
+>     - 31.6 URL-encoded path traversal `%2E%2E%2F` in /files → 400 Tomcat HTML page（per 既有 tech debt 一致）✓
+>     - 31.7 SQL injection probe `'; DROP TABLE skills; --` → 200 + 0 results（parameterized JDBC 守住）；DB 122 skills 完整 ✓
+>     **0 new bugs** — security boundaries 全守住（method whitelist / URL decoding / SQL injection / hardened headers）；連續 4 ticks 0 bugs (74/75/76/77) 確認 saturation。
 >   tick 71 (loop cron 10m fc4a79bb, Round 27 API consistency audit, 2026-05-01):
 >     R27.1 跨 6 個 endpoint 探測 error response shape：5/6 標準 `{error, message, timestamp}` JSON shape ✓；**1 個發現 Bug AM**：`POST /api/v1/skills/upload` 缺 `version` form param 時 Spring 預設 error handler 直接回 `{timestamp, status, error: "Bad Request", message, path}` shape，繞過 GlobalExceptionHandler 的 ErrorResponse 結構。
 >     **影響**：FE i18n（S066 / S041）用 `error` code 對應 localized message；「Bad Request」(HTTP reason phrase) 不在 12 個 backend code 白名單 → silent fallthrough，user 看到 raw EN 訊息或泛用 fallback。
