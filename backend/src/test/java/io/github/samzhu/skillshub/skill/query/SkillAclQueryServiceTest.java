@@ -83,6 +83,25 @@ class SkillAclQueryServiceTest extends RepositorySliceTestBase {
                         org.assertj.core.groups.Tuple.tuple("group", "engineering", "read"));
     }
 
+    @Test
+    @DisplayName("AC-S038: \"*:read\" 識別為 synthetic public-read entry（非畸形 skip）")
+    @Tag("AC-S038")
+    void listEntries_publicReadPseudoPrincipal_recognized() {
+        var skillId = seedSkill(List.of(
+                "user:alice:read",
+                "*:read",                       // S026 公開讀取 pseudo-principal
+                "group:engineering:read"));
+
+        var entries = queryService.listEntries(skillId);
+
+        assertThat(entries).hasSize(3);
+        assertThat(entries).extracting("type", "principal", "permission")
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple("user", "alice", "read"),
+                        org.assertj.core.groups.Tuple.tuple("public", "*", "read"),
+                        org.assertj.core.groups.Tuple.tuple("group", "engineering", "read"));
+    }
+
     private String seedSkill(List<String> aclEntries) {
         var id = UUID.randomUUID().toString();
         var now = Instant.now();

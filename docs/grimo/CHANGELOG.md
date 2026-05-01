@@ -1,5 +1,29 @@
 # Changelog
 
+## [v2.15.0] — ACL List Recognizes `*:read`（M34 完成；2026-05-01）
+
+> **Minor bump** — `SkillAclQueryService.listEntries` 識別 S026 公開讀取 pseudo-principal `"*:read"` 為 synthetic entry，消除 WARN log spam，讓 frontend 可呈現「公開讀取」狀態。
+
+### Added
+- **S038: ACL List Recognizes `*:read`**（M34 落地）：
+  - **`*:read` 識別為 synthetic entry**：response 含 `{type:"public", principal:"*", permission:"read"}`；frontend 可根據 type=public 渲染特殊 badge / icon
+  - **消除 WARN log spam**：每次對 public skill 讀 ACL 不再觸發「格式異常」WARN（baseline 每讀一次一條 WARN）
+  - **CRUD 約束不變**：`grantAcl` / `revokeAcl` 仍只接受 `user|role|group` 三 namespace；`*:read` 為 platform-level 預設由 `Skill.create` 自動 seed，不允許 user CRUD
+  - **5 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 13 — 每次對 public skill GET /acl 都觸發 WARN log；S026 後每個 PUBLISHED skill 都有 `*:read` → log spam at scale；同時 ACL list response 不含 `*:read`，frontend 無法呈現「公開讀取」狀態
+
+### Verification
+- `./gradlew test` — 296 tests / 0 fail（含新加 `listEntries_publicReadPseudoPrincipal_recognized` test）
+- E2E HTTP：ACL list response 4 entries（3 user + 1 public）；連 3 次 read 後 WARN count = 0
+
+### Tech Debt
+- Frontend 顯示「公開讀取」UI（如 type=public 加特殊 badge）為 future spec 範疇
+- S031 §7.5 admin panel endpoint 仍待設計
+
+---
+
 ## [v2.14.0] — Upload Size 413 + Frontend Size Pre-check（M33 完成；2026-05-01）
 
 > **Minor bump** — HTTP 語意修正 + frontend 早期防呆：超 10MB 上傳從 **HTTP 409 STATE_CONFLICT**（被 S030 catch-all 過度攔截）改回正確的 **HTTP 413 PAYLOAD_TOO_LARGE**；FileDropZone 加 client-side size pre-check 避免 user 浪費頻寬上傳大檔才知失敗。

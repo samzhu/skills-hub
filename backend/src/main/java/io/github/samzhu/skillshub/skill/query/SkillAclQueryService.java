@@ -46,6 +46,13 @@ public class SkillAclQueryService {
 
         var result = new ArrayList<AclEntryResponse>();
         for (var entry : skill.get().getAclEntries()) {
+            // S038: "*:read" 為 S026 公開讀取 pseudo-principal（非 type:principal:permission 三段格式）；
+            // 識別為 synthetic entry 露出至 API（讓 frontend 可呈現「公開讀取」狀態），不 WARN log。
+            // CRUD 約束不變：grantAcl/revokeAcl 仍只接受 user/role/group；此 pseudo 由 Skill.create 自動 seed。
+            if ("*:read".equals(entry)) {
+                result.add(new AclEntryResponse("public", "*", "read"));
+                continue;
+            }
             // 限 3 段 split — principal 內可能含 dot/email 等字元但不可含 colon（per spec §4.1 regex）；
             // 用 limit=3 確保格式違規時 fast-fail，而非把 permission 段誤切。
             var parts = entry.split(":", 3);
