@@ -1,5 +1,35 @@
 # Changelog
 
+## [v2.20.0] — Keyword Search Also Matches Category（M39 完成；2026-05-01）
+
+> **Minor bump** — `SkillQueryService.search` keyword `LIKE` 子句加 `LOWER(category)` 第三個 OR；user 輸入 category 名（如「DevOps」、「Testing」）即可命中對應分類所有 skill。對齊 GitHub / npm / Docker Hub 等通用 catalog 搜尋慣例。`?category=` 顯式 filter 仍維持精確 match（與此擴展正交）。
+
+### Added
+- **S043: Keyword Search Also Matches Category**（M39 落地）：
+  - **SQL 擴充**：`AND (LOWER(name) LIKE :kw OR LOWER(description) LIKE :kw OR LOWER(category) LIKE :kw)`
+  - **Unit test**：`SkillSearchTest.keywordSearchMatchesCategory`（fixture 含 2 DevOps + 1 Testing；`keyword=DevOps` → 2 個 result）
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 18 — HomePage 搜尋框輸入「DevOps」（既存 category 名）回 0 個 skill；違反通用搜尋 UX 期待
+
+### Verification
+- `./gradlew test` — 305 → 306 tests / 0 fail（1 新加）
+- E2E HTTP：`?keyword=DevOps` 從 0 → 25 skills（all category=DevOps）✓ AC-1
+- E2E HTTP：`?keyword=devops`（小寫）→ 25 skills ✓ AC-4
+- E2E HTTP：`?keyword=test&category=Testing` → 0（顯式 filter 精確 match 仍生效）✓ AC-5
+
+### Design Rationale
+- 對齊 GitHub / npm / Docker Hub 通用 catalog search 慣例（搜尋框跨多欄位）
+- 不加 `author` 至 keyword（隱私 + 通常為獨立 operator 設計，如 `author:alice`）
+- 不加 query param `?fields=` 細粒度控制（過早泛化；MVP 一個搜尋框 user 期待全文匹配）
+
+### Tech Debt
+- 規模成長至 ~10k skills 時可考慮 GIN trigram / full-text search index（目前 2-3 個 LIKE 在 < 1000 規模可忽略）
+- S031 §7.5 admin panel endpoint 仍待設計
+
+---
+
 ## [v2.19.0] — Aggregate description / category Validation（M38 完成；2026-05-01）
 
 > **Minor bump** — 補完 `Skill.create` aggregate 四欄位驗證：description（trim + blank reject + ≤ 1024 chars）+ category（trim + blank reject）。承接 S041，徹底封閉 JSON POST 之前缺驗證的破口。

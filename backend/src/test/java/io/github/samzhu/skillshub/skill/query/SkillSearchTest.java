@@ -85,4 +85,14 @@ class SkillSearchTest extends RepositorySliceTestBase {
         assertThat(categories).anyMatch(c -> "DevOps".equals(c.name()) && c.count() == 2);
         assertThat(categories).anyMatch(c -> "Testing".equals(c.name()) && c.count() == 1);
     }
+
+    @Test
+    @DisplayName("AC-S043: keyword 搜尋 category 名（DevOps）→ 命中該分類所有 skill")
+    void keywordSearchMatchesCategory() {
+        // fixture 含 2 個 DevOps + 1 個 Testing；keyword="DevOps" 應匹配 2 個（含 category match）
+        var page = queryService.search("DevOps", null, PageRequest.of(0, 20));
+
+        assertThat(page.getContent()).hasSize(2);
+        assertThat(page.getContent()).allMatch(s -> "DevOps".equals(s.getCategory()));
+    }
 }

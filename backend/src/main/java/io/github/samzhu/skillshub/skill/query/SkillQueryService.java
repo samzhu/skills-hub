@@ -119,8 +119,11 @@ public class SkillQueryService {
 		var params = new MapSqlParameterSource();
 
 		if (StringUtils.hasText(keyword)) {
+			// S043: 加入 category 比對 — user 在搜尋框輸入 category 名（如「DevOps」）即可命中對應分類所有 skill
+			// （對齊 GitHub / npm 等 catalog 通用 search 慣例）。`?category=` 顯式 filter 仍維持精確 match。
 			var clause = " AND (LOWER(name) LIKE LOWER(:kw) ESCAPE '\\' "
-					+ "OR LOWER(description) LIKE LOWER(:kw) ESCAPE '\\') ";
+					+ "OR LOWER(description) LIKE LOWER(:kw) ESCAPE '\\' "
+					+ "OR LOWER(category) LIKE LOWER(:kw) ESCAPE '\\') ";
 			sql.append(clause);
 			countSql.append(clause);
 			params.addValue("kw", "%" + sanitizeLikePattern(keyword) + "%");
