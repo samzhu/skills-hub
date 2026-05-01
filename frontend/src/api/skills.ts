@@ -1,4 +1,4 @@
-import { apiFetch } from './client'
+import { apiFetch, ApiError } from './client'
 import type { Skill, SpringPage, CategoryCount, SkillVersion } from '../types/skill'
 
 /**
@@ -72,8 +72,10 @@ export async function uploadSkill(file: File, version: string, author: string, c
   form.append('category', category)
   const res = await fetch('/api/v1/skills/upload', { method: 'POST', body: form })
   if (!res.ok) {
+    // S040: 與 apiFetch 對齊 — 拋 ApiError 攜 status + code，讓 caller 可走 i18n 翻譯
     const body = await res.json().catch(() => ({}))
-    throw new Error((body as { message?: string }).message ?? `Upload failed: ${res.status}`)
+    const b = body as { message?: string; error?: string }
+    throw new ApiError(res.status, b.message ?? `Upload failed: ${res.status}`, b.error)
   }
   return res.json() as Promise<{ id: string }>
 }
@@ -94,8 +96,10 @@ export async function addVersion(skillId: string, file: File, version: string): 
   form.append('version', version)
   const res = await fetch(`/api/v1/skills/${skillId}/versions`, { method: 'PUT', body: form })
   if (!res.ok) {
+    // S040: 與 apiFetch 對齊 — 拋 ApiError 攜 status + code
     const body = await res.json().catch(() => ({}))
-    throw new Error((body as { message?: string }).message ?? `Version upload failed: ${res.status}`)
+    const b = body as { message?: string; error?: string }
+    throw new ApiError(res.status, b.message ?? `Version upload failed: ${res.status}`, b.error)
   }
 }
 

@@ -1,5 +1,34 @@
 # Changelog
 
+## [v2.17.0] — Frontend Mutation Error i18n + Multipart 也用 ApiError（M36 完成；2026-05-01）
+
+> **Minor bump** — frontend mutation error UX 對齊 CLAUDE.md「UI 語言: 繁體中文」原則：upload / addVersion 失敗時不再顯示英文後端訊息，改用 i18n Record map 翻譯。同時 `uploadSkill` / `addVersion` 也拋 `ApiError`，與 `apiFetch` 行為一致。
+
+### Added
+- **S040: Frontend Mutation Error i18n + Multipart 也用 ApiError**（M36 落地）：
+  - **`uploadSkill` / `addVersion` 改 throw `ApiError`**：與 `apiFetch` 對齊；攜 status + code（從 backend `ErrorResponse.error` 解析）
+  - **`frontend/src/lib/api-error-messages.ts`（new）**：8 個 backend error code 對繁中模板（PAYLOAD_TOO_LARGE / VALIDATION_ERROR / MULTIPART_ERROR / VERSION_EXISTS / STATE_CONFLICT / CONCURRENT_MODIFICATION / NOT_FOUND / SKILL_SUSPENDED）+ `localizeApiError(err)` helper
+  - **`PublishPage` + `SkillDetailPage` AddVersionForm**：error 顯示改 `localizeApiError(mutation.error)`；未知 code fallback 至 `error.message`
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 15 — PublishPage 直接顯示「Upload size exceeds the 10 MB limit」於繁中 UI；違反 CLAUDE.md UI 語言原則
+
+### Verification
+- `npm test` — 10/10 PASS
+- `tsc -b` — 0 errors
+- `npm run lint` — 0 warnings
+- backend 三類 error shape 確認（413 / 400 / 404）
+
+### Pattern
+- mirror S028 STATUS_LABEL / S036 RISK_DESCRIPTION 的 Record-based i18n pattern；scope 小，不引入 i18next 等框架
+
+### Tech Debt
+- HomePage / AnalyticsPage list errors 可漸進採用 `localizeApiError`
+- S031 §7.5 admin panel endpoint 仍待設計
+
+---
+
 ## [v2.16.0] — Frontend Typed ApiError + 404 vs Server Error（M35 完成；2026-05-01）
 
 > **Minor bump** — frontend `apiFetch` 拋自訂 `ApiError`（含 `status` + `code`）；`SkillDetailPage` 區分 404 not-found 與其他 server / network error。改善 server 中斷時誤導 user「skill 不存在」的 UX。

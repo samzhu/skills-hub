@@ -15,6 +15,7 @@ import { useSkill } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
 import { addVersion } from '@/api/skills'
 import { ApiError } from '@/api/client'
+import { localizeApiError } from '@/lib/api-error-messages'
 import type { RiskLevel, SkillStatus } from '@/types/skill'
 
 /**
@@ -267,7 +268,8 @@ function AddVersionForm({ skillId }: { skillId: string }) {
         </button>
       </form>
       {mutation.isError && (
-        <p className="mt-2 text-sm text-red-600">{mutation.error.message}</p>
+        // S040: 後端 error code 翻譯為繁中；未知 code fallback 至 error.message
+        <p className="mt-2 text-sm text-red-600">{localizeApiError(mutation.error)}</p>
       )}
       {mutation.isSuccess && (
         <p className="mt-2 text-sm text-green-600">版本新增成功！</p>

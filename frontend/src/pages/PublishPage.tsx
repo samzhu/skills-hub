@@ -6,6 +6,7 @@ import { FileDropZone } from '@/components/FileDropZone'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { uploadSkill } from '@/api/skills'
+import { localizeApiError } from '@/lib/api-error-messages'
 
 /**
  * 技能發佈頁：提供表單讓使用者上傳新的 Skill zip 套件。
@@ -109,7 +110,8 @@ export function PublishPage() {
             {mutation.isError && (
               <div className="mt-4 rounded-md bg-red-50 p-4 text-red-800">
                 <p className="font-medium">發佈失敗</p>
-                <p className="text-sm">{mutation.error.message}</p>
+                {/* S040: 後端 error code 翻譯為繁中；未知 code fallback 至 error.message */}
+                <p className="text-sm">{localizeApiError(mutation.error)}</p>
               </div>
             )}
           </CardContent>
