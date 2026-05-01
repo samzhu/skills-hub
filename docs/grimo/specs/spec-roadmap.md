@@ -180,6 +180,12 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M77: Design Token Migration | S081 | S(5) | 547 | ✅ `v2.58.0` (2026-05-01 — `frontend/src/index.css` 套 DESIGN.md tokens；55 colors + 6 radius + 3 font stack；UI foundation；後續 per-page rework S082-S085 排隊) |
 | Phase 4 | M78: SkillDetailPage Files Tab UI | S082 | S(5) | 552 | ✅ `v2.59.0` (2026-05-01 — 4th tab「檔案」接 S074 backend API；FilesPanel 左 list + 右 viewer；text/image/binary/oversize 邊界全 handle；user-driven feature 完成 backend → frontend 全鏈路) |
 | Phase 4 | M79: `BorderBeam` light theme tuning | S083 | XS(1) | 553 | ✅ `v2.59.1` (2026-05-01 — `theme="light" duration={4.5} strength={0.7}`；fix 在 #FFFFFF 背景上 dark-tuned beam 偏霧；對齊 DESIGN.md §Elevation 4-5s rotation + user playground 偏好) |
+| Phase 4 | M80: UI Rework META（splits S085-S089） | S084 | M(12) | — | 📐 in-design (2026-05-01 — META spec only；產出 5 sub-spec roadmap + 共用 components 候選 + BorderBeam 路徑研究結論) |
+| Phase 4 | M81: HomePage rework + reusable components 抽取 | S085 | S(8) | — | 📋 backlog — 對 `skills_hub_homepage_mockup.html`；同 batch 帶 S089 BeamFrame；定義 IconTile / Pill / Callout |
+| Phase 4 | M82: PublishPage rework | S086 | XS(5) | — | 📋 backlog — 對 `skill_publish_upload_flow.html` + `skill_publish_failure_and_high_risk_states.html` |
+| Phase 4 | M83: SkillDetailPage rework | S087 | S(7) | — | 📋 backlog — 對 `skill_detail_page_docker_compose_helper.html`；含 Files tab (S082) 重新整合 |
+| Phase 4 | M84: AnalyticsPage rework | S088 | XS(5) | — | 📋 backlog — 對 `platform_analytics_dashboard_admin_view.html`；metric cards + sparkline + activity feed |
+| Phase 4 | M85: BorderBeam hand-roll BeamFrame（drop border-beam dep） | S089 | XS(3) | — | 📋 backlog — drop border-beam npm；hand-roll conic-gradient 1px frame per prototype；研究結論 light theme 物理不可避免（per S084 §2.2） |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）
