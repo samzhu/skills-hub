@@ -76,6 +76,8 @@ export function PublishPage() {
                     onChange={(e) => setCategory(e.target.value)}
                     placeholder="DevOps"
                     required
+                    // S068: 對齊 backend skills.category varchar(50) 上限
+                    maxLength={50}
                   />
                 </div>
               </div>
@@ -87,6 +89,8 @@ export function PublishPage() {
                   onChange={(e) => setAuthor(e.target.value)}
                   placeholder="your-name"
                   required
+                  // S068: 對齊 backend skills.author varchar(255) 上限
+                  maxLength={255}
                 />
               </div>
 

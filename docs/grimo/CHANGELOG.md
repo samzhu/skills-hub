@@ -1,5 +1,16 @@
 # Changelog
 
+## [v2.46.0] — PublishPage Form maxLength Constraint（M64 完成；2026-05-01）
+
+> **Patch-class minor** — `PublishPage` category / author input 加 HTML5 `maxLength` 對齊 DB column 上限：category 50、author 255。User 不再 round-trip 至 backend 收 CONSTRAINT_VIOLATION 才知超限。
+
+### Changed
+- **S068: PublishPage Form maxLength Constraint**（M64）：
+  - `category`: maxLength={50}
+  - `author`: maxLength={255}
+
+---
+
 ## [v2.45.0] — Version Input HTML5 Pattern Pre-Validation（M63 完成；2026-05-01）
 
 > **Patch-class minor** — `PublishPage` + `AddVersionForm` 的 version input 加 HTML5 `pattern` 屬性，client-side 即時拒絕非 semver 輸入（如「foo」）；先前須 round-trip 至 backend 收 400 才知錯。

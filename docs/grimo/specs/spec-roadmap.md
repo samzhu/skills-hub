@@ -164,6 +164,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M61: ApiError HMR-Safe + Query networkMode | S065 | XS(5) | 487 | ✅ `v2.42.0` (2026-05-01 — ApiError.is() 替代 instanceof；3 處 caller 統一；QueryClient networkMode='always' 預設；hotfix v2.43.0 retry on 4xx → false 解 Bug AC) |
 | Phase 4 | M62: METHOD_NOT_ALLOWED i18n Coverage | S066 | XS(5) | 492 | ✅ `v2.44.0` (2026-05-01 — frontend i18n 補 METHOD_NOT_ALLOWED；12/12 backend codes 全覆蓋) |
 | Phase 4 | M63: Version Input HTML5 Pattern Pre-Validation | S067 | XS(5) | 497 | ✅ `v2.45.0` (2026-05-01 — version input 加 HTML5 pattern；client-side 預驗對齊 backend S056；inline 註解記 Chrome pattern 兩陷阱) |
+| Phase 4 | M64: PublishPage Form maxLength Constraint | S068 | XS(5) | 502 | ✅ `v2.46.0` (2026-05-01 — category/author input 加 maxLength 對齊 DB varchar 上限；client-side 防超限) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）
