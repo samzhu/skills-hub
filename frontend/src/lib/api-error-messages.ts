@@ -13,6 +13,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   PAYLOAD_TOO_LARGE: '檔案過大，請選擇 10 MB 以內的 zip 套件。',
   VALIDATION_ERROR: 'zip 套件驗證失敗，請確認格式正確。',
   MULTIPART_ERROR: '上傳請求格式不正確，請重新整理頁面後重試。',
+  INVALID_REQUEST_BODY: '請求內容缺失或格式錯誤，請重試。',
   VERSION_EXISTS: '此版本號已存在，請改用其他版本號。',
   STATE_CONFLICT: '操作與目前狀態衝突，請重新整理後重試。',
   DUPLICATE_RESOURCE: '此名稱已被使用，請換一個名稱。',

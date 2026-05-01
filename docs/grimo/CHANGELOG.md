@@ -1,5 +1,25 @@
 # Changelog
 
+## [v2.29.0] — HttpMessageNotReadableException → 400 INVALID_REQUEST_BODY（M48 完成；2026-05-01）
+
+> **Minor bump** — 修補預設訊息洩漏 controller method 完整 fully-qualified class name + 巢狀類別 + 參數 type list（屬資訊洩漏）。涵蓋 missing body、malformed JSON、type mismatch 三種 Jackson-wrapped 情境，frontend i18n 顯繁中。
+
+### Added
+- **S052: HttpMessageNotReadableException → 400 INVALID_REQUEST_BODY**（M48 落地）：
+  - `@ExceptionHandler(HttpMessageNotReadableException.class)` → 400 + 固定 message「Request body is missing or malformed」
+  - i18n `INVALID_REQUEST_BODY: '請求內容缺失或格式錯誤，請重試。'`
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 26 API probe — `POST /api/v1/skills/{id}/suspend` 不帶 body 時 response 暴露完整 controller method 簽名
+
+### Verification
+- `./gradlew test` — 286 / 0 fail
+- `npm test` — 10 / 0 fail
+- E2E：missing body / malformed JSON / 合法 body 三場景驗證
+
+---
+
 ## [v2.28.0] — DuplicateKeyException → 409 DUPLICATE_RESOURCE（M47 完成；2026-05-01）
 
 > **Minor bump** — 重複 skill name 提交不再回 500 + 暴露完整 SQL exception 訊息（含 INSERT 語句、column list、constraint 名稱）；改 normalize 為 409 + `DUPLICATE_RESOURCE` code + 固定 user-friendly message。Frontend i18n 加「此名稱已被使用，請換一個名稱。」

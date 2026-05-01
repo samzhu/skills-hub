@@ -11,6 +11,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -137,6 +138,26 @@ public class GlobalExceptionHandler {
 				.log("State conflict");
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(new ErrorResponse("STATE_CONFLICT", ex.getMessage(), Instant.now()));
+	}
+
+	/**
+	 * S052：處理請求 body 缺失或格式錯誤（{@link HttpMessageNotReadableException}）。
+	 *
+	 * <p>Spring Boot 預設訊息 echo controller 完整 method 簽名（fully-qualified class name +
+	 * 巢狀類別 name + 參數 type list）— 屬資訊洩漏，attacker 可掃描所有 endpoint 列出 internal
+	 * class 結構。本 handler 統一 normalize 至固定 user-friendly message；raw message 留 log
+	 * 利 ops 排查。涵蓋 missing body / malformed JSON / type mismatch 三場景。
+	 */
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "INVALID_REQUEST_BODY")
+				.addKeyValue("rawMessage", ex.getMessage())
+				.log("Unreadable request body");
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ErrorResponse("INVALID_REQUEST_BODY",
+						"Request body is missing or malformed",
+						Instant.now()));
 	}
 
 	/**
