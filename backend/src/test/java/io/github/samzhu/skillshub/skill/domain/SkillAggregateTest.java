@@ -340,4 +340,58 @@ class SkillAggregateTest {
             throw new RuntimeException("Failed to invoke clearDomainEvents() via reflection", e);
         }
     }
+
+    // ============================================================================
+    // S041 — Skill.create input invariant validation
+    // ============================================================================
+
+    @Test
+    @Tag("AC-S041")
+    @DisplayName("AC-S041: name 違反 agentskills.io regex（uppercase）→ IllegalArgumentException")
+    void create_invalidName_throws() {
+        assertThatThrownBy(() -> Skill.create(
+                new CreateSkillCommand("BadName", "desc", "alice", "DevOps")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must match")
+                .hasMessageContaining("BadName");
+    }
+
+    @Test
+    @Tag("AC-S041")
+    @DisplayName("AC-S041: name 為空字串 → IllegalArgumentException")
+    void create_emptyName_throws() {
+        assertThatThrownBy(() -> Skill.create(
+                new CreateSkillCommand("", "desc", "alice", "DevOps")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must match");
+    }
+
+    @Test
+    @Tag("AC-S041")
+    @DisplayName("AC-S041: author 空白「   」trim 後為 blank → IllegalArgumentException（避免 ACL user: :read 畸形）")
+    void create_blankAuthor_throws() {
+        assertThatThrownBy(() -> Skill.create(
+                new CreateSkillCommand("blank-author-test", "desc", "   ", "DevOps")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must not be blank");
+    }
+
+    @Test
+    @Tag("AC-S041")
+    @DisplayName("AC-S041: author null（caller 顯式不傳）→ 允許，ACL 只 seed *:read（測試 fixture 用）")
+    void create_nullAuthor_seedsPublicReadOnly() {
+        var skill = Skill.create(new CreateSkillCommand("null-author-test", "desc", null, "DevOps"));
+
+        assertThat(skill.getAuthor()).isNull();
+        assertThat(skill.getAclEntries()).containsExactly("*:read");
+    }
+
+    @Test
+    @Tag("AC-S041")
+    @DisplayName("AC-S041: name 含前後空白 → trim 後驗證並儲存 trimmed")
+    void create_nameWithWhitespace_trimmedAndStored() {
+        var skill = Skill.create(new CreateSkillCommand("  valid-name  ", "desc", "alice", "DevOps"));
+
+        assertThat(skill.getName()).isEqualTo("valid-name");
+    }
 }

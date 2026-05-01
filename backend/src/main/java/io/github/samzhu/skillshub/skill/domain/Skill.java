@@ -88,11 +88,28 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     public static Skill create(CreateSkillCommand cmd) {
         Objects.requireNonNull(cmd.name(), "name is required");
         Objects.requireNonNull(cmd.description(), "description is required");
+        // S041: name 必符 agentskills.io 正規格式（與 SkillValidator.NAME_REGEX 一致；
+        // 不從 SkillValidator import 因 module 邊界 — domain 不依賴 validation 子模組）。
+        // 變更時需手動同步兩處 regex literal。
+        var name = cmd.name().trim();
+        if (!NAME_REGEX.matcher(name).matches()) {
+            throw new IllegalArgumentException(
+                    "Skill name must match ^[a-z0-9-]{1,64}$ (got: " + cmd.name() + ")");
+        }
+        // S041: author trim；非 null 但 blank（"" / "   "）→ 拒絕（IllegalArgumentException → 400）。
+        // 不靜默 null-out 因 schema `skills.author NOT NULL`；blank author 也會產生
+        // ACL "user: :read" 畸形（principal 段空白），語意不清。null author（caller 顯式不傳）
+        // 仍允許 — 用於 unit test fixture 控制 ACL seed 行為；該 path 在 prod schema 下不會持久化成功。
+        var author = cmd.author() == null ? null : cmd.author().trim();
+        if (author != null && author.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Skill author must not be blank (got: " + cmd.author() + ")");
+        }
         var skill = new Skill();
         skill.id = UUID.randomUUID().toString();
-        skill.name = cmd.name();
+        skill.name = name;
         skill.description = cmd.description();
-        skill.author = cmd.author();
+        skill.author = author;
         skill.category = cmd.category();
         skill.status = SkillStatus.DRAFT;
         skill.latestVersion = null;
@@ -101,12 +118,12 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         // S016 自動 seed owner ACL（owner 為 author；無 author 時仍 seed public read）
         // S026: 加 "*:read" public-read pseudo-principal — skill 預設對所有使用者開放讀取
         // （write/delete/suspend/reactivate 仍 owner-only）。
-        skill.aclEntries = cmd.author() == null
+        skill.aclEntries = author == null
                 ? new ArrayList<>(List.of("*:read"))
                 : new ArrayList<>(List.of(
-                        "user:" + cmd.author() + ":read",
-                        "user:" + cmd.author() + ":write",
-                        "user:" + cmd.author() + ":delete",
+                        "user:" + author + ":read",
+                        "user:" + author + ":write",
+                        "user:" + author + ":delete",
                         "*:read"));
         skill.createdAt = Instant.now();
         skill.updatedAt = skill.createdAt;
@@ -114,9 +131,13 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         // 在 INSERT 後寫回 version=0（per deepwiki/aggregate-design.md §1.@Version + §4.isNew）
         skill.version = null;
         skill.registerEvent(new SkillCreatedEvent(
-                skill.id, cmd.name(), cmd.description(), cmd.author(), cmd.category()));
+                skill.id, name, cmd.description(), author, cmd.category()));
         return skill;
     }
+
+    /** S041: agentskills.io 正規格式（與 {@code SkillValidator.NAME_REGEX} 同字面）。 */
+    private static final java.util.regex.Pattern NAME_REGEX =
+            java.util.regex.Pattern.compile("^[a-z0-9-]{1,64}$");
 
     /**
      * SkillQueryService 動態 SQL search 場景的 row → entity 物化 factory。

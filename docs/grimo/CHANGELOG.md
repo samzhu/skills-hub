@@ -1,5 +1,32 @@
 # Changelog
 
+## [v2.18.0] — Skill Aggregate Input Validation（M37 完成；2026-05-01）
+
+> **Minor bump** — `Skill.create` aggregate factory 加 invariant 守門：name 必符 agentskills.io regex；author 拒絕 blank；補 JSON POST path 之前缺乏驗證的破口。前端與後端 entry path（multipart upload + JSON POST）行為一致，畸形 ACL `user::read` 不再產生。
+
+### Added
+- **S041: Skill Aggregate Input Validation**（M37 落地）：
+  - **`NAME_REGEX = ^[a-z0-9-]{1,64}$`** 常數（與 `SkillValidator.NAME_REGEX` 同字面）— domain 不依賴 validation 子模組，複製 regex literal + inline 註解提醒同步
+  - **`name` 驗證**：trim 後 match regex；違反 → IllegalArgumentException → 400 VALIDATION_ERROR
+  - **`author` 驗證**：trim；非 null 但 blank（`""` / `"   "`）→ IllegalArgumentException → 400（不 silent null-out — schema `skills.author NOT NULL` 會 fail；user 應收明確錯誤）
+  - **null author 仍允許**（用於 unit test fixture 控制 ACL seed；prod schema 下不會持久化成功）
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 16 — `POST /api/v1/skills` JSON path 接受 `name=""` / `name="BadName"` / `author="   "`，產生畸形 ACL `user::read` / `user:   :read`
+
+### Verification
+- `./gradlew test` — 296 → 301 tests / 0 fail（5 新加）
+- E2E HTTP：5 個 AC 綠燈
+
+### Defense-in-depth
+- Aggregate factory 是 invariant 最終守門 — 在 `Skill.create` 守可保護所有 entry path（multipart upload + JSON POST + 未來新 path）；不依賴 controller / DTO 層註解
+
+### Tech Debt
+- S031 §7.5 admin panel endpoint 仍待設計
+
+---
+
 ## [v2.17.0] — Frontend Mutation Error i18n + Multipart 也用 ApiError（M36 完成；2026-05-01）
 
 > **Minor bump** — frontend mutation error UX 對齊 CLAUDE.md「UI 語言: 繁體中文」原則：upload / addVersion 失敗時不再顯示英文後端訊息，改用 i18n Record map 翻譯。同時 `uploadSkill` / `addVersion` 也拋 `ApiError`，與 `apiFetch` 行為一致。
