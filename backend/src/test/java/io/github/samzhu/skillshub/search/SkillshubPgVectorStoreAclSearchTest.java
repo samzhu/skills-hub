@@ -242,12 +242,13 @@ class SkillshubPgVectorStoreAclSearchTest {
 
         private String seedVector(String owner, List<String> aclEntries) {
             // FK 前置 — vector_store.skill_id REFERENCES skills(id)
+            // S059: status 改 PUBLISHED — semantic search SQL 加 JOIN skills WHERE status='PUBLISHED'
             var skillId = UUID.randomUUID().toString();
             var now = Instant.now();
             skillRepo.save(Skill.fromRow(
                     skillId, "vec-acl-search-" + skillId.substring(0, 8),
                     "T2 ACL search fixture", owner, "Testing",
-                    null, null, "DRAFT", 0L, now, now, List.of(), null));
+                    null, null, "PUBLISHED", 0L, now, now, List.of(), null));
 
             // 寫 vector_store row 帶 acl_entries（用 SkillshubPgVectorStore writer 路徑）
             SkillshubPgVectorStore.builder(jdbc, embeddingModel)

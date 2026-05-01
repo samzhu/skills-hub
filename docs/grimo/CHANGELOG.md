@@ -1,5 +1,27 @@
 # Changelog
 
+## [v2.36.0] — Semantic Search PUBLISHED-Only Visibility（M55 完成；2026-05-01）
+
+> **Minor bump** — `/api/v1/search/semantic` SQL 加 JOIN skills + WHERE status='PUBLISHED' filter，對齊 S031 list/categories endpoint 視 visibility。先前 DRAFT/SUSPENDED skills（vector_store 仍有 embedding row）會公開呈現於 semantic search 結果。
+
+### Added
+- **S059: Semantic Search PUBLISHED-Only Visibility**（M55 落地）：
+  - `SIMILARITY_SEARCH_SQL_ACL` 加 JOIN skills + status filter
+  - 對齊 S031 設計（query-side filter，非 write-side）
+  - **4 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 32 Chrome E2E — HomePage semantic mode 顯示 10 結果含明顯 DRAFT skills，違反 S031「公開只見 PUBLISHED」設計
+
+### Verification
+- `./gradlew test` — 286 / 0 fail（含 4 既有 ACL test 對齊 seed 改 PUBLISHED）
+- E2E：semantic 9 results 全 PUBLISHED（DB 對照確認）
+
+### Tech Debt（同 tick 32 發現）
+- Frontend `SemanticSearchResult` 沒 `status` field；SkillCard 視 undefined 為 non-PUBLISHED → 卡片顯「草稿」badge 即使結果 PUBLISHED — 留下一輪修
+
+---
+
 ## [v2.35.0] — Flag Input Validation（M54 完成；2026-05-01）
 
 > **Minor bump** — `POST /api/v1/skills/{id}/flags` 缺 `type` 不再噴 NPE 500「No message available」；改 400 + VALIDATION_ERROR + 友善訊息。`FlagService.createFlag` 預驗 type/description；payload 改 HashMap 構築允許 nullable description。

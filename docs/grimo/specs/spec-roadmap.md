@@ -155,6 +155,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M52: Version Semver Validation | S056 | XS(5) | 442 | ✅ `v2.33.0` (2026-05-01 — Skill aggregate 加 VERSION_REGEX；recordVersionPublished 預驗 semver；foo/空/超長 全 400；解 Q/R/T 三 bug) |
 | Phase 4 | M53: DataIntegrityViolationException Catch-All | S057 | XS(5) | 447 | ✅ `v2.34.0` (2026-05-01 — DataIntegrityViolation 父類 catch-all → 400 CONSTRAINT_VIOLATION；S051 dup key 仍 409 不破；累計 5 層 default-error 防漏網) |
 | Phase 4 | M54: Flag Input Validation | S058 | XS(5) | 452 | ✅ `v2.35.0` (2026-05-01 — POST flags 缺 type 不再 500 NPE；type 預驗 + payload HashMap 允許 null description；解 Map.of NPE 陷阱) |
+| Phase 4 | M55: Semantic Search PUBLISHED-Only Visibility | S059 | XS(5) | 457 | ✅ `v2.36.0` (2026-05-01 — semantic SQL 加 JOIN skills + status='PUBLISHED' filter；對齊 S031；DRAFT/SUSPENDED 不再公開呈現於 semantic 結果) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

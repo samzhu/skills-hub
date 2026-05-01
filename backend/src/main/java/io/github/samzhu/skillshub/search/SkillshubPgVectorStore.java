@@ -126,11 +126,15 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
      *   <li>topK * OVERSAMPLE_FACTOR（int）</li>
      * </ol>
      */
+    // S059: JOIN skills + status='PUBLISHED' filter — 與 S031 list/categories visibility 一致；
+    // DRAFT/SUSPENDED 即使有 vector embedding 也不公開呈現。idx_skills_status btree 加 JOIN 成本可忽略。
     static final String SIMILARITY_SEARCH_SQL_ACL = """
-            SELECT id, content, metadata, embedding <=> ? AS distance
-              FROM vector_store
-             WHERE acl_entries ??| ?::text[]
-               AND embedding <=> ? < ?
+            SELECT vs.id, vs.content, vs.metadata, vs.embedding <=> ? AS distance
+              FROM vector_store vs
+              JOIN skills s ON s.id = vs.skill_id
+             WHERE s.status = 'PUBLISHED'
+               AND vs.acl_entries ??| ?::text[]
+               AND vs.embedding <=> ? < ?
              ORDER BY distance
              LIMIT ?
             """;

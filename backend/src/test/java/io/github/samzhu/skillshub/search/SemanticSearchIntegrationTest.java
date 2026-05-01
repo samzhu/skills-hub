@@ -92,9 +92,10 @@ class SemanticSearchIntegrationTest {
     void semanticSearchReturnsResultsWithAllRequiredFields() {
         // FK 前置：skills row 必須存在（vector_store.skill_id REFERENCES skills.id）
         var now = Instant.now();
+        // S059: status 改 PUBLISHED — semantic search SQL 加 JOIN skills WHERE status='PUBLISHED'
         skillRepo.save(Skill.fromRow(
                 TEST_DOC_ID, "docker-compose-helper", "管理 Docker Compose 多容器部署",
-                "sam", "DevOps", "1.0.0", "LOW", "DRAFT", 0L, now, now,
+                "sam", "DevOps", "1.0.0", "LOW", "PUBLISHED", 0L, now, now,
                 List.of(), null));
 
         // S017：TestRestTemplate 不帶 JWT → CurrentUserProvider fallback (labUserId="lab-user", ["admin"], [])
