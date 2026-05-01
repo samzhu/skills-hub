@@ -487,6 +487,31 @@ Pre-condition: LlmJudge engine enabled in dev profile (commit 97cc24b)
 - LLM 解說品質：HIGH 三案皆精準
 - Calibration tech debt logged for future S090+
 
+---
+
+## Tick 76 — Round 30: MEDIUM tier reachability probe (2026-05-01)
+
+5 borderline fixtures to map LLM Judge calibration boundary（refines R29's MEDIUM hypothesis）:
+
+| # | Fixture | Got | Findings | Severities | LLM Reasoning Highlight |
+|---|---------|-----|----------|------------|-------------------------|
+| 30.1 | read-only Bash (cat/ls/grep) | HIGH | 3 | {5.0, 8.5} | "user input + Bash = command injection (AST-SKILL-001)"；description-vs-impl mismatch |
+| 30.2 | write /tmp (echo+cp) | HIGH | 3 | {5.0, 8.5} | 同上 pattern |
+| 30.3 | git inspection (status/diff/log) | HIGH | 1 | {8.5} | "declares Bash 但 SCRIPTS section 空的，why declare Bash if no script?" |
+| 30.4 | /etc/hostname | **MEDIUM ✓** | 1 | {5.0} | 證實 MEDIUM 可達 |
+| 30.5 | docker ops (no privileged) | **LOW** | 0 | — | LLM 看不出 concern |
+
+**重大發現**:
+1. **MEDIUM IS reachable** — R29 sample bias 修正；正常系統可產生 LOW/MEDIUM/HIGH 三 tier
+2. **LLM 智商高** — 識別 description-vs-impl mismatch、empty-scripts-but-Bash、command injection 向量；reasoning 都對應真實 supply chain attack 模式
+3. **Severity → tier mapping 是黑白分明**：任何 8.5 → HIGH；只 5.0 → MEDIUM；0 → LOW（無 weighted scoring）
+
+### Tick 76 Summary
+- Round 30: 5 cases / **0 new bugs**
+- MEDIUM tier 證實可達（撤銷 R29 0-MEDIUM 假設）
+- LLM reasoning 智商高，真有抓到 supply chain attack pattern
+- Calibration 是 design choice (conservative security-first)；future S090+ 可考慮 weighted scoring
+
 
 
 

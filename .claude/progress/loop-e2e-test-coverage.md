@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 75 (2026-05-01) — Round 29 LLM 解說 + 中高風險評分 E2E. LLM 解說品質 HIGH；MEDIUM tier calibration 觀察（0 active bugs）
+> Latest tick: 76 (2026-05-01) — Round 30 MEDIUM tier reachability probe. **MEDIUM IS reachable**（R29 sample bias）；LLM reasoning 智能識別 description-vs-impl mismatch + command injection 向量；calibration 是 design choice（0 active bugs）
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -198,6 +198,17 @@
 >     - Design-level discussion：conservative philosophy（security-first）vs nuanced（避免 alarm fatigue）
 >     - 1 個 datapoint 不夠 calibrate；留 future S090+ severity calibration spec
 >     **0 new bugs**（calibration 是設計選擇，非實作 bug）。
+>   tick 76 (loop cron 10m fc4a79bb, Round 30 MEDIUM reachability probe, 2026-05-01):
+>     R30 (5 borderline fixtures probing LLM Judge calibration boundary):
+>     - **30.1 read-only Bash (cat/ls/grep)** → HIGH (3 findings, {5.0, 8.5})；LLM 識別「user input + Bash = command injection vector」(AST-SKILL-001) + 「description claims read-only but allowed-tools=Bash 是 full access」inconsistency (AST-SKILL-003)
+>     - **30.2 write to /tmp (echo + cp)** → HIGH (3 findings, {5.0, 8.5})；同 30.1 pattern
+>     - **30.3 git inspection (status/diff/log)** → HIGH (1 finding, {8.5})；LLM「declares Bash 但 SCRIPTS section 是空的，why declare Bash if no script?」(AST-6-EMPTY-SCRIPT-BASH-ACCESS) — 真有道理
+>     - **30.4 reads /etc/hostname** → **MEDIUM** ✓ (1 finding, {5.0}) — **MEDIUM tier 證實 reachable**
+>     - **30.5 docker ops (run/exec, no privileged)** → **LOW** (0 findings) — LLM 看不出 concern
+>     **重大發現 1：MEDIUM IS reachable** — R29 0 個 MEDIUM 是 sample bias；R30 1/5 case 為 MEDIUM。系統正常產生 LOW/MEDIUM/HIGH 三 tier。
+>     **重大發現 2：LLM reasoning 真有智商** — 識別 description-vs-impl mismatch (claims "read-only" 但 Bash full access)，識別 empty-scripts-but-Bash 不對勁，識別 command injection 向量（user input + shell）。這些都是真實 supply chain attack 模式。
+>     **判定**：不是 bug，是 conservative-by-design — LLM 對「Bash + user input」嚴重度給 8.5 反映企業 registry 安全優先；可未來改 weighted scoring (count×severity matrix) 但需更大 corpus 驗證。
+>     **0 new bugs**。Calibration 觀察 already in tech debt for future S090+ severity calibration spec.
 >   tick 71 (loop cron 10m fc4a79bb, Round 27 API consistency audit, 2026-05-01):
 >     R27.1 跨 6 個 endpoint 探測 error response shape：5/6 標準 `{error, message, timestamp}` JSON shape ✓；**1 個發現 Bug AM**：`POST /api/v1/skills/upload` 缺 `version` form param 時 Spring 預設 error handler 直接回 `{timestamp, status, error: "Bad Request", message, path}` shape，繞過 GlobalExceptionHandler 的 ErrorResponse 結構。
 >     **影響**：FE i18n（S066 / S041）用 `error` code 對應 localized message；「Bad Request」(HTTP reason phrase) 不在 12 個 backend code 白名單 → silent fallthrough，user 看到 raw EN 訊息或泛用 fallback。
