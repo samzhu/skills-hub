@@ -153,3 +153,26 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - S073 fix end-to-end 確認生效；canonical Anthropic SKILL.md 形狀完全相容
 - 中文 semantic search 對英文技能正確 retrieve（vector embedding 多語言能力驗證）
 
+---
+
+## Tick 59 — Round 17: download bytes integrity (2026-05-01)
+
+確認 zip 上傳後 → 下載 → SHA256 完全相同；多版本互不污染；suspend/missing 邊界。
+
+| # | 類別 | Case | Result |
+|---|------|------|--------|
+| 17.1 | 正例 | 296-byte minimal zip → upload → download | PASS — SHA match；filename `r17-roundtrip-minimal-1.0.0.zip` (S061) |
+| 17.2 | 正例 | 51KB multi-file zip（SKILL.md + refs + 51200-byte binary blob） | PASS — SHA match；binary content 完全保留 |
+| 17.3 | 邊緣 | multi-version：v1.0.0 → PUT v1.1.0 → 三條 download 路徑驗證 | PASS — latest=v1.1.0 ✓；`/versions/1.0.0/download` = 原始 ✓；`/versions/1.1.0/download` = 新 ✓ |
+| 17.4 | 反例 | SUSPENDED skill `/download` | PASS — **403 SKILL_SUSPENDED**「Skill is suspended and cannot be downloaded」 |
+| 17.5 | 反例 | `/versions/9.9.9/download` (不存在) | PASS — 404 NOT_FOUND「Version 9.9.9 not found」 |
+| 17.6 | 邊緣 | 同一 latest 連續下載 3 次 | PASS — 三次 SHA256 完全一致（無 byte-drift） |
+
+**Note**：17.4 的 403 vs 404 設計正確 — SUSPENDED 是 explicit business state（已存在但不可下載），404 應留給「skill 真的不存在」。Frontend 可區分顯示「已下架」vs「不存在」。
+
+### Tick 59 Summary
+- Round 17: 6 cases / **0 new bugs**
+- byte 層級 round-trip 在 single-file / multi-file / binary blob / multi-version 場景全 GREEN
+- suspended skill download 防護生效（403 SKILL_SUSPENDED）
+- 多版本三條 download 路徑（latest / explicit-v1.0.0 / explicit-v1.1.0）互不污染
+
