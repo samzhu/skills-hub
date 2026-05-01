@@ -1,5 +1,27 @@
 # Changelog
 
+## [v2.58.0] — Design Token Migration（DESIGN.md → index.css；M77 完成；2026-05-01）
+
+> **UI Foundation** — User-driven 「參考 DESIGN.md 設計語言優化畫面」。先做 token foundation，後續 per-page rework（S082-S085）才有正確顏色基底。`frontend/src/index.css` 從 shadcn 預設 monochrome oklch tokens 遷至 DESIGN.md spec：warm off-white surface (#FFFFFF) + 灰 ink text (#181818) + purple accent (#7F77DD) + 完整 4-tier semantic (success/warning/danger/info) + 6 category tints + Inter/JetBrains Mono/Source Serif Pro 字體 stack。
+
+### Added
+- **S081: Design Token Migration**（M77）：
+  - 55 個 color tokens（13 shadcn alias + 5 accent + 3 info + 5 success + 5 warning + 5 danger + 12 category + 7 prototype-compat aliases）
+  - 6 radius scale（xs 3px / sm 4px / md 8px / lg 12px / xl 16px / pill 999px）
+  - 3 font stack（sans Inter / mono JetBrains Mono / serif Source Serif Pro）
+  - shadcn convention 命名（`--color-primary` / `--color-foreground`）保留 backward compat — 既有 components 自動套新色彩
+  - 新 utility classes：`bg-accent-soft` / `text-success-deep` / `bg-category-devops` / `border-warning-mid` 等 Tailwind v4 自動生成
+  - Prototype HTML 引用的舊變數名（`--color-text-primary` / `--color-background-primary`）用 `:root` 補齊，方便 prototype port
+
+### Verification
+- 11 frontend tests / 0 fail
+- `npm run build` 成功（dist 30KB CSS / 389KB JS / 250ms）
+
+### Follow-up
+S082-S085 per-page reworks 排隊：HomePage / PublishPage / SkillDetailPage（含 Files tab UI 接 S074 backend API）/ AnalyticsPage。
+
+---
+
 ## [v2.57.0] — Missing param error shape 統一（M76 完成；2026-05-01）
 
 > **Bug fix** — `POST /api/v1/skills/upload` 缺 form param 時 Spring 預設 error handler 直接回，繞過 GlobalExceptionHandler 的標準 `ErrorResponse{error, message, timestamp}` shape，回成 `{timestamp, status, error: "Bad Request", message, path}` 預設 shape。`error` 欄位變「Bad Request」（HTTP reason phrase）而非我們的 semantic code（VALIDATION_ERROR），FE i18n 用 error code 對應 localized message → silently fall through，user 看到 raw EN 訊息。E2E test loop tick 71 Round 27 API consistency audit 發現（bug AM）。

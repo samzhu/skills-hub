@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 71 (2026-05-01) — Round 27 API consistency audit → **Bug AM** ship S080 v2.57.0 (M76) Missing param error shape 統一
+> Latest tick: 72 (2026-05-01) — User-driven UI work → ship **S081 v2.58.0 (M77) Design Token Migration**; foundation 立完，per-page rework S082-S085 排隊
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致

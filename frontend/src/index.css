@@ -1,30 +1,136 @@
 @import "tailwindcss";
 
+/*
+ * S081: Design token migration — DESIGN.md token system.
+ *
+ * 採 shadcn-convention 命名（--color-primary 等）保 backward compat；hex 值改用
+ * DESIGN.md spec。新增 accent / success / warning / danger / info × soft/mid/deep/text 4-tier
+ * semantic palette + 6 category tints + Inter/JetBrains Mono/Source Serif Pro 字體 stack。
+ *
+ * Tailwind v4 `@theme inline` 自動把 `--color-X` 生成 `bg-X` / `text-X` / `border-X` utility，
+ * 不需手動維護 utility class table。
+ */
 @theme inline {
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.145 0 0);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.145 0 0);
-  --color-popover: oklch(1 0 0);
-  --color-popover-foreground: oklch(0.145 0 0);
-  --color-primary: oklch(0.205 0 0);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-secondary: oklch(0.97 0 0);
-  --color-secondary-foreground: oklch(0.205 0 0);
-  --color-muted: oklch(0.97 0 0);
-  --color-muted-foreground: oklch(0.556 0 0);
-  --color-accent: oklch(0.97 0 0);
-  --color-accent-foreground: oklch(0.205 0 0);
-  --color-destructive: oklch(0.577 0.245 27.325);
-  --color-destructive-foreground: oklch(0.577 0.245 27.325);
-  --color-border: oklch(0.922 0 0);
-  --color-input: oklch(0.922 0 0);
-  --color-ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
+  /* === Neutrals — warm off-white surface with deep ink text === */
+  --color-background:           #FFFFFF;  /* surface */
+  --color-foreground:           #181818;  /* primary text (DESIGN.md primary) */
+  --color-card:                 #FFFFFF;
+  --color-card-foreground:      #181818;
+  --color-popover:              #FFFFFF;
+  --color-popover-foreground:   #181818;
+
+  /* shadcn primary = brand fill button bg = DESIGN.md primary text color (#181818) */
+  --color-primary:              #181818;
+  --color-primary-foreground:   #FFFFFF;
+
+  /* shadcn secondary = subtle surface = DESIGN.md surface-secondary (warm limestone) */
+  --color-secondary:            #F5F4ED;
+  --color-secondary-foreground: #181818;
+
+  /* muted = same as secondary surface but text uses DESIGN.md secondary (#5C5C5C) */
+  --color-muted:                #F5F4ED;
+  --color-muted-foreground:     #5C5C5C;
+
+  --color-border:               #E0DDD3;  /* DESIGN.md border (hairline) */
+  --color-border-strong:        #C8C5BB;
+  --color-input:                #E0DDD3;
+  --color-ring:                 #7F77DD;  /* focus ring uses accent */
+
+  /* === Accent — AI / personalization / focus === */
+  --color-accent:               #7F77DD;
+  --color-accent-foreground:    #FFFFFF;
+  --color-accent-soft:          #EEEDFE;
+  --color-accent-mid:           #AFA9EC;
+  --color-accent-deep:          #3C3489;
+  --color-accent-text:          #26215C;
+
+  /* === Info — links / k8s/infra === */
+  --color-info:                 #378ADD;
+  --color-info-soft:            #E6F1FB;
+  --color-info-deep:            #0C447C;
+
+  /* === Success — low risk / approved / pass / growth === */
+  --color-success:              #1D9E75;
+  --color-success-soft:         #EAF3DE;
+  --color-success-mid:          #9FE1CB;
+  --color-success-deep:         #27500A;
+  --color-success-text:         #085041;
+
+  /* === Warning — medium risk / pending review / caution === */
+  --color-warning:              #EF9F27;
+  --color-warning-soft:         #FAEEDA;
+  --color-warning-mid:          #FAC775;
+  --color-warning-deep:         #633806;
+  --color-warning-text:         #412402;
+
+  /* === Danger — high risk / rejected / blocked === */
+  --color-danger:               #E24B4A;
+  --color-danger-soft:          #FCEBEB;
+  --color-danger-mid:           #F7C1C1;
+  --color-danger-deep:          #791F1F;
+  --color-danger-text:          #501313;
+  /* shadcn destructive alias */
+  --color-destructive:          #E24B4A;
+  --color-destructive-foreground:#501313;
+
+  /* === Category palette — identity per-skill (NOT severity) === */
+  --color-category-devops:       #EEEDFE;
+  --color-category-devops-deep:  #3C3489;
+  --color-category-infra:        #E6F1FB;
+  --color-category-infra-deep:   #0C447C;
+  --color-category-testing:      #E1F5EE;
+  --color-category-testing-deep: #085041;
+  --color-category-docs:         #FAECE7;
+  --color-category-docs-deep:    #712B13;
+  --color-category-data:         #FAEEDA;
+  --color-category-data-deep:    #633806;
+  --color-category-security:     #FBEAF0;
+  --color-category-security-deep:#72243E;
+
+  /* === Radius scale (DESIGN.md §Shapes) === */
+  --radius:     0.5rem;   /* shadcn default — md = 8px */
+  --radius-xs:  3px;
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+  --radius-pill:999px;
+
+  /* === Fonts === */
+  --font-sans:  Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-serif: "Source Serif Pro", ui-serif, Georgia, "Times New Roman", serif;
+}
+
+/*
+ * Prototype HTML 引用的舊變數命名（--color-text-primary 等）— 對應到上面 @theme tokens。
+ * 不在 @theme 內以避免 Tailwind 生成奇怪 utility（如 text-text-primary）；放這裡讓 prototype
+ * port 過來的 plain CSS / styled 模式可直接使用。
+ */
+:root {
+  --color-text-primary:         #181818;
+  --color-text-secondary:       #5C5C5C;
+  --color-text-tertiary:        #888780;
+  --color-background-primary:   #FFFFFF;
+  --color-background-secondary: #F5F4ED;
+  --color-border-secondary:     #C8C5BB;
+  --color-border-tertiary:      #E0DDD3;
+
+  --border-radius-xs: 3px;
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+
+  /* Smooth Inter rendering — DESIGN.md 偏好 -0.01em letter-spacing on display sizes */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
