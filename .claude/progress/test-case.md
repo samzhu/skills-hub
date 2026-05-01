@@ -428,6 +428,39 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - Round 27: 6 cases / **1 new bug shipped (AM / S080 v2.57.0)**
 - 設計領悟：Spring binding-time 例外不會被一般 ExceptionHandler 自動 handle，必須顯式註冊
 
+---
+
+## Tick 72 — User-driven UI work: ship S081 Design Tokens (2026-05-01)
+
+無 testing round — 切到 user-driven UI track。ship S081 v2.58.0 (M77) Design Token Migration foundation：DESIGN.md 55 colors + 6 radius + 3 font stack 寫入 `frontend/src/index.css`。
+
+---
+
+## Tick 73 — Finish-Current-First triple ship (2026-05-01)
+
+依 Finish-Current-First 原則 stack-not-overlap 處理 user mid-flight 三件：
+- ship S082 v2.59.0 (M78) SkillDetailPage Files Tab UI（接 S074 API；smoke anthropic/pdf 12 files ✓）
+- commit CLAUDE.md Finish-Current-First principle（持久化原則）
+- ship S083 v2.59.1 (M79) BorderBeam light theme tuning（fix theme=dark default 在淺色背景偏霧；對齊 DESIGN.md §Elevation 4-5s rotation）
+
+---
+
+## Tick 74 — Round 28: S082 Files tab E2E AC matrix (2026-05-01)
+
+對 S082 spec §3 5 個 AC 各驗 1 fixture：
+
+| # | 類別 | Fixture | Result |
+|---|------|---------|--------|
+| 28.1 | 正例 (recap) | r17-roundtrip-minimal / anthropic-pdf 12 entries | PASS — list + SKILL.md preview |
+| 28.2 | 邊緣 | r17-multi-bigger / data.bin (binary, 50KB) | PASS — 「此為 binary 檔案，無法預覽」 |
+| 28.3 | 邊緣 | r19-s074-1777642565 / big.bin (1.49 MB) | PASS — backend 413 → 「檔案過大，無法預覽（單檔上限 1 MB）」 |
+| 28.4 | 反例 | suspend-download-test (SUSPENDED) | PASS — backend 403 → 「此技能已被停用，無法瀏覽檔案」 |
+| 28.5 | 反例 | draft-skill-tick5 (DRAFT, no PUBLISHED) | PASS — backend 404 → 「此技能尚未發布版本」 |
+
+### Tick 74 Summary
+- Round 28: 5 cases / **0 new bugs**
+- S082 spec §3 全 5 AC 端到端驗證完成；feature ship 後深度驗證收尾。
+
 
 
 

@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 72 (2026-05-01) — User-driven UI work → ship **S081 v2.58.0 (M77) Design Token Migration**; foundation 立完，per-page rework S082-S085 排隊
+> Latest tick: 74 (2026-05-01) — Round 28 S082 Files tab end-to-end 5 AC matrix → all PASS / 0 bugs
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -163,6 +163,23 @@
 >     - Smoke 3 paths（/download / /files / /files/SKILL.md）全回新 message ✓
 >     - error code / status (403) 不變 → FE i18n 無需調整
 >     - ship v2.56.1 (M75)。本輪不做新 testing round；polish 結束。
+>   tick 72 (loop cron 10m fc4a79bb, user-driven UI work, 2026-05-01):
+>     User: 「參考 DESIGN.md 設計語言優化畫面...原始設計師畫的可以參考 ./docs/prototype」
+>     ship S081 v2.58.0 (M77) Design Token Migration — `frontend/src/index.css` 套 DESIGN.md tokens 55 colors + 6 radius + 3 font stack；UI foundation；既有 components 自動套新色彩（warm off-white #FFFFFF + ink text #181818 + purple accent #7F77DD + 完整 4-tier semantic + 6 category tints）。後續 per-page rework S082-S085 排隊。
+>   tick 73 (loop cron 10m fc4a79bb, finish current + handle stacked user requests, 2026-05-01):
+>     User: 「那應該把手上的做完再做新的比較好」 + 「原則寫到 claude.md」 + jakubantalik border-beam playground 截圖「原生效果不錯, 你用就沒那麼好看」
+>     依 Finish-Current-First 原則收尾現有 + 依序處理 stacked 三件：
+>     - **ship S082 v2.59.0 (M78) SkillDetailPage Files Tab UI**：4th tab「檔案」接 S074 backend API；FilesPanel 左 list (path/size/MIME icon) + 右 viewer (text plain/image inline/binary fallback/1MB+ friendly error)；smoke (anthropic/pdf 12 files) ✓
+>     - **commit CLAUDE.md Finish-Current-First principle**：「把手上的 spec / task 做完再開新的。User mid-flight 提新需求時，acknowledge → 先收尾當前 → 再啟動新需求」加入 Principles section 持久化
+>     - **ship S083 v2.59.1 (M79) BorderBeam light theme tuning**：root cause 是 `<BorderBeam>` 沒傳 prop 用 `theme="dark"` default 但我們背景 #FFFFFF 淺色；fix `theme="light" duration={4.5} strength={0.7}` 對齊 DESIGN.md §Elevation 4-5s rotation + jakubantalik playground user 偏好；smoke ✓
+>   tick 74 (loop cron 10m fc4a79bb, Round 28 S082 Files tab E2E AC matrix, 2026-05-01):
+>     R28 (5 cases — 對 S082 spec §3 5 個 AC 各驗 1 fixture)：
+>     - 28.1 正例 PUBLISHED text-only (recap from tick 73 anthropic/pdf 12 entries) ✓
+>     - 28.2 邊緣 binary entry (r17-multi-bigger / data.bin 50KB) → 「此為 binary 檔案，無法預覽」+ path/type/size + 提示下載 zip ✓
+>     - 28.3 邊緣 1MB+ (r19-s074-... / big.bin 1.49MB) → backend 413 → 「檔案過大，無法預覽 單檔預覽上限為 1 MB（此檔 1.49 MB）」 ✓
+>     - 28.4 反例 SUSPENDED (suspend-download-test) → backend 403 → 「此技能已被停用，無法瀏覽檔案」 ✓
+>     - 28.5 反例 DRAFT no PUBLISHED version (draft-skill-tick5) → backend 404 → 「此技能尚未發布版本，無檔案可瀏覽」 ✓
+>     **0 new bugs** — S082 5 個 AC 端到端 GREEN，feature ship 後深度驗證完成。
 >   tick 71 (loop cron 10m fc4a79bb, Round 27 API consistency audit, 2026-05-01):
 >     R27.1 跨 6 個 endpoint 探測 error response shape：5/6 標準 `{error, message, timestamp}` JSON shape ✓；**1 個發現 Bug AM**：`POST /api/v1/skills/upload` 缺 `version` form param 時 Spring 預設 error handler 直接回 `{timestamp, status, error: "Bad Request", message, path}` shape，繞過 GlobalExceptionHandler 的 ErrorResponse 結構。
 >     **影響**：FE i18n（S066 / S041）用 `error` code 對應 localized message；「Bad Request」(HTTP reason phrase) 不在 12 個 backend code 白名單 → silent fallthrough，user 看到 raw EN 訊息或泛用 fallback。
