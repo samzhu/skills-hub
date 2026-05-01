@@ -14,7 +14,11 @@ import org.springframework.stereotype.Component;
 
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillReactivatedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillSuspendedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
 
 /**
  * 語意搜尋投影 — 監聽技能領域事件，維護 vector_store 表的 embedding。
@@ -55,12 +59,17 @@ class SearchProjection {
     private final JdbcTemplate jdbcTemplate;
     private final EmbeddingModel embeddingModel;
     private final CurrentUserProvider currentUserProvider;
+    private final SkillRepository skillRepo;
+    private final SkillVersionRepository versionRepo;
 
     SearchProjection(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel,
-                     CurrentUserProvider currentUserProvider) {
+                     CurrentUserProvider currentUserProvider,
+                     SkillRepository skillRepo, SkillVersionRepository versionRepo) {
         this.jdbcTemplate = jdbcTemplate;
         this.embeddingModel = embeddingModel;
         this.currentUserProvider = currentUserProvider;
+        this.skillRepo = skillRepo;
+        this.versionRepo = versionRepo;
     }
 
     /**
@@ -167,5 +176,65 @@ class SearchProjection {
     private static String getString(Map<String, Object> map, String key, String defaultValue) {
         Object v = map.get(key);
         return v != null ? v.toString() : defaultValue;
+    }
+
+    /**
+     * S033：SUSPENDED skill 移出 vector_store — semantic search 不再命中已下架 skill。
+     *
+     * <p>純 delete-by-id；ON DELETE CASCADE 關係（{@code vector_store.skill_id → skills.id}）
+     * 在實際刪除 skill row 時也會 cascade，但 suspend 不刪 skill row（state machine 維持 record），
+     * 故需主動 delete vector_store row。
+     */
+    @ApplicationModuleListener
+    void onSkillSuspended(SkillSuspendedEvent event) {
+        log.info("SearchProjection onSkillSuspended skillId={}", event.aggregateId());
+        SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
+                .build()
+                .delete(List.of(event.aggregateId()));
+        log.info("SearchProjection onSkillSuspended done skillId={}", event.aggregateId());
+    }
+
+    /**
+     * S033：reactivate 後重新 embed — 用 Skill aggregate metadata + 最新 SkillVersion 重建 doc。
+     *
+     * <p>{@link SkillReactivatedEvent} 只攜 id + reason；需 query Skill aggregate 與最新版。
+     * 沒 version 的情況防禦性早 return（理論上 reactivate 只能從 SUSPENDED 過來，
+     * SUSPENDED 必先 PUBLISHED 必有 version；防禦 race / 異常清理）。
+     *
+     * <p>ACL：對齊 S026 加 {@code "*:read"} 公開 pseudo-principal；owner 從 aggregate.author
+     * 取得（非 currentUserProvider — async listener 無 SecurityContext，per S025b §7 tech debt）。
+     */
+    @ApplicationModuleListener
+    void onSkillReactivated(SkillReactivatedEvent event) {
+        log.info("SearchProjection onSkillReactivated skillId={}", event.aggregateId());
+        var skill = skillRepo.findById(event.aggregateId()).orElse(null);
+        if (skill == null) {
+            log.warn("SearchProjection onSkillReactivated skillId={} not found in repo", event.aggregateId());
+            return;
+        }
+        var latestVersion = versionRepo.findBySkillIdOrderByPublishedAtDesc(event.aggregateId())
+                .stream().findFirst().orElse(null);
+        if (latestVersion == null) {
+            log.warn("SearchProjection onSkillReactivated skillId={} has no version, skip embedding",
+                    event.aggregateId());
+            return;
+        }
+
+        // S026: 加 "*:read" public-read pseudo-principal — vector_store 對所有使用者開放讀取
+        var initialAcl = skill.getAuthor() == null
+                ? List.of("*:read")
+                : List.of("user:" + skill.getAuthor() + ":read", "*:read");
+
+        var doc = buildDocument(skill.getId(), skill.getName(), skill.getDescription(),
+                skill.getAuthor(), skill.getCategory(),
+                latestVersion.getVersion(), skill.getRiskLevel());
+
+        SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
+                .owner(skill.getAuthor())
+                .skillId(skill.getId())
+                .aclEntries(initialAcl)
+                .build()
+                .add(List.of(doc));
+        log.info("SearchProjection onSkillReactivated done skillId={}", event.aggregateId());
     }
 }

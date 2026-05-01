@@ -129,6 +129,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M26: Conflict-Class Error Mapping | S030 | XS(5) | 310 | ✅ `v2.7.0` (2026-05-01 — IllegalStateException → 409 STATE_CONFLICT；OptimisticLockingFailureException → 409 CONCURRENT_MODIFICATION + retry hint) |
 | Phase 4 | M27: Public PUBLISHED-Only Visibility | S031 | XS(5) | 315 | ✅ `v2.8.0` (2026-05-01 — list / categories / analytics 5 處 SQL 加 WHERE status='PUBLISHED'；落地 S028 §7.5 tech debt；findById 不過濾保留 admin/owner 看詳情能力) |
 | Phase 4 | M28: Version Name Consistency | S032 | XS(5) | 320 | ✅ `v2.9.0` (2026-05-01 — addVersion 驗 zip SKILL.md name 與 aggregate name 一致；mismatch → 400 VALIDATION_ERROR；阻止內容變身攻擊) |
+| Phase 4 | M29: Vector Store Status Sync | S033 | XS(5) | 325 | ✅ `v2.10.0` (2026-05-01 — SearchProjection 加 onSkillSuspended 刪 vector row + onSkillReactivated 重 embed；落地 S031 §7.5；附帶解決 S025b §7 author fallback 的 reactivate path) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

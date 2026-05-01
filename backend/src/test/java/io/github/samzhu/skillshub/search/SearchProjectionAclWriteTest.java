@@ -43,7 +43,7 @@ import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 /**
  * S025b T02 — 同 {@link SearchProjectionTest} 模式：MODULE slice 對齊 S025a {@code AuditEventListenerTest}。
  */
-@ApplicationModuleTest(mode = BootstrapMode.DIRECT_DEPENDENCIES)
+@ApplicationModuleTest(mode = BootstrapMode.ALL_DEPENDENCIES)
 @Import(TestcontainersConfiguration.class)
 @WithMockUser(username = "alice")
 class SearchProjectionAclWriteTest {

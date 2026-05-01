@@ -1,5 +1,36 @@
 # Changelog
 
+## [v2.10.0] — Vector Store Status Sync（M29 完成；2026-05-01）
+
+> **Minor bump** — `SearchProjection` 新增兩個 listener，把 vector_store 同步至 skill state machine：suspend 刪 row，reactivate 重新 embed。落地 S031 §7.5 tech debt；附帶解決 S025b §7 author-fallback architecture tech debt 中的 reactivate path。
+
+### Added
+- **S033: Vector Store Status Sync**（M29 落地）：
+  - **`SearchProjection.onSkillSuspended`**：純 delete-by-id；semantic search 不再命中已下架 skill
+  - **`SearchProjection.onSkillReactivated`**：query Skill aggregate + 最新 SkillVersion，rebuild doc 寫回 vector_store with author-derived ACL + S026 `*:read` public pseudo-principal
+  - 注入 `SkillRepository` + `SkillVersionRepository`（`search` module `allowedDependencies` 已含 `skill :: domain`）
+  - 5 個 SBE AC 全綠
+
+### Changed
+- `SearchProjectionTest` 與 `SearchProjectionAclWriteTest` 從 `BootstrapMode.DIRECT_DEPENDENCIES` 升 `ALL_DEPENDENCIES` — 因 search 現需 skill module 的 repos，連帶 storage module bean 需載入
+
+### Trigger
+- 2026-05-01 /loop tick 8 — SUSPENDED skill 的 vector_store row 仍存在；reactivate 不會 refresh。S031 §7.5 已登記為 tech debt。
+
+### Verification
+- `./gradlew test` — 295 tests / 0 fail（含新 2 unit tests）
+- E2E HTTP（local LAB mode）：upload → vector_store 1 row；suspend → 0 row；reactivate → 1 row with **owner=alice**（從 aggregate 取，非 lab-user fallback）+ acl_entries 含 `*:read`
+
+### Side benefit — author fallback tech debt 部分解決
+- onSkillReactivated 從 `skill.getAuthor()` 取 owner，不依賴 SecurityContext — 解 S025b §7 已記的 architecture tech debt 中的 reactivate path
+- onSkillCreated / onVersionPublished 仍受 SecurityContext propagation 影響；修法留 future spec
+
+### Tech Debt
+- onSkillCreated / onVersionPublished 也應改用 aggregate-based author（不依賴 currentUserProvider 在 async thread）
+- Admin panel endpoint（S031 §7.5）仍待設計
+
+---
+
 ## [v2.9.0] — Version Name Consistency（M28 完成；2026-05-01）
 
 > **Minor bump** — 資料完整性修正：`PUT /api/v1/skills/{id}/versions` 現在驗 zip SKILL.md `name` 與 skill aggregate `name` 一致；違反 → 400 VALIDATION_ERROR。

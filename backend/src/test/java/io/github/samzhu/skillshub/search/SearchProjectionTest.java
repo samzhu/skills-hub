@@ -24,6 +24,9 @@ import org.springframework.security.test.context.support.WithMockUser;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillReactivatedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillSuspendedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 
 /**
@@ -55,7 +58,7 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
  * module + 直接依賴；{@code @ApplicationModuleTest} 內建 {@code ScenarioParameterResolver}（{@code @EnableScenarios}
  * 不再需要）。{@code @WithMockUser} 維持 — 不影響 cache key（TestExecutionListener，非 ContextCustomizer）。
  */
-@ApplicationModuleTest(mode = BootstrapMode.DIRECT_DEPENDENCIES)
+@ApplicationModuleTest(mode = BootstrapMode.ALL_DEPENDENCIES)
 @Import(TestcontainersConfiguration.class)
 @WithMockUser(username = "test-owner")
 class SearchProjectionTest {
@@ -170,6 +173,57 @@ class SearchProjectionTest {
         assertThat(jdbc.queryForObject(
                 "SELECT owner FROM vector_store WHERE id = ?::uuid", String.class, skillId))
                 .isEqualTo("test-owner");
+    }
+
+    @Test
+    @DisplayName("AC-S033: SkillSuspendedEvent → vector_store row 被刪")
+    @Tag("AC-S033")
+    void onSkillSuspended_deletesVectorStoreRow(Scenario scenario) {
+        // Phase 1: 先有一筆 vector_store row（via SkillCreatedEvent）
+        scenario.publish(new SkillCreatedEvent(skillId, skillName, "管理 Docker 容器", "sam", "DevOps"))
+                .andWaitForStateChange(() -> rowOrNull(skillId));
+
+        // Phase 2: publish SkillSuspendedEvent → 等 row 被刪
+        scenario.publish(new SkillSuspendedEvent(skillId, "policy", "admin"))
+                .andWaitForStateChange(() -> rowOrNull(skillId) == null ? "deleted" : null)
+                .andVerify(token -> assertThat(token).isEqualTo("deleted"));
+    }
+
+    @Test
+    @DisplayName("AC-S033: SkillReactivatedEvent → vector_store row 重新 embed（含 *:read public ACL）")
+    @Tag("AC-S033")
+    void onSkillReactivated_reEmbedsVectorStoreRow(Scenario scenario) {
+        // Phase 1: 透過 prod 路徑（SkillRepository.save）seed skill aggregate + 一筆 SkillVersion
+        // 已 seed skills row by setUp()；額外 INSERT 一筆 skill_versions
+        var versionId = UUID.randomUUID().toString();
+        var ts = Timestamp.from(Instant.now());
+        var frontmatterJson = String.format(
+                "{\"name\":\"%s\",\"description\":\"管理 Docker 容器\",\"author\":\"sam\",\"category\":\"DevOps\"}",
+                skillName);
+        jdbc.update("""
+                INSERT INTO skill_versions (id, skill_id, version, storage_path, file_size,
+                                            frontmatter, published_at, allowed_tools)
+                VALUES (?, ?, '1.0.0', 'gs://bucket/p', 100, ?::jsonb, ?, '[]'::jsonb)
+                """, versionId, skillId, frontmatterJson, ts);
+
+        // 起始：vector_store 無 row（skill 為 SUSPENDED 狀態）— 直接更新 skills.status = SUSPENDED
+        jdbc.update("UPDATE skills SET status = 'SUSPENDED' WHERE id = ?", skillId);
+        assertThat(rowOrNull(skillId)).isNull();
+
+        // Phase 2: 發 reactivate event；listener 應重 embed vector_store row
+        // 注意：onSkillReactivated 從 skill aggregate 取 author='sam'（不依賴 SecurityContext，per S025b §7 tech debt 落地）
+        jdbc.update("UPDATE skills SET status = 'PUBLISHED' WHERE id = ?", skillId);
+        scenario.publish(new SkillReactivatedEvent(skillId, "approved"))
+                .andWaitForStateChange(() -> rowOrNull(skillId))
+                .andVerify(row -> {
+                    assertThat(row.get("skill_id")).isEqualTo(skillId);
+                    var ownerVal = row.get("owner");
+                    assertThat(ownerVal).isEqualTo("sam");
+                    var aclJson = jdbc.queryForObject(
+                            "SELECT acl_entries::text FROM vector_store WHERE id = ?::uuid",
+                            String.class, skillId);
+                    assertThat(aclJson).contains("*:read");
+                });
     }
 
     /**
