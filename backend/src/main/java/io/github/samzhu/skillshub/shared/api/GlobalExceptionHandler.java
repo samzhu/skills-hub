@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 
 /**
  * 全域例外處理器。
@@ -74,6 +76,47 @@ public class GlobalExceptionHandler {
 				.log("Download blocked: skill suspended");
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
 				.body(new ErrorResponse("SKILL_SUSPENDED", ex.getMessage(), Instant.now()));
+	}
+
+	/**
+	 * S037：處理 multipart 超 size 限制（{@link MaxUploadSizeExceededException}）。
+	 *
+	 * <p>{@code @ExceptionHandler} most-specific-first 規則 — 此 handler 必早於
+	 * {@link #handleMultipartParseError}（其 super class）與 {@link #handleStateConflict}
+	 * （Tomcat 會在 multipart 解析失敗時包成 IllegalStateException）匹配。
+	 *
+	 * <p>HTTP 413 PAYLOAD_TOO_LARGE per RFC 9110 §15.5.14；message 含實際 byte 限制讓 user 知道上限。
+	 */
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	ResponseEntity<ErrorResponse> handlePayloadTooLarge(MaxUploadSizeExceededException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "PAYLOAD_TOO_LARGE")
+				.addKeyValue("maxSize", ex.getMaxUploadSize())
+				.log("Upload size exceeded");
+		var maxBytes = ex.getMaxUploadSize();
+		// 後端 application.yaml 設 10MB；MaxUploadSizeExceededException.getMaxUploadSize() 回 -1 表 framework 不知，
+		// fallback 至硬編碼 10MB（唯一 user-visible 數字一定要對齊 yaml）。
+		var maxMb = maxBytes > 0 ? maxBytes / 1_048_576 : 10;
+		var msg = "Upload size exceeds the " + maxMb + " MB limit";
+		return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+				.body(new ErrorResponse("PAYLOAD_TOO_LARGE", msg, Instant.now()));
+	}
+
+	/**
+	 * S037：處理其他 multipart 解析錯誤（缺 boundary、缺必要 part 等）。
+	 *
+	 * <p>{@link MaxUploadSizeExceededException} 的父類；most-specific-first 規則保證 size-exceeded 先匹配。
+	 * 其他 multipart 錯誤屬 client-supplied bad data → 400。
+	 */
+	@ExceptionHandler(MultipartException.class)
+	ResponseEntity<ErrorResponse> handleMultipartParseError(MultipartException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "MULTIPART_ERROR")
+				.addKeyValue("message", ex.getMessage())
+				.log("Multipart parse error");
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ErrorResponse("MULTIPART_ERROR",
+						"Invalid multipart request: " + ex.getMessage(), Instant.now()));
 	}
 
 	/**

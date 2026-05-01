@@ -1,5 +1,33 @@
 # Changelog
 
+## [v2.14.0] — Upload Size 413 + Frontend Size Pre-check（M33 完成；2026-05-01）
+
+> **Minor bump** — HTTP 語意修正 + frontend 早期防呆：超 10MB 上傳從 **HTTP 409 STATE_CONFLICT**（被 S030 catch-all 過度攔截）改回正確的 **HTTP 413 PAYLOAD_TOO_LARGE**；FileDropZone 加 client-side size pre-check 避免 user 浪費頻寬上傳大檔才知失敗。
+
+### Added
+- **S037: Upload Size 413 + Frontend Size Pre-check**（M33 落地）：
+  - **`@ExceptionHandler(MaxUploadSizeExceededException.class)` → 413 PAYLOAD_TOO_LARGE**：含實際 byte limit 的 message（"Upload size exceeds the 10 MB limit"）；error code `PAYLOAD_TOO_LARGE` 對 client 可區分
+  - **`@ExceptionHandler(MultipartException.class)` → 400 MULTIPART_ERROR**：其他 multipart 解析錯誤
+  - 順序 most-specific-first — `MaxUploadSizeExceededException extends MultipartException`，自動先匹配 size-exceeded handler
+  - **`FileDropZone` 加 `maxSizeBytes` prop**（預設 10MB 對齊 backend）+ `handleFile` 集中 guard + inline 紅色錯誤「檔案大小 X.X MB 超過 Y MB 限制」
+  - 6 個 SBE AC 全綠
+
+### Changed
+- 11MB upload 從 409 STATE_CONFLICT → **413 PAYLOAD_TOO_LARGE**；訊息明確指出 limit
+
+### Trigger
+- 2026-05-01 /loop tick 12 — 11MB upload 回 409 STATE_CONFLICT（被 S030 IllegalStateException catch-all 過度攔截）；frontend 無 size pre-check
+
+### Verification
+- backend `./gradlew test` — 295 tests / 0 fail
+- frontend `npm test` — 10/10 PASS；`tsc -b` 0 errors；`npm run lint` 0 warnings
+- E2E HTTP 11MB → 413 with "Upload size exceeds the 10 MB limit"；5MB → 201
+
+### Tech Debt
+- S031 §7.5 admin panel endpoint 仍待設計
+
+---
+
 ## [v2.13.0] — Frontend MEDIUM Risk Message（M32 完成；2026-05-01）
 
 > **Minor bump** — frontend Risk tab UX 修正：補齊 MEDIUM 風險等級說明段落（既有只有 LOW/HIGH）；同步以 `Record<RiskLevel, string>` map 取代 inline `if` 串，TypeScript exhaustive check 防止未來新增等級漏改。
