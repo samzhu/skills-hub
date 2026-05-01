@@ -1,5 +1,23 @@
 # Changelog
 
+## [v2.59.1] — `BorderBeam` light theme tuning（M79 完成；2026-05-01）
+
+> **Polish** — User-driven「原生效果不錯，你用就沒那麼好看，研究一下」+ jakubantalik playground 截圖。`SearchBar` 用 `<BorderBeam>` 全套 default props，包括 `theme="dark"`，但 DESIGN.md 規定 surface = warm off-white #FFFFFF。Dark-tuned saturation/glow 落淺色背景 → 霧、暗、偏粉。
+
+### Polished
+- **S083: `BorderBeam` light theme tuning**（M79）：
+  - `<BorderBeam theme="light" duration={4.5} strength={0.7}>`
+  - `theme="light"` — 切到 light-tuned ThemeColors（package internal `sizeThemePresets`）
+  - `duration={4.5}` — 對齊 DESIGN.md §Elevation §3「4-5s per rotation」（package default 1.96 偏快）
+  - `strength={0.7}` — 對齊 user playground 偏好（default 1 在 SaaS 螢幕太強）
+  - 11 frontend tests / 0 fail；無 prop interface 或行為 break
+
+### Verification
+- Chrome smoke：HomePage SearchBar beam 視覺淡且 subtle、rotation 變慢、不霧
+- 同步驗到 S081 tokens 全到位（accent-soft 紫 / danger-soft 粉 / warm off-white 背景 / Inter）
+
+---
+
 ## [v2.59.0] — SkillDetailPage Files Tab UI（M78 完成；2026-05-01）
 
 > **Feature** — S074 backend API（M70）已 ship，但 frontend 還沒 UI 消費。本 spec 加 SkillDetailPage 4th tab「檔案」，user 可在不下載整包 zip 的前提下瀏覽 references / scripts / SKILL.md 內容。User-driven「希望在 skill 明細頁面可以瀏覽各檔案內容」(tick 62 提出，至此完成 backend → frontend 全鏈路)。
