@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 60 (2026-05-01) — Round 18 frontend publish-flow with S073 list-style allowed-tools, **0 new bugs**
+> Latest tick: 61 (2026-05-01) — Round 19 multipart limit + SUSPEND/REACTIVATE 完整 lifecycle, **0 new bugs**
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -60,6 +60,14 @@
 >     **發現**：FE i18n 把所有 VALIDATION_ERROR 都對應到「zip 套件驗證失敗」generic 訊息，不顯示具體 field（如「Missing required field: name」）。為 UX 簡潔的 design choice（per S066 i18n coverage），非 bug；但記為 tech debt — 改善方向是讓 FE 抽 backend `message` 欄位顯示具體欄位名（保 i18n 框架不變）。
 >     **遇到狀況**：第一次 JS build zip 漏寫 LFH header 後的 `data` segment（114 bytes 太小）→ backend 回 400「Invalid zip file: cannot read package contents」（S049 zip 解析錯誤訊息正確）。修正後 308 bytes → 201。
 >     **0 new bugs** — UI 端 publish flow 對 S073 list-style 完全相容；reverse case i18n 訊息 mapping 正確；download 與 detail page 渲染無誤。
+>   tick 61 (loop cron 10m fc4a79bb, Round 19 multipart limit + SUSPEND/REACTIVATE lifecycle, 2026-05-01):
+>     R19 (5 cases — multipart limits + 完整 state machine 對稱性)：
+>     - 19.1 正例：1MB zip upload → 201 ✓
+>     - 19.2 邊緣：9.5MB zip (close to 10MB limit) → 201 ✓
+>     - 19.3 反例：12MB zip (over limit) → **413 PAYLOAD_TOO_LARGE「Upload size exceeds the 10 MB limit」**（dedicated error type，no stack trace）✓
+>     - 19.4 完整 lifecycle：upload → PUBLISHED + listed + dl=200 + vec=1 → POST /suspend `{reason}` 200 → SUSPENDED + 不在 list + dl=403 + **vec=0**（async listener 清掉）→ POST /reactivate `{reason}` 200 → PUBLISHED + listed + dl=200 + **vec=1**（async listener 重建）✓
+>     - 19.5 反例：re-suspend SUSPENDED → **409 STATE_CONFLICT「Cannot suspend skill in SUSPENDED status」**（state machine 兩個方向都有 guard，對稱於 R1 reactivate-PUBLISHED 反例）✓
+>     **0 new bugs** — multipart 10MB limit clean-error；S033 vector store invariant 在 suspend/reactivate 兩個方向都正確維護；state machine 兩端封閉。
 
 ## Coverage Summary (as of v2.46.0)
 

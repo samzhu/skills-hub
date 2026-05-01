@@ -198,3 +198,27 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - S073 fix 從 UI 端到 detail page 全 pipeline 渲染正確
 - i18n 訊息 mapping 對 VALIDATION_ERROR 路徑正確觸發
 
+---
+
+## Tick 61 — Round 19: multipart limit + SUSPEND/REACTIVATE complete lifecycle (2026-05-01)
+
+| # | 類別 | Case | Result |
+|---|------|------|--------|
+| 19.1 | 正例 | 1MB zip upload | PASS 201 |
+| 19.2 | 邊緣 | 9.5MB zip (近 10MB limit) | PASS 201 |
+| 19.3 | 反例 | 12MB zip (超 10MB limit) | PASS **413 PAYLOAD_TOO_LARGE**「Upload size exceeds the 10 MB limit」 — 有 dedicated error type 不洩漏 stack |
+| 19.4 | 邊緣 | SUSPEND/REACTIVATE 完整 lifecycle | PASS — upload `(listed/dl/status/vec)=(T/200/PUB/1)` → suspend `(F/403/SUS/0)` → reactivate `(T/200/PUB/1)` ✓ |
+| 19.5 | 反例 | re-suspend SUSPENDED skill | PASS **409 STATE_CONFLICT**「Cannot suspend skill in SUSPENDED status」 |
+
+**Notes**：
+- suspend/reactivate require `{"reason":"..."}` JSON body (Required `@RequestBody SuspendRequest req`)；空 body → 400 INVALID_REQUEST_BODY
+- 12MB 超檔上傳 via Python `urllib` 收 broken-pipe（client-side socket reset by server）；改用 curl 才正確收到 413 body
+- S033 invariant：vector_store entry 對 PUBLISHED skill 存在；SUSPENDED 時 async listener 清掉；reactivate 時 async listener 重建（all 由 domain event listener orchestrate）
+- state machine 對稱性確認：R1 already-PUBLISHED reactivate → 409；R19.5 already-SUSPENDED suspend → 409。兩端都 guard。
+
+### Tick 61 Summary
+- Round 19: 5 cases / **0 new bugs**
+- multipart 10MB limit clean-error；不會 leak stack trace
+- S033 vector store invariant 在 suspend/reactivate 兩個方向都正確 async 維護
+- state machine guards 對稱（two-way 409 STATE_CONFLICT）
+
