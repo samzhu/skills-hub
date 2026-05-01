@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 65 (2026-05-01) — Round 22 concurrent download counter → **Bug AJ (production-grade)** ship S076 v2.54.0 (M72)
+> Latest tick: 66 (2026-05-01) — Round 23 race conditions → **Bug AK (S076 regression)** ship S077 v2.55.0 (M73) lost-update fix
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -108,6 +108,15 @@
 >     - Counter accuracy 雖正確（無 over-count）但 UX 嚴重退化
 >     **Bug AJ (HIGH / production-grade)**：aggregate `@Version` 樂觀鎖對 counter 是 over-engineering — counter 不需 state-machine read-modify-write 語意。寫 S076 spec（S/5）→ `SkillRepository.incrementDownloadCount` 加 `@Modifying @Query` 原子 SQL UPDATE（pattern 同 S024 T5 `updateRiskLevel`）→ `SkillQueryService.downloadAndRecord` 改用 atomic increment + `ApplicationEventPublisher.publishEvent` → Modulith Event Publication Registry 透過 `@TransactionalEventListener` 攔截 ApplicationEventPublisher events，outbox at-least-once 不變 → aggregate `recordDownload()` 保留供 `SkillAggregateTest` 覆蓋（仍示範 invariant）→ 299 tests / 0 fail（無 regression）→ 重啟 backend → smoke：N=1/2/3/5/10/30 **全 100% 成功率**（pre：100%/50%/33%/20%/10%/13%）→ ship v2.54.0 (M72)。
 >     **Bonus**：`AuditEventListener` 不訂閱 `SkillDownloadedEvent`（不在 domain_events 留 audit log），by design 為 volume control（download 是高頻事件）；test 中 domain_events delta=0 是預期；download_events 表（AnalyticsProjection）delta == HTTP 200 count 確認事件路徑完整 — 也驗證 Modulith outbox 對 ApplicationEventPublisher events 與 @DomainEvents 路徑同效。
+>   tick 66 (loop cron 10m fc4a79bb, Round 23 race conditions, 2026-05-01):
+>     R23 (5 cases — DELETE skill 確認 + 4 個 state-machine race 場景)：
+>     - 23.1 反例：DELETE /skills/{id} → **405 METHOD_NOT_ALLOWED**（by design — skills 用 SUSPENDED 不用 DELETE；OpenAPI 唯一 DELETE 是 /acl）✓
+>     - 23.2 邊緣：concurrent 5 suspend + 5 reactivate same skill → 1 suspend 200 + 4 suspend 409 + 5 reactivate 409；最終 SUSPENDED；無 data corruption ✓
+>     - 23.3 邊緣：5 並行 grantAcl 同 tuple → 1 × 201 + 4 × 409 STATE_CONFLICT「already exists」；DB 1 grant ✓ (aggregate dedup 在並發下正確)
+>     - 23.4 邊緣：5 並行 PUT version (different versions on PUBLISHED skill) → 1/5 success + 4/5 409；persisted [1.0.0, 1.5.0]（隨機贏家）；version-add 屬 state-machine 操作，409 為正確語意（accepted limitation；Bug AJ 是 counter，這個是 state-machine）
+>     - 23.5 邊緣：10 並行 download + 1 concurrent suspend on PUBLISHED skill → **發現 Bug AK**：10 dl HTTP 200 但 final `download_count=3`（**7 個增量被 suspend save 覆寫**）。Sanity test (10 dl 無 suspend) → counter=10 ✓ — S076 atomic SQL fix 在 pure download case 仍正確；但 lost update issue 在 concurrent save 路徑暴露。
+>     **Bug AK (HIGH / S076 regression)**：S076 引入 atomic SQL increment 解 OptimisticLocking 失敗，但 Spring Data JDBC `save()` 不做 dirty tracking，每次 UPDATE 是 full-row replace，把 in-memory 舊 `download_count` 寫回，覆蓋並發 atomic increment。寫 S077 spec（XS/3）→ `Skill.downloadCount` 加 `@org.springframework.data.annotation.ReadOnlyProperty`：findById SELECT 不變、save() 的 INSERT/UPDATE 排除此欄；INSERT 由 DB DEFAULT 0 接管 → aggregate `recordDownload()` 純 in-memory mutation 不變（單元測試保 PASS）→ 299 tests / 0 fail → 重啟 backend → smoke：10 dl + 1 sus → **counter=10**（pre: 3）+ 30 pure parallel → counter=30（S076 維持）→ ship v2.55.0 (M73)。
+>     **設計領悟**：counter 類欄位若有獨立 atomic 寫入路徑，aggregate 必須把它從 save() write set 排除。Spring Data JDBC `@ReadOnlyProperty` 是這個 pattern 的標準工具，類似 JPA `@Column(insertable=false, updatable=false)`。
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -171,6 +180,7 @@
 - AH: `SkillValidator` 對 `allowed-tools` YAML list 形狀（canonical Anthropic）全 400；用 ArrayList.toString() 餵 regex 切出 `[Read,` 等不合法 token (S073 v2.51.0)
 - AI: `FlagReadModel.isNew()` 序列化為 `"new": true` 洩漏到 GET /flags API 回應；與 Bug AA / S063 同 root cause（Spring Data JDBC `Persistable` framework hook）但 Skill 修了沒覆蓋 Flag (S075 v2.53.0)
 - AJ: 並行下載同一 skill OptimisticLockingFailureException 級聯（N=2 即 50% 失敗）；aggregate `@Version` 樂觀鎖對 counter 過度保護；改用原子 SQL UPDATE + ApplicationEventPublisher (S076 v2.54.0)
+- AK: S076 regression — concurrent suspend/reactivate save 用 full-row UPDATE 覆蓋並發 atomic increment（Spring Data JDBC 無 dirty tracking）；10 dl + 1 sus 觀察 7/10 增量 lost；fix 用 `@ReadOnlyProperty` 排除 `downloadCount` 從 save write set (S077 v2.55.0)
 
 ### Known Tech Debt (low priority)
 - DB 既有畸形 entries（畸形 ACL/version "foo" 等）需 future migration

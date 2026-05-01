@@ -289,4 +289,23 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - 並行下載成功率從 N=2 50% / N=10 10% → 全 N **100%**
 - Modulith outbox 對 ApplicationEventPublisher 與 @DomainEvents 路徑同效驗證
 
+---
+
+## Tick 66 — Round 23: race conditions on state machine (2026-05-01)
+
+| # | 類別 | Case | Result | Spec |
+|---|------|------|--------|------|
+| 23.1 | 反例 | DELETE /skills/{id} | PASS — 405 METHOD_NOT_ALLOWED (by design) | — |
+| 23.2 | 邊緣 | concurrent 5 suspend + 5 reactivate | PASS — 1×suspend 200 + 9×409；無 data corruption | — |
+| 23.3 | 邊緣 | 5 並行 grantAcl 同 tuple | PASS — 1×201 + 4×409 STATE_CONFLICT；DB 1 grant | — |
+| 23.4 | 邊緣 | 5 並行 PUT version (different) | PASS — 1×200 + 4×409；version-add 屬 state-machine，409 正確 (accepted limitation) | — |
+| 23.5 | 邊緣 | 10 並行 dl + 1 concurrent suspend | **FAIL pre-fix counter=3** → **PASS post-fix counter=10** | **S077 v2.55.0** |
+
+**Bug AK (HIGH / S076 regression)** — Spring Data JDBC `save()` full-row UPDATE 覆蓋 atomic SQL increment（無 dirty tracking）。Fix: `@ReadOnlyProperty` 排除 `downloadCount` 從 save write set。
+
+### Tick 66 Summary
+- Round 23: 5 cases / **1 new bug shipped (AK / S077 v2.55.0)**
+- DELETE skill 設計確認；state-machine race conditions 4/5 正確；發現 lost-update regression 並修復
+- **設計領悟**：counter-style 欄位若有獨立 atomic 寫入路徑，aggregate 必須用 `@ReadOnlyProperty` 排除以避免 save 覆蓋
+
 

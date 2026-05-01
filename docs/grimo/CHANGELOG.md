@@ -1,5 +1,25 @@
 # Changelog
 
+## [v2.55.0] — `Skill.downloadCount` `@ReadOnlyProperty`（lost-update fix；M73 完成；2026-05-01）
+
+> **Regression fix from S076** — S076 引入原子 SQL `incrementDownloadCount` 解決並行下載 OptimisticLocking 失敗；但同時引入 lost-update：concurrent suspend (or any aggregate save) 與 download 交錯時，aggregate `save()` 用 full-row UPDATE 把所有欄位（含 `download_count`）回寫，**覆蓋掉並發的原子增量**。實測 10 並行 download + 1 並發 suspend：10 dl HTTP 200，但 final `download_count = 3`（其他 7 個被 suspend save 蓋掉）。E2E test loop tick 66 Round 23.5 race condition 探查發現（bug AK）。
+
+### Fixed
+- **S077: `Skill.downloadCount` `@ReadOnlyProperty`**（M73）：
+  - `Skill.downloadCount` 加 `@org.springframework.data.annotation.ReadOnlyProperty`
+  - findById SELECT 仍含此欄位（read 不變）；save() 的 INSERT/UPDATE 排除此欄位
+  - 唯一寫入路徑為 `SkillRepository.incrementDownloadCount` atomic SQL UPDATE
+  - INSERT path 由 DB schema `download_count BIGINT NOT NULL DEFAULT 0` 接管
+  - Aggregate `recordDownload()` 行為不變（純 in-memory mutation）；單元測試 `SkillAggregateTest` 全 PASS
+  - 299 backend tests / 0 fail（無 regression）
+
+### Verification
+- 10 parallel download + 1 concurrent suspend → counter delta = 10（pre-fix: 3 — 7 個增量被 save 覆蓋）✓
+- 30 parallel download (純 concurrent，無 suspend) → 仍 30 ✓（S076 fix 維持）
+- INSERT createSkill flow 正常（DB DEFAULT 接管）
+
+---
+
 ## [v2.54.0] — Download Counter Atomic Increment（M72 完成；2026-05-01）
 
 > **Production-grade fix** — 並行下載同一 skill 觸發 OptimisticLockingFailureException 級聯：N=2 並行 → 50% 失敗，N=10 → 90% 失敗。一般使用情境（兩 user 同時點下載）就會踩到。E2E test session Round 22 concurrent download 探測量化（bug AJ）。Counter 不是 state-machine concern，aggregate `@Version` 樂觀鎖過度保護。
