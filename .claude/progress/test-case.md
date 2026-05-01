@@ -126,3 +126,30 @@
 - Round 15: 10 cases / 1 high-severity bug (AH) shipped same tick
 - 既有 9 個 anthropic skills 之所以未暴露 → 那 batch frontmatter 沒有 `allowed-tools`
 
+---
+
+## Tick 58 — Round 16: canonical Anthropic SKILL.md regression sweep (2026-05-01)
+
+S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 下 canonical Anthropic SKILL.md（含 `description: >` folded、`metadata:` nested、`argument-hint`、`allowed-tools` block list 等多種形狀）整檔包 zip 上傳。
+
+| # | 類別 | Case | Result | Notes |
+|---|------|------|--------|-------|
+| 16.1 | 正例 | upload `.claude/skills/handover/SKILL.md` | PASS 201 | description folded `>`, allowed-tools block list `Read/Glob/Grep/Bash/Write` |
+| 16.2 | 正例 | upload `planning-project/SKILL.md` | PASS 201 | argument-hint, 8 tools (`+ Edit + Agent + WebFetch + WebSearch`) |
+| 16.3 | 正例 | upload `deep-research/SKILL.md` | PASS 201 | 標準 5-tool list |
+| 16.4 | 正例 | upload `retro/SKILL.md` | PASS 201 | trigger-action checklist 主題 |
+| 16.5 | 正例 | upload `takeover/SKILL.md` | PASS 201 | handover 對偶角色 |
+| 16.6 | 反例 | rename to `name: Handover` (大寫) | PASS 400 | `Field 'name' fails regex ^[a-z0-9-]{1,64}$ (got: Handover)` 訊息精準 |
+
+**完整 pipeline 驗證**：
+- 5/5 outbox drain（`event_publication.completion_date IS NULL` count = 0 在 upload 後）
+- 5/5 vector_store entry 自動 seed
+- 5/5 risk=LOW（正確：workflow skill 無危險命令）
+- keyword search `handover` → `takeover` + `handover` 互引用匹配
+- semantic 中文 `工作交接` → `handover` / `takeover` top 2（跨語言 embedding 運作）
+
+### Tick 58 Summary
+- Round 16: 6 cases / **0 new bugs**
+- S073 fix end-to-end 確認生效；canonical Anthropic SKILL.md 形狀完全相容
+- 中文 semantic search 對英文技能正確 retrieve（vector embedding 多語言能力驗證）
+
