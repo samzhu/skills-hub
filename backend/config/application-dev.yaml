@@ -38,3 +38,13 @@ management:
 logging:
   level:
     io.github.samzhu.skillshub: DEBUG
+
+# ----- 啟用 LlmJudge engine（dev override；base profile 預設關閉節省成本） -----
+# 用途：dev 環境驗 LLM-generated explanation 品質與 Gemini API round-trip。
+# 每次 upload skill 會額外打 1 次 Gemini API（gemini-2.5-flash），cost 可控。
+# Production 走 application-gcp.yaml 已有同樣 override。
+skillshub:
+  scanner:
+    engines:
+      llm:
+        enabled: true
