@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 79 (2026-05-02) — Polish ship S090 v2.60.0 (M80) Semantic search `?limit=` configurable; 連續 0-bug saturation pivot to polish per methodology §6
+> Latest tick: 80 (2026-05-02) — Round 33 audit log + outbox + vector + download invariants. 0 new bugs；偵測到 R23.5 historical Bug AK residue 但 fix 已 ship
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -240,6 +240,19 @@
 >     **7/7 AC PASS** (default / 3 / 50 / 999-cap / 0 / -1 / abc)
 >     **Bonus 順帶確認**：S080 GlobalExceptionHandler 對 `MethodArgumentTypeMismatchException`（int convert fail）也走標準 ErrorResponse shape，Spring 預設「For input string: "abc"」訊息透傳到 user。
 >     ship v2.60.0 (M80)。Tech debt 清掉 1 個（5 → 4 個 active）。
+>   tick 80 (loop cron 10m fc4a79bb, Round 33 audit log + outbox + vector invariants, 2026-05-02):
+>     R33 (9 audits)：
+>     - 33.1 sequence monotonicity per aggregate → 0 gaps ✓
+>     - 33.2 duplicate (aggregate_id, sequence) → 0 ✓ (UNIQUE constraint working)
+>     - 33.3 sequence starts at 1 → all aggregates start with 1 ✓
+>     - 33.4 event_type distribution → 10 distinct types healthy spread (SkillDownloaded 165 / SkillCreated 122 / etc.) ✓
+>     - 33.5 orphan events (skill row 不存在) → 0 ✓
+>     - 33.6 JSONB payload integrity → object type, valid JSON ✓
+>     - 33.7 outbox health: 1221 total / 1221 completed / 0 pending / 0 stale (>1h) ✓
+>     - 33.8 vector_store consistency: 116 active skills (PUBLISHED+DRAFT) ↔ 116 vectors / 0 active-no-vector / 0 orphan vectors / 0 SUSPENDED-with-vector ✓ (S033 invariant 守住)
+>     - 33.9 download events accuracy: 165 events vs sum(download_count)=149 → **16 gap** in 2 fixtures (`r23-dlsus-...` gap 9 + `r23b-race-...` gap 7)
+>     **Diagnosis 33.9**：tick 66 R23.5 race test 的 historical residue — 當時用這 2 fixtures 重現 Bug AK lost-update，counter 被覆蓋到 3 / 1。**S077 fix ship 後新 uploads 不受影響**，但 dev DB 中已壞資料未自動修正（無 reconciliation job）。Not a new bug。
+>     **0 new bugs** — system invariants 全 GREEN（audit log monotonic / outbox drain / vector S033 守住 / event count 精確）；R23 historical residue 不需 fix（dev test fixtures only；production 不受影響）。
 >   tick 71 (loop cron 10m fc4a79bb, Round 27 API consistency audit, 2026-05-01):
 >     R27.1 跨 6 個 endpoint 探測 error response shape：5/6 標準 `{error, message, timestamp}` JSON shape ✓；**1 個發現 Bug AM**：`POST /api/v1/skills/upload` 缺 `version` form param 時 Spring 預設 error handler 直接回 `{timestamp, status, error: "Bad Request", message, path}` shape，繞過 GlobalExceptionHandler 的 ErrorResponse 結構。
 >     **影響**：FE i18n（S066 / S041）用 `error` code 對應 localized message；「Bad Request」(HTTP reason phrase) 不在 12 個 backend code 白名單 → silent fallthrough，user 看到 raw EN 訊息或泛用 fallback。

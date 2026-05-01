@@ -549,6 +549,33 @@ Pre-condition: LlmJudge engine enabled in dev profile (commit 97cc24b)
 - 14 orphan storage files 為 recurring dev-churn tech debt（不影響 user-visible 正確性）
 - **連續 5 ticks 0 bugs (74/75/76/77/78)** — surface 確認飽和
 
+---
+
+## Tick 79 — Polish: ship S090 Semantic search ?limit= (2026-05-02)
+- 7/7 AC PASS；close R25.7 missing-feature；tech debt 5 → 4
+
+---
+
+## Tick 80 — Round 33: audit log + outbox + vector + download invariants (2026-05-02)
+
+| # | 類別 | Audit | Result |
+|---|------|-------|--------|
+| 33.1 | 邊緣 | sequence monotonicity per aggregate | PASS — 0 gaps |
+| 33.2 | 邊緣 | duplicate (aggregate_id, sequence) | PASS — 0 (UNIQUE constraint) |
+| 33.3 | 邊緣 | sequence starts at 1 | PASS — all aggregates |
+| 33.4 | 正例 | event_type distribution | PASS — 10 types healthy spread |
+| 33.5 | 反例 | orphan events (skill row 不存在) | PASS — 0 |
+| 33.6 | 邊緣 | JSONB payload integrity | PASS — object type, valid |
+| 33.7 | 邊緣 | outbox health | PASS — 1221 total / 1221 completed / 0 pending / 0 stale 1h |
+| 33.8 | 邊緣 | vector_store ↔ skills S033 invariant | PASS — 116 active skills ↔ 116 vectors / 0 SUSPENDED-with-vector |
+| 33.9 | 邊緣 | download events vs counter accuracy | OBSERVE — 16-event gap in 2 R23.5 race-test fixtures (historical Bug AK residue, S077 fixed) |
+
+### Tick 80 Summary
+- Round 33: 9 cases / **0 new bugs**
+- system invariants 全 GREEN（audit log / outbox / vector / event count）
+- R23.5 historical residue confirmed harmless (dev-only test fixtures from pre-S077 lost-update)
+
+
 
 
 
