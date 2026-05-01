@@ -111,7 +111,7 @@ export function FileDropZone({
           </div>
         ) : (
           <div className="text-center">
-            <p className="font-medium">拖拽 zip 檔到此處</p>
+            <p className="font-medium">拖拽 zip 或 md 檔到此處</p>
             <p className="text-sm text-muted-foreground">或點擊選取檔案</p>
           </div>
         )}

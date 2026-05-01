@@ -3,7 +3,6 @@ package io.github.samzhu.skillshub.skill.domain;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.data.annotation.Id;
@@ -103,9 +102,10 @@ public class SkillVersion extends AbstractAggregateRoot<SkillVersion> implements
      *         呼叫端透過 {@code skillVersionRepository.save(...)} 觸發 publish 至 outbox
      */
     public static SkillVersion publish(PublishVersionCommand cmd) {
-        Objects.requireNonNull(cmd.skillId(), "skillId is required");
-        Objects.requireNonNull(cmd.version(), "version is required");
-        Objects.requireNonNull(cmd.storagePath(), "storagePath is required");
+        // S054: IllegalArgumentException → 400 VALIDATION_ERROR（aggregate factory 守 user input；NPE 語意錯）
+        if (cmd.skillId() == null) throw new IllegalArgumentException("skillId is required");
+        if (cmd.version() == null) throw new IllegalArgumentException("version is required");
+        if (cmd.storagePath() == null) throw new IllegalArgumentException("storagePath is required");
 
         var sv = new SkillVersion();
         sv.id = UUID.randomUUID().toString();

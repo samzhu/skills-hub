@@ -1,5 +1,26 @@
 # Changelog
 
+## [v2.31.0] — Aggregate Null-Param 400 + Placeholder Polish（M50 完成；2026-05-01）
+
+> **Patch-class minor** — Aggregate factory null-check 從 `Objects.requireNonNull`（NPE → 500）改 `IllegalArgumentException`（→ 400 VALIDATION_ERROR），對齊 user input 守門點語意。順手對齊 FileDropZone placeholder 至 S053 後雙格式。
+
+### Changed
+- **S054: Aggregate Null-Param 400 + Placeholder Polish**（M50 落地）：
+  - `Skill.create` + `SkillVersion.publish` 5 處 NPE → IAE
+  - 移除兩檔案的 unused `java.util.Objects` import
+  - 對齊既有 unit test 斷言（NPE → IAE）
+  - FileDropZone placeholder：「拖拽 zip 檔到此處」→「拖拽 zip 或 md 檔到此處」
+
+### Trigger
+- 2026-05-01 /loop tick 26 — `POST /api/v1/skills` body `{}` 回 HTTP 500 NPE「name is required」（user input 守門點不該用 NPE）
+
+### Verification
+- `./gradlew test` — 286 / 0 fail
+- `npm test` — 10 / 0 fail
+- E2E：缺 name 從 500 NPE → 400 VALIDATION_ERROR；FileDropZone placeholder 顯新文字
+
+---
+
 ## [v2.30.0] — Flexible Upload Formats + Canonical Zip Structure（M49 完成；2026-05-01）
 
 > **Minor bump** — 上傳支援 3 種格式（zip-root / zip-subfolder / plain `.md`），平台統一 normalize 至「SKILL.md 在 zip 根」標準結構。下載安裝體驗一致：所有 skill 解開都是 root SKILL.md（+ optional 兄弟檔）。

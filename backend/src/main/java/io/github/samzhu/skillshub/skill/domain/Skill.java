@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.data.annotation.Id;
@@ -86,8 +85,10 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * <p>S016 既有設計：作者自動 seed 為 owner（read + write + delete 三 ACL entries）。
      */
     public static Skill create(CreateSkillCommand cmd) {
-        Objects.requireNonNull(cmd.name(), "name is required");
-        Objects.requireNonNull(cmd.description(), "description is required");
+        // S054: 用 IllegalArgumentException 而非 NPE — 走 GlobalExceptionHandler 既有 400 VALIDATION_ERROR 路徑。
+        // Aggregate factory 為 user input 守門點；NPE 屬 programmer bug 語意不對。
+        if (cmd.name() == null) throw new IllegalArgumentException("name is required");
+        if (cmd.description() == null) throw new IllegalArgumentException("description is required");
         // S041: name 必符 agentskills.io 正規格式（與 SkillValidator.NAME_REGEX 一致；
         // 不從 SkillValidator import 因 module 邊界 — domain 不依賴 validation 子模組）。
         // 變更時需手動同步兩處 regex literal。

@@ -86,10 +86,11 @@ class SkillAggregateTest {
 
     @Test
     @Tag("AC-2")
-    @DisplayName("AC-2 partial: Skill.create(null name) 拋 NullPointerException")
+    @DisplayName("AC-2 partial: Skill.create(null name) 拋 IllegalArgumentException")
     void skillCreateRejectsNullName() {
+        // S054: 從 NPE 改為 IAE — 走 GlobalExceptionHandler 既有 400 VALIDATION_ERROR 路徑
         assertThatThrownBy(() -> Skill.create(new CreateSkillCommand(null, "desc", "alice", "DevOps")))
-                .isInstanceOf(NullPointerException.class)
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("name");
     }
 
