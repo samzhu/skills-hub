@@ -11,6 +11,7 @@ import { RiskBadge } from '@/components/RiskBadge'
 import { MetricCard } from '@/components/MetricCard'
 import { VersionList } from '@/components/VersionList'
 import { FileDropZone } from '@/components/FileDropZone'
+import { FilesPanel } from '@/components/FilesPanel'
 import { useSkill } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
 import { addVersion } from '@/api/skills'
@@ -168,6 +169,7 @@ export function SkillDetailPage() {
       <Tabs defaultValue="overview">
         <TabsList>
           <TabsTrigger value="overview">概要</TabsTrigger>
+          <TabsTrigger value="files">檔案</TabsTrigger>
           <TabsTrigger value="versions">版本歷史</TabsTrigger>
           <TabsTrigger value="risk">風險評估</TabsTrigger>
         </TabsList>
@@ -188,6 +190,10 @@ export function SkillDetailPage() {
               <code className="block text-sm">或 &lt;project&gt;/.claude/skills/（專案級）</code>
             </div>
           )}
+        </TabsContent>
+        {/* S082: 檔案瀏覽 — 接 S074 backend API (`/skills/{id}/files` + `/files/{*path}`) */}
+        <TabsContent value="files" className="mt-4">
+          <FilesPanel skillId={id ?? ''} />
         </TabsContent>
         <TabsContent value="versions" className="mt-4">
           <VersionList versions={versions ?? []} />

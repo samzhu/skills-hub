@@ -112,3 +112,46 @@ export async function addVersion(skillId: string, file: File, version: string): 
 export function fetchVersions(skillId: string): Promise<SkillVersion[]> {
   return apiFetch(`/skills/${skillId}/versions`)
 }
+
+/**
+ * S082：skill zip 內單一 entry metadata（對齊 S074 `FileEntryResponse` record）。
+ *
+ * @property path skill zip 內路徑（已過 zip-slip 防禦，不含 `..`/開頭 `/`）
+ * @property size 解壓後位元組數
+ * @property type 推測的 MIME（依副檔名；無法判別則 `application/octet-stream`）
+ */
+export interface SkillFile {
+  path: string
+  size: number
+  type: string
+}
+
+/**
+ * 列出 skill 最新 PUBLISHED 版本 zip 內所有 entries（S074 API）。
+ * SUSPENDED → 403；DRAFT 無 PUBLISHED 版本 → 404。
+ */
+export function fetchSkillFiles(skillId: string): Promise<SkillFile[]> {
+  return apiFetch(`/skills/${skillId}/files`)
+}
+
+/**
+ * 讀取 skill zip 內單一 entry 內容（S074 API）。
+ *
+ * 走原生 fetch（非 apiFetch）— body 為任意 binary，apiFetch 預期 JSON 反序列化會失敗。
+ * 1MB+ 檔案會被 backend 拒（413 PAYLOAD_TOO_LARGE per S074 cap）。
+ *
+ * @return Blob + Content-Type；caller 自行決定如何渲染（text decode / binary fallback）
+ */
+export async function fetchSkillFile(skillId: string, path: string): Promise<{ blob: Blob; contentType: string }> {
+  const safePath = path.split('/').map(encodeURIComponent).join('/')
+  const res = await fetch(`/api/v1/skills/${skillId}/files/${safePath}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    const b = body as { message?: string; error?: string }
+    throw new ApiError(res.status, b.message ?? `File fetch failed: ${res.status}`, b.error)
+  }
+  return {
+    blob: await res.blob(),
+    contentType: res.headers.get('Content-Type') ?? 'application/octet-stream',
+  }
+}

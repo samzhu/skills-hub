@@ -1,5 +1,30 @@
 # Changelog
 
+## [v2.59.0] — SkillDetailPage Files Tab UI（M78 完成；2026-05-01）
+
+> **Feature** — S074 backend API（M70）已 ship，但 frontend 還沒 UI 消費。本 spec 加 SkillDetailPage 4th tab「檔案」，user 可在不下載整包 zip 的前提下瀏覽 references / scripts / SKILL.md 內容。User-driven「希望在 skill 明細頁面可以瀏覽各檔案內容」(tick 62 提出，至此完成 backend → frontend 全鏈路)。
+
+### Added
+- **S082: SkillDetailPage Files Tab UI**（M78）：
+  - `api/skills.ts` 新增 `fetchSkillFiles` + `fetchSkillFile`（後者走原生 fetch，回 Blob+Content-Type，不走 apiFetch JSON）
+  - `types`：新增 `SkillFile` interface（`{path, size, type}` 對齊 backend `FileEntryResponse`）
+  - `hooks/useSkillFiles.ts`：`useSkillFiles(skillId)` + `useSkillFile(skillId, path)` React Query hooks
+  - `components/FilesPanel.tsx`：左欄 file list（按 path 字典序 + MIME icon + size）+ 右欄 viewer（text plain-text in `<pre>`，image inline `<img>`，binary fallback，>1 MB 友善訊息）
+  - `pages/SkillDetailPage.tsx`：tab 從 3 個變 4 個（概要 / **檔案** / 版本歷史 / 風險評估）
+  - 11 frontend tests / 0 fail；無 regression
+
+### Edge handling
+- 403 SKILL_SUSPENDED → 「此技能已被停用，無法瀏覽檔案」
+- 404 (DRAFT 無 PUBLISHED 版本) → 「此技能尚未發布版本」
+- 413 PAYLOAD_TOO_LARGE → 「檔案過大，無法預覽（單檔上限 1 MB）」+ 顯示實際大小
+- binary（非 text MIME）→ fallback message + 路徑/類型/大小 + 「下載整包 zip」hint
+- image (`image/*`) → inline 顯示
+
+### Verification
+- Smoke (anthropic/pdf 12 files)：tab 切換 ✓ / 12 entries 列出 ✓ / SKILL.md 預設預覽 ✓ / scripts/*.py 點選顯示 Python 原始碼
+
+---
+
 ## [v2.58.0] — Design Token Migration（DESIGN.md → index.css；M77 完成；2026-05-01）
 
 > **UI Foundation** — User-driven 「參考 DESIGN.md 設計語言優化畫面」。先做 token foundation，後續 per-page rework（S082-S085）才有正確顏色基底。`frontend/src/index.css` 從 shadcn 預設 monochrome oklch tokens 遷至 DESIGN.md spec：warm off-white surface (#FFFFFF) + 灰 ink text (#181818) + purple accent (#7F77DD) + 完整 4-tier semantic (success/warning/danger/info) + 6 category tints + Inter/JetBrains Mono/Source Serif Pro 字體 stack。
