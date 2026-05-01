@@ -36,8 +36,9 @@ export function SkillCard({ skill, score }: { skill: Skill; score?: number }) {
           <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
             <Badge variant="secondary" className="text-xs">{skill.category}</Badge>
             {/* S028: 對非 PUBLISHED 狀態顯示 status badge — DRAFT outline / SUSPENDED destructive；
-                避免 happy path PUBLISHED 整個 list 都加 badge 視覺噪音 */}
-            {skill.status !== 'PUBLISHED' && (
+                避免 happy path PUBLISHED 整個 list 都加 badge 視覺噪音
+                S060: truthy guard — undefined status（如 semantic 結果，S059 保證為 PUBLISHED）不顯 badge */}
+            {skill.status && skill.status !== 'PUBLISHED' && (
               <Badge
                 variant={skill.status === 'SUSPENDED' ? 'destructive' : 'outline'}
                 className="text-xs"

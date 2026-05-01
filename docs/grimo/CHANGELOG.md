@@ -1,5 +1,23 @@
 # Changelog
 
+## [v2.37.0] — SkillCard Status Badge Defensive Undefined Check（M56 完成；2026-05-01）
+
+> **Patch-class minor** — `SkillCard` status badge 條件加 truthy guard：`skill.status && skill.status !== 'PUBLISHED'`。先前 semantic 結果（`SemanticSearchResult` 缺 `status` field → undefined）誤評估為「非 PUBLISHED」→ 全部誤顯「草稿」badge。S059 invariant 已保證 semantic 結果皆 PUBLISHED；undefined → 不主張。
+
+### Changed
+- **S060: SkillCard Status Badge Defensive Undefined Check**（M56）：
+  - SkillCard 條件 `skill.status !== 'PUBLISHED'` → `skill.status && skill.status !== 'PUBLISHED'`
+  - 對齊 S059 「semantic 結果皆 PUBLISHED」 invariant
+
+### Trigger
+- 2026-05-01 /loop tick 32 §7.5 — Chrome semantic mode 卡片全顯「草稿」badge 即使結果皆 PUBLISHED
+
+### Verification
+- `npm test` — 10 / 0 fail
+- Chrome E2E：keyword DRAFT/SUSPENDED 仍顯 badge；semantic 結果不再誤顯
+
+---
+
 ## [v2.36.0] — Semantic Search PUBLISHED-Only Visibility（M55 完成；2026-05-01）
 
 > **Minor bump** — `/api/v1/search/semantic` SQL 加 JOIN skills + WHERE status='PUBLISHED' filter，對齊 S031 list/categories endpoint 視 visibility。先前 DRAFT/SUSPENDED skills（vector_store 仍有 embedding row）會公開呈現於 semantic search 結果。
