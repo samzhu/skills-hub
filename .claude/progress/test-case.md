@@ -531,6 +531,25 @@ Pre-condition: LlmJudge engine enabled in dev profile (commit 97cc24b)
 - security boundaries 全守住（method whitelist / URL decoding / SQL injection prevention / Spring Security hardened headers）
 - 連續 4 ticks 0 bugs (74/75/76/77) — testing surface 確認 saturation
 
+---
+
+## Tick 78 — Round 32: cross-system invariant audit (2026-05-02)
+
+3 audits across system boundaries:
+
+| # | 類別 | Audit | Result |
+|---|------|-------|--------|
+| 32.1 | 邊緣 | OpenAPI doc accuracy（vs deployed handlers） | PASS — 22 operations / 17 paths（自 R12 21 ops 後 +1 為 S074 /files） |
+| 32.2 | 邊緣 | Modulith module boundaries (`/actuator/modulith`) | PASS — 7 modules 全註冊（shared/storage/skill/analytics/audit/search/security 對齊 CLAUDE.md） |
+| 32.3 | 邊緣 | Storage 雙向 hygiene | PASS DB→FS 109/109 ✓；OBSERVE FS→DB 14 orphans (累積 tech debt) |
+
+### Tick 78 Summary
+- Round 32: 3 cases / **0 new bugs**
+- system invariants 全 GREEN（API 契約 / 模組邊界 / DB↔Storage 一致性）
+- 14 orphan storage files 為 recurring dev-churn tech debt（不影響 user-visible 正確性）
+- **連續 5 ticks 0 bugs (74/75/76/77/78)** — surface 確認飽和
+
+
 
 
 

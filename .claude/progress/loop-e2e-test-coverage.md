@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 77 (2026-05-01) — Round 31 HTTP method + encoding edges. 7 cases / 0 bugs；同步驗證 Spring Security 預設 hardened headers
+> Latest tick: 78 (2026-05-02) — Round 32 cross-system invariant audit (OpenAPI/Modulith/Storage). 0 bugs；14 orphan storage files (recurring tech debt)
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -219,6 +219,16 @@
 >     - 31.6 URL-encoded path traversal `%2E%2E%2F` in /files → 400 Tomcat HTML page（per 既有 tech debt 一致）✓
 >     - 31.7 SQL injection probe `'; DROP TABLE skills; --` → 200 + 0 results（parameterized JDBC 守住）；DB 122 skills 完整 ✓
 >     **0 new bugs** — security boundaries 全守住（method whitelist / URL decoding / SQL injection / hardened headers）；連續 4 ticks 0 bugs (74/75/76/77) 確認 saturation。
+>   tick 78 (loop cron 10m fc4a79bb, Round 32 cross-system invariant audit, 2026-05-02):
+>     R32 (3 audits)：
+>     - **32.1 OpenAPI accuracy**：22 operations / 17 paths（自 R12 21 ops 後新增 1 為 S074 /files endpoints）✓
+>     - **32.2 Modulith module boundaries**：`/actuator/modulith` 回 7 modules 全註冊：shared / storage / skill / analytics / audit / search / security（對齊 CLAUDE.md 宣告）✓
+>     - **32.3 Storage hygiene 雙向 audit**：
+>       - DB → Storage：109/109 skill_versions 都有對應 file ✓
+>       - Storage → DB：**14 orphan files**（file 存在但無 DB row）— 與 tick 50 cleanup（7 orphans）為相同類型 tech debt
+>       - 累積原因：失敗 uploads、測試 churn、concurrent rollback 場景
+>     **0 new bugs** — system invariants 全 GREEN；orphan files 只佔 disk space 不影響正確性（DB 是 source of truth）。
+>     **連續 5 ticks 0 bugs** (74/75/76/77/78) — surface 飽和。
 >   tick 71 (loop cron 10m fc4a79bb, Round 27 API consistency audit, 2026-05-01):
 >     R27.1 跨 6 個 endpoint 探測 error response shape：5/6 標準 `{error, message, timestamp}` JSON shape ✓；**1 個發現 Bug AM**：`POST /api/v1/skills/upload` 缺 `version` form param 時 Spring 預設 error handler 直接回 `{timestamp, status, error: "Bad Request", message, path}` shape，繞過 GlobalExceptionHandler 的 ErrorResponse 結構。
 >     **影響**：FE i18n（S066 / S041）用 `error` code 對應 localized message；「Bad Request」(HTTP reason phrase) 不在 12 個 backend code 白名單 → silent fallthrough，user 看到 raw EN 訊息或泛用 fallback。
@@ -301,7 +311,15 @@
 ### Severity Calibration Observation (tick 75 R29.2)
 - LLM Judge engine 對 routine commands（npm install/build/test）給 severity **8.5**（同 rm -rf）→ max-severity aggregation 推到 HIGH → DB 中 0 個 MEDIUM-rated skills（HIGH/LOW polarized）。
 - Conservative philosophy 利弊：security-first ✓ 但 alarm fatigue 風險（HIGH 太多時 HIGH 失去意義）。
-- Future spec S090+：LLM Judge severity 規則 calibration（如 npm/git routine ≤ 5.0；rm -rf / curl|bash / 明確 secret = 8.5）；需更大樣本驗證系統性 over-classification。
+- **Tick 76 R30 update**：MEDIUM IS reachable（5 fixtures 中 1 個 r30-hostname → MEDIUM；1 個 r30-docker → LOW）；R29 0-MEDIUM 是 sample bias。Calibration is design choice, not bug.
+- Future spec S090+：LLM Judge severity 規則 calibration（weighted scoring 而非 hard threshold）需更大樣本。
+
+### Storage Orphan Files (tick 78 R32.3)
+- 14 orphan zip files 在 `backend/storage-local/skills/` 沒對應 DB row（DB → FS 109/109 守住 ✓）。
+- 累積原因：失敗 uploads、test churn、concurrent rollback。
+- 影響：dev disk space only；DB 是 source of truth，不影響 user-visible 行為。
+- Tick 50 cleanup 過 7 orphans，dev 環境繼續產生新 orphan 是預期。
+- Future spec S091+：scheduled storage reaper job（依 DB 為準清理 orphan files）。
 
 ### Known Tech Debt (low priority)
 - DB 既有畸形 entries（畸形 ACL/version "foo" 等）需 future migration
