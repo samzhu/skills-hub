@@ -1,5 +1,16 @@
 # Changelog
 
+## [v2.27.0] — SearchBar Placeholder 對齊 S043（M46 完成；2026-05-01）
+
+> **Patch-class minor** — `SearchBar` placeholder 從「搜尋技能名稱或描述...」改為「搜尋名稱、描述或分類...」對齊 S043 後 keyword search 已涵蓋 category 比對的行為。S043/S044/S046 三個 spec 累積的 UI copy 待辦清掉。
+
+### Changed
+- **S050: SearchBar Placeholder Include Category**（M46）：
+  - 「技能名稱」→「名稱」（冗餘字砍）
+  - 加「分類」對齊 S043 SQL `OR LOWER(category) LIKE :kw`
+
+---
+
 ## [v2.26.0] — ZipException → 400 VALIDATION_ERROR（M45 完成；2026-05-01）
 
 > **Minor bump** — 上傳 corrupt zip 時 `java.util.zip.ZipException` 不再落 Spring 預設 500 / 暴露 raw 訊息（如「invalid stored block lengths」）；改 normalize 為 400 VALIDATION_ERROR + 固定 user-friendly message。Frontend 走既有 i18n map 顯繁中「zip 套件驗證失敗，請確認格式正確。」
