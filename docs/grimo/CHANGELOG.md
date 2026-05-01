@@ -1,5 +1,25 @@
 # Changelog
 
+## [v2.39.0] — SkillVersion JSON Hide Internals（M58 完成；2026-05-01）
+
+> **Patch-class minor** — `SkillVersion` aggregate `getStoragePath()` 與 `isNew()` 加 `@JsonIgnore`：API JSON 不再暴露內部 GCS/FS 路徑（`skills/{uuid}/{ver}/skill.zip`）+ Spring Data JDBC `Persistable.isNew()` artifact。Frontend type 同步移除過時 `storagePath` 欄位（grep 確認 0 個 caller）。
+
+### Changed
+- **S062: SkillVersion JSON Hide Internals**（M58）：
+  - `getStoragePath()` + `isNew()` 加 `@JsonIgnore`
+  - Frontend `SkillVersion` type 移除 `storagePath`
+  - **5 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 35 — `GET /skills/{id}/versions` JSON 暴露 `storagePath` 內部路徑 + `new` artifact
+
+### Verification
+- `./gradlew test` — 286 / 0 fail
+- `npm test` — 10 / 0 fail
+- E2E：JSON keys 為 `[allowedTools, fileSize, frontmatter, id, publishedAt, riskAssessment, skillId, version]`；download 仍正常
+
+---
+
 ## [v2.38.0] — Download Filename Includes Skill Name（M57 完成；2026-05-01）
 
 > **Patch-class minor** — `/api/v1/skills/{id}/download` 與 `/skills/{id}/versions/{ver}/download` 的 Content-Disposition filename 從 hardcoded `skill.zip` / `skill-{ver}.zip` 改為動態 `{skillName}-{version}.zip`。user 同時下載多個 skill 不再檔名衝撞。

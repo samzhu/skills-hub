@@ -146,12 +146,17 @@ public class SkillVersion extends AbstractAggregateRoot<SkillVersion> implements
     @Override
     public String getId() { return id; }
 
-    /** {@inheritDoc} 透過 {@link #isNew} transient flag 自訂 — factory 設 true、reflection 載入保持 false。 */
+    /** {@inheritDoc} 透過 {@link #isNew} transient flag 自訂 — factory 設 true、reflection 載入保持 false。
+     *  S062: @JsonIgnore — Persistable artifact 不該暴露於 API JSON */
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @Override
     public boolean isNew() { return isNew; }
 
     public String getSkillId() { return skillId; }
     public String getVersion() { return version; }
+
+    /** S062: @JsonIgnore — 內部 GCS/FS 路徑不該暴露於 API JSON（資訊洩漏） */
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public String getStoragePath() { return storagePath; }
     public long getFileSize() { return fileSize; }
     public Map<String, Object> getFrontmatter() { return frontmatter; }

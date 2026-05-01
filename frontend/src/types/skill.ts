@@ -111,8 +111,6 @@ export interface SkillVersion {
   skillId: string
   /** 語意化版本號（SemVer，如 1.0.0） */
   version: string
-  /** 套件在 GCS 中的完整物件路徑（前端僅用於組合下載 URL） */
-  storagePath: string
   /** 套件的位元組大小（bytes） */
   fileSize: number
   /** 版本發布時間（ISO 8601 UTC） */
