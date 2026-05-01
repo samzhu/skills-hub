@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 45 (2026-05-01)
+> Latest tick: 46 (2026-05-01) — outbox health verified after S069 drain
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -58,6 +58,7 @@
 - AA: Skill isNew artifact (S063)
 - AB: console pollution (S064)
 - AC: React Query paused state (S065 hotfix v2.43.0)
+- AD: outbox stuck SkillAclGrantedEvent pre-S055 (S069 v2.47.0)
 
 ### Known Tech Debt (low priority)
 - DB 既有畸形 entries（畸形 ACL/version "foo" 等）需 future migration
