@@ -59,6 +59,13 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     private SkillStatus status;
     @Column("latest_version")
     private String latestVersion;
+    /**
+     * S078：{@code @ReadOnlyProperty} 排除 save() INSERT/UPDATE — 與 S077 `downloadCount` 同模式。
+     * `risk_level` 由 {@link SkillRepository#updateRiskLevel}（@Modifying @Query）獨立寫入；
+     * aggregate save 不該覆蓋（lost-update preemptive defense per Bug AL pattern）。
+     * INSERT path 由 DB schema {@code risk_level VARCHAR(10) NULL} 接管，預設 NULL。
+     */
+    @org.springframework.data.annotation.ReadOnlyProperty
     @Column("risk_level")
     private String riskLevel;
     /**

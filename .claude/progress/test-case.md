@@ -308,4 +308,27 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - DELETE skill 設計確認；state-machine race conditions 4/5 正確；發現 lost-update regression 並修復
 - **設計領悟**：counter-style 欄位若有獨立 atomic 寫入路徑，aggregate 必須用 `@ReadOnlyProperty` 排除以避免 save 覆蓋
 
+---
+
+## Tick 67 — Round 24: lost-update architectural audit (2026-05-01)
+
+系統性掃描 `@Modifying @Query` 路徑與 aggregate save 寫入欄位的交叉，找出與 Bug AK 同 pattern 的漏洞。
+
+| Aggregate field | Atomic SQL writer | Aggregate save writer | Vulnerable? | Fix |
+|-----------------|-------------------|----------------------|-------------|-----|
+| `Skill.downloadCount` | `incrementDownloadCount` (S076) | suspend/reactivate/grantAcl save() | YES | S077 v2.55.0 ✓ |
+| `Skill.riskLevel` | `updateRiskLevel` (S024 T5 / ScanOrchestrator) | suspend/reactivate/grantAcl save() | **YES (theoretical)** | **S078 v2.56.0** ✓ |
+| `Skill.status` | — | suspend/reactivate save() | NO | — |
+| `Skill.latestVersion` | — | publishVersion save() | NO | — |
+| `Skill.aclEntries` | — | grantAcl/revokeAcl save() | NO | — |
+| `Skill.name/description/category/author` | — | immutable post-create | NO | — |
+| `SkillVersion.riskAssessment` | — | `attachRiskAssessment` save() only | NO | — |
+
+**Bug AL (theoretical)** — 5 trial 重現失敗（dev 環境 scan async timing 落在 grantAcl 群組之後）；架構漏洞確實存在（`updateRiskLevel` SQL 不增加 aggregate `version` → optimistic lock 偵測不到此衝突），ship preemptive defense per S077 precedent（一行 fix 零風險）。
+
+### Tick 67 Summary
+- Round 24: lost-update audit / **1 preemptive bug shipped (AL / S078 v2.56.0)**
+- **Skill aggregate 所有欄位 lost-update 漏洞清零**（兩個 atomic-path 欄位 `download_count` + `risk_level` 都已 `@ReadOnlyProperty`）
+- 設計領悟：lost-update audit 是 architectural sweep；同模式漏洞應一次掃光，避免日後踩雷
+
 

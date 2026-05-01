@@ -1,5 +1,29 @@
 # Changelog
 
+## [v2.56.0] — `Skill.riskLevel` `@ReadOnlyProperty`（preemptive defense；M74 完成；2026-05-01）
+
+> **Defense-in-depth** — S077 fix lost-update on `download_count`，audit 後發現 `risk_level` 同模式：`ScanOrchestrator.updateRiskLevel`（atomic SQL UPDATE）+ aggregate save 並發時，後者 full-row UPDATE 帶上 in-memory 舊值（多為 null）覆蓋 scan 寫入的 HIGH/MEDIUM/LOW。`updateRiskLevel` SQL 不增加 `version`，aggregate 的 `@Version` optimistic lock 偵測不到此衝突。E2E test loop tick 67 Round 24 audit + 5 trial 嘗試重現未觸發（dev 環境 timing 太緊）但架構漏洞與 S077 完全相同（bug AL pattern）。Preemptive ship — 不留地雷。
+
+### Fixed
+- **S078: `Skill.riskLevel` `@ReadOnlyProperty`**（M74）：
+  - `Skill.riskLevel` 加 `@org.springframework.data.annotation.ReadOnlyProperty`（同 S077 pattern）
+  - findById SELECT 仍含此欄位（read 不變；API JSON 仍 expose `riskLevel`）
+  - save() 的 INSERT/UPDATE 排除此欄位
+  - 唯一寫入路徑：`SkillRepository.updateRiskLevel` atomic SQL UPDATE（保留既有）
+  - INSERT path 由 DB schema `risk_level VARCHAR(10) NULL` 接管（預設 NULL）
+  - 299 backend tests / 0 fail（無 regression）
+
+### Audit Result
+本 spec 同步 audit 其他 aggregate 欄位是否有同 pattern：
+- ✓ `download_count` — fixed by S077
+- ✓ `risk_level` — fixed by 本 spec
+- ✓ `status` / `latestVersion` / `aclEntries` / `name` / `author` / `description` / `category` — 只走 aggregate save，無獨立 atomic path → safe
+- ✓ `SkillVersion.riskAssessment` — 僅 aggregate `attachRiskAssessment` 寫入 → safe
+
+至此 Skill aggregate 所有欄位的 lost-update 漏洞清零。
+
+---
+
 ## [v2.55.0] — `Skill.downloadCount` `@ReadOnlyProperty`（lost-update fix；M73 完成；2026-05-01）
 
 > **Regression fix from S076** — S076 引入原子 SQL `incrementDownloadCount` 解決並行下載 OptimisticLocking 失敗；但同時引入 lost-update：concurrent suspend (or any aggregate save) 與 download 交錯時，aggregate `save()` 用 full-row UPDATE 把所有欄位（含 `download_count`）回寫，**覆蓋掉並發的原子增量**。實測 10 並行 download + 1 並發 suspend：10 dl HTTP 200，但 final `download_count = 3`（其他 7 個被 suspend save 蓋掉）。E2E test loop tick 66 Round 23.5 race condition 探查發現（bug AK）。

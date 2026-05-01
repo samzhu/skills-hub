@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 66 (2026-05-01) — Round 23 race conditions → **Bug AK (S076 regression)** ship S077 v2.55.0 (M73) lost-update fix
+> Latest tick: 67 (2026-05-01) — Round 24 lost-update audit → **Bug AL preemptive** ship S078 v2.56.0 (M74); Skill aggregate lost-update 漏洞清零
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -117,6 +117,19 @@
 >     - 23.5 邊緣：10 並行 download + 1 concurrent suspend on PUBLISHED skill → **發現 Bug AK**：10 dl HTTP 200 但 final `download_count=3`（**7 個增量被 suspend save 覆寫**）。Sanity test (10 dl 無 suspend) → counter=10 ✓ — S076 atomic SQL fix 在 pure download case 仍正確；但 lost update issue 在 concurrent save 路徑暴露。
 >     **Bug AK (HIGH / S076 regression)**：S076 引入 atomic SQL increment 解 OptimisticLocking 失敗，但 Spring Data JDBC `save()` 不做 dirty tracking，每次 UPDATE 是 full-row replace，把 in-memory 舊 `download_count` 寫回，覆蓋並發 atomic increment。寫 S077 spec（XS/3）→ `Skill.downloadCount` 加 `@org.springframework.data.annotation.ReadOnlyProperty`：findById SELECT 不變、save() 的 INSERT/UPDATE 排除此欄；INSERT 由 DB DEFAULT 0 接管 → aggregate `recordDownload()` 純 in-memory mutation 不變（單元測試保 PASS）→ 299 tests / 0 fail → 重啟 backend → smoke：10 dl + 1 sus → **counter=10**（pre: 3）+ 30 pure parallel → counter=30（S076 維持）→ ship v2.55.0 (M73)。
 >     **設計領悟**：counter 類欄位若有獨立 atomic 寫入路徑，aggregate 必須把它從 save() write set 排除。Spring Data JDBC `@ReadOnlyProperty` 是這個 pattern 的標準工具，類似 JPA `@Column(insertable=false, updatable=false)`。
+>   tick 67 (loop cron 10m fc4a79bb, Round 24 lost-update audit, 2026-05-01):
+>     R24 跨 aggregate 系統性 audit 同 S077 模式：
+>     - 找出所有 `@Modifying @Query` 方法（aggregate 之外的 atomic SQL UPDATE 路徑）
+>     - 比對對應欄位是否同時被 aggregate `save()` 寫入
+>     - 若是 → 同 pattern 漏洞 → 加 `@ReadOnlyProperty`
+>     **Audit 結果**：
+>     - `download_count` (S076 atomic) ↔ aggregate save → fixed by S077 ✓
+>     - **`risk_level` (S024 T5 atomic) ↔ aggregate save → 漏洞**（Bug AL theoretical）
+>     - `status` / `latestVersion` / `aclEntries` / `name` / `author` / `description` / `category` — 只走 aggregate save，無獨立 atomic path → 安全
+>     - `SkillVersion.riskAssessment` — 走 aggregate `attachRiskAssessment + save`，無獨立 atomic path → 安全
+>     **嘗試重現 Bug AL**：5 trial（upload risky SKILL.md + 並發 20 grantAcl spam）皆無法觸發 — dev 環境 timing 太緊（scan async listener 在 thread pool 排隊執行，多落在 grantAcl 群組已完成之後）。Production 高負載 / 慢網路 / 跨 host 仍可能擴大 race window。
+>     **Bug AL (theoretical, preemptive)**：架構分析與 S077 完全同 pattern；`updateRiskLevel` SQL 不增加 aggregate `version` → optimistic lock 偵測不到此衝突 → save() 默默覆蓋。寫 S078 spec（XS/2）→ `Skill.riskLevel` 加 `@org.springframework.data.annotation.ReadOnlyProperty`（同 S077 fix template）→ 299 tests / 0 fail → 重啟 backend → smoke：upload risky skill → scan 寫 HIGH @ 1.0s → grantAcl 201 → risk_level=HIGH 存活 ✓（不破 happy path） → ship v2.56.0 (M74)。
+>     **設計領悟**：lost-update audit 是 architectural sweep — 不能只 fix 看到的，要把整類同模式的漏洞一次掃光。Spring Data JDBC 沒 dirty tracking 是 framework constraint，必須由 schema 設計者自覺。**現在 Skill aggregate lost-update 漏洞清零**（兩個欄位 `download_count` + `risk_level` 都 `@ReadOnlyProperty`；其他欄位純 aggregate path）。
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -181,6 +194,7 @@
 - AI: `FlagReadModel.isNew()` 序列化為 `"new": true` 洩漏到 GET /flags API 回應；與 Bug AA / S063 同 root cause（Spring Data JDBC `Persistable` framework hook）但 Skill 修了沒覆蓋 Flag (S075 v2.53.0)
 - AJ: 並行下載同一 skill OptimisticLockingFailureException 級聯（N=2 即 50% 失敗）；aggregate `@Version` 樂觀鎖對 counter 過度保護；改用原子 SQL UPDATE + ApplicationEventPublisher (S076 v2.54.0)
 - AK: S076 regression — concurrent suspend/reactivate save 用 full-row UPDATE 覆蓋並發 atomic increment（Spring Data JDBC 無 dirty tracking）；10 dl + 1 sus 觀察 7/10 增量 lost；fix 用 `@ReadOnlyProperty` 排除 `downloadCount` 從 save write set (S077 v2.55.0)
+- AL (theoretical): `Skill.riskLevel` 同 AK pattern — `ScanOrchestrator.updateRiskLevel`（atomic SQL）+ aggregate save 並發 → save 覆蓋 scan 結果（HIGH/MEDIUM/LOW 變回 null）；`updateRiskLevel` SQL 不增加 version → optimistic lock 偵測不到；dev 環境重現失敗（timing 太緊）但架構漏洞與 AK 完全相同；preemptive fix 用 `@ReadOnlyProperty` (S078 v2.56.0)
 
 ### Known Tech Debt (low priority)
 - DB 既有畸形 entries（畸形 ACL/version "foo" 等）需 future migration
