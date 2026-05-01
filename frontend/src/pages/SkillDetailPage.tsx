@@ -92,7 +92,8 @@ export function SkillDetailPage() {
             <Badge variant={statusBadgeVariant(skill.status)}>
               {STATUS_LABEL[skill.status]}
             </Badge>
-            {skill.latestVersion && (
+            {/* S035: 僅 PUBLISHED 渲染下載按鈕 — 避免 SUSPENDED user 點擊後落到 raw 403 JSON 頁面 */}
+            {skill.latestVersion && skill.status === 'PUBLISHED' && (
               // 使用原生 <a> 而非 React Router <Link>，觸發瀏覽器直接下載行為，
               // 不走 SPA 路由（SPA 路由無法觸發 Content-Disposition: attachment）
               <a
@@ -106,6 +107,16 @@ export function SkillDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* S035: SUSPENDED 提示橫幅 — destructive variant 對齊 S028 SkillDetailPage SUSPENDED Badge variant */}
+      {skill.status === 'SUSPENDED' && (
+        <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 p-4">
+          <p className="text-sm font-medium text-destructive">此技能已被停用，無法下載</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            被停用的技能仍會保留紀錄，但下載端點已停用。如需恢復請聯絡管理員。
+          </p>
+        </div>
+      )}
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <MetricCard
@@ -150,7 +161,9 @@ export function SkillDetailPage() {
         </TabsContent>
         <TabsContent value="versions" className="mt-4">
           <VersionList versions={versions ?? []} />
-          <AddVersionForm skillId={id ?? ''} />
+          {/* S035: SUSPENDED 隱藏新增版本表單 — backend recordVersionPublished 對 SUSPENDED 會拋
+              IllegalStateException → 409；預先 hide affordance，admin 必須先 reactivate 才能加版本 */}
+          {skill.status !== 'SUSPENDED' && <AddVersionForm skillId={id ?? ''} />}
         </TabsContent>
         <TabsContent value="risk" className="mt-4">
           <div className="space-y-3">

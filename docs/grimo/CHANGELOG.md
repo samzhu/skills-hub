@@ -1,5 +1,30 @@
 # Changelog
 
+## [v2.12.0] — Frontend Suspended Detail Page UX（M31 完成；2026-05-01）
+
+> **Minor bump** — frontend UX 修正：SUSPENDED skill 詳情頁不再渲染下載按鈕（避免 user 點擊落到 raw 403 JSON），新增「已停用」提示橫幅（destructive variant），隱藏新增版本表單。
+
+### Added
+- **S035: Frontend Suspended Detail Page UX**（M31 落地）：
+  - **下載按鈕條件加 `status === 'PUBLISHED'`**：避免 user 點擊後 navigate 至後端 raw 403 JSON 頁面
+  - **SUSPENDED banner**：destructive variant border/bg，「此技能已被停用，無法下載」+ admin 聯絡指示
+  - **AddVersionForm 隱藏**：對 SUSPENDED skill 不渲染新增版本表單（backend `recordVersionPublished` 對 SUSPENDED 拋 IllegalStateException → 409；UI affordance principle: don't let users start what they can't finish）
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 10 — SUSPENDED skill detail page 仍顯示下載按鈕；click 後落到後端 raw JSON 403 SKILL_SUSPENDED
+
+### Verification
+- `npm test` — 10/10 PASS
+- `tsc -b` — 0 type errors
+- `npm run lint` — 0 errors / 0 warnings
+- Visual code review：三處 conditional rendering 對齊 S028（status badge）+ S029（backend 403 SKILL_SUSPENDED）+ S030（state machine 409）
+
+### Tech Debt
+- S031 §7.5 admin panel endpoint（用於 reactivate 操作）仍待設計
+
+---
+
 ## [v2.11.0] — SearchProjection Owner from Event/Aggregate（M30 完成；2026-05-01）
 
 > **Minor bump** — 完成 S025b §7 architecture tech debt：`SearchProjection.onSkillCreated` 與 `onVersionPublished` 從 `currentUserProvider.userId()`（async listener 走 labUserId fallback）改為 `event.author()` / `skill.getAuthor()`（source of truth）。移除 `CurrentUserProvider` 依賴。
