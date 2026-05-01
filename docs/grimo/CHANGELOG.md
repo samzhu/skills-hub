@@ -1,5 +1,29 @@
 # Changelog
 
+## [v2.13.0] — Frontend MEDIUM Risk Message（M32 完成；2026-05-01）
+
+> **Minor bump** — frontend Risk tab UX 修正：補齊 MEDIUM 風險等級說明段落（既有只有 LOW/HIGH）；同步以 `Record<RiskLevel, string>` map 取代 inline `if` 串，TypeScript exhaustive check 防止未來新增等級漏改。
+
+### Added
+- **S036: Frontend MEDIUM Risk Message**（M32 落地）：
+  - **`RISK_DESCRIPTION: Record<RiskLevel, string>`** — 三段中文說明（LOW / MEDIUM / HIGH）；MEDIUM 為新增「此技能含可執行腳本，但未偵測到高風險模式。建議審視 scripts/ 內容後再使用。」
+  - **`RISK_TEXT_CLASS: Record<RiskLevel, string>`** — 視覺色階對應（muted / amber-700 / red-600），對齊 `RiskBadge` 既有 LOW/MEDIUM/HIGH 色彩語意
+  - 3 個 inline `{skill.riskLevel === 'X' && (...)}` → 1 個 `{skill.riskLevel && (...)}` 統一從 map 取
+  - **5 個 SBE AC 全綠**
+
+### Pattern
+- mirror S028 `STATUS_LABEL: Record<SkillStatus, string>` 模式 — codebase 一致性；TypeScript Record 強制 exhaustive
+
+### Trigger
+- 2026-05-01 /loop tick 11 — `RiskBadge` 三色齊全但 `SkillDetailPage` Risk tab 只有 LOW/HIGH 段落，MEDIUM skill user 看 badge 後找不到詳述
+
+### Verification
+- `npm test` — 10/10 PASS
+- `tsc -b` — 0 type errors
+- `npm run lint` — 0 errors / 0 warnings
+
+---
+
 ## [v2.12.0] — Frontend Suspended Detail Page UX（M31 完成；2026-05-01）
 
 > **Minor bump** — frontend UX 修正：SUSPENDED skill 詳情頁不再渲染下載按鈕（避免 user 點擊落到 raw 403 JSON），新增「已停用」提示橫幅（destructive variant），隱藏新增版本表單。

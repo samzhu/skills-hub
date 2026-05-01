@@ -132,6 +132,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M29: Vector Store Status Sync | S033 | XS(5) | 325 | ✅ `v2.10.0` (2026-05-01 — SearchProjection 加 onSkillSuspended 刪 vector row + onSkillReactivated 重 embed；落地 S031 §7.5；附帶解決 S025b §7 author fallback 的 reactivate path) |
 | Phase 4 | M30: SearchProjection Owner from Event/Aggregate | S034 | XS(5) | 330 | ✅ `v2.11.0` (2026-05-01 — onSkillCreated 用 event.author / onVersionPublished 用 aggregate.author；移除 CurrentUserProvider 依賴；S025b §7 author fallback architecture tech debt 完整解決) |
 | Phase 4 | M31: Frontend Suspended Detail Page UX | S035 | XS(5) | 335 | ✅ `v2.12.0` (2026-05-01 — SUSPENDED skill detail 隱藏下載按鈕 + 顯示 destructive banner + 隱藏 AddVersionForm；對齊 S028/S029/S030 backend 行為) |
+| Phase 4 | M32: Frontend MEDIUM Risk Message | S036 | XS(5) | 340 | ✅ `v2.13.0` (2026-05-01 — Risk tab 補 MEDIUM 段落說明；改用 Record<RiskLevel,string> exhaustive map；mirror S028 STATUS_LABEL pattern) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

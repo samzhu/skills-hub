@@ -14,7 +14,7 @@ import { FileDropZone } from '@/components/FileDropZone'
 import { useSkill } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
 import { addVersion } from '@/api/skills'
-import type { SkillStatus } from '@/types/skill'
+import type { RiskLevel, SkillStatus } from '@/types/skill'
 
 /**
  * S028 — 技能狀態中譯 + Badge variant 對應。
@@ -32,6 +32,22 @@ function statusBadgeVariant(s: SkillStatus): 'default' | 'secondary' | 'destruct
     case 'PUBLISHED': return 'default'
     case 'SUSPENDED': return 'destructive'
   }
+}
+
+/**
+ * S036 — Risk tab 段落說明（mirror STATUS_LABEL pattern；exhaustive Record 防漏）。
+ * RiskBadge 是 inline 短訊；本表是 detail page 段落級別的詳述。
+ */
+const RISK_DESCRIPTION: Record<RiskLevel, string> = {
+  LOW: '此技能僅含 SKILL.md，不含可執行腳本，風險等級為低。',
+  MEDIUM: '此技能含可執行腳本，但未偵測到高風險模式。建議審視 scripts/ 內容後再使用。',
+  HIGH: '此技能的 scripts/ 中偵測到高風險模式，請謹慎使用。',
+}
+
+const RISK_TEXT_CLASS: Record<RiskLevel, string> = {
+  LOW: 'text-muted-foreground',
+  MEDIUM: 'text-amber-700',
+  HIGH: 'text-red-600',
 }
 
 /**
@@ -174,11 +190,11 @@ export function SkillDetailPage() {
             {!skill.riskLevel && (
               <p className="text-sm text-muted-foreground">此技能尚未完成風險評估。</p>
             )}
-            {skill.riskLevel === 'LOW' && (
-              <p className="text-sm text-muted-foreground">此技能僅含 SKILL.md，不含可執行腳本，風險等級為低。</p>
-            )}
-            {skill.riskLevel === 'HIGH' && (
-              <p className="text-sm text-red-600">此技能的 scripts/ 中偵測到高風險模式，請謹慎使用。</p>
+            {/* S036: 三段風險說明（LOW/MEDIUM/HIGH）統一從 Record map 取；補齊 MEDIUM */}
+            {skill.riskLevel && (
+              <p className={`text-sm ${RISK_TEXT_CLASS[skill.riskLevel]}`}>
+                {RISK_DESCRIPTION[skill.riskLevel]}
+              </p>
             )}
           </div>
         </TabsContent>
