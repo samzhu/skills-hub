@@ -461,6 +461,32 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - Round 28: 5 cases / **0 new bugs**
 - S082 spec §3 全 5 AC 端到端驗證完成；feature ship 後深度驗證收尾。
 
+---
+
+## Tick 75 — Round 29: LLM 解說 + LOW/MEDIUM/HIGH 評分 E2E (2026-05-01)
+
+User: 「E2E 要測試 LLM 解說功能, 跟中高風險評分效果」
+Pre-condition: LlmJudge engine enabled in dev profile (commit 97cc24b)
+
+| # | 類別 | Fixture | Expected | Got | LLM Reasoning |
+|---|------|---------|----------|-----|---------------|
+| 29.1 | 正例 | r29-low-... (pure docs, no scripts) | LOW | **LOW** ✓ | "no identifiable risks... pure documentation skill providing basic Markdown best practices" |
+| 29.2 | 邊緣 | r29-med-... (allowed-tools=Bash + npm/git routine) | MEDIUM | **HIGH** ⚠️ | "explicit safety claims while listing actions that are well-known supply chain attack vectors (AS5)" |
+| 29.3 | 反例 | r29-high-... (rm -rf + curl|bash + /etc/passwd + AWS+GitHub PAT) | HIGH | **HIGH** ✓ + 12 findings | "multiple highly dangerous actions: destructive file ops, RCE, credential theft" |
+
+**LLM Explanation Quality**: HIGH ✓ — 三個 case 解說都精準、技術正確、actionable；對 user「夠不夠清楚」答案：清楚。
+
+**Severity Calibration Observation (not bug)**：
+- DB 76 LOW / 11 HIGH / 27 NULL / **0 MEDIUM**
+- LLM Judge 給 npm routine commands 嚴重度 8.5（同 rm -rf）→ max-severity rule 推到 HIGH
+- Design philosophy 選擇：conservative security-first vs nuanced anti-alarm-fatigue
+- Future S090+ severity calibration spec — 需更大樣本
+
+### Tick 75 Summary
+- Round 29: 3 cases (1 LOW ✓ / 1 MEDIUM-rated-HIGH calibration observation / 1 HIGH ✓) / **0 new bugs**
+- LLM 解說品質：HIGH 三案皆精準
+- Calibration tech debt logged for future S090+
+
 
 
 

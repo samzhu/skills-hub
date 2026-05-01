@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 74 (2026-05-01) — Round 28 S082 Files tab end-to-end 5 AC matrix → all PASS / 0 bugs
+> Latest tick: 75 (2026-05-01) — Round 29 LLM 解說 + 中高風險評分 E2E. LLM 解說品質 HIGH；MEDIUM tier calibration 觀察（0 active bugs）
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -180,6 +180,24 @@
 >     - 28.4 反例 SUSPENDED (suspend-download-test) → backend 403 → 「此技能已被停用，無法瀏覽檔案」 ✓
 >     - 28.5 反例 DRAFT no PUBLISHED version (draft-skill-tick5) → backend 404 → 「此技能尚未發布版本，無檔案可瀏覽」 ✓
 >     **0 new bugs** — S082 5 個 AC 端到端 GREEN，feature ship 後深度驗證完成。
+>   tick 75 (loop cron 10m fc4a79bb, Round 29 LLM 解說 + 中高風險評分 E2E, 2026-05-01):
+>     User: 「E2E 要測試 LLM 解說功能, 跟中高風險評分效果」
+>     Pre-condition: tick 74 ship `97cc24b` enable LlmJudge engine in dev profile
+>     R29 (3 fixtures spanning LOW/MEDIUM/HIGH risk spectrum):
+>     - **29.1 LOW**: pure documentation skill (no allowed-tools, no scripts) → riskLevel=LOW ✓ + 0 findings + LLM reasoning「no identifiable risks... pure documentation skill providing basic Markdown best practices」
+>     - **29.2 MEDIUM expected → got HIGH**: skill with `allowed-tools: Bash` running routine `npm install / npm run build / npm test` (no destructive commands) → riskLevel=HIGH（!= MEDIUM）+ 3 LLM claims：OWASP-AS5-001 sev=8.5 / OWASP-AS6-001 sev=5.0 / OWASP-AS7-001 sev=5.0；LLM reasoning「explicit safety claims while listing actions that are well-known supply chain attack vectors (AS5)」— **過度警覺**：npm 是 routine command，全部評 8.5 → max severity rule 推到 HIGH
+>     - **29.3 HIGH**: rm -rf + curl-pipe-bash + /etc/passwd + AWS key + GitHub PAT → riskLevel=HIGH ✓ + 12 findings (5 from LLM judge @ 8.5) + reasoning enumerate 5 種威脅精準
+>     **Quality of LLM explanation: HIGH** ✓
+>     - 三個 case 的 reasoning 都技術正確 / 精準 / actionable
+>     - 跨 LOW/HIGH 邊界判斷無誤
+>     - 對 user 「夠不夠清楚」答案：清楚（英文 narrative + 具體 OWASP AST taxonomy）
+>     **Calibration observation (not bug)** — DB 中 0 個 MEDIUM skills（76 LOW + 11 HIGH + 27 NULL）：
+>     - LLM Judge 給 npm install/build/test 嚴重度 8.5（與 rm -rf 同級）
+>     - max-severity aggregation 把任何 ≥8.5 的 finding 推到 HIGH
+>     - 結果：所有有 allowed-tools=Bash 的 skill 幾乎都 HIGH → 「alarm fatigue」風險
+>     - Design-level discussion：conservative philosophy（security-first）vs nuanced（避免 alarm fatigue）
+>     - 1 個 datapoint 不夠 calibrate；留 future S090+ severity calibration spec
+>     **0 new bugs**（calibration 是設計選擇，非實作 bug）。
 >   tick 71 (loop cron 10m fc4a79bb, Round 27 API consistency audit, 2026-05-01):
 >     R27.1 跨 6 個 endpoint 探測 error response shape：5/6 標準 `{error, message, timestamp}` JSON shape ✓；**1 個發現 Bug AM**：`POST /api/v1/skills/upload` 缺 `version` form param 時 Spring 預設 error handler 直接回 `{timestamp, status, error: "Bad Request", message, path}` shape，繞過 GlobalExceptionHandler 的 ErrorResponse 結構。
 >     **影響**：FE i18n（S066 / S041）用 `error` code 對應 localized message；「Bad Request」(HTTP reason phrase) 不在 12 個 backend code 白名單 → silent fallthrough，user 看到 raw EN 訊息或泛用 fallback。
@@ -258,6 +276,11 @@
 
 ### Polish Candidates (tick 69 R26)
 - Name regex `^[a-z0-9-]{1,64}$` 過於寬鬆 — 接受單一 `-`、`--`、邊界 hyphen `-foo` / `foo-`。技術 valid 但 filename 顯示奇怪。Docker-tag-style 慣例 `^[a-z0-9]+(-[a-z0-9]+)*$` 較嚴謹（拒邊界與連續 hyphen）。風險：可能拒既有 DB 中的 weird-name skills（雖然不太可能）。
+
+### Severity Calibration Observation (tick 75 R29.2)
+- LLM Judge engine 對 routine commands（npm install/build/test）給 severity **8.5**（同 rm -rf）→ max-severity aggregation 推到 HIGH → DB 中 0 個 MEDIUM-rated skills（HIGH/LOW polarized）。
+- Conservative philosophy 利弊：security-first ✓ 但 alarm fatigue 風險（HIGH 太多時 HIGH 失去意義）。
+- Future spec S090+：LLM Judge severity 規則 calibration（如 npm/git routine ≤ 5.0；rm -rf / curl|bash / 明確 secret = 8.5）；需更大樣本驗證系統性 over-classification。
 
 ### Known Tech Debt (low priority)
 - DB 既有畸形 entries（畸形 ACL/version "foo" 等）需 future migration
