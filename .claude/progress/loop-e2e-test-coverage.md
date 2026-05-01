@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 67 (2026-05-01) — Round 24 lost-update audit → **Bug AL preemptive** ship S078 v2.56.0 (M74); Skill aggregate lost-update 漏洞清零
+> Latest tick: 68 (2026-05-01) — Round 25 semantic search edges + data quality invariants, **0 bugs** / 1 missing-feature observation
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -130,6 +130,19 @@
 >     **嘗試重現 Bug AL**：5 trial（upload risky SKILL.md + 並發 20 grantAcl spam）皆無法觸發 — dev 環境 timing 太緊（scan async listener 在 thread pool 排隊執行，多落在 grantAcl 群組已完成之後）。Production 高負載 / 慢網路 / 跨 host 仍可能擴大 race window。
 >     **Bug AL (theoretical, preemptive)**：架構分析與 S077 完全同 pattern；`updateRiskLevel` SQL 不增加 aggregate `version` → optimistic lock 偵測不到此衝突 → save() 默默覆蓋。寫 S078 spec（XS/2）→ `Skill.riskLevel` 加 `@org.springframework.data.annotation.ReadOnlyProperty`（同 S077 fix template）→ 299 tests / 0 fail → 重啟 backend → smoke：upload risky skill → scan 寫 HIGH @ 1.0s → grantAcl 201 → risk_level=HIGH 存活 ✓（不破 happy path） → ship v2.56.0 (M74)。
 >     **設計領悟**：lost-update audit 是 architectural sweep — 不能只 fix 看到的，要把整類同模式的漏洞一次掃光。Spring Data JDBC 沒 dirty tracking 是 framework constraint，必須由 schema 設計者自覺。**現在 Skill aggregate lost-update 漏洞清零**（兩個欄位 `download_count` + `risk_level` 都 `@ReadOnlyProperty`；其他欄位純 aggregate path）。
+>   tick 68 (loop cron 10m fc4a79bb, Round 25 semantic search edges + data quality invariants, 2026-05-01):
+>     **Data quality snapshot all GREEN**：published=81 / suspended=6 / draft=18 / vector_count=99（=published+draft；S033 invariant — SUSPENDED 已清空）；outbox_pending=0；audit_events=670；download_events=164；published_without_vector=0；orphan_vectors=0；orphan_versions=0 ✓
+>     R25 semantic search edges (9 cases)：
+>     - 25.1 正例 中文「PDF 文件處理」cross-lingual → top 5 含 pdf/docx/xlsx ✓（embedding 多語言能力）
+>     - 25.2 正例 q=docx (exact name) → 第一筆是 docx 自己 ✓
+>     - 25.3 反例 q='' → 400 VALIDATION_ERROR「No embedding input is provided - all texts are null or empty」✓
+>     - 25.4 邊緣 q='x' (1 字) → 200 + 10 results (xlsx top, docx 次) ✓
+>     - 25.5 邊緣 q=8400 字 → **400 with Tomcat HTML page**（與既有 path traversal 同 known issue：Tomcat URL-layer reject 早於 Spring handler）— 已在 tech debt
+>     - 25.6 邊緣 q=「🚀💡」emoji-only → 200 + 10 results ✓
+>     - 25.7 邊緣 limit=0/1/50/100/1000 全 → 10 results — **`limit` 參數被 silently ignored**！檢查 SearchController：簽名只 `@RequestParam String q`，無 limit；service `TOP_K=10` hardcoded。**非 bug**：API contract 沒承諾 limit；Spring silent-ignore unknown params 是預期行為。記為 missing-feature tech debt（exposing configurable limit 是合理 feature）。
+>     - 25.8 反例 q=`suspend-download-test`（一個 SUSPENDED skill 名稱）→ 0 results；S059 filter 工作正確 ✓
+>     - 25.9 邊緣 q='   ' 全 whitespace → 400（同 R25.3）；q='!!!'/'%%%'/':::' → 200 + 10 random（embedding model 對 noise 給 best-effort match，acceptable）✓
+>     **0 new bugs** — 9 cases 全部行為符合 documented contract / design intent。
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -195,6 +208,9 @@
 - AJ: 並行下載同一 skill OptimisticLockingFailureException 級聯（N=2 即 50% 失敗）；aggregate `@Version` 樂觀鎖對 counter 過度保護；改用原子 SQL UPDATE + ApplicationEventPublisher (S076 v2.54.0)
 - AK: S076 regression — concurrent suspend/reactivate save 用 full-row UPDATE 覆蓋並發 atomic increment（Spring Data JDBC 無 dirty tracking）；10 dl + 1 sus 觀察 7/10 增量 lost；fix 用 `@ReadOnlyProperty` 排除 `downloadCount` 從 save write set (S077 v2.55.0)
 - AL (theoretical): `Skill.riskLevel` 同 AK pattern — `ScanOrchestrator.updateRiskLevel`（atomic SQL）+ aggregate save 並發 → save 覆蓋 scan 結果（HIGH/MEDIUM/LOW 變回 null）；`updateRiskLevel` SQL 不增加 version → optimistic lock 偵測不到；dev 環境重現失敗（timing 太緊）但架構漏洞與 AK 完全相同；preemptive fix 用 `@ReadOnlyProperty` (S078 v2.56.0)
+
+### Missing Features (tick 68 R25.7)
+- `/search/semantic` endpoint：API contract 只有 `q` 參數，TOP_K=10 hardcoded；client `?limit=` 被 silently dropped（Spring 預期行為）。Future feature: 暴露 `?limit=` query param（合理 default 10、cap 50）讓 client 控制結果數。
 
 ### Known Tech Debt (low priority)
 - DB 既有畸形 entries（畸形 ACL/version "foo" 等）需 future migration

@@ -331,4 +331,43 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - **Skill aggregate 所有欄位 lost-update 漏洞清零**（兩個 atomic-path 欄位 `download_count` + `risk_level` 都已 `@ReadOnlyProperty`）
 - 設計領悟：lost-update audit 是 architectural sweep；同模式漏洞應一次掃光，避免日後踩雷
 
+---
+
+## Tick 68 — Round 25: semantic search edges + data quality invariants (2026-05-01)
+
+### Data quality snapshot — all GREEN
+
+| metric | value |
+|--------|-------|
+| published_skills | 81 |
+| suspended_skills | 6 |
+| draft_skills | 18 |
+| vector_count | 99 (= published + draft，符合 S033 invariant) |
+| outbox_pending | 0 |
+| published_without_vector | 0 |
+| orphan_vectors | 0 |
+| orphan_versions | 0 |
+
+### Semantic search 9 cases
+
+| # | 類別 | Case | Result |
+|---|------|------|--------|
+| 25.1 | 正例 | 中文「PDF 文件處理」cross-lingual | PASS — top 5 含 pdf/docx/xlsx |
+| 25.2 | 正例 | q=docx (exact name) | PASS — 第一筆 docx |
+| 25.3 | 反例 | q='' | PASS 400「No embedding input...」|
+| 25.4 | 邊緣 | q='x' 1 char | PASS 200 (xlsx top) |
+| 25.5 | 邊緣 | q=8400 chars | OBSERVE 400 Tomcat HTML page (already tech debt) |
+| 25.6 | 邊緣 | q='🚀💡' emoji-only | PASS 200 |
+| 25.7 | 邊緣 | limit=0/1/50/100/1000 | OBSERVE 全 10 — **limit param silently ignored** (Spring default for unknown param; non-bug per contract) |
+| 25.8 | 反例 | q=SUSPENDED skill name | PASS 0 results (S059 filter) |
+| 25.9 | 邊緣 | whitespace + special chars | PASS — '   '→400 / '!!!','%%%' →200 best-effort match |
+
+**Note R25.7**: `/search/semantic` controller 只接受 `q`；TOP_K=10 hardcoded；OpenAPI 沒承諾 limit。Logged as missing feature for future spec（exposing configurable limit）.
+
+### Tick 68 Summary
+- Round 25: 9 cases / **0 new bugs**
+- 系統 health 全綠（無 orphan / outbox 0 / vector invariant 守住）
+- 1 個 missing-feature observation（semantic search limit）→ 排入 tech debt
+
+
 
