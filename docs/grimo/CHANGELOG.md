@@ -1,5 +1,27 @@
 # Changelog
 
+## [v2.32.0] — ACL Tuple Input Validation（M51 完成；2026-05-01）
+
+> **Minor bump** — `Skill` aggregate 加 ACL tuple 預驗：`type ∈ {user, role, group}`、`principal` 非 blank、`permission ∈ {read, write, delete, suspend, reactivate}`。違反 → 400 VALIDATION_ERROR。先前 POST `/acl` 接受任意 permission 字串 / 缺 type 仍 201 創建，畸形 ACL entry 入 DB。
+
+### Added
+- **S055: ACL Tuple Input Validation**（M51 落地）：
+  - `ACL_TYPES` + `ACL_PERMISSIONS` 常數；`validateAclTuple` private helper
+  - `grantAcl` + `revokeAcl` 共用驗證
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 28 — POST `/acl` 缺 type / invalid permission 都 201 創建畸形 entry
+
+### Verification
+- `./gradlew test` — 286 / 0 fail
+- E2E：缺 type / invalid permission / blank principal 全 400；合法 grant 201；revoke 同樣驗證
+
+### Tech Debt
+- DB 既存畸形 entries（tick 26 雜訊）需 future migration 清理
+
+---
+
 ## [v2.31.0] — Aggregate Null-Param 400 + Placeholder Polish（M50 完成；2026-05-01）
 
 > **Patch-class minor** — Aggregate factory null-check 從 `Objects.requireNonNull`（NPE → 500）改 `IllegalArgumentException`（→ 400 VALIDATION_ERROR），對齊 user input 守門點語意。順手對齊 FileDropZone placeholder 至 S053 後雙格式。

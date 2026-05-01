@@ -159,6 +159,29 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     /** S042: description 長度上限（與 {@code SkillValidator.DESCRIPTION_MAX} 同值）。 */
     private static final int DESCRIPTION_MAX = 1024;
 
+    /** S055: ACL principal 命名空間 — controller 預期 user/role/group 三類，aggregate 守 invariant。 */
+    private static final java.util.Set<String> ACL_TYPES =
+            java.util.Set.of("user", "role", "group");
+
+    /** S055: ACL permission 動詞 — 與 architecture.md ACL spec 對齊。 */
+    private static final java.util.Set<String> ACL_PERMISSIONS =
+            java.util.Set.of("read", "write", "delete", "suspend", "reactivate");
+
+    /** S055: ACL tuple 統一驗證 — grantAcl + revokeAcl 共用，違反 → 400 VALIDATION_ERROR。 */
+    private static void validateAclTuple(String type, String principal, String permission) {
+        if (type == null || !ACL_TYPES.contains(type)) {
+            throw new IllegalArgumentException(
+                    "ACL type must be one of " + ACL_TYPES + " (got: " + type + ")");
+        }
+        if (principal == null || principal.isBlank()) {
+            throw new IllegalArgumentException("ACL principal must not be blank");
+        }
+        if (permission == null || !ACL_PERMISSIONS.contains(permission)) {
+            throw new IllegalArgumentException(
+                    "ACL permission must be one of " + ACL_PERMISSIONS + " (got: " + permission + ")");
+        }
+    }
+
     /**
      * SkillQueryService 動態 SQL search 場景的 row → entity 物化 factory。
      * 一般查詢路徑（findById）走 {@link SkillRepository}，由 Spring Data JDBC 自動 mapping。
@@ -236,6 +259,8 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * </ul>
      */
     public void grantAcl(GrantAclCommand cmd) {
+        // S055: aggregate 守 ACL tuple invariant — type/principal/permission 缺失或不合法 → 400
+        validateAclTuple(cmd.type(), cmd.principal(), cmd.permission());
         var entry = entry(cmd.type(), cmd.principal(), cmd.permission());
         if (aclEntries.contains(entry)) {
             throw new IllegalStateException("ACL entry already exists: " + entry);
@@ -251,6 +276,8 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * 業務不變量：必須存在對應 entry 才可 revoke；不存在拋 {@link IllegalStateException}。
      */
     public void revokeAcl(RevokeAclCommand cmd) {
+        // S055: 同 grant 守 ACL tuple invariant
+        validateAclTuple(cmd.type(), cmd.principal(), cmd.permission());
         var entry = entry(cmd.type(), cmd.principal(), cmd.permission());
         if (!aclEntries.remove(entry)) {
             throw new IllegalStateException("ACL entry not found: " + entry);
