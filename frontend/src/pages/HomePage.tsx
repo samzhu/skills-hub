@@ -39,8 +39,12 @@ export function HomePage() {
 
   const { data: categories } = useCategories()
 
-  // 語意搜尋模式：query 非空且語意搜尋未出錯時啟用；出錯時退回關鍵字搜尋
-  const isSemanticMode = query.trim().length > 0 && !semanticError
+  // 語意搜尋模式：query 非空、semantic 未 error、且確實有結果時啟用。
+  // S046：semantic 回空（dev 未配置 embedding / prod 真 zero match / silent failure）
+  // 也算 fallback 觸發條件 — 落 keyword mode，避免「找到 0 個 試試換個描述方式」死巷。
+  const isSemanticMode = query.trim().length > 0
+    && !semanticError
+    && (semanticResults?.length ?? 0) > 0
 
   /**
    * 使用者輸入搜尋字串時觸發，同時重置分頁與分類篩選。

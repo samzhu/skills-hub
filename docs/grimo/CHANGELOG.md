@@ -1,5 +1,28 @@
 # Changelog
 
+## [v2.23.0] — Semantic Search Fallback to Keyword（M42 完成；2026-05-01）
+
+> **Minor bump** — `HomePage` semantic search 回 0 結果（不是 error）時自動 fallback 至 keyword search mode。先前 user 在搜尋框輸入任何 query 若 semantic 系統性 / 語意上沒命中即停在死巷「未找到匹配的技能 試試換個描述方式」。fix 後 keyword mode 自動接手，dev（embedding 未配置）+ prod（真 zero match）兩場景一致 graceful。
+
+### Added
+- **S046: Semantic Search Fallback to Keyword**（M42 落地）：
+  - **`isSemanticMode` 加 `(semanticResults?.length ?? 0) > 0`** — semantic 回空也算 fallback 觸發條件
+  - **`useSkillList` 已並行請求**（既有 hook 有 own enabled guard）— 純 render 切換，無需新 API call
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 20 Chrome E2E — HomePage 輸入「DevOps」（既存 25 個 DevOps skill）回 0；frontend 走 semantic mode；semantic 系統性回 0；fallback 條件 `!semanticError` 不觸發 → 死巷
+
+### Verification
+- `npm test -- --run` — 10 tests / 0 fail
+- Chrome E2E：keyword=DevOps 0→25（keyword mode）；keyword=blahblah999 顯 0 友善 empty state；清空 query 回 default browse 25
+
+### Tech Debt（同 tick 21 發現）
+- 搜尋框 placeholder「名稱或描述」未對齊 S043 後行為（已含 category）
+- semantic 系統性回 0 根因（vector / threshold / embedding mismatch）— 屬獨立 backend bug，不影響本 fix；prod 環境真 zero match 場景本 fix 仍有意義
+
+---
+
 ## [v2.22.0] — Strip Error Stack Trace + 405 Handler（M41 完成；2026-05-01）
 
 > **Minor bump** — 收斂 Spring Boot fallback 錯誤回應的 stack trace leak（12-14KB → 138-180B）。`spring.web.error.include-stacktrace: never` 為全局 defense；`HttpRequestMethodNotSupportedException` 加 explicit handler 把 405 normalize 至 `{error: "METHOD_NOT_ALLOWED", message, timestamp}`。
