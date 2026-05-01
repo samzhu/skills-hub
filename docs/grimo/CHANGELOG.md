@@ -1,5 +1,24 @@
 # Changelog
 
+## [v2.24.0] — Installation Guide Only for PUBLISHED（M43 完成；2026-05-01）
+
+> **Minor bump** — `SkillDetailPage` 概要 tab 安裝指引「下載 zip 後解壓...」只對 PUBLISHED skill 顯示。先前 DRAFT skill 沒下載按鈕但仍顯指引、SUSPENDED skill 有「無法下載」banner 但仍顯指引 — UX 矛盾解決。
+
+### Added
+- **S047: Installation Guide Only for PUBLISHED**（M43 落地）：
+  - **conditional render**：`{skill.status === 'PUBLISHED' && (... 安裝指引 ...)}`
+  - 對齊既有 download button 隱藏邏輯（PUBLISHED only）
+  - **4 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 22 Chrome E2E — DRAFT skill 詳情頁顯「安裝指引：下載 zip 後解壓...」但版本歷史「尚無版本記錄」+ 沒下載按鈕；user 看到指引卻找不到下載 UX 矛盾
+
+### Verification
+- `npm test -- --run` — 10 tests / 0 fail
+- Chrome E2E 三 status 驗：PUBLISHED 有指引 ✓ / DRAFT 沒指引 ✓ / SUSPENDED 沒指引 + suspend banner 仍在 ✓
+
+---
+
 ## [v2.23.0] — Semantic Search Fallback to Keyword（M42 完成；2026-05-01）
 
 > **Minor bump** — `HomePage` semantic search 回 0 結果（不是 error）時自動 fallback 至 keyword search mode。先前 user 在搜尋框輸入任何 query 若 semantic 系統性 / 語意上沒命中即停在死巷「未找到匹配的技能 試試換個描述方式」。fix 後 keyword mode 自動接手，dev（embedding 未配置）+ prod（真 zero match）兩場景一致 graceful。

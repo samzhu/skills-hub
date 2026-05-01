@@ -175,14 +175,18 @@ export function SkillDetailPage() {
             <h3 className="text-lg font-semibold">描述</h3>
             <p className="text-muted-foreground">{skill.description}</p>
           </div>
-          <div className="mt-6 rounded-md border bg-muted/50 p-4">
-            <h4 className="mb-2 text-sm font-semibold">安裝指引</h4>
-            <p className="text-sm text-muted-foreground">
-              下載 zip 後解壓，將資料夾放到：
-            </p>
-            <code className="mt-1 block text-sm">~/.claude/skills/（系統級）</code>
-            <code className="block text-sm">或 &lt;project&gt;/.claude/skills/（專案級）</code>
-          </div>
+          {/* S047: 安裝指引只對 PUBLISHED 顯示 — DRAFT 沒可下載版本 / SUSPENDED 已 block download。
+              避免 user 看到「下載 zip」指引但實際找不到下載按鈕的 UX 矛盾。 */}
+          {skill.status === 'PUBLISHED' && (
+            <div className="mt-6 rounded-md border bg-muted/50 p-4">
+              <h4 className="mb-2 text-sm font-semibold">安裝指引</h4>
+              <p className="text-sm text-muted-foreground">
+                下載 zip 後解壓，將資料夾放到：
+              </p>
+              <code className="mt-1 block text-sm">~/.claude/skills/（系統級）</code>
+              <code className="block text-sm">或 &lt;project&gt;/.claude/skills/（專案級）</code>
+            </div>
+          )}
         </TabsContent>
         <TabsContent value="versions" className="mt-4">
           <VersionList versions={versions ?? []} />
