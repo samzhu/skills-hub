@@ -61,6 +61,12 @@ export function PublishPage() {
                     onChange={(e) => setVersion(e.target.value)}
                     placeholder="1.0.0"
                     required
+                    // S067: HTML5 pattern 預驗 semver — 對齊 backend Skill.VERSION_REGEX (S056)
+                    // 陷阱：(1) HTML5 自動 wrap ^(?:pattern)$，pattern 本身不要寫 ^...$；
+                    //       (2) Chrome 對字元 class 內未 escape 的 `.` 與 `-` 會 silent 停用整個 pattern；
+                    //          必須寫 `\.\-`，pattern 才實際生效
+                    pattern="\d+\.\d+\.\d+(-[A-Za-z0-9\.\-]+)?"
+                    title="格式：MAJOR.MINOR.PATCH（如 1.0.0 或 2.0.0-rc.1）"
                   />
                 </div>
                 <div>

@@ -1,5 +1,21 @@
 # Changelog
 
+## [v2.45.0] — Version Input HTML5 Pattern Pre-Validation（M63 完成；2026-05-01）
+
+> **Patch-class minor** — `PublishPage` + `AddVersionForm` 的 version input 加 HTML5 `pattern` 屬性，client-side 即時拒絕非 semver 輸入（如「foo」）；先前須 round-trip 至 backend 收 400 才知錯。
+
+### Changed
+- **S067: Version Input HTML5 Pattern Pre-Validation**（M63）：
+  - Pattern: `\d+\.\d+\.\d+(-[A-Za-z0-9\.\-]+)?`
+  - 對齊 backend `Skill.VERSION_REGEX` (S056)
+  - inline 註解記 HTML5 pattern 兩陷阱（不要寫 `^...$`；char class 內 `.`/`-` 必須 escape 否則 Chrome silent 停用）
+
+### Verification
+- vitest 10 / 0 fail
+- Chrome `foo`/空 → reject；`1.0.0`/`2.0.0-rc.1`/`3.0.0-alpha-1` → accept
+
+---
+
 ## [v2.44.0] — METHOD_NOT_ALLOWED i18n Coverage（M62 完成；2026-05-01）
 
 > **Patch-class minor** — frontend `api-error-messages.ts` 加 `METHOD_NOT_ALLOWED: '此操作的請求方法不正確，請重新整理頁面後再試。'`。S045 backend 已 ship 此 code，frontend i18n 漏譯（user 看英文 fallback）。Backend ↔ Frontend i18n 現 12/12 全覆蓋。

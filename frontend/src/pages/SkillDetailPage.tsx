@@ -262,6 +262,10 @@ function AddVersionForm({ skillId }: { skillId: string }) {
             onChange={(e) => setVersion(e.target.value)}
             placeholder="2.0.0"
             required
+            // S067: HTML5 pattern 預驗 semver — 對齊 backend Skill.VERSION_REGEX (S056)
+            // 陷阱：char class 內 `.` 與 `-` 必須 escape (`\.\-`) 否則 Chrome silent 停用整個 pattern
+            pattern="\d+\.\d+\.\d+(-[A-Za-z0-9\.\-]+)?"
+            title="格式：MAJOR.MINOR.PATCH（如 1.0.0 或 2.0.0-rc.1）"
           />
         </div>
         <button
