@@ -1,5 +1,28 @@
 # Changelog
 
+## [v2.21.0] — Keyword Trim Whitespace（M40 完成；2026-05-01）
+
+> **Minor bump** — `SkillQueryService.search` 的 `keyword` 參數做 `.trim()` 預處理；user 從複製貼上常含 leading/trailing whitespace（先前 `keyword=t17 ` 回 0、`keyword= DevOps` 回 0），現在與 `keyword=t17` / `keyword=DevOps` 結果一致。對齊 GitHub / npm / Google 通用搜尋 trim 慣例。
+
+### Added
+- **S044: Keyword Trim Whitespace**（M40 落地）：
+  - **`keyword.trim()` 預處理**（與 `sanitizeLikePattern` 的 `%/_/\` SQL escape 職責正交）
+  - **既有 `StringUtils.hasText` 邏輯不變**：trim 後仍空字串視同無 keyword（沿用既有 whitespace-only = 無 filter 行為）
+  - **`?category=` 顯式 filter 不 trim**（該欄位來自前端 dropdown 應為精確 match）
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 19 — API E2E sweep 試 `keyword=t17%20`（trailing space）回 0 結果；plain `keyword=t17` 回 1；複製貼上含尾空白為高頻 user 場景
+
+### Verification
+- `./gradlew clean test` — 286 tests / 0 failures / 0 errors（含新加 `keywordTrimsWhitespace`）
+- E2E HTTP：trail `t17 ` → 1（was 0）、lead ` DevOps` → 25（was 0）、surround `  t17  ` → 1（was 0）、純空白 → 25（不破）、plain `t17`/`DevOps` → 1/25（不破）
+
+### Tech Debt（同 tick 19 發現，留下一輪）
+- **Bug B**：`POST /api/v1/skills/{id}/versions`（method not allowed）response 12.9KB stack trace 含 `LabSecurityFilter` / Spring Security filter chain class names — `GlobalExceptionHandler` 未處理 `HttpRequestMethodNotSupportedException`，落入 Spring 預設 `BasicErrorController`（含 `trace` field）。屬資訊洩漏類
+
+---
+
 ## [v2.20.0] — Keyword Search Also Matches Category（M39 完成；2026-05-01）
 
 > **Minor bump** — `SkillQueryService.search` keyword `LIKE` 子句加 `LOWER(category)` 第三個 OR；user 輸入 category 名（如「DevOps」、「Testing」）即可命中對應分類所有 skill。對齊 GitHub / npm / Docker Hub 等通用 catalog 搜尋慣例。`?category=` 顯式 filter 仍維持精確 match（與此擴展正交）。

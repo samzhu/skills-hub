@@ -121,12 +121,15 @@ public class SkillQueryService {
 		if (StringUtils.hasText(keyword)) {
 			// S043: 加入 category 比對 — user 在搜尋框輸入 category 名（如「DevOps」）即可命中對應分類所有 skill
 			// （對齊 GitHub / npm 等 catalog 通用 search 慣例）。`?category=` 顯式 filter 仍維持精確 match。
+			// S044: trim leading/trailing whitespace — user 複製貼上常含尾空白；trim 屬 input 預處理
+			// 與 sanitizeLikePattern（%/_/\ 跳脫）職責正交。
+			var trimmed = keyword.trim();
 			var clause = " AND (LOWER(name) LIKE LOWER(:kw) ESCAPE '\\' "
 					+ "OR LOWER(description) LIKE LOWER(:kw) ESCAPE '\\' "
 					+ "OR LOWER(category) LIKE LOWER(:kw) ESCAPE '\\') ";
 			sql.append(clause);
 			countSql.append(clause);
-			params.addValue("kw", "%" + sanitizeLikePattern(keyword) + "%");
+			params.addValue("kw", "%" + sanitizeLikePattern(trimmed) + "%");
 		}
 		if (StringUtils.hasText(category)) {
 			sql.append(" AND category = :cat ");

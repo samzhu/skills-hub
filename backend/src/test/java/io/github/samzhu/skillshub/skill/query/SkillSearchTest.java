@@ -95,4 +95,18 @@ class SkillSearchTest extends RepositorySliceTestBase {
         assertThat(page.getContent()).hasSize(2);
         assertThat(page.getContent()).allMatch(s -> "DevOps".equals(s.getCategory()));
     }
+
+    @Test
+    @DisplayName("AC-S044: keyword 含 leading/trailing whitespace 仍命中（trim 預處理）")
+    void keywordTrimsWhitespace() {
+        var plain = queryService.search("docker", null, PageRequest.of(0, 20));
+        var trailing = queryService.search("docker  ", null, PageRequest.of(0, 20));
+        var leading = queryService.search("  docker", null, PageRequest.of(0, 20));
+        var surround = queryService.search("  docker  ", null, PageRequest.of(0, 20));
+
+        assertThat(plain.getContent()).hasSize(1);
+        assertThat(trailing.getContent()).hasSize(1);
+        assertThat(leading.getContent()).hasSize(1);
+        assertThat(surround.getContent()).hasSize(1);
+    }
 }
