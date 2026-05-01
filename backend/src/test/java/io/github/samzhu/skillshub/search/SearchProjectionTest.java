@@ -18,10 +18,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
 import org.springframework.modulith.test.Scenario;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.test.context.support.WithMockUser;
-
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillReactivatedEvent;
@@ -60,7 +56,6 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
  */
 @ApplicationModuleTest(mode = BootstrapMode.ALL_DEPENDENCIES)
 @Import(TestcontainersConfiguration.class)
-@WithMockUser(username = "test-owner")
 class SearchProjectionTest {
 
     @Autowired private JdbcTemplate jdbc;
@@ -97,7 +92,8 @@ class SearchProjectionTest {
                 .andWaitForStateChange(() -> rowOrNull(skillId))
                 .andVerify(row -> {
                     assertThat(row.get("content")).isEqualTo(skillName + " 管理 Docker 容器");
-                    assertThat(row.get("owner")).isEqualTo("test-owner");
+                    // S034: owner 從 event.author() 取（不再依賴 SecurityContext propagation）
+                    assertThat(row.get("owner")).isEqualTo("sam");
                     assertThat(row.get("skill_id")).isEqualTo(skillId);
                 });
     }
@@ -130,49 +126,36 @@ class SearchProjectionTest {
                     assertThat(rows).hasSize(1);
                     assertThat(row.get("content"))
                             .isEqualTo(skillName + " 新版：管理 Docker 容器與 Compose");
-                    assertThat(row.get("owner")).isEqualTo("test-owner");
+                    // S034: owner 從 aggregate.author 取（setUp seeded skills row author='sam'）
+                    assertThat(row.get("owner")).isEqualTo("sam");
                     assertThat(row.get("skill_id")).isEqualTo(skillId);
                 });
     }
 
     /**
-     * S025a-T03 recovered from S023-T07 disabled state（spec §3 AC-6）— 驗 per-request
-     * builder pattern 鎖 owner 在 instance 中，不會被後續寫入污染。
-     *
-     * <p>關鍵：{@code DelegatingSecurityContextAsyncTaskExecutor} 在 async task 排隊時
-     * snapshot 當前 SecurityContext。本 test 順序設定不同 SecurityContext + 序列化
-     * Scenario.publish + andWaitForStateChange，確保第一次 listener 完成後才設第二次 context，
-     * 避免 race。
+     * S034 rewrite — owner 不再來自 SecurityContext，而是 event.author()。
+     * 兩個不同 author 的 SkillCreatedEvent 應各自獨立寫入；row1 不被 row2 污染（per-request builder isolation）。
      */
     @Test
-    @DisplayName("AC-3: 多個 SkillCreatedEvent → 各自獨立 row（per-request instance 不共用 owner state）")
+    @DisplayName("AC-3: 多個 SkillCreatedEvent → 各自獨立 row（owner 來自 event.author，不被互相污染）")
     @Tag("AC-3")
     void onSkillCreated_multipleSkillsHaveIndependentOwnerState(Scenario scenario) {
         var skillId2 = UUID.randomUUID().toString();
         var skillName2 = "k8s-helper-" + UUID.randomUUID();
         seedSkillRow(skillId2, skillName2, "管理 K8s", "jane", "DevOps");
 
-        // Phase 1: SecurityContext = test-owner → publish event for skillId → wait → verify owner
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("test-owner", null, List.of()));
-
         scenario.publish(new SkillCreatedEvent(skillId, skillName, "...", "sam", "DevOps"))
                 .andWaitForStateChange(() -> ownerOrNull(skillId))
-                .andVerify(owner -> assertThat(owner).isEqualTo("test-owner"));
-
-        // Phase 2: SecurityContext = other-owner → publish event for skillId2 → wait → verify owner
-        // 此時第一次 listener 已完成（Scenario wait ensure），切換 context 不會 race。
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("other-owner", null, List.of()));
+                .andVerify(owner -> assertThat(owner).isEqualTo("sam"));
 
         scenario.publish(new SkillCreatedEvent(skillId2, skillName2, "...", "jane", "DevOps"))
                 .andWaitForStateChange(() -> ownerOrNull(skillId2))
-                .andVerify(owner -> assertThat(owner).isEqualTo("other-owner"));
+                .andVerify(owner -> assertThat(owner).isEqualTo("jane"));
 
-        // 二次驗證：第 1 個 row 的 owner 不被第 2 次寫入污染（per-request isolation）
+        // 二次驗證：第 1 個 row 的 owner 不被第 2 次寫入污染（per-request builder isolation）
         assertThat(jdbc.queryForObject(
                 "SELECT owner FROM vector_store WHERE id = ?::uuid", String.class, skillId))
-                .isEqualTo("test-owner");
+                .isEqualTo("sam");
     }
 
     @Test

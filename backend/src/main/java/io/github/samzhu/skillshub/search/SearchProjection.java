@@ -12,7 +12,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
-import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillReactivatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
@@ -58,16 +57,16 @@ class SearchProjection {
 
     private final JdbcTemplate jdbcTemplate;
     private final EmbeddingModel embeddingModel;
-    private final CurrentUserProvider currentUserProvider;
     private final SkillRepository skillRepo;
     private final SkillVersionRepository versionRepo;
 
+    // S034: 移除 CurrentUserProvider 依賴 — async listener 無 SecurityContext，
+    // owner 改從 event.author（onSkillCreated）/ aggregate.author（onVersionPublished /
+    // onSkillReactivated, S033）取得，是 source of truth。
     SearchProjection(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel,
-                     CurrentUserProvider currentUserProvider,
                      SkillRepository skillRepo, SkillVersionRepository versionRepo) {
         this.jdbcTemplate = jdbcTemplate;
         this.embeddingModel = embeddingModel;
-        this.currentUserProvider = currentUserProvider;
         this.skillRepo = skillRepo;
         this.versionRepo = versionRepo;
     }
@@ -95,9 +94,12 @@ class SearchProjection {
                 ? List.of("*:read")
                 : List.of("user:" + event.author() + ":read", "*:read");
 
+        // S034: owner 從 event.author() 取（async listener 無 SecurityContext，不能依賴 currentUserProvider —
+        // S025b §7 architecture tech debt）；event 已在 publisher TX 內 captured event.author，
+        // 來源是 caller 上傳時提供的 author 欄位，是 source of truth。
         // Per-request：owner / skillId / aclEntries 鎖在這個 instance 裡，操作完 GC
         SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
-                .owner(currentUserProvider.userId())
+                .owner(event.author())
                 .skillId(event.aggregateId())
                 .aclEntries(initialAcl)
                 .build()
@@ -115,11 +117,12 @@ class SearchProjection {
 
         // S016：re-embed 也帶 owner-derived acl_entries 維持與 onSkillCreated 一致；
         // delete-then-add 會走新 row 路徑（無 ON CONFLICT 觸發），需顯式提供初始 acl 防止空 array。
-        var owner = currentUserProvider.userId();
+        // S034: owner 從 aggregate 取（同 onSkillReactivated 模式；S025b §7 architecture tech debt 完全解決）。
+        // SkillVersionPublishedEvent 的 frontmatter 也帶 author，但 aggregate.author 才是 source of truth
+        // （S032 enforces SKILL.md name 一致性，但 author 沒驗；以 aggregate 為準避免 frontmatter quirk 污染）。
+        var skill = skillRepo.findById(event.aggregateId()).orElse(null);
+        var owner = skill != null ? skill.getAuthor() : null;
         // S026: 加 "*:read" public-read pseudo-principal — version 重建時保持公開
-        // （注意：onVersionPublished 在 async listener 內 currentUserProvider.userId() 走 labUserId
-        // fallback；S025b §7 已登記 architecture tech debt — 應改用 event 帶的 author
-        // 或讀既有 row 的 owner。S026 暫只補 "*:read"；owner ACL 一致性留 future spec）。
         var initialAcl = owner == null
                 ? List.of("*:read")
                 : List.of("user:" + owner + ":read", "*:read");

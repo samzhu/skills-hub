@@ -1,5 +1,32 @@
 # Changelog
 
+## [v2.11.0] — SearchProjection Owner from Event/Aggregate（M30 完成；2026-05-01）
+
+> **Minor bump** — 完成 S025b §7 architecture tech debt：`SearchProjection.onSkillCreated` 與 `onVersionPublished` 從 `currentUserProvider.userId()`（async listener 走 labUserId fallback）改為 `event.author()` / `skill.getAuthor()`（source of truth）。移除 `CurrentUserProvider` 依賴。
+
+### Added
+- **S034: SearchProjection Owner from Event/Aggregate**（M30 落地）：
+  - **`onSkillCreated`**：`.owner(currentUserProvider.userId())` → `.owner(event.author())` — 從 event 直接取 author（caller 上傳 form 帶來，已是 source of truth）
+  - **`onVersionPublished`**：query Skill aggregate → `owner = skill.getAuthor()`（mirror S033 onSkillReactivated 模式；不依賴 frontmatter author 因可能與 aggregate 不一致）
+  - **移除 `CurrentUserProvider` field + ctor param**：SearchProjection 不再需要 SecurityContext；簡化 search → shared::security 耦合
+  - **3 個 SBE AC 全綠**
+
+### Changed
+- `SearchProjectionTest`：3 處 expected `owner = "test-owner"` 改為 author 名（"sam" / "jane"）；`onSkillCreated_multipleSkillsHaveIndependentOwnerState` 重寫為「不同 author events 各自獨立寫入」；移除 `@WithMockUser` + SecurityContextHolder 操作
+
+### Trigger
+- 2026-05-01 /loop tick 9 — vector_store.owner = `lab-user`（不是 author=alice）；S025b §7 已記的 architecture tech debt 中的 onSkillCreated / onVersionPublished path（S033 已修 onSkillReactivated）
+
+### Verification
+- `./gradlew test` — 295 tests / 0 fail
+- E2E HTTP（local LAB mode）：upload author=alice → vector_store.owner=`alice`（baseline `lab-user`）；PUT version → owner 維持 alice
+
+### Architecture Tech Debt Complete
+- S025b §7 author fallback 完整解決（S033 onSkillReactivated + S034 onSkillCreated/onVersionPublished）
+- SearchProjection 對 author 屬 deterministic — 永遠跟 event/aggregate 同步，不受 SecurityContext propagation 影響
+
+---
+
 ## [v2.10.0] — Vector Store Status Sync（M29 完成；2026-05-01）
 
 > **Minor bump** — `SearchProjection` 新增兩個 listener，把 vector_store 同步至 skill state machine：suspend 刪 row，reactivate 重新 embed。落地 S031 §7.5 tech debt；附帶解決 S025b §7 author-fallback architecture tech debt 中的 reactivate path。
