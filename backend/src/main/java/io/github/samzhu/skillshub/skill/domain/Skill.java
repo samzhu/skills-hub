@@ -322,7 +322,10 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * (@Version) 是否 null 判斷：null = 尚未持久化（INSERT path）；non-null = 已持久化（UPDATE path）。
      *
      * <p>per deepwiki/spring-data-jdbc-modulith/aggregate-design.md §1.@Version + §4.isNew。
+     *
+     * <p>S063：{@code @JsonIgnore} — Persistable artifact 不該暴露於 API JSON（同 S062 對 SkillVersion 的修復）
      */
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @Override
     public boolean isNew() {
         return this.version == null;

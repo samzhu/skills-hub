@@ -1,5 +1,23 @@
 # Changelog
 
+## [v2.40.0] — Skill Aggregate isNew JsonIgnore（M59 完成；2026-05-01）
+
+> **Patch-class minor** — 延伸 S062 修復至 `Skill` aggregate：`isNew()` 加 `@JsonIgnore`。先前 GET `/skills/{id}` 與 list endpoint 仍暴露 `new: false` artifact；S062 只修了 SkillVersion 同類欄位。
+
+### Changed
+- **S063: Skill Aggregate isNew JsonIgnore**（M59）：
+  - `Skill.isNew()` 加 `@JsonIgnore`
+  - 對齊 S062 Pattern — 所有 `implements Persistable<>` aggregate 都該隱藏
+
+### Trigger
+- 2026-05-01 /loop tick 36 — Skill JSON 仍含 `new` field（S062 漏修）
+
+### Verification
+- `./gradlew test` — 286 / 0 fail
+- E2E：detail + list endpoint JSON keys 不再含 `new`
+
+---
+
 ## [v2.39.0] — SkillVersion JSON Hide Internals（M58 完成；2026-05-01）
 
 > **Patch-class minor** — `SkillVersion` aggregate `getStoragePath()` 與 `isNew()` 加 `@JsonIgnore`：API JSON 不再暴露內部 GCS/FS 路徑（`skills/{uuid}/{ver}/skill.zip`）+ Spring Data JDBC `Persistable.isNew()` artifact。Frontend type 同步移除過時 `storagePath` 欄位（grep 確認 0 個 caller）。
