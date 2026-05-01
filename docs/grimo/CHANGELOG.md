@@ -1,5 +1,17 @@
 # Changelog
 
+## [v2.44.0] — METHOD_NOT_ALLOWED i18n Coverage（M62 完成；2026-05-01）
+
+> **Patch-class minor** — frontend `api-error-messages.ts` 加 `METHOD_NOT_ALLOWED: '此操作的請求方法不正確，請重新整理頁面後再試。'`。S045 backend 已 ship 此 code，frontend i18n 漏譯（user 看英文 fallback）。Backend ↔ Frontend i18n 現 12/12 全覆蓋。
+
+### Changed
+- **S066: METHOD_NOT_ALLOWED i18n**（M62）：
+
+### Coverage Audit
+- 12 個 backend ErrorResponse codes 全部對應 frontend i18n entries
+
+---
+
 ## [v2.42.0] — ApiError HMR-Safe Instance Check + QueryCache 4xx Skip（M61 完成；2026-05-01）
 
 > **Patch-class minor** — 兩個並行修：
