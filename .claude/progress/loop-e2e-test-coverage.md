@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 70 (2026-05-01) — Polish round → ship S079 v2.56.1 (M75) `SkillSuspendedException` message operation-agnostic
+> Latest tick: 71 (2026-05-01) — Round 27 API consistency audit → **Bug AM** ship S080 v2.57.0 (M76) Missing param error shape 統一
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -163,6 +163,12 @@
 >     - Smoke 3 paths（/download / /files / /files/SKILL.md）全回新 message ✓
 >     - error code / status (403) 不變 → FE i18n 無需調整
 >     - ship v2.56.1 (M75)。本輪不做新 testing round；polish 結束。
+>   tick 71 (loop cron 10m fc4a79bb, Round 27 API consistency audit, 2026-05-01):
+>     R27.1 跨 6 個 endpoint 探測 error response shape：5/6 標準 `{error, message, timestamp}` JSON shape ✓；**1 個發現 Bug AM**：`POST /api/v1/skills/upload` 缺 `version` form param 時 Spring 預設 error handler 直接回 `{timestamp, status, error: "Bad Request", message, path}` shape，繞過 GlobalExceptionHandler 的 ErrorResponse 結構。
+>     **影響**：FE i18n（S066 / S041）用 `error` code 對應 localized message；「Bad Request」(HTTP reason phrase) 不在 12 個 backend code 白名單 → silent fallthrough，user 看到 raw EN 訊息或泛用 fallback。
+>     **Root cause**：`MissingServletRequestParameterException` / `MissingServletRequestPartException` 沒有 `@ExceptionHandler`，Spring 預設 handler 在 GlobalExceptionHandler 之前 fall through。
+>     **Bug AM (MEDIUM)**：寫 S080 spec（XS/2）→ 加 `handleMissingParam` 處理兩個 binding 例外，回標準 `ErrorResponse{error: "VALIDATION_ERROR", message, timestamp}` → 299 tests / 0 fail（無 regression）→ 重啟 backend → smoke 3 paths（缺 version / 缺 author / 缺 file）全回標準 shape ✓ → ship v2.57.0 (M76)。
+>     **設計領悟**：Spring Web 的 binding-time 例外（@RequestParam / @RequestPart 缺值）會走獨立 fall-back error path，**不會被一般 @ExceptionHandler 自動 handle**；必須顯式註冊。今後檢查任何「跨 endpoint 一致性」應包含 binding edge case，不只 happy + business error。
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -228,6 +234,7 @@
 - AJ: 並行下載同一 skill OptimisticLockingFailureException 級聯（N=2 即 50% 失敗）；aggregate `@Version` 樂觀鎖對 counter 過度保護；改用原子 SQL UPDATE + ApplicationEventPublisher (S076 v2.54.0)
 - AK: S076 regression — concurrent suspend/reactivate save 用 full-row UPDATE 覆蓋並發 atomic increment（Spring Data JDBC 無 dirty tracking）；10 dl + 1 sus 觀察 7/10 增量 lost；fix 用 `@ReadOnlyProperty` 排除 `downloadCount` 從 save write set (S077 v2.55.0)
 - AL (theoretical): `Skill.riskLevel` 同 AK pattern — `ScanOrchestrator.updateRiskLevel`（atomic SQL）+ aggregate save 並發 → save 覆蓋 scan 結果（HIGH/MEDIUM/LOW 變回 null）；`updateRiskLevel` SQL 不增加 version → optimistic lock 偵測不到；dev 環境重現失敗（timing 太緊）但架構漏洞與 AK 完全相同；preemptive fix 用 `@ReadOnlyProperty` (S078 v2.56.0)
+- AM: `MissingServletRequestParameterException` / `MissingServletRequestPartException` 沒 handler，Spring 預設 error 繞過 ErrorResponse 標準 shape；`error` 變「Bad Request」(HTTP reason) 而非 VALIDATION_ERROR (semantic code)，FE i18n silently fallthrough；fix 加兩個 binding 例外的 handler (S080 v2.57.0)
 
 ### Missing Features (tick 68 R25.7)
 - `/search/semantic` endpoint：API contract 只有 `q` 參數，TOP_K=10 hardcoded；client `?limit=` 被 silently dropped（Spring 預期行為）。Future feature: 暴露 `?limit=` query param（合理 default 10、cap 50）讓 client 控制結果數。

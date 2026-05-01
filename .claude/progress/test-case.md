@@ -404,5 +404,30 @@ S073 fix 對真實 user-facing 場景的端到端驗證。把 `.claude/skills/` 
 - name regex 行為與 documented spec 完全一致
 - Polish candidate logged：regex 接受邊界 hyphen / 連續 hyphen，Docker-style 慣例會更嚴謹
 
+---
+
+## Tick 70 — Polish: SkillSuspendedException message (2026-05-01)
+- ship S079 v2.56.1 / M75；message operation-agnostic；3 paths smoke ✓；FE i18n 不受影響
+
+---
+
+## Tick 71 — Round 27: API consistency audit → Bug AM ship S080 (2026-05-01)
+
+| # | Endpoint | Pre-fix shape | Result |
+|---|----------|--------------|--------|
+| 27.1 | GET /skills/{bogus} (404) | `{error,message,timestamp}` standard | PASS |
+| 27.2 | DELETE /skills/{id} (405) | standard | PASS |
+| 27.3 | POST /skills empty body (400) | standard | PASS |
+| 27.4 | GET /search/semantic?q= (400) | standard | PASS |
+| 27.5 | POST /skills/{id}/suspend already-SUSPENDED (409) | standard | PASS |
+| 27.6 | POST /skills/upload missing 'version' (400) | **Spring default `{timestamp,status,error:"Bad Request",message,path}`** | **FAIL pre-fix** → **PASS post-S080** |
+
+**Bug AM (MEDIUM)**：missing required @RequestParam / @RequestPart 走 Spring 預設 fall-back error path，不會被既有 @ExceptionHandler 自動 handle。FE i18n 用 error code 對應 localized — 「Bad Request」不在白名單 → silent fallthrough。Fix: 顯式 register `handleMissingParam`，回 `error: "VALIDATION_ERROR"`。
+
+### Tick 71 Summary
+- Round 27: 6 cases / **1 new bug shipped (AM / S080 v2.57.0)**
+- 設計領悟：Spring binding-time 例外不會被一般 ExceptionHandler 自動 handle，必須顯式註冊
+
+
 
 

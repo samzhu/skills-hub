@@ -176,6 +176,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M73: `Skill.downloadCount` `@ReadOnlyProperty` | S077 | XS(3) | 537 | ✅ `v2.55.0` (2026-05-01 — `Skill.downloadCount` 加 `@ReadOnlyProperty`；fix S076 引入的 lost-update bug AK — concurrent suspend save 覆蓋 atomic increment；race counter 從 3/10 → 10/10) |
 | Phase 4 | M74: `Skill.riskLevel` `@ReadOnlyProperty` (preemptive) | S078 | XS(2) | 539 | ✅ `v2.56.0` (2026-05-01 — `Skill.riskLevel` 加 `@ReadOnlyProperty`；preemptive defense per S077 同 pattern；audit 後 Skill aggregate 所有欄位 lost-update 清零；bug AL theoretical) |
 | Phase 4 | M75: `SkillSuspendedException` message operation-agnostic | S079 | XS(1) | 540 | ✅ `v2.56.1` (2026-05-01 — message 從「cannot be downloaded」改「is not accessible」；S074 `/files` endpoint 引入後的 polish；FE i18n 不受影響) |
+| Phase 4 | M76: Missing param error shape 統一 | S080 | XS(2) | 542 | ✅ `v2.57.0` (2026-05-01 — `MissingServletRequestParameterException` / `MissingServletRequestPartException` 加 handler；fix 缺 multipart param 時 Spring 預設 error shape 繞過標準 ErrorResponse 的 bug AM) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

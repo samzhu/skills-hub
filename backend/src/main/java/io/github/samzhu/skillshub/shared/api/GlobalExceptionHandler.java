@@ -14,10 +14,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /**
  * 全域例外處理器。
@@ -105,6 +107,28 @@ public class GlobalExceptionHandler {
 		var msg = "Upload size exceeds the " + maxMb + " MB limit";
 		return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
 				.body(new ErrorResponse("PAYLOAD_TOO_LARGE", msg, Instant.now()));
+	}
+
+	/**
+	 * S080：處理 missing required @RequestParam / @RequestPart（{@link MissingServletRequestParameterException}
+	 * / {@link MissingServletRequestPartException}）。
+	 *
+	 * <p>Spring 預設 handler 會直接回應 {@code {timestamp, status, error: "Bad Request", message, path}}
+	 * 預設 shape，繞過本 handler 的標準 ErrorResponse 結構（{@code {error: "VALIDATION_ERROR", message, timestamp}}）。
+	 * Frontend i18n 用 {@code error} code 對應 localized message，「Bad Request」不在白名單→ silent fallthrough。
+	 * 顯式 handle 統一 shape，與既有 {@code IllegalArgumentException} → VALIDATION_ERROR 路徑語意對齊。
+	 */
+	@ExceptionHandler({
+			MissingServletRequestParameterException.class,
+			MissingServletRequestPartException.class
+	})
+	ResponseEntity<ErrorResponse> handleMissingParam(Exception ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "VALIDATION_ERROR")
+				.addKeyValue("message", ex.getMessage())
+				.log("Missing required parameter");
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ErrorResponse("VALIDATION_ERROR", ex.getMessage(), Instant.now()));
 	}
 
 	/**

@@ -1,5 +1,24 @@
 # Changelog
 
+## [v2.57.0] — Missing param error shape 統一（M76 完成；2026-05-01）
+
+> **Bug fix** — `POST /api/v1/skills/upload` 缺 form param 時 Spring 預設 error handler 直接回，繞過 GlobalExceptionHandler 的標準 `ErrorResponse{error, message, timestamp}` shape，回成 `{timestamp, status, error: "Bad Request", message, path}` 預設 shape。`error` 欄位變「Bad Request」（HTTP reason phrase）而非我們的 semantic code（VALIDATION_ERROR），FE i18n 用 error code 對應 localized message → silently fall through，user 看到 raw EN 訊息。E2E test loop tick 71 Round 27 API consistency audit 發現（bug AM）。
+
+### Fixed
+- **S080: Missing param error shape 統一**（M76）：
+  - `GlobalExceptionHandler.handleMissingParam` 處理 `MissingServletRequestParameterException` + `MissingServletRequestPartException`
+  - 回標準 `ErrorResponse{error: "VALIDATION_ERROR", message, timestamp}`
+  - 與既有 `IllegalArgumentException` → VALIDATION_ERROR 路徑語意對齊
+  - 299 backend tests / 0 fail
+
+### Verification
+- POST /skills/upload 缺 version → `{error: "VALIDATION_ERROR", ...}` ✓
+- POST /skills/upload 缺 file → 同 shape ✓
+- happy path upload 仍 201 ✓
+- 既有 5 種已 handle 的 4xx exceptions 不變
+
+---
+
 ## [v2.56.1] — `SkillSuspendedException` message 改 operation-agnostic（M75 完成；2026-05-01）
 
 > **Polish** — S074 引入 `/files` endpoint 後，shared `SkillSuspendedException` 的 message 還是寫死「cannot be downloaded」（S029 設計時只服務 `/download`）。對 file-browser 場景的 API debug log / response 訊息誤導。FE i18n 用 error code 對應 localized string，**不依賴 backend message**——故 user 不受影響，純為清理 API debug 觀感。E2E test loop tick 70 polish round。
