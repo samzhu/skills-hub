@@ -128,26 +128,29 @@ public class AuditEventListener {
 
     @ApplicationModuleListener
     void on(SkillAclGrantedEvent event) {
+        // S069: defensive null-coalesce — pre-S055 outbox 可能含 type/principal/permission=null（Map.of 拋 NPE）。
+        // S055 後 aggregate 已驗，但 listener 須能處理 historical bad data 才能 drain stuck outbox。
+        var type = event.type() == null ? "" : event.type();
+        var principal = event.principal() == null ? "" : event.principal();
+        var permission = event.permission() == null ? "" : event.permission();
+        var grantedBy = event.grantedBy() == null ? "" : event.grantedBy();
         var payload = Map.<String, Object>of(
-                "type", event.type(),
-                "principal", event.principal(),
-                "permission", event.permission(),
-                "grantedBy", event.grantedBy() == null ? "" : event.grantedBy());
+                "type", type, "principal", principal, "permission", permission, "grantedBy", grantedBy);
         recordAudit(event.aggregateId(), "SkillAclGranted", payload,
-                dedupKey("SkillAclGranted", event.aggregateId(), event.type(), event.principal(),
-                        event.permission(), event.grantedBy() == null ? "" : event.grantedBy()));
+                dedupKey("SkillAclGranted", event.aggregateId(), type, principal, permission, grantedBy));
     }
 
     @ApplicationModuleListener
     void on(SkillAclRevokedEvent event) {
+        // S069: 同 grant 防 null
+        var type = event.type() == null ? "" : event.type();
+        var principal = event.principal() == null ? "" : event.principal();
+        var permission = event.permission() == null ? "" : event.permission();
+        var revokedBy = event.revokedBy() == null ? "" : event.revokedBy();
         var payload = Map.<String, Object>of(
-                "type", event.type(),
-                "principal", event.principal(),
-                "permission", event.permission(),
-                "revokedBy", event.revokedBy() == null ? "" : event.revokedBy());
+                "type", type, "principal", principal, "permission", permission, "revokedBy", revokedBy);
         recordAudit(event.aggregateId(), "SkillAclRevoked", payload,
-                dedupKey("SkillAclRevoked", event.aggregateId(), event.type(), event.principal(),
-                        event.permission(), event.revokedBy() == null ? "" : event.revokedBy()));
+                dedupKey("SkillAclRevoked", event.aggregateId(), type, principal, permission, revokedBy));
     }
 
     @ApplicationModuleListener

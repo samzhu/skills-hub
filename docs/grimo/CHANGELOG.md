@@ -1,5 +1,17 @@
 # Changelog
 
+## [v2.47.0] — AuditEventListener Null-Defense for ACL Events（M65 完成；2026-05-01）
+
+> **Patch-class minor** — `AuditEventListener.on(SkillAclGrantedEvent)` + `on(SkillAclRevokedEvent)` 加 null-coalesce defense。Tick 46 outbox 探查發現 2 個 pre-S055 (tick 28) 卡住的 SkillAclGrantedEvent（type=null）— `Map.of(null)` 拋 NPE → republish task 重投仍 fail → 永久 stuck。fix 後 backend restart → republish 自動 drain → outbox pending 從 2 → 0。
+
+### Changed
+- **S069: AuditEventListener Null-Defense for ACL Events**（M65）：
+  - `on(SkillAclGrantedEvent)` + `on(SkillAclRevokedEvent)` 對 type/principal/permission/grantedBy/revokedBy 加 `?? ""`
+  - 同 S058 (FlagService) `Map.of` null pattern 第二例
+  - drain 2 個 historical stuck events ✓
+
+---
+
 ## [v2.46.0] — PublishPage Form maxLength Constraint（M64 完成；2026-05-01）
 
 > **Patch-class minor** — `PublishPage` category / author input 加 HTML5 `maxLength` 對齊 DB column 上限：category 50、author 255。User 不再 round-trip 至 backend 收 CONSTRAINT_VIOLATION 才知超限。
