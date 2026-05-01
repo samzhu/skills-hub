@@ -7,6 +7,7 @@ import java.util.zip.ZipException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
@@ -157,6 +158,29 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(new ErrorResponse("INVALID_REQUEST_BODY",
 						"Request body is missing or malformed",
+						Instant.now()));
+	}
+
+	/**
+	 * S057：catch-all 處理其他 DB 完整性違反（{@link DataIntegrityViolationException}）。
+	 *
+	 * <p>S051 既有 {@link DuplicateKeyException} handler 走 most-specific-first 規則優先匹配；
+	 * 本 handler 只處理 length / NOT NULL / FK 等其他子類。固定 user-friendly message
+	 * 不暴露 SQL detail（INSERT/UPDATE 語句、column 列、constraint 名）；raw `ex.getMessage()`
+	 * 留 log 利 ops 排查。
+	 *
+	 * <p>RFC 9110：value too long / FK violation / NOT NULL 屬 input 不符合 schema → 400。
+	 * S051 dup key 為 conflict-class 仍 409。
+	 */
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "CONSTRAINT_VIOLATION")
+				.addKeyValue("rawMessage", ex.getMessage())
+				.log("Data integrity violation");
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ErrorResponse("CONSTRAINT_VIOLATION",
+						"Submitted data exceeds allowed length or format constraints",
 						Instant.now()));
 	}
 

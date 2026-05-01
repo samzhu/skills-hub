@@ -1,5 +1,29 @@
 # Changelog
 
+## [v2.34.0] — DataIntegrityViolationException Catch-All Handler（M53 完成；2026-05-01）
+
+> **Minor bump** — 為 `DataIntegrityViolationException` 加 catch-all handler → 400 + `CONSTRAINT_VIOLATION`。先前 long category（DB varchar(50)）/ NOT NULL / FK violation 等 DataIntegrity 子類落 Spring 預設 500 + 暴露完整 SQL exception。S051 既有 DuplicateKeyException handler 優先匹配仍 409 不 regress。
+
+### Added
+- **S057: DataIntegrityViolationException Catch-All Handler**（M53 落地）：
+  - `@ExceptionHandler(DataIntegrityViolationException.class)` → 400 CONSTRAINT_VIOLATION
+  - 固定 message「Submitted data exceeds allowed length or format constraints」
+  - i18n `CONSTRAINT_VIOLATION: '提交資料超過允許的長度或格式，請檢查後重試。'`
+  - **6 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 30 — 100-char category（DB cap=50）→ 500 + 「value too long for type character varying(50)」+ INSERT 語句 + column 列洩漏
+
+### Defense-in-depth Layer Stack
+- 累計 5 層 backend default-error 防漏網：S045 (yaml) / S049 (Zip) / S051 (DupKey) / S052 (BodyNotReadable) / S057 (DataIntegrity)
+
+### Verification
+- `./gradlew test` — 286 / 0 fail
+- `npm test` — 10 / 0 fail
+- E2E：long category 500→400 (146B clean)；dup name 仍 409 不 regress；合法 input 仍 201
+
+---
+
 ## [v2.33.0] — Version Semver Validation（M52 完成；2026-05-01）
 
 > **Minor bump** — `Skill.recordVersionPublished` 加嚴格 semver 預驗：`MAJOR.MINOR.PATCH` 三段數字（optional 連字 pre-release suffix）。違反 → 400 VALIDATION_ERROR。先前 `version=foo` / `version=` 都 200 創建畸形 row；超長 version 觸 DB constraint → 500 + raw SQL leak。三個 bug 由單一 fix 一次解決。
