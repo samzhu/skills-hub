@@ -186,6 +186,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M83: SkillDetailPage rework | S087 | S(7) | — | 📋 backlog — 對 `skill_detail_page_docker_compose_helper.html`；含 Files tab (S082) 重新整合 |
 | Phase 4 | M84: AnalyticsPage rework | S088 | XS(5) | — | 📋 backlog — 對 `platform_analytics_dashboard_admin_view.html`；metric cards + sparkline + activity feed |
 | Phase 4 | M85: BorderBeam hand-roll BeamFrame（drop border-beam dep） | S089 | XS(3) | — | 📋 backlog — drop border-beam npm；hand-roll conic-gradient 1px frame per prototype；研究結論 light theme 物理不可避免（per S084 §2.2） |
+| Phase 4 | M80: Semantic search `?limit=` configurable | S090 | XS(2) | 555 | ✅ `v2.60.0` (2026-05-02 — `?limit=` 1-50 cap；close R25.7 missing-feature；FE 「show more」UX enabled) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

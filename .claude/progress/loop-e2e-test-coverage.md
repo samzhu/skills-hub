@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 78 (2026-05-02) — Round 32 cross-system invariant audit (OpenAPI/Modulith/Storage). 0 bugs；14 orphan storage files (recurring tech debt)
+> Latest tick: 79 (2026-05-02) — Polish ship S090 v2.60.0 (M80) Semantic search `?limit=` configurable; 連續 0-bug saturation pivot to polish per methodology §6
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -229,6 +229,17 @@
 >       - 累積原因：失敗 uploads、測試 churn、concurrent rollback 場景
 >     **0 new bugs** — system invariants 全 GREEN；orphan files 只佔 disk space 不影響正確性（DB 是 source of truth）。
 >     **連續 5 ticks 0 bugs** (74/75/76/77/78) — surface 飽和。
+>   tick 79 (loop cron 10m fc4a79bb, polish ship S090, 2026-05-02):
+>     Per methodology §6 saturation pivot — 連續 5 ticks 0 bugs → polish ship 比繼續無謂 testing 高 ROI。
+>     **S090 — Semantic search `?limit=` configurable**：close R25.7 missing-feature observation。
+>     - `SearchController` 加 `@RequestParam(defaultValue=10) int limit`
+>     - validate `limit ≥ 1`（reject 0/negative with VALIDATION_ERROR）
+>     - cap `MAX_LIMIT = 50`（防 client 提巨量值打爆 vector store）
+>     - `SemanticSearchService.search` 簽名 `(String, int topK)`；replace hardcoded `TOP_K`
+>     - 299 backend tests / 0 fail
+>     **7/7 AC PASS** (default / 3 / 50 / 999-cap / 0 / -1 / abc)
+>     **Bonus 順帶確認**：S080 GlobalExceptionHandler 對 `MethodArgumentTypeMismatchException`（int convert fail）也走標準 ErrorResponse shape，Spring 預設「For input string: "abc"」訊息透傳到 user。
+>     ship v2.60.0 (M80)。Tech debt 清掉 1 個（5 → 4 個 active）。
 >   tick 71 (loop cron 10m fc4a79bb, Round 27 API consistency audit, 2026-05-01):
 >     R27.1 跨 6 個 endpoint 探測 error response shape：5/6 標準 `{error, message, timestamp}` JSON shape ✓；**1 個發現 Bug AM**：`POST /api/v1/skills/upload` 缺 `version` form param 時 Spring 預設 error handler 直接回 `{timestamp, status, error: "Bad Request", message, path}` shape，繞過 GlobalExceptionHandler 的 ErrorResponse 結構。
 >     **影響**：FE i18n（S066 / S041）用 `error` code 對應 localized message；「Bad Request」(HTTP reason phrase) 不在 12 個 backend code 白名單 → silent fallthrough，user 看到 raw EN 訊息或泛用 fallback。
@@ -302,8 +313,8 @@
 - AL (theoretical): `Skill.riskLevel` 同 AK pattern — `ScanOrchestrator.updateRiskLevel`（atomic SQL）+ aggregate save 並發 → save 覆蓋 scan 結果（HIGH/MEDIUM/LOW 變回 null）；`updateRiskLevel` SQL 不增加 version → optimistic lock 偵測不到；dev 環境重現失敗（timing 太緊）但架構漏洞與 AK 完全相同；preemptive fix 用 `@ReadOnlyProperty` (S078 v2.56.0)
 - AM: `MissingServletRequestParameterException` / `MissingServletRequestPartException` 沒 handler，Spring 預設 error 繞過 ErrorResponse 標準 shape；`error` 變「Bad Request」(HTTP reason) 而非 VALIDATION_ERROR (semantic code)，FE i18n silently fallthrough；fix 加兩個 binding 例外的 handler (S080 v2.57.0)
 
-### Missing Features (tick 68 R25.7)
-- `/search/semantic` endpoint：API contract 只有 `q` 參數，TOP_K=10 hardcoded；client `?limit=` 被 silently dropped（Spring 預期行為）。Future feature: 暴露 `?limit=` query param（合理 default 10、cap 50）讓 client 控制結果數。
+### Missing Features (tick 68 R25.7) — ✅ closed by S090 (tick 79)
+- ~~`/search/semantic` endpoint：API contract 只有 `q` 參數，TOP_K=10 hardcoded；client `?limit=` 被 silently dropped（Spring 預期行為）。Future feature: 暴露 `?limit=` query param（合理 default 10、cap 50）讓 client 控制結果數。~~ **Shipped as S090 v2.60.0 (tick 79)**：default 10, cap 50, validate ≥ 1。
 
 ### Polish Candidates (tick 69 R26)
 - Name regex `^[a-z0-9-]{1,64}$` 過於寬鬆 — 接受單一 `-`、`--`、邊界 hyphen `-foo` / `foo-`。技術 valid 但 filename 顯示奇怪。Docker-tag-style 慣例 `^[a-z0-9]+(-[a-z0-9]+)*$` 較嚴謹（拒邊界與連續 hyphen）。風險：可能拒既有 DB 中的 weird-name skills（雖然不太可能）。

@@ -37,9 +37,6 @@ class SemanticSearchService {
 
     private static final Logger log = LoggerFactory.getLogger(SemanticSearchService.class);
 
-    /** 每次搜尋最多回傳的結果數 */
-    private static final int TOP_K = 10;
-
     /**
      * Cosine similarity 最低門檻值（0–1）。
      * 低於此值的結果被視為與查詢無關，不回傳給前端。
@@ -63,10 +60,14 @@ class SemanticSearchService {
     /**
      * 執行語意搜尋，回傳與查詢語意相關的技能清單（按 score 遞減排序）。
      *
+     * <p>S090: 新增 {@code topK} 參數讓 client 控制結果筆數；caller 應已 cap (e.g., MAX_LIMIT=50)。
+     * 沒帶 topK 的 caller 走 {@link #search(String)} 兼容性 overload。
+     *
      * @param query 使用者輸入的自然語言查詢
+     * @param topK  最多回傳結果數（≥ 1；caller 自行 cap）
      * @return 語意相關的技能清單，若無符合結果則回傳空清單（不拋出例外）
      */
-    List<SemanticSearchResult> search(String query) {
+    List<SemanticSearchResult> search(String query, int topK) {
         // S017：展開當前 user 的 read patterns；走 ACL-aware SQL 路徑（fail-secure 由 vector_store.acl_entries 守 — anonymous 走 lab user fallback patterns，
         // 與既有 vector_store row owner 對不上即回 empty result）
         var currentUser = currentUserProvider.current();
@@ -74,7 +75,7 @@ class SemanticSearchService {
 
         var request = SearchRequest.builder()
                 .query(query)
-                .topK(TOP_K)
+                .topK(topK)
                 .similarityThreshold(SIMILARITY_THRESHOLD)
                 .build();
 

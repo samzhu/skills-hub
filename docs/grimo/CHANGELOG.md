@@ -1,5 +1,27 @@
 # Changelog
 
+## [v2.60.0] — Semantic search `?limit=` configurable（M80 完成；2026-05-02）
+
+> **Polish** — close R25.7 missing-feature observation。`/api/v1/search/semantic` 之前 hardcoded TOP_K=10；client `?limit=` silently dropped (Spring default for unknown param)。FE 想做「show more」UX 沒辦法。
+
+### Added
+- **S090: Semantic search `?limit=` configurable**（M80）：
+  - `SearchController.semanticSearch` 加 `@RequestParam(defaultValue = "10") int limit`
+  - Validate `limit ≥ 1`（disallow 0 / negative）；cap `MAX_LIMIT = 50`（防 client 提巨量值）
+  - `SemanticSearchService.search` 簽名加 `int topK` 參數，取代 hardcoded `TOP_K`
+  - 299 backend tests / 0 fail
+
+### Verification
+- AC-1 default (no limit) → 10 results ✓
+- AC-2 limit=3 → 3 results ✓
+- AC-3 limit=50 → 50 results ✓
+- AC-4 limit=999 → cap 50 ✓
+- AC-5 limit=0 → 400 VALIDATION_ERROR「limit must be >= 1」✓
+- AC-6 limit=-1 → 400 ✓
+- AC-7 limit=abc → 400 (Spring `MethodArgumentTypeMismatchException` 走標準 ErrorResponse shape — S080 fix 順帶覆蓋)✓
+
+---
+
 ## [v2.59.1] — `BorderBeam` light theme tuning（M79 完成；2026-05-01）
 
 > **Polish** — User-driven「原生效果不錯，你用就沒那麼好看，研究一下」+ jakubantalik playground 截圖。`SearchBar` 用 `<BorderBeam>` 全套 default props，包括 `theme="dark"`，但 DESIGN.md 規定 surface = warm off-white #FFFFFF。Dark-tuned saturation/glow 落淺色背景 → 霧、暗、偏粉。
