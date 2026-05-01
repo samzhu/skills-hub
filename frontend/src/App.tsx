@@ -3,18 +3,19 @@ import { HomePage } from './pages/HomePage'
 import { SkillDetailPage } from './pages/SkillDetailPage'
 import { PublishPage } from './pages/PublishPage'
 import { AnalyticsPage } from './pages/AnalyticsPage'
+import { NotFoundPage } from './pages/NotFoundPage'
 
-/**
- * 根路由元件，以 React Router v6 `<Routes>` 宣告四個頁面的路徑對應。
- * 此元件不含任何狀態，純粹作為路由配置的入口點。
- */
 function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      {/* /skills 是 listing alias — 使用者輸入網址或書籤回鏈時的直覺路徑 */}
+      <Route path="/skills" element={<HomePage />} />
       <Route path="/skills/:id" element={<SkillDetailPage />} />
       <Route path="/publish" element={<PublishPage />} />
       <Route path="/analytics" element={<AnalyticsPage />} />
+      {/* unmatched URL 之前 render 空白 root，user 看不到 navbar 也沒 404 */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }

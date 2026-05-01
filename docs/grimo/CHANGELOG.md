@@ -1,5 +1,23 @@
 # Changelog
 
+## [v2.49.0] — App Routing `/skills` Alias + NotFound Fallback（M67 完成；2026-05-01）
+
+> **Patch-class minor** — React Router 兩個 routing gap 一次補：(1) `/skills` 沒對應 route → 加 alias 指 HomePage；(2) unmatched URL 沒 fallback → 加 NotFoundPage（`*` route）。E2E test session Round 5 navigation edge case 直接打 `http://localhost:5173/skills` 整頁空白 — user 看不到 navbar 也沒任何提示。同樣影響任何拼錯 URL / 舊書籤。
+
+### Added
+- **S071: App Routing `/skills` Alias + NotFound Fallback**（M67）：
+  - `frontend/src/App.tsx` 加 `<Route path="/skills" element={<HomePage />} />` + `<Route path="*" element={<NotFoundPage />} />`
+  - `frontend/src/pages/NotFoundPage.tsx`（新）：包 `<AppShell>` 保 navbar 一致 + 404 + 「回到首頁」連結
+  - `frontend/src/App.test.tsx`（新）：NotFoundPage 渲染合約測試
+  - 11 frontend tests / 0 fail（10 → 11）
+
+### Verification
+- `/totally-bogus-XYZ` → 404 + navbar + 回首頁連結 ✓
+- `/skills` → 完整 HomePage listing（42 cards）✓
+- 既有 routes（`/`、`/skills/:id`、`/publish`、`/analytics`）行為不變
+
+---
+
 ## [v2.48.0] — Flyway V7 Cleanup Pre-S033 Vector Orphans（M66 完成；2026-05-01）
 
 > **Patch-class minor** — Flyway V7 migration `DELETE FROM vector_store WHERE skill_id IN (SELECT id FROM skills WHERE status='SUSPENDED')`。S033 (M29 v2.10.0) 加 `SearchProjection.onSkillSuspended` 之前的 SUSPENDED events 從未過 listener → vector_store 內留 orphan。S059 filter 確保 user-visible impact=0；本 migration 清 storage 累積。
