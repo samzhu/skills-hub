@@ -1,5 +1,31 @@
 # Changelog
 
+## [v2.52.0] — Skill Files Browser API（M70 完成；2026-05-01）
+
+> **Feature** — 使用者要在 SkillDetailPage 上瀏覽 skill 包裡個別檔案內容（references / 子腳本 / 設定範例），不必下載整包再解壓。本 spec 補 backend API 兩個 endpoint：list / read single。FE rendering（檔案瀏覽器 UI）留 S076。
+
+### Added
+- **S074: Skill Files Browser API**（M70）：
+  - `GET /api/v1/skills/{id}/files` — list 最新版本 zip 內所有 entries (`{path, size, type}`)
+  - `GET /api/v1/skills/{id}/files/{*path}` — read 單一 entry 內容（Spring 6+ wildcard pattern）
+  - `FileBrowserService`：fail-fast findById + SUSPENDED guard（共用 `SkillSuspendedException` → 403）；ZipInputStream enumerate；read-only metadata（**不**觸發 `SkillDownloadedEvent`，瀏覽 ≠ 下載）
+  - **Zip-slip 防禦**：拒絕 `..` segments / 開頭 `/` 或 `\` / 空字串（list 階段 skip + log warn；read 階段拋 `IllegalArgumentException` → 400）
+  - **單檔上限 1 MB**：超過拋 `FileTooLargeException` → 413 PAYLOAD_TOO_LARGE（與 multipart 上傳上限區分；message 不同讓 i18n 可分流）
+  - **MIME inference**：18 種常見副檔名 → text/markdown / json / yaml / py / sh / png 等；未知 fallback application/octet-stream
+  - `FileBrowserServiceTest` +7 tests（zip-slip / MIME / null/blank）
+  - 291 → 298 backend tests / 0 fail
+
+### Verification
+- AC-1 list multi-file zip → 完整 entries ✓
+- AC-2 read SKILL.md → text content ✓
+- AC-3 read non-existent path → 404 NOT_FOUND ✓
+- AC-4 SUSPENDED skill /files → 403 SKILL_SUSPENDED ✓
+- AC-5 path traversal `../etc/passwd` → 400 VALIDATION_ERROR ✓
+- AC-6 1.5 MB file → 413 PAYLOAD_TOO_LARGE ✓
+- AC-7 binary file (.bin) → 200 + Content-Type=application/octet-stream ✓
+
+---
+
 ## [v2.51.0] — `allowed-tools` YAML list interop（M69 完成；2026-05-01）
 
 > **Patch-class minor** — `SkillValidator.validateFieldConstraints` 對 `allowed-tools` 欄位只支援空白分隔字串，但 canonical agentskills.io spec + Anthropic 自家 SKILL.md（`.claude/skills/handover` / `planning-project` / `deep-research` …）皆使用 YAML list 形狀。SnakeYAML 解出 `ArrayList`，現行程式 `toString()` → `"[Read, Bash]"` 含中括號，後續 `split` 切出 `[Read,` / `Bash]` 全不過 `ALLOWED_TOOL_TOKEN_REGEX`（regex 開頭要 `[A-Z]`）→ canonical 形狀全部 400 拒收。E2E test session Round 15 hand-craft 第三方 frontmatter 變體探查發現。

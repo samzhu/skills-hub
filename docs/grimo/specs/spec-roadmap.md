@@ -170,6 +170,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M67: App Routing /skills Alias + NotFound Fallback | S071 | XS(3) | 515 | ✅ `v2.49.0` (2026-05-01 — `/skills` alias 接 HomePage + `*` wildcard 接 NotFoundPage；fix unmatched URL 整頁空白 bug AF) |
 | Phase 4 | M68: Flag Type Allowlist + Description Length Cap | S072 | XS(3) | 518 | ✅ `v2.50.0` (2026-05-01 — FlagService 加 `ALLOWED_TYPES` 白名單 6 種 + `description ≤ 500`；fix bogus type 與 5000-char description 接受 bug AG) |
 | Phase 4 | M69: `allowed-tools` YAML list interop | S073 | XS(3) | 521 | ✅ `v2.51.0` (2026-05-01 — `SkillValidator` 用 type pattern matching 分流 list/scalar；fix canonical Anthropic SKILL.md 形狀無法上傳 bug AH) |
+| Phase 4 | M70: Skill Files Browser API | S074 | S(5) | 526 | ✅ `v2.52.0` (2026-05-01 — `GET /skills/{id}/files` list + `/files/{*path}` read；zip-slip 防禦 + 1MB preview cap；feature for 「skill 明細頁面瀏覽各檔案內容」；FE rendering 留 S076) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

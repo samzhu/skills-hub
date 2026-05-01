@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 61 (2026-05-01) — Round 19 multipart limit + SUSPEND/REACTIVATE 完整 lifecycle, **0 new bugs**
+> Latest tick: 62 (2026-05-01) — User-driven feature 「skill 明細頁面瀏覽各檔案內容」→ ship S074 v2.52.0 (M70) Skill Files Browser API
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -68,6 +68,19 @@
 >     - 19.4 完整 lifecycle：upload → PUBLISHED + listed + dl=200 + vec=1 → POST /suspend `{reason}` 200 → SUSPENDED + 不在 list + dl=403 + **vec=0**（async listener 清掉）→ POST /reactivate `{reason}` 200 → PUBLISHED + listed + dl=200 + **vec=1**（async listener 重建）✓
 >     - 19.5 反例：re-suspend SUSPENDED → **409 STATE_CONFLICT「Cannot suspend skill in SUSPENDED status」**（state machine 兩個方向都有 guard，對稱於 R1 reactivate-PUBLISHED 反例）✓
 >     **0 new bugs** — multipart 10MB limit clean-error；S033 vector store invariant 在 suspend/reactivate 兩個方向都正確維護；state machine 兩端封閉。
+>   tick 62 (loop cron 10m fc4a79bb, user-driven feature 「skill 明細頁面瀏覽各檔案內容」, 2026-05-01):
+>     User 在 Round 19 中段 drop 兩個新需求：(a) 參考 DESIGN.md / docs/prototype 優化畫面（多 spec scope，分批做）、(b) skill 明細頁面瀏覽各檔案內容（高 user value，可獨立 ship）。本 tick 做 (b) 的 backend API foundation。
+>     **S074 — Skill Files Browser API**：
+>     - 新增 `GET /skills/{id}/files` (list) + `GET /skills/{id}/files/{*path}` (read single) — Spring 6+ wildcard pattern 捕獲子路徑
+>     - `FileBrowserService`：fail-fast findById + SUSPENDED guard（共用 `SkillSuspendedException` → 403）；ZipInputStream enumerate；read-only metadata（**不**觸發 `SkillDownloadedEvent`，瀏覽 ≠ 下載）
+>     - **Zip-slip 防禦** 雙層：list 階段 skip + log warn；read 階段拋 `IllegalArgumentException` → 400；tomcat URL-layer 也擋 `..%2F` 為 defense-in-depth
+>     - **單檔上限 1 MB**：超過拋新增的 `FileTooLargeException` → 413 PAYLOAD_TOO_LARGE（與 multipart 上傳上限區分；message 不同讓 i18n 可分流）
+>     - **MIME inference**：18 副檔名 → text/markdown / json / yaml / py / sh / png 等；未知 fallback application/octet-stream
+>     - `FileBrowserServiceTest` +7 unit tests（zip-slip / MIME / null/blank / case）
+>     - 291 → 298 backend tests / 0 fail
+>     **Smoke test 7/7 AC PASS**：list multi-file zip → 5 entries；read SKILL.md/binary/nested 全 200；non-existent → 404；SUSPENDED → 403；path traversal → 400 (Tomcat layer)；1.5MB file → 413「File 'big.bin' is 1560576 bytes, exceeds preview limit of 1048576 bytes」
+>     **Cosmetic note**：`SkillSuspendedException` message「Skill is suspended and cannot be downloaded」對 /files endpoint 略不貼切（message 該改成 「is suspended and not accessible」），polish round 處理。
+>     ship v2.52.0 (M70)。FE 渲染（檔案瀏覽器 UI）留 S076。
 
 ## Coverage Summary (as of v2.46.0)
 
@@ -138,6 +151,7 @@
 - ACL endpoints REST status code 不一致（tick 56 R12）：GET on bogus skill → 200 [] (intentional)；POST/DELETE on bogus skill → 400 VALIDATION_ERROR；REST 慣例應全為 404。改 GET 為 404 為 breaking change（frontend 可能依「empty list」語意），暫保留。
 - ACL DELETE non-existent grant → 409 STATE_CONFLICT (state-machine 哲學) vs 404 NOT_FOUND (REST 慣例)。語意可辯，保留現狀。
 - FE i18n VALIDATION_ERROR 訊息過於 generic（tick 60 R18.3）：所有 backend validation error 都對應到「zip 套件驗證失敗，請確認格式正確」，不顯示具體 field（如 "Missing required field: name" / "Field 'name' fails regex"）。UX 改善方向是把 backend `message` 欄位作為 fallback subtitle 顯示（i18n 框架不變）。
+- `SkillSuspendedException` message 對 /files endpoint 略不貼切（tick 62 S074）：寫死「cannot be downloaded」，在新增的 file-browser 場景下 message 不準。改為 generic「is suspended and not accessible」可同時適用 /download + /files 路徑。
 
 ## Current Health (Tick 45 baseline)
 - **Backend tests**: 286 / 0 fail

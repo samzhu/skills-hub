@@ -108,6 +108,25 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
+	 * S074：處理單檔預覽超 size 上限（{@link FileTooLargeException}）。
+	 *
+	 * <p>與 {@link MaxUploadSizeExceededException}（write-side multipart 上限）區分：本例外是
+	 * read-side 單檔預覽 1 MB 上限，由 {@code FileBrowserService.readFile} 拋出。
+	 * 兩者共用 PAYLOAD_TOO_LARGE error code 但訊息不同（前者「Upload size exceeds」、後者「File ... exceeds preview limit」），
+	 * frontend i18n 可從 message 區分 user 動作（上傳 vs 瀏覽）。
+	 */
+	@ExceptionHandler(FileTooLargeException.class)
+	ResponseEntity<ErrorResponse> handleFileTooLarge(FileTooLargeException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "PAYLOAD_TOO_LARGE")
+				.addKeyValue("actualSize", ex.getActualSize())
+				.addKeyValue("maxSize", ex.getMaxSize())
+				.log("File preview blocked: too large");
+		return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+				.body(new ErrorResponse("PAYLOAD_TOO_LARGE", ex.getMessage(), Instant.now()));
+	}
+
+	/**
 	 * S037：處理其他 multipart 解析錯誤（缺 boundary、缺必要 part 等）。
 	 *
 	 * <p>{@link MaxUploadSizeExceededException} 的父類；most-specific-first 規則保證 size-exceeded 先匹配。
