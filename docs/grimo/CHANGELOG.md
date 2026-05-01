@@ -21,8 +21,10 @@
 - `npm test` — 10 / 0 fail
 - E2E：4xx ApiError 不再 console pollution；ApiError.is 直接 invocation 正確 type guard
 
-### Tech Debt（Bug AC 留下一輪）
-- Vite dev mode React Query v5.100.1 偶發 `fetchStatus='paused'` 卡死即使 networkMode='always`設定生效；prod build reproducibility 待驗
+### Bug AC Hotfix（同 S065 ship 內含）
+- 4xx ApiError 不 retry — 原 `retry: 1` 對 user 錯誤（404/400/409）重試無意義，retry backoff 期 React Query 進入 `fetchStatus='paused'` hang，SkillDetailPage 顯「載入錯誤」而非 friendly 404
+- Fix: `retry: (count, err) => ApiError 4xx → false; else < 1`
+- Chrome E2E：invalid UUID 訪問正確顯「找不到此技能」
 
 ---
 
