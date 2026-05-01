@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.skill.command;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -72,6 +73,26 @@ class SkillUploadAllowedToolsTest {
 
         var versions = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
         assertThat(versions.get(0).getAllowedTools()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-S032: addVersion 偵測 zip SKILL.md name 與 skill aggregate 不一致 → IllegalArgumentException")
+    @Tag("AC-S032")
+    void addVersion_nameMismatch_rejects() throws IOException {
+        // 先 upload 建立 skill A（name = realName）
+        var realName = "real-name-" + UUID.randomUUID().toString().substring(0, 8);
+        var v1 = createZipWithFrontmatter(realName, null);
+        var skillId = commandService.uploadSkill(v1, "1.0.0", "owner", "Testing");
+
+        // 嘗試 PUT 版本，但 zip SKILL.md 的 name 不同
+        var v2 = createZipWithFrontmatter("totally-different-name", null);
+        assertThatThrownBy(() -> commandService.addVersion(skillId, v2, "1.1.0"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("does not match")
+                .hasMessageContaining(realName);
+
+        // 既有 1.0.0 不被破壞
+        assertThat(versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId)).hasSize(1);
     }
 
     /**

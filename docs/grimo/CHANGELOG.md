@@ -1,5 +1,27 @@
 # Changelog
 
+## [v2.9.0] — Version Name Consistency（M28 完成；2026-05-01）
+
+> **Minor bump** — 資料完整性修正：`PUT /api/v1/skills/{id}/versions` 現在驗 zip SKILL.md `name` 與 skill aggregate `name` 一致；違反 → 400 VALIDATION_ERROR。
+
+### Added
+- **S032: Version Name Consistency**（M28 落地）：
+  - **`SkillCommandService.addVersion` 加 name consistency check**：在 `SkillValidator.validate` 後，比對 `validation.metadata().get("name")` vs `skill.getName()`；不一致 → `IllegalArgumentException` → 400 VALIDATION_ERROR with structured log（skillId / aggregateName / zipName）。
+  - **上移 `findById`**：從原本 line 145 移至 validate 之後、version 重複 check 之前。
+  - **4 個 SBE AC 全綠**（mismatch 400 / matching 200 / 既有 test 不破 / POST upload 行為不變）。
+
+### Trigger
+- 2026-05-01 /loop tick 7 系統測試 — 對 skill A 可 PUT 一個 SKILL.md name=B 的 zip 並 200 接受；下載 zip 的 metadata 與平台 listing 的 name 矛盾。
+
+### Verification
+- `./gradlew test` — 293 tests / 0 fail（含新 `addVersion_nameMismatch_rejects` test）
+- E2E HTTP：mismatch → 400 VALIDATION_ERROR with explicit message；matching → 200 + latestVersion=1.1.0；POST /upload 不受影響
+
+### Defense-in-depth note
+- 阻止「上傳一個高分 PUBLISHED skill A v1.0.0 後，PUT 一個惡意內容但 name 不同的 v1.1.0」變身攻擊（分數刷量 + 內容偷換）；每個 version 必延續同 aggregate name
+
+---
+
 ## [v2.8.0] — Public PUBLISHED-Only Visibility（M27 完成；2026-05-01）
 
 > **Minor bump** — 公開查詢過濾 status：list / keyword / categories / analytics 端只回 PUBLISHED skill。落地 S028 §7.5 已登記的 tech debt。對 frontend 行為 user-facing 改變：DRAFT/SUSPENDED 不再出現在公開列表、搜尋、分類計數、analytics 排行。
