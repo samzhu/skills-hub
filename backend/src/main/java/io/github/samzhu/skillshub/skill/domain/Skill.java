@@ -105,12 +105,28 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
             throw new IllegalArgumentException(
                     "Skill author must not be blank (got: " + cmd.author() + ")");
         }
+        // S042: description trim + length cap（與 SkillValidator.DESCRIPTION_MAX=1024 對齊；
+        // domain 不依賴 validation 子模組，常數複製 + inline 註解提醒同步）
+        var description = cmd.description().trim();
+        if (description.isEmpty()) {
+            throw new IllegalArgumentException("Skill description must not be blank");
+        }
+        if (description.length() > DESCRIPTION_MAX) {
+            throw new IllegalArgumentException(
+                    "Skill description exceeds " + DESCRIPTION_MAX + " characters (got: " + description.length() + ")");
+        }
+        // S042: category trim；非 null 但 blank → reject（mirror S041 author）；null 允許（schema 允許）
+        var category = cmd.category() == null ? null : cmd.category().trim();
+        if (category != null && category.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Skill category must not be blank (got: " + cmd.category() + ")");
+        }
         var skill = new Skill();
         skill.id = UUID.randomUUID().toString();
         skill.name = name;
-        skill.description = cmd.description();
+        skill.description = description;
         skill.author = author;
-        skill.category = cmd.category();
+        skill.category = category;
         skill.status = SkillStatus.DRAFT;
         skill.latestVersion = null;
         skill.riskLevel = null;
@@ -131,13 +147,16 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         // 在 INSERT 後寫回 version=0（per deepwiki/aggregate-design.md §1.@Version + §4.isNew）
         skill.version = null;
         skill.registerEvent(new SkillCreatedEvent(
-                skill.id, name, cmd.description(), author, cmd.category()));
+                skill.id, name, description, author, category));
         return skill;
     }
 
     /** S041: agentskills.io 正規格式（與 {@code SkillValidator.NAME_REGEX} 同字面）。 */
     private static final java.util.regex.Pattern NAME_REGEX =
             java.util.regex.Pattern.compile("^[a-z0-9-]{1,64}$");
+
+    /** S042: description 長度上限（與 {@code SkillValidator.DESCRIPTION_MAX} 同值）。 */
+    private static final int DESCRIPTION_MAX = 1024;
 
     /**
      * SkillQueryService 動態 SQL search 場景的 row → entity 物化 factory。

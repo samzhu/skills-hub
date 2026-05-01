@@ -1,5 +1,31 @@
 # Changelog
 
+## [v2.19.0] — Aggregate description / category Validation（M38 完成；2026-05-01）
+
+> **Minor bump** — 補完 `Skill.create` aggregate 四欄位驗證：description（trim + blank reject + ≤ 1024 chars）+ category（trim + blank reject）。承接 S041，徹底封閉 JSON POST 之前缺驗證的破口。
+
+### Added
+- **S042: Aggregate description / category Validation**（M38 落地）：
+  - **`DESCRIPTION_MAX = 1024`** 常數（與 `SkillValidator.DESCRIPTION_MAX` 同值；mirror S041 NAME_REGEX 不依賴 validation 子模組的策略）
+  - **description 驗證**：trim + 非 blank + 長度 ≤ 1024；違反 → 400 VALIDATION_ERROR
+  - **category 驗證**：trim + 非 null 但 blank → 400；null 仍允許（schema 允許）
+  - **7 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 17 — JSON POST 接受空 / 超長 description 與空白 category；S041 補了 name/author，S042 補完 description/category
+
+### Verification
+- `./gradlew test` — 301 → 305 tests / 0 fail（4 新加）
+- E2E HTTP：6 個 invariant 綠燈 + multipart regression OK
+
+### Pattern
+- mirror S041：4 個 invariant 欄位（name / author / description / category）統一 trim + blank reject 風格；aggregate factory 為最終守門
+
+### Tech Debt
+- S031 §7.5 admin panel endpoint 仍待設計
+
+---
+
 ## [v2.18.0] — Skill Aggregate Input Validation（M37 完成；2026-05-01）
 
 > **Minor bump** — `Skill.create` aggregate factory 加 invariant 守門：name 必符 agentskills.io regex；author 拒絕 blank；補 JSON POST path 之前缺乏驗證的破口。前端與後端 entry path（multipart upload + JSON POST）行為一致，畸形 ACL `user::read` 不再產生。

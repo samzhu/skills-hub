@@ -394,4 +394,49 @@ class SkillAggregateTest {
 
         assertThat(skill.getName()).isEqualTo("valid-name");
     }
+
+    // ============================================================================
+    // S042 — description / category invariant validation
+    // ============================================================================
+
+    @Test
+    @Tag("AC-S042")
+    @DisplayName("AC-S042: description 空字串 → IllegalArgumentException")
+    void create_emptyDescription_throws() {
+        assertThatThrownBy(() -> Skill.create(
+                new CreateSkillCommand("valid-name", "", "alice", "DevOps")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("description must not be blank");
+    }
+
+    @Test
+    @Tag("AC-S042")
+    @DisplayName("AC-S042: description 全空白 → IllegalArgumentException")
+    void create_blankDescription_throws() {
+        assertThatThrownBy(() -> Skill.create(
+                new CreateSkillCommand("valid-name", "   ", "alice", "DevOps")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("description must not be blank");
+    }
+
+    @Test
+    @Tag("AC-S042")
+    @DisplayName("AC-S042: description >1024 chars → IllegalArgumentException")
+    void create_longDescription_throws() {
+        var longDesc = "a".repeat(1025);
+        assertThatThrownBy(() -> Skill.create(
+                new CreateSkillCommand("valid-name", longDesc, "alice", "DevOps")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exceeds 1024 characters");
+    }
+
+    @Test
+    @Tag("AC-S042")
+    @DisplayName("AC-S042: category 空白 → IllegalArgumentException")
+    void create_blankCategory_throws() {
+        assertThatThrownBy(() -> Skill.create(
+                new CreateSkillCommand("valid-name", "desc", "alice", "   ")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("category must not be blank");
+    }
 }
