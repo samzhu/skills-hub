@@ -41,10 +41,18 @@ export function FileDropZone({
   const inputRef = useRef<HTMLInputElement>(null)
 
   /**
-   * S037：集中 file 處理 — drag 與 click 兩條 path 都先過此 size guard。
-   * 超限時 set inline error；通過則 clear error 並呼叫 caller `onFileSelect`。
+   * S037：集中 file 處理 — drag 與 click 兩條 path 都先過 guard。
+   * 超限或副檔名錯誤時 set inline error；通過則 clear error 並呼叫 caller `onFileSelect`。
+   *
+   * S048：副檔名 guard 補在最前 — `accept` prop 預設 `.zip`；drag-drop 不受 input[accept]
+   * 限制，必須 JS 擋。case-insensitive 比對；`File.type` MIME 不可靠（OS 差異）所以不查。
    */
   const handleFile = (file: File) => {
+    const ext = accept.replace(/^\./, '').toLowerCase()
+    if (!file.name.toLowerCase().endsWith('.' + ext)) {
+      setSizeError(`只接受 .${ext} 檔，目前是 ${file.name}`)
+      return
+    }
     if (file.size > maxSizeBytes) {
       const limitMb = (maxSizeBytes / 1_048_576).toFixed(0)
       const fileMb = (file.size / 1_048_576).toFixed(1)

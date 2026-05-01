@@ -1,5 +1,25 @@
 # Changelog
 
+## [v2.25.0] — FileDropZone — Reject Non-`.zip` Files Client-Side（M44 完成；2026-05-01）
+
+> **Minor bump** — `FileDropZone.handleFile` 加擴展名 guard：drag-drop 非 `.zip` 檔（如 `malicious.txt`）顯示 inline「只接受 .zip 檔」並不呼叫 `onFileSelect`。先前 `accept=".zip"` 只 hint file picker；drag-drop bypass 該限制 — user 須等到後端 400 才知錯。對齊 S037 size guard 模式（同 funnel point；drag + click 路徑共用）。
+
+### Added
+- **S048: FileDropZone — Reject Non-`.zip` Files Client-Side**（M44 落地）：
+  - **extension guard**：`accept` prop 動態取副檔名 → 不符 set inline error → 不呼叫 `onFileSelect`
+  - case-insensitive 比對（`.ZIP` / `.zip` 一致）
+  - 不查 `File.type` MIME（OS 差異不可靠）— 後端仍嚴格驗 zip magic bytes（defense-in-depth）
+  - **5 個 SBE AC 全綠**
+
+### Trigger
+- 2026-05-01 /loop tick 23 Chrome E2E — PublishPage 注入 `malicious.txt` 經 drag-drop 被 FileDropZone 接受、selectedFile 設、submit 啟用；後端會擋但 user 浪費 round-trip
+
+### Verification
+- `npm test -- --run` — 10 tests / 0 fail
+- Chrome E2E：`.txt` 顯 inline 拒絕；`.zip` / `.ZIP` 通過；11MB `.zip` 仍走 S037 size guard
+
+---
+
 ## [v2.24.0] — Installation Guide Only for PUBLISHED（M43 完成；2026-05-01）
 
 > **Minor bump** — `SkillDetailPage` 概要 tab 安裝指引「下載 zip 後解壓...」只對 PUBLISHED skill 顯示。先前 DRAFT skill 沒下載按鈕但仍顯指引、SUSPENDED skill 有「無法下載」banner 但仍顯指引 — UX 矛盾解決。
