@@ -181,4 +181,63 @@ class SkillValidatorTest {
 		assertThat(result.metadata()).containsEntry("allowed-tools", "Bash(git:*) Edit Read Write Grep Glob");
 	}
 
+	@Test
+	@DisplayName("S073 AC-1: allowed-tools YAML block sequence（canonical Anthropic 形狀）→ valid")
+	@Tag("S073")
+	void allowedToolsBlockSequenceValid() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				allowed-tools:
+				  - Read
+				  - Edit
+				  - Bash(git:*)
+				---
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isTrue();
+		assertThat(result.errors()).isEmpty();
+	}
+
+	@Test
+	@DisplayName("S073 AC-2: allowed-tools YAML flow sequence → valid")
+	@Tag("S073")
+	void allowedToolsFlowSequenceValid() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				allowed-tools: [Read, Edit, "Bash(npm:test)"]
+				---
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isTrue();
+		assertThat(result.errors()).isEmpty();
+	}
+
+	@Test
+	@DisplayName("S073 AC-4: allowed-tools list 含 injection token → invalid 並指向違規 token")
+	@Tag("S073")
+	void allowedToolsListInjectionRejected() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				allowed-tools:
+				  - Read
+				  - "Bash(; rm -rf /)"
+				---
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isFalse();
+		assertThat(result.errors()).anyMatch(e -> e.contains("allowed-tools") && e.contains("Bash(;"));
+	}
+
 }

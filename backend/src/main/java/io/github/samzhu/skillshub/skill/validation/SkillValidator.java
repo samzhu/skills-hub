@@ -121,10 +121,21 @@ public class SkillValidator {
 			errors.add("Field 'compatibility' exceeds " + COMPATIBILITY_MAX + " characters");
 		}
 
-		// allowed-tools：space-separated tokens，每個 token 必符合白名單 regex（拒收 shell injection）
+		// S073: allowed-tools 支援兩種 frontmatter 形狀（與 canonical agentskills.io spec 對齊）：
+		//   1. YAML list（block 或 flow seq）— Anthropic 自家 SKILL.md 慣用形狀
+		//   2. 空白分隔 string — 既有測試 fixture 與 v2.50.0 之前唯一支援形狀（向後相容）
+		// 不能 fallback 到 toString()：ArrayList.toString() 為 "[a, b]"，會被誤切成 `[a,` / `b]` 全部不過 regex。
 		var allowedTools = parsed.get("allowed-tools");
-		if (allowedTools != null && !allowedTools.toString().isBlank()) {
-			for (var token : allowedTools.toString().trim().split("\\s+")) {
+		if (allowedTools != null) {
+			List<String> tokens;
+			if (allowedTools instanceof List<?> list) {
+				tokens = list.stream().map(String::valueOf).toList();
+			} else {
+				var s = allowedTools.toString().trim();
+				tokens = s.isBlank() ? List.of() : List.of(s.split("\\s+"));
+			}
+			for (var token : tokens) {
+				if (token.isBlank()) continue;
 				if (!ALLOWED_TOOL_TOKEN_REGEX.matcher(token).matches()) {
 					errors.add("Field 'allowed-tools' contains invalid token: " + token);
 					break;   // 一個違規足以拒收，不重複報相同 root cause

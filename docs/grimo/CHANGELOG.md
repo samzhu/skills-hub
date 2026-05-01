@@ -1,5 +1,26 @@
 # Changelog
 
+## [v2.51.0] — `allowed-tools` YAML list interop（M69 完成；2026-05-01）
+
+> **Patch-class minor** — `SkillValidator.validateFieldConstraints` 對 `allowed-tools` 欄位只支援空白分隔字串，但 canonical agentskills.io spec + Anthropic 自家 SKILL.md（`.claude/skills/handover` / `planning-project` / `deep-research` …）皆使用 YAML list 形狀。SnakeYAML 解出 `ArrayList`，現行程式 `toString()` → `"[Read, Bash]"` 含中括號，後續 `split` 切出 `[Read,` / `Bash]` 全不過 `ALLOWED_TOOL_TOKEN_REGEX`（regex 開頭要 `[A-Z]`）→ canonical 形狀全部 400 拒收。E2E test session Round 15 hand-craft 第三方 frontmatter 變體探查發現。
+
+### Fixed
+- **S073: `allowed-tools` YAML list interop**（M69）：
+  - `SkillValidator.validateFieldConstraints`：以 Java type pattern matching `if (allowedTools instanceof List<?> list)` 分流
+  - List → `stream().map(String::valueOf).toList()`；scalar → 既有 `split("\\s+")`（向後相容）
+  - 既有 token 白名單 regex（shell injection 防禦）邏輯不變
+  - `SkillValidatorTest` 加 3 個 S073 test：block sequence valid / flow sequence valid / list 含 injection 拒收
+  - 291 backend tests / 0 fail（288 → 291）
+
+### Verification
+- Block seq `- Read\n- Bash(git:*)` → 201 ✓
+- Flow seq `[Read, "Bash(npm:test)"]` → 201 ✓
+- Legacy string `"Read Bash"` → 201（向後相容）✓
+- List 含 `; rm -rf /` → 400 並指向違規 token ✓
+- Smoke：上傳 R15.3 原失敗 zip → 201 + outbox drain ✓
+
+---
+
 ## [v2.50.0] — Flag Type Allowlist + Description Length Cap（M68 完成；2026-05-01）
 
 > **Patch-class minor** — `FlagService.createFlag` 兩道閘：(1) `type` 必須屬白名單 `{malicious, spam, inappropriate, copyright, security, other}`；(2) `description` ≤ 500 字元。E2E test session Round 10 flag flow 探查發現 `type="bogus"` 任意字串接受、`description="xxx" * 5000` 接受 — DB 髒、admin review 不可能、儲存成本。S058 修 `Map.of` null 時沒做型別白名單；S055 ACL aggregate validation 也沒同步覆蓋 Flag aggregate。本 spec 補齊。
