@@ -3,13 +3,14 @@ import { Link } from 'react-router'
 import { AppShell } from '@/components/AppShell'
 import { SearchBar } from '@/components/SearchBar'
 import { CategorySidebar } from '@/components/CategorySidebar'
+import { RiskFilterSidebar } from '@/components/RiskFilterSidebar'
 import { SkillCard } from '@/components/SkillCard'
 import { SkillCardGrid } from '@/components/SkillCardGrid'
 import { EmptyState } from '@/components/EmptyState'
 import { useSkillList } from '@/hooks/useSkillList'
 import { useCategories } from '@/hooks/useCategories'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
-import type { Skill } from '@/types/skill'
+import type { RiskLevel, Skill } from '@/types/skill'
 
 /**
  * S098d 排序模式（client-side sort，不打 backend 額外 query）。
@@ -43,6 +44,8 @@ export function HomePage() {
   const [category, setCategory] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [sortMode, setSortMode] = useState<SortMode>('recommended')
+  // S098d2: risk filter selection — empty Set = 「不篩選」= 全顯
+  const [riskFilter, setRiskFilter] = useState<Set<RiskLevel>>(new Set())
 
   // 語意搜尋模式：query 非空時啟用（enabled 由 hook 內部控制）
   const {
@@ -87,10 +90,15 @@ export function HomePage() {
   const isLoading = isSemanticMode ? semanticLoading : listLoading
   const error = isSemanticMode ? semanticError : listError
 
-  // S098d: client-side sort. 排序基於 backend 該頁回的 content；不重新 fetch 跨頁也不打額外 sort query。
-  // Trade-off：分頁狀態下排序「只在當前頁」生效。後續若要全域排序需後端 sort query (defer S098d2)。
-  const sortedSkills = useMemo(() => {
-    const content = skillsPage?.content ?? []
+  // S098d: client-side sort + S098d2: client-side risk-filter — 兩階管線都基於 backend 該頁回的 content。
+  // Trade-off：filter 與 sort「只在當前頁」生效。後續若要全域 → 後端 sort/filter query。
+  const filteredAndSorted = useMemo(() => {
+    let content: Skill[] = skillsPage?.content ?? []
+    // 1. risk filter — empty Set = pass-through
+    if (riskFilter.size > 0) {
+      content = content.filter((s) => s.riskLevel && riskFilter.has(s.riskLevel))
+    }
+    // 2. sort
     if (sortMode === 'recommended') return content
     const arr = [...content]
     if (sortMode === 'newest') {
@@ -101,7 +109,17 @@ export function HomePage() {
       arr.sort((a, b) => (b.downloadCount ?? 0) - (a.downloadCount ?? 0))
     }
     return arr
-  }, [skillsPage, sortMode])
+  }, [skillsPage, sortMode, riskFilter])
+
+  // S098d2 toggle / clear
+  const toggleRisk = (level: RiskLevel) => {
+    setRiskFilter((prev) => {
+      const next = new Set(prev)
+      if (next.has(level)) next.delete(level)
+      else next.add(level)
+      return next
+    })
+  }
 
   return (
     <AppShell>
@@ -126,9 +144,16 @@ export function HomePage() {
       </div>
 
       <div className="flex gap-6">
-        {/* CategorySidebar 只在關鍵字搜尋模式（query 空）時顯示 */}
+        {/* CategorySidebar + RiskFilterSidebar 只在關鍵字搜尋模式（query 空）時顯示 */}
         {!isSemanticMode && (
-          <aside className="hidden w-56 shrink-0 md:block">
+          <aside className="hidden w-56 shrink-0 md:block space-y-6">
+            {/* S098d2: risk filter — client-side counts 來自當前頁 skillsPage.content */}
+            <RiskFilterSidebar
+              skills={skillsPage?.content ?? []}
+              selected={riskFilter}
+              onToggle={toggleRisk}
+              onClear={() => setRiskFilter(new Set())}
+            />
             <CategorySidebar
               categories={categories ?? []}
               selected={category}
@@ -209,7 +234,7 @@ export function HomePage() {
                 </div>
               </div>
               {/* S094c: pass query so 0-results can show seed (no query) vs redirect (with query) tone */}
-              <SkillCardGrid skills={sortedSkills} query={query} />
+              <SkillCardGrid skills={filteredAndSorted} query={query} />
               {skillsPage && skillsPage.page.totalPages > 1 && (
                 <div className="mt-6 flex items-center justify-center gap-2">
                   <button

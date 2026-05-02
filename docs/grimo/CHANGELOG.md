@@ -1,5 +1,37 @@
 # Changelog
 
+## [v2.99.0] — Homepage risk filter sidebar（S098d2 完成；Homepage v2 polish trio 完成；2026-05-02）
+
+> S098d2 — Homepage 加 risk-tier 4-level filter sidebar with count breakdown。Closes Homepage v2 polish trio：S098d (3-col grid + sort chips) → S098d2 (risk filter)。對齊 prototype #2 sidebar IA。
+
+### 🎨 Frontend
+- 新檔 `components/RiskFilterSidebar.tsx`：4 tier toggle checkbox (NONE/LOW/MEDIUM/HIGH) + count breakdown + 「全部」reset。每 tier 含 dot color 對齊 RiskBadge palette（success/info/warning/danger）。
+  - 計數：client-side aggregate `skillsPage.content`；不打 backend
+  - selected: empty Set = 「不篩選」= 全顯（初始狀態）
+  - toggle 即加入 / 移除 Set；多選邏輯（OR 過濾）
+- `pages/HomePage.tsx`：
+  - 加 `riskFilter: Set<RiskLevel>` state + `toggleRisk` / `clear`
+  - 既有 `sortedSkills` useMemo 升級為 `filteredAndSorted`：兩階管線（filter → sort）；`riskFilter.size > 0` 時依 selected Set 過濾，else pass-through
+  - sidebar 區插入 RiskFilterSidebar 在 CategorySidebar 上方（`space-y-6` 群間距）
+  - 只 keyword 模式顯（語意搜尋模式同 CategorySidebar 隱藏）
+
+### Trade-off
+- 計數與過濾「只當前頁」生效；換頁會看到不同 count（page=20 數量級可接受）
+- 全域 risk-tier count 需 backend `/skills/risk-counts` 或 client-side 全量 fetch（page=∞）—— defer 為 polish backlog；目前 client-side aggregate 對 MVP 視覺驗收已足
+
+### ✅ Tests
+- `npx vitest run` (cwd=frontend) → 7 files / 33 tests PASS
+- `npx tsc --noEmit` (cwd=frontend) → no errors
+
+### 🎉 Homepage v2 polish trio 完成
+| 項目 | 狀態 | spec |
+|---|---|---|
+| 3-column grid (xl breakpoint) | ✅ v2.90.0 | S098d |
+| Sort chips (4 mode) | ✅ v2.90.0 | S098d |
+| Risk filter sidebar with count breakdown | ✅ v2.99.0 | S098d2 |
+
+Homepage 達 prototype #2 完整對等。
+
 ## [v2.98.0] — Docs IA 完整收官（S098f3 完成；發佈群 + API/Webhook 群 5 stub pages；2026-05-02）
 
 > S098f3 — 完成 DocsSidebar 剩 5 placeholder items：發佈群（上傳與驗證 / 版本管理 / 語意搜尋）+ API & Webhook 群（REST 參考 / Event payload）。**Skills Hub Docs IA 11/11 全 active link ✅**。
