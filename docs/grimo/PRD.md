@@ -224,6 +224,89 @@ Scenario: 技能作者查看自己的數據
 
 ---
 
+### P7 — 技能集合（Collections）📋 (S096f, planned)
+
+讓使用者把多個相關技能打包成「集合」一鍵安裝，類似 npm `bundle` 或 GitHub Curated List。
+
+**SBE Acceptance Criteria：**
+
+```
+Scenario: 創建集合
+  Given 使用者在「我的技能」或瀏覽頁
+  When 點選「建立集合」並選 3 個 skills 加入
+  Then 集合創建成功
+  And 顯示集合名稱、描述、3 個成員 skills（含版本）
+
+Scenario: 一鍵安裝集合
+  Given 使用者在 /collections 頁看到 "DevOps Starter Pack" 集合
+  When 點選「Install」
+  Then 系統依序下載集合內所有 skills
+  And 每個 skill 自動套用其當前 latest version
+
+Scenario: 集合分類與篩選
+  Given 平台已有 12 個集合
+  When 使用者用 category=DevOps + risk=low 篩選
+  Then 顯示符合條件的集合（過濾掉含 high-risk skill 的集合）
+```
+
+---
+
+### P8 — 技能需求看板（Request Board）📋 (S096g, planned)
+
+讓使用者公開發起「我需要這種 skill」的需求，社群投票決定優先級，作者可認領後實作。
+
+**SBE Acceptance Criteria：**
+
+```
+Scenario: 發起需求
+  Given 使用者在搜尋「kubernetes auto-scaling」找不到合適 skill
+  When 點選「請求這個 skill」並寫下需求 title + description
+  Then 需求進入 /requests 看板，狀態 OPEN
+  And 預設投票數 1（發起人自動算 1 票）
+
+Scenario: 投票推升優先級
+  Given 「k8s autoscaler skill」需求已開啟 7 天
+  When 5 名同事 upvote
+  Then 票數變 6
+  And 該需求在「依票數排序」list 中升至前段
+
+Scenario: 認領與實作
+  Given 「k8s autoscaler skill」累計 12 票
+  When `platform-team` 作者點選「Claim」
+  Then 該需求狀態變 IN-PROGRESS
+  And 作者上傳對應 skill 後，需求狀態變 FULFILLED
+  And 系統自動 link 該 skill 到原始需求
+```
+
+---
+
+### P9 — 通知中心（Notifications）📋 (S096h, planned)
+
+把 domain events（per architecture.md）作為 user-facing notification source，給作者 / 訂閱者 / admin 觀察自己關心的 skill 動態。
+
+**SBE Acceptance Criteria：**
+
+```
+Scenario: 新版本發布通知
+  Given 使用者訂閱了 docker-compose-helper skill
+  When 該 skill 作者發布 v2.1.0
+  Then 使用者通知中心顯示 1 unread badge
+  And 通知列表顯示「docker-compose-helper v2.1.0 已發布」+ 時間 + 跳轉連結
+
+Scenario: 通知分類過濾
+  Given 使用者通知中心有 12 條未讀
+  When 切換 tab=flags
+  Then 只顯示與 SkillFlagged 相關通知（如「你發布的 skill 收到 1 個 flag」）
+
+Scenario: 全部已讀 + 偏好設定
+  Given 使用者打開 /notifications
+  When 點選「全部標為已讀」
+  Then 所有通知變 read，bell badge 歸 0
+  And 在偏好頁可關閉特定類型的通知（如 "version updates only"）
+```
+
+---
+
 ## Backlog（依重要性排序）
 
 | 優先級 | 功能 | 說明 |
@@ -416,6 +499,9 @@ Scenario: 技能作者查看自己的數據
 | D22 | Event Store 位置 | 同 PostgreSQL 的 `domain_events` 表（JSONB payload + per-aggregate `(aggregate_id, sequence)` UNIQUE） | 與 read model 同 DB / 同 transaction；query 簡單；無額外基礎設施 | 獨立 DB（多一套系統）、per-aggregate table（管理複雜） |
 | D23 | ES MVP 範圍 | 僅儲存事件 + 更新 projection | 最小可行、後續可擴展 replay/snapshot | Full ES（replay、snapshot、upcasting 放 Backlog） |
 | D24 | 專案目錄 | `backend/`（原 `skillshub/`）+ `frontend/` | 前後端分離目錄、語意清晰 | 單一目錄（前後端混在一起） |
+| D25 | URL schema | `/skills/:author/:name` canonical + `/skills/:id` 永久 alias（per ADR-003） | 對齊 GitHub/npm/Docker Hub `:owner/:name` 慣例；既有 caller 不破 | 純 UUID（不可讀）、hard redirect（增 round-trip + cli tool 可能不 follow） |
+| D26 | UI 主題 | dark theme（`#08080A` bg + `#EEECEA` ink；per Engineering Handoff §7） | 對齊 v2 prototype 16 mockup；engineer-tier 工具的視覺慣例 | warm-white 維持（既有 v1）、dual-theme switcher（維護 2× cost） |
+| D27 | Risk tier 階數 | 4-tier (NONE/LOW/MEDIUM/HIGH) per ADR-future / S096c | 對齊 Cisco Skill Scanner + CVSS None band；分清「0-finding pure docs」vs「low-severity finding」 | 3-tier（既有，把 0-finding 與 low-finding 混為 LOW，user 看不到差異） |
 
 > **Phase 1 PostgreSQL migration（2026-04-27 v1.1.0）**：D3/D8/D9/D14/D22 已重寫；遷移決策軌跡見 [`adr/ADR-001-postgresql-migration.md`](./adr/ADR-001-postgresql-migration.md) + [`specs/archive/2026-04-27-S014-postgresql-migration.md`](./specs/archive/2026-04-27-S014-postgresql-migration.md)。其他 D-entry（D1/D2/D4-D7/D10-D13/D15-D21/D23-D24）不受 Phase 1 影響。
 

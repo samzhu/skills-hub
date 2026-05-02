@@ -1,5 +1,32 @@
 # Changelog
 
+## [v2.73.0] — ADR-003 + PRD P7-P9 + Glossary（S096 META sub-spec 1/8；M90a 完成；2026-05-02）
+
+> **Docs-only gate** — S096 META 第一個 sub-spec，把 v2 redesign 的架構決定寫進文件，後續 sub-specs reference 這些 docs 為 source of truth。
+
+### Added
+- **ADR-003: Route Schema Migration** (`docs/grimo/adr/ADR-003-route-schema-author-name.md`)
+  - `/skills/:author/:name` canonical（對齊 GitHub/npm/Docker Hub `:owner/:name` 慣例）
+  - `/skills/:id` UUID 永久 alias（既有 caller / bookmark 不破）
+  - dual-route 並行；backend 兩個 endpoint resolve 同一 aggregate
+- **PRD P7 — Collections** 📋 (S096f planned): 創建集合 / 一鍵安裝 / 分類篩選 三個 SBE scenarios
+- **PRD P8 — Request Board** 📋 (S096g planned): 發起需求 / 投票 / 認領與實作 三個 SBE scenarios
+- **PRD P9 — Notifications** 📋 (S096h planned): 新版本通知 / 分類過濾 / 全部已讀 三個 SBE scenarios
+- **PRD Decision Log D25-D27**:
+  - D25: URL schema (per ADR-003)
+  - D26: UI 主題 (dark theme `#08080A` per Engineering Handoff §7)
+  - D27: Risk tier 階數 (4-tier per S096c)
+- **Glossary 4 new entries**: Collection / Request / Notification / Subscription
+- **Glossary update**: RiskLevel 從 3-tier (LOW/MEDIUM/HIGH) → 4-tier (NONE/LOW/MEDIUM/HIGH)
+
+### No code change
+git diff 限於 `docs/grimo/*`，0 行 backend/frontend code touched.
+
+### META progress
+S096 META 1/8 ✅ — next: S096b DESIGN.md v2 + global theme migration foundation (M).
+
+---
+
 ## [v2.72.0] — Semantic Search Results page `/search`（M88d 完成；2026-05-02）
 
 > **S094 META sub-spec 4/4 ship — META 全 ✅** — 把 HomePage inline 語意搜尋結果分流到專屬 `/search?q=...` route，加 LLM intent summary 顯示「系統如何理解你的查詢」(README ll.117 核心 UX 差異化)。

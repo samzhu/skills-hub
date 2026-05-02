@@ -7,7 +7,7 @@
 | 技能作者 | Skill Author / Publisher | `Publisher` | 建立並發佈技能到平台的使用者角色 |
 | 技能消費者 | Skill Consumer | `Consumer` | 瀏覽、搜尋、下載技能的使用者角色 |
 | 管理者 | Admin | `Admin` | 管理平台設定、使用者、審核的角色 |
-| 風險等級 | Risk Level | `RiskLevel` | 技能的安全風險分級：LOW / MEDIUM / HIGH |
+| 風險等級 | Risk Level | `RiskLevel` | 技能的安全風險分級：NONE / LOW / MEDIUM / HIGH（per ADR-future S096c；NONE = 0 findings + no scripts + no allowed-tools） |
 | 風險評估 | Risk Assessment | `RiskAssessment` | 對技能內容的自動安全掃描與分級 |
 | 硬結構 | Hard Structure | `Organization` | 集團 → 公司 → 部門的固定組織層級樹 |
 | 軟結構 | Soft Structure | `Workspace` | 戰情室、合作專案等跨組織的彈性團隊空間 |
@@ -31,3 +31,7 @@
 | 值物件 | Value Object | `SkillVersion` | Aggregate 內部的不可變物件，無獨立 identity |
 | 不變量 | Invariant | — | Aggregate 必須維護的業務規則（如 version 必須遞增、name 唯一） |
 | 核心域 | Core Domain | `skill/` | 使用 Aggregate + ES + CQRS 的核心業務模組 |
+| 集合 | Collection | `Collection` | 多個 skills 打包成的 curated bundle，支援一鍵安裝（per P7 / S096f） |
+| 需求 | Request | `SkillRequest` | 使用者公開發起的「我需要這種 skill」需求；可投票推升優先級、作者可認領（per P8 / S096g） |
+| 通知 | Notification | `Notification` | 從 domain events projected 出的 user-facing 動態提醒，支援分類過濾與已讀標記（per P9 / S096h） |
+| 訂閱 | Subscription | `SkillSubscription` | 使用者對特定 skill 的關注關係，作為通知過濾依據（per P9） |
