@@ -1,5 +1,20 @@
 # Changelog
 
+## [v3.1.2] — SkillDetailPage error path tests（ledger Round 1.4 ✅；2026-05-02）
+
+> Mode B — fill 1 ledger 📋 row (Round 1.4 negative)：404 not-found / 500 server error / 返回首頁 link 三 ACs。對齊 S039 區分 4xx vs 5xx error 邏輯。Tests 44 → 47 (+3)。
+
+### ✅ Tests
+- 新檔 `pages/SkillDetailPage.test.tsx` — 3 ACs 對齊 ledger Round 1.4：
+  - AC-1: 404 → 「找不到此技能」(不顯 retry hint per S039)
+  - AC-2: 500 → 「載入技能時發生錯誤」+「請稍後重試或重新整理頁面」 hint
+  - AC-3: error state「返回首頁」link to `/`
+- `docs/grimo/test-cases.md`：Round 1.4 標 ✅；Round 1 done count 0 → 1；Total 6 → 7。
+
+### 結果
+- 44 → 47 tests PASS（+3 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.1.1] — Test coverage backfill：PublishValidatePage（2026-05-02）
 
 > Mode B E2E round — 為 v2.95.0 ship 的 S098a PublishValidatePage 補 component test。Tests 40 → 44 (+4)。最後一個未測 newly-shipped page 補完。

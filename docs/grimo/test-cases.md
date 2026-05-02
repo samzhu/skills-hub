@@ -15,7 +15,7 @@
 | 1.1 | positive | Visit `/` | Landing page renders Hero h1 「你的團隊真的可以信任的技能登錄中心」+ stats band 4 cells + 6 popular SkillCards + footer | 📋 | covered by partial test |
 | 1.2 | positive | Click「瀏覽技能登錄」CTA | Navigate to `/browse`；HomePage renders SearchBar + sidebar + 3-col grid | 📋 | |
 | 1.3 | positive | `/browse` → 點 Skill card | Navigate to `/skills/:id`；hero + 4 metric cards + 6-tab structure | 📋 | |
-| 1.4 | negative | `/skills/non-existent-uuid` | 404 message or skill not found callout | 📋 | needs error path coverage |
+| 1.4 | negative | `/skills/non-existent-uuid` | 404 message「找不到此技能」（不顯 retry hint）；500 顯「載入技能時發生錯誤」+ retry hint；返回首頁 link | ✅ | SkillDetailPage.test.tsx 3 ACs |
 | 1.5 | edge | `/browse` query 1000+ skills, pagination works | 「上一頁」「下一頁」disabled when at boundary | 📋 | |
 
 ## Round 2 — Search flow（語意 + keyword 搜尋）
@@ -104,13 +104,13 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 
 | Round | Total | ✅ Done | 📋 Planned |
 |-------|-------|---------|------------|
-| 1 Browse | 5 | 0 | 5 |
+| 1 Browse | 5 | 1 | 4 |
 | 2 Search | 4 | 0 | 4 |
 | 3 Filter/Sort | 4 | 0 | 4 |
 | 4 Publish | 7 | 3 | 4 |
 | 5 Skill Detail | 8 | 2 | 6 |
 | 6 Docs IA | 2 | 0 | 2 |
 | 7 Empty state | 3 | 1 | 2 |
-| **Total** | **33** | **6** | **27** |
+| **Total** | **33** | **7** | **26** |
 
 current component test count: 44（cover ~6 ledger ACs + 38 unit-level invariants）。E2E browser-level scenarios（27 planned）需 Playwright / Cypress —— defer until backend stabilizes 或 cloud-scheduled E2E run。
