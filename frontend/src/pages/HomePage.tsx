@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { AppShell } from '@/components/AppShell'
 import { SearchBar } from '@/components/SearchBar'
 import { CategorySidebar } from '@/components/CategorySidebar'
@@ -67,8 +68,23 @@ export function HomePage() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="mb-4 text-2xl font-bold">探索 Agent 技能</h1>
+      {/* S085: hero row — H1 + sub-text + 「發布技能」 primary CTA per prototype `.sh-hero-row` */}
+      <div className="mb-[14px] flex items-end justify-between gap-4">
+        <div>
+          <h1 className="m-0 text-[22px] font-medium leading-[1.2]">探索 Agent 技能</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            為團隊發現、評估與安裝可信任的 AI agent 技能
+          </p>
+        </div>
+        <Link
+          to="/publish"
+          className="inline-flex items-center whitespace-nowrap rounded-md bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-foreground"
+        >
+          發布技能
+        </Link>
+      </div>
+
+      <div className="mb-[14px]">
         <SearchBar value={query} onChange={handleSearch} />
       </div>
 

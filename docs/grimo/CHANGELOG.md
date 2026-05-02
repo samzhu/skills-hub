@@ -1,5 +1,21 @@
 # Changelog
 
+## [v2.63.0] — HomePage rework + IconTile reusable component（M81 完成；2026-05-02）
+
+> **UI rework** — 對齊 `skills_hub_homepage_mockup.html` 設計稿：hero row + IconTile + reformatted SkillCard + DESIGN.md tokens。S084 META spec sub-spec roadmap 第 2 個 ship。
+
+### Added
+- **S085: HomePage rework**（M81）：
+  - `frontend/src/components/IconTile.tsx`：6-category tint（devops/infra/testing/docs/data/security）+ size sm/md/lg/xl + 1-2 letter initial
+  - `SkillCard.tsx` 重寫：hairline border + IconTile + version mono pill + category badge + download stat per prototype `.sh-card`
+  - `HomePage.tsx` hero row：H1 22px + 13px sub-text + 「發布技能」黑色 primary CTA top-right per `.sh-hero-row`
+  - 11 frontend tests / 0 fail；CSS 32.4 KB / JS 349.4 KB
+
+### Verification
+- Chrome smoke：完整對齊 prototype — hero / search beam / sidebar accent-soft / cards with IconTile + risk pill + version mono / category badge
+
+---
+
 ## [v2.62.0] — BeamFrame hand-roll component（M85 完成；2026-05-02）
 
 > **Drop dependency** — S083 試 BorderBeam npm `theme="light"` 但物理上做不出 glow（rgba(0,0,0,x) inner-shadow on white）。Prototype HTML `.sh-search-wrap` 直接 hand-roll conic-gradient + 1px frame，與 DESIGN.md `card-featured` pattern 1:1 對齊。Drop dep + 自寫 component 方案。

@@ -181,7 +181,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M78: SkillDetailPage Files Tab UI | S082 | S(5) | 552 | ✅ `v2.59.0` (2026-05-01 — 4th tab「檔案」接 S074 backend API；FilesPanel 左 list + 右 viewer；text/image/binary/oversize 邊界全 handle；user-driven feature 完成 backend → frontend 全鏈路) |
 | Phase 4 | M79: `BorderBeam` light theme tuning | S083 | XS(1) | 553 | ✅ `v2.59.1` (2026-05-01 — `theme="light" duration={4.5} strength={0.7}`；fix 在 #FFFFFF 背景上 dark-tuned beam 偏霧；對齊 DESIGN.md §Elevation 4-5s rotation + user playground 偏好) |
 | Phase 4 | M80: UI Rework META（splits S085-S089） | S084 | M(12) | — | ✅ META shipped (2026-05-01 — META spec doc only；產出 5 sub-spec roadmap + 共用 components 候選 + BorderBeam 研究結論；sub-specs S085-S089 各自 ship) |
-| Phase 4 | M81: HomePage rework + reusable components 抽取 | S085 | S(8) | — | 📋 backlog — 對 `skills_hub_homepage_mockup.html`；同 batch 帶 S089 BeamFrame；定義 IconTile / Pill / Callout |
+| Phase 4 | M81: HomePage rework + reusable components 抽取 | S085 | S(8) | 569 | ✅ `v2.63.0` (2026-05-02 — IconTile 6-category tint + 重寫 SkillCard 對齊 prototype `.sh-card` + Hero row 加「發布技能」CTA) |
 | Phase 4 | M82: PublishPage rework | S086 | XS(5) | — | 📋 backlog — 對 `skill_publish_upload_flow.html` + `skill_publish_failure_and_high_risk_states.html` |
 | Phase 4 | M83: SkillDetailPage rework | S087 | S(7) | — | 📋 backlog — 對 `skill_detail_page_docker_compose_helper.html`；含 Files tab (S082) 重新整合 |
 | Phase 4 | M84: AnalyticsPage rework | S088 | XS(5) | — | 📋 backlog — 對 `platform_analytics_dashboard_admin_view.html`；metric cards + sparkline + activity feed |
