@@ -2,6 +2,8 @@ package io.github.samzhu.skillshub.search;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +15,8 @@ import org.springframework.stereotype.Service;
 
 import io.github.samzhu.skillshub.shared.security.AclPrincipalExpander;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
  * 語意搜尋服務 — 接收自然語言查詢，透過 {@link SkillshubPgVectorStore} 找出語意相近的技能。
@@ -48,13 +52,16 @@ class SemanticSearchService {
     private final EmbeddingModel embeddingModel;
     private final CurrentUserProvider currentUserProvider;
     private final AclPrincipalExpander aclExpander;
+    private final SkillRepository skillRepo;
 
     SemanticSearchService(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel,
-            CurrentUserProvider currentUserProvider, AclPrincipalExpander aclExpander) {
+            CurrentUserProvider currentUserProvider, AclPrincipalExpander aclExpander,
+            SkillRepository skillRepo) {
         this.jdbcTemplate = jdbcTemplate;
         this.embeddingModel = embeddingModel;
         this.currentUserProvider = currentUserProvider;
         this.aclExpander = aclExpander;
+        this.skillRepo = skillRepo;
     }
 
     /**
@@ -79,12 +86,23 @@ class SemanticSearchService {
                 .similarityThreshold(SIMILARITY_THRESHOLD)
                 .build();
 
-        var results = SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
+        var docs = SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
                 .aclPatterns(aclPatterns)
                 .build()
-                .similaritySearch(request)
-                .stream()
-                .map(this::toResult)
+                .similaritySearch(request);
+
+        // S107: source author/category/riskLevel 從 canonical Skill aggregate（vector_store
+        // metadata 在歷史 row 含 stale empty 值 — onSkillCreated 早期 path 沒寫齊全；onVersionPublished
+        // 還把 riskLevel 硬塞 null per line 147）。Per-result lookup 不額外 N+1：用 findAllById batch
+        // 一次撈，topK ≤ 50 對 PK index 是 O(1) 級。
+        var skillIds = docs.stream()
+                .map(d -> getString(d.getMetadata(), "skillId"))
+                .toList();
+        var skillsById = skillRepo.findAllById(skillIds).stream()
+                .collect(Collectors.toMap(Skill::getId, Function.identity()));
+
+        var results = docs.stream()
+                .map(doc -> toResult(doc, skillsById.get(getString(doc.getMetadata(), "skillId"))))
                 .toList();
 
         log.atInfo()
@@ -97,22 +115,38 @@ class SemanticSearchService {
     }
 
     /**
-     * 將 VectorStore Document 映射至 SemanticSearchResult。
-     * metadata 中的欄位對應由 {@link SearchProjection} 寫入時設定的鍵名。
+     * S107: 將 VectorStore Document + canonical Skill aggregate 映射至 SemanticSearchResult。
+     *
+     * <p>Skill 為 source of truth — author / category / riskLevel / latestVersion / downloadCount
+     * 從 aggregate 取，不依賴 vector_store metadata（projection 寫入歷史不一致）。
+     * 若 skill 已刪除（race condition：vector_store 仍在但 skill 被 delete），fallback 到 metadata
+     * + empty defaults 維持 graceful，不 throw。
+     *
+     * @param doc   VectorStore Document（含 skillId / name / description / score）
+     * @param skill canonical Skill aggregate；race condition 下可能為 null
      */
-    private SemanticSearchResult toResult(Document doc) {
+    private SemanticSearchResult toResult(Document doc, Skill skill) {
         var meta = doc.getMetadata();
+        double score = doc.getScore() != null ? doc.getScore() : 0.0;
+        if (skill == null) {
+            // graceful fallback: skill row gone but vector_store row still exists
+            return new SemanticSearchResult(
+                    getString(meta, "skillId"),
+                    getString(meta, "name"),
+                    getString(meta, "description"),
+                    "", "", null, null, 0L, score
+            );
+        }
         return new SemanticSearchResult(
-                getString(meta, "skillId"),
-                getString(meta, "name"),
-                getString(meta, "description"),
-                getString(meta, "author"),
-                getString(meta, "category"),
-                (String) meta.get("latestVersion"),   // nullable — skill 可能尚未發布版本
-                (String) meta.get("riskLevel"),        // nullable — 可能尚未完成風險評估
-                toLong(meta.get("downloadCount")),
-                // SkillshubPgVectorStore.DocumentRowMapper 設 score = 1 - cosine distance
-                doc.getScore() != null ? doc.getScore() : 0.0
+                skill.getId(),
+                skill.getName(),
+                skill.getDescription(),
+                skill.getAuthor(),
+                skill.getCategory(),
+                skill.getLatestVersion(),
+                skill.getRiskLevel(),
+                skill.getDownloadCount(),
+                score
         );
     }
 
@@ -122,14 +156,4 @@ class SemanticSearchService {
         return v != null ? v.toString() : "";
     }
 
-    /** 安全地將 metadata 值轉為 long，支援 Number 型別與字串格式。 */
-    private static long toLong(Object v) {
-        if (v == null) return 0L;
-        if (v instanceof Number n) return n.longValue();
-        try {
-            return Long.parseLong(v.toString());
-        } catch (NumberFormatException e) {
-            return 0L;
-        }
-    }
 }

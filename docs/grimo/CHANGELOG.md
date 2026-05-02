@@ -1,5 +1,30 @@
 # Changelog
 
+## [v3.4.7] — Semantic search response uses canonical Skill aggregate（S107 完成；2026-05-03）
+
+> Mode B Round 12 (Chrome MCP semantic search live + backend curl 對比) Tick 12 audit 找到 API projection field completeness gap：`GET /api/v1/search/semantic` response 缺 author / category / riskLevel 欄位（全 empty/null），但同 skill `/skills/{id}` 返回完整 (author=r30, category=Testing, riskLevel=LOW)，造成 `/search?q=docker` 全顯「未評估」risk badge。Tick 13 backend fix 採 **service read path lookup from canonical Skill aggregate** — `SemanticSearchService` 注入 `SkillRepository`，`similaritySearch` 拿 documents 後 batch `findAllById(skillIds)` 撈 Skills，`toResult(doc, skill)` 從 aggregate 取 metadata（不依賴 vector_store metadata，徹底 bypass 歷史 projection 寫入不一致）。Race condition graceful — skill 已刪 fallback empty defaults。
+
+### Changed
+- `backend/src/main/java/io/github/samzhu/skillshub/search/SemanticSearchService.java`：注入 `SkillRepository`；search 加 batch `findAllById` lookup；`toResult` 改 `(Document doc, Skill skill)` 兩參數，skill==null graceful fallback；移除 dead `toLong` helper
+
+### Verified
+- `cd backend && ./gradlew test --tests '*SemanticSearch*' -x npmBuild`：BUILD SUCCESSFUL in 2m 1s；既有 `SemanticSearchIntegrationTest` 全 PASS（含 ACL e2e）
+- `./gradlew compileJava`：BUILD SUCCESSFUL in 10s
+
+### Why
+原計畫修 `SearchProjection.java` 寫入路徑 + 補 backfill，但發現 root cause = vector_store metadata drift 是長期問題（onVersionPublished line 147 硬塞 null + 歷史 row 寫入不齊全）。改採 read-path lookup 一勞永逸：embedding metadata 只當 nearby data，最終資料來自 canonical aggregate；不需 backfill 也不需修 write-side projection（兩者皆 polish backlog）。
+
+### Trim deferred
+- `SearchProjection:147` write-side null bug fix — 不再被 read 依賴
+- `SearchResultsPage:108` unsafe cast removal — backend 補齊後 cast 仍 work
+- vector_store metadata backfill — read 已 bypass
+- Live smoke deferred to backend restart
+
+### Sibling chain
+S100e → S102 → S103 → S104 → S105 → S106 → **S107** 第 7 個 cross-cutting follow-up；cut 從「page-level data → cross-cutting links → user-visible strings → interactive state → component-context → control-behavior → **API projection field completeness**」累積 7 層。首次涉及 backend 改動（前 6 個全 frontend）。
+
+---
+
 ## [v3.4.6] — Sort `推薦` behavior alignment with design intent（S106 完成；2026-05-03）
 
 > Mode B Round 11 (Chrome MCP click sort chips + compare first card across 4 modes) Tick 10 audit 找到 control-behavior misalignment：「推薦」chip 與「最新」chip 行為相同 — 都 fall through 到 backend default `ORDER BY created_at DESC`，UI 4 chip 但只實際有 3 種 sort 行為。Tick 11 frontend-only fix：加 explicit `recommended → downloadCount,desc` mapping，per HomePage:17 design intent (stale comment claimed backend default = downloadCount desc)；推薦 與 下載最多 暫同 mapping 但 UX chip 仍 distinct，future evolve 為 recommendation algorithm 時改 mapping 即可。
