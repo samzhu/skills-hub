@@ -106,12 +106,17 @@ Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 5 negative 
 | 5.12 | negative (malicious) | skill name 含 HTML/JS payload `<img onerror=alert(1)>` | React 自動 escape 為 text node；無 script execution；name 顯字面 string | 📋 needs XSS smoke test |
 | 5.13 | negative (concurrent) | 切 tab 時 useQuery refetch in-flight | Tab switch 不阻塞；舊 tab data 顯到新 tab data 來；無 flash error | 📋 |
 
-## Round 6 — Docs IA（11 個 active link）
+## Round 6 — Docs IA（12 個 active link）
+
+Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 3 negative cases (6.3-6.5)。Docs pages 性質 inert（pure markup），negative scenarios 限於 routing / SSR / unicode 邊界。
 
 | # | Category | Scenario | Expected | Status |
 |---|----------|----------|----------|--------|
-| 6.1 | positive | DocsSidebar 全 11 link 點擊 | 各別 page render（H1 + breadcrumb 對應 group/item） | 📋 |
+| 6.1 | positive | DocsSidebar 全 12 link 點擊（含 S099e5 +1） | 各別 page render（H1 + breadcrumb 對應 group/item） | ✅ DocsSidebar.test.tsx AC-2 |
 | 6.2 | edge | `/docs/your-first-skill` H2 anchors | 各 H2 element 有 anchor id 可 deep link | 📋 |
+| 6.3 | negative (404 unknown route) | `/docs/non-existent-doc` | NotFoundPage render；無 console error；返回 link to / | ✅ NotFoundPage covered by App.test.tsx |
+| 6.4 | negative (case mismatch) | `/Docs/Overview` (大寫) | react-router default case-sensitive → NotFoundPage（與 lower-case `/docs/overview` 區分）| 📋 |
+| 6.5 | negative (broken inline link) | docs page 內 inline `<a href="/some-removed-page">` | 後續 spec 移除頁面後，docs 內 hard link 不 break — 應走 `<Link>` 或定期 audit | 📋 audit task |
 
 ## Round 7 — Notification / Empty state polish
 
@@ -157,9 +162,9 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 | 3 Filter/Sort | **8** (+4 reinforced) | 3 | 5 | **4** ✅ |
 | 4 Publish | **14** (+7 reinforced) | 5 | 9 | **6** ✅ |
 | 5 Skill Detail | **13** (+5 reinforced) | 4 | 9 | **6** ✅ |
-| 6 Docs IA | 2 | 0 | 2 | 0 |
+| 6 Docs IA | **5** (+3 reinforced) | 2 | 3 | **3** ✅ |
 | 7 Empty state | 3 | 3 | 0 | 0 |
-| **Total** | **57** | **16** | **41** | **26** |
+| **Total** | **60** | **18** | **42** | **29** |
 
 > Per 2026-05-02 methodology upgrade：每 round 至少 3-5 反例。Round 4 已強化（6 反例 cover empty/boundary/format/state-conflict/malicious 五類）；其餘 rounds 待 backfill 至同樣強度（Round 1/2/3/5/6/7 反例 count 0-1 不足）。
 
