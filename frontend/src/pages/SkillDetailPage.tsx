@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router'
-import { ArrowLeft, Download } from 'lucide-react'
+import { ArrowLeft, Download, AlertCircle } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppShell } from '@/components/AppShell'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { RiskBadge } from '@/components/RiskBadge'
+import { IconTile } from '@/components/IconTile'
 import { MetricCard } from '@/components/MetricCard'
 import { VersionList } from '@/components/VersionList'
 import { FileDropZone } from '@/components/FileDropZone'
@@ -20,8 +20,7 @@ import { localizeApiError } from '@/lib/api-error-messages'
 import type { RiskLevel, SkillStatus } from '@/types/skill'
 
 /**
- * S028 — 技能狀態中譯 + Badge variant 對應。
- * 對齊 backend SkillStatus enum 三狀態（DRAFT / PUBLISHED / SUSPENDED）。
+ * S028 — 技能狀態中譯。S087: status pill 改用 DESIGN.md semantic-soft palette。
  */
 const STATUS_LABEL: Record<SkillStatus, string> = {
   DRAFT: '草稿',
@@ -29,12 +28,10 @@ const STATUS_LABEL: Record<SkillStatus, string> = {
   SUSPENDED: '已停用',
 }
 
-function statusBadgeVariant(s: SkillStatus): 'default' | 'secondary' | 'destructive' {
-  switch (s) {
-    case 'DRAFT': return 'secondary'
-    case 'PUBLISHED': return 'default'
-    case 'SUSPENDED': return 'destructive'
-  }
+const STATUS_PILL_STYLE: Record<SkillStatus, { backgroundColor: string; color: string }> = {
+  DRAFT:     { backgroundColor: '#FAEEDA', color: '#633806' },  // warning-soft / warning-deep
+  PUBLISHED: { backgroundColor: '#EAF3DE', color: '#085041' },  // success-soft / success-text
+  SUSPENDED: { backgroundColor: '#FCEBEB', color: '#791F1F' },  // danger-soft / danger-deep
 }
 
 /**
@@ -97,51 +94,56 @@ export function SkillDetailPage() {
 
   return (
     <AppShell>
-      <Link to="/" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link to="/" className="mb-4 inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" />
         返回列表
       </Link>
 
-      <div className="mb-6">
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-bold">{skill.name}</h1>
-            <p className="mt-1 text-muted-foreground">
-              by {skill.author}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+      {/* S087: hero row — IconTile xl + name 22px + author tertiary + version mono pill + risk pill + status pill + 下載 CTA */}
+      <div className="mb-6 flex items-start gap-4">
+        <IconTile name={skill.name} category={skill.category} size="xl" />
+        <div className="min-w-0 flex-1">
+          <h1 className="m-0 truncate text-[22px] font-medium leading-[1.2]">{skill.name}</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">by {skill.author}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             {skill.latestVersion && (
-              <Badge variant="secondary">v{skill.latestVersion}</Badge>
+              <span className="rounded font-mono text-[11px] bg-secondary text-foreground/80 px-1.5 py-0.5">
+                v{skill.latestVersion}
+              </span>
             )}
             <RiskBadge level={skill.riskLevel} />
-            {/* S028: DRAFT secondary / PUBLISHED default / SUSPENDED destructive；中譯 via STATUS_LABEL */}
-            <Badge variant={statusBadgeVariant(skill.status)}>
+            <span
+              className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+              style={STATUS_PILL_STYLE[skill.status]}
+            >
               {STATUS_LABEL[skill.status]}
-            </Badge>
-            {/* S035: 僅 PUBLISHED 渲染下載按鈕 — 避免 SUSPENDED user 點擊後落到 raw 403 JSON 頁面 */}
-            {skill.latestVersion && skill.status === 'PUBLISHED' && (
-              // 使用原生 <a> 而非 React Router <Link>，觸發瀏覽器直接下載行為，
-              // 不走 SPA 路由（SPA 路由無法觸發 Content-Disposition: attachment）
-              <a
-                href={`/api/v1/skills/${skill.id}/download`}
-                className="ml-2 inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                <Download className="h-4 w-4" />
-                下載
-              </a>
-            )}
+            </span>
           </div>
         </div>
+        {skill.latestVersion && skill.status === 'PUBLISHED' && (
+          <a
+            href={`/api/v1/skills/${skill.id}/download`}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-foreground"
+          >
+            <Download className="h-4 w-4" />
+            下載
+          </a>
+        )}
       </div>
 
-      {/* S035: SUSPENDED 提示橫幅 — destructive variant 對齊 S028 SkillDetailPage SUSPENDED Badge variant */}
+      {/* S087: SUSPENDED callout per DESIGN.md card-callout-danger pattern */}
       {skill.status === 'SUSPENDED' && (
-        <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 p-4">
-          <p className="text-sm font-medium text-destructive">此技能已被停用，無法下載</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            被停用的技能仍會保留紀錄，但下載端點已停用。如需恢復請聯絡管理員。
-          </p>
+        <div
+          className="mb-6 flex items-start gap-3 rounded-md p-3 text-[13px]"
+          style={{ backgroundColor: '#FCEBEB', color: '#791F1F' }}
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="flex-1">
+            <p className="m-0 font-medium">此技能已被停用，無法下載</p>
+            <p className="m-0 mt-0.5 text-[12px] opacity-90">
+              被停用的技能仍會保留紀錄，但下載端點已停用。如需恢復請聯絡管理員。
+            </p>
+          </div>
         </div>
       )}
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## [v2.65.0] — SkillDetailPage rework（M83 完成；2026-05-02）
+
+> **UI rework** — 對齊 `skill_detail_page_docker_compose_helper.html`：xl IconTile + name 22px + version mono pill + status semantic pill + DESIGN.md callout pattern。
+
+### Added
+- **S087: SkillDetailPage rework**（M83）：
+  - Hero row：IconTile xl 52px + name 22px + author tertiary 13px + version mono pill + RiskBadge + status semantic-soft pill (success/warning/danger 4-tier per DESIGN.md)
+  - Status pill 用 inline style 套 DESIGN.md hex（PUBLISHED green / DRAFT amber / SUSPENDED red）
+  - SUSPENDED callout per DESIGN.md `card-callout-danger`：bg #FCEBEB / fg #791F1F + AlertCircle icon
+  - 移除 shadcn Badge 依賴（hand-rolled spans）
+  - Files tab (S082) 樣式不變；Risk / Versions tabs 結構保留
+  - 11 frontend tests / 0 fail；CSS 32.3 KB / JS 351.1 KB
+
+---
+
 ## [v2.64.0] — PublishPage rework（M82 完成；2026-05-02）
 
 > **UI rework** — 對齊 `skill_publish_upload_flow.html` + `skill_publish_failure_and_high_risk_states.html`：hero hint + hairline card + uppercase label + semantic-tinted success/error callouts。
