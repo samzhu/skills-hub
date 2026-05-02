@@ -265,6 +265,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 5 | M95d: Frontend SkillCard + Scores tab | S101d | S(8) | — | 📋 awaiting S101 confirm — SkillCard inline 3 figures + SkillDetailPage 第 7 tab radial chart |
 | Phase 5 | M95e: Quality Score weekly re-evaluation cron | S101e | XS(3) | — | 📋 awaiting S101 confirm |
 | Phase 5 | M95f: Score audit log + admin recalculate UI | S101f | XS(3) | — | 📋 awaiting S101 confirm |
+| Phase 5 | M96: Back-nav + footer link target fix-ups | S102 | XS(2-3) | — | 📋 planned — sibling to S100e；S100 page-level audit 漏掉的 cross-cutting link layer：4 處 `<Link to="/">` / `navigate('/')` post-S096e1 routing change 沒同步換 `/browse`（SkillDetail x2 + SearchResults x2）+ 1 處 LandingPage footer placeholder 「狀態」自指迴圈。寫於 2026-05-03 cron-loop audit tick (Spec-Only-Handoff). |
 | Phase 4 | (deferred) Admin Review Queue | S094e | — | — | ⏸ post-MVP — PRD B6 Backlog；`admin_review_queue_and_detail.html` |
 | Phase 4 | (deferred) Onboarding Wizard | S094f | — | — | ⏸ post-MVP — `onboarding_wizard_step_2_of_4.html` |
 | Phase 4 | (deferred) Landing Page | S094g | — | — | ⏸ post-MVP — `skills_hub_landing_page.html` |
