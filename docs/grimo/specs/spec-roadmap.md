@@ -266,6 +266,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 5 | M95e: Quality Score weekly re-evaluation cron | S101e | XS(3) | — | 📋 awaiting S101 confirm |
 | Phase 5 | M95f: Score audit log + admin recalculate UI | S101f | XS(3) | — | 📋 awaiting S101 confirm |
 | Phase 5 | M96: Back-nav + footer link target fix-ups | S102 | XS(3) | 793 | ✅ `v3.4.2` (2026-05-03 — 5 處 link target 替換：SkillDetailPage 「返回列表」x2 → `/browse` + error label 統一；SearchResultsPage clear-query nav + EmptyState CTA → `/browse`；LandingPage footer 「狀態」placeholder 移除；FE tests 28→30 PASS；sibling to S100e — S100 META post-ship cross-cutting follow-up pattern) |
+| Phase 5 | M97: Stub-page user-facing spec ID leak fix | S103 | XS(2) | — | 📋 planned — Mode B Round 8 (Chrome MCP live render) audit found 6 user-visible strings 在 CollectionsPage + RequestBoardPage 暴露 internal spec ID `S096f2`/`S096g2` (disabled button title/label + EmptyState subtext)；NotificationsPage 已 clean 不需動。寫於 2026-05-03 cron-loop Tick 4 (Spec-Only-Handoff). |
 | Phase 4 | (deferred) Admin Review Queue | S094e | — | — | ⏸ post-MVP — PRD B6 Backlog；`admin_review_queue_and_detail.html` |
 | Phase 4 | (deferred) Onboarding Wizard | S094f | — | — | ⏸ post-MVP — `onboarding_wizard_step_2_of_4.html` |
 | Phase 4 | (deferred) Landing Page | S094g | — | — | ⏸ post-MVP — `skills_hub_landing_page.html` |
