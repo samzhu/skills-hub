@@ -23,6 +23,13 @@ const SORT_LABELS: Record<SortMode, string> = {
   'risk-low': '風險低',
   'most-downloaded': '下載最多',
 }
+// S104: zh-TW labels for filter-active EmptyState headline
+const RISK_TIER_LABELS: Record<RiskLevel, string> = {
+  NONE: '無風險',
+  LOW: '低風險',
+  MEDIUM: '中風險',
+  HIGH: '高風險',
+}
 // S100b: RISK_ORDER 移除 — risk-low sort 改 server-side（backend ORDER BY risk_level ASC
 // 字典序 NONE→LOW→MEDIUM→HIGH 與此 enum 順序一致）。
 
@@ -194,7 +201,12 @@ export function HomePage() {
             <>
               <div className="mb-4 flex items-center justify-between gap-4">
                 <span className="text-sm text-muted-foreground">
-                  共 {skillsPage?.page.totalElements ?? 0} 個技能
+                  {/* S104: filter active → show filtered count + total context；no filter → 既有 unfiltered total */}
+                  {riskFilter.size > 0 ? (
+                    <>{filteredSkills.length} 個技能（共 {skillsPage?.page.totalElements ?? 0}）</>
+                  ) : (
+                    <>共 {skillsPage?.page.totalElements ?? 0} 個技能</>
+                  )}
                 </span>
                 {/* S098d: sort chips per prototype `.sort-chips` (4 modes 推薦/最新/風險低/下載最多) */}
                 <div className="flex gap-1">
@@ -218,9 +230,20 @@ export function HomePage() {
                   })}
                 </div>
               </div>
-              {/* S094c: pass query so 0-results can show seed (no query) vs redirect (with query) tone */}
-              <SkillCardGrid skills={filteredSkills} query={query} />
-              {skillsPage && skillsPage.page.totalPages > 1 && (
+              {/* S104: filter-active + 0 hits → context-aware redirect tone with 清除篩選 escape hatch
+                  避免 generic seed-empty「技能庫等著被開啟」誤導（registry 實際非空，只是 filter 過濾掉） */}
+              {filteredSkills.length === 0 && riskFilter.size > 0 ? (
+                <EmptyState
+                  tone="redirect"
+                  headline={`沒有「${[...riskFilter].map((t) => RISK_TIER_LABELS[t]).join('、')}」的技能`}
+                  sub={`目前沒有符合此風險篩選的技能。試試其他風險等級或清除篩選看全部 ${skillsPage?.page.totalElements ?? 0} 個技能。`}
+                  primaryAction={{ label: '清除篩選', onClick: () => setRiskFilter(new Set()) }}
+                />
+              ) : (
+                <SkillCardGrid skills={filteredSkills} query={query} />
+              )}
+              {/* S104: filter active 且 filteredSkills 0 時 hide pagination — 跨頁仍 0 hits 沒意義 */}
+              {skillsPage && skillsPage.page.totalPages > 1 && filteredSkills.length > 0 && (
                 <div className="mt-6 flex items-center justify-center gap-2">
                   <button
                     onClick={() => setPage(Math.max(0, page - 1))}

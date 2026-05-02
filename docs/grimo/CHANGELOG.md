@@ -1,5 +1,26 @@
 # Changelog
 
+## [v3.4.4] — Risk filter empty state + pagination UX consistency（S104 完成；2026-05-03）
+
+> Mode B Round 9 (Chrome MCP interactive click) Tick 6 audit 找到 bug：點「無風險」filter (DB 0 NONE-tier) 後 3 處 UI signal 自相矛盾（generic seed-empty EmptyState 暗示 registry 空 + 「共 103 個技能」unfiltered count + 「第 1 / 6 頁」pagination 暗示更多頁）。Tick 7 frontend-only fix 修齊 4 signal 一致：context-aware EmptyState（redirect tone + selected tier label headline + 「清除篩選」escape button）+ filtered count display + pagination guard。Backend 不轉 server-side filter（per S100b deliberate decision；scope 超 fix-spec）。
+
+### Changed
+- `frontend/src/pages/HomePage.tsx`：3 處 conditional — count display 加 filter-active 變體、EmptyState branch 加 redirect-tone override、pagination guard 加 `filteredSkills.length > 0`；新增 `RISK_TIER_LABELS` const for headline localization
+- `frontend/src/components/EmptyState.tsx`：RedirectTone 補 `primaryAction` / `secondaryAction` render（既有 `EmptyStateProps` interface 早已 declare 此 prop 但 RedirectTone 過去未 wire — missing-feature gap 不是 signature change；filter-active 0-hits 場景需要明確 escape button）
+
+### Added
+- `frontend/src/pages/HomePage.test.tsx`（新建）：baseline + AC-1/3 combined（filter active → headline 含 tier label + count 顯 filtered/total）+ AC-2（清除篩選 button reset）+ AC-4（pagination hidden when 0 filter hits）
+
+### Verified
+- `cd frontend && npm test -- --run HomePage`：1 file 4/4 PASS（1.29s）
+- Chrome MCP live smoke：navigate /browse → 點「無風險」filter button → js DOM probe 確認 4 signal 一致（headline / count / pagination hide / clear button present）— 對照 Tick 6 audit 紀錄完全反轉
+- FE tests 累計 32 → 36（+4）
+
+### Why
+S100 page-by-page data audit + S102 cross-cutting links audit + S103 user-visible string audit 都覆蓋不到「同 page 上 N 個 UI signal 對同一 user action 是否一致」— Mode B Round 9 採 Chrome MCP click interaction 視角才看見 filter / pagination / count / empty-state 4 signal **同時** 處理 click filter 時的對齊性。S100e → S102 → S103 → **S104** 第 4 個 cross-cutting follow-up — cut 從「data → links → strings → interactive state」逐層累積。
+
+---
+
 ## [v3.4.3] — Stub-page user-facing copy spec ID leak fix（S103 完成；2026-05-03）
 
 > Mode B Round 8 (Chrome MCP live render audit) 發現 `/collections` 與 `/requests` 兩個 stub 頁面在 user-facing copy 暴露 internal spec ID（`S096f2` / `S096g2`），共 6 處：disabled button title attr + label + EmptyState subtext。Production 用戶不該看到內部 milestone 編號。NotificationsPage 同類 stub copy 已 clean，證明 leak 是 per-page sloppy copy 不是系統性 pattern；可單點修不必抽 i18n 抽象。

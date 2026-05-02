@@ -174,6 +174,14 @@ function RedirectTone(props: EmptyStateProps) {
           )}
           <h2 className="text-[20px] font-semibold tracking-tight text-[#EEECEA]">{props.headline}</h2>
           {props.sub && <p className="mt-2 text-[13px] leading-relaxed text-[#A8A49C]">{props.sub}</p>}
+          {/* S104: primaryAction render for redirect tone（既有 EmptyStateProps interface 已支援，
+              但 RedirectTone 過去未 render；filter-active-empty 場景需要明確 escape hatch button） */}
+          {(props.primaryAction || props.secondaryAction) && (
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              {props.primaryAction && <PrimaryButton action={props.primaryAction} />}
+              {props.secondaryAction && <SecondaryButton action={props.secondaryAction} />}
+            </div>
+          )}
         </div>
         {props.suggestions && props.suggestions.length > 0 && (
           <div className="flex flex-col gap-2">

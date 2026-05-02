@@ -1,6 +1,6 @@
 # S104 — Client-side risk filter empty state + pagination context fix
 
-> **Status**: 📋 planned (Spec-Only-Handoff — written by 2026-05-03 cron-loop Mode B Round 9 audit tick, awaits implement tick)
+> **Status**: ✅ shipped `v3.4.4` (2026-05-03 — implement cron tick 7)
 > **Type**: Frontend UX defensive fix (no backend change required)
 > **Estimate**: XS (3 pts)
 > **Triggered by**: 2026-05-03 cron Tick 6 Mode B E2E live browser walk-through — clicked「無風險」filter on `/browse`, 觀察到 mismatched UI state
@@ -88,16 +88,51 @@ npm run build  # ensure no broken imports
 
 ## §7 Result
 
-待 implement tick 填。
+**Shipped 2026-05-03 cron Tick 7 @ ~04:24**.
 
-**Implement tick checklist**:
-- [ ] HomePage 3 處 conditional 改完
-- [ ] HomePage.test.tsx 補 AC-1 ~ AC-4
-- [ ] `npm test --run HomePage` 全綠
-- [ ] Chrome MCP smoke 跑 /browse 點「無風險」確認 3 個 UI state 對齊
-- [ ] CHANGELOG 加 patch 版本（建議 `v3.4.4`）
-- [ ] roadmap row → ✅
-- [ ] spec doc 移 archive/
+### Implement checklist
+
+- [x] HomePage.tsx 3 處 conditional 改完（count display + EmptyState branch + pagination guard）+ TIER labels const
+- [x] EmptyState.tsx RedirectTone 補 primaryAction render（filter-active 0-hits 場景需 escape hatch button；既有 EmptyStateProps interface 早已 declare 但 RedirectTone 未 wire — 是 missing-feature gap 不是 signature change）
+- [x] HomePage.test.tsx 新建 — 4 ACs（baseline + AC-1/3 combined + AC-2 + AC-4）
+- [x] `npm test --run HomePage` 全綠：4/4 PASS（1.29s）
+- [x] Chrome MCP smoke 跑 /browse 點「無風險」filter，DOM 確認 4 signal 一致：
+  - headline = `沒有「無風險」的技能` ✓
+  - count = `0 個技能（共 103）` ✓
+  - pagination = hidden ✓
+  - 「清除篩選」button present ✓
+- [x] CHANGELOG `v3.4.4` patch entry
+- [x] roadmap row → ✅
+- [x] spec doc 移 archive/
+
+### Verify metrics
+
+| Item | Value |
+|------|-------|
+| Files changed | 4（HomePage.tsx + HomePage.test.tsx 新建 + EmptyState.tsx primaryAction render gap fix + spec/CHANGELOG/roadmap docs）|
+| LOC delta | +50 / -3（約 +95 含 test 新檔，-3 既有 inline render）|
+| FE tests | 既有 32 → 36（+4 in new HomePage.test.tsx）|
+| Backend touch | 0（純 frontend defensive UX fix）|
+| Wall clock | ~12 min（IMPLEMENT 6 + tests 3 + Chrome smoke 1 + DOCUMENT 2）|
+
+### Live render validation (Chrome MCP)
+
+| Signal | Before (Tick 6 audit) | After (Tick 7 ship) |
+|--------|----------------------|---------------------|
+| EmptyState headline | `技能庫等著被開啟。` (seed tone, misleading) | `沒有「無風險」的技能` (redirect tone, context-aware) |
+| EmptyState sub | `第一個發布的人定下基調...` (推 publish CTA) | `目前沒有符合此風險篩選的技能。試試其他風險等級或清除篩選看全部 103 個技能。` |
+| EmptyState primary action | 「發布第一個技能」 → `/publish` (off-target) | 「清除篩選」 → onClick clear filter (on-target escape) |
+| Count display | `共 103 個技能` (unfiltered) | `0 個技能（共 103）` (filtered + total context) |
+| Pagination footer | `第 1 / 6 頁` 可點翻 (misleading) | hidden |
+
+### Trim deferred
+
+- **development-standards.md §UI** "interactive page filter / pagination / count / empty-state 4 signal 應 single source of truth" rule：spec §8 lesson；列為 polish backlog（doc-side scope；避免 ship commit creep per NEVER bundle drive-by refactors）
+- **Edge case multi-tier select** (e.g. 同時選 NONE + MEDIUM)：headline 用 `[...riskFilter].map(...).join('、')` 已支援，但 test 沒補；polish backlog（核心 0-hits UX 已對齊，多 tier 是 secondary）
+
+### Sibling chain validation
+
+S100e (defensive guard v3.4.1) → S102 (routing residual v3.4.2) → S103 (UX copy hygiene v3.4.3) → **S104 (interactive state consistency v3.4.4)** — 第 4 個 cross-cutting follow-up，cut 從「page-level data → cross-cutting links → user-visible strings → interactive state consistency」累積層次。本 ship 後 v3.4.x patch series 4 個全 land；S100 META post-ship cross-cutting audit 第 4 輪 follow-up complete。Mode B Round 9 (Chrome MCP click interaction) 是與前三輪互補的第 4 cut。
 
 ## §8 Lesson — interactive state consistency audit cut
 
