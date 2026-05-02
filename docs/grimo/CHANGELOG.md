@@ -1,5 +1,19 @@
 # Changelog
 
+## [v3.2.4] — useVersions hook test（2026-05-02）
+
+> Mode B — useVersions enabled-guard + queryKey cache isolation contract verified。
+
+### ✅ Tests
+- 新檔 `hooks/useVersions.test.tsx` — 3 ACs：
+  - empty skillId → query disabled (防 /skills//versions 空 id 請求)
+  - valid skillId → fetch invoked + data resolved
+  - 兩個 distinct skillId → 各自 cache key 觸發 2 次 fetch (cache isolation)
+
+### 結果
+- 120 → 123 tests PASS（+3 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.2.3] — useSkill / useSkillByAuthorAndName hook tests（2026-05-02）
 
 > Mode B 最後一輪 — useSkill hook 是核心 query primitive；S096c dual-route enabled-guard 行為驗證。Tests 115 → 120。
