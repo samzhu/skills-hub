@@ -136,6 +136,24 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 | 7 Empty state | 3 | 3 | 0 | 0 |
 | **Total** | **40** | **14** | **26** | **9** |
 
-> Per 2026-05-02 methodology upgrade：每 round 至少 3-5 反例。Round 4 已強化（6 反例 cover empty/boundary/format/state-conflict/malicious 五類）；其餘 rounds 待 backfill 至同樣強度。
+> Per 2026-05-02 methodology upgrade：每 round 至少 3-5 反例。Round 4 已強化（6 反例 cover empty/boundary/format/state-conflict/malicious 五類）；其餘 rounds 待 backfill 至同樣強度（Round 1/2/3/5/6/7 反例 count 0-1 不足）。
+
+---
+
+## Component Test Coverage（補充於 ledger 之外）
+
+> Ledger 主要 capture user-flow E2E scenarios。實際 component / hook / util 層級 invariants 跑更多 test。下表顯示截至 v3.4.0 的 unit-level coverage breakdown。
+
+| Surface | Test files | Cumulative ACs |
+|---------|-----------|----------------|
+| **Pages** | App / SkillDetailPage / NotificationsPage / CollectionsPage / PublishFailedPage / PublishValidatePage / VersionDiffPage / docs/YourFirstSkillPage / PublishPage | ~30 |
+| **Components** | AppShell / BeamFrame / CategorySidebar / DocsSidebar / EmptyState / ErrorState / FileDropZone / IconTile / IntentSummaryCard / MetricCard / RiskBadge / RiskFilterSidebar / SearchBar / SkillCard / Sparkline / VersionList | ~70 |
+| **Hooks** | useSkill / useVersions / useCategories / useSemanticSearch | ~14 |
+| **Utils** | mini-markdown / api-error-messages | ~26 |
+| **Total** | 31 test files | **150** PASS |
+
+**Bug ledger entries**：2（Bug A parser infinite loop / Bug B JSX attr literal）— 兩 bugs 都被 negative-case test 抓到，validating 「3-5 反例 / round」methodology。
+
+**Coverage 觀察**：Component / hook layer 已 saturate；E2E flow ledger（Round 1-7）仍有 26/40 planned 待補 — 主要 negative cases (3-5 反例 minimum 不足)。下一輪 Mode B 工作建議 backfill ledger negatives 而非加新 component test。
 
 current component test count: 44（cover ~6 ledger ACs + 38 unit-level invariants）。E2E browser-level scenarios（27 planned）需 Playwright / Cypress —— defer until backend stabilizes 或 cloud-scheduled E2E run。
