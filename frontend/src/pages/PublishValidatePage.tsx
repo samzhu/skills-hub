@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, AlertCircle, Check } from 'lucide-react'
+import { Loader2, AlertCircle, Check, FileArchive } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { fetchSkillById } from '@/api/skills'
 import type { Skill } from '@/types/skill'
@@ -81,6 +81,33 @@ export function PublishValidatePage() {
         <p className="mt-1 text-[13px] text-muted-foreground">
           系統正在掃描你的 bundle — 通常需要 5-15 秒。完成後自動跳轉至審視頁面。
         </p>
+
+        {/* S098a3: Upload-strip — 顯示已上傳 bundle 的識別資訊 (per prototype #5)。
+            Trim：filename / fileSize / fileCount 需 backend `/skills/{id}/bundle-info` (defer S098a3-2)；
+            目前用 skill.name + version 替代 filename，為「user 知道在驗證哪個 bundle」最低需求。 */}
+        {skill && (
+          <div className="mt-6 flex items-center gap-3 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#171719] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <FileArchive className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium text-foreground">{skill.name}-{skill.latestVersion ?? '0.0.0'}.zip</p>
+              <p className="text-[11px] text-muted-foreground">
+                <span className="font-mono">v{skill.latestVersion ?? '—'}</span>
+                <span className="mx-1.5 text-[#5E5B55]">·</span>
+                <span>{skill.category}</span>
+                <span className="mx-1.5 text-[#5E5B55]">·</span>
+                <span>剛剛上傳</span>
+              </p>
+            </div>
+            <span
+              className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+              style={{ backgroundColor: 'rgba(29,158,117,0.14)', color: '#6FD8B0' }}
+            >
+              ✓ 已上傳
+            </span>
+          </div>
+        )}
 
         {/* Stepper */}
         <div className="mt-6 flex items-center gap-1.5">

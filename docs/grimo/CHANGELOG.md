@@ -1,5 +1,52 @@
 # Changelog
 
+## [v3.0.0] — v2.x polish 系列里程碑 + PublishValidate upload-strip（S098a3 完成；2026-05-02）
+
+> **v3.0.0 milestone release** — 標誌 v2.x 14-version polish 系列完成（v2.86.0 → v2.99.0），同時 ship S098a3 PublishValidatePage 上傳資訊 strip（frontend-only trim）。S098 META 8/8 全達 + 4 個 split P1 spec 全 ship + Docs IA 11/11 全 active link + Homepage v2 polish trio 完整。
+
+### 🎨 Frontend (S098a3)
+- `pages/PublishValidatePage.tsx`：加 upload-strip 區（FileArchive icon + skill name 派生 filename + version + category + 「剛剛上傳」timestamp + 「✓ 已上傳」綠色 success badge）。位於 stepper 上方（per prototype #5）。
+  - Trim：原始 prototype 顯 raw zip filename + fileSize + fileCount —— 需 backend `/skills/{id}/bundle-info` endpoint。本 commit 用 skill.name 派生「{name}-{version}.zip」+ version + category 替代；對 user「知道在驗證哪個 bundle」這個最低需求已足夠。
+  - Defer S098a3-2：backend bundle-info endpoint + 真 filename / fileSize / fileCount。
+
+### 📊 v2.x → v3.0.0 累積成果
+**14 versions** 在連續 cron loop ticks 完成 (2026-05-02 同日)：
+
+| Version | Spec | 主題 |
+|---|---|---|
+| v2.86.0 | S098h | YourFirstSkillPage 配色對比修復 |
+| v2.87.0 | S098g pass 1 | i18n 繁中化 5 surface |
+| v2.88.0 | S098g pass 2 | i18n sweep 殘留英文 |
+| v2.89.0 | S098h2 | EmptyState dark migration + 4-step i18n |
+| v2.90.0 | S098d | Homepage 3-col grid + sort chips |
+| v2.91.0 | S098b | Publish Failed dedicated page |
+| v2.92.0 | S098b2 | PublishReviewPage HIGH-risk auto-redirect |
+| v2.93.0 | S098e | SkillDetailPage 5-tab + sparkline hero |
+| v2.94.0 | S098f | Docs IA: Overview + Risk Tiers |
+| v2.95.0 | S098a | Publish Step 2 /publish/validate page |
+| v2.96.0 | S098c | Version Diff page (frontend-only) |
+| v2.97.0 | S098f2 | Docs 參考群 3 stub pages |
+| v2.98.0 | S098f3 | Docs 發佈+API 群 5 stub pages |
+| v2.99.0 | S098d2 | Homepage risk filter sidebar |
+| **v3.0.0** | S098a3 + milestone | Upload-strip + 系列里程碑標記 |
+
+### 🎯 v3.0.0 累積里程碑（user-facing surfaces 完整對等 prototype）
+- ✅ **S098 META 8/8** — 8 個 prototype-driven sub-spec 全 ship
+- ✅ **Docs IA 11/11** — 入門 2 + 參考 4 + 發佈 3 + API/Webhook 2，全 sidebar 點擊可達
+- ✅ **Homepage v2 polish trio** — 3-col grid + sort chips + risk filter sidebar
+- ✅ **Publish flow 閉環** — Upload → Validate → Review → Live + State A/B failure 分流
+- ✅ **i18n 繁中化** — 全 user-facing 字串繁中（CLAUDE.md 規約達標）
+- ✅ **Dark theme migration** — YourFirstSkillPage / EmptyState / IntentSummaryCard / DocsSidebar 補完最後 light-theme 殘留
+
+### Polish backlog（v3.x 接續）
+- S098a3-2 / S098b3 / S098c2 / S098c3 / S098e2 / S098e3：trim spawn — 多需 backend aggregate 或新 endpoint
+- S096f2 / S096g2 / S096h2：Collections / Request Board / Notifications 從 stub→full
+- S094e Admin Review：post-MVP B6 backlog（auth + role 依賴）
+
+### ✅ Tests
+- `npx vitest run` (cwd=frontend) → 7 files / 33 tests PASS
+- `npx tsc --noEmit` (cwd=frontend) → no errors
+
 ## [v2.99.0] — Homepage risk filter sidebar（S098d2 完成；Homepage v2 polish trio 完成；2026-05-02）
 
 > S098d2 — Homepage 加 risk-tier 4-level filter sidebar with count breakdown。Closes Homepage v2 polish trio：S098d (3-col grid + sort chips) → S098d2 (risk filter)。對齊 prototype #2 sidebar IA。
