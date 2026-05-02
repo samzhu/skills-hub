@@ -1,6 +1,7 @@
 import { Link, useParams, useSearchParams } from 'react-router'
 import { ArrowLeft, ArrowRight, Loader2, AlertCircle, GitCompare } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
+import { ErrorState } from '@/components/ErrorState'
 import { useSkill } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
 import type { SkillVersion } from '@/types/skill'
@@ -32,9 +33,8 @@ export function VersionDiffPage() {
   if (!id) {
     return (
       <AppShell>
-        <div className="mx-auto max-w-2xl rounded-md p-4 text-[13px]" style={{ backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' }}>
-          <AlertCircle className="mr-2 inline-block h-4 w-4" />
-          缺少 skill id 參數
+        <div className="mx-auto max-w-2xl">
+          <ErrorState variant="centered" title="缺少 skill id 參數" />
         </div>
       </AppShell>
     )

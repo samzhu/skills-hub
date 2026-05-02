@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router'
-import { ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { AppShell } from '@/components/AppShell'
+import { ErrorState } from '@/components/ErrorState'
 import { RiskBadge } from '@/components/RiskBadge'
 import { fetchSkillById } from '@/api/skills'
 import type { Skill } from '@/types/skill'
@@ -51,9 +52,12 @@ export function PublishReviewPage() {
   if (!skillId) {
     return (
       <AppShell>
-        <div className="mx-auto max-w-2xl rounded-md p-4 text-[13px]" style={{ backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' }}>
-          <AlertCircle className="mr-2 inline-block h-4 w-4" />
-          缺少 skill id 參數 — 請從 <Link to="/publish" className="underline">/publish</Link> 重新發佈
+        <div className="mx-auto max-w-2xl">
+          <ErrorState
+            variant="centered"
+            title="缺少 skill id 參數"
+            message={<>請從 <Link to="/publish" className="underline">/publish</Link> 重新發佈</>}
+          />
         </div>
       </AppShell>
     )
@@ -74,13 +78,11 @@ export function PublishReviewPage() {
             載入 skill 資料中...
           </div>
         ) : error || !skill ? (
-          <div className="mt-6 flex items-start gap-3 rounded-md p-3 text-[13px]" style={{ backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' }}>
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <div>
-              <p className="font-medium">無法載入 skill</p>
-              <p className="mt-0.5 opacity-90">id={skillId}；可能仍在處理或已被刪除</p>
-            </div>
-          </div>
+          <ErrorState
+            className="mt-6"
+            title="無法載入 skill"
+            message={`id=${skillId}；可能仍在處理或已被刪除`}
+          />
         ) : (
           <>
             {/* Success callout */}

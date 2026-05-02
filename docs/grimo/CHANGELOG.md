@@ -1,5 +1,19 @@
 # Changelog
 
+## [v3.3.4] — ErrorState migration cleanup — PublishReview/Validate/Diff（2026-05-02）
+
+> S100d follow-up — 把 ErrorState 抽出後剩 3 callsites 完整 migration。
+
+### 🎨 Frontend
+- `pages/PublishReviewPage.tsx`：missing-id callout (centered) + load-error callout (inline) → ErrorState；移除 AlertCircle import
+- `pages/PublishValidatePage.tsx`：missing-id callout → ErrorState
+- `pages/VersionDiffPage.tsx`：missing-id callout → ErrorState
+
+### 結果
+- 0 hardcoded `rgba(226,75,74,0.14)` error-tone callouts in pages（剩 SUSPENDED status pills / RiskBadge / err-row 為合理 status indicators）
+- 137 → 137 tests PASS（沒新 component；行為 invariant 保留）
+- `npx tsc --noEmit` clean
+
 ## [v3.3.3] — PublishPage frontmatter live validation（S099b2 完成；2026-05-02）
 
 > S099b2 — PublishPage text mode 加 live frontmatter validation。輸入 SKILL.md 內容時即時驗 `---` block + `name:` + `description:` 必填欄位；submit button gate 在所有錯誤清除前 disabled。

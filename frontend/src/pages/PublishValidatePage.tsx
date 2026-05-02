@@ -3,6 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2, AlertCircle, Check, FileArchive } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
+import { ErrorState } from '@/components/ErrorState'
 import { fetchSkillById } from '@/api/skills'
 import type { Skill } from '@/types/skill'
 
@@ -57,9 +58,12 @@ export function PublishValidatePage() {
   if (!skillId) {
     return (
       <AppShell>
-        <div className="mx-auto max-w-2xl rounded-md p-4 text-[13px]" style={{ backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' }}>
-          <AlertCircle className="mr-2 inline-block h-4 w-4" />
-          缺少 skill id 參數 — 請從 <Link to="/publish" className="underline">/publish</Link> 重新發佈
+        <div className="mx-auto max-w-2xl">
+          <ErrorState
+            variant="centered"
+            title="缺少 skill id 參數"
+            message={<>請從 <Link to="/publish" className="underline">/publish</Link> 重新發佈</>}
+          />
         </div>
       </AppShell>
     )
