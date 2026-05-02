@@ -1,4 +1,5 @@
-import { Link, useSearchParams } from 'react-router'
+import { useEffect } from 'react'
+import { Link, useSearchParams, useNavigate } from 'react-router'
 import { ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { AppShell } from '@/components/AppShell'
@@ -22,6 +23,7 @@ import type { Skill } from '@/types/skill'
  */
 export function PublishReviewPage() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const skillId = params.get('id') ?? ''
   // S096d5a: auto-poll while risk scan async — refetchInterval 2s 直到 risk_level 設值
   // 取代既有 useSkill（fixed cache）；scan 完成後 React Query 自動停 poll（query 為 callback 驅動）
@@ -36,6 +38,15 @@ export function PublishReviewPage() {
     },
     refetchIntervalInBackground: false,
   })
+
+  // S098b2: HIGH-risk auto-redirect → 專屬 /publish/failed?state=B 頁
+  // PublishReviewPage 角色為「成功 + scan 完成」展示；HIGH 風險意味需審核而非簡單發佈成功，
+  // 動向專屬 page 比 inline callout 更顯著（user 不會誤以為已上架）。
+  useEffect(() => {
+    if (skill?.riskLevel === 'HIGH' && skillId) {
+      navigate(`/publish/failed?state=B&id=${skillId}`, { replace: true })
+    }
+  }, [skill?.riskLevel, skillId, navigate])
 
   if (!skillId) {
     return (
@@ -96,15 +107,11 @@ export function PublishReviewPage() {
               </dl>
             </div>
 
-            {/* Risk scan note — render based on current risk_level */}
+            {/* Risk scan note — HIGH 已 useEffect redirect 出走，這裡只剩 scanning / non-HIGH */}
             {skill.riskLevel == null ? (
               <div className="mt-4 flex items-center gap-2 rounded-md p-3 text-[13px]" style={{ backgroundColor: 'rgba(239,159,39,0.14)', color: '#FAC775' }}>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 風險掃描進行中 — 每 2 秒自動更新（無需手動重新整理）
-              </div>
-            ) : skill.riskLevel === 'HIGH' ? (
-              <div className="mt-4 rounded-md p-3 text-[13px]" style={{ backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' }}>
-                偵測到高風險模式 — 此 skill 進入人工審核佇列，pubic registry 暫不可下載
               </div>
             ) : (
               <div className="mt-4 rounded-md p-3 text-[13px]" style={{ backgroundColor: 'rgba(29,158,117,0.14)', color: '#9FE1CB' }}>

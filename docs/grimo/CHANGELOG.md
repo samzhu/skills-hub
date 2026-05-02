@@ -1,5 +1,24 @@
 # Changelog
 
+## [v2.92.0] — PublishReviewPage HIGH-risk auto-redirect（S098 META 6/8；M92b2 完成；2026-05-02）
+
+> S098b2 closes State B navigation flow — PublishReviewPage 在 polling 偵測到 `riskLevel === 'HIGH'` 時自動 redirect 到 `/publish/failed?state=B&id=X`，user 不會在「review」頁停留並誤以為已成功上架。
+
+### 🎨 Frontend
+- `pages/PublishReviewPage.tsx`：useEffect 監聽 `skill?.riskLevel`；HIGH 即 `navigate('/publish/failed?state=B&id=X', { replace: true })` (replace 取代 push 以免 back 按鈕循環回 review)。
+- 移除 inline HIGH-risk callout 分支（dead code — useEffect 先 redirect 就不會 render）；保留 scanning / non-HIGH 兩個狀態。
+
+### 設計理由
+PublishReviewPage 語意是「成功 + scan 完成」展示；HIGH 風險意味需審核而非簡單發佈成功 — inline callout 不夠顯著，動向專屬 page 讓 user 心智模型（reviewer 接手 vs 已 self-serve 上架）明確分流。
+
+### ✅ Tests
+- `npx vitest run` → 7 files / 33 tests PASS
+- `npx tsc --noEmit` → no errors
+
+### S098 META 進度
+- 6/8 sub-specs shipped (S098h/g/h2/d/b core/b2)
+- 剩 2：S098a (Publish Step 2) / S098c (Version Diff) / S098e (Skill Detail polish) / S098f (Docs IA) — 不再 strict 8/8 而是 12 含 follow-ups。S098 META 主結構達成 6/8 ≈ 75%。
+
 ## [v2.91.0] — Publish Failed dedicated page (State A)（S098 META 5/8；M92b 完成；2026-05-02）
 
 > S098b — `/publish/failed?id=&state=&msg=` 從 PublishPage inline error 抽出獨立 route。對齊 prototype `Skills Hub Publish Failures.html` 兩個 state；本 commit ship State A（frontmatter / upload validation error）；State B（high-risk redirect from PublishReviewPage）defer 至 S098b2 follow-up。
