@@ -28,9 +28,9 @@ const GROUPS: SidebarGroup[] = [
   {
     label: '參考',
     items: [
-      { label: 'SKILL.md 規範' },
-      { label: 'Frontmatter 欄位' },
-      { label: 'Bundle 結構' },
+      { label: 'SKILL.md 規範', path: '/docs/skill-md-spec' },
+      { label: 'Frontmatter 欄位', path: '/docs/frontmatter' },
+      { label: 'Bundle 結構', path: '/docs/bundle' },
       { label: '風險層級', path: '/docs/risk-tiers' },
     ],
   },

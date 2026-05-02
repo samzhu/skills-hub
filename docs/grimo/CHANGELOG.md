@@ -1,5 +1,33 @@
 # Changelog
 
+## [v2.97.0] — Docs 參考群 3 stub pages（S098f2 完成；2026-05-02）
+
+> S098f2 — 完成 DocsSidebar「參考」群剩 3 item path wiring：SKILL.md 規範 / Frontmatter 欄位 / Bundle 結構。Reuse `DocsLayout` + 在 `OverviewPage` / `RiskTiersPage` 確立的 dark-token markup pattern。
+
+### 🎨 Frontend
+- 新檔 `pages/docs/SkillMdSpecPage.tsx` — agentskills.io v1.2 在地化精煉 reference；列出兩段（frontmatter + markdown 內文）+ 核心約束（檔名 / name 規則 / description 用途 / 5MB 限制） + 連結 Frontmatter 與 Bundle 細項頁。
+- 新檔 `pages/docs/FrontmatterPage.tsx` — 完整欄位對照表 (table 格式)：必填 2（name / description）+ 選填 6（version/author/license/compatibility/metadata/allowed-tools），每欄含型別 + 限制 + 說明。Risk-tier callout 連結。
+- 新檔 `pages/docs/BundleStructurePage.tsx` — 慣例佈局 ASCII tree + 三資料夾（scripts/ references/ assets/）逐一語意說明（scripts/ 加「會觸發風險掃描」標籤）+ bundle 限制（5MB / 50 檔 / no symlinks）。
+- `App.tsx`：新 routes `/docs/skill-md-spec`、`/docs/frontmatter`、`/docs/bundle`
+- `DocsSidebar.tsx`：「參考」群 3 個 placeholder items 補 path → 全 4 item 變 active link
+
+### Reuse
+- DocsLayout（同 OverviewPage / RiskTiersPage / YourFirstSkillPage pattern）
+- 同樣 H2 + P + Callout 內部小元件慣例（每 page 各自 inline 定義避免抽取過早）
+- 零 backend / 零 new shared component
+
+### ✅ Tests
+- `npx vitest run` (cwd=frontend) → 7 files / 33 tests PASS
+- `npx tsc --noEmit` (cwd=frontend) → no errors
+
+### Trim 紀錄
+原 S(6) 估完整含 3 page。本 commit ship 全 3 — fit one tick 沒觸發 trim。
+DocsSidebar「發佈」+「API 與 Webhook」兩 group 共 5 item 仍 placeholder：
+- ⏸ S098f3 (defer)：上傳與驗證 / 版本管理 / 語意搜尋 / REST 參考 / Event payload — 兩 group 全部 5 個 stub pages
+
+### Skills Hub Docs IA 階段性完成
+入門群 (2/2) + 參考群 (4/4) ✅ 完備；發佈 + API 群 (0/5) ⏸ S098f3 待 ship。
+
 ## [v2.96.0] — Version Diff 頁（frontend-only stub）（S098c 完成；2026-05-02）
 
 > S098c — `/skills/:id/diff?from=&to=` 版本比較頁。Frontend-only trim：reuse 既有 `/skills/{id}/versions` endpoint，零 backend 改動。對齊 prototype `Skills Hub Version Diff.html`。

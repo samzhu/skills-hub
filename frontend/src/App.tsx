@@ -7,6 +7,9 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { YourFirstSkillPage } from './pages/docs/YourFirstSkillPage'
 import { OverviewPage } from './pages/docs/OverviewPage'
 import { RiskTiersPage } from './pages/docs/RiskTiersPage'
+import { SkillMdSpecPage } from './pages/docs/SkillMdSpecPage'
+import { FrontmatterPage } from './pages/docs/FrontmatterPage'
+import { BundleStructurePage } from './pages/docs/BundleStructurePage'
 import { MySkillsPage } from './pages/MySkillsPage'
 import { SearchResultsPage } from './pages/SearchResultsPage'
 import { LandingPage } from './pages/LandingPage'
@@ -51,9 +54,13 @@ function App() {
       <Route path="/search" element={<SearchResultsPage />} />
       {/* S094d: docs walkthrough — 第一篇 walkthrough */}
       <Route path="/docs/your-first-skill" element={<YourFirstSkillPage />} />
-      {/* S098f: docs IA expansion — Overview + Risk tiers stubs；其餘 sidebar items 仍 placeholder */}
+      {/* S098f: docs IA expansion — Overview + Risk tiers stubs */}
       <Route path="/docs/overview" element={<OverviewPage />} />
       <Route path="/docs/risk-tiers" element={<RiskTiersPage />} />
+      {/* S098f2: 3 docs reference pages — SKILL.md spec / Frontmatter / Bundle */}
+      <Route path="/docs/skill-md-spec" element={<SkillMdSpecPage />} />
+      <Route path="/docs/frontmatter" element={<FrontmatterPage />} />
+      <Route path="/docs/bundle" element={<BundleStructurePage />} />
       {/* unmatched URL 之前 render 空白 root，user 看不到 navbar 也沒 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
