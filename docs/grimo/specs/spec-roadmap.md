@@ -195,7 +195,16 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M88b: Docs Walkthrough `/docs/your-first-skill` | S094d | XS(5) | 600 | ✅ `v2.70.0` (2026-05-02 — `YourFirstSkillPage.tsx` single-page JSX no parser dep + DocsLayout/Sidebar; AppShell 加「文件」nav；FE tests 23→28；S094 META 2/4) |
 | Phase 4 | M88c: My Skills (Author Dashboard) `/my-skills` | S094a | S(9) trim from M | 609 | ✅ `v2.71.0` (2026-05-02 — `?author=` filter bypass PUBLISHED for author view; MySkillsPage hero + 4 metrics + tabs + table rows; EmptyState invite reuse; Sparkline 暫缺 polish；S094 META 3/4) |
 | Phase 4 | M88d: Semantic Search Results `/search` | S094b | S(9-10) trim from M | 619 | ✅ `v2.72.0` (2026-05-02 — `/search?q=` 專屬 route + LLM intent summary card with graceful fallback (Optional<ChatClient>) + IntentSummaryCard purple bg + concept chips display；S094 META 4/4 全 ✅) |
-| Phase 4 | M89: Risk tier 4-level (split LOW → NONE + LOW) | S095 | S(9) | — | 📋 planned — 對齊 Cisco Skill Scanner + CVSS（NONE band）；split 0-finding pure-docs skill（NONE 綠 badge）vs minor-finding LOW skill（藍 badge）；SQL bulk migration 既有 87 LOW；ship after S094a+S094b（current META 順序：a→b→S095） |
+| Phase 4 | M89: Risk tier 4-level (split LOW → NONE + LOW) | S095 | S(9) | — | ⛔ superseded — absorbed into S096c (UI v2 META) per Q3 grill 2026-05-02；NONE tier 與 RiskBadge dark-theme redesign 同 sub-spec ship 一次到位 |
+| Phase 4 | M90: UI v2 META — full dark-theme redesign + 6 NEW pages + route schema | S096 | XL split → 92 pts across 8 sub-specs | — | 📐 in-design — META spec written 2026-05-02；defaults a/a/a/a 已 lock；NEW prototypes pascalcase 16 mockups source；既有 light-theme S085-S088+S094 work 大半 redesign |
+| Phase 4 | M90a: ADR-003 + PRD update | S096a | XS(4) | — | 📋 planned — docs gate；ADR-003 route schema author/name；PRD 加 P7/P8/P9 (Collections/Requests/Notifications) |
+| Phase 4 | M90b: DESIGN.md v2 + global theme migration | S096b | M(12) | — | 📋 planned — full dark token swap + global CSS；既有 9 pages 自動 dark；BorderBeam 5-color rewrite |
+| Phase 4 | M90c: Routing schema + Risk tier 4-level (absorbs S095) | S096c | M(12) | — | 📋 planned — `/skills/:author/:name` canonical + `/skills/:id` alias；RiskLevel enum + NONE；Flyway SQL migration |
+| Phase 4 | M90d: Existing pages v2 refresh (multi-page batch) | S096d | L(15-16) | — | 📋 planned — 9 pages（Home/Detail/Publish×3/Analytics/MySkills/Docs/EmptyState）re-style per pascalcase prototypes；publish 加 SSE event stream + 3 new domain events |
+| Phase 4 | M90e: Landing + Onboarding | S096e | M(12) | — | 📋 planned — public `/` Landing + 4-step `/onboarding` wizard；新 stats endpoint + user prefs endpoint |
+| Phase 4 | M90f: Collections | S096f | M(12) | — | 📋 planned — Collection aggregate + 4 endpoints + `/collections` page |
+| Phase 4 | M90g: Request Board | S096g | M(12) | — | 📋 planned — Request aggregate + voting + 4 endpoints + `/requests` page |
+| Phase 4 | M90h: Notifications + Version Diff | S096h | M(12) | — | 📋 planned — domain_events projection + bell badge + `/notifications` page + `/skills/:author/:name/diff` view；新 `notification` Modulith module (8th) |
 | Phase 4 | (deferred) Admin Review Queue | S094e | — | — | ⏸ post-MVP — PRD B6 Backlog；`admin_review_queue_and_detail.html` |
 | Phase 4 | (deferred) Onboarding Wizard | S094f | — | — | ⏸ post-MVP — `onboarding_wizard_step_2_of_4.html` |
 | Phase 4 | (deferred) Landing Page | S094g | — | — | ⏸ post-MVP — `skills_hub_landing_page.html` |
