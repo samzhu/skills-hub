@@ -46,7 +46,7 @@ class SkillsApiAnonymousTest extends WebMvcSliceTestBase {
         Page<Skill> emptyPage = new PageImpl<>(java.util.List.of());
         Mockito.when(skillQueryService.search(
                         ArgumentMatchers.isNull(), ArgumentMatchers.isNull(),
-                        ArgumentMatchers.any())).thenReturn(emptyPage);
+                        ArgumentMatchers.isNull(), ArgumentMatchers.any())).thenReturn(emptyPage);
 
         mockMvc.perform(get("/api/v1/skills"))
             .andExpect(status().isOk());

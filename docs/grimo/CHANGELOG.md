@@ -1,5 +1,47 @@
 # Changelog
 
+## [v2.71.0] — My Skills Author Dashboard `/my-skills`（M88c 完成；2026-05-02）
+
+> **S094 META sub-spec 3/4 ship** — 補 P6 SBE「作者查看自己的數據」唯一 missing piece；author 進入後看到 hero + 4 metrics + tabs + skill list；0 skills 走 EmptyState invite tone (S094c reuse)。
+
+### Added
+- **Backend `?author=` filter on GET /skills**：
+  - `SkillQueryService.search` 加 `String author` 4th param
+  - 帶 author 時 bypass `WHERE status = 'PUBLISHED'` filter（S031），改 `WHERE LOWER(author) = LOWER(:author)` — 讓作者看自己 DRAFT/SUSPENDED
+  - 不帶 author 時維持 S031 公開查詢只露 PUBLISHED 行為
+  - +5 SkillSearchTest cases (AC-S094a-1~5: exact / case-insensitive / all-statuses / no-match / combined)
+- **S094a: My Skills Author Dashboard**（M88c / S 9 pts trim from M）：
+  - 新 route `/my-skills` + `MySkillsPage.tsx`
+  - Hero: `以 lab-user 身份發布` + 「你的 N 個技能」 + 「發布新技能」CTA (BeamFrame)
+  - 4 MetricCards: Total skills (status breakdown subtitle) / Total downloads / Avg rating "—" / Open flags 0
+  - Tabs: 全部 / 已發布 / 草稿 / 已停用 — filter table rows by status
+  - Table-style rows: IconTile + name + StatusPill + RiskBadge + description + downloads + version pill
+  - 0 skills → EmptyState invite tone（S094c reuse）+ 2 CTAs（發布 / 看 docs）
+  - StatusPill (PUBLISHED/DRAFT/SUSPENDED) 對齊 DESIGN.md 4-tier semantic
+- **`useMe` hook**: GET `/api/v1/me` cache 5min；用於 author identity
+
+### AppShell
+- 加「我的技能」nav link → `/my-skills`
+
+### Trim from prototype（M → S 收斂）
+- Sparkline column / per-skill 30d trend endpoint 暫缺（polish follow-up）
+- Avg rating "—" + Open flags 0（rating / flag aggregation MVP 暫缺）
+
+### Metrics
+- Backend tests: 3 affected suites BUILD SUCCESSFUL（+5 SkillSearch tests / 2 mock-patch）
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 372 → 377KB (+5KB)
+- CSS: 36.7 → 36.97KB
+- Build: 426ms
+
+### META progress
+S094 META 4 sub-specs：3/4 ✅ (S094c + S094d + S094a)。Final: S094b Semantic Search Results (M, with LLM intent POC).
+
+### Known limitation
+- Live :8080 backend 仍跑 ship 前舊 code（compose container 持續 running per S093，未 restart）；新 endpoint 行為要 user 下次 backend restart S093 transition 後現地生效。Spec ship 與 live deploy 為兩個獨立步驟。
+
+---
+
 ## [v2.70.0] — Docs Walkthrough page `/docs/your-first-skill`（M88b 完成；2026-05-02）
 
 > **S094 META sub-spec 2/4 ship** — Skills Hub 第一份開發者 docs entry，把 frontmatter / semantic search / risk tier 三個核心機制在一頁內讓作者建立心智模型。

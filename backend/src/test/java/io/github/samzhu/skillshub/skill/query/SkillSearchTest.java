@@ -52,7 +52,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
     @Test
     @DisplayName("AC-1: 用關鍵字搜尋技能 — keyword=docker returns matching skills")
     void keywordSearch() {
-        var page = queryService.search("docker", null, PageRequest.of(0, 20));
+        var page = queryService.search("docker", null, null, PageRequest.of(0, 20));
 
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getContent().getFirst().getName()).isEqualTo("docker-helper");
@@ -61,7 +61,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
     @Test
     @DisplayName("AC-2: 按分類篩選技能 — category=DevOps returns 2 skills")
     void categoryFilter() {
-        var page = queryService.search(null, "DevOps", PageRequest.of(0, 20));
+        var page = queryService.search(null, "DevOps", null, PageRequest.of(0, 20));
 
         assertThat(page.getContent()).hasSize(2);
         assertThat(page.getContent()).allMatch(s -> "DevOps".equals(s.getCategory()));
@@ -70,7 +70,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
     @Test
     @DisplayName("AC-3: 關鍵字 + 分類組合篩選 — keyword=deploy & category=DevOps")
     void keywordAndCategoryCombo() {
-        var page = queryService.search("deploy", "DevOps", PageRequest.of(0, 20));
+        var page = queryService.search("deploy", "DevOps", null, PageRequest.of(0, 20));
 
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getContent().getFirst().getName()).isEqualTo("k8s-deploy");
@@ -90,7 +90,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
     @DisplayName("AC-S043: keyword 搜尋 category 名（DevOps）→ 命中該分類所有 skill")
     void keywordSearchMatchesCategory() {
         // fixture 含 2 個 DevOps + 1 個 Testing；keyword="DevOps" 應匹配 2 個（含 category match）
-        var page = queryService.search("DevOps", null, PageRequest.of(0, 20));
+        var page = queryService.search("DevOps", null, null, PageRequest.of(0, 20));
 
         assertThat(page.getContent()).hasSize(2);
         assertThat(page.getContent()).allMatch(s -> "DevOps".equals(s.getCategory()));
@@ -99,14 +99,60 @@ class SkillSearchTest extends RepositorySliceTestBase {
     @Test
     @DisplayName("AC-S044: keyword 含 leading/trailing whitespace 仍命中（trim 預處理）")
     void keywordTrimsWhitespace() {
-        var plain = queryService.search("docker", null, PageRequest.of(0, 20));
-        var trailing = queryService.search("docker  ", null, PageRequest.of(0, 20));
-        var leading = queryService.search("  docker", null, PageRequest.of(0, 20));
-        var surround = queryService.search("  docker  ", null, PageRequest.of(0, 20));
+        var plain = queryService.search("docker", null, null, PageRequest.of(0, 20));
+        var trailing = queryService.search("docker  ", null, null, PageRequest.of(0, 20));
+        var leading = queryService.search("  docker", null, null, PageRequest.of(0, 20));
+        var surround = queryService.search("  docker  ", null, null, PageRequest.of(0, 20));
 
         assertThat(plain.getContent()).hasSize(1);
         assertThat(trailing.getContent()).hasSize(1);
         assertThat(leading.getContent()).hasSize(1);
         assertThat(surround.getContent()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("AC-S094a-1: ?author=sam exact filter (case-insensitive)")
+    void authorFilterExactMatch() {
+        var page = queryService.search(null, null, "sam", PageRequest.of(0, 20));
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).getName()).isEqualTo("docker-helper");
+    }
+
+    @Test
+    @DisplayName("AC-S094a-2: ?author=SAM uppercase 仍命中（LOWER 比對）")
+    void authorFilterCaseInsensitive() {
+        var page = queryService.search(null, null, "SAM", PageRequest.of(0, 20));
+        assertThat(page.getContent()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("AC-S094a-3: ?author= 帶值時跳過 PUBLISHED filter（含 DRAFT/SUSPENDED）")
+    void authorFilterShowsAllStatuses() {
+        var now = Instant.now();
+        skillRepo.save(Skill.fromRow(
+                UUID.randomUUID().toString(), "sam-draft-skill", "draft for sam",
+                "sam", "DevOps", null, null, "DRAFT", 0L, now, now, List.of(), null));
+        skillRepo.save(Skill.fromRow(
+                UUID.randomUUID().toString(), "sam-suspended-skill", "suspended for sam",
+                "sam", "DevOps", "1.0.0", null, "SUSPENDED", 0L, now, now, List.of(), null));
+
+        var page = queryService.search(null, null, "sam", PageRequest.of(0, 20));
+        // 1 PUBLISHED + 1 DRAFT + 1 SUSPENDED = 3 (S094a 跳過 PUBLISHED filter for author view)
+        assertThat(page.getContent()).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("AC-S094a-4: ?author=ghost 不存在 → 空 page")
+    void authorFilterNoMatch() {
+        var page = queryService.search(null, null, "ghost", PageRequest.of(0, 20));
+        assertThat(page.getContent()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-S094a-5: ?author= + ?keyword= 組合 filter (AND)")
+    void authorAndKeywordCombined() {
+        var page = queryService.search("docker", null, "sam", PageRequest.of(0, 20));
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).getName()).isEqualTo("docker-helper");
     }
 }

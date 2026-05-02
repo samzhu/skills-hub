@@ -110,18 +110,25 @@ public class SkillQueryService {
 	 * @param pageable 分頁 + 排序參數
 	 * @return 分頁結果
 	 */
-	public Page<Skill> search(String keyword, String category, Pageable pageable) {
-		// S031: 公開查詢只回 PUBLISHED — DRAFT（owner 未發版）與 SUSPENDED（admin 下架）皆隱藏
-		// （admin / owner 可透過 GET /skills/{id} 直接看 detail；admin panel 將為獨立 endpoint）
+	public Page<Skill> search(String keyword, String category, String author, Pageable pageable) {
+		// S031: 公開查詢只回 PUBLISHED — DRAFT（owner 未發版）與 SUSPENDED（admin 下架）皆隱藏。
+		// S094a: 帶 author 參數時改為「該 author 全狀態」(P6 作者視角)，跳過 PUBLISHED filter 讓作者看
+		// 自己的 DRAFT / SUSPENDED；不帶 author 則維持 S031 公開查詢只露 PUBLISHED 行為。
+		var authorMode = StringUtils.hasText(author);
+		var statusClause = authorMode
+				? " WHERE LOWER(author) = LOWER(:author) "
+				: " WHERE status = 'PUBLISHED' ";
 		var sql = new StringBuilder("""
 				SELECT id, name, description, author, category,
 				       latest_version, risk_level, status, download_count,
 				       created_at, updated_at, acl_entries, version
 				  FROM skills
-				 WHERE status = 'PUBLISHED'
-				""");
-		var countSql = new StringBuilder("SELECT COUNT(*) FROM skills WHERE status = 'PUBLISHED'");
+				""").append(statusClause);
+		var countSql = new StringBuilder("SELECT COUNT(*) FROM skills").append(statusClause);
 		var params = new MapSqlParameterSource();
+		if (authorMode) {
+			params.addValue("author", author);
+		}
 
 		if (StringUtils.hasText(keyword)) {
 			// S043: 加入 category 比對 — user 在搜尋框輸入 category 名（如「DevOps」）即可命中對應分類所有 skill
@@ -153,6 +160,7 @@ public class SkillQueryService {
 		log.atDebug()
 				.addKeyValue("keyword", keyword)
 				.addKeyValue("category", category)
+				.addKeyValue("author", author)
 				.addKeyValue("resultCount", results.size())
 				.log("技能搜尋完成");
 

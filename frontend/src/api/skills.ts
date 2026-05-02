@@ -10,6 +10,9 @@ export interface SkillSearchParams {
   keyword?: string
   /** 分類名稱精確比對 */
   category?: string
+  /** S094a: 作者名稱精確比對 (case-insensitive)；帶值時 backend 跳過 PUBLISHED filter，
+   * 讓作者看到自己的 DRAFT/SUSPENDED；不帶則維持公開查詢只露 PUBLISHED */
+  author?: string
   /** 頁碼（0-indexed），預設 0 */
   page?: number
   /** 每頁筆數，預設 20 */
@@ -17,7 +20,7 @@ export interface SkillSearchParams {
 }
 
 /**
- * 以關鍵字 + 分類搜尋技能，回傳分頁結果。
+ * 以關鍵字 + 分類 + 作者搜尋技能，回傳分頁結果。
  *
  * @param params 搜尋條件（皆可選）
  * @returns Spring Data 分頁包裝的技能列表
@@ -26,6 +29,7 @@ export function fetchSkills(params: SkillSearchParams): Promise<SpringPage<Skill
   const search = new URLSearchParams()
   if (params.keyword) search.set('keyword', params.keyword)
   if (params.category) search.set('category', params.category)
+  if (params.author) search.set('author', params.author)
   // page 使用 0-indexed（Spring Data Pageable 慣例），未傳入預設第 0 頁
   search.set('page', String(params.page ?? 0))
   search.set('size', String(params.size ?? 20))

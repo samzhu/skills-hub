@@ -8,6 +8,7 @@ import { Link, useLocation } from 'react-router'
  */
 const navLinks = [
   { path: '/', label: '瀏覽' },
+  { path: '/my-skills', label: '我的技能' }, // S094a: author dashboard
   { path: '/publish', label: '發佈' },
   { path: '/analytics', label: '數據' },
   // S094d: docs entry point；指向第一篇 walkthrough，未來 /docs 可改 index 頁

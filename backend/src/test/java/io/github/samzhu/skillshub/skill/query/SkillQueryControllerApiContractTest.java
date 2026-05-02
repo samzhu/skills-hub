@@ -86,7 +86,7 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
         Page<Skill> page = new PageImpl<>(List.of(fixture));
         Mockito.when(skillQueryService.search(
                         ArgumentMatchers.isNull(), ArgumentMatchers.eq("Testing"),
-                        ArgumentMatchers.any())).thenReturn(page);
+                        ArgumentMatchers.isNull(), ArgumentMatchers.any())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/skills").param("category", "Testing"))
                 .andExpect(status().isOk())

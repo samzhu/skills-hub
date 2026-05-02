@@ -52,15 +52,21 @@ public class SkillQueryController {
 	}
 
 	/**
-	 * 搜尋技能 — 支援 keyword（name/description 模糊匹配）和 category（精確匹配）。
-	 * 兩個參數皆為可選，都不帶則回傳全部。
+	 * 搜尋技能 — 支援 keyword（name/description 模糊匹配）、category（精確匹配）、author（精確匹配）。
+	 * 三個參數皆為可選，都不帶則回傳全部。
+	 *
+	 * <p>S094a: 加 {@code author} 參數對齊 P6 SBE「作者查看自己的數據」。當 {@code author} 帶值時，
+	 * 跳過 {@code status='PUBLISHED'} 過濾（讓作者看到自己的 DRAFT / SUSPENDED）；不帶則保留 S031
+	 * 公開查詢只露 PUBLISHED 行為。LAB 模式無 auth gate，任何 user 可查任何 author 的全狀態 — 此屬
+	 * 已知 MVP 限制（Feature First），future spec 加入 auth 後 author filter 會 gated by current user.
 	 */
 	@GetMapping("/skills")
 	Page<Skill> search(
 			@RequestParam(required = false) String keyword,
 			@RequestParam(required = false) String category,
+			@RequestParam(required = false) String author,
 			@PageableDefault(size = 20) Pageable pageable) {
-		return queryService.search(keyword, category, pageable);
+		return queryService.search(keyword, category, author, pageable);
 	}
 
 	/** 取得某技能的版本歷史，按發佈時間降序排列。 */
