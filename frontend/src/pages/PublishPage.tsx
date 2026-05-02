@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
-import { AlertCircle, FileText, Upload as UploadIcon } from 'lucide-react'
+import { FileText, Upload as UploadIcon } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { FileDropZone } from '@/components/FileDropZone'
+import { ErrorState } from '@/components/ErrorState'
 import { Input } from '@/components/ui/input'
 import { uploadSkill } from '@/api/skills'
 import { localizeApiError } from '@/lib/api-error-messages'
@@ -148,16 +149,11 @@ export function PublishPage() {
           </form>
 
           {mutation.isError && (
-            <div
-              className="mt-4 flex items-start gap-3 rounded-md p-3 text-[13px]"
-              style={{ backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' }}
-            >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div className="flex-1">
-                <p className="m-0 font-medium">發佈失敗</p>
-                <p className="m-0 mt-0.5 text-[12px] opacity-90">{localizeApiError(mutation.error)}</p>
-              </div>
-            </div>
+            <ErrorState
+              className="mt-4"
+              title="發佈失敗"
+              message={localizeApiError(mutation.error)}
+            />
           )}
         </div>
       </div>

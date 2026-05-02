@@ -1,5 +1,26 @@
 # Changelog
 
+## [v3.3.2] — ErrorState shared component + 2 demo migrations（S100d 完成；2026-05-02）
+
+> S100d — 抽 5+ 重複的紅色 callout pattern 為 shared `ErrorState` primitive。Per S100 audit 各 page error fallback UX 不一致；統一 callout token + 兩 variant (inline / centered) 解決。
+
+### 🎨 Frontend (S100d)
+- 新檔 `components/ErrorState.tsx`：danger-soft palette（rgba(226,75,74,0.14) bg / #F2A6A6 fg）；2 variants：
+  - `inline`（default）— 水平 small callout 用於 mutation error / form-level
+  - `centered` — full-width box 用於 page-level data-load failure
+  - props：title / optional message / optional icon override / className
+- 新檔 `components/ErrorState.test.tsx` — 6 ACs：variant 切換 / 有/無 message / custom icon override / ReactNode message / extra className 套用
+
+### Demo migrations
+- `pages/AnalyticsPage.tsx`：error branch 從 inline `<div>...rgba(226,75,74,0.14)...</div>` → `<ErrorState variant="centered" />`
+- `pages/PublishPage.tsx`：mutation.isError branch 從 inline 12-line `<div>` → `<ErrorState className="mt-4" />`，移除 AlertCircle import
+
+剩 3 個 callsite 待 migrate（PublishReviewPage / PublishValidatePage / PublishFailedPage 各 1）— defer 至 polish backlog；不在本 commit scope 防 commit creep。
+
+### ✅ Tests
+- 123 → 129 tests PASS（+6 new ErrorState）
+- `npx tsc --noEmit` clean
+
 ## [v3.3.1] — `/docs/risk-scanner-scope` LLM01-10 mapping page（S099e5 完成；2026-05-02）
 
 > S099e5 — 對 consumer 透明公開 Skills Hub risk scanner 對齊 OWASP LLM Top 10 v1.1 (2023) 各項威脅的 coverage state（covered / partial / gap / out-of-scope）。

@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import { AppShell } from '@/components/AppShell'
 import { MetricCard } from '@/components/MetricCard'
+import { ErrorState } from '@/components/ErrorState'
 import { useOverview } from '@/hooks/useAnalytics'
 
 /**
@@ -31,12 +32,7 @@ export function AnalyticsPage() {
           載入中...
         </div>
       ) : error ? (
-        <div
-          className="flex items-center justify-center rounded-md p-4 text-[13px]"
-          style={{ backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' }}
-        >
-          載入數據失敗，請重新整理頁面
-        </div>
+        <ErrorState variant="centered" title="載入數據失敗" message="請重新整理頁面" />
       ) : stats ? (
         <>
           {/* metric strip 4-up */}
