@@ -376,6 +376,19 @@
 - Stacked user request queueing (S093 from tick 83 user observation) integrates cleanly into next-tick auto-pickup
 - saturation pivot triggers correctly when both backlog empty + 連續 ≥3 0-bug ticks 達成
 
+>   tick 86 (loop cron 30m 7463fb4d, Round 37 OpenAPI / Actuator / Admin / Modulith metadata audit, 2026-05-02):
+>     User restart cron `7463fb4d` after tick 85 saturation summary — override saturation；繼續探未測 surface。
+>     R37 metadata surface (read-only HTTP probe, 0 risk):
+>     - 37.1 GET /v3/api-docs → 17 paths / 22 operations / openapi 3.1.0 ✓ (與 tick 78 R32.1 一致)
+>     - 37.2 GET /v3/api-docs.yaml → 200 ✓ (Content-Type `application/vnd.oai.openapi`)
+>     - 37.3 GET /swagger-ui.html → 302 → /swagger-ui/index.html 200 ✓
+>     - 37.4 GET /actuator → 13 endpoints (beans, configprops, env, health, info, mappings, metrics, modulith, self, ...) ✓
+>     - 37.5 Admin surface from OpenAPI: 只 `/api/v1/admin/echo` 1 個 (MVP 預期，admin review queue 是 future spec per CLAUDE.md)
+>     - 37.6 Direct probe `/admin/echo` 200 / `/admin` `/admin/skills` `/admin/users` 全 404 ✓ (no leakage)
+>     - 37.7 GET /actuator/modulith → 7 modules 全註冊 (analytics / audit / search / security / shared / skill / storage) ✓
+>     **0 new bugs**. 連續 0-bug ticks 累計 **6** (80/82/83/84/85/86)。
+>     **Polish observation 37.1**: OpenAPI info 用 default「OpenAPI definition」/ version「v0」未自定義 Skills Hub branding。Future polish (XS): `springdoc.api-info` 設 `title=Skills Hub API`、`version=2.68.0`（對齊 build）+ `description` 簡述、`license` 帶 OSS 授權；不影響 functionality 純 cosmetic / API doc 質感提升。
+
 ## Coverage Summary (as of v2.46.0)
 
 ### Backend ✓ Covered
