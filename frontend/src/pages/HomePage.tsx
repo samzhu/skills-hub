@@ -23,12 +23,8 @@ const SORT_LABELS: Record<SortMode, string> = {
   'risk-low': '風險低',
   'most-downloaded': '下載最多',
 }
-const RISK_ORDER: Record<Skill['riskLevel'], number> = {
-  NONE: 0,
-  LOW: 1,
-  MEDIUM: 2,
-  HIGH: 3,
-}
+// S100b: RISK_ORDER 移除 — risk-low sort 改 server-side（backend ORDER BY risk_level ASC
+// 字典序 NONE→LOW→MEDIUM→HIGH 與此 enum 順序一致）。
 
 /**
  * 技能瀏覽首頁：支援語意搜尋（自然語言）與關鍵字搜尋（fallback）。
@@ -55,11 +51,13 @@ export function HomePage() {
   } = useSemanticSearch(query)
 
   // 關鍵字搜尋模式：query 空時為主模式；query 非空時作為語意搜尋的 fallback
+  // S100b: sort param 改 server-side 派遣 — backend Spring Pageable 接收 sort=field,direction
   const { data: skillsPage, isLoading: listLoading, error: listError } = useSkillList({
     keyword: query.trim() || undefined,
     category: category ?? undefined,
     page,
     size: 20,
+    sort: sortMode,
   })
 
   const { data: categories } = useCategories()
@@ -90,26 +88,13 @@ export function HomePage() {
   const isLoading = isSemanticMode ? semanticLoading : listLoading
   const error = isSemanticMode ? semanticError : listError
 
-  // S098d: client-side sort + S098d2: client-side risk-filter — 兩階管線都基於 backend 該頁回的 content。
-  // Trade-off：filter 與 sort「只在當前頁」生效。後續若要全域 → 後端 sort/filter query。
-  const filteredAndSorted = useMemo(() => {
-    let content: Skill[] = skillsPage?.content ?? []
-    // 1. risk filter — empty Set = pass-through
-    if (riskFilter.size > 0) {
-      content = content.filter((s) => s.riskLevel && riskFilter.has(s.riskLevel))
-    }
-    // 2. sort
-    if (sortMode === 'recommended') return content
-    const arr = [...content]
-    if (sortMode === 'newest') {
-      arr.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
-    } else if (sortMode === 'risk-low') {
-      arr.sort((a, b) => RISK_ORDER[a.riskLevel] - RISK_ORDER[b.riskLevel])
-    } else if (sortMode === 'most-downloaded') {
-      arr.sort((a, b) => (b.downloadCount ?? 0) - (a.downloadCount ?? 0))
-    }
-    return arr
-  }, [skillsPage, sortMode, riskFilter])
+  // S100b: sort 改 server-side（query param sort=field,direction）— 跨頁全域 sort
+  // 保留 client-side risk-filter — 因 backend 沒有 multi-tier filter 支援（不在本 spec scope）
+  const filteredSkills = useMemo(() => {
+    const content: Skill[] = skillsPage?.content ?? []
+    if (riskFilter.size === 0) return content
+    return content.filter((s) => s.riskLevel && riskFilter.has(s.riskLevel))
+  }, [skillsPage, riskFilter])
 
   // S098d2 toggle / clear
   const toggleRisk = (level: RiskLevel) => {
@@ -234,7 +219,7 @@ export function HomePage() {
                 </div>
               </div>
               {/* S094c: pass query so 0-results can show seed (no query) vs redirect (with query) tone */}
-              <SkillCardGrid skills={filteredAndSorted} query={query} />
+              <SkillCardGrid skills={filteredSkills} query={query} />
               {skillsPage && skillsPage.page.totalPages > 1 && (
                 <div className="mt-6 flex items-center justify-center gap-2">
                   <button

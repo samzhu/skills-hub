@@ -59,7 +59,9 @@ public class SkillQueryService {
 	 * 使用 Skill aggregate 的 Java 屬性名（camelCase），對應到 SQL snake_case 欄位。
 	 */
 	private static final Set<String> SORTABLE_PROPERTIES = Set.of(
-			"name", "createdAt", "updatedAt", "downloadCount", "category", "status");
+			"name", "createdAt", "updatedAt", "downloadCount", "category", "status",
+			// S100b: enable risk-low sort for HomePage 風險低 chip
+			"riskLevel");
 
 	// raw JDBC rowMapper 不會走 Spring Data JDBC 的 user converter；
 	// acl_entries（List<String>）需手動 JSONB → List<String> 反序列化，故注入 ObjectMapper。

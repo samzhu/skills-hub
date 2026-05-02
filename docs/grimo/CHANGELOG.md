@@ -1,5 +1,26 @@
 # Changelog
 
+## [v3.3.5] — Server-side sort: HomePage 跨頁全域 sort（S100b 完成；2026-05-02）
+
+> S100b — HomePage sort chips 改 server-side query param。原 client-side sort 只對「當前頁」生效（page=20 視窗內排序）；user 翻頁會看到不同順序。改用 Spring Pageable `sort=field,direction` 實現跨頁全域 sort。
+
+### 🎨 Backend (S100b)
+- `SkillQueryService.java`：SORTABLE_PROPERTIES whitelist 加 `riskLevel` enabled risk-low sort（其餘 downloadCount / createdAt 已在 whitelist）。
+
+### 🎨 Frontend (S100b)
+- `api/skills.ts` SkillSearchParams 加 `sort?: 'recommended' | 'newest' | 'most-downloaded' | 'risk-low'`；fetchSkills map 為 Spring Pageable `sort=field,direction` query；'recommended' = 不傳（後端 default createdAt DESC）
+- `pages/HomePage.tsx`：
+  - sortMode 直接 pass 給 useSkillList（server-side）
+  - 移除既有 client-side `filteredAndSorted` useMemo + `RISK_ORDER` const（client risk-low sort 用 字典序 enum 順序，後端 ORDER BY 字典序自然 NONE→LOW→MEDIUM→HIGH）
+  - 改用簡化 `filteredSkills` 只 client-side filter (risk-tier multi-select，後端無此 filter 不在 scope)
+
+### Trade-off resolved
+原 trade-off「filter 與 sort 只在當前頁生效」 → sort 部分解決（跨頁全域）；filter 仍 client-side（限本頁多 tier OR 邏輯）。後續若加 backend filter query 可移除最後 client-side fallback。
+
+### ✅ Tests
+- 137/137 PASS（既有 HomePage test fixture 不受 sort param 影響 — 還是回 fixture content）
+- `npx tsc --noEmit` clean
+
 ## [v3.3.4] — ErrorState migration cleanup — PublishReview/Validate/Diff（2026-05-02）
 
 > S100d follow-up — 把 ErrorState 抽出後剩 3 callsites 完整 migration。
