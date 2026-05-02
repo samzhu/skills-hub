@@ -1,5 +1,49 @@
 # Changelog
 
+## [v2.72.0] — Semantic Search Results page `/search`（M88d 完成；2026-05-02）
+
+> **S094 META sub-spec 4/4 ship — META 全 ✅** — 把 HomePage inline 語意搜尋結果分流到專屬 `/search?q=...` route，加 LLM intent summary 顯示「系統如何理解你的查詢」(README ll.117 核心 UX 差異化)。
+
+### Added
+- **Backend SearchIntent endpoint**：
+  - `POST /api/v1/search/intent` accepts `{query}`, returns `{summary, concepts: string[]}`
+  - `SearchIntentService` 用 `Optional<ChatClient>` graceful fallback：LLM 不可用時回 `{summary: query, concepts: []}` — frontend 透過 `concepts.length` 判斷是否顯卡片，**POC HALT 風險規避**
+  - `BeanOutputConverter<LlmIntentOutput>` 結構化輸出（同 S091 LlmJudge pattern）
+  - `ConcurrentHashMap` per-instance cache 避免重複 LLM call（5min idle eviction polish 留 future）
+- **S094b: Semantic Search Results**（M88d / S 9-10 trim from M）：
+  - 新 route `/search?q=...` + `SearchResultsPage.tsx`
+  - SearchBar + URL = source of truth（Enter key navigate）
+  - `IntentSummaryCard` — purple #EEEDFE bg + ✦ "Understood your intent" + summary + concept chips（display-only，× interactivity defer）
+  - Result list reuse `SkillCard` with `score` prop
+  - 0 results → EmptyState redirect tone + 3 suggestions（S094c reuse）
+  - 空 query → EmptyState invite tone「輸入一句描述或關鍵字」（S094c reuse）
+  - LLM fallback：concepts.length === 0 → 不顯 IntentSummaryCard，純 result list
+- **`useSearchIntent` hook**: react-query 5min cache
+
+### Trim from prototype
+- Per-result why-match LLM reasoning（避免 7+ LLM calls/search）
+- Top match gradient bg + 0.94 score 強烈視覺
+- Refine chips 4 items at bottom（user 自己 re-search）
+- Concept chip × interactivity（display-only）
+
+### Metrics
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 377 → 381KB (+4KB)
+- CSS: 36.97 → 37.09KB (+0.1KB)
+- Build: 213ms
+- Backend compileJava: BUILD SUCCESSFUL ✓
+
+### S094 META 全 ✅ summary
+4 sub-specs all shipped: S094c (4-tone EmptyState v2.69.0) / S094d (Docs Walkthrough v2.70.0) / S094a (MySkills v2.71.0) / S094b (SearchResults v2.72.0). Total ~28-29 pts vs estimate 38-41 — trim 8-12 pts deferred to polish.
+
+### Next
+S095 Risk tier 4-level (NONE + LOW + MEDIUM + HIGH) — backlog 📋 ready to pick up.
+
+### Live smoke caveat
+Live :8080 backend 仍跑 ship 前舊 code；user 下次 graceful restart 後 (S093 transition) 新 endpoint 生效。
+
+---
+
 ## [v2.71.0] — My Skills Author Dashboard `/my-skills`（M88c 完成；2026-05-02）
 
 > **S094 META sub-spec 3/4 ship** — 補 P6 SBE「作者查看自己的數據」唯一 missing piece；author 進入後看到 hero + 4 metrics + tabs + skill list；0 skills 走 EmptyState invite tone (S094c reuse)。

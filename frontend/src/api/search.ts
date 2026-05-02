@@ -14,3 +14,24 @@ export function fetchSemanticSearch(query: string): Promise<SemanticSearchResult
   // encodeURIComponent 確保中文及特殊字元正確編碼至查詢參數
   return apiFetch<SemanticSearchResult[]>(`/search/semantic?q=${encodeURIComponent(query)}`)
 }
+
+/**
+ * S094b — Intent summary API.
+ *
+ * Backend POST /api/v1/search/intent with `{query}`. Returns LLM-generated intent
+ * summary (繁體中文 1-sentence) + concept tags (English keywords). When LLM is
+ * unavailable, backend graceful-fallbacks to `{summary: query, concepts: []}`.
+ * Frontend can detect fallback by `concepts.length === 0`.
+ */
+export interface IntentResponse {
+  summary: string
+  concepts: string[]
+}
+
+export function fetchSearchIntent(query: string): Promise<IntentResponse> {
+  return apiFetch<IntentResponse>('/search/intent', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query }),
+  })
+}
