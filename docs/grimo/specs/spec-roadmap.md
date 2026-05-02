@@ -184,7 +184,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M81: HomePage rework + reusable components 抽取 | S085 | S(8) | 569 | ✅ `v2.63.0` (2026-05-02 — IconTile 6-category tint + 重寫 SkillCard 對齊 prototype `.sh-card` + Hero row 加「發布技能」CTA) |
 | Phase 4 | M82: PublishPage rework | S086 | XS(5) | 574 | ✅ `v2.64.0` (2026-05-02 — Hero row + hairline card + uppercase muted labels + semantic-tinted success/error callouts with icons) |
 | Phase 4 | M83: SkillDetailPage rework | S087 | S(7) | 581 | ✅ `v2.65.0` (2026-05-02 — Hero row 加 IconTile xl + 22px name + version mono pill + status semantic pill + danger-soft SUSPENDED callout) |
-| Phase 4 | M84: AnalyticsPage rework | S088 | XS(5) | — | 📋 backlog — 對 `platform_analytics_dashboard_admin_view.html`；metric cards + sparkline + activity feed |
+| Phase 4 | M84: AnalyticsPage rework | S088 | XS(5) | 586 | ✅ `v2.66.0` (2026-05-02 — Hero row + MetricCard label-caps + accent purple #7F77DD progress + mono tabular-nums；S084 META 5 sub-specs 全 ✅) |
 | Phase 4 | M85: BorderBeam hand-roll BeamFrame（drop border-beam dep） | S089 | XS(3) | 561 | ✅ `v2.62.0` (2026-05-02 — `BeamFrame.tsx` 1:1 port prototype `.sh-search-wrap` conic-gradient；drop border-beam npm dep；JS bundle 396KB→347KB) |
 | Phase 4 | M80: Semantic search `?limit=` configurable | S090 | XS(2) | 555 | ✅ `v2.60.0` (2026-05-02 — `?limit=` 1-50 cap；close R25.7 missing-feature；FE 「show more」UX enabled) |
 | Phase 4 | M81: LlmJudge prompt calibration | S091 | XS(3) | 558 | ✅ `v2.61.0` (2026-05-02 — `SYSTEM_PROMPT` 重寫區分 demonstrated vs theoretical；fix Anthropic canonical skills 全 HIGH bug AN；handover/planning/deep-research HIGH→LOW，真風險維持 HIGH) |

@@ -1,5 +1,25 @@
 # Changelog
 
+## [v2.66.0] — AnalyticsPage rework + MetricCard 對齊 DESIGN.md（M84 完成；2026-05-02）
+
+> **UI rework — 最後一個 page rework，S084 META 全 ✅** — 對齊 `platform_analytics_dashboard_admin_view.html`：metric strip 4-up + label-caps + accent purple progress + mono tabular-nums。
+
+### Added
+- **S088: AnalyticsPage rework**（M84）：
+  - Hero row：H1 22px + sub-text「技能總覽、下載趨勢與熱門排行」
+  - MetricCard 重寫：移除 shadcn Card primitive，hairline border + label-caps style (11px uppercase tracking-0.05em)
+  - Top skills card：`#15px font-medium 標題 + 「依下載次數」 label-caps subhead
+  - Rank 數字 mono tabular-nums + 13px 粗體 muted
+  - Progress bar 用 DESIGN.md accent #7F77DD（不用 generic `bg-primary`）+ 1.5px 高 + bg `#F5F4ED` (surface-secondary)
+  - Download counts mono tabular-nums
+  - Error state 用 callout-danger #FCEBEB / #791F1F
+  - 11 frontend tests / 0 fail；CSS 32.6 KB / JS 351.2 KB
+
+### S084 META completion
+所有 5 sub-specs 全 ✅：S089 BeamFrame / S085 HomePage + IconTile / S086 PublishPage / S087 SkillDetailPage / S088 AnalyticsPage. UI rework META spec roadmap 全 backlog 清空。
+
+---
+
 ## [v2.65.0] — SkillDetailPage rework（M83 完成；2026-05-02）
 
 > **UI rework** — 對齊 `skill_detail_page_docker_compose_helper.html`：xl IconTile + name 22px + version mono pill + status semantic pill + DESIGN.md callout pattern。

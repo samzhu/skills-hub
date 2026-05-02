@@ -1,10 +1,14 @@
 import { AppShell } from '@/components/AppShell'
 import { MetricCard } from '@/components/MetricCard'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useOverview } from '@/hooks/useAnalytics'
 
 /**
- * 平台數據分析頁：顯示技能總數、下載總數、本週新增及熱門技能排行榜。
+ * S088: 重寫對齊 prototype `platform_analytics_dashboard_admin_view.html`：
+ * - hero row (H1 + sub-text)
+ * - metric strip 4-up + label-caps 統一風格
+ * - top-skills 排行卡 hairline border + accent-bar progress（per DESIGN.md
+ *   accent purple #7F77DD）取代 generic primary
+ * - rank 數字 mono 大字
  *
  * 排行榜以相對長度的進度條呈現，最高下載數的技能為 100% 寬度，
  * 其餘依比例縮放（相對分佈圖，非絕對值比較）。
@@ -14,67 +18,75 @@ export function AnalyticsPage() {
 
   return (
     <AppShell>
-      <h1 className="mb-6 text-2xl font-bold">平台數據分析</h1>
+      <div className="mb-[18px]">
+        <h1 className="m-0 text-[22px] font-medium leading-[1.2]">平台數據分析</h1>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          技能總覽、下載趨勢與熱門排行
+        </p>
+      </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
+        <div className="flex items-center justify-center py-16 text-[13px] text-muted-foreground">
           載入中...
         </div>
       ) : error ? (
-        // 查詢失敗時顯示錯誤訊息；錯誤已由 main.tsx QueryCache 訂閱記錄至 console
-        <div className="flex items-center justify-center py-16 text-red-500">
+        <div
+          className="flex items-center justify-center rounded-md p-4 text-[13px]"
+          style={{ backgroundColor: '#FCEBEB', color: '#791F1F' }}
+        >
           載入數據失敗，請重新整理頁面
         </div>
       ) : stats ? (
         <>
-          <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {/* metric strip 4-up */}
+          <div className="mb-[18px] grid grid-cols-2 gap-3 sm:grid-cols-4">
             <MetricCard label="總技能數" value={stats.totalSkills} />
             <MetricCard label="總下載次數" value={stats.totalDownloads} />
-            <MetricCard label="本週新增" value={stats.newSkillsThisWeek} />
+            <MetricCard label="本週新增" value={stats.newSkillsThisWeek} subtitle="rolling 7-day" />
             <MetricCard label="熱門排行" value={`Top ${stats.topSkills.length}`} />
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>熱門技能 Top 10</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {stats.topSkills.length === 0 ? (
-                <p className="text-muted-foreground">尚無下載記錄</p>
-              ) : (
-                <div className="space-y-3">
-                  {stats.topSkills.map((skill, i) => (
-                    // key 使用 skill.name：後端以 skillId group by，同名技能不會重複出現
+          {/* top skills card */}
+          <div className="rounded-lg border border-border bg-card p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="m-0 text-[15px] font-medium">熱門技能 Top 10</h2>
+              <span className="text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
+                依下載次數
+              </span>
+            </div>
+            {stats.topSkills.length === 0 ? (
+              <p className="text-[13px] text-muted-foreground">尚無下載記錄</p>
+            ) : (
+              <div className="space-y-3">
+                {stats.topSkills.map((skill, i) => {
+                  const top = stats.topSkills[0].downloads
+                  const pct = top > 0 ? (skill.downloads / top) * 100 : 0
+                  return (
                     <div key={skill.name} className="flex items-center gap-3">
-                      <span className="w-6 text-right text-sm font-bold text-muted-foreground">
+                      <span className="w-6 text-right font-mono text-[13px] font-medium text-muted-foreground">
                         {i + 1}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="truncate font-medium">{skill.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {skill.downloads} 次下載
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-[13px] font-medium">{skill.name}</span>
+                          <span className="shrink-0 font-mono text-[12px] text-muted-foreground tabular-nums">
+                            {skill.downloads}
                           </span>
                         </div>
-                        <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-                          {/*
-                            相對分佈圖：以排名第一的技能下載數為基準（100%），
-                            其餘依比例計算寬度。guard `> 0` 防止除以零。
-                          */}
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: '#F5F4ED' }}>
+                          {/* DESIGN.md accent #7F77DD purple progress bar (vs generic primary) */}
                           <div
-                            className="h-full rounded-full bg-primary"
-                            style={{
-                              width: `${stats.topSkills[0].downloads > 0 ? (skill.downloads / stats.topSkills[0].downloads) * 100 : 0}%`
-                            }}
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${pct}%`, backgroundColor: '#7F77DD' }}
                           />
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </>
       ) : null}
     </AppShell>
