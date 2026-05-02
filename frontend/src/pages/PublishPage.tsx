@@ -1,13 +1,58 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
-import { FileText, Upload as UploadIcon } from 'lucide-react'
+import { FileText, Upload as UploadIcon, Check, AlertCircle } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { FileDropZone } from '@/components/FileDropZone'
 import { ErrorState } from '@/components/ErrorState'
 import { Input } from '@/components/ui/input'
 import { uploadSkill } from '@/api/skills'
 import { localizeApiError } from '@/lib/api-error-messages'
+
+/**
+ * S099b2 — Frontmatter live validation。
+ * 簡化 parser：檢 `---\n...\n---` block 存在 + 內含 `name:` 與 `description:` 欄位。
+ * 不做完整 YAML parse（backend 負責）；只 fail-fast 給作者立刻 feedback。
+ *
+ * Returns { hasFrontmatter, hasName, hasDescription, errors }；errors 是中文人類訊息列表。
+ */
+export function validateFrontmatter(content: string): {
+  hasFrontmatter: boolean
+  hasName: boolean
+  hasDescription: boolean
+  errors: string[]
+} {
+  const errors: string[] = []
+  const trimmed = content.trim()
+  if (!trimmed) {
+    return { hasFrontmatter: false, hasName: false, hasDescription: false, errors }
+  }
+  // 必須以 --- 開頭
+  if (!trimmed.startsWith('---')) {
+    errors.push('SKILL.md 必須以 YAML frontmatter 開頭（首行 ---）')
+    return { hasFrontmatter: false, hasName: false, hasDescription: false, errors }
+  }
+  // 抽 frontmatter block — 從第 1 個 --- 到第 2 個 ---
+  const lines = trimmed.split('\n')
+  let endIdx = -1
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === '---') {
+      endIdx = i
+      break
+    }
+  }
+  if (endIdx === -1) {
+    errors.push('Frontmatter 缺少結束 ---（需在第 N 行單獨一個 ---）')
+    return { hasFrontmatter: false, hasName: false, hasDescription: false, errors }
+  }
+  const fmBlock = lines.slice(1, endIdx)
+  // 必填欄位 — 簡單 startsWith 檢查（不處理 quote / multiline 情況）
+  const hasName = fmBlock.some((l) => /^name:\s*\S/.test(l))
+  const hasDescription = fmBlock.some((l) => /^description:\s*\S/.test(l))
+  if (!hasName) errors.push('缺必填欄位：name')
+  if (!hasDescription) errors.push('缺必填欄位：description')
+  return { hasFrontmatter: true, hasName, hasDescription, errors }
+}
 
 /**
  * 技能發佈頁：提供雙 mode 上傳新 Skill。
@@ -56,9 +101,17 @@ export function PublishPage() {
     mutation.mutate()
   }
 
-  // submit disable rule per mode
+  // S099b2: live frontmatter validation only when text mode active
+  const fmValidation = useMemo(
+    () => validateFrontmatter(skillMdText),
+    [skillMdText],
+  )
+
+  // submit disable rule per mode；text mode 加 frontmatter validation gate
   const submitDisabled = mutation.isPending
-    || (mode === 'file' ? !file : skillMdText.trim().length === 0)
+    || (mode === 'file'
+      ? !file
+      : skillMdText.trim().length === 0 || fmValidation.errors.length > 0)
 
   return (
     <AppShell>
@@ -100,6 +153,21 @@ export function PublishPage() {
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   含 YAML frontmatter（必填 <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">name</code> + <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">description</code>）+ markdown 內文。詳見 <a href="/docs/skill-md-spec" className="text-[#C9C5F2] hover:underline">SKILL.md 規範</a>。
                 </p>
+                {/* S099b2: live validation feedback — 顯給作者 quick check */}
+                {skillMdText.trim().length > 0 && (
+                  <div className="mt-2 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-2 text-[12px]">
+                    <ValidationCheck label="Frontmatter block (---)" passed={fmValidation.hasFrontmatter} />
+                    <ValidationCheck label="必填欄位：name" passed={fmValidation.hasName} />
+                    <ValidationCheck label="必填欄位：description" passed={fmValidation.hasDescription} />
+                    {fmValidation.errors.length > 0 && (
+                      <ul className="mt-1.5 list-disc pl-5 text-[11.5px] text-[#F2A6A6]">
+                        {fmValidation.errors.map((err, i) => (
+                          <li key={i}>{err}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -158,6 +226,19 @@ export function PublishPage() {
         </div>
       </div>
     </AppShell>
+  )
+}
+
+function ValidationCheck({ label, passed }: { label: string; passed: boolean }) {
+  return (
+    <div className="flex items-center gap-2 text-[11.5px] leading-relaxed">
+      {passed ? (
+        <Check className="h-3 w-3 shrink-0 text-[#6FD8B0]" />
+      ) : (
+        <AlertCircle className="h-3 w-3 shrink-0 text-[#A8A49C]" />
+      )}
+      <span className={passed ? 'text-[#6FD8B0]' : 'text-muted-foreground'}>{label}</span>
+    </div>
   )
 }
 

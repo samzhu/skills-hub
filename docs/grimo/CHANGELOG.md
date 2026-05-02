@@ -1,5 +1,29 @@
 # Changelog
 
+## [v3.3.3] — PublishPage frontmatter live validation（S099b2 完成；2026-05-02）
+
+> S099b2 — PublishPage text mode 加 live frontmatter validation。輸入 SKILL.md 內容時即時驗 `---` block + `name:` + `description:` 必填欄位；submit button gate 在所有錯誤清除前 disabled。
+
+### 🎨 Frontend (S099b2)
+- `pages/PublishPage.tsx`：
+  - 新 `validateFrontmatter(content)` pure parser（regex-based shallow validation；不取代 backend full YAML parse；fail-fast inline feedback）
+  - 偵測：(a) 必須以 `---` 開頭 (b) 必須有結束 `---` (c) frontmatter block 內含 `name:` + `description:` 非空值
+  - 新 `ValidationCheck` sub-component — ✓ 綠 / ⚠️ 灰 + label
+  - textarea 下方 inline 顯 3 個 check + 詳細 error 列表
+  - submit gate：text mode + errors > 0 → disabled
+
+### ✅ Tests
+- 新檔 `pages/PublishPage.test.tsx` — **8 ACs**（per 2026-05-02 methodology upgrade「3-5 反例 / round」）：
+  - 1 positive：valid frontmatter + name + description
+  - 5 negative cases：empty / no-leading-delim / no-closing-delim / missing-name / missing-description
+  - 2 edge cases：empty value field / leading whitespace
+- 129 → 137 tests PASS（+8 new）
+- `npx tsc --noEmit` clean
+
+### S099 META 進度
+- 4/8 sub-specs shipped (S099a / S099b core / S099b2 / S099e5)
+- 剩 S099b3 markdown preview / S099c cross-marketplace / S099d LLM rubric / S099e1-4 scanner upgrades
+
 ## [v3.3.2] — ErrorState shared component + 2 demo migrations（S100d 完成；2026-05-02）
 
 > S100d — 抽 5+ 重複的紅色 callout pattern 為 shared `ErrorState` primitive。Per S100 audit 各 page error fallback UX 不一致；統一 callout token + 兩 variant (inline / centered) 解決。
