@@ -33,8 +33,8 @@
 |---|----------|----------|----------|--------|
 | 3.1 | positive | Click「最新」sort chip | 卡片重新排序 by createdAt DESC | 📋 |
 | 3.2 | positive | Click「風險低」sort chip | 卡片排序 by NONE→LOW→MEDIUM→HIGH | 📋 |
-| 3.3 | positive | Toggle RiskFilterSidebar「LOW」 | 只顯 LOW 卡片；「全部」reset 回未篩 | 📋 |
-| 3.4 | edge | 多 risk filter 同時 (LOW + MEDIUM) | OR 邏輯：兩者皆顯 | 📋 |
+| 3.3 | positive | Toggle RiskFilterSidebar「LOW」 | onToggle('LOW') called；selected tier 顯 active | ✅ RiskFilterSidebar.test.tsx AC-3+5 |
+| 3.4 | edge | 多 risk filter Set 同時包多 tier | count breakdown 反映各 tier；click「全部」call onClear | ✅ RiskFilterSidebar.test.tsx AC-1+4 |
 
 ## Round 4 — Publish flow（完整 Upload → Validate → Review → Live）
 
@@ -106,11 +106,11 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 |-------|-------|---------|------------|
 | 1 Browse | 5 | 1 | 4 |
 | 2 Search | 4 | 0 | 4 |
-| 3 Filter/Sort | 4 | 0 | 4 |
+| 3 Filter/Sort | 4 | 2 | 2 |
 | 4 Publish | 7 | 3 | 4 |
 | 5 Skill Detail | 8 | 3 | 5 |
 | 6 Docs IA | 2 | 0 | 2 |
 | 7 Empty state | 3 | 3 | 0 |
-| **Total** | **33** | **10** | **23** |
+| **Total** | **33** | **12** | **21** |
 
 current component test count: 44（cover ~6 ledger ACs + 38 unit-level invariants）。E2E browser-level scenarios（27 planned）需 Playwright / Cypress —— defer until backend stabilizes 或 cloud-scheduled E2E run。

@@ -1,5 +1,22 @@
 # Changelog
 
+## [v3.1.6] — RiskFilterSidebar tests（ledger Round 3.3+3.4 ✅；2026-05-02）
+
+> Mode B — fill 2 ledger 📋 rows (Round 3.3 toggle / 3.4 multi-tier counts)。S098d2 client-side aggregation invariants 驗證。Tests 65 → 70 (+5)。
+
+### ✅ Tests
+- 新檔 `components/RiskFilterSidebar.test.tsx` — 5 ACs：
+  - count breakdown derivation（null risk 不計入；各 tier 正確 count）
+  - empty Set → 「全部」active state
+  - click tier button → onToggle(tier) call
+  - click 「全部」→ onClear call
+  - selected tier → active state visual
+- `docs/grimo/test-cases.md`：Round 3.3 + 3.4 標 ✅；Round 3 done count 0→2；Total 10→12（21 still planned）
+
+### 結果
+- 65 → 70 tests PASS（+5 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.1.5] — RiskBadge component tests（4-tier S096c invariants；2026-05-02）
 
 > Mode B — 為 S096c 4-tier risk system 補 component test。RiskBadge 是 SkillCard / SkillDetailPage / RiskFilterSidebar 共用 primitive；isolated 行為驗證。
