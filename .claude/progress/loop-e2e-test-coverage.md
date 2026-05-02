@@ -310,6 +310,71 @@
 >     - 寫 spec doc 7 個 AC（yaml lint / gradle test / start / graceful stop / re-start / down without -v / down with -v 全 cover）
 >     - ship v2.68.0 (M87)。Tech debt 清掉 1（3 active → 2：Storage orphan reaper / Production CORS）。
 >     **0 new bugs**（pure dev infra polish）。連續 0-bug ticks 累計 4 (80/82/83/84) 滿足 saturation pivot；無 active spec — **下個 tick 進 Mode B（pick 未測 round）**或印 final summary（看 user 是否仍要拓 surface）。
+>   tick 85 (loop cron 30m 21a440cb, Round 36 system invariants under continuous run, 2026-05-02):
+>     R36 long-lifetime audit (system 已連續 16+ hours running):
+>     **Baseline**: 135 skills (PUBLISHED 103 + DRAFT 26 + SUSPENDED 6) / 122 versions / 129 vectors / outbox 1312 (1312 completed / 0 pending / 0 stale_1h) / domain_events 767 / download_events 165
+>     **9/9 真 invariants GREEN**:
+>     - 36.1 audit log per-aggregate sequence monotonic ✓ 0 gaps
+>     - 36.2 outbox 0 stale_1h ✓
+>     - 36.3a/b/c vector store consistency: 0 active-no-vector / 0 SUSPENDED-with-vector / 0 orphan-vectors ✓
+>     - 36.5 0 orphan_versions ✓
+>     - 36.6 sequence starts at 1 per aggregate ✓
+>     - 36.7 0 PUBLISHED-without-version ✓
+>     - 36.8 (aggregate_id, sequence) UNIQUE 0 dup ✓
+>     - 36.9 outbox 100% completion (1312/1312) ✓
+>     - 36.4 download_events=165 vs sum_count=149 — 16-gap 為 R23.5 race test historical residue（per tick 80 R33.9 紀錄；dev fixture only）
+>     **R36 deeper probes**:
+>     - 36.10 risk distribution post-S091: LOW=87 / HIGH=20 / MEDIUM=1 / NULL=27 (=26 DRAFT bare-POST shell skills + 1 PUBLISHED `s029-suspend-block` historical)
+>     - 36.11 ACL `*:read` seed coverage: 102/103 PUBLISHED ✓；1 anomaly (`test-loop-skill` 33h-old, only `user:alice:*` no `*:read`) — historical drift
+>     - 36.13 1 PUBLISHED with NULL risk_level (`s029-suspend-block`) — historical scan miss；not in outbox pending；not active bug
+>     **0 new bugs**。2 historical anomalies 屬 dev DB drift (per CLAUDE.md「Known Tech Debt」DB 既有畸形 entries 需 future migration), 不在 ship 路徑。連續 0-bug ticks 累計 **5** (80/82/83/84/85)；無 active spec → **saturation pivot 條件達成 → loop 自然終結**。
+
+## 🏁 Final Summary (Loop session ended at tick 85, 2026-05-02)
+
+> **Cron**: `21a440cb` 30m interval — 本 tick 結束後 CronDelete 停止
+> **Lifetime**: 2026-04-25（tick 0 / S014 Postgres 遷移基礎建設）→ 2026-05-02（tick 85 / 連 5 ticks 0 bugs saturation）
+> **Methodology**: docs/grimo/loop-testing-methodology.md Part A (cron-driven E2E) + Part B (roadmap-driven spec advancement)
+
+### Specs Shipped This Loop Session
+
+| Tick | Spec | Title | Version | Type |
+|------|------|-------|---------|------|
+| 79 | S090 | Semantic search `?limit=` configurable | v2.60.0 | polish (close R25.7) |
+| 81 | S091 | LlmJudge prompt calibration | v2.61.0 | bug-fix (Bug AN) |
+| ~73 | S089 | BeamFrame hand-roll (drop border-beam) | v2.62.0 | UI rework |
+| ~73 | S085 | HomePage rework + IconTile | v2.63.0 | UI rework |
+| ~73 | S086 | PublishPage rework | v2.64.0 | UI rework |
+| ~73 | S087 | SkillDetailPage rework | v2.65.0 | UI rework |
+| ~73 | S088 | AnalyticsPage rework + MetricCard | v2.66.0 | UI rework |
+| 83 | S092 | FE i18n VALIDATION_ERROR field-level detail concat | v2.67.0 | polish (close R18.3) |
+| 84 | S093 | Dev DB persistence (compose named volume + start-only) | v2.68.0 | dev infra |
+
+**Total this session**: 9 specs / Phase 4 累計 590 pts
+**Bug ledger**: A→AN（14 bugs A through AN shipped；no Bug AO 此 session）
+**Coverage 飽和**: 9 真 invariants GREEN / risk distribution healthy after S091 / 102/103 PUBLISHED with default ACL / outbox 100% completion / vector store S033 invariant
+
+### Key Discoveries
+
+- **S091 calibration prompt fix high leverage**：1-shot rewrite of `SYSTEM_PROMPT` 同時 fix 整類 over-classification (R34 → R35 5/5 PASS validation)；anti-pattern 列表與正面定義同等重要
+- **Saturation 不等於 0 bug**：tick 81 R34 在 4 連 0-bug 後仍找到 Bug AN（LLM Judge 啟用 + canonical Anthropic re-scan 觸發）；saturation 是「找新 surface」訊號而非「保證 100% 健康」
+- **Dev DB 持久化是 design contract 不是 happy accident**（S093）：之前 16 hours intact 是 abnormal-exit lucky-survived；named volume + start-only lifecycle 把它變 architecture guarantee
+- **Backend message 預設已 field-aware**（S092 audit）：i18n template 端 concat 即可暴露 detail，不需改 backend
+- **Historical DB drift 不歸 ship 路徑**（R36）：2 個 PUBLISHED anomalies 是 dev fixture 殘留 + 早期 ship pipeline 缺陷；future migration spec 處理
+
+### Tech Debt After Saturation (priority for next session)
+
+| # | Item | Source | Priority |
+|---|------|--------|----------|
+| 1 | Storage orphan reaper job | tick 78 R32.3 (14 orphans累積) | low (dev disk only) |
+| 2 | Name regex tightening (Docker-tag style) | tick 69 R26 polish observation | low (cosmetic) |
+| 3 | Production CORS 配置 | tick 63 R20.4 | required pre-deploy |
+| 4 | DB historical drift migration | R36 (2 anomalies) | low (dev only) |
+
+### Loop Mechanics Verified
+
+- 30m cron interval works for combined Mode A polish + Mode B testing serial flow
+- Stacked user request queueing (S093 from tick 83 user observation) integrates cleanly into next-tick auto-pickup
+- saturation pivot triggers correctly when both backlog empty + 連續 ≥3 0-bug ticks 達成
 
 ## Coverage Summary (as of v2.46.0)
 
