@@ -76,6 +76,8 @@ Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 4 negative 
 
 ## Round 5 — Skill Detail（5-tab + sparkline + version diff）
 
+Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 5 negative cases (5.9-5.13) cover empty/boundary/format/state-conflict/malicious 五類。
+
 | # | Category | Scenario | Expected | Status |
 |---|----------|----------|----------|--------|
 | 5.1 | positive | `/skills/:id` PUBLISHED → 30d sparkline 顯 | SkillHero + Sparkline 120×32 purple polyline | 📋 |
@@ -85,7 +87,12 @@ Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 4 negative 
 | 5.5 | positive | Version Diff entry — VersionList ≥ 2 versions → 顯「比較版本變化」連結 | href = `/skills/:skillId/diff`；單版本不顯；空版本顯「尚無版本記錄」；最新 badge + download href 一併驗 | ✅ VersionList.test.tsx 5 ACs |
 | 5.6 | positive | `/skills/:id/diff` default | Compares latest 2 versions | ✅ AC-1 in VersionDiffPage.test.tsx |
 | 5.7 | edge | `?from=&to=` 同版本 | Should still render（delta = 0）| 📋 |
-| 5.8 | negative | versions < 2 | Fallback message「技能版本不足 2 個」| ✅ AC-3 in VersionDiffPage.test.tsx |
+| 5.8 | negative (boundary <2) | versions < 2 | Fallback message「技能版本不足 2 個」| ✅ AC-3 in VersionDiffPage.test.tsx |
+| 5.9 | negative (empty) | sparkline 30d 全 0 download | Sparkline render flat-zero polyline at bottom (max=1 防 0 division) | ✅ AC-3 in Sparkline.test.tsx |
+| 5.10 | negative (format) | `/skills/:id/diff?from=invalid&to=invalid` | Fallback to default selection (latest 2)；不 crash | 📋 |
+| 5.11 | negative (state conflict) | SUSPENDED skill detail page | SUSPENDED status pill + danger callout「此技能已被停用」+ download link disabled / hidden | 📋 |
+| 5.12 | negative (malicious) | skill name 含 HTML/JS payload `<img onerror=alert(1)>` | React 自動 escape 為 text node；無 script execution；name 顯字面 string | 📋 needs XSS smoke test |
+| 5.13 | negative (concurrent) | 切 tab 時 useQuery refetch in-flight | Tab switch 不阻塞；舊 tab data 顯到新 tab data 來；無 flash error | 📋 |
 
 ## Round 6 — Docs IA（11 個 active link）
 
@@ -137,10 +144,10 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 | 2 Search | 4 | 0 | 4 | 1 |
 | 3 Filter/Sort | 4 | 2 | 2 | 0 |
 | 4 Publish | **14** (+7 reinforced) | 5 | 9 | **6** ✅ |
-| 5 Skill Detail | 8 | 3 | 5 | 1 |
+| 5 Skill Detail | **13** (+5 reinforced) | 4 | 9 | **6** ✅ |
 | 6 Docs IA | 2 | 0 | 2 | 0 |
 | 7 Empty state | 3 | 3 | 0 | 0 |
-| **Total** | **44** | **14** | **30** | **13** |
+| **Total** | **49** | **15** | **34** | **18** |
 
 > Per 2026-05-02 methodology upgrade：每 round 至少 3-5 反例。Round 4 已強化（6 反例 cover empty/boundary/format/state-conflict/malicious 五類）；其餘 rounds 待 backfill 至同樣強度（Round 1/2/3/5/6/7 反例 count 0-1 不足）。
 
