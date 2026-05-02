@@ -7,6 +7,13 @@ services:
       POSTGRES_PASSWORD: secret
     ports:
       - '5432:5432'
+    # S093: named volume 持久化 dev DB；配合 application-local.yaml `lifecycle-management: start-only`，
+    # backend stop 後 compose 不被 down，container 與 volume 都跨 session 留存。
+    # 即使 user 手動 `docker compose down`（不加 -v）容器消失，named volume 仍存活，重新 up
+    # 即接回既有資料。Anonymous volume（pgvector image 預設 VOLUME 宣告）在無此 mount 時每次
+    # `docker compose up` 都建新 instance → 舊資料變 dangling，dev 體驗等同 fresh DB。
+    volumes:
+      - 'pgvector-data:/var/lib/postgresql/data'
     labels:
       org.springframework.boot.service-connection: 'postgres'
     healthcheck:
@@ -41,3 +48,8 @@ services:
   #     - '3000:3000'
   #     - '4317'
   #     - '4318'
+
+# S093: 顯式宣告 named volume — 不指定 driver / 路徑，Docker 預設用 local driver 自動 manage 路徑。
+# 名稱會帶 compose project prefix（通常 `backend_pgvector-data`），跨 session 唯一。
+volumes:
+  pgvector-data:

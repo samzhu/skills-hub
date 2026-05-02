@@ -13,7 +13,12 @@ spring:
   docker:
     compose:
       enabled: true
-      lifecycle-management: start-and-stop
+      # S093: start-only — bootRun start 時拉 compose；bootRun stop 不 down container。
+      # 配合 compose.yaml `pgvector-data` named volume 讓 dev DB 跨 session 持久。
+      # 預設 start-and-stop 在 bootRun 結束時自動 `docker compose down`，每次重啟等同 fresh DB
+      # （anonymous volume churn）。dev infra 偏好持久化以保留累積測試資料、validate 跨 session 行為。
+      # 手動清理：`docker compose -f backend/compose.yaml down -v` 一次清掉容器與 named volume。
+      lifecycle-management: start-only
 
   # ----- PostgreSQL 連線（與 gcp profile 同條 URL 結構）-----
   # 本機 Docker Compose pgvector 容器暴露 localhost:5432；

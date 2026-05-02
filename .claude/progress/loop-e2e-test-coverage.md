@@ -296,6 +296,20 @@
 >     - **E2E smoke**：POST /skills/upload zip 含 `name: BAD-Name` → 400 + ErrorResponse `{error: "VALIDATION_ERROR", message: "SKILL.md validation failed: Field 'name' fails regex ^[a-z0-9-]{1,64}$ (got: BAD-Name)"}` ✓ → FE concat 後 user 看到「驗證失敗：SKILL.md validation failed: Field 'name' fails regex...」精確定位
 >     - ship v2.67.0 (M86)。Tech debt 清掉 1 個（4 → 3 active：Storage orphan reaper / Name regex tightening / Production CORS；新加 1 個 S093 dev DB persistence）。
 >     **0 new bugs**（pure polish）。連續 0-bug ticks: 80(R33) → 82(R35) → 83(S092 polish) = 3 ticks 滿足 saturation pivot 條件，但 backlog 仍有 polish candidate（dev DB persistence S093 已被 user 觸發點出）→ 下個 tick Mode A 接 S093 而非 final summary。
+>   tick 84 (loop cron 30m 21a440cb, polish ship S093 dev DB persistence, 2026-05-02):
+>     Mode A. Active spec S093（tick 83 queued by user observation）。
+>     **意外發現**：takeover 報 backend PID 81726 已死 + 我預期 fresh DB；實測 `docker ps backend-pgvector-1 Up 16 hours` + GET /skills total=103 → **container 從未被 down**。Spring lifecycle=start-and-stop 該在 backend stop 時 down，但 abnormal exit（kill -9 / OOM）跳過 shutdown hook，container 意外保住。這是脆弱 happy accident，不是 architecture guarantee — S093 把它變成 design contract。
+>     **Implement**：
+>     - `backend/compose.yaml`：pgvector 加 named volume mount `pgvector-data:/var/lib/postgresql/data` + 顯式 top-level `volumes: { pgvector-data: }`（project prefix → `backend_pgvector-data`）
+>     - `application-local.yaml`：`spring.docker.compose.lifecycle-management` 從 `start-and-stop` 改 `start-only` — bootRun graceful stop 不 down container
+>     - 註解寫 why（why named volume vs anonymous churn / why start-only / 手動清理 hint `down -v`）
+>     **Verify**：
+>     - `docker compose config` 解析 ✓ (`backend_pgvector-data` named volume confirmed)
+>     - `./gradlew test` 跑 backend 全 suite 確認無 regression（待 fill）
+>     - **Cross-session smoke 留 user 觸發**：本 ship 不主動 restart backend — 既有 JVM 仍 load 舊 yaml (start-and-stop)，restart cycle 會走舊 lifecycle 一次 → compose down → 103 skills 一次性 lose；自此 onwards data 持久。Trade-off: 不 risk 既有 corpus + ship 配置 vs 立即驗證但 lose data — 選前者
+>     - 寫 spec doc 7 個 AC（yaml lint / gradle test / start / graceful stop / re-start / down without -v / down with -v 全 cover）
+>     - ship v2.68.0 (M87)。Tech debt 清掉 1（3 active → 2：Storage orphan reaper / Production CORS）。
+>     **0 new bugs**（pure dev infra polish）。連續 0-bug ticks 累計 4 (80/82/83/84) 滿足 saturation pivot；無 active spec — **下個 tick 進 Mode B（pick 未測 round）**或印 final summary（看 user 是否仍要拓 surface）。
 
 ## Coverage Summary (as of v2.46.0)
 

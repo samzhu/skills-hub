@@ -189,7 +189,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M80: Semantic search `?limit=` configurable | S090 | XS(2) | 555 | ✅ `v2.60.0` (2026-05-02 — `?limit=` 1-50 cap；close R25.7 missing-feature；FE 「show more」UX enabled) |
 | Phase 4 | M81: LlmJudge prompt calibration | S091 | XS(3) | 558 | ✅ `v2.61.0` (2026-05-02 — `SYSTEM_PROMPT` 重寫區分 demonstrated vs theoretical；fix Anthropic canonical skills 全 HIGH bug AN；handover/planning/deep-research HIGH→LOW，真風險維持 HIGH) |
 | Phase 4 | M86: FE i18n VALIDATION_ERROR detail concat | S092 | XS(2) | 588 | ✅ `v2.67.0` (2026-05-02 — `ERROR_MESSAGE_BUILDER` function map；VALIDATION_ERROR / CONSTRAINT_VIOLATION concat backend field-aware message；FE tests 11→18；close R18.3 tech-debt「訊息過於 generic」) |
-| Phase 4 | M87: Dev DB persistence (compose named volume) | S093 | XS(2) | — | 📋 planned — `backend/compose.yaml` 加 named volume + `application-local.yaml` 改 `spring.docker.compose.lifecycle-management: start-only`；讓 dev PG 跨 session 持久（user 觀察容器資料不保存；S092 ship 期間 backend 重啟發現 fresh DB） |
+| Phase 4 | M87: Dev DB persistence (compose named volume) | S093 | XS(2) | 590 | ✅ `v2.68.0` (2026-05-02 — `compose.yaml` 加 named volume `backend_pgvector-data` + `application-local.yaml` `lifecycle-management: start-only`；dev PG 跨 session 持久；首次 transition 一次 fresh，自此 onwards 累積) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）

@@ -1,5 +1,22 @@
 # Changelog
 
+## [v2.68.0] — Dev DB persistence: compose named volume + start-only lifecycle（M87 完成；2026-05-02）
+
+> **Dev infra polish** — 解 dev DB 不持久問題；加 named volume + `start-only` lifecycle 讓 PG container 跨 backend stop/restart 完整保留資料。
+
+### Added
+- **S093: Dev DB persistence**（M87 / XS 2 pts）：
+  - `backend/compose.yaml`：pgvector service 加 named volume mount `pgvector-data:/var/lib/postgresql/data` + 顯式 top-level volume 宣告（project prefix `backend_pgvector-data`）
+  - `application-local.yaml`：`spring.docker.compose.lifecycle-management` 從 `start-and-stop` 改 `start-only` — bootRun stop 不 down compose container
+  - 配合：累積測試 corpus 不再每次 restart fresh / outbox drain / vector_store 等持久路徑可跨 session 驗證
+  - 舊行為：每次 graceful stop → docker compose down → anonymous volume churn → fresh DB
+  - 新行為：stop 不動 container；`docker compose down` 不加 `-v` 仍保 volume；`docker compose down -v` 是顯式 reset 路徑
+
+### Transition cost
+- 首次 user-triggered restart 仍會走 JVM 內舊 lifecycle（start-and-stop）一次 → 一次 fresh DB；自此 onwards 持久
+
+---
+
 ## [v2.67.0] — FE i18n VALIDATION_ERROR field-level detail concat（M86 完成；2026-05-02）
 
 > **Polish ship** — 關閉 tick 60 R18.3 tech-debt「i18n VALIDATION_ERROR 訊息過於 generic」。User 看到驗證錯誤時直接顯示具體 field+value，不需開 DevTools 定位。
