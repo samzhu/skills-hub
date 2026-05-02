@@ -1,8 +1,8 @@
 # S095 — Risk tier 4-level (split LOW → NONE + LOW)
 
-> **Status**: planning (📋 queued; ship after S094a/S094b)
+> **Status**: ⛔ **superseded by S096c** (`v2.75.0`, 2026-05-02 — UI v2 META 將 NONE tier 與 RiskBadge dark-theme redesign 合一個 sub-spec ship 一次到位 per Q3 grill 2026-05-02)
 > **Type**: backend enum + classify logic + FE badge + DB migration
-> **Estimate**: S / 9 pts
+> **Estimate**: S / 9 pts (~9 pts 實際 ship 進 S096c trim total M→9)
 > **Depends on**: none (orthogonal to S094 META; can ship independently after META)
 > **Source of truth**: agent aafc4ed560e7e5916 competitor research (Cisco Skill Scanner / CVSS / Snyk / npm / OWASP MCP)
 
@@ -160,8 +160,35 @@ Per `qa-strategy.md` 標準 pipeline；不引入 per-spec 工具。
 Run: `cd backend && ./gradlew test && cd ../frontend && npm test && npm run build`
 Pass: All AC-tagged tests green; both build artifacts generated.
 
-## §7 Result
+## §7 Result — ⛔ Superseded (not shipped as own spec)
 
-待 ship 後填。
+**Superseded by S096c** `v2.75.0` (2026-05-02)。S096c 的範圍包含本 spec 全部技術內容 + UI v2 dark-theme RiskBadge redesign，merge 一次 ship 取代分兩 spec：
 
-**ship as v2.7x.0** (M89; depends on S094a/S094b ship 順序確定後分派 milestone number)。
+### Decision rationale (per Q3 grill 2026-05-02)
+
+| Question | Resolution |
+|----------|------------|
+| 是否兩 spec 各自 ship？ | NO — RiskBadge 4-tier visual + RiskLevel.NONE backend enum 是 hard-coupled（badge needs new tier value to render；enum 無 frontend 顯示等於 dead code），分開 ship 中間態不可用 |
+| 為何併進 S096c (Routing Schema)？ | S096c 已 touch RiskBadge.tsx (route schema 改動觸發 dark-theme migration)；同檔同 PR 一次到位 vs 連兩個 PR 改同檔 |
+| Trim impact？ | S095 estimate 9 pts + S096c estimate M(12) 合併後實際 ship ~9 pts（trim total M→9：deferred Flyway SQL migration for 既有 LOW skills；runtime classify only — 對齊 S095 §3 的 「migration optional」原則） |
+
+### What actually shipped in S096c
+
+- ✅ Backend `RiskLevel.NONE` enum value 加入
+- ✅ `classifyRiskLevel(...)` 三條件分流（pure-docs / allowed-tools-no-scripts / scripts-clean）→ NONE
+- ✅ Frontend `RiskBadge` 4-tier dark-theme variants（NONE green-soft / LOW / MEDIUM / HIGH）
+- ✅ Canonical route `/skills/:author/:name` + `:id` alias（S096c 自身 scope）
+
+### Deferred from S095 §3 (carried forward)
+
+- **Flyway SQL migration for 既有 LOW skills**：runtime-only path 已足夠（new uploads classified correctly；既有 LOW skills 仍顯 LOW 直到 re-upload / re-classify event 觸發）。Polish backlog 若需 batch backfill 再開新 spec。
+
+### Lesson recorded
+
+當兩 spec 是 hard-coupled 同檔 + 同 PR 範圍時（backend enum 加 + frontend badge tier 加），**分 spec 反而製造 ship 不可用中間態**。Selection priority 「META spec before sub-specs」與「smallest size first」之間有第三條隱含 rule：**hard-coupled split 應 merge**，已寫入 S096c §8 lesson。
+
+### Audit trail
+
+- Roadmap row line 198：`⛔ superseded — absorbed into S096c`
+- Spec doc 從 specs/ 移至 archive/（本 closeout commit 動作）
+- Pts 不重複計算：S095 9 pts 已涵蓋於 S096c 9 pts trim total，cumulative roadmap pts 不加 S095
