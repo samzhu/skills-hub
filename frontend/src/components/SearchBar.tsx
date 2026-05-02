@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { BorderBeam } from 'border-beam'
+import { BeamFrame } from '@/components/BeamFrame'
 
 /** SearchBar 的 props 定義 */
 interface SearchBarProps {
@@ -16,19 +16,19 @@ interface SearchBarProps {
  * 使用 `type="search"` 以啟用瀏覽器內建的清除按鈕（X）；
  * 父元件的 onChange 已處理清空邏輯（回傳空字串），兩者互不衝突。
  *
- * `BorderBeam` 是 border-beam 套件提供的裝飾性動畫外框，
- * 純視覺效果，不影響元件行為。
+ * S089: 改用自寫的 `BeamFrame`（取代 border-beam npm package）。
  *
- * S083: 傳三個 props 校準視覺：
- * - `theme="light"` — 切到 light-tuned ThemeColors；package default `dark` 在 #FFFFFF 背景
- *   下 saturation 過高、glow 偏霧（user 反饋「沒那麼好看」）。
- * - `duration={4.5}` — 對齊 DESIGN.md §Elevation §3 「4-5s per rotation」；package default 1.96 偏快。
- * - `strength={0.7}` — 對齊 jakubantalik playground user 偏好；default 1 在 SaaS 螢幕上太強。
- * `colorVariant`/`size`/`borderRadius` 用 default（`colorful`/`md`/自動偵測 child）。
+ * 研究結論（S084 §2.2）：border-beam npm light theme 用 rgba(0,0,0,x) 黑色透明
+ * inner-shadow，在 #FFFFFF 白背景物理上做不出 glow。Prototype HTML
+ * (`skills_hub_homepage_mockup.html` `.sh-search-wrap`) 直接 hand-roll
+ * conic-gradient + 1px padding wrapper，與 DESIGN.md `card-featured` pattern 1:1 對齊。
+ *
+ * BeamFrame 1:1 port prototype CSS：transparent 0-300° → accent 紫 #7F77DD 330° →
+ * info 藍 #378ADD 345° → transparent；4s rotation；1px padding 露 ring。
  */
 export function SearchBar({ value, onChange }: SearchBarProps) {
   return (
-    <BorderBeam theme="light" duration={4.5} strength={0.7}>
+    <BeamFrame>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -36,9 +36,9 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
           placeholder="搜尋名稱、描述或分類..."
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-12 rounded-lg pl-10 text-base"
+          className="h-12 rounded-lg pl-10 text-base border-none focus-visible:ring-0 focus-visible:ring-offset-0"
         />
       </div>
-    </BorderBeam>
+    </BeamFrame>
   )
 }

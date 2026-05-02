@@ -1,5 +1,23 @@
 # Changelog
 
+## [v2.62.0] — BeamFrame hand-roll component（M85 完成；2026-05-02）
+
+> **Drop dependency** — S083 試 BorderBeam npm `theme="light"` 但物理上做不出 glow（rgba(0,0,0,x) inner-shadow on white）。Prototype HTML `.sh-search-wrap` 直接 hand-roll conic-gradient + 1px frame，與 DESIGN.md `card-featured` pattern 1:1 對齊。Drop dep + 自寫 component 方案。
+
+### Added
+- **S089: BeamFrame hand-roll**（M85）：
+  - `frontend/src/components/BeamFrame.tsx`：1px padding + `::before` conic-gradient + 4s rotation；1:1 port prototype CSS
+  - SearchBar 改用 BeamFrame
+  - drop `border-beam@1.0.1` npm dep
+  - JS bundle **396 KB → 347 KB（−49 KB / -7 KB gzip）**
+  - 11 frontend tests / 0 fail
+
+### Verification
+- Chrome smoke: HomePage SearchBar 顯 60° accent purple arc 旋轉，per DESIGN.md §Elevation 4s spec
+- BeamFrame reusable for primary CTAs in 後續 S085/S086+
+
+---
+
 ## [v2.61.0] — LlmJudge prompt calibration（M81 完成；2026-05-02）
 
 > **Bug fix** — LlmJudge engine 對任何 `allowed-tools: Bash` 的 skill 都打 OWASP-AS4 sev=8.5（theoretical command injection）→ Anthropic canonical skills (handover / planning-project / deep-research) 全變 HIGH。Real production impact: 所有正規 skill imports 顯示「高風險」→ user trust 受損，rating 失去訊號意義。E2E test loop tick 81 R34 anthropic skill re-scan 系統發現（bug AN）。
