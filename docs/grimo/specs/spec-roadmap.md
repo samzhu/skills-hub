@@ -195,6 +195,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M88b: Docs Walkthrough `/docs/your-first-skill` | S094d | XS(5) | 600 | ✅ `v2.70.0` (2026-05-02 — `YourFirstSkillPage.tsx` single-page JSX no parser dep + DocsLayout/Sidebar; AppShell 加「文件」nav；FE tests 23→28；S094 META 2/4) |
 | Phase 4 | M88c: My Skills (Author Dashboard) `/my-skills` | S094a | M(12-13) | — | 📋 planned — `?author=` filter + `/skills/{id}/analytics/trend?days=30` endpoint + Sparkline component；prototype `my_skills_author_dashboard.html`；P6 SBE missing |
 | Phase 4 | M88d: Semantic Search Results `/search` | S094b | M(12-13) | — | 📋 planned — split inline → dedicated route + AI intent summary endpoint (POC required: prompt + ≤2s P95 latency)；prototype `semantic_search_results_page.html`；P5 polish |
+| Phase 4 | M89: Risk tier 4-level (split LOW → NONE + LOW) | S095 | S(9) | — | 📋 planned — 對齊 Cisco Skill Scanner + CVSS（NONE band）；split 0-finding pure-docs skill（NONE 綠 badge）vs minor-finding LOW skill（藍 badge）；SQL bulk migration 既有 87 LOW；ship after S094a+S094b（current META 順序：a→b→S095） |
 | Phase 4 | (deferred) Admin Review Queue | S094e | — | — | ⏸ post-MVP — PRD B6 Backlog；`admin_review_queue_and_detail.html` |
 | Phase 4 | (deferred) Onboarding Wizard | S094f | — | — | ⏸ post-MVP — `onboarding_wizard_step_2_of_4.html` |
 | Phase 4 | (deferred) Landing Page | S094g | — | — | ⏸ post-MVP — `skills_hub_landing_page.html` |
