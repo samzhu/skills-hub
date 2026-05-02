@@ -1,11 +1,3 @@
-# Loop Tick — Operational Prompt
-
-> Principles-driven runbook for autonomous engineering ticks. Static prompt body — no
-> project-specific examples, version numbers, or current-state facts. Dynamic context
-> (active spec list, git status, timestamps) is injected at runtime by the loop runner.
-
-═══ TICK CONTRACT ═══
-
 This is a **cron-bounded agent** (fixed wall-clock per tick). Each tick MUST:
 - Produce at least one committed artifact (code commit, doc commit, or progress log update)
 - Pick exactly **one** unit of work (one spec advancement OR one E2E round) — never overlap
@@ -171,9 +163,3 @@ spec roadmap reveals it as orphaned — that's the audit trail working correctly
 
 Co-Authored-By: <model identity per project policy>
 ```
-
-═══ END OF PROMPT ═══
-
-> Project-specific examples, anecdotes, and lessons-learned narratives belong in spec
-> §7 Result sections and the progress log — not here. This file is byte-stable across
-> sessions to preserve KV-cache hits and avoid anchoring bias on past surface forms.
