@@ -7,8 +7,10 @@ import { IconTile } from '@/components/IconTile'
 import { RiskBadge } from '@/components/RiskBadge'
 import { BeamFrame } from '@/components/BeamFrame'
 import { EmptyState } from '@/components/EmptyState'
+import { Sparkline } from '@/components/Sparkline'
 import { useMe } from '@/hooks/useMe'
 import { useSkillList } from '@/hooks/useSkillList'
+import { useSkillStats } from '@/hooks/useSkillStats'
 import type { Skill } from '@/types/skill'
 
 /**
@@ -166,6 +168,8 @@ function TabPill({
 }
 
 function SkillRow({ skill, isLast }: { skill: Skill; isLast: boolean }) {
+  // S096d3: 30d sparkline data；只 PUBLISHED skill 拉（DRAFT/SUSPENDED 沒下載資料）
+  const { data: trend } = useSkillStats(skill.status === 'PUBLISHED' ? skill.id : undefined, '30d')
   return (
     <Link
       to={`/skills/${skill.id}`}
@@ -182,6 +186,10 @@ function SkillRow({ skill, isLast }: { skill: Skill; isLast: boolean }) {
           <RiskBadge level={skill.riskLevel} />
         </div>
         <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">{skill.description}</p>
+      </div>
+      {/* S096d3: 30d sparkline column (per prototype my_skills_author_dashboard.html) */}
+      <div className="hidden shrink-0 sm:block" aria-label="30d download trend">
+        {trend && <Sparkline data={trend} width={64} height={20} />}
       </div>
       <div className="flex shrink-0 flex-col items-end text-right">
         <span className="font-mono text-[12px] tabular-nums">

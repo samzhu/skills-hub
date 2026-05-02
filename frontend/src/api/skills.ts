@@ -55,6 +55,15 @@ export function fetchSkillByAuthorAndName(author: string, name: string): Promise
 }
 
 /**
+ * S096d3 — per-skill 下載趨勢 (sparkline 資料源)。
+ * 回傳長度 N 的整數陣列：index 0 = 最舊那天，index N-1 = 今天。
+ * `period` 接受 `7d` | `30d` (default) | `90d`；其他 fallback 30d.
+ */
+export function fetchSkillStats(id: string, period: '7d' | '30d' | '90d' = '30d'): Promise<number[]> {
+  return apiFetch<number[]>(`/skills/${id}/stats?period=${period}`)
+}
+
+/**
  * 取得所有技能分類及其數量，供側邊欄篩選使用。
  *
  * @returns 分類清單（後端依數量降冪排序）

@@ -1,5 +1,47 @@
 # Changelog
 
+## [v2.78.0] — Per-skill stats endpoint + Sparkline + MySkills integration（S096 META 4c/8；M90d3 完成；2026-05-02）
+
+> **P6 SBE 補完** — Sparkline 從 S094a deferred 終於 ship。MySkills table 顯每個 PUBLISHED skill 的 30d 下載趨勢，作者一眼看出哪 skill 在升 / 降。
+
+### Added
+- **Backend `GET /api/v1/skills/{id}/stats?period=30d`**：
+  - `AnalyticsService.getSkillDownloadTrend(skillId, days)` 回 `int[]` fixed-length array
+  - SQL `date_trunc('day', downloaded_at)` GROUP BY；UTC bucket
+  - period 接受 `7d` / `30d` (default) / `90d`
+  - missing days fill 0；index 0 = 最舊那天，index N-1 = 今天
+- **Frontend `Sparkline.tsx`**: SVG polyline，no chart library dep（vs recharts ~50KB / chart.js ~70KB）
+  - props: data / width / height / color
+  - auto-scales to max；空 array 顯 `—`
+- **`useSkillStats(id, period)` hook**: react-query 60s cache
+- **MySkillsPage SkillRow integration**:
+  - PUBLISHED skill row 顯 30d sparkline column（per prototype `my_skills_author_dashboard.html`）
+  - DRAFT/SUSPENDED skip fetch（無 download_events 記錄）
+  - mobile (< 640px) 隱藏（hidden sm:block）
+
+### AnalyticsController @RequestMapping changed
+`/api/v1/analytics` → `/api/v1` 為了 sub-resource path `/skills/{id}/stats`。既有 `/api/v1/analytics/overview` URL 不變（method-level path 補回）。
+
+### Trim from M(10-12) → S(8)
+- ✗ Publish flow restructure → defer S096d4
+- ✗ 3 new domain events (Bundle/Frontmatter/RiskScan) → defer S096d4
+- ⚪ SkillDetail trend chart integration → S096d4 polish or future
+
+### Metrics
+- Backend compileJava ✓
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 383.18 → 384.14KB (+0.96KB)
+- CSS: 36.47 → 36.55KB
+- Build: 181ms
+
+### META progress
+S096 META 4c/8 ✅. Next: S096d4 publish flow restructure (M).
+
+### Live caveat
+Live :8080 backend 仍跑 ship 前舊 code；新 endpoint `/api/v1/skills/{id}/stats` 生效需下次 graceful restart。MySkills sparkline 在 live 暫顯 empty column（fetch 404）；S093 restart 後即正常。
+
+---
+
 ## [v2.77.0] — SkillCard prototype polish + featured variant（S096 META 4b/8；M90d2 完成；2026-05-02）
 
 > **Shared component polish** — SkillCard 為 3 page reused (HomePage / MySkills / SearchResults)，1 polish 同時提升 3 page 視覺品質。Cherry-pick prototype `Skills Hub Homepage.html` `.sc` design.

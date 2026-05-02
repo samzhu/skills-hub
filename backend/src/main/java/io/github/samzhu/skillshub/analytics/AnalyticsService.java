@@ -89,4 +89,45 @@ public class AnalyticsService {
 		return n != null ? n : 0L;
 	}
 
+	/**
+	 * S096d3 — 取得單一 skill 的每日下載趨勢（per-skill sparkline 資料源）。
+	 *
+	 * <p>回傳 {@code int[days]} 固定長度陣列，索引 0 = 最舊那天，索引 days-1 = 今天。
+	 * 沒下載的天 fill 0；client 直接 map 為 SVG polyline points 不需 padding。
+	 *
+	 * <p>SQL 用 {@code date_trunc('day', ...)} bucket；server-side time zone 與 client
+	 * 不同的 edge case 接受（dev/prod 皆 UTC; user-visible 時間 zone 漂移屬 known limitation）。
+	 *
+	 * @param skillId Skill aggregate ID
+	 * @param days 統計區間天數（如 30 = 過去 30 天）
+	 * @return 長度 days 的整數陣列；index 0 = days-1 天前，index days-1 = 今天
+	 */
+	public int[] getSkillDownloadTrend(String skillId, int days) {
+		var since = Instant.now().truncatedTo(ChronoUnit.DAYS).minus(days - 1, ChronoUnit.DAYS);
+		var rows = jdbc.queryForList(
+				"""
+				SELECT date_trunc('day', downloaded_at)::date AS bucket_day,
+				       COUNT(*) AS cnt
+				  FROM download_events
+				 WHERE skill_id = :skillId
+				   AND downloaded_at >= :since
+				 GROUP BY bucket_day
+				 ORDER BY bucket_day
+				""",
+				new MapSqlParameterSource()
+						.addValue("skillId", skillId)
+						.addValue("since", java.sql.Timestamp.from(since)));
+
+		var buckets = new int[days];
+		var startEpochDay = since.atZone(java.time.ZoneOffset.UTC).toLocalDate().toEpochDay();
+		for (var row : rows) {
+			var bucketDate = ((java.sql.Date) row.get("bucket_day")).toLocalDate();
+			int index = (int) (bucketDate.toEpochDay() - startEpochDay);
+			if (index >= 0 && index < days) {
+				buckets[index] = ((Number) row.get("cnt")).intValue();
+			}
+		}
+		return buckets;
+	}
+
 }
