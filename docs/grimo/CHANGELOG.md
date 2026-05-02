@@ -1,5 +1,16 @@
 # Changelog
 
+## [v3.2.1] — AppShell nav + bell badge invariants（S096h1；2026-05-02）
+
+> Mode B — AppShell 是 every-page wrapper；7 nav links + bell badge poll-driven unread count contract verified。
+
+### ✅ Tests
+- 新檔 `components/AppShell.test.tsx` — 6 ACs：「Skills Hub」brand + 7 nav links render；current path highlight；unread=0 不顯 badge；unread>0 顯數字；count>99 顯「99+」；children render in `<main>`。
+
+### 結果
+- 104 → 110 tests PASS（+6 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.2.0] — 🎉 100-test milestone：BeamFrame + FileDropZone（2026-05-02）
 
 > Mode B — 跨 100-test milestone（28 → 104 tests in 31 ticks）。BeamFrame thin wrapper + FileDropZone S037/S048/S053 guard tests。
