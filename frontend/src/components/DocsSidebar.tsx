@@ -21,7 +21,7 @@ const GROUPS: SidebarGroup[] = [
   {
     label: '入門',
     items: [
-      { label: '概覽' }, // future S094d-extension
+      { label: '概覽', path: '/docs/overview' },
       { label: '撰寫第一個技能', path: '/docs/your-first-skill' },
     ],
   },
@@ -31,7 +31,7 @@ const GROUPS: SidebarGroup[] = [
       { label: 'SKILL.md 規範' },
       { label: 'Frontmatter 欄位' },
       { label: 'Bundle 結構' },
-      { label: '風險層級' },
+      { label: '風險層級', path: '/docs/risk-tiers' },
     ],
   },
   {

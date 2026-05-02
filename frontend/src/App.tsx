@@ -5,6 +5,8 @@ import { PublishPage } from './pages/PublishPage'
 import { AnalyticsPage } from './pages/AnalyticsPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { YourFirstSkillPage } from './pages/docs/YourFirstSkillPage'
+import { OverviewPage } from './pages/docs/OverviewPage'
+import { RiskTiersPage } from './pages/docs/RiskTiersPage'
 import { MySkillsPage } from './pages/MySkillsPage'
 import { SearchResultsPage } from './pages/SearchResultsPage'
 import { LandingPage } from './pages/LandingPage'
@@ -41,8 +43,11 @@ function App() {
       <Route path="/notifications" element={<NotificationsPage />} />
       {/* S094b: 語意搜尋結果頁 — split inline → dedicated route */}
       <Route path="/search" element={<SearchResultsPage />} />
-      {/* S094d: docs walkthrough — 第一篇 walkthrough；未來 /docs index 與其他 docs sub-routes 待後續 spec */}
+      {/* S094d: docs walkthrough — 第一篇 walkthrough */}
       <Route path="/docs/your-first-skill" element={<YourFirstSkillPage />} />
+      {/* S098f: docs IA expansion — Overview + Risk tiers stubs；其餘 sidebar items 仍 placeholder */}
+      <Route path="/docs/overview" element={<OverviewPage />} />
+      <Route path="/docs/risk-tiers" element={<RiskTiersPage />} />
       {/* unmatched URL 之前 render 空白 root，user 看不到 navbar 也沒 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

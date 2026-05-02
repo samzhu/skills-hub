@@ -1,5 +1,52 @@
 # Changelog
 
+## [v2.94.0] — Docs IA expansion: Overview + Risk Tiers（S098 META 8/8 ✅ 完成；M92f 完成；2026-05-02）
+
+> S098f — `/docs/overview` 入門概覽頁 + `/docs/risk-tiers` 風險層級完整說明頁。對齊 prototype `Skills Hub Docs.html` sidebar IA。**S098 META 8 sub-specs 全達成 ✅**。
+
+### 🎨 Frontend
+- 新檔 `pages/docs/OverviewPage.tsx`：給新使用者的 Skills Hub 落地頁。
+  - h1 + intro 段交代「什麼是 Skills Hub / 為什麼存在」
+  - 三個核心機制 FeatureCard grid（自動風險評分 / 語意搜尋 / 開放標準）
+  - 下一步 BeamFrame primary CTA「撰寫第一個技能」+ secondary「了解風險層級」
+- 新檔 `pages/docs/RiskTiersPage.tsx`：完整 4-tier 風險層級 reference。
+  - 4 個 `Tier` cards (NONE/LOW/MEDIUM/HIGH) — 各 tone 用 semantic-soft palette (success/warning/danger rgba 配色)
+  - 每 tier 含 title + body + 可選 note section（dashed-border separator + tone-color)
+  - 「遇到 HIGH 風險怎麼辦？」雙視角段（作者 / Reviewer）
+  - footer prev/next nav 連回 your-first-skill
+- `App.tsx`：新 routes `/docs/overview` + `/docs/risk-tiers`
+- `DocsSidebar.tsx`：「概覽」+「風險層級」item 加 `path` — 變成可點 active link（其他 sidebar items 仍 placeholder）
+
+### 重複利用
+- DocsLayout (S094d ship) — 同一 sidebar + main column 結構
+- BeamFrame (S097 npm package wrapper) — primary CTA visual emphasis
+- 零 new component / 零 backend change — 純 markup-style content pages
+
+### Trim 紀錄
+原 M(10) 估含 5 doc pages 完整 (Overview / SKILL.md spec / Frontmatter / Bundle / Risk tiers)。本 commit ship XS(5) — 2 個最高 user value stub:
+- ✅ Overview (新 user 必經 landing → 引導三個機制理解)
+- ✅ Risk Tiers (publish 流程理解 prerequisite — Skill detail page 上 risk 標籤的 reference)
+- ⏸ S098f2: 其餘 3 stub pages (SKILL.md spec / Frontmatter fields / Bundle structure) — sidebar 仍顯 placeholder
+- ⏸ S098f3: 「發佈」+「API」group items 詳細 walkthrough
+
+### ✅ Tests
+- `npx vitest run` (cwd=frontend) → 7 files / 33 tests PASS
+- `npx tsc --noEmit` (cwd=frontend) → no errors
+
+### 🎉 S098 META 完成
+**8/8 sub-specs shipped** — 從 v2.86.0 至 v2.94.0 共 9 個 release：
+- S098h (v2.86.0) — YourFirstSkillPage 配色對比修復
+- S098g pass 1 (v2.87.0) — i18n 繁中化 top-of-funnel 5 surface
+- S098g pass 2 (v2.88.0) — i18n sweep 殘留英文
+- S098h2 (v2.89.0) — EmptyState dark migration + 4-step i18n
+- S098d (v2.90.0) — Homepage 3-col grid + sort chips
+- S098b (v2.91.0) — Publish Failed dedicated page
+- S098b2 (v2.92.0) — PublishReviewPage HIGH-risk auto-redirect
+- S098e (v2.93.0) — SkillDetailPage 5-tab + sparkline hero
+- S098f (v2.94.0) — Docs IA expansion: Overview + Risk Tiers ← **本 commit**
+
+剩 S098a (Publish Step 2 M=10) + S098c (Version Diff M=12) 為原 META 未列 P0 進階功能；S098d2/b3/e2/e3/f2/f3 為 trim spawn — 全部入 polish backlog。
+
 ## [v2.93.0] — SkillDetailPage 5-tab + sparkline hero（S098 META 7/8；M92e 完成；2026-05-02）
 
 > S098e — SkillDetailPage v2 polish per prototype `Skills Hub Skill Detail.html`。加 Reviews + Flags tabs (stub) + 30d 下載 sparkline 至 hero strip（reuse S096d3 Sparkline + `/skills/{id}/stats`）。
