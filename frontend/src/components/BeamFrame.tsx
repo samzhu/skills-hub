@@ -1,25 +1,21 @@
 import type { ReactNode } from 'react'
+import { BorderBeam } from 'border-beam'
 
 /**
- * S089 → S096b — 5-color conic-gradient beam frame for dark theme.
+ * S089 → S096b → S097: BeamFrame thin wrapper around official `border-beam` package.
  *
- * 改寫對齊 Engineering Handoff §8 BorderBeam Usage Rules：
- * - padding 1.5px（vs S089 1px）— 在 dark bg `#08080A` 上 ring 更可見
- * - background `#1A1A1E`（per Handoff §8）取代 light theme 的 hairline border token
- * - 5-color stops 對齊 v2 prototype HTML：purple → magenta → amber → green → blue
- * - animation 1.96s（vs S089 4s）— Handoff §8 specifies 此 timing 為「scarce motion primitive」
- * - blur(10px) opacity 0.5 ::after layer — glow halo effect on dark bg
+ * Hand-rolled implementation (S089 / S096b 5-color rewrite) 視覺效果不對 — official
+ * `border-beam@1.0.1` 的 `colorful` size=md preset 才是 user 期望的「rainbow glow」.
  *
- * Inner content 用 `--color-background`（dark `#08080A`）對齊頁面，shape 與 wrapper 對齊。
+ * User-locked defaults per Engineering Handoff §8 + manual UX comparison:
+ * - size="md"          — full border glow (vs `sm` button-sized / `line` bottom-only)
+ * - colorVariant="colorful" — full rainbow spectrum
+ * - duration={1.96}    — package default; matches Handoff §8 spec
+ * - strength={0.7}     — beam intensity 70% (avoid over-saturation on dark bg)
+ * - theme="dark" (default) — works with v2 dark theme `#08080A` page bg
  *
- * **Usage rules** (per Handoff §8): beam 屬稀有 motion primitive，**ONE per page**。
- * 限用於：
- * - Hero search bar (HomePage)
- * - Primary CTA button (one per page)
- * - FileDropZone (PublishPage Step 1)
- * - Featured / top-match skill card
- *
- * **Never use on**: metric cards, navigation, sidebar items, secondary buttons, list rows.
+ * **Usage rules** (per Handoff §8): scarce motion primitive — **ONE per page**.
+ * 限用於：hero search bar / primary CTA / FileDropZone / featured top-match card.
  *
  * @example
  * ```tsx
@@ -30,48 +26,8 @@ import type { ReactNode } from 'react'
  */
 export function BeamFrame({ children }: { children: ReactNode }) {
   return (
-    <>
-      <style>{`
-        @keyframes beam-frame-spin { to { transform: rotate(360deg); } }
-        .beam-frame {
-          position: relative;
-          padding: 1.5px;
-          border-radius: 8px;
-          background: #1A1A1E;
-          overflow: hidden;
-          isolation: isolate;
-        }
-        .beam-frame::before,
-        .beam-frame::after {
-          content: '';
-          position: absolute;
-          inset: -120%;
-          background: conic-gradient(from 0deg,
-            transparent 0deg, transparent 197deg,
-            rgba(127,119,221,.95) 230deg,
-            rgba(217,56,138,.95) 268deg,
-            rgba(239,159,39,.95) 300deg,
-            rgba(29,158,117,.95) 332deg,
-            rgba(55,138,221,.95) 360deg,
-            transparent 360deg);
-          animation: beam-frame-spin 1.96s linear infinite;
-          pointer-events: none;
-          z-index: 0;
-        }
-        .beam-frame::after {
-          filter: blur(10px);
-          opacity: 0.5;
-        }
-        .beam-frame > .beam-frame-inner {
-          position: relative;
-          z-index: 1;
-          background: var(--color-background, #08080A);
-          border-radius: 6.5px;
-        }
-      `}</style>
-      <div className="beam-frame">
-        <div className="beam-frame-inner">{children}</div>
-      </div>
-    </>
+    <BorderBeam size="md" colorVariant="colorful" duration={1.96} strength={0.7}>
+      {children}
+    </BorderBeam>
   )
 }

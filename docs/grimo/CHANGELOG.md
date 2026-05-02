@@ -1,5 +1,40 @@
 # Changelog
 
+## [v2.85.0] — Swap BeamFrame to official border-beam package（M91 完成；2026-05-02）
+
+> User UX feedback — current S089/S096b hand-roll BeamFrame 視覺效果不對；swap 回 `border-beam@1.0.1` npm package with locked configurable defaults.
+
+### Changed
+- **BeamFrame.tsx**: 60-line hand-roll → 5-line wrapper around `<BorderBeam>` from `border-beam@1.0.1`
+- Locked defaults per user-provided official API config:
+  - `size="md"` (full border glow)
+  - `colorVariant="colorful"` (full rainbow spectrum)
+  - `duration={1.96}`
+  - `strength={0.7}` (70% intensity)
+  - `theme="dark"` (package default — matches v2 dark theme since S096b)
+
+### Added
+- `border-beam@1.0.1` npm dep (was previously dropped in S089 due to light-theme glow physics; v1.0.1 加 `theme="dark"` first-class support 解此限制)
+- **`setupTests.ts` window.matchMedia polyfill** for jsdom — border-beam uses matchMedia to detect prefers-color-scheme; jsdom 不提供，既有 6 test files render BeamFrame-using components (App.test / EmptyState seed tone / YourFirstSkillPage 5 cases) 全 fail without polyfill
+
+### All 8 call sites unchanged
+SearchBar / SkillCard featured / EmptyState / LandingPage hero+final / MySkillsPage / YourFirstSkillPage / PublishReviewPage（暫無）— `<BeamFrame>{children}</BeamFrame>` API 簽名不動，純內部 swap.
+
+### Trade-off
+- JS bundle +48.74KB (405.86→454.60KB) — accepted because visual parity on marketing Landing + key CTAs 重要 user direction
+- Hand-roll lesson: dependency 二度評估的契機是 (a) target environment 變化 (light → dark theme) (b) package version up (v1.0.1 加 theme="dark"); 過去因 light theme 不適用而 drop，dark theme switch 後重新可用
+
+### Metrics
+- Frontend tests: 33 → 33 PASS / 0 fail
+- JS: 405.86 → 454.60KB (+48.74KB)
+- CSS: 38.25 → 38.22KB (-0.03KB; inline <style> 從 hand-roll 移除)
+- Build: 249ms
+
+### Live caveat
+None — pure frontend dep swap; backend unaffected.
+
+---
+
 ## [v2.84.0] — Auto-poll /publish/review during scan（S096 META 8b/8；M90d5a 完成；2026-05-02）
 
 > **Micro UX polish** — PublishReviewPage 改用 react-query `refetchInterval` 2s 自動更新 risk_level，免 user 手動 refresh.
