@@ -1,5 +1,28 @@
 # Changelog
 
+## [v2.88.0] — i18n 繁中化 audit pass 2（S098 META 2/8 完備；2026-05-02）
+
+> S098g pass 1 (v2.87.0) 收完 5 surface top-of-funnel；本 pass 2 sweep 剩餘散落英文殘留 — CollectionsPage h1、EmptyState helper label、YourFirstSkillPage RiskRow 3 個 strong tag 翻完。
+
+### 🌐 Frontend i18n
+- `pages/CollectionsPage.tsx`：h1「Curated skill collections」→「精選技能集合」（eyebrow 已是「技能集合」）。
+- `components/EmptyState.tsx`：suggestions section label「What you can do instead」→「你可以這樣做」（用於 redirect tone empty state）。
+- `pages/docs/YourFirstSkillPage.tsx`：RiskRow 3 個 `<strong>` 觸發行為描述繁中化：
+  - LOW：「Publishes immediately.」→「立即上架。」
+  - MEDIUM：「Publishes with a warning badge.」→「附警告標籤上架。」
+  - HIGH：「Blocked until reviewer approves.」→「暫停上架，等待人工審核。」
+
+### ✅ Tests
+- `npx vitest run` → 7 files / 33 tests PASS（無 string assertion 涉及修改處 — DOM-shape only）
+
+### Skipped
+- AppShell brand「Skills Hub」: 保留 — 是專屬名詞 brand name，不譯。
+- LandingPage compatibility strip 工具名（Cursor / Cline 等）：保留 — 第三方品牌名。
+- EmptyState 全身的 light-theme inline hex (`#181818` text / `bg-white` / `#F9F8F4` 等) — 是 sister bug to S098h；本 commit 只做 i18n，dark migration 開 follow-up sub-spec（建議 S098h2 於下一輪 trim）
+
+### S098 META 進度
+- S098g 完備 (pass 1 + pass 2 全 ship)。S098 META 2/8 sub-specs shipped 不變（S098g 計 1 sub-spec）。
+
 ## [v2.87.0] — i18n 繁中化 audit pass 1（S098 META 2/8；M92g 完成；2026-05-02）
 
 > User mid-tick directive：「頁面要繁體中文版的」per CLAUDE.md「UI 語言: 繁體中文（zh-TW）」原則。S098g audit pass 1 — 修復 top-of-funnel 5 個 surface 殘留英文 user-facing 字串。

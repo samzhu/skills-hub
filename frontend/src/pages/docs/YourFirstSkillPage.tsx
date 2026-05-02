@@ -139,15 +139,15 @@ ISO 8601 or RFC 2822 variant.
       </P>
       <div className="mt-4 flex flex-col gap-3">
         <RiskRow tier="LOW" tone="success">
-          <strong>Publishes immediately.</strong> 沒 scripts/ 資料夾，或 scripts 只含安全 patterns。
+          <strong>立即上架。</strong> 沒 scripts/ 資料夾，或 scripts 只含安全 patterns。
           一般 documentation/utility skill 多落這層。
         </RiskRow>
         <RiskRow tier="MEDIUM" tone="warning">
-          <strong>Publishes with a warning badge.</strong> Scripts 存在但無危險 pattern — 最多 3 個外部 URL
+          <strong>附警告標籤上架。</strong> Scripts 存在但無危險 pattern — 最多 3 個外部 URL
           且都在 trusted-source registry。Consumers 在搜尋時看得到 tier。
         </RiskRow>
         <RiskRow tier="HIGH" tone="danger">
-          <strong>Blocked until reviewer approves.</strong> 偵測到 dangerous patterns（<Code>rm -rf</Code>、
+          <strong>暫停上架，等待人工審核。</strong> 偵測到 dangerous patterns（<Code>rm -rf</Code>、
           <Code>curl | bash</Code>、<Code>~/.ssh</Code>、<Code>~/.aws</Code> 等敏感路徑或可疑 shell）。
         </RiskRow>
       </div>

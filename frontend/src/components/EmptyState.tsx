@@ -171,7 +171,7 @@ function RedirectTone(props: EmptyStateProps) {
         </div>
         {props.suggestions && props.suggestions.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A8A49C]">What you can do instead</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A8A49C]">你可以這樣做</p>
             {props.suggestions.map((s, i) => (
               <div key={i} className="flex items-center justify-between gap-3 rounded-md border border-[#E6E1D9] bg-[#F9F8F4] px-3 py-2.5">
                 <div className="flex flex-col">

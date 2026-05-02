@@ -30,7 +30,7 @@ export function CollectionsPage() {
     <AppShell>
       <div className="mb-6">
         <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">技能集合</p>
-        <h1 className="mt-1 text-[22px] font-semibold tracking-tight">Curated skill collections</h1>
+        <h1 className="mt-1 text-[22px] font-semibold tracking-tight">精選技能集合</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
           把多個相關技能打包成集合，一鍵安裝整組工作流。常用範例：DevOps Starter Pack / Frontend Quality Suite / Security Audit Kit。
         </p>
