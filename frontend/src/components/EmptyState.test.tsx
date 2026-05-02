@@ -19,7 +19,7 @@ describe('EmptyState — S094c 4 tones', () => {
     expect(screen.getByText('Publish the first skill')).toBeInTheDocument()
   })
 
-  it("AC-2: invite tone renders icon + headline + 4-step flow", () => {
+  it("AC-2 (S105): invite tone WITHOUT steps prop → 4-step strip 不顯", () => {
     render(
       <EmptyState
         tone="invite"
@@ -28,7 +28,22 @@ describe('EmptyState — S094c 4 tones', () => {
       />,
     )
     expect(screen.getByText("You haven't published anything yet.")).toBeInTheDocument()
-    // S098h2: 4 steps i18n 繁中 — 打包 / 自動掃描 / 發佈 / 追蹤
+    // S105: 預設不顯 4-step strip — context 不對齊時 (Reviews / Collections / Requests / Search) 應乾淨
+    expect(screen.queryByText('打包')).not.toBeInTheDocument()
+    expect(screen.queryByText('自動掃描')).not.toBeInTheDocument()
+    expect(screen.queryByText('發佈')).not.toBeInTheDocument()
+    expect(screen.queryByText('追蹤')).not.toBeInTheDocument()
+  })
+
+  it("AC-S105: invite tone WITH steps prop opt-in → 4-step strip 顯（既有 publish onboarding visual 不變）", () => {
+    render(
+      <EmptyState
+        tone="invite"
+        headline="你還沒有發布過技能。"
+        sub="完整 round-trip 通常少於 1 分鐘。"
+        steps={['打包', '自動掃描', '發佈', '追蹤']}
+      />,
+    )
     expect(screen.getByText('打包')).toBeInTheDocument()
     expect(screen.getByText('自動掃描')).toBeInTheDocument()
     expect(screen.getByText('發佈')).toBeInTheDocument()

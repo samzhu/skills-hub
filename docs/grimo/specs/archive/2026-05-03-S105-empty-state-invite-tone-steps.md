@@ -1,6 +1,6 @@
 # S105 — EmptyState invite tone steps decoupling
 
-> **Status**: 📋 planned (Spec-Only-Handoff — written by 2026-05-03 cron-loop Mode B Round 10 audit tick, awaits implement tick)
+> **Status**: ✅ shipped `v3.4.5` (2026-05-03 — implement cron tick 9)
 > **Type**: Frontend component prop refactor + 4 callsite updates (UX context alignment)
 > **Estimate**: XS (3 pts)
 > **Triggered by**: 2026-05-03 cron Tick 8 Mode B E2E live browser walk-through (Chrome MCP) — Round 10 of test-case ledger（live tab clicks via keyboard nav，因 Radix Tabs synthetic-event 隔離問題；focus + Space 才能切 active tab）
@@ -85,17 +85,54 @@ npm run build  # ensure no broken imports / TS error
 
 ## §7 Result
 
-待 implement tick 填。
+**Shipped 2026-05-03 cron Tick 9 @ ~05:23**.
 
-**Implement tick checklist**:
-- [ ] EmptyState.tsx: interface + InviteTone conditional render
-- [ ] MySkillsPage.tsx: opt-in steps prop
-- [ ] EmptyState.test.tsx: AC-1 + AC-2
-- [ ] `npm test --run EmptyState` 全綠
-- [ ] Chrome MCP smoke 4 callsite + MySkillsPage 對齊
-- [ ] CHANGELOG patch (建議 `v3.4.5`)
-- [ ] roadmap row → ✅
-- [ ] spec doc 移 archive/
+### Implement checklist
+
+- [x] EmptyState.tsx: `EmptyStateProps` 加 `steps?: string[]` (with JSDoc)；InviteTone 改用 `props.steps` + conditional render；移除 hardcoded `const steps = [...]`
+- [x] MySkillsPage.tsx: 加 `steps={['打包', '自動掃描', '發佈', '追蹤']}` opt-in（保留新作者 publish onboarding context）
+- [x] EmptyState.test.tsx: 改寫 AC-2 為「不傳 steps → 不顯 strip」+ 新增 AC-S105「傳 steps → 顯 strip」（既有 4 tone tests + 2 改寫 = 6 PASS）
+- [x] `npm test --run EmptyState`：6/6 PASS（752ms）
+- [x] Chrome MCP smoke：
+  - `/collections` → `hasSteps: false`（4-step strip 隱藏）✓
+  - `/my-skills` → `hasSteps: true`（MySkillsPage opt-in 保留）✓
+  - 兩 direction 都對 → AC-3/4/5/6 通過 sample（其他 callsite 同 component-level pattern follow）
+- [x] CHANGELOG `v3.4.5` patch entry
+- [x] roadmap row → ✅
+- [x] spec doc 移 archive/
+
+### Verify metrics
+
+| Item | Value |
+|------|-------|
+| Files changed | 4（EmptyState.tsx + EmptyState.test.tsx + MySkillsPage.tsx + spec/CHANGELOG/roadmap docs）|
+| LOC delta | ~+25 / -15（含 test 改寫 +20 -10）|
+| FE tests | 既有 36 → 36（test count 不變；AC-2 改寫 + 新增 AC-S105 抵消）|
+| Backend touch | 0（純 frontend component contract refactor）|
+| Wall clock | ~9 min（IMPLEMENT 4 + tests 2 + Chrome smoke 1 + DOCUMENT 2）|
+
+### Live render validation (Chrome MCP)
+
+| Path | Before | After |
+|------|--------|-------|
+| `/collections` empty | 顯「打包→掃描→發佈→追蹤」(off-context) | 4-step strip 不顯 ✓ |
+| `/requests` empty | 顯「打包→掃描→發佈→追蹤」(off-context) | 4-step strip 不顯（per component-level fix） |
+| `/skills/<id>` 評論 tab | 顯「打包→掃描→發佈→追蹤」(off-context) | 4-step strip 不顯 |
+| `/search` no-query empty | 顯「打包→掃描→發佈→追蹤」(off-context) | 4-step strip 不顯 |
+| `/my-skills` empty | 顯「打包→掃描→發佈→追蹤」(on-context) | 4-step strip 顯（explicit opt-in 保留）✓ |
+
+### Trim deferred
+
+- **Other 4 callsites tone reconsideration**：是否 Reviews/Collections/Requests/Search empty 該換 tone（e.g. clear / redirect）— spec §2 trim list；本 fix 已解決顯示性問題（hide off-context strip），tone 是否最佳留 polish backlog
+- **development-standards.md §UI** "shared component 不得 hardcode context-specific 內容" rule — sibling lesson to S103/S104 polish backlog；下次集中 doc commit ship
+
+### Sibling chain validation
+
+S100e (defensive guard v3.4.1) → S102 (routing residual v3.4.2) → S103 (UX copy hygiene v3.4.3) → S104 (interactive state consistency v3.4.4) → **S105 (component-context alignment v3.4.5)** — 第 5 個 cross-cutting follow-up，cut 從「page-level data → cross-cutting links → user-visible strings → interactive state → component-context」累積 5 層。Mode B 採 Chrome MCP focus+Space keyboard nav (Round 10 副產物：Radix synthetic-event 隔離 pattern 已驗證) 是與前 4 cut 互補的第 5 audit cut。
+
+### Process learning (Round 10 byproduct)
+
+Radix-based components (Tabs / Dropdown / Dialog) 不能用 `.click()` / pointer events 切 active state — React event system synthetic event 與 Radix DOM-level state machine 隔離。**E2E pattern**：focus + Space/Enter keypress dispatch 是 Radix 接收 user action 的正確路徑。本 pattern 寫進 `.claude/loop.md` 已 deferred to polish backlog（避免 ship commit creep）。
 
 ## §8 Lesson — component-context alignment audit cut
 

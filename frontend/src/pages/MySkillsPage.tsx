@@ -104,6 +104,9 @@ export function MySkillsPage() {
           tone="invite"
           headline="你還沒有發布過技能。"
           sub="把你的工作流程打包成 SKILL.md bundle 上傳。完整 round-trip（上傳 → 自動掃描 → 發布）通常少於 1 分鐘。"
+          // S105: 新作者 onboarding context — opt-in 顯示 publish flow 4-step strip
+          // 其他 invite tone callsites (Reviews/Collections/Requests/Search) 不傳此 prop，default 隱藏
+          steps={['打包', '自動掃描', '發佈', '追蹤']}
           primaryAction={{ label: '發布你的第一個技能', href: '/publish' }}
           secondaryAction={{ label: '看 Docs walkthrough', href: '/docs/your-first-skill' }}
         />

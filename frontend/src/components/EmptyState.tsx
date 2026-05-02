@@ -34,6 +34,10 @@ export interface EmptyStateProps {
   suggestions?: Array<{ text: string; hint?: string }>
   /** clear: list of stat items {value, label} (max 3) */
   stats?: Array<{ value: string; label: string; delta?: string }>
+  /** invite: optional 4-step horizontal flow (e.g. ['打包', '自動掃描', '發佈', '追蹤']);
+   *  undefined / [] → strip 不顯。Caller opt-in：dev / publish onboarding context 顯，
+   *  其他 reuse context (community stub / search empty / reviews stub) 不顯，避免 context 不對齊。 */
+  steps?: string[]
   /** Primary CTA — wrapped in BeamFrame for visual emphasis (per DESIGN.md primary action) */
   primaryAction?: { label: string; onClick?: () => void; href?: string }
   /** Secondary CTA — outline / link style */
@@ -127,8 +131,9 @@ function SeedTone(props: EmptyStateProps) {
 // ============ Invite tone ============
 
 function InviteTone(props: EmptyStateProps) {
-  // S098h2 i18n: 4 step labels 英文 → 繁中 per CLAUDE.md「UI 語言: 繁體中文」
-  const steps = ['打包', '自動掃描', '發佈', '追蹤']
+  // S105: steps 從 hardcoded 改 caller opt-in；undefined / [] → strip 不顯
+  // 避免 component 在多 context reuse 時偷渡無關 publish onboarding flow（reviews/collections/requests/search empty）
+  const steps = props.steps
   return (
     <Container className="text-center">
       <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(255,255,255,0.06)] bg-[#171719] text-[#A8A49C]">
@@ -136,20 +141,21 @@ function InviteTone(props: EmptyStateProps) {
       </div>
       <h2 className="text-[20px] font-semibold tracking-tight text-[#EEECEA]">{props.headline}</h2>
       {props.sub && <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-[#A8A49C]">{props.sub}</p>}
-      {/* Horizontal flow — preview the future workflow */}
-      <div className="mx-auto mt-6 flex max-w-md items-center justify-center gap-2 text-[11px] text-[#A8A49C]">
-        {steps.map((label, i) => (
-          <div key={label} className="flex items-center gap-2">
-            <div className="flex flex-col items-center">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-[rgba(255,255,255,0.10)] text-[#A8A49C]">
-                <span className="text-[10px] font-medium">{i + 1}</span>
+      {steps && steps.length > 0 && (
+        <div className="mx-auto mt-6 flex max-w-md items-center justify-center gap-2 text-[11px] text-[#A8A49C]">
+          {steps.map((label, i) => (
+            <div key={label} className="flex items-center gap-2">
+              <div className="flex flex-col items-center">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-[rgba(255,255,255,0.10)] text-[#A8A49C]">
+                  <span className="text-[10px] font-medium">{i + 1}</span>
+                </div>
+                <span className="mt-1.5 text-[10px] font-medium uppercase tracking-wider">{label}</span>
               </div>
-              <span className="mt-1.5 text-[10px] font-medium uppercase tracking-wider">{label}</span>
+              {i < steps.length - 1 && <div className="h-px w-6 bg-[rgba(255,255,255,0.10)]" />}
             </div>
-            {i < steps.length - 1 && <div className="h-px w-6 bg-[rgba(255,255,255,0.10)]" />}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       {(props.primaryAction || props.secondaryAction) && (
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           {props.primaryAction && <PrimaryButton action={props.primaryAction} />}

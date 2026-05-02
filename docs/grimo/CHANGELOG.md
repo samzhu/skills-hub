@@ -1,5 +1,28 @@
 # Changelog
 
+## [v3.4.5] — EmptyState invite-tone steps decoupling（S105 完成；2026-05-03）
+
+> Mode B Round 10 (Chrome MCP focus+Space keyboard nav for Radix Tabs — synthetic .click() 與 React event system 衝突需真 keyboard event) Tick 8 audit 找到 component-context misalignment：`EmptyState` `invite` tone 內部 hardcode 4-step strip `['打包','自動掃描','發佈','追蹤']`，但 5 個 production callsite 中只有 MySkillsPage（新作者 publish onboarding）真符合此 context；其他 4 處（CollectionsPage / RequestBoardPage / SkillDetailPage Reviews tab / SearchResultsPage no-query）顯無關 publish flow steps 造成 user 疑惑。Tick 9 frontend-only fix：抽 `steps?: string[]` 為 optional prop（default hide）+ MySkillsPage explicit opt-in。
+
+### Changed
+- `frontend/src/components/EmptyState.tsx`：`EmptyStateProps` 加 `steps?: string[]`；InviteTone 改用 `props.steps` conditional render；移除 hardcoded `const steps = [...]`
+- `frontend/src/pages/MySkillsPage.tsx`：加 `steps={['打包', '自動掃描', '發佈', '追蹤']}` opt-in 保留新作者 onboarding context
+- `frontend/src/components/EmptyState.test.tsx`：改寫 AC-2 為「不傳 steps → 不顯 strip」+ 新增 AC-S105「傳 steps → 顯 strip」
+
+### Verified
+- `cd frontend && npm test -- --run EmptyState`：1 file 6/6 PASS（752ms）
+- Chrome MCP live smoke：
+  - `/collections` empty → `hasSteps: false`（4-step strip 隱藏）✓
+  - `/my-skills` empty → `hasSteps: true`（MySkillsPage opt-in 保留）✓
+- FE tests 累計 36 → 36（test count 不變：AC-2 改寫 + AC-S105 新增抵消）
+
+### Why
+S100 page-level data audit + S102 cross-cutting links + S103 user-visible strings + S104 interactive state consistency 都覆蓋不到「shared component 在不同 context 顯示是否一致語意」— Component 內部 hardcode (publish onboarding steps) 在多 context reuse 時偷渡進不適合 context。S105 補這個 cut：**shared component reuse audit**（component-context alignment）。
+
+S100e → S102 → S103 → S104 → **S105** 第 5 個 cross-cutting follow-up，cut 從「data → links → strings → state → component-context」累積；發現方式 = Chrome MCP focus+Space tab nav（Round 10 副產物：Radix synthetic-event 隔離 pattern 已驗證，future Mode B keyboard-nav E2E 可 reuse）。
+
+---
+
 ## [v3.4.4] — Risk filter empty state + pagination UX consistency（S104 完成；2026-05-03）
 
 > Mode B Round 9 (Chrome MCP interactive click) Tick 6 audit 找到 bug：點「無風險」filter (DB 0 NONE-tier) 後 3 處 UI signal 自相矛盾（generic seed-empty EmptyState 暗示 registry 空 + 「共 103 個技能」unfiltered count + 「第 1 / 6 頁」pagination 暗示更多頁）。Tick 7 frontend-only fix 修齊 4 signal 一致：context-aware EmptyState（redirect tone + selected tier label headline + 「清除篩選」escape button）+ filtered count display + pagination guard。Backend 不轉 server-side filter（per S100b deliberate decision；scope 超 fix-spec）。
