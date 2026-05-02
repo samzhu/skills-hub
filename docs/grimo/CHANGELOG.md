@@ -1,5 +1,30 @@
 # Changelog
 
+## [v3.3.1] — `/docs/risk-scanner-scope` LLM01-10 mapping page（S099e5 完成；2026-05-02）
+
+> S099e5 — 對 consumer 透明公開 Skills Hub risk scanner 對齊 OWASP LLM Top 10 v1.1 (2023) 各項威脅的 coverage state（covered / partial / gap / out-of-scope）。
+
+### 🎨 Frontend (S099e5)
+- 新檔 `pages/docs/RiskScannerScopePage.tsx` — 12 sections：每 LLM01-10 項顯 threat 描述 + Skills Hub 對應 coverage（含 reasoning + future plan）+ summary card 4 個 coverage tier 計數 + 免責聲明 callout。
+- `App.tsx` +route `/docs/risk-scanner-scope`
+- `DocsSidebar.tsx`：「參考」群加 12th item「Risk Scanner 範圍」
+
+### Coverage breakdown (per page)
+| Tier | Count | LLM IDs |
+|------|-------|---------|
+| ✅ Covered | 2 | LLM06 (sensitive paths) / LLM08 (allowed-tools agency budget) |
+| 🟡 Partial | 3 | LLM01 (RCE only) / LLM05 (curl source unverified) / LLM07 (allowed-tools no composability) |
+| ❌ Gap | 1 | LLM04 (DoS scanner planned S099e2) |
+| ◯ Out of Scope | 4 | LLM02 / LLM03 / LLM09 / LLM10 |
+
+### 結果
+- 123 → 123 tests PASS（DocsSidebar.test 加 12th item 同步）
+- `npx tsc --noEmit` clean
+
+### S099 META 進度
+- S099a ✅ (v3.2.7) + S099b ✅ (v3.3.0) + S099e5 ✅ (本 commit) — 3/8 sub-specs shipped
+- 剩 S099c (cross-marketplace) / S099d (LLM rubric) / S099e1-e4 (scanner upgrades)
+
 ## [v3.3.0] — PublishPage 文本貼上 mode（S099b 完成；2026-05-02）
 
 > User directive: skill 沒有可以直接輸入文本的方式。Solution: PublishPage 加雙 mode tabs（檔案 / 文本）；text mode 用 `new File([text], 'SKILL.md', ...)` synthesize 後沿用既有 uploadSkill mutation。零 backend 改動 — backend S053 既有 `.md` 多 ext 支援。

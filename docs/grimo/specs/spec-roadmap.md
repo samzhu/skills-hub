@@ -251,7 +251,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 5 | M93e2: Resource DoS scanner (LLM04) | S099e2 | S(5) | — | 📋 planned — 偵測 infinite loops / large memory in scripts |
 | Phase 5 | M93e3: SBOM + dependency scanning (LLM05) | S099e3 | M(8) | — | 📋 planned — 產 SBOM；npm audit / pip-audit equivalent for declared deps |
 | Phase 5 | M93e4: Hardcoded creds detector enhancement (LLM06) | S099e4 | S(4) | — | 📋 planned — 擴 detector：API key patterns / hardcoded passwords / OAuth tokens |
-| Phase 5 | M93e5: Docs page「Risk Scanner 涵蓋與限制」(LLM01-10) | S099e5 | S(3) | — | 📋 planned — `/docs/risk-scanner-scope` 對 consumer 公開「我們做什麼/不做什麼」mapping |
+| Phase 5 | M93e5: Docs page「Risk Scanner 涵蓋與限制」(LLM01-10) | S099e5 | S(3) | 777 | ✅ `v3.3.1` (2026-05-02 — `/docs/risk-scanner-scope` 12 sections per LLM01-10 + 4-tier summary card + 免責聲明 callout；DocsSidebar +12th item；2/3/1/4 (covered/partial/gap/oos) breakdown；tests 123/123 PASS) |
 | Phase 5 | M94: META Page Data Authenticity Audit | S100 | META | — | 📐 in-design — 27 pages full audit；確認全站無 fake page；12 real / 3 stub / 11 inert docs；3 newly identified gaps spawn S100a/b/c/d。Triggered by user 2026-05-02 directive「自己看頁面規劃 spec 實作」 |
 | Phase 5 | M94a: AnalyticsPage Top 10 link to skill detail | S100a | XS(2) | 770 | ✅ `v3.2.6` (2026-05-02 — backend OverviewStats.TopSkill +author 欄位；frontend AnalyticsPage Top 10 div→Link to /skills/:author/:name canonical route per ADR-003；hover bg highlight；tests 123/123 PASS) |
 | Phase 5 | M94b: HomePage hot-sort backend `?sort=hot` | S100b | S(5) | — | 📋 planned — backend fetchSkills 加 `sort=hot|popular|newest` query；hot=30d download desc；HomePage 「正在使用中」section 對齊「真正 active usage」語意 |

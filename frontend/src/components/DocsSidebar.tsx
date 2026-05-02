@@ -32,6 +32,7 @@ const GROUPS: SidebarGroup[] = [
       { label: 'Frontmatter 欄位', path: '/docs/frontmatter' },
       { label: 'Bundle 結構', path: '/docs/bundle' },
       { label: '風險層級', path: '/docs/risk-tiers' },
+      { label: 'Risk Scanner 範圍', path: '/docs/risk-scanner-scope' },
     ],
   },
   {

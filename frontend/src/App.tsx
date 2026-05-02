@@ -15,6 +15,7 @@ import { VersioningPage } from './pages/docs/VersioningPage'
 import { SemanticSearchPage } from './pages/docs/SemanticSearchPage'
 import { RestApiPage } from './pages/docs/RestApiPage'
 import { EventPayloadPage } from './pages/docs/EventPayloadPage'
+import { RiskScannerScopePage } from './pages/docs/RiskScannerScopePage'
 import { MySkillsPage } from './pages/MySkillsPage'
 import { SearchResultsPage } from './pages/SearchResultsPage'
 import { LandingPage } from './pages/LandingPage'
@@ -66,6 +67,8 @@ function App() {
       <Route path="/docs/skill-md-spec" element={<SkillMdSpecPage />} />
       <Route path="/docs/frontmatter" element={<FrontmatterPage />} />
       <Route path="/docs/bundle" element={<BundleStructurePage />} />
+      {/* S099e5: docs page LLM01-10 mapping (OWASP Top 10 alignment) */}
+      <Route path="/docs/risk-scanner-scope" element={<RiskScannerScopePage />} />
       {/* S098f3: 5 final docs pages — 發佈 + API & Webhook 兩 group */}
       <Route path="/docs/upload-validate" element={<UploadValidatePage />} />
       <Route path="/docs/versioning" element={<VersioningPage />} />

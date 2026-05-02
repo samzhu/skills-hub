@@ -24,12 +24,12 @@ describe('DocsSidebar — S098f3 final state', () => {
     expect(screen.getByText('API 與 Webhook')).toBeInTheDocument()
   })
 
-  it('AC-2: all 11 doc nav items render as active links', () => {
+  it('AC-2: all 12 doc nav items render as active links', () => {
     renderAt('/docs/overview')
-    // 11 item labels per S098f3 close
+    // 12 item labels — S098f3 (11) + S099e5 (Risk Scanner 範圍 added)
     ;[
       '概覽', '撰寫第一個技能',
-      'SKILL.md 規範', 'Frontmatter 欄位', 'Bundle 結構', '風險層級',
+      'SKILL.md 規範', 'Frontmatter 欄位', 'Bundle 結構', '風險層級', 'Risk Scanner 範圍',
       '上傳與驗證', '版本管理', '語意搜尋',
       'REST 參考', 'Event payload',
     ].forEach((label) => {
