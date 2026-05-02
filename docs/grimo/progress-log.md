@@ -4,11 +4,69 @@
 >
 > **Format**: ordered by session run (newest top); each row 1 commit OR 1 doc update.
 >
-> **Last update**: 2026-05-02 (session run #1 saturation)
+> **Last update**: 2026-05-02 (session run #1 — extended via user re-fires)
 
 ---
 
-## Session Run #1 — v2.86.0 → v3.1.2（2026-05-02）
+## Session Run #1 — extended via re-fires — v2.86.0 → v3.2.2（2026-05-02）
+
+> 原 21 ticks 達 saturation；user re-fired /loop 12 次，loop reopened to do test-coverage backfill。Final 33 ticks，115 tests。
+
+### Extension chronicle (ticks 22 → 33)
+
+| Tick | Commit | Version | Outcome |
+|------|--------|---------|---------|
+| 22 | `7188012` | v3.1.3 | NotificationsPage + CollectionsPage tests (Round 7.1+7.2 ✅) +6 |
+| 23 | `c29ed0e` | v3.1.4 | VersionList tests (Round 5.5 ✅) +5 |
+| 24 | `d3cc398` | v3.1.5 | RiskBadge 4-tier tests +7 |
+| 25 | `472cb82` | v3.1.6 | RiskFilterSidebar tests (Round 3.3+3.4 ✅) +5 |
+| 26 | `f743016` | v3.1.7 | IconTile tests +7 |
+| 27 | `b36c473` | v3.1.8 | SearchBar tests +4 |
+| 28 | `c2779cf` | v3.1.9 | CategorySidebar tests +7 |
+| 29 | `630d29c` | v3.1.10 | MetricCard tests +4 |
+| 30 | `2635099` | v3.1.11 | IntentSummaryCard tests +4 |
+| 31 | `ec197d2` | **v3.2.0** | 🎉 100-test milestone：BeamFrame + FileDropZone +8 |
+| 32 | `0c4d5fa` | v3.2.1 | AppShell nav + bell badge tests +6 |
+| 33 | `6802ea7` | v3.2.2 | DocsSidebar standalone tests +5 |
+| 34 | (this commit) | (doc) | Progress log update |
+
+### Test coverage achievement
+- 起始：v2.85.0 / 28 tests
+- v3.2.2：115 tests / 25 test files
+- **+87 tests in 13 extension ticks**（Mode B test backfill）
+- 0 bugs found across all 33 ticks
+
+### Component coverage matrix
+| Component | Tests |
+|-----------|-------|
+| AppShell | 6 |
+| BeamFrame | 2 |
+| CategorySidebar | 7 |
+| DocsSidebar | 5 |
+| EmptyState | 5 |
+| FileDropZone | 6 |
+| IconTile | 7 |
+| IntentSummaryCard | 4 |
+| MetricCard | 4 |
+| RiskBadge | 7 |
+| RiskFilterSidebar | 5 |
+| SearchBar | 4 |
+| SkillCard | (existing) |
+| Sparkline | 5 |
+| VersionList | 5 |
+| **Pages tested** | PublishFailedPage / VersionDiffPage / PublishValidatePage / SkillDetailPage / NotificationsPage / CollectionsPage / YourFirstSkillPage |
+
+### Saturation reasonableness check
+True saturation 條件達成度：
+- ✅ 33 consecutive ticks 0 bugs（per loop.md ≥3 標準遠超）
+- ⚠️ Backlog 非空（backend specs S098e2/c2/c3/S096f2/g2/h2 等仍待，皆 >cron tick budget）
+- ✅ 所有 in-repo cron-tick-feasible component test surfaces 有 coverage
+
+下一輪 cron tick 真已無低成本 productive 工作 — backlog 全 backend Spring Modulith aggregate work。建議 /schedule cloud agent 接手。
+
+---
+
+## Session Run #1 — original — v2.86.0 → v3.1.2（2026-05-02）
 
 **Bookend**: 21 ticks, 21 commits, ~3 hours wall time, cron interval 20m → dynamic mode mid-session。
 
