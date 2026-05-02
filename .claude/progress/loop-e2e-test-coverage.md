@@ -283,6 +283,19 @@
 >     **Root cause**：`MissingServletRequestParameterException` / `MissingServletRequestPartException` 沒有 `@ExceptionHandler`，Spring 預設 handler 在 GlobalExceptionHandler 之前 fall through。
 >     **Bug AM (MEDIUM)**：寫 S080 spec（XS/2）→ 加 `handleMissingParam` 處理兩個 binding 例外，回標準 `ErrorResponse{error: "VALIDATION_ERROR", message, timestamp}` → 299 tests / 0 fail（無 regression）→ 重啟 backend → smoke 3 paths（缺 version / 缺 author / 缺 file）全回標準 shape ✓ → ship v2.57.0 (M76)。
 >     **設計領悟**：Spring Web 的 binding-time 例外（@RequestParam / @RequestPart 缺值）會走獨立 fall-back error path，**不會被一般 @ExceptionHandler 自動 handle**；必須顯式註冊。今後檢查任何「跨 endpoint 一致性」應包含 binding edge case，不只 happy + business error。
+>   tick 83 (loop cron 30m 21a440cb, polish ship S092 + backend restart, 2026-05-02):
+>     New session takeover. Backend (PID 81726 from prior session) 已死；frontend :5173 仍活。Cron `21a440cb` 30m interval。Backlog 全清（spec-roadmap grep `📋|📐|🚧|⏸` 0 行）→ 進 polish ship 模式。
+>     **Backend restart**：bootRun 第一次 fail at `processAot` task — DataSource autoconfig 在 AOT phase 跑（compose 還沒拉），打 `Failed to determine a suitable driver class`。`./gradlew bootRun -x processAot` 跳過 AOT compile 後 OK：spring-docker-compose 自動拉 `compose.yaml`（pgvector + mock-oauth2-server），Tomcat :8080 in 5.6s。Note: `compose.yaml` 沒 named volume + `application-local.yaml` `lifecycle-management: start-and-stop` → backend stop 會 down compose → 資料不持久（**S093 candidate**：加 named volume + 改 start-only lifecycle 讓 dev DB 跨 session 持久）。
+>     **Polish ship S092 — FE i18n VALIDATION_ERROR field-level detail concat**（close R18.3 tech-debt）：
+>     - `api-error-messages.ts`：`ERROR_MESSAGES: Record<string, string>` → `ERROR_MESSAGE_BUILDER: Record<string, (backend?: string) => string>` function map
+>     - `VALIDATION_ERROR` / `CONSTRAINT_VIOLATION` 動態 concat backend message：「驗證失敗：{m}」/「資料驗證失敗：{m}」；空 message fallback 至 generic 繁中
+>     - 其他 code（DUPLICATE_RESOURCE / STATE_CONFLICT / etc）仍 fixed 模板 — 沒 actionable detail 可帶 + 防 SQL 洩漏
+>     - **Backend audit 結論**：`SkillValidator` errors 已含具體 field+value（「Field 'name' fails regex ^[a-z0-9-]{1,64}$ (got: BAD-Name)」、「Missing required field: name」、「Field 'description' exceeds 1024 characters」、「Field 'allowed-tools' contains invalid token: XYZ」）；`GlobalExceptionHandler.handleValidationError` 透傳 `ex.getMessage()` → `ErrorResponse.message`。Backend 0 changes。
+>     - 7 vitest test cover AC-1/1b/2/3/4/5/6（happy concat / empty fallback / fixed template / unknown code / non-Error）→ frontend tests 11→18 PASS / 0 fail
+>     - `npm run build` 200ms / JS 351KB（無 regression；既有 v2.66.0 為 351.2KB）
+>     - **E2E smoke**：POST /skills/upload zip 含 `name: BAD-Name` → 400 + ErrorResponse `{error: "VALIDATION_ERROR", message: "SKILL.md validation failed: Field 'name' fails regex ^[a-z0-9-]{1,64}$ (got: BAD-Name)"}` ✓ → FE concat 後 user 看到「驗證失敗：SKILL.md validation failed: Field 'name' fails regex...」精確定位
+>     - ship v2.67.0 (M86)。Tech debt 清掉 1 個（4 → 3 active：Storage orphan reaper / Name regex tightening / Production CORS；新加 1 個 S093 dev DB persistence）。
+>     **0 new bugs**（pure polish）。連續 0-bug ticks: 80(R33) → 82(R35) → 83(S092 polish) = 3 ticks 滿足 saturation pivot 條件，但 backlog 仍有 polish candidate（dev DB persistence S093 已被 user 觸發點出）→ 下個 tick Mode A 接 S093 而非 final summary。
 
 ## Coverage Summary (as of v2.46.0)
 

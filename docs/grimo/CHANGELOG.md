@@ -1,5 +1,24 @@
 # Changelog
 
+## [v2.67.0] — FE i18n VALIDATION_ERROR field-level detail concat（M86 完成；2026-05-02）
+
+> **Polish ship** — 關閉 tick 60 R18.3 tech-debt「i18n VALIDATION_ERROR 訊息過於 generic」。User 看到驗證錯誤時直接顯示具體 field+value，不需開 DevTools 定位。
+
+### Added
+- **S092: FE i18n field-level detail concat**（M86 / XS 2 pts）：
+  - `api-error-messages.ts`：`ERROR_MESSAGES` 靜態 map → `ERROR_MESSAGE_BUILDER` function map
+  - `VALIDATION_ERROR` / `CONSTRAINT_VIOLATION` 動態 concat backend message：「驗證失敗：Field 'name' fails regex ^[a-z0-9-]{1,64}$ (got: BAD-Name)」
+  - 其他 code（DUPLICATE_RESOURCE / STATE_CONFLICT 等）仍 fixed 模板（無 actionable detail / 防 SQL 洩漏）
+  - 新增 7 個 vitest test cover AC-1/1b/2/3/4/5/6（happy concat / empty-message fallback / unknown code / non-Error）
+  - Backend audit 結論：`SkillValidator` messages 已含具體 field+value，0 changes
+  - Frontend tests 11 → 18 PASS；JS 351KB 無 regression
+
+### UX impact
+- **Pre**: 「zip 套件驗證失敗，請確認格式正確。」（user 不知改哪欄）
+- **Post**: 「驗證失敗：Field 'name' fails regex ^[a-z0-9-]{1,64}$ (got: BAD-Name)」（精確定位）
+
+---
+
 ## [v2.66.0] — AnalyticsPage rework + MetricCard 對齊 DESIGN.md（M84 完成；2026-05-02）
 
 > **UI rework — 最後一個 page rework，S084 META 全 ✅** — 對齊 `platform_analytics_dashboard_admin_view.html`：metric strip 4-up + label-caps + accent purple progress + mono tabular-nums。

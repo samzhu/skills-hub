@@ -188,6 +188,7 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M85: BorderBeam hand-roll BeamFrame（drop border-beam dep） | S089 | XS(3) | 561 | ✅ `v2.62.0` (2026-05-02 — `BeamFrame.tsx` 1:1 port prototype `.sh-search-wrap` conic-gradient；drop border-beam npm dep；JS bundle 396KB→347KB) |
 | Phase 4 | M80: Semantic search `?limit=` configurable | S090 | XS(2) | 555 | ✅ `v2.60.0` (2026-05-02 — `?limit=` 1-50 cap；close R25.7 missing-feature；FE 「show more」UX enabled) |
 | Phase 4 | M81: LlmJudge prompt calibration | S091 | XS(3) | 558 | ✅ `v2.61.0` (2026-05-02 — `SYSTEM_PROMPT` 重寫區分 demonstrated vs theoretical；fix Anthropic canonical skills 全 HIGH bug AN；handover/planning/deep-research HIGH→LOW，真風險維持 HIGH) |
+| Phase 4 | M86: FE i18n VALIDATION_ERROR detail concat | S092 | XS(2) | 588 | ✅ `v2.67.0` (2026-05-02 — `ERROR_MESSAGE_BUILDER` function map；VALIDATION_ERROR / CONSTRAINT_VIOLATION concat backend field-aware message；FE tests 11→18；close R18.3 tech-debt「訊息過於 generic」) |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）
