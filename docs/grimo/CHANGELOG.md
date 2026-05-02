@@ -1,5 +1,33 @@
 # Changelog
 
+## [v3.3.0] — PublishPage 文本貼上 mode（S099b 完成；2026-05-02）
+
+> User directive: skill 沒有可以直接輸入文本的方式。Solution: PublishPage 加雙 mode tabs（檔案 / 文本）；text mode 用 `new File([text], 'SKILL.md', ...)` synthesize 後沿用既有 uploadSkill mutation。零 backend 改動 — backend S053 既有 `.md` 多 ext 支援。
+
+### 🎨 Frontend (S099b)
+- `pages/PublishPage.tsx`：
+  - 加 `mode: 'file' | 'text'` state + Tabs UI（FileText icon / Upload icon）
+  - text mode：`<textarea>` 14-row mono-font + placeholder 顯 SKILL.md 範例 frontmatter
+  - submit handler conditional：text mode → `new File([skillMdText], 'SKILL.md', { type: 'text/markdown' })` synthesize；file mode → 既有 file state
+  - submitDisabled rule per mode（text mode 檢 trim length > 0；file mode 檢 file != null）
+  - inline 連結 `/docs/skill-md-spec` 給文本 mode 作者參考規範
+  - 抽 `ModeTab` sub-component（active state shadow + bg-card / inactive muted）
+
+### Reuse
+- 既有 `uploadSkill` API client + mutation flow + onSuccess navigate 到 `/publish/validate?id=X` + onError navigate `/publish/failed?state=A&msg=`
+- 零 backend 改動（依賴 S053 既有 raw .md 上傳支援）
+- 零 new dep（無 JSZip 等 zip lib）
+
+### Trim
+原 S(8) 估含 syntax highlighting / preview / yaml-frontmatter live validation。本 commit ship XS(4) 核心：
+- ✅ Tabs + textarea + synthesize file submit
+- ⏸ S099b2: yaml-frontmatter live validation (parser + error highlighting)
+- ⏸ S099b3: markdown preview pane (split view)
+
+### ✅ Tests
+- 123/123 PASS（既有 PublishPage 無 dedicated test；future regression 加 PublishPage.test.tsx 可 cover mode 切換 + synthesize 行為）
+- `npx tsc --noEmit` clean
+
 ## [v3.2.4] — useVersions hook test（2026-05-02）
 
 > Mode B — useVersions enabled-guard + queryKey cache isolation contract verified。
