@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { AppShell } from '@/components/AppShell'
 import { MetricCard } from '@/components/MetricCard'
 import { useOverview } from '@/hooks/useAnalytics'
@@ -61,8 +62,13 @@ export function AnalyticsPage() {
                 {stats.topSkills.map((skill, i) => {
                   const top = stats.topSkills[0].downloads
                   const pct = top > 0 ? (skill.downloads / top) * 100 : 0
+                  // S100a: wrap Link 至 canonical /skills/:author/:name route
                   return (
-                    <div key={skill.name} className="flex items-center gap-3">
+                    <Link
+                      key={`${skill.author}/${skill.name}`}
+                      to={`/skills/${skill.author}/${skill.name}`}
+                      className="flex items-center gap-3 rounded-md transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+                    >
                       <span className="w-6 text-right font-mono text-[13px] font-medium text-muted-foreground">
                         {i + 1}
                       </span>
@@ -81,7 +87,7 @@ export function AnalyticsPage() {
                           />
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   )
                 })}
               </div>

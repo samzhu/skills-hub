@@ -69,9 +69,10 @@ public class AnalyticsService {
 	 */
 	private List<OverviewStats.TopSkill> getTopSkills(int limit) {
 		// S031: top skills 只回 PUBLISHED — SUSPENDED 不該出現在公開排行
+		// S100a：加 author 欄位 enable frontend Link 至 canonical /skills/:author/:name
 		return jdbc.query(
 				"""
-				SELECT name, download_count
+				SELECT name, author, download_count
 				  FROM skills
 				 WHERE status = 'PUBLISHED'
 				 ORDER BY download_count DESC
@@ -80,6 +81,7 @@ public class AnalyticsService {
 				new MapSqlParameterSource("limit", limit),
 				(rs, rowNum) -> new OverviewStats.TopSkill(
 						rs.getString("name"),
+						rs.getString("author"),
 						rs.getLong("download_count")));
 	}
 

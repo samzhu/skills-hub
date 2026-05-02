@@ -13,8 +13,9 @@ export interface OverviewStats {
   /**
    * 下載數前 N 名的技能（後端預設取 Top 10）。
    * 依 downloadCount 降冪排序，第一筆為下載數最高的技能。
+   * S100a：加 author 用於 frontend Link 至 canonical /skills/:author/:name
    */
-  topSkills: { name: string; downloads: number }[]
+  topSkills: { name: string; author: string; downloads: number }[]
 }
 
 /**
