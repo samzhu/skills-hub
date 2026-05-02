@@ -1,5 +1,16 @@
 # Changelog
 
+## [v3.1.10] — MetricCard component invariants（2026-05-02）
+
+> Mode B — MetricCard shallow render contract verified。
+
+### ✅ Tests
+- 新檔 `components/MetricCard.test.tsx` — 4 ACs：label + value 顯示；number value 轉 text；subtitle 條件 render；無 subtitle 結構 2 個 `<p>`。
+
+### 結果
+- 88 → 92 tests PASS（+4 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.1.9] — CategorySidebar component invariants（2026-05-02）
 
 > Mode B — CategorySidebar 互動 contract 驗證。
