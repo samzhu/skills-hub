@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · Version Diff</title>
+<meta name="viewport" content="width=1240" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg:    #0B0B0D; --bg-2: #111114; --bg-3: #18181C;
+  --ink:   #F0EFE8; --ink-2: #B0ACA0; --ink-3: #6E6B63;
+  --line:  rgba(255,255,255,0.07); --line-2: rgba(255,255,255,0.11);
+  --green: #1D9E75; --amber: #EF9F27; --red: #E24B4A; --accent: #7F77DD;
+  --add-bg:  rgba(29,158,117,0.13); --add-ln: rgba(29,158,117,0.5);
+  --del-bg:  rgba(226,75,74,0.13);  --del-ln: rgba(226,75,74,0.5);
+  --chg-bg:  rgba(239,159,39,0.10); --chg-ln: rgba(239,159,39,0.4);
+  --r-sm:4px; --r-md:8px; --r-lg:12px; --r-pill:999px;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:13px 26px;border-bottom:0.5px solid var(--line);background:rgba(11,11,13,0.9);backdrop-filter:blur(12px);position:sticky;top:0;z-index:40}
+.nav-brand{display:flex;align-items:center;gap:10px}
+.nav-logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#0B0B0D}
+.nav-name{font-size:15px;font-weight:500}
+.nav-org{font-size:11px;color:var(--ink-3);padding:2px 7px;border-radius:4px;background:rgba(255,255,255,0.05);margin-left:8px}
+.nav-links{display:flex;gap:20px;font-size:13px;color:var(--ink-2)}
+.nav-links .on{color:var(--ink);font-weight:500}
+.nav-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,0.6),rgba(29,158,117,0.6));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--ink)}
+
+/* Page head */
+.page-head{padding:24px 26px 20px;border-bottom:0.5px solid var(--line);background:radial-gradient(ellipse 700px 240px at 50% 0%,rgba(239,159,39,0.08),transparent 70%)}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3);margin-bottom:10px}
+.breadcrumb .sep{opacity:0.4}
+.breadcrumb .cur{color:var(--ink-2)}
+.head-row{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+.head-left{display:flex;align-items:flex-start;gap:14px}
+.skill-icon-lg{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;font-family:var(--mono);flex-shrink:0;background:rgba(55,138,221,0.18);color:#B0D5F2}
+.page-title{font-size:22px;font-weight:500;letter-spacing:-0.005em;margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ver-badge{font-family:var(--mono);font-size:12px;padding:3px 8px;border-radius:var(--r-sm);background:var(--bg-3);border:0.5px solid var(--line-2)}
+.ver-arrow{color:var(--ink-3);font-size:11px}
+.risk-delta{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:3px 8px;border-radius:var(--r-pill)}
+.risk-delta.same-low{background:rgba(29,158,117,0.12);color:#6FD8B0}
+.risk-delta.med-to-low{background:rgba(29,158,117,0.12);color:#6FD8B0}
+.risk-delta.low-to-med{background:rgba(239,159,39,0.12);color:#FAC775}
+
+/* Beam CTA */
+.beam-wrap{position:relative;padding:1.5px;border-radius:var(--r-md);background:#18181C;overflow:hidden;isolation:isolate;flex-shrink:0}
+.beam-wrap::before,.beam-wrap::after{content:'';position:absolute;inset:-120%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,0.95) 230deg,rgba(217,56,138,0.95) 268deg,rgba(239,159,39,0.95) 300deg,rgba(29,158,117,0.95) 332deg,rgba(55,138,221,0.95) 360deg,transparent 360deg);animation:spin 1.96s linear infinite;pointer-events:none;z-index:0}
+.beam-wrap::after{filter:blur(10px);opacity:0.55}
+@keyframes spin{to{transform:rotate(360deg)}}
+.beam-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;background:#F0EFE8;color:#0B0B0D;font-size:13px;font-weight:500;padding:9px 16px;border-radius:calc(var(--r-md) - 1.5px);border:none;cursor:pointer;white-space:nowrap}
+
+/* Stat strip */
+.stat-strip{display:flex;gap:0;border-bottom:0.5px solid var(--line)}
+.stat-cell{padding:14px 22px;border-right:0.5px solid var(--line);flex:1}
+.stat-cell:last-child{border-right:none}
+.stat-label{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px}
+.stat-val{font-size:18px;font-weight:500;letter-spacing:-0.01em;display:flex;align-items:center;gap:8px}
+.stat-sub{font-size:11px;color:var(--ink-3);margin-top:3px;font-family:var(--mono)}
+.delta-up{font-size:12px;font-weight:500;color:#6FD8B0}
+.delta-dn{font-size:12px;font-weight:500;color:#F2A6A6}
+.delta-same{font-size:12px;font-weight:500;color:var(--ink-3)}
+
+/* Body layout */
+.body{display:grid;grid-template-columns:1fr 300px;gap:0;min-height:calc(100vh - 54px)}
+
+/* Main diff area */
+.diff-area{padding:24px 26px;border-right:0.5px solid var(--line)}
+
+/* Section title */
+.diff-section-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.diff-section-title{font-size:13px;font-weight:500;color:var(--ink)}
+.diff-section-badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:var(--r-pill)}
+.badge-add{background:rgba(29,158,117,0.15);color:#6FD8B0}
+.badge-del{background:rgba(226,75,74,0.15);color:#F2A6A6}
+.badge-chg{background:rgba(239,159,39,0.15);color:#FAC775}
+.badge-none{background:rgba(255,255,255,0.05);color:var(--ink-3)}
+
+/* Diff file block */
+.diff-file{margin-bottom:20px;border:0.5px solid var(--line-2);border-radius:var(--r-lg);overflow:hidden}
+.diff-file-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg-3);border-bottom:0.5px solid var(--line)}
+.diff-file-name{font-family:var(--mono);font-size:12px;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+.diff-file-stats{display:flex;gap:8px;font-size:11px;font-family:var(--mono)}
+.diff-add-count{color:#6FD8B0}
+.diff-del-count{color:#F2A6A6}
+
+/* Diff code */
+.diff-code{font-family:var(--mono);font-size:12px;line-height:1.7}
+.diff-line{display:grid;grid-template-columns:48px 48px 24px 1fr;gap:0;min-height:24px}
+.diff-line .ln{padding:0 10px;color:var(--ink-3);text-align:right;border-right:0.5px solid var(--line);user-select:none;font-size:11px;display:flex;align-items:center;justify-content:flex-end}
+.diff-line .sig{padding:0 6px;display:flex;align-items:center;justify-content:center;font-weight:600}
+.diff-line .code{padding:0 14px;white-space:pre;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center}
+.diff-line.ctx .code{color:var(--ink-3)}
+.diff-line.add{background:var(--add-bg)}
+.diff-line.add .ln{background:rgba(29,158,117,0.08)}
+.diff-line.add .sig{color:#6FD8B0}
+.diff-line.del{background:var(--del-bg)}
+.diff-line.del .ln{background:rgba(226,75,74,0.08)}
+.diff-line.del .sig{color:#F2A6A6;text-decoration:line-through}
+.diff-line.chg{background:var(--chg-bg)}
+.diff-line.chg .ln{background:rgba(239,159,39,0.06)}
+.diff-line.chg .sig{color:#FAC775}
+.diff-line.hunk{background:rgba(127,119,221,0.06);color:var(--accent);font-size:11px;padding:4px 14px;font-family:var(--mono);grid-column:1/-1}
+.diff-line .hl{background:rgba(29,158,117,0.28);border-radius:2px;padding:0 2px}
+.diff-line .hl-del{background:rgba(226,75,74,0.28);border-radius:2px;padding:0 2px}
+
+/* Sidebar */
+.sidebar{padding:20px 18px;overflow-y:auto}
+.sb-section{margin-bottom:24px}
+.sb-title{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px}
+
+/* Risk comparison */
+.risk-compare{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-bottom:14px}
+.risk-box{border-radius:var(--r-md);padding:12px;text-align:center}
+.risk-box .tier{font-size:12px;font-weight:500;margin-bottom:2px}
+.risk-box .ver{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+.risk-box.low{background:rgba(29,158,117,0.12);border:0.5px solid rgba(29,158,117,0.3)}
+.risk-box.low .tier{color:#6FD8B0}
+.risk-box.med{background:rgba(239,159,39,0.12);border:0.5px solid rgba(239,159,39,0.3)}
+.risk-box.med .tier{color:#FAC775}
+.risk-arrow{color:var(--ink-3);font-size:16px}
+
+/* Finding diff list */
+.finding-row{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:var(--r-md);margin-bottom:6px;font-size:12px}
+.finding-row.resolved{background:rgba(29,158,117,0.08)}
+.finding-row.new-f{background:rgba(226,75,74,0.08)}
+.finding-row.unchanged{opacity:0.5}
+.finding-icon{width:18px;height:18px;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600}
+.finding-icon.pass{background:rgba(29,158,117,0.2);color:#6FD8B0}
+.finding-icon.fail{background:rgba(226,75,74,0.2);color:#F2A6A6}
+.finding-icon.warn{background:rgba(239,159,39,0.2);color:#FAC775}
+.finding-text{flex:1;min-width:0}
+.finding-name{font-weight:500;color:var(--ink);margin-bottom:1px}
+.finding-meta{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+.finding-delta{font-size:10px;font-weight:500;padding:1px 6px;border-radius:var(--r-pill);flex-shrink:0;align-self:flex-start;margin-top:2px}
+.finding-delta.resolved{background:rgba(29,158,117,0.15);color:#6FD8B0}
+.finding-delta.new-d{background:rgba(226,75,74,0.15);color:#F2A6A6}
+.finding-delta.same{background:rgba(255,255,255,0.05);color:var(--ink-3)}
+
+/* Metadata diff */
+.meta-diff-row{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--line);font-size:12px;align-items:start}
+.meta-diff-row:last-child{border-bottom:none}
+.meta-key{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.meta-old{color:var(--ink-3);text-decoration:line-through}
+.meta-new{color:var(--ink)}
+.meta-same{color:var(--ink-2)}
+
+/* Action buttons */
+.action-row{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.sec-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:var(--r-md);border:0.5px solid var(--line-2);background:rgba(255,255,255,0.03);color:var(--ink);font-size:13px;font-weight:500;cursor:pointer}
+.sec-btn:hover{background:rgba(255,255,255,0.07)}
+.sec-btn.danger{border-color:rgba(226,75,74,0.3);color:#F2A6A6}
+.sec-btn.danger:hover{background:rgba(226,75,74,0.08)}
+
+/* Version selector tabs */
+.ver-tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.ver-tab{font-family:var(--mono);font-size:12px;padding:5px 11px;border-radius:var(--r-sm);border:0.5px solid var(--line-2);color:var(--ink-2);cursor:pointer}
+.ver-tab.on{background:rgba(127,119,221,0.15);border-color:rgba(127,119,221,0.4);color:#C9C5F2}
+.ver-tab .dot{width:5px;height:5px;border-radius:50%;display:inline-block;margin-right:4px}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-logo">S</div>
+    <span class="nav-name">Skills Hub</span>
+    <span class="nav-org">Engineering org</span>
+  </div>
+  <div class="nav-links">
+    <span class="on">Browse</span>
+    <span>Collections</span>
+    <span>Publish</span>
+    <span>Docs</span>
+  </div>
+  <div class="nav-avatar">MK</div>
+</nav>
+
+<!-- Page head -->
+<div class="page-head">
+  <div class="breadcrumb">
+    <span>Browse</span><span class="sep">/</span>
+    <span>k8s-deployment</span><span class="sep">/</span>
+    <span class="cur">Version diff</span>
+  </div>
+  <div class="head-row">
+    <div class="head-left">
+      <div class="skill-icon-lg">K8</div>
+      <div>
+        <h1 class="page-title">k8s-deployment</h1>
+        <div class="page-sub">
+          <span class="ver-badge">v2.0.1</span>
+          <span class="ver-arrow">→</span>
+          <span class="ver-badge" style="background:rgba(127,119,221,0.12);border-color:rgba(127,119,221,0.35);color:#C9C5F2">v2.1.0</span>
+          <span style="color:var(--line-2)">·</span>
+          <span class="risk-delta med-to-low">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m18 15-6-6-6 6"/></svg>
+            Med → Low risk
+          </span>
+          <span style="font-size:12px;color:var(--ink-3)">platform-team · published 2 days ago</span>
+        </div>
+      </div>
+    </div>
+    <div class="beam-wrap" style="align-self:center">
+      <button class="beam-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Install v2.1.0
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Stat strip -->
+<div class="stat-strip">
+  <div class="stat-cell">
+    <div class="stat-label">Risk change</div>
+    <div class="stat-val">Med → Low <span class="delta-up">↓ improved</span></div>
+    <div class="stat-sub">scripts/ directory removed</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">Lines changed</div>
+    <div class="stat-val">+38 / −52 <span class="delta-same">net −14</span></div>
+    <div class="stat-sub">across 3 files</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">Findings resolved</div>
+    <div class="stat-val">3 <span class="delta-up">↓ 0 remaining</span></div>
+    <div class="stat-sub">rule:rce.curl-pipe-bash · 2 others</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">New findings</div>
+    <div class="stat-val">0 <span class="delta-same">clean</span></div>
+    <div class="stat-sub">auto-published at low risk</div>
+  </div>
+</div>
+
+<!-- Body -->
+<div class="body">
+
+  <!-- Main diff -->
+  <div class="diff-area">
+
+    <!-- Version selector -->
+    <div class="ver-tabs">
+      <div class="ver-tab"><span class="dot" style="background:var(--ink-3)"></span>v1.0.0</div>
+      <div class="ver-tab"><span class="dot" style="background:var(--ink-3)"></span>v1.2.1</div>
+      <div class="ver-tab"><span class="dot" style="background:var(--amber)"></span>v2.0.1</div>
+      <div class="ver-tab on"><span class="dot" style="background:var(--green)"></span>v2.1.0 <span style="font-size:10px;color:rgba(127,119,221,0.8);margin-left:4px">latest</span></div>
+    </div>
+
+    <!-- SKILL.md diff -->
+    <div class="diff-section-head">
+      <span class="diff-section-title">SKILL.md</span>
+      <span class="diff-section-badge badge-chg">3 changes</span>
+    </div>
+    <div class="diff-file" style="margin-bottom:24px">
+      <div class="diff-file-head">
+        <div class="diff-file-name">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+          SKILL.md
+        </div>
+        <div class="diff-file-stats">
+          <span class="diff-add-count">+5</span>
+          <span class="diff-del-count">−8</span>
+        </div>
+      </div>
+      <div class="diff-code">
+        <div class="diff-line ctx"><span class="ln">1</span><span class="ln">1</span><span class="sig"> </span><div class="code">---</div></div>
+        <div class="diff-line chg"><span class="ln">2</span><span class="ln"> </span><span class="sig">−</span><div class="code">version: <span class="hl-del">2.0.1</span></div></div>
+        <div class="diff-line add"><span class="ln"> </span><span class="ln">2</span><span class="sig">+</span><div class="code">version: <span class="hl">2.1.0</span></div></div>
+        <div class="diff-line ctx"><span class="ln">3</span><span class="ln">3</span><span class="sig"> </span><div class="code">name: k8s-deployment</div></div>
+        <div class="diff-line ctx"><span class="ln">4</span><span class="ln">4</span><span class="sig"> </span><div class="code">description: Generate Kubernetes manifests with rolling updates…</div></div>
+        <div class="diff-line hunk">@@ -12,8 +12,5 @@ compatibility: [claude-code, cursor, copilot]</div>
+        <div class="diff-line del"><span class="ln">12</span><span class="ln"> </span><span class="sig">−</span><div class="code">scripts:</div></div>
+        <div class="diff-line del"><span class="ln">13</span><span class="ln"> </span><span class="sig">−</span><div class="code">  bootstrap: <span class="hl-del">scripts/bootstrap.sh</span></div></div>
+        <div class="diff-line del"><span class="ln">14</span><span class="ln"> </span><span class="sig">−</span><div class="code">  teardown: <span class="hl-del">scripts/teardown.sh</span></div></div>
+        <div class="diff-line ctx"><span class="ln">15</span><span class="ln">12</span><span class="sig"> </span><div class="code">tools: [create, edit, view]</div></div>
+        <div class="diff-line chg"><span class="ln">16</span><span class="ln"> </span><span class="sig">−</span><div class="code">risk: <span class="hl-del">medium</span></div></div>
+        <div class="diff-line add"><span class="ln"> </span><span class="ln">13</span><span class="sig">+</span><div class="code">risk: <span class="hl">low</span></div></div>
+        <div class="diff-line add"><span class="ln"> </span><span class="ln">14</span><span class="sig">+</span><div class="code">changelog: "Removed scripts/ dir; all logic moved to SKILL.md instructions"</div></div>
+        <div class="diff-line ctx"><span class="ln">17</span><span class="ln">15</span><span class="sig"> </span><div class="code">---</div></div>
+      </div>
+    </div>
+
+    <!-- scripts/ removed -->
+    <div class="diff-section-head">
+      <span class="diff-section-title">scripts/ directory</span>
+      <span class="diff-section-badge badge-del">Removed</span>
+      <span style="font-size:11px;color:var(--ink-3)">— primary reason risk dropped to Low</span>
+    </div>
+    <div class="diff-file" style="margin-bottom:24px">
+      <div class="diff-file-head">
+        <div class="diff-file-name">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+          scripts/bootstrap.sh
+          <span style="font-size:10px;background:rgba(226,75,74,0.12);color:#F2A6A6;padding:1px 6px;border-radius:3px;margin-left:4px">deleted</span>
+        </div>
+        <div class="diff-file-stats">
+          <span class="diff-del-count">−24 lines</span>
+        </div>
+      </div>
+      <div class="diff-code">
+        <div class="diff-line del"><span class="ln">1</span><span class="ln"> </span><span class="sig">−</span><div class="code">#!/usr/bin/env bash</div></div>
+        <div class="diff-line del"><span class="ln">2</span><span class="ln"> </span><span class="sig">−</span><div class="code">set -euo pipefail</div></div>
+        <div class="diff-line del"><span class="ln">3</span><span class="ln"> </span><span class="sig">−</span><div class="code" style="color:#F2A6A6">curl -sSL https://get.k3s.io | <span class="hl-del">bash</span>  # ← rule:rce.curl-pipe-bash</div></div>
+        <div class="diff-line del"><span class="ln">4</span><span class="ln"> </span><span class="sig">−</span><div class="code">kubectl apply -f manifests/</div></div>
+        <div class="diff-line del"><span class="ln">5</span><span class="ln"> </span><span class="sig">−</span><div class="code" style="color:#F2A6A6">cp ~/.aws/credentials /tmp/k8s-creds  # ← rule:sensitive.path</div></div>
+        <div class="diff-line hunk">… 19 more deleted lines</div>
+      </div>
+    </div>
+
+    <!-- Instructions diff -->
+    <div class="diff-section-head">
+      <span class="diff-section-title">Instructions</span>
+      <span class="diff-section-badge badge-add">+33 lines</span>
+    </div>
+    <div class="diff-file">
+      <div class="diff-file-head">
+        <div class="diff-file-name">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+          SKILL.md (markdown body)
+        </div>
+        <div class="diff-file-stats">
+          <span class="diff-add-count">+33</span>
+          <span class="diff-del-count">−20</span>
+        </div>
+      </div>
+      <div class="diff-code">
+        <div class="diff-line ctx"><span class="ln">1</span><span class="ln">1</span><span class="sig"> </span><div class="code">## Instructions</div></div>
+        <div class="diff-line ctx"><span class="ln">2</span><span class="ln">2</span><span class="sig"> </span><div class="code"> </div></div>
+        <div class="diff-line del"><span class="ln">3</span><span class="ln"> </span><span class="sig">−</span><div class="code">Run `scripts/bootstrap.sh` to install k3s and apply manifests.</div></div>
+        <div class="diff-line add"><span class="ln"> </span><span class="ln">3</span><span class="sig">+</span><div class="code"><span class="hl">When asked to deploy a service to Kubernetes:</span></div></div>
+        <div class="diff-line add"><span class="ln"> </span><span class="ln">4</span><span class="sig">+</span><div class="code"><span class="hl">1. Ask the user for: image name, replicas, namespace, resource limits</span></div></div>
+        <div class="diff-line add"><span class="ln"> </span><span class="ln">5</span><span class="sig">+</span><div class="code"><span class="hl">2. Generate a Deployment manifest with rolling update strategy</span></div></div>
+        <div class="diff-line add"><span class="ln"> </span><span class="ln">6</span><span class="sig">+</span><div class="code"><span class="hl">3. Add HorizontalPodAutoscaler if replicas > 2</span></div></div>
+        <div class="diff-line add"><span class="ln"> </span><span class="ln">7</span><span class="sig">+</span><div class="code"><span class="hl">4. Create namespace if it does not exist</span></div></div>
+        <div class="diff-line hunk">… 26 more added lines</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Risk comparison -->
+    <div class="sb-section">
+      <div class="sb-title">Risk Assessment</div>
+      <div class="risk-compare">
+        <div class="risk-box med">
+          <div class="tier">Medium</div>
+          <div class="ver">v2.0.1</div>
+        </div>
+        <div class="risk-arrow">→</div>
+        <div class="risk-box low">
+          <div class="tier">Low</div>
+          <div class="ver">v2.1.0</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--ink-3);line-height:1.55;padding:0 2px">
+        Removed <code style="font-family:var(--mono);font-size:11px;background:var(--bg-3);padding:1px 4px;border-radius:3px">scripts/</code> directory. No executable files remain — skill auto-published at low risk without human review.
+      </div>
+    </div>
+
+    <!-- Finding diff -->
+    <div class="sb-section">
+      <div class="sb-title">Security Findings</div>
+
+      <div class="finding-row resolved">
+        <div class="finding-icon pass">✓</div>
+        <div class="finding-text">
+          <div class="finding-name">curl | bash pattern</div>
+          <div class="finding-meta">rule:rce.curl-pipe-bash · line 3</div>
+        </div>
+        <span class="finding-delta resolved">resolved</span>
+      </div>
+
+      <div class="finding-row resolved">
+        <div class="finding-icon pass">✓</div>
+        <div class="finding-text">
+          <div class="finding-name">Sensitive path access</div>
+          <div class="finding-meta">rule:sensitive.path · ~/.aws/credentials</div>
+        </div>
+        <span class="finding-delta resolved">resolved</span>
+      </div>
+
+      <div class="finding-row resolved">
+        <div class="finding-icon pass">✓</div>
+        <div class="finding-text">
+          <div class="finding-name">Untrusted external domain</div>
+          <div class="finding-meta">rule:net.external-domain · get.k3s.io</div>
+        </div>
+        <span class="finding-delta resolved">resolved</span>
+      </div>
+
+      <div style="font-size:11px;color:var(--ink-3);padding:6px 4px;font-family:var(--mono)">
+        0 new findings · 3 resolved
+      </div>
+    </div>
+
+    <!-- Metadata diff -->
+    <div class="sb-section">
+      <div class="sb-title">Metadata changes</div>
+      <div class="meta-diff-row">
+        <span class="meta-key">version</span>
+        <span class="meta-old">2.0.1</span>
+        <span class="meta-new">2.1.0</span>
+      </div>
+      <div class="meta-diff-row">
+        <span class="meta-key">risk</span>
+        <span class="meta-old">medium</span>
+        <span class="meta-new" style="color:#6FD8B0">low</span>
+      </div>
+      <div class="meta-diff-row">
+        <span class="meta-key">scripts</span>
+        <span class="meta-old">bootstrap, teardown</span>
+        <span class="meta-new" style="color:var(--ink-3)">none</span>
+      </div>
+      <div class="meta-diff-row">
+        <span class="meta-key">name</span>
+        <span class="meta-same" style="grid-column:2/-1">k8s-deployment</span>
+      </div>
+      <div class="meta-diff-row">
+        <span class="meta-key">author</span>
+        <span class="meta-same" style="grid-column:2/-1">platform-team</span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="sb-section">
+      <div class="sb-title">Actions</div>
+      <div class="action-row">
+        <div class="beam-wrap" style="border-radius:var(--r-md)">
+          <button class="beam-btn" style="width:100%;justify-content:center;border-radius:calc(var(--r-md) - 1.5px)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Install v2.1.0
+          </button>
+        </div>
+        <button class="sec-btn">View full skill detail</button>
+        <button class="sec-btn">← Back to v2.0.1</button>
+        <button class="sec-btn danger">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 18 18M10.5 10.677A2 2 0 0 0 10 12a2 2 0 0 0 2 2 2 2 0 0 0 1.322-.5M6.362 6.365A9.002 9.002 0 0 0 3 12c0 4.97 4.03 9 9 9a9 9 0 0 0 5.638-1.975"/><path d="M12 3a9 9 0 0 1 9 9 8.97 8.97 0 0 1-1.362 4.635"/></svg>
+          Flag this version
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

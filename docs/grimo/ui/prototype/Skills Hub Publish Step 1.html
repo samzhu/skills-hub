@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · Publish — Upload</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#08080A;--bg-2:#0F0F12;--bg-3:#171719;--ink:#EEECEA;--ink-2:#A8A49C;--ink-3:#5E5B55;--line:rgba(255,255,255,.06);--line-2:rgba(255,255,255,.10);--accent:#7F77DD;--green:#1D9E75;--amber:#EF9F27;--mono:'JetBrains Mono',ui-monospace,monospace;--sans:'Inter',system-ui,sans-serif;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-pill:999px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;height:100%;overflow:hidden}
+.shell{display:flex;flex-direction:column;height:100vh}
+.scroll{overflow-y:auto;flex:1}
+
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;border-bottom:.5px solid var(--line);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#08080A}
+.brand-name{font-size:15px;font-weight:500}
+.crumbs{font-size:13px;color:var(--ink-3);display:flex;align-items:center;gap:6px}
+.crumbs .sep{opacity:.4}
+.crumbs .cur{color:var(--ink-2)}
+.avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,.6),rgba(29,158,117,.5));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500}
+
+/* Beam */
+.beam-wrap{position:relative;padding:1.5px;border-radius:var(--r-md);background:#1A1A1E;overflow:hidden;isolation:isolate;display:inline-block}
+.beam-wrap::before,.beam-wrap::after{content:'';position:absolute;inset:-120%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,.95) 230deg,rgba(217,56,138,.95) 268deg,rgba(239,159,39,.95) 300deg,rgba(29,158,117,.95) 332deg,rgba(55,138,221,.95) 360deg,transparent 360deg);animation:spin 1.96s linear infinite;pointer-events:none;z-index:0}
+.beam-wrap::after{filter:blur(10px);opacity:.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+.beam-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;background:#EEECEA;color:#08080A;font-size:13px;font-weight:500;padding:9px 18px;border-radius:calc(var(--r-md) - 1.5px);border:none;cursor:pointer}
+
+/* Hero */
+.hero{padding:24px 26px 20px;border-bottom:.5px solid var(--line);background:radial-gradient(ellipse 600px 200px at 40% 0%,rgba(127,119,221,.09),transparent 70%)}
+.hero h1{font-size:22px;font-weight:500;margin-bottom:4px}
+.hero p{font-size:13px;color:var(--ink-2)}
+
+/* Stepper */
+.stepper{display:flex;align-items:center;padding:18px 26px;gap:6px;border-bottom:.5px solid var(--line)}
+.step{display:flex;align-items:center;gap:8px}
+.step-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+.step-num.active{background:var(--ink);color:var(--bg)}
+.step-num.future{background:var(--bg-3);color:var(--ink-3);border:.5px solid var(--line-2)}
+.step-label{font-size:12px;color:var(--ink-3);white-space:nowrap}
+.step.active .step-label{color:var(--ink);font-weight:500}
+.step-line{flex:1;height:.5px;background:var(--line-2);margin:0 6px}
+
+/* Body */
+.body{display:grid;grid-template-columns:1fr 260px;gap:24px;padding:28px 26px}
+.main{min-width:0}
+
+/* Drop zone beam wrapper */
+.dropzone-beam{position:relative;padding:2px;border-radius:var(--r-xl);background:var(--bg-3);overflow:hidden;isolation:isolate;margin-bottom:24px;cursor:pointer}
+.dropzone-beam::before,.dropzone-beam::after{content:'';position:absolute;inset:-80%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,.7) 228deg,rgba(217,56,138,.7) 264deg,rgba(239,159,39,.7) 296deg,rgba(29,158,117,.7) 328deg,rgba(55,138,221,.7) 360deg,transparent 360deg);animation:spin 3s linear infinite;pointer-events:none;z-index:0}
+.dropzone-beam::after{filter:blur(16px);opacity:.3}
+.dropzone-inner{position:relative;z-index:1;background:var(--bg-2);border-radius:calc(var(--r-xl) - 2px);padding:48px 32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;min-height:220px}
+.dz-icon{width:56px;height:56px;border-radius:14px;background:rgba(127,119,221,.14);border:.5px solid rgba(127,119,221,.25);display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+.dz-title{font-size:16px;font-weight:500;color:var(--ink)}
+.dz-sub{font-size:13px;color:var(--ink-2);line-height:1.5}
+.dz-hint{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+.dz-or{font-size:12px;color:var(--ink-3)}
+.browse-btn{font-size:13px;font-weight:500;padding:8px 18px;border-radius:var(--r-md);border:.5px solid rgba(127,119,221,.3);background:rgba(127,119,221,.1);color:#C9C5F2;cursor:pointer}
+.browse-btn:hover{background:rgba(127,119,221,.16)}
+
+/* Format guide */
+.format-section{margin-bottom:22px}
+.section-title{font-size:13px;font-weight:500;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title .badge{font-size:10px;padding:2px 7px;border-radius:var(--r-pill);background:rgba(255,255,255,.06);color:var(--ink-3)}
+.structure-tree{background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:14px 16px;font-family:var(--mono);font-size:12px;line-height:2.1}
+.tree-folder{color:var(--ink-2)}
+.tree-file{color:var(--ink-3);padding-left:16px}
+.tree-file.req{color:var(--ink)}
+.tree-badge{font-size:9px;font-weight:500;padding:1px 5px;border-radius:3px;margin-left:8px;vertical-align:middle}
+.tree-badge.req{background:rgba(127,119,221,.15);color:#C9C5F2}
+.tree-badge.scan{background:rgba(239,159,39,.15);color:#FAC775}
+.tree-badge.opt{background:rgba(255,255,255,.05);color:var(--ink-3)}
+
+/* Recent uploads */
+.recent-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:.5px solid var(--line);cursor:pointer}
+.recent-row:last-child{border-bottom:none}
+.recent-row:hover{opacity:.8}
+.r-icon{width:32px;height:32px;border-radius:8px;background:rgba(127,119,221,.14);color:#C9C5F2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;font-family:var(--mono);flex-shrink:0}
+.r-name{font-size:13px;font-weight:500}
+.r-meta{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+.r-ago{font-size:11px;color:var(--ink-3);margin-left:auto}
+
+/* Sidebar */
+.sidebar{display:flex;flex-direction:column;gap:14px}
+.sb-card{background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-xl);padding:16px}
+.sb-label{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.tip-row{display:flex;gap:8px;padding:7px 0;border-bottom:.5px solid var(--line);font-size:12px;color:var(--ink-2);line-height:1.5}
+.tip-row:last-child{border-bottom:none}
+.tip-icon{width:18px;height:18px;border-radius:50%;background:rgba(127,119,221,.12);color:#C9C5F2;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;margin-top:1px}
+.tip-row strong{color:var(--ink);font-weight:500}
+
+/* Footer */
+.footer{display:flex;align-items:center;justify-content:space-between;padding:14px 26px;border-top:.5px solid var(--line);flex-shrink:0}
+.ghost-btn{font-size:13px;padding:8px 14px;border-radius:var(--r-md);border:.5px solid var(--line-2);background:transparent;color:var(--ink-2);cursor:pointer}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="nav">
+    <div class="brand"><div class="logo">S</div><span class="brand-name">Skills Hub</span></div>
+    <div class="crumbs"><span>My Skills</span><span class="sep">/</span><span class="cur">Publish new skill</span></div>
+    <div class="avatar">MK</div>
+  </nav>
+
+  <div class="hero">
+    <h1>Publish a skill</h1>
+    <p>Upload your SKILL.md bundle · automated validation &amp; risk scan · version goes live in seconds</p>
+  </div>
+
+  <div class="stepper">
+    <div class="step active"><div class="step-num active">1</div><span class="step-label">Upload</span></div>
+    <div class="step-line"></div>
+    <div class="step"><div class="step-num future">2</div><span class="step-label">Validate</span></div>
+    <div class="step-line"></div>
+    <div class="step"><div class="step-num future">3</div><span class="step-label">Review &amp; publish</span></div>
+    <div class="step-line"></div>
+    <div class="step"><div class="step-num future">4</div><span class="step-label">Live</span></div>
+  </div>
+
+  <div class="scroll">
+    <div class="body">
+      <div class="main">
+
+        <!-- Drop zone -->
+        <div class="dropzone-beam">
+          <div class="dropzone-inner">
+            <div class="dz-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9C5F2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="dz-title">Drop your skill bundle here</div>
+            <div class="dz-sub">Drag and drop a <code style="font-family:var(--mono);font-size:11.5px;background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px">.zip</code> file containing your SKILL.md and any optional assets</div>
+            <div class="dz-or">or</div>
+            <button class="browse-btn">Browse files</button>
+            <div class="dz-hint">Max 50 MB · .zip only</div>
+          </div>
+        </div>
+
+        <!-- Bundle structure guide -->
+        <div class="format-section">
+          <div class="section-title">Expected bundle structure <span class="badge">agentskills.io v1.2</span></div>
+          <div class="structure-tree">
+            <div class="tree-folder">my-skill-name/</div>
+            <div class="tree-file req">├─ SKILL.md <span class="tree-badge req">required</span></div>
+            <div class="tree-file">├─ scripts/ <span class="tree-badge scan">triggers risk scan</span></div>
+            <div class="tree-file" style="padding-left:32px">│  └─ *.sh, *.py, *.js</div>
+            <div class="tree-file">├─ references/ <span class="tree-badge opt">optional</span></div>
+            <div class="tree-file" style="padding-left:32px">│  └─ *.md, *.txt</div>
+            <div class="tree-file">└─ examples/ <span class="tree-badge opt">optional</span></div>
+            <div class="tree-file" style="padding-left:32px">   └─ any format</div>
+          </div>
+        </div>
+
+        <!-- Recent -->
+        <div class="format-section">
+          <div class="section-title">Recent uploads</div>
+          <div class="sb-card" style="padding:4px 14px">
+            <div class="recent-row">
+              <div class="r-icon">DC</div>
+              <div><div class="r-name">docker-compose-helper-v2.1.0.zip</div><div class="r-meta">84 KB · 12 files</div></div>
+              <span class="r-ago">3 days ago</span>
+            </div>
+            <div class="recent-row">
+              <div class="r-icon" style="background:rgba(55,138,221,.14);color:#B0D5F2">K8</div>
+              <div><div class="r-name">k8s-deployment-v2.1.0.zip</div><div class="r-meta">112 KB · 18 files</div></div>
+              <span class="r-ago">5 days ago</span>
+            </div>
+            <div class="recent-row">
+              <div class="r-icon" style="background:rgba(239,159,39,.14);color:#FAC775">GA</div>
+              <div><div class="r-name">gha-workflow-builder-v1.5.2.zip</div><div class="r-meta">56 KB · 8 files</div></div>
+              <span class="r-ago">2 weeks ago</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <aside class="sidebar">
+        <div class="sb-card">
+          <div class="sb-label">What gets scanned</div>
+          <div class="tip-row"><div class="tip-icon">✓</div><div>SKILL.md <strong>frontmatter</strong> — required fields, length limits</div></div>
+          <div class="tip-row"><div class="tip-icon">⚡</div><div><strong>scripts/</strong> — shell patterns, sensitive paths, external domains</div></div>
+          <div class="tip-row"><div class="tip-icon">📁</div><div><strong>Bundle size</strong> — file count, total size, binary payloads</div></div>
+          <div class="tip-row"><div class="tip-icon">✓</div><div>Results in <strong>seconds</strong> — low-risk publishes automatically</div></div>
+        </div>
+        <div class="sb-card">
+          <div class="sb-label">Writing a good description</div>
+          <div style="font-size:12px;color:var(--ink-2);line-height:1.6">Your description is embedded for <strong style="color:var(--ink)">semantic search</strong>. Use concrete verbs and domain nouns — "Generate Kubernetes manifests with HPA" beats "A powerful k8s tool".</div>
+        </div>
+        <div class="sb-card">
+          <div class="sb-label">Need a starter template?</div>
+          <div style="font-size:12px;color:var(--ink-2);margin-bottom:10px;line-height:1.5">Download a minimal SKILL.md template with all required fields and inline comments.</div>
+          <button style="font-size:12px;padding:7px 13px;border-radius:var(--r-md);border:.5px solid var(--line-2);background:rgba(255,255,255,.03);color:var(--ink-2);cursor:pointer;width:100%">Download starter template</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="ghost-btn">← Back to My Skills</button>
+    <span style="font-size:12px;color:var(--ink-3)">Drop a file to continue</span>
+  </div>
+</div>
+</body>
+</html>

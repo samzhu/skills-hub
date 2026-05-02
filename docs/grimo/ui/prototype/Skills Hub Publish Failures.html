@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · Publish — Failure States</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#08080A;--bg-2:#0F0F12;--bg-3:#171719;--ink:#EEECEA;--ink-2:#A8A49C;--ink-3:#5E5B55;--line:rgba(255,255,255,.06);--line-2:rgba(255,255,255,.10);--accent:#7F77DD;--green:#1D9E75;--amber:#EF9F27;--red:#E24B4A;--mono:'JetBrains Mono',ui-monospace,monospace;--sans:'Inter',system-ui,sans-serif;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-pill:999px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* Beam */
+.beam-wrap{position:relative;padding:1.5px;border-radius:var(--r-md);background:#1A1A1E;overflow:hidden;isolation:isolate;display:inline-block}
+.beam-wrap::before,.beam-wrap::after{content:'';position:absolute;inset:-120%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,.95) 230deg,rgba(217,56,138,.95) 268deg,rgba(239,159,39,.95) 300deg,rgba(29,158,117,.95) 332deg,rgba(55,138,221,.95) 360deg,transparent 360deg);animation:spin 1.96s linear infinite;pointer-events:none;z-index:0}
+.beam-wrap::after{filter:blur(10px);opacity:.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+.beam-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;background:#EEECEA;color:#08080A;font-size:13px;font-weight:500;padding:8px 16px;border-radius:calc(var(--r-md) - 1.5px);border:none;cursor:pointer}
+
+/* Shared shell */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;border-bottom:.5px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#08080A}
+.brand-name{font-size:15px;font-weight:500}
+.crumbs{font-size:13px;color:var(--ink-3);display:flex;align-items:center;gap:6px}
+.crumbs .sep{opacity:.4}
+.crumbs .cur{color:var(--ink-2)}
+.avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,.6),rgba(29,158,117,.5));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500}
+
+/* State label */
+.state-head{display:flex;align-items:center;gap:10px;padding:16px 26px 10px}
+.state-num{width:24px;height:24px;border-radius:50%;background:var(--bg-3);border:.5px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--ink-2)}
+.state-title{font-size:15px;font-weight:500}
+.state-sub{font-size:12px;color:var(--ink-3);margin-left:auto}
+
+/* Shared page wrapper */
+.page{border:.5px solid var(--line-2);border-radius:var(--r-xl);overflow:hidden;margin:0 26px 40px;background:var(--bg-2)}
+
+/* Hero */
+.page-hero{padding:22px 26px 4px}
+.page-hero h1{font-size:22px;font-weight:500;margin-bottom:4px}
+.page-hero p{font-size:13px;color:var(--ink-2)}
+
+/* Stepper */
+.stepper{display:flex;align-items:center;padding:16px 26px 18px;gap:6px}
+.step{display:flex;align-items:center;gap:8px}
+.step-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+.step-num.done{background:rgba(29,158,117,.18);color:#6FD8B0}
+.step-num.fail{background:rgba(226,75,74,.18);color:#F2A6A6}
+.step-num.warn-s{background:rgba(239,159,39,.18);color:#FAC775}
+.step-num.active{background:var(--ink);color:var(--bg)}
+.step-num.future{background:var(--bg-3);color:var(--ink-3);border:.5px solid var(--line-2)}
+.step-label{font-size:12px;color:var(--ink-3)}
+.step.done .step-label,.step.fail .step-label,.step.warn-s .step-label{color:var(--ink);font-weight:500}
+.step-line{flex:1;height:.5px;margin:0 6px}
+.step-line.done{background:rgba(29,158,117,.4)}
+.step-line.fail{background:rgba(226,75,74,.3)}
+.step-line.warn-l{background:rgba(239,159,39,.3)}
+.step-line.neutral{background:var(--line-2)}
+
+/* Body */
+.body{display:grid;grid-template-columns:1fr 220px;gap:22px;padding:0 26px 24px;border-top:.5px solid var(--line)}
+.main{min-width:0;padding-top:20px}
+
+/* Section block */
+.v-section{border:.5px solid var(--line-2);border-radius:var(--r-lg);margin-bottom:12px;overflow:hidden}
+.v-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:.5px solid var(--line)}
+.v-head-left{display:flex;align-items:center;gap:10px}
+.v-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.v-icon.pass{background:rgba(29,158,117,.18);color:#6FD8B0}
+.v-icon.fail{background:rgba(226,75,74,.18);color:#F2A6A6}
+.v-icon.warn{background:rgba(239,159,39,.18);color:#FAC775}
+.v-title{font-size:14px;font-weight:500}
+.v-sub{font-size:11px;color:var(--ink-3);margin-top:1px}
+.v-badge{font-size:10px;font-weight:500;padding:2px 8px;border-radius:var(--r-pill)}
+.v-badge.fail{background:rgba(226,75,74,.14);color:#F2A6A6}
+.v-badge.warn{background:rgba(239,159,39,.14);color:#FAC775}
+.v-badge.pass{background:rgba(29,158,117,.14);color:#6FD8B0}
+
+/* Error rows */
+.err-row{display:flex;gap:10px;align-items:flex-start;padding:9px 14px;border-bottom:.5px solid var(--line)}
+.err-row:last-child{border-bottom:none}
+.err-icon{width:16px;height:16px;border-radius:50%;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700}
+.err-icon.err{background:rgba(226,75,74,.18);color:#F2A6A6}
+.err-icon.warn{background:rgba(239,159,39,.18);color:#FAC775}
+.err-name{font-size:13px;color:var(--ink);margin-bottom:2px}
+.err-hint{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+
+/* Code view with highlights */
+.code-view{padding:10px 14px;font-family:var(--mono);font-size:12px;line-height:1.75;overflow-x:auto}
+.code-view .ln{color:var(--ink-3);margin-right:12px;user-select:none;font-size:11px}
+.code-view .hl-r{background:rgba(226,75,74,.18);border-radius:2px;padding:0 3px;color:#F2A6A6}
+.code-view .hl-t{background:rgba(226,75,74,.3);border-radius:2px;padding:0 2px}
+
+/* High risk callout */
+.callout{border-radius:var(--r-lg);padding:12px 14px;margin-bottom:12px;font-size:12px;line-height:1.6}
+.callout.red{background:rgba(226,75,74,.06);border:.5px solid rgba(226,75,74,.2);color:var(--ink-2)}
+.callout.amber{background:rgba(239,159,39,.06);border:.5px solid rgba(239,159,39,.2);color:var(--ink-2)}
+.callout .h{font-size:13px;font-weight:500;margin-bottom:4px}
+.callout.red .h{color:#F2A6A6}
+.callout.amber .h{color:#FAC775}
+
+/* Sidebar */
+.sidebar{padding-top:20px;display:flex;flex-direction:column;gap:12px}
+.sb-card{background:var(--bg-3);border:.5px solid var(--line);border-radius:var(--r-xl);padding:14px}
+.sb-label{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.sb-info{font-size:12px;color:var(--ink-2);line-height:1.6}
+
+/* Footer */
+.footer{display:flex;align-items:center;justify-content:space-between;padding:14px 26px;border-top:.5px solid var(--line)}
+.ghost-btn{font-size:13px;padding:8px 14px;border-radius:var(--r-md);border:.5px solid var(--line-2);background:transparent;color:var(--ink-2);cursor:pointer}
+.danger-btn{font-size:12px;padding:8px 14px;border-radius:var(--r-md);border:.5px solid rgba(226,75,74,.3);background:transparent;color:#F2A6A6;cursor:pointer}
+.amber-btn{font-size:13px;padding:8px 16px;border-radius:var(--r-md);border:.5px solid rgba(239,159,39,.3);background:rgba(239,159,39,.08);color:#FAC775;font-weight:500;cursor:pointer}
+.disabled-btn{font-size:13px;padding:8px 16px;border-radius:var(--r-md);border:.5px solid var(--line);background:transparent;color:var(--ink-3);cursor:not-allowed;opacity:.5}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="brand"><div class="logo">S</div><span class="brand-name">Skills Hub</span></div>
+  <div class="crumbs"><span>My Skills</span><span class="sep">/</span><span class="cur">Publish — Failure states</span></div>
+  <div class="avatar">MK</div>
+</nav>
+
+<!-- ───────── STATE A: Format error ───────── -->
+<div class="state-head">
+  <div class="state-num">A</div>
+  <h2 class="state-title">Validation failed — format error</h2>
+  <span class="state-sub">Missing required SKILL.md field · blocked before storage</span>
+</div>
+
+<div class="page">
+  <div class="page-hero">
+    <h1>Publish a skill</h1>
+    <p>Validation failed — fix the errors below and re-upload your bundle</p>
+  </div>
+
+  <div class="stepper">
+    <div class="step done"><div class="step-num done">✓</div><span class="step-label">Upload</span></div>
+    <div class="step-line fail"></div>
+    <div class="step fail"><div class="step-num fail">✗</div><span class="step-label">Validate</span></div>
+    <div class="step-line neutral"></div>
+    <div class="step"><div class="step-num future">3</div><span class="step-label">Review &amp; publish</span></div>
+    <div class="step-line neutral"></div>
+    <div class="step"><div class="step-num future">4</div><span class="step-label">Live</span></div>
+  </div>
+
+  <div class="body">
+    <div class="main">
+      <div class="callout red">
+        <div class="h">Validation stopped at step 2 — nothing stored yet.</div>
+        Your bundle did not pass SKILL.md validation. Fix the errors below and re-upload. No data has been written to the registry.
+      </div>
+
+      <!-- SKILL.md: FAILED -->
+      <div class="v-section">
+        <div class="v-head">
+          <div class="v-head-left">
+            <div class="v-icon fail">✗</div>
+            <div>
+              <div class="v-title">SKILL.md validation failed</div>
+              <div class="v-sub">1 error · 1 warning</div>
+            </div>
+          </div>
+          <span class="v-badge fail">Failed</span>
+        </div>
+        <div class="err-row">
+          <div class="err-icon err">✗</div>
+          <div>
+            <div class="err-name">Missing required field: <code style="font-family:var(--mono);font-size:11px;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">name</code></div>
+            <div class="err-hint">at line 2 · field must be a non-empty string ≤ 64 chars</div>
+          </div>
+        </div>
+        <div class="err-row">
+          <div class="err-icon warn">!</div>
+          <div>
+            <div class="err-name">Description may reduce discoverability</div>
+            <div class="err-hint">at line 4 · "Great tool" has no concrete verbs or domain nouns — embeddings will be weak</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bundle structure: PASS -->
+      <div class="v-section">
+        <div class="v-head">
+          <div class="v-head-left">
+            <div class="v-icon pass">✓</div>
+            <div><div class="v-title">Bundle structure</div><div class="v-sub">12 files · no scripts/ directory</div></div>
+          </div>
+          <span class="v-badge pass">Pass</span>
+        </div>
+      </div>
+
+      <!-- Risk scan: NOT RUN -->
+      <div class="v-section" style="opacity:.5">
+        <div class="v-head">
+          <div class="v-head-left">
+            <div class="v-icon" style="background:rgba(255,255,255,.05);color:var(--ink-3)">—</div>
+            <div><div class="v-title">Risk scan</div><div class="v-sub">Not run — fix SKILL.md errors first</div></div>
+          </div>
+          <span class="v-badge" style="background:rgba(255,255,255,.05);color:var(--ink-3)">Skipped</span>
+        </div>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="sb-card">
+        <div class="sb-label">Nothing stored yet</div>
+        <div class="sb-info">No events have been written. This skill does not exist in the registry. Re-upload once you've fixed the errors.</div>
+      </div>
+      <div class="sb-card">
+        <div class="sb-label">Quick fix</div>
+        <div style="font-family:var(--mono);font-size:11.5px;line-height:1.75;color:var(--ink-2)">
+          <span style="color:var(--ink-3)">---</span><br>
+          <span style="color:var(--ink-3)">name:</span> <span style="color:#F2A6A6">← add this</span><br>
+          <span style="color:var(--ink-3)">description:</span> …<br>
+          <span style="color:var(--ink-3)">version:</span> …<br>
+          <span style="color:var(--ink-3)">---</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="footer">
+    <div style="display:flex;gap:8px">
+      <button class="ghost-btn">← Back</button>
+      <button class="danger-btn">Withdraw</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="disabled-btn" disabled>Publish</button>
+      <div class="beam-wrap">
+        <button class="beam-btn">Re-upload fixed bundle</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ───────── STATE B: High risk ───────── -->
+<div class="state-head">
+  <div class="state-num">B</div>
+  <h2 class="state-title">High risk — submitted for review</h2>
+  <span class="state-sub">3 HIGH findings · SkillRiskAssessed event written · enters review queue</span>
+</div>
+
+<div class="page">
+  <div class="page-hero">
+    <h1>Publish a skill</h1>
+    <p>High-risk findings detected — your skill has been submitted for security review</p>
+  </div>
+
+  <div class="stepper">
+    <div class="step done"><div class="step-num done">✓</div><span class="step-label">Upload</span></div>
+    <div class="step-line warn-l"></div>
+    <div class="step warn-s"><div class="step-num warn-s">!</div><span class="step-label">Validate</span></div>
+    <div class="step-line neutral"></div>
+    <div class="step"><div class="step-num future">3</div><span class="step-label">Review &amp; publish</span></div>
+    <div class="step-line neutral"></div>
+    <div class="step"><div class="step-num future">4</div><span class="step-label">Live</span></div>
+  </div>
+
+  <div class="body">
+    <div class="main">
+      <div class="callout amber">
+        <div class="h">3 HIGH findings · submitted for security review.</div>
+        Publish is blocked until a reviewer approves, rejects, or requests changes. Flag emitted — <code style="font-family:var(--mono);font-size:11px;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">SkillRiskAssessed</code> event with level = HIGH has been written.
+      </div>
+
+      <!-- SKILL.md: PASS -->
+      <div class="v-section">
+        <div class="v-head">
+          <div class="v-head-left">
+            <div class="v-icon pass">✓</div>
+            <div><div class="v-title">SKILL.md is valid</div><div class="v-sub">All fields pass</div></div>
+          </div>
+          <span class="v-badge pass">Pass</span>
+        </div>
+      </div>
+
+      <!-- Bundle: PASS -->
+      <div class="v-section">
+        <div class="v-head">
+          <div class="v-head-left">
+            <div class="v-icon pass">✓</div>
+            <div><div class="v-title">Bundle structure</div><div class="v-sub">scripts/ directory present — triggers full scan</div></div>
+          </div>
+          <span class="v-badge pass">Pass</span>
+        </div>
+      </div>
+
+      <!-- Risk scan: HIGH -->
+      <div class="v-section" style="border-color:rgba(239,159,39,.25)">
+        <div class="v-head" style="background:rgba(239,159,39,.04)">
+          <div class="v-head-left">
+            <div class="v-icon warn">!</div>
+            <div>
+              <div class="v-title">Risk scan — 3 HIGH findings</div>
+              <div class="v-sub">scripts/bootstrap.sh · lines 5, 12, 19</div>
+            </div>
+          </div>
+          <span class="v-badge warn">High risk</span>
+        </div>
+
+        <!-- Code view with highlights -->
+        <div class="code-view">
+          <div style="font-size:10px;color:var(--ink-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">scripts/bootstrap.sh</div>
+          <span class="ln">3</span>set -euo pipefail<br>
+          <span class="ln">4</span>echo "Bootstrapping..."<br>
+          <span class="ln">5</span><span class="hl-r">curl -sSL https://raw.githubusercontent.com/org/setup/main/install.sh | <span class="hl-t">bash</span></span><br>
+          <span style="font-size:10px;color:rgba(226,75,74,.6);margin-left:40px;display:block;margin-bottom:4px">↑ rule:rce.curl-pipe-bash</span>
+          <span class="ln">…</span><br>
+          <span class="ln">12</span><span class="hl-r"><span class="hl-t">rm -rf</span> ~/.local/share/app-cache</span><br>
+          <span style="font-size:10px;color:rgba(226,75,74,.6);margin-left:40px;display:block;margin-bottom:4px">↑ rule:shell.rm-rf</span>
+          <span class="ln">…</span><br>
+          <span class="ln">19</span><span class="hl-r">cp /tmp/aws-creds <span class="hl-t">~/.aws/credentials</span></span><br>
+          <span style="font-size:10px;color:rgba(226,75,74,.6);margin-left:40px;display:block">↑ rule:sensitive.path.aws-credentials</span>
+        </div>
+
+        <!-- Finding summary -->
+        <div style="border-top:.5px solid var(--line);padding:10px 14px;display:flex;flex-direction:column;gap:6px">
+          <div class="err-row" style="padding:4px 0;border:none">
+            <div class="err-icon err">✗</div>
+            <div><div class="err-name" style="font-size:12px">curl | bash — remote code execution</div><div class="err-hint">rule:rce.curl-pipe-bash · scripts/bootstrap.sh:5</div></div>
+          </div>
+          <div class="err-row" style="padding:4px 0;border:none">
+            <div class="err-icon err">✗</div>
+            <div><div class="err-name" style="font-size:12px">rm -rf on user directory</div><div class="err-hint">rule:shell.rm-rf · scripts/bootstrap.sh:12</div></div>
+          </div>
+          <div class="err-row" style="padding:4px 0;border:none">
+            <div class="err-icon err">✗</div>
+            <div><div class="err-name" style="font-size:12px">Sensitive path — AWS credentials</div><div class="err-hint">rule:sensitive.path.aws-credentials · scripts/bootstrap.sh:19</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="sb-card">
+        <div class="sb-label">What happens now</div>
+        <div class="sb-info" style="color:#FAC775;margin-bottom:8px;font-weight:500">In review queue</div>
+        <div class="sb-info">Your skill is hidden from browse. A security reviewer will approve, reject, or request changes. You'll be notified by email.</div>
+      </div>
+      <div class="sb-card">
+        <div class="sb-label">Fix &amp; resubmit</div>
+        <div class="sb-info">Remove the <code style="font-family:var(--mono);font-size:11px;background:rgba(255,255,255,.06);padding:1px 3px;border-radius:3px">scripts/</code> directory or replace dangerous commands with safer alternatives, then re-upload.</div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="footer">
+    <div style="display:flex;gap:8px">
+      <button class="ghost-btn">← Back</button>
+      <button class="danger-btn">Withdraw</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="font-size:11px;color:var(--ink-3);font-family:var(--mono)">SkillRiskAssessed event written</span>
+      <button class="disabled-btn" disabled>Publish</button>
+      <button class="amber-btn">Submit for review →</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · Admin Review Queue</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#08080A;--bg-2:#0F0F12;--bg-3:#171719;--ink:#EEECEA;--ink-2:#A8A49C;--ink-3:#5E5B55;--line:rgba(255,255,255,.06);--line-2:rgba(255,255,255,.10);--accent:#7F77DD;--green:#1D9E75;--amber:#EF9F27;--red:#E24B4A;--mono:'JetBrains Mono',ui-monospace,monospace;--sans:'Inter',system-ui,sans-serif;--r-sm:4px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-pill:999px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;height:100%;overflow:hidden}
+.shell{display:flex;flex-direction:column;height:100vh}
+
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;border-bottom:.5px solid var(--line);flex-shrink:0;background:rgba(8,8,10,.96)}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#08080A}
+.brand-name{font-size:15px;font-weight:500}
+.admin-badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px;background:rgba(127,119,221,.15);color:#C9C5F2;text-transform:uppercase;letter-spacing:.04em;margin-left:6px}
+.crumbs{font-size:13px;color:var(--ink-3);display:flex;align-items:center;gap:6px}
+.crumbs .sep{opacity:.4}
+.avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(239,159,39,.5),rgba(226,75,74,.4));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500}
+
+/* Beam */
+.beam-wrap{position:relative;padding:1.5px;border-radius:var(--r-md);background:#1A1A1E;overflow:hidden;isolation:isolate;display:inline-block}
+.beam-wrap::before,.beam-wrap::after{content:'';position:absolute;inset:-120%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,.95) 230deg,rgba(217,56,138,.95) 268deg,rgba(239,159,39,.95) 300deg,rgba(29,158,117,.95) 332deg,rgba(55,138,221,.95) 360deg,transparent 360deg);animation:spin 1.96s linear infinite;pointer-events:none;z-index:0}
+.beam-wrap::after{filter:blur(10px);opacity:.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+.beam-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;background:#EEECEA;color:#08080A;font-size:13px;font-weight:500;padding:8px 16px;border-radius:calc(var(--r-md) - 1.5px);border:none;cursor:pointer;white-space:nowrap}
+
+/* Hero */
+.hero{padding:18px 22px 16px;border-bottom:.5px solid var(--line);background:radial-gradient(ellipse 600px 180px at 50% 0%,rgba(239,159,39,.07),transparent 70%)}
+.hero-top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}
+.hero-title{font-size:20px;font-weight:500;margin-bottom:3px}
+.hero-sub{font-size:12px;color:var(--ink-2)}
+.hero-sub .emph{color:var(--ink);font-weight:500}
+
+/* Strip */
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 22px 16px}
+.strip-card{background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:12px 14px}
+.strip-card .k{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.strip-card .v{font-size:18px;font-weight:500;display:flex;align-items:baseline;gap:6px}
+.strip-card .trail{font-size:11px;color:var(--ink-3);font-weight:400}
+.strip-card .red{color:#F2A6A6}
+.strip-card .amber{color:#FAC775}
+
+/* Master-detail */
+.body{display:grid;grid-template-columns:256px 1fr;flex:1;overflow:hidden}
+
+/* Queue column */
+.queue{border-right:.5px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.queue-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:.5px solid var(--line);flex-shrink:0}
+.queue-title{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+.queue-count{font-size:11px;font-weight:500;background:var(--bg-3);padding:2px 7px;border-radius:var(--r-pill);color:var(--ink)}
+.queue-filters{display:flex;gap:3px;padding:8px 10px;border-bottom:.5px solid var(--line);flex-shrink:0}
+.qf-chip{font-size:11px;padding:4px 9px;border-radius:var(--r-md);color:var(--ink-3);cursor:pointer}
+.qf-chip.on{background:var(--bg-3);color:var(--ink);font-weight:500}
+.queue-list{overflow-y:auto;flex:1}
+.queue-list::-webkit-scrollbar{width:3px}
+.queue-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08)}
+.q-item{padding:12px 14px;border-bottom:.5px solid var(--line);cursor:pointer;position:relative}
+.q-item:hover{background:rgba(255,255,255,.02)}
+.q-item.active{background:rgba(127,119,221,.06);border-left:2px solid rgba(127,119,221,.5);padding-left:12px}
+.qi-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px}
+.qi-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;font-family:var(--mono);flex-shrink:0}
+.qi-icon.amber{background:rgba(239,159,39,.18);color:#FAC775}
+.qi-icon.red{background:rgba(226,75,74,.18);color:#F2A6A6}
+.qi-icon.purple{background:rgba(127,119,221,.18);color:#C9C5F2}
+.qi-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.qi-risk{font-size:10px;font-weight:500;padding:1px 7px;border-radius:var(--r-pill)}
+.qi-risk.high{background:rgba(226,75,74,.14);color:#F2A6A6}
+.qi-risk.med{background:rgba(239,159,39,.14);color:#FAC775}
+.qi-meta{font-size:11px;color:var(--ink-3);display:flex;gap:8px;align-items:center}
+.qi-findings{color:#F2A6A6;font-weight:500}
+.qi-wait{margin-left:auto;font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* Detail column */
+.detail{display:flex;flex-direction:column;overflow:hidden}
+.detail-scroll{overflow-y:auto;flex:1}
+.detail-scroll::-webkit-scrollbar{width:4px}
+.detail-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08)}
+
+/* Detail header */
+.d-head{padding:18px 22px 0;border-bottom:.5px solid var(--line);background:radial-gradient(ellipse 500px 160px at 60% 0%,rgba(226,75,74,.06),transparent 70%)}
+.d-head-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.d-head-left{display:flex;gap:12px;min-width:0;flex:1}
+.d-icon{width:42px;height:42px;border-radius:10px;background:rgba(239,159,39,.18);color:#FAC775;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;font-family:var(--mono);flex-shrink:0}
+.d-name{font-size:18px;font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.d-risk-pill{font-size:10px;font-weight:500;padding:2px 8px;border-radius:var(--r-pill);background:rgba(226,75,74,.14);color:#F2A6A6}
+.d-meta{font-size:12px;color:var(--ink-3);display:flex;gap:10px;flex-wrap:wrap}
+.d-meta .dot{width:2px;height:2px;border-radius:50%;background:var(--ink-3)}
+
+/* Summary callout */
+.summary-callout{background:rgba(226,75,74,.07);border:.5px solid rgba(226,75,74,.2);border-radius:var(--r-lg);padding:12px 14px;margin:0 22px 16px;font-size:12px;color:var(--ink-2);line-height:1.6}
+.summary-callout .h{font-size:13px;font-weight:500;color:#F2A6A6;margin-bottom:4px}
+
+/* Tabs */
+.d-tabs{display:flex;padding:0 22px;border-bottom:.5px solid var(--line)}
+.d-tab{font-size:13px;color:var(--ink-2);padding:11px 14px;border-bottom:1.5px solid transparent;margin-bottom:-.5px;cursor:pointer}
+.d-tab.on{color:var(--ink);font-weight:500;border-bottom-color:var(--ink)}
+
+/* Findings */
+.findings-area{padding:16px 22px;display:flex;flex-direction:column;gap:12px}
+.finding-card{background:var(--bg-2);border:.5px solid var(--line-2);border-radius:var(--r-xl);overflow:hidden}
+.finding-head{display:flex;align-items:center;gap:8px;padding:12px 14px;background:rgba(226,75,74,.05);border-bottom:.5px solid var(--line)}
+.finding-sev{font-size:10px;font-weight:700;padding:2px 7px;border-radius:var(--r-sm);background:rgba(226,75,74,.14);color:#F2A6A6;font-family:var(--mono);letter-spacing:.04em}
+.finding-title{font-size:13px;font-weight:500;flex:1}
+.finding-rule{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+.finding-loc{font-size:11px;color:var(--ink-3);padding:8px 14px;border-bottom:.5px solid var(--line);font-family:var(--mono)}
+.finding-code{padding:8px 14px;font-family:var(--mono);font-size:12px;line-height:1.7}
+.finding-code .ln{color:var(--ink-3);margin-right:12px;user-select:none}
+.finding-code .hl{background:rgba(226,75,74,.18);border-radius:2px;padding:0 3px}
+.finding-actions{display:flex;gap:8px;padding:10px 14px;border-top:.5px solid var(--line)}
+.fa-btn{font-size:12px;font-weight:500;padding:6px 12px;border-radius:var(--r-md);cursor:pointer;border:.5px solid var(--line-2)}
+.fa-btn.accept{background:rgba(29,158,117,.1);border-color:rgba(29,158,117,.25);color:#6FD8B0}
+.fa-btn.ask{background:rgba(255,255,255,.03);color:var(--ink-2)}
+.fa-btn.reject{background:rgba(226,75,74,.08);border-color:rgba(226,75,74,.2);color:#F2A6A6}
+
+/* Info finding */
+.finding-card.info .finding-head{background:rgba(55,138,221,.04);border-bottom-color:var(--line)}
+.finding-card.info .finding-sev{background:rgba(55,138,221,.12);color:#B0D5F2}
+
+/* Decision area */
+.decision-area{padding:16px 22px;border-top:.5px solid var(--line);flex-shrink:0;background:var(--bg)}
+.decision-title{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.decision-note{width:100%;background:var(--bg-2);border:.5px solid var(--line-2);border-radius:var(--r-md);padding:9px 12px;color:var(--ink);font-family:var(--sans);font-size:12px;resize:none;outline:none;margin-bottom:12px;line-height:1.6}
+.decision-note:focus{border-color:rgba(127,119,221,.4)}
+.decision-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.d-btns{display:flex;gap:8px}
+.d-reject{font-size:12px;font-weight:500;padding:8px 14px;border-radius:var(--r-md);border:.5px solid rgba(226,75,74,.3);background:transparent;color:#F2A6A6;cursor:pointer}
+.d-reject:hover{background:rgba(226,75,74,.07)}
+.d-changes{font-size:12px;font-weight:500;padding:8px 14px;border-radius:var(--r-md);border:.5px solid var(--line-2);background:transparent;color:var(--ink-2);cursor:pointer}
+.d-changes:hover{background:rgba(255,255,255,.04)}
+.decision-hint{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="nav">
+    <div class="brand">
+      <div class="logo">S</div>
+      <span class="brand-name">Skills Hub</span>
+      <span class="admin-badge">Admin</span>
+    </div>
+    <div class="crumbs">
+      <span>Admin</span><span class="sep">/</span>
+      <span class="cur">Review queue</span>
+    </div>
+    <div class="avatar">AR</div>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-top">
+      <div>
+        <div class="hero-title">Review queue</div>
+        <div class="hero-sub"><span class="emph">7 skills</span> pending · <span class="emph">3 high-risk</span> flagged · avg wait <span class="emph">1h 48m</span></div>
+      </div>
+    </div>
+    <div class="strip">
+      <div class="strip-card">
+        <div class="k">Pending</div>
+        <div class="v">7 <span class="trail">in queue</span></div>
+      </div>
+      <div class="strip-card">
+        <div class="k">High risk</div>
+        <div class="v"><span class="red">3</span> <span class="trail">need attention</span></div>
+      </div>
+      <div class="strip-card">
+        <div class="k">Avg wait</div>
+        <div class="v"><span class="amber">1h 48m</span></div>
+      </div>
+      <div class="strip-card">
+        <div class="k">Approved 7d</div>
+        <div class="v">12 <span class="trail">this week</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- Queue -->
+    <div class="queue">
+      <div class="queue-head">
+        <span class="queue-title">Pending review</span>
+        <span class="queue-count">7</span>
+      </div>
+      <div class="queue-filters">
+        <span class="qf-chip on">All</span>
+        <span class="qf-chip">High</span>
+        <span class="qf-chip">Medium</span>
+        <span class="qf-chip">Mine</span>
+      </div>
+      <div class="queue-list">
+        <!-- Active item -->
+        <div class="q-item active">
+          <div class="qi-top">
+            <div class="qi-icon amber">EB</div>
+            <span class="qi-name">env-bootstrap</span>
+            <span class="qi-risk high">HIGH</span>
+          </div>
+          <div class="qi-meta">
+            <span class="qi-findings">3 high-severity</span>
+            <span class="dot" style="width:2px;height:2px;border-radius:50%;background:var(--ink-3)"></span>
+            <span>devops-new · first submission</span>
+            <span class="qi-wait">2h 14m</span>
+          </div>
+        </div>
+        <div class="q-item">
+          <div class="qi-top">
+            <div class="qi-icon red">SC</div>
+            <span class="qi-name">secret-rotator</span>
+            <span class="qi-risk high">HIGH</span>
+          </div>
+          <div class="qi-meta">
+            <span class="qi-findings">2 high · 3 medium</span>
+            <span class="qi-wait">1h 32m</span>
+          </div>
+        </div>
+        <div class="q-item">
+          <div class="qi-top">
+            <div class="qi-icon amber">KD</div>
+            <span class="qi-name">k8s-debugger</span>
+            <span class="qi-risk med">MED</span>
+          </div>
+          <div class="qi-meta">
+            <span style="color:#FAC775;font-weight:500">1 medium</span>
+            <span class="qi-wait">45m</span>
+          </div>
+        </div>
+        <div class="q-item">
+          <div class="qi-top">
+            <div class="qi-icon purple">TG</div>
+            <span class="qi-name">terraform-gcp-module</span>
+            <span class="qi-risk med">MED</span>
+          </div>
+          <div class="qi-meta">
+            <span style="color:#FAC775;font-weight:500">2 medium</span>
+            <span class="qi-wait">38m</span>
+          </div>
+        </div>
+        <div class="q-item">
+          <div class="qi-top">
+            <div class="qi-icon purple">LG</div>
+            <span class="qi-name">log-aggregator</span>
+            <span class="qi-risk med">MED</span>
+          </div>
+          <div class="qi-meta">
+            <span style="color:#FAC775;font-weight:500">1 medium</span>
+            <span class="qi-wait">22m</span>
+          </div>
+        </div>
+        <div class="q-item">
+          <div class="qi-top">
+            <div class="qi-icon amber">DB</div>
+            <span class="qi-name">db-migration-runner</span>
+            <span class="qi-risk med">MED</span>
+          </div>
+          <div class="qi-meta">
+            <span style="color:#FAC775;font-weight:500">1 medium</span>
+            <span class="qi-wait">18m</span>
+          </div>
+        </div>
+        <div class="q-item">
+          <div class="qi-top">
+            <div class="qi-icon amber">NX</div>
+            <span class="qi-name">nx-workspace-helper</span>
+            <span class="qi-risk med">MED</span>
+          </div>
+          <div class="qi-meta">
+            <span style="color:#FAC775;font-weight:500">1 medium</span>
+            <span class="qi-wait">9m</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail -->
+    <div class="detail">
+      <div class="detail-scroll">
+        <div class="d-head">
+          <div class="d-head-top">
+            <div class="d-head-left">
+              <div class="d-icon">EB</div>
+              <div>
+                <div class="d-name">
+                  env-bootstrap
+                  <span class="d-risk-pill">HIGH risk</span>
+                </div>
+                <div class="d-meta">
+                  <span>v0.1.0</span><span class="dot"></span>
+                  <span>by devops-new</span><span class="dot"></span>
+                  <span>First submission</span><span class="dot"></span>
+                  <span>Waiting 2h 14m</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:flex-start">
+              <span style="font-size:11px;padding:4px 10px;border-radius:var(--r-md);background:rgba(239,159,39,.1);border:.5px solid rgba(239,159,39,.25);color:#FAC775;font-weight:500">Pending review</span>
+            </div>
+          </div>
+          <div class="summary-callout">
+            <div class="h">3 high-severity findings require resolution. All originate from scripts/bootstrap.sh.</div>
+            This skill is blocked from the public registry until approved, rejected, or returned for changes. The <code style="font-family:var(--mono);font-size:11px;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">SkillRiskAssessed</code> event with level = HIGH has been written.
+          </div>
+          <div class="d-tabs">
+            <div class="d-tab on">Risk findings</div>
+            <div class="d-tab">SKILL.md</div>
+            <div class="d-tab">Bundle contents</div>
+            <div class="d-tab">Author history</div>
+          </div>
+        </div>
+
+        <div class="findings-area">
+          <!-- Finding 1 -->
+          <div class="finding-card">
+            <div class="finding-head">
+              <span class="finding-sev">HIGH</span>
+              <span class="finding-title">curl | bash — remote code execution risk</span>
+              <span class="finding-rule">rule:rce.curl-pipe-bash</span>
+            </div>
+            <div class="finding-loc">scripts/bootstrap.sh · line 5</div>
+            <div class="finding-code">
+              <span class="ln">3</span>set -euo pipefail<br>
+              <span class="ln">4</span>echo "Bootstrapping environment..."<br>
+              <span class="ln">5</span><span class="hl">curl -sSL https://raw.githubusercontent.com/org/setup/main/install.sh | bash</span><br>
+              <span class="ln">6</span>source ~/.bashrc
+            </div>
+            <div class="finding-actions">
+              <button class="fa-btn accept">Accept risk</button>
+              <button class="fa-btn ask">Ask author to fix</button>
+              <button class="fa-btn reject">Reject based on this</button>
+            </div>
+          </div>
+
+          <!-- Finding 2 -->
+          <div class="finding-card">
+            <div class="finding-head">
+              <span class="finding-sev">HIGH</span>
+              <span class="finding-title">rm -rf on user directory</span>
+              <span class="finding-rule">rule:shell.rm-rf</span>
+            </div>
+            <div class="finding-loc">scripts/bootstrap.sh · line 12</div>
+            <div class="finding-code">
+              <span class="ln">10</span>echo "Cleaning previous install..."<br>
+              <span class="ln">11</span>cd /tmp<br>
+              <span class="ln">12</span><span class="hl">rm -rf ~/.local/share/app-cache</span><br>
+              <span class="ln">13</span>mkdir -p ~/.config/env-bootstrap
+            </div>
+            <div class="finding-actions">
+              <button class="fa-btn accept">Accept risk</button>
+              <button class="fa-btn ask">Ask author to fix</button>
+              <button class="fa-btn reject">Reject based on this</button>
+            </div>
+          </div>
+
+          <!-- Finding 3 -->
+          <div class="finding-card">
+            <div class="finding-head">
+              <span class="finding-sev">HIGH</span>
+              <span class="finding-title">Sensitive path access — AWS credentials</span>
+              <span class="finding-rule">rule:sensitive.path.aws-credentials</span>
+            </div>
+            <div class="finding-loc">scripts/bootstrap.sh · line 19</div>
+            <div class="finding-code">
+              <span class="ln">17</span>echo "Setting up cloud config..."<br>
+              <span class="ln">18</span>mkdir -p ~/.aws<br>
+              <span class="ln">19</span><span class="hl">cp /tmp/aws-creds ~/.aws/credentials</span><br>
+              <span class="ln">20</span>chmod 600 ~/.aws/credentials
+            </div>
+            <div class="finding-actions">
+              <button class="fa-btn accept">Accept risk</button>
+              <button class="fa-btn ask">Ask author to fix</button>
+              <button class="fa-btn reject">Reject based on this</button>
+            </div>
+          </div>
+
+          <!-- Finding 4: INFO -->
+          <div class="finding-card info">
+            <div class="finding-head">
+              <span class="finding-sev" style="background:rgba(55,138,221,.12);color:#B0D5F2">INFO</span>
+              <span class="finding-title">External domain dependency</span>
+              <span class="finding-rule">rule:net.external-domain</span>
+            </div>
+            <div class="finding-loc">scripts/bootstrap.sh · line 5</div>
+            <div class="finding-code">
+              <span style="color:var(--ink-3)">raw.githubusercontent.com — external domain referenced during execution</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Decision -->
+      <div class="decision-area">
+        <div class="decision-title">Your decision</div>
+        <textarea class="decision-note" rows="3" placeholder="Add a note for the author (required for reject / request changes)…">All three HIGH findings are in scripts/bootstrap.sh. The curl|bash on line 5 and the AWS credentials copy on line 19 are blocking issues — these need to be removed or replaced with safer alternatives before this can be approved.</textarea>
+        <div class="decision-row">
+          <div class="d-btns">
+            <button class="d-reject">Reject</button>
+            <button class="d-changes">Request changes</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <span class="decision-hint">Decision recorded in domain_events</span>
+            <div class="beam-wrap">
+              <button class="beam-btn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Approve &amp; publish
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

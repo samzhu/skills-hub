@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub — Enterprise AI Agent Skills Registry</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg:    #08080A;
+  --bg-2:  #0F0F12;
+  --bg-3:  #171719;
+  --bg-4:  #1E1E22;
+  --ink:   #EEECEA;
+  --ink-2: #A8A49C;
+  --ink-3: #5E5B55;
+  --line:  rgba(255,255,255,0.06);
+  --line-2:rgba(255,255,255,0.10);
+  --accent:#7F77DD;
+  --green: #1D9E75;
+  --amber: #EF9F27;
+  --red:   #E24B4A;
+  --blue:  #378ADD;
+  --mono:  'JetBrains Mono', ui-monospace, monospace;
+  --sans:  'Inter', system-ui, sans-serif;
+  --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-pill: 999px;
+}
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+a { text-decoration: none; color: inherit; }
+
+/* ── Beam ── */
+.beam-wrap {
+  position: relative; padding: 1.5px;
+  border-radius: var(--r-md);
+  background: #1A1A1E;
+  overflow: hidden; isolation: isolate;
+  display: inline-block;
+}
+.beam-wrap::before, .beam-wrap::after {
+  content: '';
+  position: absolute; inset: -120%;
+  background: conic-gradient(from 0deg,
+    transparent 0deg, transparent 197deg,
+    rgba(127,119,221,0.95) 230deg,
+    rgba(217,56,138,0.95) 268deg,
+    rgba(239,159,39,0.95) 300deg,
+    rgba(29,158,117,0.95) 332deg,
+    rgba(55,138,221,0.95) 360deg,
+    transparent 360deg);
+  animation: spin 1.96s linear infinite;
+  pointer-events: none; z-index: 0;
+}
+.beam-wrap::after { filter: blur(12px); opacity: 0.5; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.beam-btn {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: #EEECEA; color: #08080A;
+  font-size: 14px; font-weight: 500;
+  padding: 11px 22px;
+  border-radius: calc(var(--r-md) - 1.5px);
+  border: none; cursor: pointer; white-space: nowrap;
+}
+
+/* Pill beam (for search bar) */
+.beam-pill { border-radius: var(--r-pill); }
+.beam-pill .beam-inner {
+  border-radius: calc(var(--r-pill) - 1.5px);
+}
+
+/* ── Nav ── */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 40px;
+  background: rgba(8,8,10,0.7);
+  backdrop-filter: blur(20px) saturate(1.4);
+  border-bottom: 0.5px solid rgba(255,255,255,0.05);
+}
+.nav-brand { display: flex; align-items: center; gap: 10px; }
+.nav-logo {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: linear-gradient(135deg, #7F77DD 0%, #D9388A 55%, #EF9F27 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; color: #08080A;
+}
+.nav-name { font-size: 15px; font-weight: 500; }
+.nav-center { display: flex; gap: 28px; font-size: 13px; color: var(--ink-2); }
+.nav-center a:hover { color: var(--ink); }
+.nav-right { display: flex; align-items: center; gap: 12px; }
+.nav-link { font-size: 13px; color: var(--ink-2); }
+.nav-signin {
+  font-size: 13px; font-weight: 500;
+  padding: 7px 16px; border-radius: var(--r-md);
+  background: rgba(255,255,255,0.07);
+  border: 0.5px solid var(--line-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* ── Hero ── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 120px 40px 80px;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+/* Background radial glows */
+.hero::before {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 900px 500px at 20% 40%, rgba(127,119,221,0.12), transparent 65%),
+    radial-gradient(ellipse 700px 400px at 80% 20%, rgba(217,56,138,0.08), transparent 65%),
+    radial-gradient(ellipse 600px 350px at 55% 80%, rgba(29,158,117,0.07), transparent 65%);
+}
+/* Subtle grid texture */
+.hero::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 80% at center, black 30%, transparent 80%);
+}
+
+.hero-content { position: relative; z-index: 1; max-width: 800px; }
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 500;
+  padding: 6px 14px; border-radius: var(--r-pill);
+  background: rgba(255,255,255,0.04);
+  border: 0.5px solid var(--line-2);
+  color: var(--ink-2);
+  margin-bottom: 28px;
+  letter-spacing: 0.02em;
+}
+.hero-eyebrow .pulse {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px rgba(29,158,117,0.7);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.85)} }
+
+.hero-title {
+  font-size: 64px; font-weight: 500;
+  line-height: 1.05; letter-spacing: -0.03em;
+  margin-bottom: 22px;
+}
+.hero-title .line2 { display: block; }
+.hero-title .grad {
+  background: linear-gradient(110deg, #A8A4F8 0%, #D96DB8 30%, #F0A84A 60%, #6FC9A0 90%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero-sub {
+  font-size: 17px; color: var(--ink-2); line-height: 1.65;
+  max-width: 560px; margin: 0 auto 36px;
+  font-weight: 300;
+}
+.hero-sub strong { color: var(--ink); font-weight: 500; }
+
+.hero-ctas {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; margin-bottom: 48px; flex-wrap: wrap;
+}
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 14px; font-weight: 500;
+  padding: 11px 20px; border-radius: var(--r-md);
+  background: transparent;
+  border: 0.5px solid var(--line-2);
+  color: var(--ink-2); cursor: pointer;
+}
+.btn-ghost:hover { color: var(--ink); border-color: var(--line-2); background: rgba(255,255,255,0.04); }
+
+.hero-trust {
+  display: flex; align-items: center; justify-content: center;
+  gap: 20px; font-size: 12px; color: var(--ink-3); flex-wrap: wrap;
+}
+.hero-trust .t-item {
+  display: flex; align-items: center; gap: 6px;
+}
+.hero-trust .t-item .ok { color: var(--green); }
+.hero-trust .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-3); }
+
+/* ── Search preview in hero ── */
+.hero-search-wrap {
+  position: relative; max-width: 640px; margin: 0 auto 52px;
+}
+.hero-search-beam {
+  position: relative; padding: 2px;
+  border-radius: var(--r-pill);
+  background: #1A1A1E;
+  overflow: hidden; isolation: isolate;
+}
+.hero-search-beam::before, .hero-search-beam::after {
+  content: '';
+  position: absolute; inset: -80%;
+  background: conic-gradient(from 0deg,
+    transparent 0deg, transparent 197deg,
+    rgba(127,119,221,0.9) 225deg,
+    rgba(217,56,138,0.9) 262deg,
+    rgba(239,159,39,0.9) 294deg,
+    rgba(29,158,117,0.9) 326deg,
+    rgba(55,138,221,0.9) 358deg,
+    transparent 360deg);
+  animation: spin 2.4s linear infinite;
+  pointer-events: none; z-index: 0;
+}
+.hero-search-beam::after { filter: blur(16px); opacity: 0.45; }
+.hero-search-inner {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 12px;
+  background: #0F0F12;
+  border-radius: calc(var(--r-pill) - 2px);
+  padding: 14px 18px;
+}
+.hero-search-inner svg { color: var(--ink-3); flex-shrink: 0; }
+.hero-search-inner .placeholder { flex: 1; color: var(--ink-3); font-size: 15px; text-align: left; }
+.hero-search-mode {
+  display: flex; gap: 0; align-items: center;
+  background: rgba(255,255,255,0.05); border-radius: var(--r-pill); padding: 3px;
+}
+.hero-search-mode span { font-size: 12px; padding: 4px 11px; border-radius: var(--r-pill); color: var(--ink-3); }
+.hero-search-mode span.on {
+  background: rgba(127,119,221,0.2); color: #C9C5F2; font-weight: 500;
+}
+.hero-search-mode span.on::before {
+  content: ''; display: inline-block; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 6px rgba(127,119,221,0.8);
+  margin-right: 5px; vertical-align: middle;
+}
+
+/* ── Stats band ── */
+.stats-band {
+  border-top: 0.5px solid var(--line);
+  border-bottom: 0.5px solid var(--line);
+  display: grid; grid-template-columns: repeat(4, 1fr);
+}
+.stat-cell {
+  padding: 28px 40px;
+  border-right: 0.5px solid var(--line);
+}
+.stat-cell:last-child { border-right: none; }
+.stat-num {
+  font-size: 36px; font-weight: 500; letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.stat-label { font-size: 12px; color: var(--ink-3); }
+.stat-sub { font-size: 11px; color: var(--ink-3); margin-top: 3px; font-family: var(--mono); }
+
+/* ── Preview strip ── */
+.preview-strip {
+  padding: 80px 40px 60px;
+  position: relative;
+  overflow: hidden;
+}
+.preview-strip::before {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 700px 400px at 50% 0%, rgba(127,119,221,0.07), transparent 70%);
+}
+.preview-label {
+  font-size: 11px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  text-align: center; margin-bottom: 14px;
+}
+.preview-title {
+  font-size: 36px; font-weight: 500; letter-spacing: -0.015em;
+  text-align: center; margin-bottom: 10px;
+}
+.preview-sub {
+  font-size: 15px; color: var(--ink-2); text-align: center;
+  max-width: 480px; margin: 0 auto 48px; line-height: 1.6;
+}
+
+/* Skill card grid */
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  max-width: 1100px; margin: 0 auto;
+}
+.skill-card {
+  background: var(--bg-2);
+  border: 0.5px solid var(--line);
+  border-radius: var(--r-xl);
+  padding: 18px;
+  transition: border-color 0.2s;
+}
+.skill-card:hover { border-color: var(--line-2); }
+.skill-card.beam-card {
+  padding: 1.5px;
+  background: var(--bg-3);
+  border: none;
+  position: relative; isolation: isolate; overflow: hidden;
+}
+.skill-card.beam-card::before, .skill-card.beam-card::after {
+  content: '';
+  position: absolute; inset: -80%;
+  background: conic-gradient(from 0deg,
+    transparent 0deg, transparent 197deg,
+    rgba(127,119,221,0.75) 228deg,
+    rgba(217,56,138,0.75) 264deg,
+    rgba(239,159,39,0.75) 296deg,
+    rgba(29,158,117,0.75) 328deg,
+    rgba(55,138,221,0.75) 360deg,
+    transparent 360deg);
+  animation: spin 2.8s linear infinite;
+  pointer-events: none; z-index: 0;
+}
+.skill-card.beam-card::after { filter: blur(14px); opacity: 0.4; }
+.skill-card-inner {
+  position: relative; z-index: 1;
+  background: #0F0F12;
+  border-radius: calc(var(--r-xl) - 1.5px);
+  padding: 18px;
+  height: 100%;
+}
+.sc-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
+.sc-title-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sc-icon {
+  width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 500; font-family: var(--mono);
+}
+.sc-icon.purple { background: rgba(127,119,221,0.18); color: #C9C5F2; }
+.sc-icon.blue   { background: rgba(55,138,221,0.18);  color: #B0D5F2; }
+.sc-icon.teal   { background: rgba(29,158,117,0.18);  color: #9FE1CB; }
+.sc-icon.amber  { background: rgba(239,159,39,0.18);  color: #FAC775; }
+.sc-icon.coral  { background: rgba(226,75,74,0.18);   color: #F2A6A6; }
+.sc-icon.pink   { background: rgba(217,56,138,0.18);  color: #DDB0E9; }
+.sc-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-author { font-size: 11px; color: var(--ink-3); font-family: var(--mono); margin-top: 1px; }
+.risk-pill {
+  font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: var(--r-pill);
+  flex-shrink: 0;
+}
+.risk-pill.low  { background: rgba(29,158,117,0.15);  color: #6FD8B0; }
+.risk-pill.med  { background: rgba(239,159,39,0.15);  color: #FAC775; }
+.risk-pill.high { background: rgba(226,75,74,0.15);   color: #F2A6A6; }
+.sc-desc { font-size: 13px; color: var(--ink-2); line-height: 1.55; margin-bottom: 14px; }
+.sc-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; color: var(--ink-3);
+}
+.sc-meta { display: flex; gap: 10px; }
+.sc-ver { font-family: var(--mono); background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; }
+
+/* ── How it works ── */
+.how-section {
+  padding: 80px 40px;
+  border-top: 0.5px solid var(--line);
+  max-width: 1200px; margin: 0 auto;
+}
+.section-eyebrow {
+  font-size: 11px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+.section-title { font-size: 36px; font-weight: 500; letter-spacing: -0.015em; margin-bottom: 10px; }
+.section-sub { font-size: 15px; color: var(--ink-2); max-width: 480px; line-height: 1.6; margin-bottom: 52px; }
+
+.event-flow {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 0; position: relative;
+  background: var(--bg-2);
+  border: 0.5px solid var(--line); border-radius: var(--r-xl);
+  overflow: hidden;
+}
+.event-step {
+  padding: 24px 20px;
+  border-right: 0.5px solid var(--line);
+  position: relative;
+}
+.event-step:last-child { border-right: none; }
+.event-step::after {
+  content: '→';
+  position: absolute; right: -10px; top: 50%; transform: translateY(-50%);
+  font-size: 14px; color: var(--ink-3); z-index: 2;
+  display: none;
+}
+.event-step:not(:last-child)::after { display: block; }
+.ev-num {
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+.ev-icon {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 10px;
+}
+.ev-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+.ev-desc { font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+.ev-event {
+  font-family: var(--mono); font-size: 10px;
+  margin-top: 10px; padding: 3px 7px; border-radius: 4px;
+  display: inline-block;
+}
+
+/* ── Dual paths ── */
+.paths-section {
+  padding: 80px 40px;
+  border-top: 0.5px solid var(--line);
+  background: var(--bg-2);
+}
+.paths-inner { max-width: 1100px; margin: 0 auto; }
+.paths-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  margin-top: 0;
+}
+.path-card {
+  border: 0.5px solid var(--line);
+  border-radius: var(--r-xl);
+  padding: 30px 28px;
+  display: flex; flex-direction: column;
+  background: var(--bg-3);
+}
+.path-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 18px; flex-shrink: 0;
+}
+.path-icon.consumer { background: rgba(55,138,221,0.14); color: #B0D5F2; }
+.path-icon.publisher { background: rgba(127,119,221,0.14); color: #C9C5F2; }
+.path-eyebrow { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.path-eyebrow.consumer { color: #B0D5F2; }
+.path-eyebrow.publisher { color: #C9C5F2; }
+.path-title { font-size: 20px; font-weight: 500; margin-bottom: 10px; }
+.path-desc { font-size: 13px; color: var(--ink-2); line-height: 1.6; margin-bottom: 22px; flex: 1; }
+.path-steps { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.path-step { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--ink-2); }
+.step-n {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(255,255,255,0.06); border: 0.5px solid var(--line-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 500; flex-shrink: 0; margin-top: 1px;
+  font-family: var(--mono);
+}
+.path-step strong { color: var(--ink); font-weight: 500; margin-right: 4px; }
+.path-cta {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 500; padding: 10px 16px;
+  border-radius: var(--r-md); cursor: pointer;
+  border: 0.5px solid var(--line-2);
+  color: var(--ink-2); align-self: flex-start;
+}
+.path-cta:hover { background: rgba(255,255,255,0.04); color: var(--ink); }
+
+/* ── Value props ── */
+.values-section {
+  padding: 80px 40px;
+  border-top: 0.5px solid var(--line);
+  max-width: 1200px; margin: 0 auto;
+}
+.values-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.value-card {
+  background: var(--bg-2); border: 0.5px solid var(--line);
+  border-radius: var(--r-xl); padding: 24px;
+}
+.value-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+}
+.value-title { font-size: 16px; font-weight: 500; margin-bottom: 8px; }
+.value-desc { font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+
+/* ── Compat ── */
+.compat-strip {
+  border-top: 0.5px solid var(--line);
+  border-bottom: 0.5px solid var(--line);
+  padding: 20px 40px;
+  display: flex; align-items: center; gap: 32px;
+}
+.compat-label { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+.compat-logos { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+.compat-item { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-2); }
+.compat-item::before {
+  content: ''; width: 7px; height: 7px; border-radius: 2px;
+  background: var(--ink-3); opacity: 0.4;
+}
+
+/* ── Final CTA ── */
+.final-section {
+  padding: 100px 40px;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+.final-section::before {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 700px 300px at 50% 0%, rgba(127,119,221,0.14), transparent 70%),
+    radial-gradient(ellipse 500px 200px at 50% 100%, rgba(217,56,138,0.07), transparent 70%);
+}
+.final-title { font-size: 48px; font-weight: 500; letter-spacing: -0.02em; margin-bottom: 14px; position: relative; z-index: 1; }
+.final-sub { font-size: 16px; color: var(--ink-2); max-width: 460px; margin: 0 auto 32px; line-height: 1.6; position: relative; z-index: 1; }
+.final-ctas { display: flex; justify-content: center; gap: 12px; position: relative; z-index: 1; }
+
+/* ── Footer ── */
+.footer {
+  border-top: 0.5px solid var(--line);
+  padding: 24px 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--ink-3);
+}
+.footer-links { display: flex; gap: 20px; }
+.footer-links a:hover { color: var(--ink-2); }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-logo">S</div>
+    <span class="nav-name">Skills Hub</span>
+  </div>
+  <div class="nav-center">
+    <a href="#">Browse</a>
+    <a href="#">Collections</a>
+    <a href="#">Requests</a>
+    <a href="#">Docs</a>
+  </div>
+  <div class="nav-right">
+    <span class="nav-link">agentskills.io</span>
+    <button class="nav-signin">Sign in with SSO</button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <span class="pulse"></span>
+      <span>247 skills live across 12 teams</span>
+      <span style="color:var(--line-2);margin:0 2px">·</span>
+      <span style="font-family:var(--mono);font-size:11px">agentskills.io standard</span>
+    </div>
+
+    <h1 class="hero-title">
+      The skills registry your<br>
+      <span class="line2"><span class="grad">team can actually trust.</span></span>
+    </h1>
+    <p class="hero-sub">
+      Discover, publish, and govern <strong>SKILL.md bundles</strong> across every AI coding assistant — with <strong>automatic risk scoring</strong> baked into every upload.
+    </p>
+
+    <!-- Search -->
+    <div class="hero-search-wrap">
+      <div class="hero-search-beam">
+        <div class="hero-search-inner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <span class="placeholder">Describe what you want to do…</span>
+          <div class="hero-search-mode">
+            <span class="on">Semantic</span>
+            <span>Keyword</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-ctas">
+      <div class="beam-wrap">
+        <button class="beam-btn">
+          Browse the registry
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </div>
+      <button class="btn-ghost">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+        Publish your first skill
+      </button>
+    </div>
+
+    <div class="hero-trust">
+      <div class="t-item"><span class="ok">✓</span> Auto risk-scored on upload</div>
+      <span class="sep"></span>
+      <div class="t-item">SSO via company OAuth</div>
+      <span class="sep"></span>
+      <div class="t-item">Open standard · no lock-in</div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<div class="stats-band">
+  <div class="stat-cell">
+    <div class="stat-num">247</div>
+    <div class="stat-label">Skills published</div>
+    <div class="stat-sub">across 12 teams</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-num">38,412</div>
+    <div class="stat-label">Downloads · 30 days</div>
+    <div class="stat-sub">↑ 22.4% vs prev period</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-num">68%</div>
+    <div class="stat-label">Auto-published (low risk)</div>
+    <div class="stat-sub">pass auto-scan on first upload</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-num">62</div>
+    <div class="stat-label">Active publishers</div>
+    <div class="stat-sub">8 new this month</div>
+  </div>
+</div>
+
+<!-- Preview skills -->
+<section class="preview-strip">
+  <p class="preview-label">Live in the registry</p>
+  <h2 class="preview-title">Skills your team ships with today</h2>
+  <p class="preview-sub">Every skill is automatically scanned. Low-risk go live instantly. High-risk enter a human review queue.</p>
+
+  <div class="skill-grid">
+    <!-- Featured beam card -->
+    <div class="skill-card beam-card">
+      <div class="skill-card-inner">
+        <div class="sc-top">
+          <div class="sc-title-row">
+            <div class="sc-icon blue">K8</div>
+            <div>
+              <div class="sc-name">k8s-deployment</div>
+              <div class="sc-author">platform-team</div>
+            </div>
+          </div>
+          <span class="risk-pill med">Med</span>
+        </div>
+        <p class="sc-desc">Generate Kubernetes manifests with rolling updates, HPA-based auto-scaling, and per-environment overlays. Handles probes and resource limits.</p>
+        <div class="sc-foot">
+          <div class="sc-meta"><span>↓ 892</span><span>★ 4.6</span></div>
+          <span class="sc-ver">v2.1.0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="skill-card">
+      <div class="sc-top">
+        <div class="sc-title-row">
+          <div class="sc-icon purple">DC</div>
+          <div>
+            <div class="sc-name">docker-compose-helper</div>
+            <div class="sc-author">platform-team</div>
+          </div>
+        </div>
+        <span class="risk-pill low">Low</span>
+      </div>
+      <p class="sc-desc">Generate, validate, and troubleshoot docker-compose files with multi-service awareness and healthcheck suggestions.</p>
+      <div class="sc-foot">
+        <div class="sc-meta"><span>↓ 1,284</span><span>★ 4.8</span></div>
+        <span class="sc-ver">v1.4.2</span>
+      </div>
+    </div>
+
+    <div class="skill-card">
+      <div class="sc-top">
+        <div class="sc-title-row">
+          <div class="sc-icon teal">JU</div>
+          <div>
+            <div class="sc-name">junit-generator</div>
+            <div class="sc-author">quality-guild</div>
+          </div>
+        </div>
+        <span class="risk-pill low">Low</span>
+      </div>
+      <p class="sc-desc">Write idiomatic JUnit 5 tests with parameterized cases and Mockito stubs, inferred from a given class signature.</p>
+      <div class="sc-foot">
+        <div class="sc-meta"><span>↓ 641</span><span>★ 4.7</span></div>
+        <span class="sc-ver">v2.0.0</span>
+      </div>
+    </div>
+
+    <div class="skill-card">
+      <div class="sc-top">
+        <div class="sc-title-row">
+          <div class="sc-icon amber">GA</div>
+          <div>
+            <div class="sc-name">gha-workflow-builder</div>
+            <div class="sc-author">devops-team</div>
+          </div>
+        </div>
+        <span class="risk-pill low">Low</span>
+      </div>
+      <p class="sc-desc">Compose GitHub Actions workflows with matrix builds, secret handling, and per-environment deployment gates.</p>
+      <div class="sc-foot">
+        <div class="sc-meta"><span>↓ 478</span><span>★ 4.4</span></div>
+        <span class="sc-ver">v1.5.2</span>
+      </div>
+    </div>
+
+    <div class="skill-card">
+      <div class="sc-top">
+        <div class="sc-title-row">
+          <div class="sc-icon coral">TF</div>
+          <div>
+            <div class="sc-name">terraform-module-author</div>
+            <div class="sc-author">cloud-platform</div>
+          </div>
+        </div>
+        <span class="risk-pill med">Med</span>
+      </div>
+      <p class="sc-desc">Author reusable Terraform modules with variable validation, examples, and auto-generated README documentation.</p>
+      <div class="sc-foot">
+        <div class="sc-meta"><span>↓ 512</span><span>★ 4.5</span></div>
+        <span class="sc-ver">v0.9.1</span>
+      </div>
+    </div>
+
+    <div class="skill-card">
+      <div class="sc-top">
+        <div class="sc-title-row">
+          <div class="sc-icon pink">OA</div>
+          <div>
+            <div class="sc-name">openapi-scaffold</div>
+            <div class="sc-author">api-guild</div>
+          </div>
+        </div>
+        <span class="risk-pill low">Low</span>
+      </div>
+      <p class="sc-desc">Turn a prose API brief into a valid OpenAPI 3.1 spec with typed request/response schemas and example payloads.</p>
+      <div class="sc-foot">
+        <div class="sc-meta"><span>↓ 356</span><span>★ 4.6</span></div>
+        <span class="sc-ver">v1.1.0</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section style="border-top:0.5px solid var(--line); padding:80px 40px;">
+  <div style="max-width:1100px;margin:0 auto">
+    <p class="section-eyebrow">Architecture</p>
+    <h2 class="section-title">Built on events, not imports.</h2>
+    <p class="section-sub">Every lifecycle moment is a durable domain event. Audit trails are clean. Trust signals are visible.</p>
+    <div class="event-flow">
+      <div class="event-step">
+        <div class="ev-num">01</div>
+        <div class="ev-icon" style="background:rgba(127,119,221,0.14)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9C5F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div class="ev-title">Upload</div>
+        <div class="ev-desc">Zip your SKILL.md bundle and push it</div>
+        <div class="ev-event" style="background:rgba(127,119,221,0.12);color:#C9C5F2">SkillCreated</div>
+      </div>
+      <div class="event-step">
+        <div class="ev-num">02</div>
+        <div class="ev-icon" style="background:rgba(239,159,39,0.14)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FAC775" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+        </div>
+        <div class="ev-title">Auto scan</div>
+        <div class="ev-desc">Risk findings computed in seconds</div>
+        <div class="ev-event" style="background:rgba(239,159,39,0.12);color:#FAC775">SkillRiskAssessed</div>
+      </div>
+      <div class="event-step">
+        <div class="ev-num">03</div>
+        <div class="ev-icon" style="background:rgba(29,158,117,0.14)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9FE1CB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <div class="ev-title">Publish</div>
+        <div class="ev-desc">Low-risk auto-live; high-risk to queue</div>
+        <div class="ev-event" style="background:rgba(29,158,117,0.12);color:#9FE1CB">SkillVersionPublished</div>
+      </div>
+      <div class="event-step">
+        <div class="ev-num">04</div>
+        <div class="ev-icon" style="background:rgba(55,138,221,0.14)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B0D5F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="ev-title">Install</div>
+        <div class="ev-desc">One-click into any compatible tool</div>
+        <div class="ev-event" style="background:rgba(55,138,221,0.12);color:#B0D5F2">SkillDownloaded</div>
+      </div>
+      <div class="event-step">
+        <div class="ev-num">05</div>
+        <div class="ev-icon" style="background:rgba(255,255,255,0.06)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+        </div>
+        <div class="ev-title">Track</div>
+        <div class="ev-desc">Downloads, ratings, flags — all sourced</div>
+        <div class="ev-event" style="background:rgba(255,255,255,0.05);color:var(--ink-3)">Analytics projection</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Dual paths -->
+<section class="paths-section">
+  <div class="paths-inner">
+    <p class="section-eyebrow" style="text-align:center">Two ways in</p>
+    <h2 class="section-title" style="text-align:center;margin-bottom:10px">Get productive in under 5 minutes.</h2>
+    <p class="section-sub" style="text-align:center;margin:0 auto 44px">Whether you need a skill or want to share one, the path is short.</p>
+    <div class="paths-grid">
+      <div class="path-card">
+        <div class="path-icon consumer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <p class="path-eyebrow consumer">I want to use skills</p>
+        <h3 class="path-title">Find the right skill in seconds</h3>
+        <p class="path-desc">Semantic search understands intent, not just keywords. Every skill is risk-scored so you know what you're installing before you install it.</p>
+        <div class="path-steps">
+          <div class="path-step"><span class="step-n">1</span><div><strong>Describe your task</strong>in plain language or browse by category</div></div>
+          <div class="path-step"><span class="step-n">2</span><div><strong>Check the risk tier</strong>— Low auto-publishes, High enters review</div></div>
+          <div class="path-step"><span class="step-n">3</span><div><strong>Drop it in</strong><code style="font-family:var(--mono);font-size:11px;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px">~/.claude/skills/</code></div></div>
+        </div>
+        <button class="path-cta">Browse 247 skills <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+      </div>
+      <div class="path-card">
+        <div class="path-icon publisher">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+        </div>
+        <p class="path-eyebrow publisher">I want to share what I've built</p>
+        <h3 class="path-title">Ship a skill in under a minute</h3>
+        <p class="path-desc">Zip your SKILL.md bundle. We validate the format, auto-scan for risks, and publish — with full download analytics from day one.</p>
+        <div class="path-steps">
+          <div class="path-step"><span class="step-n">1</span><div><strong>Upload a zip</strong>with SKILL.md and optional scripts/ or references/</div></div>
+          <div class="path-step"><span class="step-n">2</span><div><strong>See the scan</strong>— format check, risk findings, file-by-file</div></div>
+          <div class="path-step"><span class="step-n">3</span><div><strong>Publish &amp; track</strong>downloads, ratings, and version adoption</div></div>
+        </div>
+        <button class="path-cta">Publish your first skill <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Value props -->
+<section class="values-section">
+  <p class="section-eyebrow">Why Skills Hub</p>
+  <h2 class="section-title">Governance without slowing anyone down.</h2>
+  <p class="section-sub" style="margin-bottom:44px">The three things that make Skills Hub different from a plain GitHub repo of SKILL.md files.</p>
+  <div class="values-grid">
+    <div class="value-card">
+      <div class="value-icon" style="background:rgba(29,158,117,0.14)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9FE1CB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+      </div>
+      <h3 class="value-title">Risk-tiered by default</h3>
+      <p class="value-desc">Every upload is scanned for dangerous shell patterns, sensitive path access, and untrusted domains. Low-risk skills auto-publish; high-risk go to the review queue — without blocking the author.</p>
+    </div>
+    <div class="value-card">
+      <div class="value-icon" style="background:rgba(127,119,221,0.14)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9C5F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/></svg>
+      </div>
+      <h3 class="value-title">Semantic search that gets intent</h3>
+      <p class="value-desc">Describe the task — "deploy a service to kubernetes with auto-scaling" — and get ranked matches with reasoning. Powered by Gemini embeddings over your org's full registry.</p>
+    </div>
+    <div class="value-card">
+      <div class="value-icon" style="background:rgba(239,159,39,0.14)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FAC775" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      </div>
+      <h3 class="value-title">Full-lifecycle analytics</h3>
+      <p class="value-desc">Downloads, ratings, version adoption, flag volume — authors see what lands, admins see what needs attention. All derived from a single append-only event stream.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Compat -->
+<div class="compat-strip">
+  <span class="compat-label">Works with</span>
+  <div class="compat-logos">
+    <span class="compat-item">Claude Code</span>
+    <span class="compat-item">Cursor</span>
+    <span class="compat-item">GitHub Copilot</span>
+    <span class="compat-item">OpenAI Codex</span>
+    <span class="compat-item">Gemini CLI</span>
+    <span style="font-size:12px;color:var(--ink-3)">+ 25 more</span>
+  </div>
+</div>
+
+<!-- Final CTA -->
+<section class="final-section">
+  <h2 class="final-title">Start sharing skills<br>like libraries.</h2>
+  <p class="final-sub">The first 5 minutes is all it takes — browse what's live, or ship your first SKILL.md bundle right now.</p>
+  <div class="final-ctas">
+    <div class="beam-wrap">
+      <button class="beam-btn">Browse the registry <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+    </div>
+    <button class="btn-ghost">Read the docs</button>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div>Skills Hub · built on the <a href="#" style="color:var(--accent)">agentskills.io</a> open standard</div>
+  <div class="footer-links">
+    <a href="#">Docs</a>
+    <a href="#">API</a>
+    <a href="#">Changelog</a>
+    <a href="#">Status</a>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · Publish — Validate</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#08080A;--bg-2:#0F0F12;--bg-3:#171719;--ink:#EEECEA;--ink-2:#A8A49C;--ink-3:#5E5B55;--line:rgba(255,255,255,.06);--line-2:rgba(255,255,255,.10);--accent:#7F77DD;--green:#1D9E75;--amber:#EF9F27;--mono:'JetBrains Mono',ui-monospace,monospace;--sans:'Inter',system-ui,sans-serif;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-pill:999px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;height:100%;overflow:hidden}
+.shell{display:flex;flex-direction:column;height:100vh}
+.scroll{overflow-y:auto;flex:1}
+
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;border-bottom:.5px solid var(--line);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#08080A}
+.brand-name{font-size:15px;font-weight:500}
+.crumbs{font-size:13px;color:var(--ink-3);display:flex;align-items:center;gap:6px}
+.crumbs .sep{opacity:.4}
+.crumbs .cur{color:var(--ink-2)}
+.avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,.6),rgba(29,158,117,.5));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500}
+
+.hero{padding:24px 26px 20px;border-bottom:.5px solid var(--line);background:radial-gradient(ellipse 600px 200px at 40% 0%,rgba(127,119,221,.09),transparent 70%)}
+.hero h1{font-size:22px;font-weight:500;margin-bottom:4px}
+.hero p{font-size:13px;color:var(--ink-2)}
+
+.stepper{display:flex;align-items:center;padding:18px 26px;gap:6px;border-bottom:.5px solid var(--line)}
+.step{display:flex;align-items:center;gap:8px}
+.step-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+.step-num.done{background:rgba(29,158,117,.18);color:#6FD8B0}
+.step-num.active{background:var(--ink);color:var(--bg)}
+.step-num.future{background:var(--bg-3);color:var(--ink-3);border:.5px solid var(--line-2)}
+.step-label{font-size:12px;color:var(--ink-3);white-space:nowrap}
+.step.done .step-label,.step.active .step-label{color:var(--ink);font-weight:500}
+.step-line{flex:1;height:.5px;background:var(--line-2);margin:0 6px}
+.step-line.done{background:rgba(29,158,117,.4)}
+
+.body{display:grid;grid-template-columns:1fr 260px;gap:24px;padding:28px 26px}
+
+/* Upload confirmed strip */
+.upload-strip{background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:12px 16px;margin-bottom:22px;display:flex;align-items:center;gap:12px}
+.upload-icon{width:36px;height:36px;border-radius:9px;background:rgba(127,119,221,.14);color:#C9C5F2;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:500;flex-shrink:0}
+.upload-name{font-size:13px;font-weight:500}
+.upload-meta{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+.upload-done{font-size:11px;font-weight:500;padding:3px 9px;border-radius:var(--r-pill);background:rgba(29,158,117,.14);color:#6FD8B0;margin-left:auto;flex-shrink:0}
+
+/* Check items */
+.check-list{display:flex;flex-direction:column;gap:10px;margin-bottom:22px}
+.check-item{background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-xl);padding:14px 16px;display:flex;align-items:center;gap:14px}
+.ci-icon{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px}
+.ci-icon.pass{background:rgba(29,158,117,.16);color:#6FD8B0}
+.ci-icon.scanning{background:rgba(127,119,221,.14);color:#C9C5F2}
+.ci-icon.pending{background:rgba(255,255,255,.05);color:var(--ink-3)}
+.ci-body{flex:1;min-width:0}
+.ci-title{font-size:13px;font-weight:500;margin-bottom:2px;display:flex;align-items:center;gap:8px}
+.ci-sub{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+.ci-badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:var(--r-pill)}
+.ci-badge.pass{background:rgba(29,158,117,.14);color:#6FD8B0}
+.ci-badge.scanning{background:rgba(127,119,221,.12);color:#C9C5F2}
+.ci-badge.pending{background:rgba(255,255,255,.05);color:var(--ink-3)}
+
+/* Scanning animation */
+@keyframes scan-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.scanning-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);animation:scan-pulse 1.2s ease-in-out infinite;margin-right:5px;vertical-align:middle}
+@keyframes spin-slow{to{transform:rotate(360deg)}}
+.spin-icon{animation:spin-slow 1.5s linear infinite;display:inline-block}
+
+/* Progress bar */
+.progress-wrap{margin-bottom:6px}
+.progress-label{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3);margin-bottom:5px}
+.progress-bar{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#7F77DD,#1D9E75);width:62%}
+
+/* Sidebar */
+.sidebar{display:flex;flex-direction:column;gap:14px}
+.sb-card{background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-xl);padding:16px}
+.sb-label{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+
+/* Engine info */
+.engine-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:.5px solid var(--line)}
+.engine-row:last-child{border-bottom:none}
+.ek{color:var(--ink-3)}
+.ev{color:var(--ink-2);font-family:var(--mono)}
+
+.footer{display:flex;align-items:center;justify-content:space-between;padding:14px 26px;border-top:.5px solid var(--line);flex-shrink:0}
+.ghost-btn{font-size:13px;padding:8px 14px;border-radius:var(--r-md);border:.5px solid var(--line-2);background:transparent;color:var(--ink-2);cursor:pointer}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="nav">
+    <div class="brand"><div class="logo">S</div><span class="brand-name">Skills Hub</span></div>
+    <div class="crumbs"><span>My Skills</span><span class="sep">/</span><span class="cur">Publish — Validating</span></div>
+    <div class="avatar">MK</div>
+  </nav>
+  <div class="hero"><h1>Publish a skill</h1><p>Validating your bundle · automated SKILL.md check + risk scan running</p></div>
+  <div class="stepper">
+    <div class="step done"><div class="step-num done">✓</div><span class="step-label">Upload</span></div>
+    <div class="step-line done"></div>
+    <div class="step active"><div class="step-num active">2</div><span class="step-label">Validate</span></div>
+    <div class="step-line"></div>
+    <div class="step"><div class="step-num future">3</div><span class="step-label">Review &amp; publish</span></div>
+    <div class="step-line"></div>
+    <div class="step"><div class="step-num future">4</div><span class="step-label">Live</span></div>
+  </div>
+
+  <div class="scroll">
+    <div class="body">
+      <div class="main">
+
+        <!-- Uploaded file confirmed -->
+        <div class="upload-strip">
+          <div class="upload-icon">ZIP</div>
+          <div>
+            <div class="upload-name">docker-compose-helper-v2.1.0.zip</div>
+            <div class="upload-meta">84 KB · 12 files · uploaded just now</div>
+          </div>
+          <span class="upload-done">✓ Uploaded</span>
+        </div>
+
+        <!-- Overall progress -->
+        <div class="progress-wrap">
+          <div class="progress-label"><span style="color:var(--ink-2)">Validation in progress…</span><span>2 / 3 checks complete</span></div>
+          <div class="progress-bar"><div class="progress-fill"></div></div>
+        </div>
+        <div style="font-size:11px;color:var(--ink-3);font-family:var(--mono);margin-bottom:20px">Estimated time remaining: ~4 seconds</div>
+
+        <!-- Check items -->
+        <div class="check-list">
+          <!-- Done: SKILL.md -->
+          <div class="check-item">
+            <div class="ci-icon pass">✓</div>
+            <div class="ci-body">
+              <div class="ci-title">SKILL.md is valid <span class="ci-badge pass">Pass</span></div>
+              <div class="ci-sub">name ≤ 64 chars · description ≤ 1024 chars · all required fields present</div>
+            </div>
+          </div>
+
+          <!-- Done: Bundle structure -->
+          <div class="check-item">
+            <div class="ci-icon pass">✓</div>
+            <div class="ci-body">
+              <div class="ci-title">Bundle structure <span class="ci-badge pass">Pass</span></div>
+              <div class="ci-sub">12 files · SKILL.md found · no scripts/ directory detected</div>
+            </div>
+          </div>
+
+          <!-- Scanning: Risk scan -->
+          <div class="check-item" style="border-color:rgba(127,119,221,.2);background:rgba(127,119,221,.04)">
+            <div class="ci-icon scanning">
+              <span class="spin-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              </span>
+            </div>
+            <div class="ci-body">
+              <div class="ci-title">
+                <span class="scanning-dot"></span>
+                Risk scan running… <span class="ci-badge scanning">Scanning</span>
+              </div>
+              <div class="ci-sub">Checking scripts/, references/, SKILL.md for dangerous patterns · rule set 2026-04</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Event stream preview -->
+        <div style="background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:14px 16px">
+          <div style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;font-family:var(--mono)">Live event stream</div>
+          <div style="font-family:var(--mono);font-size:12px;line-height:2;color:var(--ink-3)">
+            <span style="color:#6FD8B0">✓</span> <span style="color:#C9C5F2">SkillCreated</span> · docker-compose-helper · author=platform-team<br>
+            <span style="color:#6FD8B0">✓</span> <span style="color:#C9C5F2">SkillBundleExtracted</span> · 12 files · 84 KB<br>
+            <span style="color:#6FD8B0">✓</span> <span style="color:#C9C5F2">SkillFrontmatterValidated</span> · all fields pass<br>
+            <span style="color:var(--accent)">⟳</span> <span style="color:#C9C5F2">SkillRiskScanStarted</span> · engine v1.4 · <span style="animation:scan-pulse 1.2s ease-in-out infinite;display:inline-block">scanning…</span>
+          </div>
+        </div>
+
+      </div>
+
+      <aside class="sidebar">
+        <div class="sb-card">
+          <div class="sb-label">Scan engine</div>
+          <div class="engine-row"><span class="ek">Engine</span><span class="ev">v1.4.2</span></div>
+          <div class="engine-row"><span class="ek">Rule set</span><span class="ev">2026-04</span></div>
+          <div class="engine-row"><span class="ek">Rules active</span><span class="ev">42</span></div>
+          <div class="engine-row"><span class="ek">Avg scan time</span><span class="ev">6.2s</span></div>
+        </div>
+        <div class="sb-card">
+          <div class="sb-label">What happens next</div>
+          <div style="font-size:12px;color:var(--ink-2);line-height:1.6">
+            <strong style="color:var(--ink)">Low risk</strong> — auto-publishes. You'll move to step 3 to confirm and set your version number.<br><br>
+            <strong style="color:#FAC775">Medium risk</strong> — publishes with a warning badge visible to installers.<br><br>
+            <strong style="color:#F2A6A6">High risk</strong> — enters the human review queue. You can submit for review or withdraw.
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="footer">
+    <button class="ghost-btn">← Cancel</button>
+    <span style="font-size:12px;color:var(--ink-3)">Please wait — scan running</span>
+  </div>
+</div>
+</body>
+</html>

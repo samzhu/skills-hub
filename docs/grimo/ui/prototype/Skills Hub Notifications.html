@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · Notifications</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#08080A;--bg-2:#0F0F12;--bg-3:#171719;--ink:#EEECEA;--ink-2:#A8A49C;--ink-3:#5E5B55;--line:rgba(255,255,255,.06);--line-2:rgba(255,255,255,.10);--accent:#7F77DD;--green:#1D9E75;--amber:#EF9F27;--red:#E24B4A;--mono:'JetBrains Mono',ui-monospace,monospace;--sans:'Inter',system-ui,sans-serif;--r-sm:4px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-pill:999px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;height:100%;overflow:hidden}
+.shell{display:flex;flex-direction:column;height:100vh}
+.scroll{overflow-y:auto;flex:1}
+.scroll::-webkit-scrollbar{width:4px}
+.scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;border-bottom:.5px solid var(--line);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#08080A}
+.brand-name{font-size:15px;font-weight:500}
+.nav-links{display:flex;gap:2px}
+.nav-item{font-size:13px;padding:6px 12px;border-radius:var(--r-md);color:var(--ink-2);cursor:pointer}
+.nav-item.on{background:rgba(255,255,255,.06);color:var(--ink);font-weight:500}
+.notif-bell{position:relative;cursor:pointer;padding:6px}
+.notif-badge{position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:50%;background:#E24B4A;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--bg)}
+.avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,.6),rgba(29,158,117,.5));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500}
+
+/* Page head */
+.page-head{padding:22px 26px 18px;border-bottom:.5px solid var(--line);display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.head-left h1{font-size:22px;font-weight:500;margin-bottom:4px}
+.head-left p{font-size:13px;color:var(--ink-2)}
+.mark-read{font-size:12px;color:var(--accent);cursor:pointer;padding:6px 12px;border-radius:var(--r-md);border:.5px solid rgba(127,119,221,.2)}
+.mark-read:hover{background:rgba(127,119,221,.07)}
+
+/* Tabs */
+.tabs{display:flex;padding:0 26px;border-bottom:.5px solid var(--line)}
+.tab{font-size:13px;color:var(--ink-2);padding:11px 14px;border-bottom:1.5px solid transparent;margin-bottom:-.5px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.tab.on{color:var(--ink);font-weight:500;border-bottom-color:var(--ink)}
+.tab .badge{font-size:10px;padding:1px 6px;border-radius:var(--r-pill);background:rgba(226,75,74,.15);color:#F2A6A6}
+.tab.on .badge{background:rgba(226,75,74,.2)}
+
+/* Body */
+.body{display:grid;grid-template-columns:1fr 280px;padding:0}
+
+/* Notification list */
+.notif-list{border-right:.5px solid var(--line);padding:8px 0}
+
+.day-divider{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;padding:14px 26px 6px;display:flex;align-items:center;gap:10px}
+.day-divider::after{content:'';flex:1;height:.5px;background:var(--line)}
+
+/* Notification item */
+.notif-item{display:flex;align-items:flex-start;gap:12px;padding:14px 26px;border-bottom:.5px solid var(--line);cursor:pointer;position:relative}
+.notif-item:hover{background:rgba(255,255,255,.02)}
+.notif-item.unread{background:rgba(127,119,221,.04)}
+.notif-item.unread::before{content:'';position:absolute;left:12px;top:50%;transform:translateY(-50%);width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.notif-icon{width:36px;height:36px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px}
+.notif-icon.version{background:rgba(29,158,117,.14)}
+.notif-icon.flag{background:rgba(226,75,74,.14)}
+.notif-icon.review{background:rgba(127,119,221,.14)}
+.notif-icon.mention{background:rgba(55,138,221,.14)}
+.notif-icon.request{background:rgba(239,159,39,.14)}
+.notif-icon.system{background:rgba(255,255,255,.06)}
+.notif-body{flex:1;min-width:0}
+.notif-title{font-size:13px;font-weight:500;margin-bottom:2px;display:flex;align-items:flex-start;gap:6px}
+.notif-title .new{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:rgba(127,119,221,.18);color:#C9C5F2;vertical-align:middle;flex-shrink:0;margin-top:2px}
+.notif-desc{font-size:12px;color:var(--ink-2);line-height:1.5;margin-bottom:4px}
+.notif-meta{font-size:11px;color:var(--ink-3);font-family:var(--mono);display:flex;gap:8px;align-items:center}
+.notif-meta .sep{width:2px;height:2px;border-radius:50%;background:var(--ink-3)}
+.notif-time{font-size:11px;color:var(--ink-3);font-family:var(--mono);flex-shrink:0;margin-top:1px}
+.notif-action{flex-shrink:0;align-self:center}
+.n-btn{font-size:11px;padding:5px 10px;border-radius:var(--r-sm);border:.5px solid var(--line-2);background:rgba(255,255,255,.03);color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.n-btn.primary{background:rgba(127,119,221,.1);border-color:rgba(127,119,221,.25);color:#C9C5F2}
+.n-btn.danger{background:rgba(226,75,74,.08);border-color:rgba(226,75,74,.2);color:#F2A6A6}
+.n-btn.success{background:rgba(29,158,117,.08);border-color:rgba(29,158,117,.2);color:#6FD8B0}
+
+/* Version tag inline */
+.ver-tag{font-family:var(--mono);font-size:11px;background:var(--bg-3);padding:1px 5px;border-radius:3px;color:var(--ink)}
+.risk-inline{font-size:10px;font-weight:500;padding:1px 6px;border-radius:var(--r-pill)}
+.risk-inline.low{background:rgba(29,158,117,.12);color:#6FD8B0}
+.risk-inline.high{background:rgba(226,75,74,.12);color:#F2A6A6}
+
+/* Sidebar: settings */
+.sidebar{padding:18px}
+.sb-card{background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-xl);padding:16px;margin-bottom:14px}
+.sb-title{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:.5px solid var(--line)}
+.setting-row:last-child{border-bottom:none}
+.setting-label{font-size:12px;color:var(--ink)}
+.setting-sub{font-size:11px;color:var(--ink-3)}
+/* Toggle */
+.toggle{width:36px;height:20px;border-radius:10px;position:relative;cursor:pointer;flex-shrink:0}
+.toggle.on{background:rgba(127,119,221,.7)}
+.toggle.off{background:var(--bg-3);border:.5px solid var(--line-2)}
+.toggle::after{content:'';position:absolute;top:2px;width:16px;height:16px;border-radius:50%;background:var(--ink);transition:left .2s}
+.toggle.on::after{left:18px}
+.toggle.off::after{left:2px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="nav">
+    <div class="brand"><div class="logo">S</div><span class="brand-name">Skills Hub</span></div>
+    <div class="nav-links">
+      <div class="nav-item">Browse</div>
+      <div class="nav-item">My Skills</div>
+      <div class="nav-item on">Notifications</div>
+      <div class="nav-item">Analytics</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="notif-bell">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-2)"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div class="notif-badge">5</div>
+      </div>
+      <div class="avatar">MK</div>
+    </div>
+  </nav>
+
+  <div class="page-head">
+    <div class="head-left">
+      <h1>Notifications</h1>
+      <p>Updates on your skills, subscriptions, and review actions</p>
+    </div>
+    <button class="mark-read">Mark all as read</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on">All <span class="badge">5</span></div>
+    <div class="tab">New versions</div>
+    <div class="tab">Flags &amp; risks</div>
+    <div class="tab">Reviews</div>
+    <div class="tab">Requests</div>
+  </div>
+
+  <div class="scroll">
+    <div class="body">
+      <div class="notif-list">
+
+        <div class="day-divider">Today</div>
+
+        <!-- Unread: review approved -->
+        <div class="notif-item unread">
+          <div class="notif-icon review">✓</div>
+          <div class="notif-body">
+            <div class="notif-title"><span>env-bootstrap approved by security review</span><span class="new">new</span></div>
+            <div class="notif-desc">Reviewer <strong>arivera</strong> approved your skill with note: "curl|bash removed, AWS path cleaned up — safe to publish."</div>
+            <div class="notif-meta">
+              <span class="ver-tag">v0.2.0</span><span class="sep"></span>
+              <span class="risk-inline low">Low risk</span><span class="sep"></span>
+              <span>SkillVersionPublished · env-bootstrap</span>
+            </div>
+          </div>
+          <div class="notif-action">
+            <button class="n-btn success">View skill →</button>
+          </div>
+          <div class="notif-time">2m ago</div>
+        </div>
+
+        <!-- Unread: flag on your skill -->
+        <div class="notif-item unread">
+          <div class="notif-icon flag">⚑</div>
+          <div class="notif-body">
+            <div class="notif-title"><span>New flag on docker-compose-helper</span><span class="new">new</span></div>
+            <div class="notif-desc">User <strong>t.ames</strong> reported: "healthcheck syntax has changed in compose v2.4 — examples/ are outdated."</div>
+            <div class="notif-meta">
+              <span class="ver-tag">v2.1.0</span><span class="sep"></span>
+              <span>Open flags: 1</span>
+            </div>
+          </div>
+          <div class="notif-action">
+            <button class="n-btn danger">Review flag</button>
+          </div>
+          <div class="notif-time">18m ago</div>
+        </div>
+
+        <!-- Unread: subscribed skill new version -->
+        <div class="notif-item unread">
+          <div class="notif-icon version">↓</div>
+          <div class="notif-body">
+            <div class="notif-title"><span>k8s-deployment updated to v2.2.0</span><span class="new">new</span></div>
+            <div class="notif-desc">You're subscribed to this skill. Changes: removed <code style="font-family:var(--mono);font-size:11px;background:var(--bg-3);padding:1px 3px;border-radius:3px">scripts/</code> directory — risk dropped from Med to Low.</div>
+            <div class="notif-meta">
+              <span class="risk-inline low">Low risk ↓</span><span class="sep"></span>
+              <span>platform-team · 34m ago</span>
+            </div>
+          </div>
+          <div class="notif-action">
+            <button class="n-btn primary">View diff →</button>
+          </div>
+          <div class="notif-time">34m ago</div>
+        </div>
+
+        <!-- Unread: request you voted on fulfilled -->
+        <div class="notif-item unread">
+          <div class="notif-icon request">★</div>
+          <div class="notif-body">
+            <div class="notif-title"><span>Request fulfilled — gha-workflow-builder</span><span class="new">new</span></div>
+            <div class="notif-desc">A skill you voted for has been published. "GitHub Actions workflow linter with fix suggestions" is now live.</div>
+            <div class="notif-meta">
+              <span class="risk-inline low">Low risk</span><span class="sep"></span>
+              <span>devops-team</span>
+            </div>
+          </div>
+          <div class="notif-action">
+            <button class="n-btn">Install →</button>
+          </div>
+          <div class="notif-time">1h ago</div>
+        </div>
+
+        <!-- Unread: review requested (admin) -->
+        <div class="notif-item unread">
+          <div class="notif-icon flag">🔴</div>
+          <div class="notif-body">
+            <div class="notif-title"><span>Review requested — secret-rotator</span><span class="new">new</span></div>
+            <div class="notif-desc">Skill submitted by <strong>security-team</strong> has 2 HIGH + 3 MEDIUM findings and entered the review queue.</div>
+            <div class="notif-meta">
+              <span class="risk-inline high">High risk</span><span class="sep"></span>
+              <span>Waiting 1h 32m</span>
+            </div>
+          </div>
+          <div class="notif-action">
+            <button class="n-btn danger">Review now</button>
+          </div>
+          <div class="notif-time">1h 32m ago</div>
+        </div>
+
+        <div class="day-divider">Yesterday</div>
+
+        <!-- Read: version update -->
+        <div class="notif-item">
+          <div class="notif-icon version" style="opacity:.6">↓</div>
+          <div class="notif-body">
+            <div class="notif-title">kubectl-helper updated to v1.3.0</div>
+            <div class="notif-desc">Subscribed skill. New: natural-language rollout status, port-forward shorthand.</div>
+            <div class="notif-meta"><span class="ver-tag">v1.3.0</span><span class="sep"></span><span>platform-team</span></div>
+          </div>
+          <div class="notif-action"><button class="n-btn">View →</button></div>
+          <div class="notif-time">Yesterday 4:12 PM</div>
+        </div>
+
+        <!-- Read: your skill review completed -->
+        <div class="notif-item">
+          <div class="notif-icon review" style="opacity:.6">✓</div>
+          <div class="notif-body">
+            <div class="notif-title">terraform-module-author v0.9.1 published</div>
+            <div class="notif-desc">Your upload passed validation and auto-published at Medium risk. Visible in browse.</div>
+            <div class="notif-meta"><span class="ver-tag">v0.9.1</span><span class="sep"></span><span class="risk-inline med" style="background:rgba(239,159,39,.1);color:#FAC775">Med risk</span></div>
+          </div>
+          <div class="notif-time">Yesterday 11:04 AM</div>
+        </div>
+
+        <!-- Read: mention in review note -->
+        <div class="notif-item">
+          <div class="notif-icon mention" style="opacity:.6">@</div>
+          <div class="notif-body">
+            <div class="notif-title">You were mentioned in a review note</div>
+            <div class="notif-desc"><strong>jlee</strong> mentioned you: "@mike this skill uses a similar pattern to your docker-compose-helper — worth checking for overlap."</div>
+            <div class="notif-meta"><span>env-bootstrap review</span></div>
+          </div>
+          <div class="notif-time">Yesterday 9:47 AM</div>
+        </div>
+
+        <!-- Read: system -->
+        <div class="notif-item">
+          <div class="notif-icon system" style="opacity:.5">⚙</div>
+          <div class="notif-body">
+            <div class="notif-title" style="font-weight:400;color:var(--ink-2)">Scan engine updated to v1.4.2</div>
+            <div class="notif-desc" style="font-size:11px">Rule set 2026-04 is now active. 3 new rules added for secrets patterns in CI config files.</div>
+          </div>
+          <div class="notif-time">Yesterday 8:00 AM</div>
+        </div>
+
+      </div>
+
+      <!-- Sidebar: notification preferences -->
+      <aside class="sidebar">
+        <div class="sb-card">
+          <div class="sb-title">Notification preferences</div>
+
+          <div class="setting-row">
+            <div><div class="setting-label">New version — subscribed skills</div><div class="setting-sub">When a skill you follow releases an update</div></div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Flags on your skills</div><div class="setting-sub">When someone reports an issue with your skill</div></div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Review decisions</div><div class="setting-sub">Approved, rejected, or changes requested</div></div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">Request activity</div><div class="setting-sub">Votes, claims, fulfillments on requests you posted</div></div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-label">System announcements</div><div class="setting-sub">Scan engine updates, rule changes</div></div>
+            <div class="toggle off"></div>
+          </div>
+        </div>
+
+        <div class="sb-card">
+          <div class="sb-title">Subscribed skills</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
+              <span>k8s-deployment</span>
+              <span style="font-size:10px;color:var(--ink-3);cursor:pointer">Unsubscribe</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
+              <span>kubectl-helper</span>
+              <span style="font-size:10px;color:var(--ink-3);cursor:pointer">Unsubscribe</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px">
+              <span>helm-chart-linter</span>
+              <span style="font-size:10px;color:var(--ink-3);cursor:pointer">Unsubscribe</span>
+            </div>
+            <div style="font-size:11px;color:var(--accent);cursor:pointer;margin-top:4px">Browse skills to subscribe →</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+</body>
+</html>

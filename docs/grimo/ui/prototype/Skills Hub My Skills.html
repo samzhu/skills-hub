@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · My Skills</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#08080A;--bg-2:#0F0F12;--bg-3:#171719;--ink:#EEECEA;--ink-2:#A8A49C;--ink-3:#5E5B55;--line:rgba(255,255,255,.06);--line-2:rgba(255,255,255,.10);--accent:#7F77DD;--green:#1D9E75;--amber:#EF9F27;--red:#E24B4A;--mono:'JetBrains Mono',ui-monospace,monospace;--sans:'Inter',system-ui,sans-serif;--r-sm:4px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-pill:999px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;height:100%;overflow:hidden}
+.shell{display:flex;flex-direction:column;height:100vh}
+.scroll{overflow-y:auto;flex:1}
+.scroll::-webkit-scrollbar{width:4px}
+.scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;border-bottom:.5px solid var(--line);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#08080A}
+.brand-name{font-size:15px;font-weight:500}
+.nav-links{display:flex;gap:2px}
+.nav-item{font-size:13px;padding:6px 12px;border-radius:var(--r-md);color:var(--ink-2);cursor:pointer}
+.nav-item.on{background:rgba(255,255,255,.06);color:var(--ink);font-weight:500}
+.avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,.6),rgba(29,158,117,.5));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500}
+
+/* Beam */
+.beam-wrap{position:relative;padding:1.5px;border-radius:var(--r-md);background:#1A1A1E;overflow:hidden;isolation:isolate;display:inline-block}
+.beam-wrap::before,.beam-wrap::after{content:'';position:absolute;inset:-120%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,.95) 230deg,rgba(217,56,138,.95) 268deg,rgba(239,159,39,.95) 300deg,rgba(29,158,117,.95) 332deg,rgba(55,138,221,.95) 360deg,transparent 360deg);animation:spin 1.96s linear infinite;pointer-events:none;z-index:0}
+.beam-wrap::after{filter:blur(10px);opacity:.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+.beam-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;background:#EEECEA;color:#08080A;font-size:13px;font-weight:500;padding:8px 16px;border-radius:calc(var(--r-md) - 1.5px);border:none;cursor:pointer;white-space:nowrap}
+
+/* Hero */
+.hero{padding:22px 26px 18px;border-bottom:.5px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;gap:20px;background:radial-gradient(ellipse 500px 180px at 20% 0%,rgba(127,119,221,.08),transparent 70%)}
+.hero-left{}
+.hero-eyebrow{font-size:11px;color:var(--ink-3);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.hero-eyebrow .author{font-family:var(--mono);color:var(--accent)}
+.hero-title{font-size:22px;font-weight:500;letter-spacing:-.005em;margin-bottom:4px}
+.hero-sub{font-size:13px;color:var(--ink-2)}
+
+/* Metrics */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 26px;border-bottom:.5px solid var(--line)}
+.metric{background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:13px 15px}
+.m-k{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.m-v{font-size:20px;font-weight:500;letter-spacing:-.01em;margin-bottom:2px}
+.m-sub{font-size:11px;color:var(--ink-3);line-height:1.4}
+.m-sub .up{color:#6FD8B0}
+.m-sub .dn{color:#F2A6A6}
+.m-sub .warn{color:#FAC775}
+
+/* Tabs */
+.tabs-row{display:flex;align-items:center;justify-content:space-between;padding:0 26px;border-bottom:.5px solid var(--line)}
+.tabs{display:flex}
+.tab{font-size:13px;color:var(--ink-2);padding:11px 14px;border-bottom:1.5px solid transparent;margin-bottom:-.5px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.tab.on{color:var(--ink);font-weight:500;border-bottom-color:var(--ink)}
+.tab .badge{font-size:10px;padding:1px 6px;border-radius:var(--r-pill);background:rgba(255,255,255,.07);color:var(--ink-3)}
+.tab.on .badge{background:rgba(255,255,255,.12);color:var(--ink)}
+.tab .badge.amber-b{background:rgba(239,159,39,.14);color:#FAC775}
+.filter-row{display:flex;gap:8px;align-items:center}
+.mini-search{display:flex;align-items:center;gap:6px;background:var(--bg-2);border:.5px solid var(--line-2);border-radius:var(--r-md);padding:5px 10px}
+.mini-search input{border:none;outline:none;background:transparent;font-size:12px;color:var(--ink);font-family:var(--sans);width:110px}
+.mini-search input::placeholder{color:var(--ink-3)}
+.sort-btn{font-size:12px;color:var(--ink-2);padding:5px 10px;border:.5px solid var(--line-2);border-radius:var(--r-md);background:transparent;cursor:pointer;display:flex;align-items:center;gap:5px}
+
+/* Table */
+.table-wrap{padding:6px 26px 24px}
+.t-head{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,.8fr) 1fr 100px 56px 28px;gap:14px;padding:9px 10px;border-bottom:.5px solid var(--line);font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+.t-row{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,.8fr) 1fr 100px 56px 28px;gap:14px;padding:10px 10px;border-bottom:.5px solid var(--line);align-items:center;cursor:pointer}
+.t-row:hover{background:rgba(255,255,255,.02)}
+.t-row.pending{background:rgba(239,159,39,.04)}
+.t-row.draft{opacity:.6}
+.t-row:last-child{border-bottom:none}
+
+/* Skill name cell */
+.skill-cell{display:flex;align-items:center;gap:9px;min-width:0}
+.s-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;font-family:var(--mono);flex-shrink:0}
+.s-icon.purple{background:rgba(127,119,221,.18);color:#C9C5F2}
+.s-icon.teal{background:rgba(29,158,117,.18);color:#9FE1CB}
+.s-icon.amber{background:rgba(239,159,39,.18);color:#FAC775}
+.s-icon.coral{background:rgba(226,75,74,.18);color:#F2A6A6}
+.s-icon.blue{background:rgba(55,138,221,.18);color:#B0D5F2}
+.s-icon.gray{background:rgba(255,255,255,.07);color:var(--ink-3)}
+.s-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s-meta{font-size:11px;color:var(--ink-3);margin-top:1px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.s-meta .pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--amber);animation:pulse 1.8s ease-in-out infinite;display:inline-block}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Status pill */
+.status-pill{font-size:10px;font-weight:500;padding:2px 8px;border-radius:var(--r-pill);white-space:nowrap}
+.status-pill.published{background:rgba(29,158,117,.14);color:#6FD8B0}
+.status-pill.pending{background:rgba(239,159,39,.14);color:#FAC775}
+.status-pill.draft{background:rgba(255,255,255,.06);color:var(--ink-3)}
+
+/* Sparkline cell */
+.spark-cell{display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.spark-cell .num{color:var(--ink-2)}
+.spark-cell .delta{font-size:10px}
+.spark-cell .up{color:#6FD8B0}
+.spark-cell .dn{color:#F2A6A6}
+
+/* Ver cell */
+.ver-cell{font-family:var(--mono);font-size:11px}
+.ver-cell .ver{color:var(--ink-2)}
+.ver-cell .date{color:var(--ink-3);margin-top:1px}
+
+/* Rating */
+.rating-cell{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+/* More btn */
+.more-btn{color:var(--ink-3);cursor:pointer;font-size:16px;text-align:center;border-radius:var(--r-sm);padding:2px 5px}
+.more-btn:hover{background:rgba(255,255,255,.06);color:var(--ink)}
+
+/* Risk inline */
+.risk-inline{font-size:10px;font-weight:500;padding:1px 6px;border-radius:var(--r-pill)}
+.risk-inline.low{background:rgba(29,158,117,.12);color:#6FD8B0}
+.risk-inline.med{background:rgba(239,159,39,.12);color:#FAC775}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="nav">
+    <div class="brand">
+      <div class="logo">S</div>
+      <span class="brand-name">Skills Hub</span>
+    </div>
+    <div class="nav-links">
+      <div class="nav-item">Browse</div>
+      <div class="nav-item">Collections</div>
+      <div class="nav-item on">My Skills</div>
+      <div class="nav-item">Analytics</div>
+      <div class="nav-item">Docs</div>
+    </div>
+    <div class="avatar">MK</div>
+  </nav>
+
+  <div class="scroll">
+    <div class="hero">
+      <div class="hero-left">
+        <div class="hero-eyebrow">
+          <span>Publishing as</span>
+          <span class="author">platform-team</span>
+        </div>
+        <div class="hero-title">My Skills</div>
+        <div class="hero-sub">7 skills you've published · 5 live, 1 pending review, 1 draft</div>
+      </div>
+      <div class="beam-wrap" style="margin-top:4px">
+        <button class="beam-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Publish new skill
+        </button>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metrics">
+      <div class="metric">
+        <div class="m-k">Total skills</div>
+        <div class="m-v">7</div>
+        <div class="m-sub">5 published · 1 pending · 1 draft</div>
+      </div>
+      <div class="metric">
+        <div class="m-k">Downloads · 30d</div>
+        <div class="m-v">4,284</div>
+        <div class="m-sub"><span class="up">↑ 18%</span> vs prev 30d</div>
+      </div>
+      <div class="metric">
+        <div class="m-k">Avg rating</div>
+        <div class="m-v">4.7</div>
+        <div class="m-sub">across 5 published skills</div>
+      </div>
+      <div class="metric">
+        <div class="m-k">Open flags</div>
+        <div class="m-v" style="color:#F2A6A6">2</div>
+        <div class="m-sub"><span class="warn">↑ 1</span> new flag this week</div>
+      </div>
+    </div>
+
+    <!-- Tabs + filter -->
+    <div class="tabs-row">
+      <div class="tabs">
+        <div class="tab on">All <span class="badge">7</span></div>
+        <div class="tab">Published <span class="badge">5</span></div>
+        <div class="tab">Pending review <span class="badge amber-b">1</span></div>
+        <div class="tab">Drafts <span class="badge">1</span></div>
+      </div>
+      <div class="filter-row">
+        <div class="mini-search">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-3)"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input placeholder="Filter skills…" />
+        </div>
+        <button class="sort-btn">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+          Downloads ↓
+        </button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div class="t-head">
+        <span>Skill</span>
+        <span>Status</span>
+        <span>Downloads 30d</span>
+        <span>Latest version</span>
+        <span>Rating</span>
+        <span></span>
+      </div>
+
+      <!-- Row 1: docker-compose-helper -->
+      <div class="t-row">
+        <div class="skill-cell">
+          <div class="s-icon purple">DC</div>
+          <div>
+            <div class="s-name">docker-compose-helper</div>
+            <div class="s-meta"><span class="risk-inline low">Low</span><span>·</span><span>DevOps</span></div>
+          </div>
+        </div>
+        <span class="status-pill published">Published</span>
+        <div class="spark-cell">
+          <svg viewBox="0 0 60 24" width="60" height="24" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#1D9E75" stroke-width="1.5" points="0,20 10,17 20,18 30,12 40,10 50,6 60,4"/>
+          </svg>
+          <span class="num">1,102</span>
+          <span class="delta up">↑ 18%</span>
+        </div>
+        <div class="ver-cell"><div class="ver">v2.1.0</div><div class="date">3 days ago</div></div>
+        <div class="rating-cell">★ 4.8</div>
+        <div class="more-btn">⋯</div>
+      </div>
+
+      <!-- Row 2: k8s-deployment -->
+      <div class="t-row">
+        <div class="skill-cell">
+          <div class="s-icon blue">K8</div>
+          <div>
+            <div class="s-name">k8s-deployment</div>
+            <div class="s-meta"><span class="risk-inline med">Med</span><span>·</span><span>DevOps</span></div>
+          </div>
+        </div>
+        <span class="status-pill published">Published</span>
+        <div class="spark-cell">
+          <svg viewBox="0 0 60 24" width="60" height="24" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#1D9E75" stroke-width="1.5" points="0,18 10,14 20,16 30,10 40,8 50,5 60,3"/>
+          </svg>
+          <span class="num">892</span>
+          <span class="delta up">↑ 52%</span>
+        </div>
+        <div class="ver-cell"><div class="ver">v2.1.0</div><div class="date">2 days ago</div></div>
+        <div class="rating-cell">★ 4.6</div>
+        <div class="more-btn">⋯</div>
+      </div>
+
+      <!-- Row 3: terraform-module-author (declining) -->
+      <div class="t-row">
+        <div class="skill-cell">
+          <div class="s-icon coral">TF</div>
+          <div>
+            <div class="s-name">terraform-module-author</div>
+            <div class="s-meta"><span class="risk-inline med">Med</span><span>·</span><span>DevOps</span></div>
+          </div>
+        </div>
+        <span class="status-pill published">Published</span>
+        <div class="spark-cell">
+          <svg viewBox="0 0 60 24" width="60" height="24" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#E24B4A" stroke-width="1.5" points="0,4 10,7 20,6 30,10 40,14 50,16 60,20"/>
+          </svg>
+          <span class="num">512</span>
+          <span class="delta dn">↓ 3%</span>
+        </div>
+        <div class="ver-cell"><div class="ver">v0.9.1</div><div class="date">1 month ago</div></div>
+        <div class="rating-cell">★ 4.5</div>
+        <div class="more-btn">⋯</div>
+      </div>
+
+      <!-- Row 4: kubectl-helper -->
+      <div class="t-row">
+        <div class="skill-cell">
+          <div class="s-icon amber">KT</div>
+          <div>
+            <div class="s-name">kubectl-helper</div>
+            <div class="s-meta"><span class="risk-inline low">Low</span><span>·</span><span>DevOps</span></div>
+          </div>
+        </div>
+        <span class="status-pill published">Published</span>
+        <div class="spark-cell">
+          <svg viewBox="0 0 60 24" width="60" height="24" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#1D9E75" stroke-width="1.5" points="0,16 10,13 20,14 30,10 40,8 50,7 60,5"/>
+          </svg>
+          <span class="num">478</span>
+          <span class="delta up">↑ 9%</span>
+        </div>
+        <div class="ver-cell"><div class="ver">v1.2.0</div><div class="date">1 week ago</div></div>
+        <div class="rating-cell">★ 4.5</div>
+        <div class="more-btn">⋯</div>
+      </div>
+
+      <!-- Row 5: gha-workflow-builder -->
+      <div class="t-row">
+        <div class="skill-cell">
+          <div class="s-icon teal">GA</div>
+          <div>
+            <div class="s-name">gha-workflow-builder</div>
+            <div class="s-meta"><span class="risk-inline low">Low</span><span>·</span><span>DevOps</span></div>
+          </div>
+        </div>
+        <span class="status-pill published">Published</span>
+        <div class="spark-cell">
+          <svg viewBox="0 0 60 24" width="60" height="24" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#1D9E75" stroke-width="1.5" points="0,18 10,15 20,17 30,12 40,10 50,8 60,6"/>
+          </svg>
+          <span class="num">356</span>
+          <span class="delta up">↑ 14%</span>
+        </div>
+        <div class="ver-cell"><div class="ver">v1.5.2</div><div class="date">5 days ago</div></div>
+        <div class="rating-cell">★ 4.4</div>
+        <div class="more-btn">⋯</div>
+      </div>
+
+      <!-- Row 6: env-bootstrap — PENDING (amber tint) -->
+      <div class="t-row pending">
+        <div class="skill-cell">
+          <div class="s-icon amber">EB</div>
+          <div>
+            <div class="s-name">env-bootstrap</div>
+            <div class="s-meta">
+              <span class="pulse-dot"></span>
+              <span style="color:var(--amber)">3 high-severity findings · waiting on security review</span>
+            </div>
+            <div class="s-meta" style="margin-top:2px;color:var(--ink-3)">Hidden from browse</div>
+          </div>
+        </div>
+        <span class="status-pill pending">Pending review</span>
+        <div class="spark-cell" style="color:var(--ink-3)">—</div>
+        <div class="ver-cell"><div class="ver" style="color:var(--ink-3)">v0.1.0</div><div class="date">2h ago</div></div>
+        <div class="rating-cell" style="color:var(--ink-3)">—</div>
+        <div class="more-btn">⋯</div>
+      </div>
+
+      <!-- Row 7: draft -->
+      <div class="t-row draft">
+        <div class="skill-cell">
+          <div class="s-icon gray">?</div>
+          <div>
+            <div class="s-name">untitled-skill</div>
+            <div class="s-meta" style="color:var(--ink-3)">Draft — no bundle uploaded</div>
+          </div>
+        </div>
+        <span class="status-pill draft">Draft</span>
+        <div class="spark-cell" style="color:var(--ink-3)">—</div>
+        <div class="ver-cell" style="color:var(--ink-3)"><div>—</div></div>
+        <div class="rating-cell" style="color:var(--ink-3)">—</div>
+        <div class="more-btn">⋯</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · Analytics</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#08080A;--bg-2:#0F0F12;--bg-3:#171719;--ink:#EEECEA;--ink-2:#A8A49C;--ink-3:#5E5B55;--line:rgba(255,255,255,.06);--line-2:rgba(255,255,255,.10);--accent:#7F77DD;--green:#1D9E75;--amber:#EF9F27;--red:#E24B4A;--blue:#378ADD;--mono:'JetBrains Mono',ui-monospace,monospace;--sans:'Inter',system-ui,sans-serif;--r-sm:4px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-pill:999px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;height:100%;overflow:hidden}
+.shell{display:flex;flex-direction:column;height:100vh}
+.scroll{overflow-y:auto;flex:1}
+.scroll::-webkit-scrollbar{width:4px}
+.scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;border-bottom:.5px solid var(--line);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#08080A}
+.brand-name{font-size:15px;font-weight:500}
+.nav-links{display:flex;gap:2px}
+.nav-item{font-size:13px;padding:6px 12px;border-radius:var(--r-md);color:var(--ink-2);cursor:pointer}
+.nav-item.on{background:rgba(255,255,255,.06);color:var(--ink);font-weight:500}
+.avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,.6),rgba(29,158,117,.5));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500}
+
+/* Hero */
+.hero{padding:22px 26px 16px;border-bottom:.5px solid var(--line);display:flex;align-items:flex-end;justify-content:space-between;gap:16px;background:radial-gradient(ellipse 600px 180px at 30% 0%,rgba(127,119,221,.08),transparent 70%)}
+.hero-title{font-size:22px;font-weight:500;margin-bottom:4px}
+.hero-sub{font-size:12px;color:var(--ink-2)}
+.range-tabs{display:flex;gap:1px;background:var(--bg-3);border-radius:var(--r-md);padding:3px;border:.5px solid var(--line)}
+.range-tab{font-size:12px;padding:5px 11px;border-radius:calc(var(--r-md) - 2px);color:var(--ink-3);cursor:pointer}
+.range-tab.on{background:rgba(127,119,221,.15);color:#C9C5F2;font-weight:500}
+
+/* Metrics */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 26px}
+
+/* Beam metric card */
+.metric-beam{position:relative;padding:1.5px;border-radius:var(--r-lg);background:var(--bg-3);overflow:hidden;isolation:isolate}
+.metric-beam::before,.metric-beam::after{content:'';position:absolute;inset:-120%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,.95) 230deg,rgba(217,56,138,.95) 268deg,rgba(239,159,39,.95) 300deg,rgba(29,158,117,.95) 332deg,rgba(55,138,221,.95) 360deg,transparent 360deg);animation:spin 1.96s linear infinite;pointer-events:none;z-index:0}
+.metric-beam::after{filter:blur(10px);opacity:.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+.metric-inner{position:relative;z-index:1;background:var(--bg-2);border-radius:calc(var(--r-lg) - 1.5px);padding:14px 16px}
+.metric-plain{background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:14px 16px}
+.m-label{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.m-val{font-size:22px;font-weight:500;letter-spacing:-.01em;margin-bottom:3px}
+.m-delta{font-size:11px;color:var(--ink-3)}
+.m-delta .up{color:#6FD8B0}
+.m-delta .dn{color:#F2A6A6}
+.m-delta .warn{color:#FAC775}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;padding:0 26px 16px}
+.grid-full{grid-column:1/-1}
+.card{background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-xl);padding:18px;min-width:0}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.card-title{font-size:14px;font-weight:500}
+.card-sub{font-size:11px;color:var(--ink-3);margin-top:2px;font-family:var(--mono)}
+.seg{display:flex;gap:1px;background:var(--bg-3);border-radius:var(--r-sm);padding:2px;border:.5px solid var(--line)}
+.seg span{font-size:11px;padding:3px 9px;border-radius:3px;color:var(--ink-3);cursor:pointer}
+.seg span.on{background:rgba(255,255,255,.08);color:var(--ink);font-weight:500}
+
+/* Chart placeholder — SVG */
+.chart-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-3);margin-top:5px;font-family:var(--mono)}
+.chart-legend{display:flex;gap:14px;font-size:11px;color:var(--ink-2);margin-top:10px}
+.legend-dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px;vertical-align:middle}
+
+/* Bar chart */
+.bar-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:.5px solid var(--line)}
+.bar-row:last-child{border-bottom:none}
+.bar-rank{font-family:var(--mono);font-size:11px;color:var(--ink-3);width:16px;text-align:right;flex-shrink:0}
+.bar-name{font-size:12px;font-weight:500;min-width:160px;flex-shrink:0}
+.bar-bg{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px}
+.bar-count{font-size:11px;color:var(--ink-2);font-family:var(--mono);min-width:44px;text-align:right}
+
+/* Donut */
+.donut-row{display:flex;align-items:center;gap:20px}
+.donut-legend{display:flex;flex-direction:column;gap:8px}
+.leg-item{display:flex;align-items:center;gap:8px;font-size:12px}
+.leg-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.leg-label{color:var(--ink-2);flex:1}
+.leg-count{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+
+/* Activity feed */
+.act-row{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:.5px solid var(--line)}
+.act-row:last-child{border-bottom:none}
+.act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.act-text{flex:1;font-size:12px;color:var(--ink-2);line-height:1.45}
+.act-text strong{color:var(--ink);font-weight:500}
+.act-time{font-size:10px;color:var(--ink-3);font-family:var(--mono);white-space:nowrap;margin-top:1px}
+
+/* New skills */
+.new-skill-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:.5px solid var(--line)}
+.new-skill-row:last-child{border-bottom:none}
+.ns-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;font-family:var(--mono);flex-shrink:0}
+.ns-icon.purple{background:rgba(127,119,221,.18);color:#C9C5F2}
+.ns-icon.teal{background:rgba(29,158,117,.18);color:#9FE1CB}
+.ns-icon.amber{background:rgba(239,159,39,.18);color:#FAC775}
+.ns-icon.coral{background:rgba(226,75,74,.18);color:#F2A6A6}
+.ns-name{font-size:13px;font-weight:500}
+.ns-meta{font-size:11px;color:var(--ink-3)}
+.ns-risk{font-size:10px;font-weight:500;padding:1px 7px;border-radius:var(--r-pill)}
+.ns-risk.low{background:rgba(29,158,117,.14);color:#6FD8B0}
+.ns-risk.med{background:rgba(239,159,39,.14);color:#FAC775}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="nav">
+    <div class="brand">
+      <div class="logo">S</div>
+      <span class="brand-name">Skills Hub</span>
+    </div>
+    <div class="nav-links">
+      <div class="nav-item">Browse</div>
+      <div class="nav-item">Collections</div>
+      <div class="nav-item">My Skills</div>
+      <div class="nav-item on">Analytics</div>
+      <div class="nav-item">Admin</div>
+    </div>
+    <div class="avatar">MK</div>
+  </nav>
+
+  <div class="scroll">
+    <div class="hero">
+      <div>
+        <div class="hero-title">Platform Analytics</div>
+        <div class="hero-sub">Events sourced from SkillDownloaded · SkillVersionPublished · last refreshed 4 minutes ago</div>
+      </div>
+      <div class="range-tabs">
+        <span class="range-tab">24h</span>
+        <span class="range-tab">7d</span>
+        <span class="range-tab on">30d</span>
+        <span class="range-tab">90d</span>
+        <span class="range-tab">All time</span>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metrics">
+      <div class="metric-plain">
+        <div class="m-label">Total skills</div>
+        <div class="m-val">247</div>
+        <div class="m-delta"><span class="up">↑ 14</span> new this month</div>
+      </div>
+      <!-- Featured metric with beam -->
+      <div class="metric-beam">
+        <div class="metric-inner">
+          <div class="m-label">Downloads · 30d</div>
+          <div class="m-val">38,412</div>
+          <div class="m-delta"><span class="up">↑ 22.4%</span> vs prev 30d</div>
+        </div>
+      </div>
+      <div class="metric-plain">
+        <div class="m-label">Active publishers</div>
+        <div class="m-val">62</div>
+        <div class="m-delta"><span class="up">↑ 8</span> new this month</div>
+      </div>
+      <div class="metric-plain">
+        <div class="m-label">Open flags</div>
+        <div class="m-val" style="color:#FAC775">5</div>
+        <div class="m-delta"><span class="warn">↑ 3</span> needs triage</div>
+      </div>
+    </div>
+
+    <!-- Main charts grid -->
+    <div class="grid">
+      <!-- Download trend + version bars -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Download trend + new versions</div>
+            <div class="card-sub">SkillDownloaded and SkillVersionPublished · daily buckets</div>
+          </div>
+          <div class="seg">
+            <span class="on">30d</span>
+            <span>90d</span>
+          </div>
+        </div>
+        <svg viewBox="0 0 480 140" width="100%" height="140" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="dlGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#7F77DD" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#7F77DD" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid lines -->
+          <line x1="0" y1="35" x2="480" y2="35" stroke="rgba(255,255,255,.04)" stroke-width="1"/>
+          <line x1="0" y1="70" x2="480" y2="70" stroke="rgba(255,255,255,.04)" stroke-width="1"/>
+          <line x1="0" y1="105" x2="480" y2="105" stroke="rgba(255,255,255,.04)" stroke-width="1"/>
+          <!-- Area fill -->
+          <polygon fill="url(#dlGrad)" points="0,120 16,115 32,118 48,108 64,112 80,100 96,104 112,90 128,95 144,82 160,86 176,74 192,78 208,65 224,70 240,58 256,55 272,48 288,52 304,40 320,35 336,28 352,32 368,22 384,18 400,12 416,8 432,15 448,10 464,5 480,2 480,140 0,140"/>
+          <!-- Line -->
+          <polyline fill="none" stroke="#7F77DD" stroke-width="1.5" points="0,120 16,115 32,118 48,108 64,112 80,100 96,104 112,90 128,95 144,82 160,86 176,74 192,78 208,65 224,70 240,58 256,55 272,48 288,52 304,40 320,35 336,28 352,32 368,22 384,18 400,12 416,8 432,15 448,10 464,5 480,2"/>
+          <!-- Version bars -->
+          <rect x="80" y="100" width="6" height="20" fill="rgba(29,158,117,.5)" rx="1"/>
+          <rect x="160" y="80" width="6" height="20" fill="rgba(29,158,117,.5)" rx="1"/>
+          <rect x="240" y="58" width="6" height="20" fill="rgba(29,158,117,.5)" rx="1"/>
+          <rect x="336" y="28" width="6" height="20" fill="rgba(29,158,117,.5)" rx="1"/>
+          <rect x="416" y="8" width="6" height="20" fill="rgba(29,158,117,.5)" rx="1"/>
+        </svg>
+        <div class="chart-labels">
+          <span>Apr 2</span><span>Apr 8</span><span>Apr 15</span><span>Apr 22</span><span>Apr 29</span><span>May 2</span>
+        </div>
+        <div class="chart-legend">
+          <span><span class="legend-dot" style="background:#7F77DD"></span>Downloads</span>
+          <span><span class="legend-dot" style="background:rgba(29,158,117,.7)"></span>New versions</span>
+        </div>
+      </div>
+
+      <!-- Top skills bar chart -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Top skills by downloads</div>
+            <div class="card-sub">30d · sorted by volume</div>
+          </div>
+        </div>
+        <div>
+          <div class="bar-row">
+            <span class="bar-rank">1</span>
+            <span class="bar-name">docker-compose-helper</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:100%;background:linear-gradient(90deg,#7F77DD,rgba(127,119,221,.4))"></div></div>
+            <span class="bar-count">1,284</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-rank">2</span>
+            <span class="bar-name">k8s-deployment</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:69%;background:linear-gradient(90deg,#7F77DD,rgba(127,119,221,.4))"></div></div>
+            <span class="bar-count">892</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-rank">3</span>
+            <span class="bar-name">junit-generator</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:50%;background:linear-gradient(90deg,#7F77DD,rgba(127,119,221,.4))"></div></div>
+            <span class="bar-count">641</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-rank">4</span>
+            <span class="bar-name">terraform-module-author</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:40%;background:linear-gradient(90deg,#7F77DD,rgba(127,119,221,.4))"></div></div>
+            <span class="bar-count">512</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-rank">5</span>
+            <span class="bar-name">gha-workflow-builder</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:37%;background:linear-gradient(90deg,#7F77DD,rgba(127,119,221,.4))"></div></div>
+            <span class="bar-count">478</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-rank">6</span>
+            <span class="bar-name">openapi-scaffold</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:28%;background:linear-gradient(90deg,#7F77DD,rgba(127,119,221,.4))"></div></div>
+            <span class="bar-count">356</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-rank">7</span>
+            <span class="bar-name">helm-chart-linter</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:21%;background:linear-gradient(90deg,#7F77DD,rgba(127,119,221,.4))"></div></div>
+            <span class="bar-count">265</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk distribution donut -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Risk distribution</div>
+            <div class="card-sub">All 247 published skills</div>
+          </div>
+        </div>
+        <div class="donut-row">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="44" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="18"/>
+            <!-- Low: 168/247 = 68% · 276.4deg -->
+            <circle cx="60" cy="60" r="44" fill="none" stroke="#1D9E75" stroke-width="18"
+              stroke-dasharray="276.4 0" stroke-dashoffset="0"
+              transform="rotate(-90 60 60)" stroke-linecap="round" opacity="0.8"/>
+            <!-- Med: 62/247 = 25% · 101.8deg -->
+            <circle cx="60" cy="60" r="44" fill="none" stroke="#EF9F27" stroke-width="18"
+              stroke-dasharray="101.8 0" stroke-dashoffset="-276.4"
+              transform="rotate(-90 60 60)" stroke-linecap="round" opacity="0.8"/>
+            <!-- High: 17/247 = 7% · 28.3deg -->
+            <circle cx="60" cy="60" r="44" fill="none" stroke="#E24B4A" stroke-width="18"
+              stroke-dasharray="28.3 0" stroke-dashoffset="-378.2"
+              transform="rotate(-90 60 60)" stroke-linecap="round" opacity="0.8"/>
+            <text x="60" y="56" text-anchor="middle" font-size="18" font-weight="500" fill="#EEECEA" font-family="Inter">68%</text>
+            <text x="60" y="70" text-anchor="middle" font-size="10" fill="#5E5B55" font-family="Inter">low-risk</text>
+          </svg>
+          <div class="donut-legend">
+            <div class="leg-item"><span class="leg-swatch" style="background:#1D9E75"></span><span class="leg-label">Low risk</span><span class="leg-count">168</span></div>
+            <div class="leg-item"><span class="leg-swatch" style="background:#EF9F27"></span><span class="leg-label">Medium risk</span><span class="leg-count">62</span></div>
+            <div class="leg-item"><span class="leg-swatch" style="background:#E24B4A"></span><span class="leg-label">High · in review</span><span class="leg-count">17</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category mix -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Category mix</div>
+            <div class="card-sub">Skills by category · 247 total</div>
+          </div>
+        </div>
+        <div>
+          <div class="bar-row">
+            <span class="bar-name" style="color:var(--ink-2)">DevOps</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:100%;background:rgba(127,119,221,.5)"></div></div>
+            <span class="bar-count">58</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-name" style="color:var(--ink-2)">Testing</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:72%;background:rgba(29,158,117,.5)"></div></div>
+            <span class="bar-count">42</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-name" style="color:var(--ink-2)">Documentation</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:53%;background:rgba(226,75,74,.4)"></div></div>
+            <span class="bar-count">31</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-name" style="color:var(--ink-2)">Data &amp; ETL</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:48%;background:rgba(239,159,39,.5)"></div></div>
+            <span class="bar-count">28</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-name" style="color:var(--ink-2)">Frontend</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:41%;background:rgba(217,56,138,.4)"></div></div>
+            <span class="bar-count">24</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-name" style="color:var(--ink-2)">Security</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:33%;background:rgba(55,138,221,.5)"></div></div>
+            <span class="bar-count">19</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity feed -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">Live activity</div>
+            <div class="card-sub">Live stream from domain_events</div>
+          </div>
+        </div>
+        <div>
+          <div class="act-row">
+            <div class="act-dot" style="background:#E24B4A"></div>
+            <div class="act-text"><strong>env-bootstrap</strong> flagged · 3 HIGH findings · submitted for review</div>
+            <div class="act-time">2m ago</div>
+          </div>
+          <div class="act-row">
+            <div class="act-dot" style="background:#1D9E75"></div>
+            <div class="act-text"><strong>kubectl-helper v1.2.0</strong> published by platform-team</div>
+            <div class="act-time">14m ago</div>
+          </div>
+          <div class="act-row">
+            <div class="act-dot" style="background:#7F77DD"></div>
+            <div class="act-text"><strong>openapi-scaffold</strong> created by api-guild · pending validation</div>
+            <div class="act-time">31m ago</div>
+          </div>
+          <div class="act-row">
+            <div class="act-dot" style="background:#EF9F27"></div>
+            <div class="act-text"><strong>k8s-debugger</strong> risk assessed · level = MEDIUM · entered review queue</div>
+            <div class="act-time">48m ago</div>
+          </div>
+          <div class="act-row">
+            <div class="act-dot" style="background:#1D9E75"></div>
+            <div class="act-text"><strong>docker-compose-helper v2.1.0</strong> published · ↓ 284 downloads this week</div>
+            <div class="act-time">1h ago</div>
+          </div>
+          <div class="act-row">
+            <div class="act-dot" style="background:#7F77DD"></div>
+            <div class="act-text"><strong>gha-workflow-builder</strong> request fulfilled by devops-team</div>
+            <div class="act-time">2h ago</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- New skills -->
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <div class="card-title">New skills this week</div>
+            <div class="card-sub">14 new · 4 shown</div>
+          </div>
+        </div>
+        <div>
+          <div class="new-skill-row">
+            <div class="ns-icon purple">OA</div>
+            <div style="flex:1;min-width:0">
+              <div class="ns-name">openapi-scaffold</div>
+              <div class="ns-meta">api-guild · 31 min ago</div>
+            </div>
+            <span class="ns-risk low">Low</span>
+          </div>
+          <div class="new-skill-row">
+            <div class="ns-icon amber">EB</div>
+            <div style="flex:1;min-width:0">
+              <div class="ns-name">env-bootstrap</div>
+              <div class="ns-meta">devops-new · 2h ago</div>
+            </div>
+            <span class="ns-risk" style="background:rgba(226,75,74,.14);color:#F2A6A6">High</span>
+          </div>
+          <div class="new-skill-row">
+            <div class="ns-icon teal">HM</div>
+            <div style="flex:1;min-width:0">
+              <div class="ns-name">helm-chart-linter</div>
+              <div class="ns-meta">infra-guild · 5h ago</div>
+            </div>
+            <span class="ns-risk low">Low</span>
+          </div>
+          <div class="new-skill-row">
+            <div class="ns-icon coral">SC</div>
+            <div style="flex:1;min-width:0">
+              <div class="ns-name">secret-rotator</div>
+              <div class="ns-meta">security-team · 8h ago</div>
+            </div>
+            <span class="ns-risk" style="background:rgba(226,75,74,.14);color:#F2A6A6">High</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

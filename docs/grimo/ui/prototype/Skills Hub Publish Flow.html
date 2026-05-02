@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · Publish Skill</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#08080A;--bg-2:#0F0F12;--bg-3:#171719;--ink:#EEECEA;--ink-2:#A8A49C;--ink-3:#5E5B55;--line:rgba(255,255,255,.06);--line-2:rgba(255,255,255,.10);--accent:#7F77DD;--green:#1D9E75;--amber:#EF9F27;--red:#E24B4A;--mono:'JetBrains Mono',ui-monospace,monospace;--sans:'Inter',system-ui,sans-serif;--r-sm:4px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-pill:999px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;height:100%;overflow:hidden}
+.shell{display:flex;flex-direction:column;height:100vh}
+.scroll{overflow-y:auto;flex:1}
+.scroll::-webkit-scrollbar{width:4px}
+.scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
+
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;border-bottom:.5px solid var(--line);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#08080A}
+.brand-name{font-size:15px;font-weight:500}
+.crumbs{font-size:13px;color:var(--ink-3);display:flex;align-items:center;gap:6px}
+.crumbs .sep{opacity:.4}
+.crumbs .cur{color:var(--ink-2)}
+.avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,.6),rgba(29,158,117,.5));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500}
+
+/* Beam */
+.beam-wrap{position:relative;padding:1.5px;border-radius:var(--r-md);background:#1A1A1E;overflow:hidden;isolation:isolate;display:inline-block}
+.beam-wrap::before,.beam-wrap::after{content:'';position:absolute;inset:-120%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,.95) 230deg,rgba(217,56,138,.95) 268deg,rgba(239,159,39,.95) 300deg,rgba(29,158,117,.95) 332deg,rgba(55,138,221,.95) 360deg,transparent 360deg);animation:spin 1.96s linear infinite;pointer-events:none;z-index:0}
+.beam-wrap::after{filter:blur(10px);opacity:.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+.beam-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;background:#EEECEA;color:#08080A;font-size:13px;font-weight:500;padding:9px 18px;border-radius:calc(var(--r-md) - 1.5px);border:none;cursor:pointer}
+
+/* Page hero */
+.page-hero{padding:24px 26px 20px;border-bottom:.5px solid var(--line);background:radial-gradient(ellipse 600px 200px at 40% 0%,rgba(127,119,221,.09),transparent 70%)}
+.page-hero h1{font-size:22px;font-weight:500;letter-spacing:-.005em;margin-bottom:4px}
+.page-hero p{font-size:13px;color:var(--ink-2)}
+
+/* Stepper */
+.stepper{display:flex;align-items:center;padding:18px 26px 20px;gap:6px;border-bottom:.5px solid var(--line)}
+.step{display:flex;align-items:center;gap:8px}
+.step-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+.step-num.done{background:rgba(29,158,117,.18);color:#6FD8B0}
+.step-num.done::after{content:'✓'}
+.step-num.active{background:var(--ink);color:var(--bg)}
+.step-num.future{background:var(--bg-3);color:var(--ink-3);border:.5px solid var(--line-2)}
+.step-label{font-size:12px;color:var(--ink-3);white-space:nowrap}
+.step.done .step-label,.step.active .step-label{color:var(--ink);font-weight:500}
+.step-line{flex:1;height:.5px;background:var(--line-2);margin:0 6px}
+.step-line.done{background:rgba(29,158,117,.4)}
+
+/* Body */
+.body{display:grid;grid-template-columns:1fr 240px;gap:24px;padding:22px 26px}
+.main{min-width:0}
+
+/* Drop zone beam */
+.drop-beam{position:relative;padding:1.5px;border-radius:var(--r-xl);background:var(--bg-3);overflow:hidden;isolation:isolate;margin-bottom:18px}
+.drop-beam::before,.drop-beam::after{content:'';position:absolute;inset:-80%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,.8) 228deg,rgba(217,56,138,.8) 264deg,rgba(239,159,39,.8) 296deg,rgba(29,158,117,.8) 328deg,rgba(55,138,221,.8) 360deg,transparent 360deg);animation:spin 2.4s linear infinite;pointer-events:none;z-index:0}
+.drop-beam::after{filter:blur(12px);opacity:.35}
+.drop-inner{position:relative;z-index:1;background:var(--bg-2);border-radius:calc(var(--r-xl) - 1.5px);padding:16px 18px;display:flex;align-items:center;gap:14px}
+.file-icon{width:44px;height:44px;border-radius:10px;background:rgba(127,119,221,.18);color:#C9C5F2;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;flex-shrink:0}
+.file-name{font-size:14px;font-weight:500;margin-bottom:2px}
+.file-meta{font-size:12px;color:var(--ink-3)}
+.file-actions{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.done-badge{background:rgba(29,158,117,.14);color:#6FD8B0;font-size:11px;font-weight:500;padding:3px 9px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:4px}
+.replace-btn{font-size:12px;padding:6px 11px;border-radius:var(--r-md);border:.5px solid var(--line-2);background:transparent;color:var(--ink-2);cursor:pointer}
+.progress{height:3px;background:var(--bg-3);border-radius:2px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;background:linear-gradient(90deg,#7F77DD,#1D9E75);border-radius:2px;width:100%}
+
+/* Validation sections */
+.v-section{border:.5px solid var(--line-2);border-radius:var(--r-lg);margin-bottom:12px;overflow:hidden}
+.v-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:.5px solid var(--line)}
+.v-head-left{display:flex;align-items:center;gap:10px}
+.v-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.v-icon.pass{background:rgba(29,158,117,.18);color:#6FD8B0}
+.v-icon.warn{background:rgba(239,159,39,.18);color:#FAC775}
+.v-title{font-size:14px;font-weight:500}
+.v-sub{font-size:11px;color:var(--ink-3);margin-top:1px}
+.v-badge{font-size:10px;font-weight:500;padding:2px 8px;border-radius:var(--r-pill)}
+.v-badge.low{background:rgba(29,158,117,.14);color:#6FD8B0}
+
+/* Frontmatter preview */
+.fm-preview{background:var(--bg-2);padding:12px 16px;font-family:var(--mono);font-size:12px;line-height:1.75}
+.fm-preview .k{color:var(--ink-2)}
+.fm-preview .v{color:var(--ink)}
+.fm-preview .s{color:#6FD8B0}
+.fm-preview .hr{color:var(--ink-3)}
+.fm-meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px 16px;border-top:.5px solid var(--line)}
+.fm-meta-grid .k{font-size:11px;color:var(--ink-3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.fm-meta-grid .v{font-size:13px;font-weight:500}
+
+/* File tree */
+.file-tree{padding:12px 16px;font-family:var(--mono);font-size:12px;line-height:2}
+.file-tree .folder{color:var(--ink-2)}
+.file-tree .file{color:var(--ink-3);padding-left:16px}
+.file-tree .file.required{color:var(--ink)}
+.tree-badge{font-size:9px;font-weight:500;padding:1px 5px;border-radius:3px;margin-left:8px;vertical-align:middle}
+.tree-badge.req{background:rgba(127,119,221,.15);color:#C9C5F2}
+.tree-badge.opt{background:rgba(255,255,255,.05);color:var(--ink-3)}
+
+/* Risk checks */
+.check-list{padding:8px 16px 12px}
+.check-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:.5px solid var(--line)}
+.check-row:last-child{border-bottom:none}
+.c-icon{width:16px;height:16px;border-radius:50%;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700}
+.c-icon.pass{background:rgba(29,158,117,.18);color:#6FD8B0}
+.c-icon.warn{background:rgba(239,159,39,.18);color:#FAC775}
+.check-name{font-size:13px;color:var(--ink)}
+.check-hint{font-size:11px;color:var(--ink-3);margin-top:1px}
+
+/* Version input */
+.ver-input-wrap{background:var(--bg-2);border:.5px solid var(--line-2);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:12px}
+.ver-input-label{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.ver-input-row{display:flex;align-items:center;gap:10px}
+.ver-input{background:var(--bg-3);border:.5px solid var(--line-2);border-radius:var(--r-md);padding:8px 12px;color:var(--ink);font-family:var(--mono);font-size:14px;font-weight:500;outline:none;width:140px}
+.ver-input:focus{border-color:rgba(127,119,221,.5);box-shadow:0 0 0 2px rgba(127,119,221,.08)}
+.ver-hint{font-size:11px;color:var(--ink-3)}
+
+/* Footer */
+.footer-bar{display:flex;align-items:center;justify-content:space-between;padding:16px 26px;border-top:.5px solid var(--line);background:var(--bg);flex-shrink:0}
+.footer-left{display:flex;align-items:center;gap:8px}
+.ghost-btn{font-size:13px;color:var(--ink-2);padding:8px 14px;border-radius:var(--r-md);border:.5px solid var(--line-2);background:transparent;cursor:pointer}
+.ghost-btn:hover{background:rgba(255,255,255,.04)}
+.footer-hint{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+
+/* Sidebar */
+.sidebar{display:flex;flex-direction:column;gap:12px}
+.sb-card{background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:14px}
+.sb-title{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.sb-callout{border-radius:var(--r-md);padding:12px 13px;font-size:12px;line-height:1.55}
+.sb-callout.success{background:rgba(29,158,117,.08);border:.5px solid rgba(29,158,117,.2);color:var(--ink-2)}
+.sb-callout .h{font-weight:500;color:#6FD8B0;margin-bottom:4px;font-size:13px}
+.sb-tip{display:flex;gap:8px;padding:8px 0;border-bottom:.5px solid var(--line);font-size:12px;color:var(--ink-2)}
+.sb-tip:last-child{border-bottom:none}
+.sb-tip-num{width:18px;height:18px;border-radius:50%;background:var(--bg-3);border:.5px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-size:10px;font-family:var(--mono);color:var(--ink-3);flex-shrink:0;margin-top:1px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="nav">
+    <div class="brand">
+      <div class="logo">S</div>
+      <span class="brand-name">Skills Hub</span>
+    </div>
+    <div class="crumbs">
+      <span>My Skills</span><span class="sep">/</span>
+      <span class="cur">Publish new skill</span>
+    </div>
+    <div class="avatar">MK</div>
+  </nav>
+
+  <div class="page-hero">
+    <h1>Publish a skill</h1>
+    <p>Upload your SKILL.md bundle · automated validation &amp; risk scan · version goes live in seconds</p>
+  </div>
+
+  <div class="stepper">
+    <div class="step done">
+      <div class="step-num done"></div>
+      <span class="step-label">Upload</span>
+    </div>
+    <div class="step-line done"></div>
+    <div class="step done">
+      <div class="step-num done"></div>
+      <span class="step-label">Validate</span>
+    </div>
+    <div class="step-line done"></div>
+    <div class="step active">
+      <div class="step-num active">3</div>
+      <span class="step-label">Review &amp; publish</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step">
+      <div class="step-num future">4</div>
+      <span class="step-label">Live</span>
+    </div>
+  </div>
+
+  <div class="scroll">
+    <div class="body">
+      <div class="main">
+
+        <!-- File confirmed -->
+        <div class="drop-beam">
+          <div class="drop-inner">
+            <div class="file-icon">ZIP</div>
+            <div style="flex:1;min-width:0">
+              <div class="file-name">docker-compose-helper-v2.1.0.zip</div>
+              <div class="file-meta">12 files · 84 KB · uploaded 2 minutes ago</div>
+              <div class="progress"><div class="progress-fill"></div></div>
+            </div>
+            <div class="file-actions">
+              <span class="done-badge">✓ Uploaded</span>
+              <button class="replace-btn">Replace file</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 1: SKILL.md valid -->
+        <div class="v-section">
+          <div class="v-head">
+            <div class="v-head-left">
+              <div class="v-icon pass">✓</div>
+              <div>
+                <div class="v-title">SKILL.md is valid</div>
+                <div class="v-sub">All required fields present · name ≤ 64 chars · description ≤ 1024 chars</div>
+              </div>
+            </div>
+            <span class="v-badge low">Pass</span>
+          </div>
+          <div class="fm-preview">
+<span class="hr">---</span>
+<span class="k">name:</span>        <span class="v">docker-compose-helper</span>
+<span class="k">description:</span>  <span class="s">Generate, validate, and troubleshoot docker-compose files with multi-service awareness and healthcheck suggestions.</span>
+<span class="k">version:</span>      <span class="v">2.1.0</span>
+<span class="k">author:</span>       <span class="v">platform-team</span>
+<span class="k">license:</span>      <span class="v">MIT</span>
+<span class="k">compatibility:</span> <span class="v">[claude-code, cursor, gemini-cli]</span>
+<span class="hr">---</span>
+          </div>
+          <div class="fm-meta-grid">
+            <div><div class="k">Name length</div><div class="v">21 / 64 chars</div></div>
+            <div><div class="k">Description length</div><div class="v">88 / 1024 chars</div></div>
+            <div><div class="k">Required fields</div><div class="v" style="color:#6FD8B0">All present</div></div>
+          </div>
+        </div>
+
+        <!-- Section 2: Bundle structure -->
+        <div class="v-section">
+          <div class="v-head">
+            <div class="v-head-left">
+              <div class="v-icon pass">✓</div>
+              <div>
+                <div class="v-title">Bundle structure</div>
+                <div class="v-sub">SKILL.md found · no scripts/ directory · references/ optional</div>
+              </div>
+            </div>
+            <span class="v-badge low">Pass</span>
+          </div>
+          <div class="file-tree">
+            <div class="folder">docker-compose-helper-v2.1.0/</div>
+            <div class="file required">├─ SKILL.md <span class="tree-badge req">required</span></div>
+            <div class="file">├─ references/</div>
+            <div class="file" style="padding-left:32px">│  ├─ compose-spec.md</div>
+            <div class="file" style="padding-left:32px">│  └─ healthcheck-guide.md</div>
+            <div class="file">└─ examples/</div>
+            <div class="file" style="padding-left:32px">   ├─ basic-stack.yml</div>
+            <div class="file" style="padding-left:32px">   └─ production-ready.yml</div>
+          </div>
+        </div>
+
+        <!-- Section 3: Risk scan -->
+        <div class="v-section">
+          <div class="v-head">
+            <div class="v-head-left">
+              <div class="v-icon pass">✓</div>
+              <div>
+                <div class="v-title">Risk scan</div>
+                <div class="v-sub">5 checks · 0 high · 0 medium · 1 info</div>
+              </div>
+            </div>
+            <span class="v-badge low">Low risk</span>
+          </div>
+          <div class="check-list">
+            <div class="check-row">
+              <div class="c-icon pass">✓</div>
+              <div><div class="check-name">No scripts/ directory present</div><div class="check-hint">Primary determinant of low risk — no executable files</div></div>
+            </div>
+            <div class="check-row">
+              <div class="c-icon pass">✓</div>
+              <div><div class="check-name">No dangerous shell patterns</div><div class="check-hint">Scanned references/ and examples/ — no rm -rf, curl | bash, eval</div></div>
+            </div>
+            <div class="check-row">
+              <div class="c-icon pass">✓</div>
+              <div><div class="check-name">No sensitive path references</div><div class="check-hint">No mentions of ~/.ssh, ~/.aws, /etc/passwd, or secret stores</div></div>
+            </div>
+            <div class="check-row">
+              <div class="c-icon warn">!</div>
+              <div><div class="check-name">2 external domain references</div><div class="check-hint">docs.docker.com, hub.docker.com — info only, both allowlisted</div></div>
+            </div>
+            <div class="check-row">
+              <div class="c-icon pass">✓</div>
+              <div><div class="check-name">File size within limits</div><div class="check-hint">84 KB · 12 files · no binary payloads</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Version input -->
+        <div class="ver-input-wrap">
+          <div class="ver-input-label">Version number</div>
+          <div class="ver-input-row">
+            <input class="ver-input" value="2.1.0" />
+            <div class="ver-hint">Previous: <span style="font-family:var(--mono);color:var(--ink-2)">v2.0.1</span> · Old versions remain downloadable</div>
+          </div>
+        </div>
+
+      </div>
+
+      <aside class="sidebar">
+        <div class="sb-card">
+          <div class="sb-callout success">
+            <div class="h">Safe to auto-publish</div>
+            This skill passes all automated checks and will go live immediately without human review. No scripts/ directory means no executable risk.
+          </div>
+        </div>
+
+        <div class="sb-card">
+          <div class="sb-title">What happens next</div>
+          <div class="sb-tip">
+            <div class="sb-tip-num">1</div>
+            <div><strong style="color:var(--ink)">SkillVersionPublished</strong> event written to domain_events</div>
+          </div>
+          <div class="sb-tip">
+            <div class="sb-tip-num">2</div>
+            <div>Skill is indexed for semantic search within ~60 seconds</div>
+          </div>
+          <div class="sb-tip">
+            <div class="sb-tip-num">3</div>
+            <div>Download analytics start streaming to your dashboard</div>
+          </div>
+        </div>
+
+        <div class="sb-card">
+          <div class="sb-title">Improve discoverability</div>
+          <div style="font-size:12px;color:var(--ink-2);line-height:1.6">Your description is used for semantic search embeddings. <strong style="color:var(--ink)">Include concrete verbs and domain nouns</strong> — not marketing adjectives. Users search by task, not by feature name.</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="footer-bar">
+    <div class="footer-left">
+      <button class="ghost-btn">← Back</button>
+      <button class="ghost-btn" style="color:var(--ink-3)">Withdraw</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <span class="footer-hint">Your decision will be recorded in domain_events</span>
+      <div class="beam-wrap">
+        <button class="beam-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Publish v2.1.0
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

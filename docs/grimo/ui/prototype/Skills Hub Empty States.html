@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · Empty States</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#08080A;--bg-2:#0F0F12;--bg-3:#171719;--ink:#EEECEA;--ink-2:#A8A49C;--ink-3:#5E5B55;--line:rgba(255,255,255,.06);--line-2:rgba(255,255,255,.10);--accent:#7F77DD;--green:#1D9E75;--amber:#EF9F27;--red:#E24B4A;--mono:'JetBrains Mono',ui-monospace,monospace;--sans:'Inter',system-ui,sans-serif;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-pill:999px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:52px;border-bottom:.5px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#08080A}
+.brand-name{font-size:15px;font-weight:500}
+
+/* State label */
+.state-head{display:flex;align-items:center;gap:10px;padding:22px 32px 10px}
+.state-num{width:22px;height:22px;border-radius:50%;background:var(--bg-3);border:.5px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--ink-2)}
+.state-title{font-size:14px;font-weight:500}
+.state-sub{font-size:12px;color:var(--ink-3);margin-left:auto}
+
+/* Mini app shell */
+.app-shell{border:.5px solid var(--line);border-radius:var(--r-xl);margin:0 32px 40px;overflow:hidden;background:var(--bg-2)}
+.app-topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:.5px solid var(--line)}
+.app-brand{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500}
+.app-logo{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:#08080A}
+.app-nav{display:flex;gap:16px;font-size:12px;color:var(--ink-3)}
+
+/* Beam — only on main CTA */
+.beam-wrap{position:relative;padding:1.5px;border-radius:var(--r-md);background:#1A1A1E;overflow:hidden;isolation:isolate;display:inline-block}
+.beam-wrap::before,.beam-wrap::after{content:'';position:absolute;inset:-120%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,.95) 230deg,rgba(217,56,138,.95) 268deg,rgba(239,159,39,.95) 300deg,rgba(29,158,117,.95) 332deg,rgba(55,138,221,.95) 360deg,transparent 360deg);animation:spin 1.96s linear infinite;pointer-events:none;z-index:0}
+.beam-wrap::after{filter:blur(10px);opacity:.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+.beam-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;background:#EEECEA;color:#08080A;font-size:12px;font-weight:500;padding:8px 16px;border-radius:calc(var(--r-md) - 1.5px);border:none;cursor:pointer}
+
+/* Ghost card placeholders */
+.ghost-card{border:1px dashed rgba(255,255,255,.08);border-radius:var(--r-xl);background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:8px;padding:14px;min-height:100px;justify-content:flex-end}
+.ghost-line{height:8px;border-radius:4px;background:rgba(255,255,255,.06)}
+
+/* Search bar (disabled) */
+.search-disabled{background:var(--bg-3);border:.5px solid var(--line);border-radius:var(--r-pill);padding:10px 16px;display:flex;align-items:center;gap:10px;opacity:.45;pointer-events:none}
+.search-disabled svg{color:var(--ink-3)}
+.search-disabled span{font-size:13px;color:var(--ink-3)}
+
+/* Suggestion list */
+.suggestion-list{display:flex;flex-direction:column;gap:8px}
+.sug-item{background:var(--bg-3);border:.5px solid var(--line);border-radius:var(--r-lg);padding:12px 14px;cursor:pointer;display:flex;align-items:flex-start;gap:10px}
+.sug-item:hover{border-color:var(--line-2)}
+.sug-icon{width:28px;height:28px;border-radius:7px;background:rgba(127,119,221,.14);color:#C9C5F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+.sug-title{font-size:13px;font-weight:500;margin-bottom:2px}
+.sug-hint{font-size:11px;color:var(--ink-3);line-height:1.4}
+.sug-arrow{margin-left:auto;color:var(--ink-3);font-size:11px;flex-shrink:0;margin-top:1px}
+
+/* Mini skill pill */
+.skill-pill-row{display:flex;gap:6px;flex-wrap:wrap}
+.skill-pill{font-size:11px;padding:3px 9px;border-radius:var(--r-pill);background:rgba(127,119,221,.1);color:#C9C5F2;border:.5px solid rgba(127,119,221,.2)}
+
+/* All-clear checkmark */
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+.check-circle{width:72px;height:72px;border-radius:50%;background:rgba(29,158,117,.1);border:.5px solid rgba(29,158,117,.25);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;animation:pop .5s ease forwards}
+.check-halo{position:absolute;inset:-12px;border-radius:50%;background:rgba(29,158,117,.05);border:.5px solid rgba(29,158,117,.1);pointer-events:none}
+
+/* Stat mini cards */
+.mini-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.mini-stat{background:var(--bg-3);border:.5px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;text-align:center}
+.mini-stat .v{font-size:17px;font-weight:500;margin-bottom:2px}
+.mini-stat .k{font-size:10px;color:var(--ink-3)}
+.mini-stat .d{font-size:11px;margin-top:2px}
+.up{color:#6FD8B0}
+.dn{color:#F2A6A6}
+
+.btn-secondary{font-size:12px;padding:7px 14px;border-radius:var(--r-md);border:.5px solid var(--line-2);background:transparent;color:var(--ink-2);cursor:pointer}
+.btn-secondary:hover{background:rgba(255,255,255,.04)}
+
+.flow-steps{display:flex;gap:0;margin:20px 0}
+.flow-step{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative}
+.flow-step:not(:last-child)::after{content:'→';position:absolute;right:-12px;top:18px;font-size:12px;color:var(--ink-3)}
+.fs-icon{width:38px;height:38px;border-radius:10px;border:1.5px dashed rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:16px}
+.fs-label{font-size:11px;color:var(--ink-3);text-align:center;line-height:1.4}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="brand"><div class="logo">S</div><span class="brand-name">Skills Hub · Empty States</span></div>
+</nav>
+
+<!-- ── STATE 1: Fresh deployment (seeding) ── -->
+<div class="state-head">
+  <div class="state-num">1</div>
+  <span class="state-title">Fresh deployment — Seeding</span>
+  <span class="state-sub">Registry is empty · invite publishers to seed it</span>
+</div>
+
+<div class="app-shell">
+  <div class="app-topbar">
+    <div class="app-brand"><div class="app-logo">S</div>Skills Hub</div>
+    <div class="app-nav"><span>Browse</span><span>My Skills</span><span>Docs</span></div>
+    <div style="font-size:11px;padding:2px 8px;border-radius:var(--r-pill);background:rgba(127,119,221,.12);color:#C9C5F2;font-family:var(--mono)">0 skills · 0 publishers</div>
+  </div>
+  <div style="padding:32px;display:grid;grid-template-columns:1fr 280px;gap:24px">
+    <div>
+      <div class="search-disabled" style="margin-bottom:20px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <span>Search unavailable — registry is empty</span>
+      </div>
+      <div style="text-align:center;padding:32px 20px">
+        <div style="width:52px;height:52px;border-radius:13px;background:rgba(127,119,221,.1);border:.5px solid rgba(127,119,221,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9C5F2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <div style="font-size:18px;font-weight:500;margin-bottom:8px">Your registry is waiting to be seeded.</div>
+        <div style="font-size:13px;color:var(--ink-2);max-width:380px;margin:0 auto 20px;line-height:1.6">Publish the first skill and kick off the flywheel — every great registry starts with one.</div>
+        <div class="beam-wrap"><button class="beam-btn">Publish the first skill →</button></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">What will live here</div>
+      <div class="ghost-card"><div class="ghost-line" style="width:60%"></div><div class="ghost-line" style="width:85%"></div></div>
+      <div class="ghost-card"><div class="ghost-line" style="width:70%"></div><div class="ghost-line" style="width:50%"></div></div>
+      <div class="ghost-card"><div class="ghost-line" style="width:55%"></div><div class="ghost-line" style="width:80%"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STATE 2: New author (invitational) ── -->
+<div class="state-head">
+  <div class="state-num">2</div>
+  <span class="state-title">New author — Invitational</span>
+  <span class="state-sub">Platform has skills · this user hasn't published yet</span>
+</div>
+
+<div class="app-shell">
+  <div class="app-topbar">
+    <div class="app-brand"><div class="app-logo">S</div>Skills Hub</div>
+    <div class="app-nav"><span>Browse</span><span style="color:var(--ink);font-weight:500">My Skills</span><span>Docs</span></div>
+    <div style="font-size:11px;color:var(--ink-3)">247 skills in the registry</div>
+  </div>
+  <div style="padding:32px;display:grid;grid-template-columns:1fr 280px;gap:24px">
+    <div>
+      <div style="font-size:18px;font-weight:500;margin-bottom:6px">You haven't published anything yet.</div>
+      <div style="font-size:13px;color:var(--ink-2);margin-bottom:24px;line-height:1.6">Everything your teammates know that you could use lives in the registry. What do <em>you</em> know that they could use?</div>
+      <div class="flow-steps">
+        <div class="flow-step"><div class="fs-icon">📦</div><div class="fs-label">Zip your<br>SKILL.md</div></div>
+        <div class="flow-step"><div class="fs-icon">🛡</div><div class="fs-label">Auto-scan<br>in seconds</div></div>
+        <div class="flow-step"><div class="fs-icon">🚀</div><div class="fs-label">Publish<br>instantly</div></div>
+        <div class="flow-step"><div class="fs-icon">📊</div><div class="fs-label">Track<br>downloads</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--ink-3);margin-bottom:18px">The whole round-trip takes under a minute if your SKILL.md is ready.</div>
+      <div style="display:flex;gap:8px">
+        <div class="beam-wrap"><button class="beam-btn">Publish your first skill →</button></div>
+        <button class="btn-secondary">Get the starter template</button>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Popular in the registry</div>
+      <div style="background:var(--bg-3);border:.5px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;font-size:12px">
+        <div style="font-weight:500;margin-bottom:2px">docker-compose-helper</div>
+        <div style="color:var(--ink-3);font-size:11px;font-family:var(--mono)">↓ 1,284 · Low risk</div>
+      </div>
+      <div style="background:var(--bg-3);border:.5px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;font-size:12px">
+        <div style="font-weight:500;margin-bottom:2px">k8s-deployment</div>
+        <div style="color:var(--ink-3);font-size:11px;font-family:var(--mono)">↓ 892 · Med risk</div>
+      </div>
+      <div style="background:var(--bg-3);border:.5px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;font-size:12px">
+        <div style="font-weight:500;margin-bottom:2px">junit-generator</div>
+        <div style="color:var(--ink-3);font-size:11px;font-family:var(--mono)">↓ 641 · Low risk</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STATE 3: No search results ── -->
+<div class="state-head">
+  <div class="state-num">3</div>
+  <span class="state-title">No search results — Redirecting</span>
+  <span class="state-sub">Query parsed · 0 results above threshold · suggest next steps</span>
+</div>
+
+<div class="app-shell">
+  <div class="app-topbar">
+    <div class="app-brand"><div class="app-logo">S</div>Skills Hub</div>
+    <div class="app-nav"><span style="color:var(--ink);font-weight:500">Browse</span><span>My Skills</span><span>Docs</span></div>
+  </div>
+  <div style="padding:28px 32px">
+    <div style="background:var(--bg-3);border:.5px solid var(--line);border-radius:var(--r-pill);padding:10px 16px;display:flex;align-items:center;gap:10px;margin-bottom:22px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-3)"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <span style="font-size:13px;color:var(--ink-2)">crypto wallet integration for embedded devices</span>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <span style="font-size:11px;padding:3px 9px;border-radius:var(--r-pill);background:rgba(127,119,221,.12);color:#C9C5F2">Semantic</span>
+        <span style="font-size:11px;padding:3px 9px;border-radius:var(--r-pill);background:rgba(255,255,255,.05);color:var(--ink-3)">Keyword</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 280px;gap:24px">
+      <div>
+        <div style="font-size:18px;font-weight:500;margin-bottom:6px">No skills found for this query.</div>
+        <div style="font-size:13px;color:var(--ink-2);margin-bottom:6px;line-height:1.6">Query <span style="font-family:var(--mono);font-size:12px;background:var(--bg-3);padding:1px 5px;border-radius:3px;color:var(--ink)">"crypto wallet integration for embedded devices"</span> did not match any skill with similarity above 0.32.</div>
+        <div style="font-size:12px;color:var(--ink-3);margin-bottom:20px;font-family:var(--mono)">7 skills scanned · 0 above threshold · embeddings via Gemini</div>
+        <div class="suggestion-list">
+          <div class="sug-item">
+            <div class="sug-icon">🔍</div>
+            <div><div class="sug-title">Try a broader search</div><div class="sug-hint">"crypto" or "embedded firmware" may surface related skills</div></div>
+            <span class="sug-arrow">↗</span>
+          </div>
+          <div class="sug-item">
+            <div class="sug-icon">📂</div>
+            <div><div class="sug-title">Browse Security category</div><div class="sug-hint">19 skills in Security — closest related topic</div></div>
+            <span class="sug-arrow">↗</span>
+          </div>
+          <div class="sug-item">
+            <div class="sug-icon">📣</div>
+            <div><div class="sug-title">Request this from your team</div><div class="sug-hint">3 votes already on "crypto embedded" request</div></div>
+            <span class="sug-arrow">↗</span>
+          </div>
+          <div class="sug-item">
+            <div class="sug-icon">✍️</div>
+            <div><div class="sug-title">Publish it yourself</div><div class="sug-hint">Be the first to add this skill to the registry</div></div>
+            <span class="sug-arrow">↗</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">You might also like</div>
+        <div style="background:var(--bg-3);border:.5px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;margin-bottom:8px;font-size:12px">
+          <div style="font-weight:500;margin-bottom:2px">secret-scanner</div>
+          <div style="color:var(--ink-3);font-size:11px;font-family:var(--mono)">Security · Low risk</div>
+        </div>
+        <div style="background:var(--bg-3);border:.5px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;font-size:12px">
+          <div style="font-weight:500;margin-bottom:2px">openapi-scaffold</div>
+          <div style="color:var(--ink-3);font-size:11px;font-family:var(--mono)">API · Low risk</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── STATE 4: Review queue all-clear ── -->
+<div class="state-head">
+  <div class="state-num">4</div>
+  <span class="state-title">Review queue — All clear</span>
+  <span class="state-sub">Admin view · no pending items · celebratory tone</span>
+</div>
+
+<div class="app-shell" style="margin-bottom:0">
+  <div class="app-topbar">
+    <div class="app-brand"><div class="app-logo">S</div>Skills Hub <span style="font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(127,119,221,.15);color:#C9C5F2;font-weight:500;margin-left:6px">Admin</span></div>
+    <div class="app-nav"><span>Browse</span><span style="color:var(--ink);font-weight:500">Review queue</span><span>Analytics</span></div>
+  </div>
+  <div style="padding:40px 32px;text-align:center">
+    <div style="position:relative;display:inline-block;margin-bottom:16px">
+      <div class="check-circle">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+    </div>
+    <div style="font-size:20px;font-weight:500;margin-bottom:8px">All clear.</div>
+    <div style="font-size:13px;color:var(--ink-2);max-width:400px;margin:0 auto 6px;line-height:1.6">No skills pending review right now. When something triggers findings, it'll land here.</div>
+    <div style="font-size:12px;color:var(--ink-3);font-family:var(--mono);margin-bottom:20px">Queue last checked: just now</div>
+    <div class="mini-stats" style="max-width:380px;margin:0 auto">
+      <div class="mini-stat">
+        <div class="v">12</div>
+        <div class="k">Approved this week</div>
+        <div class="d up">↑ 3</div>
+      </div>
+      <div class="mini-stat">
+        <div class="v">2</div>
+        <div class="k">Rejected</div>
+        <div class="d" style="color:var(--ink-3)">—</div>
+      </div>
+      <div class="mini-stat">
+        <div class="v">1h 36m</div>
+        <div class="k">Avg turnaround</div>
+        <div class="d up">↓ 12m</div>
+      </div>
+    </div>
+    <div style="margin-top:20px">
+      <button class="btn-secondary" style="font-size:12px">View full audit log</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

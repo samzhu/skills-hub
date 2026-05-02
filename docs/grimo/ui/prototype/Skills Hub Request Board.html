@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · Request Board</title>
+<meta name="viewport" content="width=1240" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg:#0B0B0D; --bg-2:#111114; --bg-3:#18181C;
+  --ink:#F0EFE8; --ink-2:#B0ACA0; --ink-3:#6E6B63;
+  --line:rgba(255,255,255,0.07); --line-2:rgba(255,255,255,0.11);
+  --accent:#7F77DD; --green:#1D9E75; --amber:#EF9F27; --red:#E24B4A;
+  --r-sm:4px; --r-md:8px; --r-lg:12px; --r-pill:999px;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:13px 26px;border-bottom:0.5px solid var(--line);background:rgba(11,11,13,0.92);backdrop-filter:blur(12px);position:sticky;top:0;z-index:40}
+.nav-brand{display:flex;align-items:center;gap:10px}
+.nav-logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#0B0B0D}
+.nav-name{font-size:15px;font-weight:500}
+.nav-org{font-size:11px;color:var(--ink-3);padding:2px 7px;border-radius:4px;background:rgba(255,255,255,0.05);margin-left:8px}
+.nav-links{display:flex;gap:20px;font-size:13px;color:var(--ink-2)}
+.nav-links .on{color:var(--ink);font-weight:500}
+.nav-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,0.6),rgba(29,158,117,0.6));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--ink)}
+
+/* Beam CTA */
+.beam-wrap{position:relative;padding:1.5px;border-radius:var(--r-md);background:#18181C;overflow:hidden;isolation:isolate;flex-shrink:0}
+.beam-wrap::before,.beam-wrap::after{content:'';position:absolute;inset:-120%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,0.95) 230deg,rgba(217,56,138,0.95) 268deg,rgba(239,159,39,0.95) 300deg,rgba(29,158,117,0.95) 332deg,rgba(55,138,221,0.95) 360deg,transparent 360deg);animation:spin 1.96s linear infinite;pointer-events:none;z-index:0}
+.beam-wrap::after{filter:blur(10px);opacity:0.55}
+@keyframes spin{to{transform:rotate(360deg)}}
+.beam-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;background:#F0EFE8;color:#0B0B0D;font-size:13px;font-weight:500;padding:9px 16px;border-radius:calc(var(--r-md) - 1.5px);border:none;cursor:pointer;white-space:nowrap}
+
+/* Page head */
+.page-head{padding:28px 26px 22px;border-bottom:0.5px solid var(--line);background:radial-gradient(ellipse 800px 280px at 30% 0%,rgba(127,119,221,0.10),transparent 70%),radial-gradient(ellipse 600px 200px at 80% 0%,rgba(217,56,138,0.07),transparent 70%)}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3);margin-bottom:10px}
+.breadcrumb .sep{opacity:0.4}
+.breadcrumb .cur{color:var(--ink-2)}
+.head-top{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:18px}
+.page-title{font-size:24px;font-weight:500;letter-spacing:-0.006em;margin-bottom:6px}
+.page-sub{font-size:13px;color:var(--ink-2);max-width:580px;line-height:1.6}
+.head-right{display:flex;gap:8px;align-items:flex-start;flex-shrink:0;margin-top:28px}
+
+/* Summary stats */
+.sum-row{display:flex;gap:10px;flex-wrap:wrap}
+.s-chip{display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:var(--r-pill);border:0.5px solid var(--line-2);font-size:12px;color:var(--ink-2)}
+.s-chip .dot{width:6px;height:6px;border-radius:50%}
+.s-chip .n{font-weight:500;color:var(--ink)}
+
+/* Filter + search bar */
+.toolbar{display:flex;align-items:center;gap:10px;padding:14px 26px;border-bottom:0.5px solid var(--line);flex-wrap:wrap}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:0.5px solid var(--line-2);border-radius:var(--r-md);padding:8px 12px;flex:1;max-width:360px}
+.search-box input{background:transparent;border:none;outline:none;color:var(--ink);font-family:var(--sans);font-size:13px;flex:1}
+.search-box input::placeholder{color:var(--ink-3)}
+.filter-chips{display:flex;gap:6px;flex-wrap:wrap}
+.f-chip{font-size:12px;padding:5px 11px;border-radius:var(--r-pill);border:0.5px solid var(--line-2);color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.f-chip.on{background:rgba(127,119,221,0.12);border-color:rgba(127,119,221,0.35);color:#C9C5F2;font-weight:500}
+.sort-select{font-family:var(--sans);font-size:12px;color:var(--ink-2);background:var(--bg-2);border:0.5px solid var(--line-2);border-radius:var(--r-md);padding:6px 10px;cursor:pointer;margin-left:auto}
+
+/* Body */
+.body{display:grid;grid-template-columns:1fr 300px;gap:0}
+
+/* Request list */
+.req-list{padding:20px 26px;display:flex;flex-direction:column;gap:12px;border-right:0.5px solid var(--line)}
+
+/* Request card */
+.req-card{display:flex;gap:0;background:var(--bg-2);border:0.5px solid var(--line);border-radius:var(--r-lg);overflow:hidden;transition:border-color 0.15s}
+.req-card:hover{border-color:var(--line-2)}
+.req-card.claimed{border-color:rgba(127,119,221,0.25)}
+.req-card.hot{border-color:rgba(217,56,138,0.2)}
+
+/* Vote column */
+.vote-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding:16px 14px 16px 16px;border-right:0.5px solid var(--line);min-width:64px;cursor:pointer}
+.vote-arrow{font-size:16px;color:var(--ink-3);line-height:1;transition:color 0.15s}
+.vote-col:hover .vote-arrow{color:var(--accent)}
+.vote-col.voted .vote-arrow{color:var(--accent)}
+.vote-count{font-size:15px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-0.01em}
+.vote-col.voted .vote-count{color:var(--accent)}
+.vote-label{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.05em}
+
+/* Card body */
+.req-body{flex:1;min-width:0;padding:14px 16px}
+.req-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px}
+.req-title{font-size:15px;font-weight:500;line-height:1.3}
+.req-badges{display:flex;gap:6px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+.status-pill{font-size:10px;font-weight:500;padding:3px 8px;border-radius:var(--r-pill)}
+.status-pill.open{background:rgba(255,255,255,0.06);color:var(--ink-2)}
+.status-pill.claimed{background:rgba(127,119,221,0.15);color:#C9C5F2}
+.status-pill.in-progress{background:rgba(239,159,39,0.15);color:#FAC775}
+.status-pill.fulfilled{background:rgba(29,158,117,0.15);color:#6FD8B0}
+.cat-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.req-desc{font-size:13px;color:var(--ink-2);line-height:1.55;margin-bottom:10px}
+.req-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ink-3)}
+.req-meta .author{display:flex;align-items:center;gap:4px}
+.req-meta .mini-av{width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,0.5),rgba(29,158,117,0.5));display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:500;color:var(--ink)}
+.req-meta .tag{padding:1px 6px;border-radius:var(--r-pill);background:rgba(255,255,255,0.05);border:0.5px solid var(--line);color:var(--ink-3)}
+.req-meta .sep{width:2px;height:2px;border-radius:50%;background:var(--ink-3)}
+
+/* Claim bar (only on claimed/in-progress cards) */
+.claim-bar{padding:10px 16px;border-top:0.5px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(127,119,221,0.05)}
+.claimer{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)}
+.claimer .av{width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,0.6),rgba(55,138,221,0.6));display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:var(--ink)}
+.claim-actions{display:flex;gap:6px}
+.claim-btn{font-size:11px;padding:4px 10px;border-radius:var(--r-sm);border:0.5px solid var(--line-2);background:transparent;color:var(--ink-2);cursor:pointer}
+.claim-btn.primary{background:rgba(127,119,221,0.12);border-color:rgba(127,119,221,0.3);color:#C9C5F2}
+
+/* Skill link row (fulfilled) */
+.fulfilled-bar{padding:10px 16px;border-top:0.5px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:rgba(29,158,117,0.05)}
+.fulfilled-info{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)}
+.fulfilled-icon{width:22px;height:22px;border-radius:6px;background:rgba(29,158,117,0.18);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;font-family:var(--mono);color:#9FE1CB}
+
+/* Post request panel */
+.sidebar{padding:20px 18px;border-left:0.5px solid var(--line)}
+.sb-section{margin-bottom:26px}
+.sb-title{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px}
+
+.post-form{display:flex;flex-direction:column;gap:10px}
+.form-field label{display:block;font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px}
+.form-input{width:100%;background:var(--bg-2);border:0.5px solid var(--line-2);border-radius:var(--r-md);padding:9px 12px;color:var(--ink);font-family:var(--sans);font-size:13px;outline:none;resize:none}
+.form-input:focus{border-color:rgba(127,119,221,0.5);box-shadow:0 0 0 2px rgba(127,119,221,0.08)}
+.form-input::placeholder{color:var(--ink-3)}
+.char-count{font-size:10px;color:var(--ink-3);text-align:right;margin-top:2px}
+
+.trending-list{display:flex;flex-direction:column;gap:6px}
+.trending-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:var(--r-md);border:0.5px solid var(--line);cursor:pointer}
+.trending-item:hover{background:rgba(255,255,255,0.03)}
+.t-votes{font-size:13px;font-weight:500;color:var(--ink-2);min-width:28px;text-align:right;font-variant-numeric:tabular-nums}
+.t-title{font-size:12px;color:var(--ink);line-height:1.4}
+.t-meta{font-size:10px;color:var(--ink-3);margin-top:1px;font-family:var(--mono)}
+
+/* Activity feed */
+.activity-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--line);font-size:12px}
+.activity-item:last-child{border-bottom:none}
+.act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.act-content{flex:1;min-width:0;color:var(--ink-2);line-height:1.45}
+.act-content strong{color:var(--ink);font-weight:500}
+.act-time{font-size:10px;color:var(--ink-3);font-family:var(--mono);white-space:nowrap;margin-top:1px}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-logo">S</div>
+    <span class="nav-name">Skills Hub</span>
+    <span class="nav-org">Engineering org</span>
+  </div>
+  <div class="nav-links">
+    <span>Browse</span>
+    <span>Collections</span>
+    <span class="on">Requests</span>
+    <span>Publish</span>
+    <span>Docs</span>
+  </div>
+  <div class="nav-avatar">MK</div>
+</nav>
+
+<!-- Page head -->
+<div class="page-head">
+  <div class="breadcrumb">
+    <span>Skills Hub</span><span class="sep">/</span><span class="cur">Request Board</span>
+  </div>
+  <div class="head-top">
+    <div>
+      <h1 class="page-title">Request Board</h1>
+      <p class="page-sub">Something missing from the registry? Post a request, upvote what you need, or claim a request to build it. Publishers can earn recognition by fulfilling high-vote requests.</p>
+    </div>
+    <div class="head-right">
+      <div class="beam-wrap">
+        <button class="beam-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Post a Request
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="sum-row">
+    <div class="s-chip"><span class="dot" style="background:#7F77DD"></span><span class="n">84</span> open requests</div>
+    <div class="s-chip"><span class="dot" style="background:#EF9F27"></span><span class="n">12</span> in progress</div>
+    <div class="s-chip"><span class="dot" style="background:#1D9E75"></span><span class="n">37</span> fulfilled</div>
+    <div class="s-chip"><span class="dot" style="background:#378ADD"></span><span class="n">312</span> upvotes this week</div>
+  </div>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <div class="search-box">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-3);flex-shrink:0"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input placeholder="Search requests…" />
+  </div>
+  <div class="filter-chips">
+    <span class="f-chip on">All</span>
+    <span class="f-chip">Open</span>
+    <span class="f-chip">In Progress</span>
+    <span class="f-chip">Fulfilled</span>
+    <span class="f-chip">My votes</span>
+  </div>
+  <select class="sort-select">
+    <option>Sort: Most votes</option>
+    <option>Sort: Newest</option>
+    <option>Sort: Recently active</option>
+  </select>
+</div>
+
+<!-- Body -->
+<div class="body">
+
+  <!-- Request list -->
+  <div class="req-list">
+
+    <!-- Card 1: Hot, open -->
+    <div class="req-card hot">
+      <div class="vote-col voted">
+        <div class="vote-arrow">▲</div>
+        <div class="vote-count" style="color:var(--accent)">47</div>
+        <div class="vote-label">votes</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="req-body">
+          <div class="req-top">
+            <div class="req-title">Terraform module scaffolder with remote state + locking</div>
+            <div class="req-badges">
+              <span style="font-size:10px;font-weight:500;padding:2px 7px;border-radius:var(--r-pill);background:rgba(217,56,138,0.12);color:#DDB0E9">🔥 Hot</span>
+              <span class="status-pill open">Open</span>
+              <span class="cat-dot" style="background:rgba(127,119,221,0.6);border-radius:2px"></span>
+            </div>
+          </div>
+          <p class="req-desc">Need a skill that generates a complete Terraform module with remote state backend (S3+DynamoDB), workspace support, and provider version pinning. Existing `terraform-module-author` doesn't handle remote state setup.</p>
+          <div class="req-meta">
+            <span class="author">
+              <span class="mini-av">JL</span> jlee
+            </span>
+            <span class="sep"></span>
+            <span>14 days ago</span>
+            <span class="sep"></span>
+            <span>6 comments</span>
+            <span class="sep"></span>
+            <span class="tag">devops</span>
+            <span class="tag">terraform</span>
+            <span class="tag">infra</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: In progress, claimed -->
+    <div class="req-card claimed">
+      <div class="vote-col">
+        <div class="vote-arrow">▲</div>
+        <div class="vote-count">31</div>
+        <div class="vote-label">votes</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="req-body">
+          <div class="req-top">
+            <div class="req-title">OpenAPI spec generator from Express / FastAPI route handlers</div>
+            <div class="req-badges">
+              <span class="status-pill in-progress">In Progress</span>
+              <span class="cat-dot" style="background:rgba(55,138,221,0.6);border-radius:2px"></span>
+            </div>
+          </div>
+          <p class="req-desc">Analyze route files and generate OpenAPI 3.1 YAML with path params, request bodies, and response schemas inferred from type annotations. Should handle both Express (TS) and FastAPI (Python).</p>
+          <div class="req-meta">
+            <span class="author"><span class="mini-av">SR</span> sarah.r</span>
+            <span class="sep"></span>
+            <span>21 days ago</span>
+            <span class="sep"></span>
+            <span>9 comments</span>
+            <span class="sep"></span>
+            <span class="tag">api</span>
+            <span class="tag">openapi</span>
+            <span class="tag">docs</span>
+          </div>
+        </div>
+        <div class="claim-bar">
+          <div class="claimer">
+            <div class="av">DK</div>
+            <span>Claimed by <strong style="color:var(--ink)">devkumar</strong> · started 3 days ago</span>
+          </div>
+          <div class="claim-actions">
+            <button class="claim-btn">Follow</button>
+            <button class="claim-btn primary">View progress</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Fulfilled -->
+    <div class="req-card">
+      <div class="vote-col">
+        <div class="vote-arrow" style="color:var(--ink-3)">▲</div>
+        <div class="vote-count" style="color:var(--ink-3)">28</div>
+        <div class="vote-label">votes</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="req-body">
+          <div class="req-top">
+            <div class="req-title">GitHub Actions workflow linter with fix suggestions</div>
+            <div class="req-badges">
+              <span class="status-pill fulfilled">Fulfilled</span>
+              <span class="cat-dot" style="background:rgba(239,159,39,0.6);border-radius:2px"></span>
+            </div>
+          </div>
+          <p class="req-desc">Validate .github/workflows/*.yml files against GitHub's schema, detect common mistakes (missing `on:`, wrong runner labels, deprecated `set-output`), and suggest fixes inline.</p>
+          <div class="req-meta">
+            <span class="author"><span class="mini-av">MP</span> mpark</span>
+            <span class="sep"></span>
+            <span>2 months ago</span>
+            <span class="sep"></span>
+            <span>4 comments</span>
+            <span class="sep"></span>
+            <span class="tag">github-actions</span>
+            <span class="tag">ci-cd</span>
+          </div>
+        </div>
+        <div class="fulfilled-bar">
+          <div class="fulfilled-info">
+            <div class="fulfilled-icon">GA</div>
+            <span>Fulfilled by <strong style="color:var(--ink)">gha-workflow-builder v1.5.2</strong> · published by devops-team</span>
+          </div>
+          <button style="font-size:11px;padding:4px 10px;border-radius:var(--r-sm);border:0.5px solid rgba(29,158,117,0.3);background:rgba(29,158,117,0.08);color:#6FD8B0;cursor:pointer">
+            Install skill →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: Open -->
+    <div class="req-card">
+      <div class="vote-col">
+        <div class="vote-arrow">▲</div>
+        <div class="vote-count">19</div>
+        <div class="vote-label">votes</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="req-body">
+          <div class="req-top">
+            <div class="req-title">SQL migration generator (diff two schema files → migration SQL)</div>
+            <div class="req-badges">
+              <span class="status-pill open">Open</span>
+              <span class="cat-dot" style="background:rgba(239,159,39,0.5);border-radius:2px"></span>
+            </div>
+          </div>
+          <p class="req-desc">Given two SQL schema files (current vs. target), generate the migration SQL with `ALTER TABLE`, `CREATE INDEX`, and `DROP` statements. Must handle column renames and FK constraints.</p>
+          <div class="req-meta">
+            <span class="author"><span class="mini-av">TA</span> t.ames</span>
+            <span class="sep"></span>
+            <span>5 days ago</span>
+            <span class="sep"></span>
+            <span>2 comments</span>
+            <span class="sep"></span>
+            <span class="tag">sql</span>
+            <span class="tag">database</span>
+            <span class="tag">migrations</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 5: Open, with claim CTA -->
+    <div class="req-card">
+      <div class="vote-col">
+        <div class="vote-arrow">▲</div>
+        <div class="vote-count">14</div>
+        <div class="vote-label">votes</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="req-body">
+          <div class="req-top">
+            <div class="req-title">Datadog SLO + monitor config generator from service manifest</div>
+            <div class="req-badges">
+              <span class="status-pill open">Open</span>
+              <span class="cat-dot" style="background:rgba(55,138,221,0.5);border-radius:2px"></span>
+            </div>
+          </div>
+          <p class="req-desc">Read a service manifest (name, SLI definitions, alert thresholds) and emit Terraform or JSON configs for Datadog monitors and SLOs. Would save 2–3h per new service onboarding.</p>
+          <div class="req-meta">
+            <span class="author"><span class="mini-av">CW</span> cwong</span>
+            <span class="sep"></span>
+            <span>8 days ago</span>
+            <span class="sep"></span>
+            <span>1 comment</span>
+            <span class="sep"></span>
+            <span class="tag">datadog</span>
+            <span class="tag">observability</span>
+            <span class="tag">slo</span>
+          </div>
+        </div>
+        <div class="claim-bar" style="background:rgba(255,255,255,0.02)">
+          <span style="font-size:12px;color:var(--ink-3)">No one has claimed this yet</span>
+          <button class="claim-btn primary">Claim &amp; build this →</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <!-- Post request form -->
+    <div class="sb-section">
+      <div class="sb-title">Post a Request</div>
+      <div class="post-form">
+        <div class="form-field">
+          <label>What do you need?</label>
+          <input class="form-input" placeholder="e.g. Terraform module scaffolder with remote state…" style="padding:9px 12px" />
+        </div>
+        <div class="form-field">
+          <label>Describe the use case</label>
+          <textarea class="form-input" rows="4" placeholder="What problem does this solve? Include any specific tools, languages, or formats…"></textarea>
+          <div class="char-count">0 / 400</div>
+        </div>
+        <div class="form-field">
+          <label>Category</label>
+          <select class="form-input">
+            <option value="">Select a category…</option>
+            <option>DevOps &amp; Infra</option>
+            <option>Testing</option>
+            <option>Documentation</option>
+            <option>Security</option>
+            <option>Data &amp; ETL</option>
+            <option>Frontend</option>
+          </select>
+        </div>
+        <div class="beam-wrap" style="border-radius:var(--r-md);width:100%">
+          <button class="beam-btn" style="width:100%;justify-content:center;border-radius:calc(var(--r-md) - 1.5px)">
+            Submit Request
+          </button>
+        </div>
+        <p style="font-size:11px;color:var(--ink-3);line-height:1.5;text-align:center">Requests with 10+ votes get surfaced to verified publishers on Mondays.</p>
+      </div>
+    </div>
+
+    <!-- Trending requests -->
+    <div class="sb-section">
+      <div class="sb-title">Trending this week</div>
+      <div class="trending-list">
+        <div class="trending-item">
+          <div class="t-votes">47</div>
+          <div>
+            <div class="t-title">Terraform remote state scaffolder</div>
+            <div class="t-meta">devops · +12 votes today</div>
+          </div>
+        </div>
+        <div class="trending-item">
+          <div class="t-votes">31</div>
+          <div>
+            <div class="t-title">OpenAPI spec from route handlers</div>
+            <div class="t-meta">api · in progress</div>
+          </div>
+        </div>
+        <div class="trending-item">
+          <div class="t-votes">19</div>
+          <div>
+            <div class="t-title">SQL migration generator</div>
+            <div class="t-meta">database · +5 votes today</div>
+          </div>
+        </div>
+        <div class="trending-item">
+          <div class="t-votes">14</div>
+          <div>
+            <div class="t-title">Datadog SLO config generator</div>
+            <div class="t-meta">observability · claim available</div>
+          </div>
+        </div>
+        <div class="trending-item">
+          <div class="t-votes">11</div>
+          <div>
+            <div class="t-title">Proto3 → TypeScript types generator</div>
+            <div class="t-meta">api · open</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent activity -->
+    <div class="sb-section">
+      <div class="sb-title">Recent Activity</div>
+      <div>
+        <div class="activity-item">
+          <span class="act-dot" style="background:#7F77DD"></span>
+          <div class="act-content">
+            <div><strong>devkumar</strong> claimed OpenAPI spec generator</div>
+            <div class="act-time">3 days ago</div>
+          </div>
+        </div>
+        <div class="activity-item">
+          <span class="act-dot" style="background:#1D9E75"></span>
+          <div class="act-content">
+            <div>GHA workflow linter request <strong>fulfilled</strong> by devops-team</div>
+            <div class="act-time">1 week ago</div>
+          </div>
+        </div>
+        <div class="activity-item">
+          <span class="act-dot" style="background:#EF9F27"></span>
+          <div class="act-content">
+            <div><strong>jlee</strong> posted Terraform remote state request</div>
+            <div class="act-time">14 days ago</div>
+          </div>
+        </div>
+        <div class="activity-item">
+          <span class="act-dot" style="background:#378ADD"></span>
+          <div class="act-content">
+            <div>SQL migration request reached <strong>15 votes</strong></div>
+            <div class="act-time">2 days ago</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
