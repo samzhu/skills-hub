@@ -52,12 +52,18 @@ Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 4 negative 
 
 ## Round 3 — Filter / Sort flow（S098d + S098d2）
 
+Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 4 negative cases (3.5-3.8) cover empty/boundary/format/concurrent 四類。
+
 | # | Category | Scenario | Expected | Status |
 |---|----------|----------|----------|--------|
 | 3.1 | positive | Click「最新」sort chip | 卡片重新排序 by createdAt DESC | 📋 |
 | 3.2 | positive | Click「風險低」sort chip | 卡片排序 by NONE→LOW→MEDIUM→HIGH | 📋 |
 | 3.3 | positive | Toggle RiskFilterSidebar「LOW」 | onToggle('LOW') called；selected tier 顯 active | ✅ RiskFilterSidebar.test.tsx AC-3+5 |
 | 3.4 | edge | 多 risk filter Set 同時包多 tier | count breakdown 反映各 tier；click「全部」call onClear | ✅ RiskFilterSidebar.test.tsx AC-1+4 |
+| 3.5 | negative (empty filtered) | risk filter 全 4 tier 都 toggle off → 等同 unfilter 全顯 | filteredSkills 反映 client-side filter；empty Set fall-through 走「不過濾」path | ✅ RiskFilterSidebar.test.tsx AC-2 |
+| 3.6 | negative (boundary all-tiers) | 4 tiers 全選中 → 等同無 filter（OR 包所有） | 顯示同 unfilter 的 N 筆；無 dup | 📋 |
+| 3.7 | negative (format invalid sort) | URL `?sort=invalid` query value | Backend whitelist 過濾 → fallback default `created_at DESC`；不 500 | 📋 needs SkillQueryService.buildOrderByClause test |
+| 3.8 | negative (concurrent) | rapid sort + filter 同時切換 | useQuery cache key 隨 sortMode 變化重 fetch；前後 race 不錯 result | 📋 |
 
 ## Round 4 — Publish flow（完整 Upload → Validate → Review → Live）
 
@@ -148,12 +154,12 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 |-------|-------|---------|------------|----------------|
 | 1 Browse | **9** (+4 reinforced) | 1 | 8 | **5** ✅ |
 | 2 Search | **8** (+4 reinforced) | 0 | 8 | **5** ✅ |
-| 3 Filter/Sort | 4 | 2 | 2 | 0 |
+| 3 Filter/Sort | **8** (+4 reinforced) | 3 | 5 | **4** ✅ |
 | 4 Publish | **14** (+7 reinforced) | 5 | 9 | **6** ✅ |
 | 5 Skill Detail | **13** (+5 reinforced) | 4 | 9 | **6** ✅ |
 | 6 Docs IA | 2 | 0 | 2 | 0 |
 | 7 Empty state | 3 | 3 | 0 | 0 |
-| **Total** | **53** | **15** | **38** | **22** |
+| **Total** | **57** | **16** | **41** | **26** |
 
 > Per 2026-05-02 methodology upgrade：每 round 至少 3-5 反例。Round 4 已強化（6 反例 cover empty/boundary/format/state-conflict/malicious 五類）；其餘 rounds 待 backfill 至同樣強度（Round 1/2/3/5/6/7 反例 count 0-1 不足）。
 
