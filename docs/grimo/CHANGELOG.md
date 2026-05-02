@@ -1,5 +1,21 @@
 # Changelog
 
+## [v3.1.5] — RiskBadge component tests（4-tier S096c invariants；2026-05-02）
+
+> Mode B — 為 S096c 4-tier risk system 補 component test。RiskBadge 是 SkillCard / SkillDetailPage / RiskFilterSidebar 共用 primitive；isolated 行為驗證。
+
+### ✅ Tests
+- 新檔 `components/RiskBadge.test.tsx` — 7 ACs：
+  - 4 tier labels (NONE/LOW/MEDIUM/HIGH → 無/低/中/高 風險)
+  - null level → 「未評估」fallback
+  - unknown tier (e.g. future CRITICAL) → graceful raw-level render
+  - NONE tooltip contains「不代表 100% 安全」caveat (per S096c contract)
+- 不測 inline-style hex（per ALWAYS rule「test against DOM structure not incidental constants」）
+
+### 結果
+- 58 → 65 tests PASS（+7 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.1.4] — VersionList tests（ledger Round 5.5 ✅；2026-05-02）
 
 > Mode B — fill 1 ledger 📋 row (Round 5.5 VersionList diff link)。Tests 53 → 58 (+5)。
