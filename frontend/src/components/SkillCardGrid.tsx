@@ -43,7 +43,9 @@ export function SkillCardGrid({ skills, query }: { skills: Skill[]; query?: stri
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    // S098d: 3-col grid at xl breakpoint per prototype `Skills Hub Homepage.html`
+    // `.skill-grid {grid-template-columns:repeat(3, 1fr)}`. 既有 sm:2-col 在 ≤ xl 仍 fallback。
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {skills.map((skill) => (
         <SkillCard key={skill.id} skill={skill} />
       ))}

@@ -1,5 +1,36 @@
 # Changelog
 
+## [v2.90.0] — Homepage 3-col grid + sort chips（S098 META 4/8；M92d 完成；2026-05-02）
+
+> S098d Homepage v2 polish — 3-column grid (xl breakpoint) + sort chips。對齊 prototype `Skills Hub Homepage.html` `.skill-grid {grid-template-columns:repeat(3, 1fr)}` + `.sort-chips`。
+
+### 🎨 Frontend
+- `components/SkillCardGrid.tsx`：grid 加 `xl:grid-cols-3` — 既有 `sm:grid-cols-2` 在 ≤xl breakpoint 仍 fallback；xl ≥1280px 啟用 3-col。
+- `pages/HomePage.tsx`：sort chips UI（4 modes：推薦 / 最新 / 風險低 / 下載最多）+ client-side sort：
+  - 預設 `sortMode='recommended'` = backend 原始順序（downloadCount desc + createdAt desc）— 識別性 sort，不重排
+  - 「最新」= createdAt desc
+  - 「風險低」= riskLevel asc per `RISK_ORDER` (NONE→LOW→MEDIUM→HIGH)
+  - 「下載最多」= downloadCount desc explicit
+  - chips 樣式 per prototype `.sort-chip` (透明 border + on state `bg-rgba(255,255,255,0.06)` + `border-line-2`)；hover 純 text-color shift
+
+### Trim 紀錄
+原 S=8 估含「3-col grid + sort chips + risk filter sidebar with count breakdown」。本 commit ship 前兩項；defer risk filter sidebar 為 S098d2：
+- 需要新 endpoint `/skills/risk-counts` 或 client-side aggregation（ProductData fetch 全頁不分頁）— 跨檔改動 + 新 hook
+- 比 chips UI 工程量大；S098d 估 8 點實際是 chips XS(3) + risk-filter S(5) — 切兩 ticks 更乾淨
+- 非緊急（filter chip on sidebar 已是 prototype-of-prototype；目前 `CategorySidebar` 已涵蓋分類過濾）
+
+### ⚠️ Known limitations of client-side sort
+- 排序只對「當前頁」生效（page.size=20），不跨頁。後續若要全域排序需 backend `sort=` query param（Spring Pageable 支援，估 XS）；目前定位為 polish-pass-1 即可滿足 viewer 視覺驗收。
+- 「推薦」mode 為 identity — 與 backend 預設順序綁定；若 backend 排序變更行為會跟著變。
+
+### ✅ Tests
+- `npx vitest run` (cwd=frontend) → 7 files / 33 tests PASS
+- `npx tsc --noEmit` (cwd=frontend) → no errors
+
+### S098 META 進度
+- 4/8 sub-specs shipped (S098h + S098g + S098h2 + S098d)
+- 剩 4：S098a/b/c/e/f；S098d2 risk-filter sidebar spawn 為 follow-up
+
 ## [v2.89.0] — EmptyState dark theme migration + 4-step i18n（S098h2 完成；2026-05-02）
 
 > Sister fix to S098h (YourFirstSkillPage 配色) — EmptyState 4-tone 元件原 light-theme inline hex (`#181818` text on `bg-white` container) 在 v2 dark page 上 theme-mismatch（不是 broken contrast，但與已 dark-token 的 SkillCard / FieldCard 等相鄰元件視覺對不上）。
