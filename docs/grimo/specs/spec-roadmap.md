@@ -255,6 +255,13 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 5 | M94b: HomePage hot-sort backend `?sort=hot` | S100b | S(5) | — | 📋 planned — backend fetchSkills 加 `sort=hot|popular|newest` query；hot=30d download desc；HomePage 「正在使用中」section 對齊「真正 active usage」語意 |
 | Phase 5 | M94c: MySkillsPage auth-based author filter | S100c | S(5) | — | 📋 planned — 改 fetch `/me` → 派生 author → 自動 filter 自己 skills；移除 user 手填 query；MVP mock auth 階段 keep `?author=` fallback |
 | Phase 5 | M94d: ErrorState component + UX guideline | S100d | XS(3) | — | 📋 planned — 各 page error fallback 不一致（inline callout vs redirect）；抽 ErrorState shared component + 統一 guideline doc |
+| Phase 5 | M95: META Skill Quality / Impact / Security Score System | S101 | META **awaiting human confirm** | — | 📐 in-design — 對標 Tessl Skill Optimizer 三軸 trust signal；Skills Hub 用 PostgreSQL + Gemini + 既有 risk scanner 實作；6 sub-specs ≈ 38 pts；7 open questions 待 user 確認 |
+| Phase 5 | M95a: Quality Score backend + LLM judge | S101a | M(10) | — | 📋 awaiting S101 confirm — 4 dimensions × 25%（completeness/actionability/conciseness/robustness）；Gemini judge；skill_scores projection table |
+| Phase 5 | M95b: Impact Score proxy metrics | S101b | M(8) | — | 📋 awaiting S101 confirm — 4 sub-metrics（adoption/rating/flag inverse/trend slope）；proxy 替代 Tessl in-sandbox eval |
+| Phase 5 | M95c: Security Status simplified + Snyk-equivalent | S101c | S(6) | — | 📋 awaiting S101 confirm — 既有 4-level risk → Pass/Warn/Fail tri-state；併 OWASP LLM05 SBOM (S099e3) |
+| Phase 5 | M95d: Frontend SkillCard + Scores tab | S101d | S(8) | — | 📋 awaiting S101 confirm — SkillCard inline 3 figures + SkillDetailPage 第 7 tab radial chart |
+| Phase 5 | M95e: Quality Score weekly re-evaluation cron | S101e | XS(3) | — | 📋 awaiting S101 confirm |
+| Phase 5 | M95f: Score audit log + admin recalculate UI | S101f | XS(3) | — | 📋 awaiting S101 confirm |
 | Phase 4 | (deferred) Admin Review Queue | S094e | — | — | ⏸ post-MVP — PRD B6 Backlog；`admin_review_queue_and_detail.html` |
 | Phase 4 | (deferred) Onboarding Wizard | S094f | — | — | ⏸ post-MVP — `onboarding_wizard_step_2_of_4.html` |
 | Phase 4 | (deferred) Landing Page | S094g | — | — | ⏸ post-MVP — `skills_hub_landing_page.html` |
