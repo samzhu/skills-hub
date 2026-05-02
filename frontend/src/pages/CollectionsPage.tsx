@@ -38,11 +38,11 @@ export function CollectionsPage() {
           <button
             type="button"
             disabled
-            title="即將開放 — S096f2 完成 aggregate/install 後啟用"
+            title="即將開放 — 集合建立功能後續版本推出"
             className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border border-border bg-card px-4 py-2 text-[13px] font-medium opacity-50"
           >
             <Boxes className="h-3.5 w-3.5" />
-            建立集合（S096f2 功能即將開放）
+            建立集合（即將開放）
           </button>
         </div>
       </div>
@@ -53,7 +53,7 @@ export function CollectionsPage() {
         <EmptyState
           tone="invite"
           headline="目前還沒人建立集合。"
-          sub="集合（Collection）讓你把多個技能一次安裝。S096f2 完成後可從這裡建立 / 瀏覽 / 一鍵安裝。"
+          sub="集合（Collection）讓你把多個技能一次安裝。後續版本推出後可從這裡建立 / 瀏覽 / 一鍵安裝。"
           secondaryAction={{ label: '回去瀏覽單一技能', href: '/browse' }}
         />
       ) : (

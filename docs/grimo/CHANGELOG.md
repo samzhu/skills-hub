@@ -1,5 +1,30 @@
 # Changelog
 
+## [v3.4.3] — Stub-page user-facing copy spec ID leak fix（S103 完成；2026-05-03）
+
+> Mode B Round 8 (Chrome MCP live render audit) 發現 `/collections` 與 `/requests` 兩個 stub 頁面在 user-facing copy 暴露 internal spec ID（`S096f2` / `S096g2`），共 6 處：disabled button title attr + label + EmptyState subtext。Production 用戶不該看到內部 milestone 編號。NotificationsPage 同類 stub copy 已 clean，證明 leak 是 per-page sloppy copy 不是系統性 pattern；可單點修不必抽 i18n 抽象。
+
+### Changed
+- `frontend/src/pages/CollectionsPage.tsx`：3 處 user-visible string 移除 `S096f2`，改用「即將開放」/「後續版本推出」泛詞
+- `frontend/src/pages/RequestBoardPage.tsx`：3 處 user-visible string 移除 `S096g2`，改用「即將開放」/「後續版本推出」泛詞
+
+### Added
+- `frontend/src/pages/RequestBoardPage.test.tsx`：AC-3 button label/title + AC-4 EmptyState subtext assertion（spec ID 字面 0 出現）
+
+### Updated
+- `frontend/src/pages/CollectionsPage.test.tsx`：加 `AC-S103` test — visible text + button title attribute 不含 `S096f2` 字面
+
+### Verified
+- `cd frontend && npm test -- --run CollectionsPage RequestBoardPage`：2 files 6/6 PASS（857ms）
+- AC-5 grep `S096[fgh]2 frontend/src/pages/*.tsx` 過濾 JSDoc → 0 user-visible hits
+- Chrome MCP smoke：navigate /collections + /requests → DOM tree 0 spec ID 字面（before/after 對照表見 spec §7）
+- FE tests 累計 30 → 32（+2）
+
+### Why
+S100 page-by-page data audit + S102 cross-cutting link audit 都覆蓋不到 user-visible string 是否含 internal jargon — Mode B Round 8 採 Chrome MCP live render 視角才看見 dev 把 milestone 編號當「等 X ship 就 enable」reference 寫進 production copy。S100e (defensive guard) → S102 (routing residual) → **S103 (UX copy hygiene)** 形成 v3.4.x patch series — S100 META post-ship 第 3 個 cross-cutting follow-up，靠 audit cut 多樣化（page / link / copy）累積品質。
+
+---
+
 ## [v3.4.2] — Post-S096e1 routing residual link target fix（S102 完成；2026-05-03）
 
 > S096e1 把 `/` 從 browse list 改為新 LandingPage 之後，4 處 back-navigation / EmptyState CTA 的 target 漏了同步換 `/browse`，造成 label-target 語意打架（label 寫「列表 / 瀏覽」實際跳 LandingPage）；外加 1 處 LandingPage footer placeholder「狀態」自指迴圈。S100 META page-by-page audit 已 confirm 27 pages 0 fake，但對 **inter-page link semantic alignment** 是盲點 — S102 是 sibling to S100e，補這個 cut。

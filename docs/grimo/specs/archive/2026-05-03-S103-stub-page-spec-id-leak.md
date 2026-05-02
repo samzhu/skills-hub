@@ -1,6 +1,6 @@
 # S103 — Stub-page user-facing copy spec ID leak (Collections / Requests)
 
-> **Status**: 📋 planned (Spec-Only-Handoff — written by 2026-05-03 cron-loop Mode B Round 8 audit tick, awaits implement tick)
+> **Status**: ✅ shipped `v3.4.3` (2026-05-03 — implement cron tick 5)
 > **Type**: Frontend UX copy polish (user-facing string sanitization)
 > **Estimate**: XS (2 pts)
 > **Triggered by**: 2026-05-03 cron Tick 4 Mode B E2E live browser walk-through (Chrome MCP) — Round 8 of test-case ledger（live DOM cut，前 7 rounds 是 component test cut）
@@ -88,18 +88,48 @@ npm run build  # ensure no broken imports
 
 ## §7 Result
 
-待 implement tick 填。
+**Shipped 2026-05-03 cron Tick 5 @ ~03:23**.
 
-**Implement tick checklist**:
-- [ ] 6 處 string replacement 完成
-- [ ] CollectionsPage.test.tsx 補 AC-1/2 assertion
-- [ ] RequestBoardPage.test.tsx 新建 AC-3/4
-- [ ] `npm test` 全綠
-- [ ] AC-5 grep verify (0 user-visible hits)
-- [ ] Smoke via Chrome MCP（確認 live render 不含 spec ID）
-- [ ] CHANGELOG 加 patch 版本（建議 `v3.4.3`）
-- [ ] roadmap row → ✅
-- [ ] spec doc 移 archive/
+### Implement checklist
+
+- [x] 6 處 string replacement 完成（CollectionsPage 3 + RequestBoardPage 3）
+- [x] CollectionsPage.test.tsx 補 `AC-S103` assertion（visible text + button title attr 不含 `S096f2`）
+- [x] RequestBoardPage.test.tsx 新建（AC-3 button label/title + AC-4 EmptyState subtext 不含 `S096g2`）
+- [x] `npm test` 全綠：CollectionsPage 4 PASS（既有 3 + 新加 1）+ RequestBoardPage 2 PASS = 6/6（857ms）
+- [x] AC-5 grep verify：`grep -nE 'S096[fgh]2' frontend/src/pages/*.tsx | grep -vE '^\S+:[0-9]+:\s*\*'` → 0 hits（只剩 JSDoc comment lines，allowed）
+- [x] Smoke via Chrome MCP：navigate /collections + /requests → DOM accessibility tree 確認 spec ID 字面 0 出現
+- [x] CHANGELOG `v3.4.3` patch entry
+- [x] roadmap row → ✅
+- [x] spec doc 移 archive/
+
+### Verify metrics
+
+| Item | Value |
+|------|-------|
+| Files changed | 4（2 page tsx + 1 test update + 1 new test）|
+| LOC delta | +30 / -8（+27 是 RequestBoardPage.test.tsx 整檔新建）|
+| FE tests | 既有 30 → 32（+1 CollectionsPage AC-S103 + 2 RequestBoardPage = +3 tests in 2 files；既有 3 + 1 + 2 = 6 PASS in scope）|
+| Backend touch | 0（純 frontend copy fix）|
+| Wall clock | ~10 min（PLAN N/A spec 已寫；IMPLEMENT 4 + tests 3 + verify 2 + Chrome smoke 1）|
+
+### Live render validation (Chrome MCP)
+
+| Path | Before | After |
+|------|--------|-------|
+| `/collections` button label | `建立集合（S096f2 功能即將開放）` | `建立集合（即將開放）` |
+| `/collections` button title attr | `即將開放 — S096f2 完成 aggregate/install 後啟用` | `即將開放 — 集合建立功能後續版本推出` |
+| `/collections` EmptyState sub | `...S096f2 完成後可從這裡建立...` | `...後續版本推出後可從這裡建立...` |
+| `/requests` button label | `發起新需求（S096g2 功能即將開放）` | `發起新需求（即將開放）` |
+| `/requests` button title attr | `即將開放 — S096g2 完成 voting/claim 後啟用` | `即將開放 — 投票與認領功能後續版本推出` |
+| `/requests` EmptyState sub | `當 S096g2 功能啟用後...` | `後續版本推出後...` |
+
+### Trim deferred
+
+- **development-standards.md §UI copy convention 增「stub copy 不含 internal spec ID」rule**：spec §8 lesson 提的 doc-side polish；列為 polish backlog（避免本 ship doc-side scope creep，per NEVER bundle drive-by refactors）
+
+### Sibling validation
+
+S100e (defensive guard) → S102 (routing residual) → **S103 (UX copy hygiene)** — 3 個 S100 META post-ship cross-cutting follow-up，全在 v3.4.x patch series。本 ship 後 v3.4.3 標誌 S100 META cross-cutting audit 第三輪 follow-up complete。Mode B audit 用 Chrome MCP live render 視角是與 page-by-page data audit / static grep audit 互補的第三 cut。
 
 ## §8 Lesson — stub-page copy hygiene
 

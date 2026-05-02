@@ -38,10 +38,10 @@ export function RequestBoardPage() {
           <button
             type="button"
             disabled
-            title="即將開放 — S096g2 完成 voting/claim 後啟用"
+            title="即將開放 — 投票與認領功能後續版本推出"
             className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-md border border-border bg-card px-4 py-2 text-[13px] font-medium opacity-50"
           >
-            發起新需求（S096g2 功能即將開放）
+            發起新需求（即將開放）
           </button>
         </div>
       </div>
@@ -52,7 +52,7 @@ export function RequestBoardPage() {
         <EmptyState
           tone="invite"
           headline="目前還沒人發起需求。"
-          sub="當 S096g2 功能啟用後，可以從這裡發起「我希望某種 skill 存在」的需求；社群投票推升優先級，作者認領後實作。"
+          sub="後續版本推出後，可以從這裡發起「我希望某種 skill 存在」的需求；社群投票推升優先級，作者認領後實作。"
           secondaryAction={{ label: '回去瀏覽現有技能', href: '/browse' }}
         />
       ) : (

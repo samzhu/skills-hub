@@ -57,4 +57,15 @@ describe('CollectionsPage — ledger Round 7.2', () => {
       expect(screen.getByRole('heading', { level: 1, name: '精選技能集合' })).toBeInTheDocument()
     })
   })
+
+  it('AC-S103: user-facing copy 不洩漏 internal spec ID S096f2', async () => {
+    renderPage()
+    // 直接斷言所有 user-visible text 不含「S096f2」字面 (button label / title / EmptyState sub)
+    await waitFor(() => {
+      expect(screen.queryByText(/S096f2/)).not.toBeInTheDocument()
+    })
+    // disabled button title attribute 也不該含 spec ID
+    const btn = screen.getByText(/建立集合/).closest('button')
+    expect(btn?.getAttribute('title') ?? '').not.toMatch(/S096f2/)
+  })
 })
