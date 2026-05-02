@@ -1,10 +1,21 @@
 # E2E Test-Case Ledger
 
-> Round catalogue for Mode B (E2E testing) per `.claude/loop.md` cron-bounded agent。每 round 三 category：positive / negative / edge。Bug found → 寫 fix-spec 入 Mode A，return Mode B 下一 tick。
+> Round catalogue for Mode B (E2E testing) per `.claude/loop.md` cron-bounded agent。
+>
+> **Coverage 要求**（per user directive 2026-05-02）：每 round 必須含**正例 + 反例 + 邊界**三大類；**反例至少 3-5 個**防使用者奇怪操作。Round 不夠強的 fail QA gate。
+>
+> **反例 minimum checklist**（每 round 至少 cover 3 項）：
+> 1. **Empty / null input** — 缺值 / 空字串 / null
+> 2. **Boundary violation** — 超過字數限制 / 檔案大小 / 數值範圍
+> 3. **Type / format mismatch** — 預期 string 給 number / 格式錯誤
+> 4. **State conflict** — DRAFT skill 嘗試下載 / SUSPENDED 嘗試新增版本 / 同名 publish
+> 5. **Auth / permission denied** — 無權限 user 嘗試 admin action / cross-tenant 訪問
+> 6. **Malicious input** — XSS payload / SQL injection / path traversal / unicode 攻擊
+> 7. **Concurrent / race** — 同時 publish 同 version / 過期 version 操作
 >
 > **Status legend**：📋 planned / 🚧 in-progress / ✅ pass / ❌ fail (link to fix spec)
 >
-> **Last update**: 2026-05-02 (v3.1.1 — tick 19)
+> **Last update**: 2026-05-02 (v3.2.5 — tick 39 + S099 META queued; methodology upgraded per user directive)
 
 ---
 
@@ -38,15 +49,24 @@
 
 ## Round 4 — Publish flow（完整 Upload → Validate → Review → Live）
 
+需強化 negative coverage 至 ≥3 反例（per 2026-05-02 methodology upgrade）。
+
 | # | Category | Scenario | Expected | Status |
 |---|----------|----------|----------|--------|
 | 4.1 | positive | `/publish` → drop valid zip → 上傳 | Mutation success → navigate `/publish/validate?id=X` | 📋 |
 | 4.2 | positive | `/publish/validate` polling | Stepper Upload (done) + Validate (active)；Status callout「進行中」每 2s 自動 refetch | ✅ AC-2 in PublishValidatePage.test.tsx |
 | 4.3 | positive | scan 完 (riskLevel 設值) | useEffect navigate `/publish/review?id=X` | ✅ AC-3 in PublishValidatePage.test.tsx |
 | 4.4 | positive | `/publish/review` → success callout 顯 + skill metadata + 風險說明 | ✅ inline render existing | 📋 |
-| 4.5 | negative | 上傳 frontmatter 缺 name | Mutation onError → navigate `/publish/failed?state=A&msg=...` | 📋 |
-| 4.6 | edge | scan 完 risk_level=HIGH | `/publish/review` useEffect navigate `/publish/failed?state=B&id=X` | 📋 |
-| 4.7 | edge | `/publish/failed` State A msg 含特殊字元 | URL-decode 正確顯示在 pre-block | ✅ AC-1 in PublishFailedPage.test.tsx |
+| 4.5 | negative (empty) | 上傳 frontmatter 缺 name | Mutation onError → navigate `/publish/failed?state=A&msg=...` | 📋 |
+| 4.6 | negative (boundary) | name 超過 64 字元 | Validation reject + 「name 超過 64 字元限制」error msg | 📋 |
+| 4.7 | negative (format) | name 含大寫 / 特殊字元（非 [a-z0-9-]） | Validation reject + 「name 必須為小寫 + hyphen」 | 📋 |
+| 4.8 | negative (state conflict) | 同 (author, name) 已存在 + 上傳同 version | 409 Conflict + msg「版本已存在」 | 📋 |
+| 4.9 | negative (boundary) | zip 超過 5MB | Frontend FileDropZone 攔截 + size error 顯示前不打 backend | ✅ AC-4 in FileDropZone.test.tsx |
+| 4.10 | negative (format) | 上傳 .exe 等非 zip/.md | FileDropZone 攔截 + 「只接受 .zip / .md」error | ✅ AC-3 in FileDropZone.test.tsx |
+| 4.11 | negative (malicious) | SKILL.md 含 path-traversal `../../../etc/passwd` | Backend zip extractor reject + 400 | 📋 |
+| 4.12 | edge | scan 完 risk_level=HIGH | `/publish/review` useEffect navigate `/publish/failed?state=B&id=X` | 📋 |
+| 4.13 | edge | `/publish/failed` State A msg 含特殊字元 | URL-decode 正確顯示在 pre-block | ✅ AC-1 in PublishFailedPage.test.tsx |
+| 4.14 | edge | `/publish/validate?id=` 空 query | Error callout「缺少 skill id 參數」 | ✅ AC-1 in PublishValidatePage.test.tsx |
 
 ## Round 5 — Skill Detail（5-tab + sparkline + version diff）
 
@@ -102,15 +122,17 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 
 ## Round Coverage Summary
 
-| Round | Total | ✅ Done | 📋 Planned |
-|-------|-------|---------|------------|
-| 1 Browse | 5 | 1 | 4 |
-| 2 Search | 4 | 0 | 4 |
-| 3 Filter/Sort | 4 | 2 | 2 |
-| 4 Publish | 7 | 3 | 4 |
-| 5 Skill Detail | 8 | 3 | 5 |
-| 6 Docs IA | 2 | 0 | 2 |
-| 7 Empty state | 3 | 3 | 0 |
-| **Total** | **33** | **12** | **21** |
+| Round | Total | ✅ Done | 📋 Planned | Negative count |
+|-------|-------|---------|------------|----------------|
+| 1 Browse | 5 | 1 | 4 | 1 |
+| 2 Search | 4 | 0 | 4 | 1 |
+| 3 Filter/Sort | 4 | 2 | 2 | 0 |
+| 4 Publish | **14** (+7 reinforced) | 5 | 9 | **6** ✅ |
+| 5 Skill Detail | 8 | 3 | 5 | 1 |
+| 6 Docs IA | 2 | 0 | 2 | 0 |
+| 7 Empty state | 3 | 3 | 0 | 0 |
+| **Total** | **40** | **14** | **26** | **9** |
+
+> Per 2026-05-02 methodology upgrade：每 round 至少 3-5 反例。Round 4 已強化（6 反例 cover empty/boundary/format/state-conflict/malicious 五類）；其餘 rounds 待 backfill 至同樣強度。
 
 current component test count: 44（cover ~6 ledger ACs + 38 unit-level invariants）。E2E browser-level scenarios（27 planned）需 Playwright / Cypress —— defer until backend stabilizes 或 cloud-scheduled E2E run。
