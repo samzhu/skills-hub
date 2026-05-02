@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
+import { ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { FileDropZone } from '@/components/FileDropZone'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { uploadSkill } from '@/api/skills'
 import { localizeApiError } from '@/lib/api-error-messages'
 
@@ -42,90 +42,99 @@ export function PublishPage() {
 
   return (
     <AppShell>
+      {/* S086: 對齊 prototype `skill_publish_upload_flow.html` — 居中收斂 hero + card */}
       <div className="mx-auto max-w-2xl">
-        <h1 className="mb-6 text-2xl font-bold">發佈新技能</h1>
+        <div className="mb-[14px]">
+          <h1 className="m-0 text-[22px] font-medium leading-[1.2]">發佈新技能</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            上傳 SKILL.md zip 套件 — 系統會自動驗證、掃描風險並產生分類索引
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>上傳 Skill 套件</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <FileDropZone onFileSelect={setFile} selectedFile={file} />
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h2 className="mb-4 text-sm font-medium text-foreground">上傳 Skill 套件</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FileDropZone onFileSelect={setFile} selectedFile={file} />
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">版本號</label>
-                  <Input
-                    value={version}
-                    onChange={(e) => setVersion(e.target.value)}
-                    placeholder="1.0.0"
-                    required
-                    // S067: HTML5 pattern 預驗 semver — 對齊 backend Skill.VERSION_REGEX (S056)
-                    // 陷阱：(1) HTML5 自動 wrap ^(?:pattern)$，pattern 本身不要寫 ^...$；
-                    //       (2) Chrome 對字元 class 內未 escape 的 `.` 與 `-` 會 silent 停用整個 pattern；
-                    //          必須寫 `\.\-`，pattern 才實際生效
-                    pattern="\d+\.\d+\.\d+(-[A-Za-z0-9\.\-]+)?"
-                    title="格式：MAJOR.MINOR.PATCH（如 1.0.0 或 2.0.0-rc.1）"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">分類</label>
-                  <Input
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    placeholder="DevOps"
-                    required
-                    // S068: 對齊 backend skills.category varchar(50) 上限
-                    maxLength={50}
-                  />
-                </div>
-              </div>
-
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">作者</label>
+                <label className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">版本號</label>
                 <Input
-                  value={author}
-                  onChange={(e) => setAuthor(e.target.value)}
-                  placeholder="your-name"
+                  value={version}
+                  onChange={(e) => setVersion(e.target.value)}
+                  placeholder="1.0.0"
                   required
-                  // S068: 對齊 backend skills.author varchar(255) 上限
-                  maxLength={255}
+                  pattern="\d+\.\d+\.\d+(-[A-Za-z0-9\.\-]+)?"
+                  title="格式：MAJOR.MINOR.PATCH（如 1.0.0 或 2.0.0-rc.1）"
+                  className="font-mono"
                 />
               </div>
+              <div>
+                <label className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">分類</label>
+                <Input
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  placeholder="DevOps"
+                  required
+                  maxLength={50}
+                />
+              </div>
+            </div>
 
-              {/* file 未選取或上傳中時停用提交按鈕 */}
-              <button
-                type="submit"
-                disabled={!file || mutation.isPending}
-                className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                {mutation.isPending ? '上傳中...' : '發佈技能'}
-              </button>
-            </form>
+            <div>
+              <label className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">作者</label>
+              <Input
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                placeholder="your-name"
+                required
+                maxLength={255}
+              />
+            </div>
 
-            {mutation.isSuccess && (
-              <div className="mt-4 rounded-md bg-green-50 p-4 text-green-800">
-                <p className="font-medium">發佈成功！</p>
-                <p className="text-sm">Skill ID: {mutation.data.id}</p>
+            <button
+              type="submit"
+              disabled={!file || mutation.isPending}
+              className="w-full rounded-md bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-foreground disabled:opacity-50"
+            >
+              {mutation.isPending ? '上傳中...' : '發佈技能'}
+            </button>
+          </form>
+
+          {/* S086: success callout per DESIGN.md card-callout pattern with success-soft fill + success-deep text */}
+          {mutation.isSuccess && (
+            <div
+              className="mt-4 flex items-start gap-3 rounded-md p-3 text-[13px]"
+              style={{ backgroundColor: '#EAF3DE', color: '#27500A' }}
+            >
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="flex-1">
+                <p className="m-0 font-medium">發佈成功！</p>
+                <p className="m-0 mt-0.5 font-mono text-[11px] opacity-80">{mutation.data.id}</p>
                 <Link
                   to={`/skills/${mutation.data.id}`}
-                  className="mt-1 inline-block text-sm font-medium text-green-700 underline"
+                  className="mt-1.5 inline-flex items-center gap-1 text-[12px] font-medium underline-offset-2 hover:underline"
                 >
-                  查看技能 →
+                  查看技能 <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>
-            )}
+            </div>
+          )}
 
-            {mutation.isError && (
-              <div className="mt-4 rounded-md bg-red-50 p-4 text-red-800">
-                <p className="font-medium">發佈失敗</p>
-                {/* S040: 後端 error code 翻譯為繁中；未知 code fallback 至 error.message */}
-                <p className="text-sm">{localizeApiError(mutation.error)}</p>
+          {/* S086: error callout per DESIGN.md card-callout-danger with danger-soft + danger-deep */}
+          {mutation.isError && (
+            <div
+              className="mt-4 flex items-start gap-3 rounded-md p-3 text-[13px]"
+              style={{ backgroundColor: '#FCEBEB', color: '#791F1F' }}
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="flex-1">
+                <p className="m-0 font-medium">發佈失敗</p>
+                <p className="m-0 mt-0.5 text-[12px] opacity-90">{localizeApiError(mutation.error)}</p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </div>
       </div>
     </AppShell>
   )

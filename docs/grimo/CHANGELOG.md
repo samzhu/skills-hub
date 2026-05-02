@@ -1,5 +1,21 @@
 # Changelog
 
+## [v2.64.0] — PublishPage rework（M82 完成；2026-05-02）
+
+> **UI rework** — 對齊 `skill_publish_upload_flow.html` + `skill_publish_failure_and_high_risk_states.html`：hero hint + hairline card + uppercase label + semantic-tinted success/error callouts。
+
+### Added
+- **S086: PublishPage rework**（M82）：
+  - Hero row：H1 + sub-text 解釋系統會自動驗證/掃描/索引
+  - Card 從 shadcn primitives 改 hand-rolled hairline border 配 14px padding（per `.sh-card`）
+  - Form labels uppercase 12px tracking-wide muted（per prototype convention）
+  - Version input 加 `font-mono` class（technical 字串應 mono 顯示）
+  - Success callout：accent-soft green (#EAF3DE / #27500A) + CheckCircle2 icon + Skill ID font-mono + 「查看技能 →」 with ArrowRight
+  - Error callout：danger-soft (#FCEBEB / #791F1F) + AlertCircle icon
+  - 11 frontend tests / 0 fail；CSS 32.4 KB / JS 350.7 KB
+
+---
+
 ## [v2.63.0] — HomePage rework + IconTile reusable component（M81 完成；2026-05-02）
 
 > **UI rework** — 對齊 `skills_hub_homepage_mockup.html` 設計稿：hero row + IconTile + reformatted SkillCard + DESIGN.md tokens。S084 META spec sub-spec roadmap 第 2 個 ship。
