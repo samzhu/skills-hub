@@ -1,5 +1,33 @@
 # Changelog
 
+## [v2.91.0] — Publish Failed dedicated page (State A)（S098 META 5/8；M92b 完成；2026-05-02）
+
+> S098b — `/publish/failed?id=&state=&msg=` 從 PublishPage inline error 抽出獨立 route。對齊 prototype `Skills Hub Publish Failures.html` 兩個 state；本 commit ship State A（frontmatter / upload validation error）；State B（high-risk redirect from PublishReviewPage）defer 至 S098b2 follow-up。
+
+### 🎨 Frontend
+- 新檔 `pages/PublishFailedPage.tsx`：tone-aware failure page。
+  - State A (`?state=A&msg=...`): 紅色 callout (rgba(226,75,74,*)) — `AlertOctagon` icon + h2「驗證在第 2 步停止 — 沒有任何資料寫入。」+ encoded error msg pre-block
+  - State B (`?state=B&id=...`): 橘色 callout (rgba(239,159,39,*)) — h2「技能掃出 HIGH 級風險 — 已寫入審核佇列。」+ skill ID echo
+  - default state = A（unparseable / missing query → fallback to validation error tone）
+  - 共用 footer：「重新上傳」primary CTA → `/publish` + 「返回瀏覽」secondary → `/browse`
+- `pages/PublishPage.tsx`：mutation onError 改為 navigate `/publish/failed?state=A&msg=<encoded>`，取代既有 inline error callout。msg 為已 localize 的 ApiError 訊息。
+- `App.tsx`：新 route `<Route path="/publish/failed" element={<PublishFailedPage />}>`
+
+### Trim 紀錄
+原 S(8) 估完整含「prototype #7 多 section validation 結構 + stepper + State B 自動 redirect from PublishReviewPage」。本 commit ship XS(4) 核心：
+- ✅ State A flow（PublishPage → /publish/failed?state=A）
+- ✅ State B page render（route handle ?state=B query；navigation source 待 wired）
+- ⏸ defer S098b2：State B redirect from PublishReviewPage 當 risk_level=HIGH（涉及 PublishReviewPage 改動 + 與 polling 邏輯 interplay）
+- ⏸ defer S098b3：full validation breakdown UI（multi-section v-section / err-row / stepper）— 目前 msg 只簡單 pre-block 顯示
+
+### ✅ Tests
+- `npx vitest run` → 7 files / 33 tests PASS（PublishFailedPage 純展示型；無新 test 寫入，未來可加 ?state=A vs ?state=B render assertion）
+- `npx tsc --noEmit` → no errors
+
+### S098 META 進度
+- 5/8 sub-specs shipped (S098h + S098g + S098h2 + S098d + S098b core)
+- 剩 3 + 2 follow-ups：S098a/c/e/f + S098d2/b2
+
 ## [v2.90.0] — Homepage 3-col grid + sort chips（S098 META 4/8；M92d 完成；2026-05-02）
 
 > S098d Homepage v2 polish — 3-column grid (xl breakpoint) + sort chips。對齊 prototype `Skills Hub Homepage.html` `.skill-grid {grid-template-columns:repeat(3, 1fr)}` + `.sort-chips`。

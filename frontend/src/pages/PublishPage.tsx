@@ -37,6 +37,10 @@ export function PublishPage() {
     },
     onError: (err) => {
       console.error('[PublishPage] 發佈技能失敗', err)
+      // S098b: redirect to dedicated /publish/failed?state=A page (frontmatter / upload error).
+      // msg query 帶錯誤訊息（已 localize）— bookmarkable + sharable for support。
+      const msg = encodeURIComponent(localizeApiError(err))
+      navigate(`/publish/failed?state=A&msg=${msg}`)
     },
   })
 

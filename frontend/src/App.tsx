@@ -12,6 +12,7 @@ import { RequestBoardPage } from './pages/RequestBoardPage'
 import { CollectionsPage } from './pages/CollectionsPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { PublishReviewPage } from './pages/PublishReviewPage'
+import { PublishFailedPage } from './pages/PublishFailedPage'
 
 function App() {
   return (
@@ -27,6 +28,8 @@ function App() {
       <Route path="/publish" element={<PublishPage />} />
       {/* S096d4a: post-upload result page; defer /publish/validate poll page 至 S096d5 */}
       <Route path="/publish/review" element={<PublishReviewPage />} />
+      {/* S098b: dedicated failure page — State A frontmatter error / State B high-risk submitted */}
+      <Route path="/publish/failed" element={<PublishFailedPage />} />
       <Route path="/analytics" element={<AnalyticsPage />} />
       {/* S094a: 作者視角 dashboard — P6 SBE「作者查看自己的數據」 */}
       <Route path="/my-skills" element={<MySkillsPage />} />
