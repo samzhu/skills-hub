@@ -1,0 +1,618 @@
+<h2 class="sr-only">Four empty states for Skills Hub showing distinct tones: seeding a fresh platform, inviting a new author, handling no search results, and celebrating an all-clear review queue</h2>
+
+<style>
+  .es-root { font-family: var(--font-sans); color: var(--color-text-primary); }
+
+  .es-state-head {
+    display: flex; align-items: center; gap: 10px;
+    margin: 18px 0 10px;
+  }
+  .es-state-head:first-child { margin-top: 0; }
+  .es-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--color-background-secondary);
+    color: var(--color-text-secondary);
+    font-size: 12px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .es-title { font-size: 15px; font-weight: 500; margin: 0; }
+  .es-title .mono {
+    font-family: var(--font-mono); font-size: 12.5px;
+    color: var(--color-text-secondary); margin-left: 6px;
+  }
+  .es-tone {
+    font-size: 11px;
+    font-family: var(--font-serif); font-style: italic;
+    color: var(--color-text-tertiary);
+    margin-left: auto;
+  }
+
+  .es-frame {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 12px;
+  }
+  .es-app {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+  }
+
+  /* Mini page header (reused) */
+  .es-page-head {
+    padding: 12px 18px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .es-brand { display: flex; align-items: center; gap: 9px; }
+  .es-logo {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: var(--color-text-primary); color: var(--color-background-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500;
+  }
+  .es-brand-name { font-size: 13px; font-weight: 500; }
+  .es-crumbs { font-size: 12px; color: var(--color-text-tertiary); }
+  .es-crumbs .cur { color: var(--color-text-primary); }
+  .es-crumbs .sep { margin: 0 7px; }
+
+  /* Shared CTA styles */
+  .es-primary-wrap {
+    position: relative;
+    border-radius: var(--border-radius-md);
+    padding: 1px;
+    background: var(--color-border-tertiary);
+    overflow: hidden;
+    display: inline-block;
+  }
+  .es-primary-wrap::before {
+    content: '';
+    position: absolute; inset: -80%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 290deg, #7F77DD 320deg, #378ADD 345deg, transparent 360deg);
+    animation: es-spin 4s linear infinite;
+  }
+  @keyframes es-spin { to { transform: rotate(360deg); } }
+  .es-primary {
+    position: relative;
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border: none; font-weight: 500;
+    font-size: 13px; padding: 9px 16px;
+    border-radius: calc(var(--border-radius-md) - 1px);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .es-secondary {
+    background: transparent; border: none;
+    color: var(--color-text-secondary);
+    font-size: 12.5px; padding: 9px 12px;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+
+  /* =============== State 1: Fresh platform =============== */
+  .es1-search {
+    padding: 14px 20px 10px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .es1-search-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-md);
+    opacity: 0.6;
+  }
+  .es1-search-row input {
+    border: none; outline: none; background: transparent;
+    font-size: 13px; color: var(--color-text-tertiary);
+    flex: 1; pointer-events: none;
+  }
+  .es1-body {
+    padding: 28px 22px 26px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 28px;
+    align-items: center;
+  }
+  .es1-copy { min-width: 0; }
+  .es1-eyebrow {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; padding: 3px 9px;
+    background: #EEEDFE; color: #3C3489;
+    border-radius: 999px;
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+  .es1-eyebrow .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #7F77DD;
+  }
+  .es1-h {
+    font-size: 20px; font-weight: 500; margin: 0 0 8px;
+    letter-spacing: -0.005em;
+  }
+  .es1-sub {
+    font-size: 13px; color: var(--color-text-secondary);
+    line-height: 1.6; margin: 0 0 18px;
+  }
+  .es1-actions { display: flex; gap: 6px; align-items: center; }
+
+  /* Ghost grid */
+  .es1-ghost {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .es1-ghost-card {
+    border: 1px dashed var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+    padding: 12px;
+    background: var(--color-background-secondary);
+    opacity: 0.55;
+  }
+  .es1-ghost-head {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .es1-ghost-icon {
+    width: 22px; height: 22px; border-radius: 5px;
+    background: var(--color-border-tertiary);
+  }
+  .es1-ghost-lines > div {
+    height: 5px; border-radius: 2px;
+    background: var(--color-border-tertiary);
+    margin-bottom: 5px;
+  }
+  .es1-ghost-lines .s1 { width: 70%; }
+  .es1-ghost-lines .s2 { width: 92%; }
+  .es1-ghost-lines .s3 { width: 55%; }
+
+  /* =============== State 2: New author =============== */
+  .es2-body {
+    padding: 28px 26px 26px;
+    text-align: center;
+  }
+  .es2-icon-wrap {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: #EEEDFE; color: #3C3489;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+  }
+  .es2-h {
+    font-size: 19px; font-weight: 500; margin: 0 0 8px;
+    letter-spacing: -0.005em;
+  }
+  .es2-sub {
+    font-size: 13px; color: var(--color-text-secondary);
+    line-height: 1.6; margin: 0 auto 22px;
+    max-width: 420px;
+  }
+
+  /* Horizontal step preview */
+  .es2-flow {
+    display: flex; align-items: center; justify-content: center;
+    gap: 4px; margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .es2-flow-step {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 92px;
+  }
+  .es2-flow-dot {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--color-background-secondary);
+    color: var(--color-text-tertiary);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 6px;
+    border: 1px dashed var(--color-border-secondary);
+  }
+  .es2-flow-label {
+    font-size: 11px; color: var(--color-text-tertiary);
+  }
+  .es2-flow-line {
+    width: 28px; height: 0.5px;
+    background: var(--color-border-secondary);
+    border-top: 1px dashed var(--color-border-secondary);
+    background: transparent;
+    margin-bottom: 22px;
+  }
+  .es2-actions { display: flex; gap: 6px; justify-content: center; align-items: center; }
+
+  /* =============== State 3: No search results =============== */
+  .es3-search-row {
+    padding: 14px 20px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .es3-search {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+  }
+  .es3-search svg { color: var(--color-text-tertiary); flex-shrink: 0; }
+  .es3-search input {
+    border: none; outline: none; background: transparent;
+    font-size: 13px; color: var(--color-text-primary);
+    flex: 1; font-family: var(--font-sans);
+  }
+  .es3-search .mode {
+    font-size: 11px; padding: 3px 9px; border-radius: 5px;
+    background: var(--color-background-secondary);
+    color: var(--color-text-secondary);
+    display: flex; align-items: center; gap: 4px;
+    flex-shrink: 0;
+  }
+  .es3-search .mode .dot {
+    width: 5px; height: 5px; border-radius: 50%; background: #7F77DD;
+  }
+  .es3-body {
+    padding: 24px 22px 22px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 22px;
+    align-items: center;
+  }
+  .es3-copy { min-width: 0; }
+  .es3-echo {
+    font-size: 11px; color: var(--color-text-tertiary);
+    margin: 0 0 6px; font-family: var(--font-mono);
+  }
+  .es3-echo .q {
+    color: var(--color-text-primary);
+  }
+  .es3-h {
+    font-size: 18px; font-weight: 500; margin: 0 0 6px;
+    letter-spacing: -0.005em;
+  }
+  .es3-sub {
+    font-size: 12.5px; color: var(--color-text-secondary);
+    line-height: 1.55; margin: 0;
+  }
+  .es3-suggestions {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 4px 14px;
+  }
+  .es3-sugg-label {
+    font-size: 10px; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin: 10px 0 4px;
+  }
+  .es3-sugg {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 8px 0;
+    border-top: 0.5px solid var(--color-border-tertiary);
+    font-size: 12.5px;
+  }
+  .es3-sugg:first-of-type { border-top: none; }
+  .es3-sugg-left {
+    display: flex; flex-direction: column; gap: 1px;
+    min-width: 0;
+  }
+  .es3-sugg-text {
+    color: var(--color-text-primary); font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .es3-sugg-hint {
+    color: var(--color-text-tertiary); font-size: 11px;
+  }
+  .es3-sugg-arrow {
+    color: var(--color-text-tertiary);
+    flex-shrink: 0;
+  }
+
+  /* =============== State 4: All clear queue =============== */
+  .es4-body {
+    padding: 30px 26px 28px;
+    text-align: center;
+  }
+  .es4-check-wrap {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: #E1F5EE; color: #085041;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .es4-check-wrap::before {
+    content: '';
+    position: absolute; inset: -8px;
+    border-radius: 50%;
+    background: #E1F5EE;
+    opacity: 0.4;
+    z-index: -1;
+  }
+  .es4-h {
+    font-size: 19px; font-weight: 500; margin: 0 0 8px;
+    letter-spacing: -0.005em;
+  }
+  .es4-sub {
+    font-size: 13px; color: var(--color-text-secondary);
+    line-height: 1.6; margin: 0 auto 20px;
+    max-width: 420px;
+  }
+  .es4-stats {
+    display: inline-flex; gap: 0;
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 4px;
+    margin-bottom: 18px;
+  }
+  .es4-stat {
+    padding: 8px 16px;
+    border-right: 0.5px solid var(--color-border-tertiary);
+    text-align: center;
+  }
+  .es4-stat:last-child { border-right: none; }
+  .es4-stat-v {
+    font-size: 16px; font-weight: 500; margin: 0;
+    color: var(--color-text-primary);
+  }
+  .es4-stat-v .up { color: #27500A; font-size: 11px; margin-left: 3px; }
+  .es4-stat-k {
+    font-size: 10px; color: var(--color-text-tertiary);
+    margin: 2px 0 0;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .es4-link {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--color-text-secondary);
+    padding: 4px 0;
+  }
+</style>
+
+<div class="es-root">
+
+<div class="es-state-head">
+  <div class="es-num">1</div>
+  <h3 class="es-title">Fresh deployment<span class="mono">· /browse</span></h3>
+  <span class="es-tone">Seeding</span>
+</div>
+
+<div class="es-frame">
+  <div class="es-app">
+    <div class="es-page-head">
+      <div class="es-brand">
+        <div class="es-logo">S</div>
+        <span class="es-brand-name">Skills Hub</span>
+      </div>
+      <div class="es-crumbs"><span class="cur">Browse</span></div>
+    </div>
+
+    <div class="es1-search">
+      <div class="es1-search-row">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-text-tertiary);"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Search or describe a task…" />
+      </div>
+    </div>
+
+    <div class="es1-body">
+      <div class="es1-copy">
+        <span class="es1-eyebrow"><span class="dot"></span>0 skills · 0 publishers</span>
+        <h2 class="es1-h">Your registry is waiting to be seeded.</h2>
+        <p class="es1-sub">Skills Hub gets more valuable as your team shares. Publish the first SKILL.md bundle and kick off the flywheel — everyone else just has to follow.</p>
+        <div class="es1-actions">
+          <div class="es-primary-wrap">
+            <button class="es-primary">
+              Publish the first skill
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+          </div>
+          <button class="es-secondary">Read the spec →</button>
+        </div>
+      </div>
+
+      <div class="es1-ghost">
+        <div class="es1-ghost-card">
+          <div class="es1-ghost-head"><div class="es1-ghost-icon"></div><div class="es1-ghost-lines"><div class="s1"></div></div></div>
+          <div class="es1-ghost-lines"><div class="s2"></div><div class="s3"></div></div>
+        </div>
+        <div class="es1-ghost-card">
+          <div class="es1-ghost-head"><div class="es1-ghost-icon"></div><div class="es1-ghost-lines"><div class="s1"></div></div></div>
+          <div class="es1-ghost-lines"><div class="s2"></div><div class="s3"></div></div>
+        </div>
+        <div class="es1-ghost-card">
+          <div class="es1-ghost-head"><div class="es1-ghost-icon"></div><div class="es1-ghost-lines"><div class="s1"></div></div></div>
+          <div class="es1-ghost-lines"><div class="s2"></div><div class="s3"></div></div>
+        </div>
+        <div class="es1-ghost-card">
+          <div class="es1-ghost-head"><div class="es1-ghost-icon"></div><div class="es1-ghost-lines"><div class="s1"></div></div></div>
+          <div class="es1-ghost-lines"><div class="s2"></div><div class="s3"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="es-state-head">
+  <div class="es-num">2</div>
+  <h3 class="es-title">New author<span class="mono">· /my-skills</span></h3>
+  <span class="es-tone">Invitational</span>
+</div>
+
+<div class="es-frame">
+  <div class="es-app">
+    <div class="es-page-head">
+      <div class="es-brand">
+        <div class="es-logo">S</div>
+        <span class="es-brand-name">Skills Hub</span>
+      </div>
+      <div class="es-crumbs">Browse <span class="sep">/</span> <span class="cur">My skills</span></div>
+    </div>
+
+    <div class="es2-body">
+      <div class="es2-icon-wrap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+      </div>
+      <h2 class="es2-h">You haven't published anything yet.</h2>
+      <p class="es2-sub">Ship something you've built to the team. The whole round-trip — upload, auto-scan, publish — takes under a minute if your SKILL.md is ready.</p>
+
+      <div class="es2-flow">
+        <div class="es2-flow-step">
+          <div class="es2-flow-dot">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+          </div>
+          <span class="es2-flow-label">Zip</span>
+        </div>
+        <div class="es2-flow-line"></div>
+        <div class="es2-flow-step">
+          <div class="es2-flow-dot">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+          </div>
+          <span class="es2-flow-label">Auto-scan</span>
+        </div>
+        <div class="es2-flow-line"></div>
+        <div class="es2-flow-step">
+          <div class="es2-flow-dot">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" x2="12" y1="16" y2="8"/></svg>
+          </div>
+          <span class="es2-flow-label">Publish</span>
+        </div>
+        <div class="es2-flow-line"></div>
+        <div class="es2-flow-step">
+          <div class="es2-flow-dot">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          </div>
+          <span class="es2-flow-label">Track</span>
+        </div>
+      </div>
+
+      <div class="es2-actions">
+        <div class="es-primary-wrap">
+          <button class="es-primary">
+            Publish your first skill
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+        <button class="es-secondary">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Get the starter template
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="es-state-head">
+  <div class="es-num">3</div>
+  <h3 class="es-title">No search results<span class="mono">· /search?q=…</span></h3>
+  <span class="es-tone">Redirecting</span>
+</div>
+
+<div class="es-frame">
+  <div class="es-app">
+    <div class="es-page-head">
+      <div class="es-brand">
+        <div class="es-logo">S</div>
+        <span class="es-brand-name">Skills Hub</span>
+      </div>
+      <div class="es-crumbs">Browse <span class="sep">/</span> <span class="cur">Search</span></div>
+    </div>
+
+    <div class="es3-search-row">
+      <div class="es3-search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input value="crypto wallet integration for embedded devices" />
+        <span class="mode"><span class="dot"></span>Semantic</span>
+      </div>
+    </div>
+
+    <div class="es3-body">
+      <div class="es3-copy">
+        <p class="es3-echo">Query · <span class="q">"crypto wallet integration for embedded devices"</span></p>
+        <h2 class="es3-h">We don't have a skill for that yet.</h2>
+        <p class="es3-sub">Nothing in the 247 published skills reaches above a 0.32 similarity score. Either the topic is niche for your org, or the description could be sharper. Try one of the paths on the right.</p>
+      </div>
+
+      <div class="es3-suggestions">
+        <p class="es3-sugg-label">What you can do instead</p>
+
+        <div class="es3-sugg">
+          <div class="es3-sugg-left">
+            <span class="es3-sugg-text">Try "wallet signature verification"</span>
+            <span class="es3-sugg-hint">5 related skills · 0.68 avg score</span>
+          </div>
+          <svg class="es3-sugg-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </div>
+
+        <div class="es3-sugg">
+          <div class="es3-sugg-left">
+            <span class="es3-sugg-text">Browse all 247 skills</span>
+            <span class="es3-sugg-hint">Jump to the full registry</span>
+          </div>
+          <svg class="es3-sugg-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </div>
+
+        <div class="es3-sugg">
+          <div class="es3-sugg-left">
+            <span class="es3-sugg-text">Request this from your team</span>
+            <span class="es3-sugg-hint">Post to the wanted list · 3 votes so far</span>
+          </div>
+          <svg class="es3-sugg-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </div>
+
+        <div class="es3-sugg">
+          <div class="es3-sugg-left">
+            <span class="es3-sugg-text">Publish one yourself</span>
+            <span class="es3-sugg-hint">Be the first — your team needs this</span>
+          </div>
+          <svg class="es3-sugg-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="es-state-head">
+  <div class="es-num">4</div>
+  <h3 class="es-title">Review queue all-clear<span class="mono">· /admin/queue</span></h3>
+  <span class="es-tone">Celebratory</span>
+</div>
+
+<div class="es-frame">
+  <div class="es-app">
+    <div class="es-page-head">
+      <div class="es-brand">
+        <div class="es-logo">S</div>
+        <span class="es-brand-name">Skills Hub</span>
+        <span style="font-size: 10px; padding: 2px 7px; border-radius: 4px; background: #EEEDFE; color: #3C3489; font-weight: 500; margin-left: 6px; text-transform: uppercase; letter-spacing: 0.04em;">Admin</span>
+      </div>
+      <div class="es-crumbs">Admin <span class="sep">/</span> <span class="cur">Review queue</span></div>
+    </div>
+
+    <div class="es4-body">
+      <div class="es4-check-wrap">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+
+      <h2 class="es4-h">All clear — nothing pending.</h2>
+      <p class="es4-sub">No skills are waiting on security review right now. When something new triggers risk findings, it'll land here and notify the on-call reviewer.</p>
+
+      <div class="es4-stats">
+        <div class="es4-stat">
+          <p class="es4-stat-v">12 <span class="up">↑ 3</span></p>
+          <p class="es4-stat-k">Approved · 7d</p>
+        </div>
+        <div class="es4-stat">
+          <p class="es4-stat-v">2</p>
+          <p class="es4-stat-k">Rejected · 7d</p>
+        </div>
+        <div class="es4-stat">
+          <p class="es4-stat-v">1h 36m</p>
+          <p class="es4-stat-k">Avg turnaround</p>
+        </div>
+      </div>
+
+      <div>
+        <a class="es4-link" href="#">
+          View full audit log
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>

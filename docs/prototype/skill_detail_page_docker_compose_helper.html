@@ -1,0 +1,519 @@
+<h2 class="sr-only">Skill detail page for docker-compose-helper with tabs, risk assessment, version history, and install instructions</h2>
+
+<style>
+  .sd-root { font-family: var(--font-sans); color: var(--color-text-primary); }
+  .sd-frame {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px;
+  }
+  .sd-app {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+  }
+
+  /* Top bar */
+  .sd-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .sd-brand { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; }
+  .sd-logo {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--color-text-primary); color: var(--color-background-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500;
+  }
+  .sd-crumbs { font-size: 13px; color: var(--color-text-tertiary); }
+  .sd-crumbs .sep { margin: 0 8px; }
+  .sd-crumbs .cur { color: var(--color-text-primary); }
+  .sd-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: #EEEDFE; color: #3C3489;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500;
+  }
+
+  /* Header */
+  .sd-header { padding: 22px 26px 0; }
+  .sd-head-row {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 20px; margin-bottom: 14px;
+  }
+  .sd-head-left { display: flex; gap: 14px; min-width: 0; flex: 1; }
+  .sd-icon-lg {
+    width: 52px; height: 52px; border-radius: 10px;
+    background: #EEEDFE; color: #3C3489;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 500; flex-shrink: 0;
+  }
+  .sd-title-block { min-width: 0; }
+  .sd-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .sd-name { font-size: 22px; font-weight: 500; margin: 0; }
+  .sd-ver {
+    font-family: var(--font-mono); font-size: 12px;
+    background: var(--color-background-secondary);
+    padding: 2px 8px; border-radius: 4px;
+    color: var(--color-text-secondary);
+  }
+  .sd-risk-pill {
+    font-size: 11px; padding: 2px 9px; border-radius: 999px; font-weight: 500;
+    background: #EAF3DE; color: #27500A;
+  }
+  .sd-verified {
+    font-size: 11px; padding: 2px 9px; border-radius: 999px; font-weight: 500;
+    background: #E6F1FB; color: #0C447C;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .sd-desc { font-size: 14px; color: var(--color-text-secondary); margin: 0; line-height: 1.55; }
+  .sd-author-row {
+    display: flex; align-items: center; gap: 14px;
+    font-size: 12px; color: var(--color-text-tertiary);
+    margin-top: 10px;
+  }
+  .sd-author-row .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--color-border-secondary); }
+
+  .sd-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: flex-start; }
+
+  /* Beam-bordered primary button */
+  .sd-install-wrap {
+    position: relative;
+    border-radius: var(--border-radius-md);
+    padding: 1px;
+    background: var(--color-border-tertiary);
+    overflow: hidden;
+  }
+  .sd-install-wrap::before {
+    content: '';
+    position: absolute;
+    inset: -80%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 300deg, #1D9E75 330deg, #7F77DD 350deg, transparent 360deg);
+    animation: sd-spin 4s linear infinite;
+  }
+  @keyframes sd-spin { to { transform: rotate(360deg); } }
+  .sd-install {
+    position: relative;
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border: none;
+    font-size: 13px; font-weight: 500;
+    padding: 8px 16px;
+    border-radius: calc(var(--border-radius-md) - 1px);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sd-btn {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-secondary);
+    color: var(--color-text-primary);
+    font-size: 13px; padding: 8px 12px;
+    border-radius: var(--border-radius-md);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Stat strip */
+  .sd-stats {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px; margin: 16px 0 0;
+  }
+  .sd-stat {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-md);
+    padding: 12px 14px;
+  }
+  .sd-stat-label { font-size: 11px; color: var(--color-text-tertiary); margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .sd-stat-value { font-size: 20px; font-weight: 500; margin: 0; }
+  .sd-stat-sub { font-size: 11px; color: var(--color-text-secondary); margin: 2px 0 0; }
+  .sd-trend-up { color: #27500A; }
+
+  /* Tabs */
+  .sd-tabs {
+    display: flex; gap: 2px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    margin: 22px 0 0; padding: 0 26px;
+  }
+  .sd-tab {
+    font-size: 13px; color: var(--color-text-secondary);
+    padding: 10px 14px; border-bottom: 2px solid transparent;
+    margin-bottom: -0.5px;
+  }
+  .sd-tab.on {
+    color: var(--color-text-primary); font-weight: 500;
+    border-bottom-color: var(--color-text-primary);
+  }
+  .sd-tab .badge {
+    font-size: 10px; background: var(--color-background-secondary);
+    padding: 1px 6px; border-radius: 999px; margin-left: 5px;
+    color: var(--color-text-secondary);
+  }
+
+  /* Body layout */
+  .sd-body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 24px; padding: 22px 26px 26px; }
+
+  /* Readme */
+  .sd-readme { min-width: 0; }
+  .sd-fm {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-md);
+    padding: 12px 14px; margin-bottom: 18px;
+    font-family: var(--font-mono); font-size: 12px;
+    line-height: 1.7;
+  }
+  .sd-fm .k { color: var(--color-text-secondary); }
+  .sd-fm .v { color: var(--color-text-primary); }
+  .sd-fm .s { color: #3B6D11; }
+  .sd-fm .hr { color: var(--color-text-tertiary); }
+
+  .sd-readme h3 {
+    font-size: 16px; font-weight: 500;
+    margin: 20px 0 8px;
+  }
+  .sd-readme h3:first-of-type { margin-top: 0; }
+  .sd-readme p { font-size: 14px; line-height: 1.65; color: var(--color-text-secondary); margin: 0 0 10px; }
+  .sd-readme ul { font-size: 14px; color: var(--color-text-secondary); line-height: 1.7; padding-left: 20px; margin: 0 0 10px; }
+  .sd-readme code.inline {
+    font-family: var(--font-mono); font-size: 12.5px;
+    background: var(--color-background-secondary);
+    padding: 1px 6px; border-radius: 4px;
+    color: var(--color-text-primary);
+  }
+  .sd-code-block {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-md);
+    padding: 12px 14px;
+    font-family: var(--font-mono); font-size: 12px;
+    line-height: 1.7; color: var(--color-text-primary);
+    white-space: pre; overflow-x: auto;
+  }
+
+  /* Risk panel */
+  .sd-risk-panel {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px; margin-top: 18px;
+  }
+  .sd-risk-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .sd-risk-title { font-size: 14px; font-weight: 500; margin: 0; }
+  .sd-risk-sub { font-size: 11px; color: var(--color-text-tertiary); margin: 2px 0 0; }
+  .sd-check-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0;
+    border-top: 0.5px solid var(--color-border-tertiary);
+    font-size: 13px;
+  }
+  .sd-check-row:first-of-type { border-top: none; padding-top: 4px; }
+  .sd-check-icon {
+    width: 16px; height: 16px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 500;
+  }
+  .sd-check-icon.pass { background: #EAF3DE; color: #27500A; }
+  .sd-check-icon.warn { background: #FAEEDA; color: #633806; }
+  .sd-check-label { flex: 1; min-width: 0; }
+  .sd-check-label p { margin: 0; font-size: 13px; color: var(--color-text-primary); }
+  .sd-check-label p.hint { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+
+  /* Sidebar */
+  .sd-side {
+    display: flex; flex-direction: column; gap: 16px;
+    min-width: 0;
+  }
+  .sd-card {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px;
+  }
+  .sd-card-label {
+    font-size: 11px; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin: 0 0 10px;
+  }
+  .sd-meta-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; padding: 5px 0;
+  }
+  .sd-meta-row .k { color: var(--color-text-tertiary); }
+  .sd-meta-row .v { color: var(--color-text-primary); font-weight: 500; }
+
+  /* Versions */
+  .sd-ver-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0;
+    border-top: 0.5px solid var(--color-border-tertiary);
+  }
+  .sd-ver-row:first-of-type { border-top: none; padding-top: 4px; }
+  .sd-ver-num { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-primary); font-weight: 500; }
+  .sd-ver-date { font-size: 11px; color: var(--color-text-tertiary); }
+  .sd-ver-latest {
+    background: #E1F5EE; color: #085041;
+    font-size: 10px; padding: 1px 6px; border-radius: 999px; margin-left: 6px;
+    font-weight: 500;
+  }
+
+  /* Compat chips */
+  .sd-chip-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sd-chip {
+    font-size: 11px; padding: 3px 8px;
+    background: var(--color-background-secondary);
+    border-radius: 4px; color: var(--color-text-secondary);
+  }
+
+  /* Trend chart (svg) */
+  .sd-chart { margin-top: 8px; }
+</style>
+
+<div class="sd-root">
+<div class="sd-frame">
+  <div class="sd-app">
+
+    <!-- Top bar -->
+    <div class="sd-topbar">
+      <div class="sd-brand">
+        <div class="sd-logo">S</div>
+        Skills Hub
+      </div>
+      <div class="sd-crumbs">
+        Browse <span class="sep">/</span> DevOps <span class="sep">/</span> <span class="cur">docker-compose-helper</span>
+      </div>
+      <div class="sd-avatar">MC</div>
+    </div>
+
+    <!-- Header -->
+    <div class="sd-header">
+      <div class="sd-head-row">
+        <div class="sd-head-left">
+          <div class="sd-icon-lg">DC</div>
+          <div class="sd-title-block">
+            <div class="sd-name-row">
+              <h1 class="sd-name">docker-compose-helper</h1>
+              <span class="sd-ver">v2.1.0</span>
+              <span class="sd-risk-pill">Low risk</span>
+              <span class="sd-verified">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 2L17.5 3l1 3.2 3 1.1-.9 3.2L23 13l-2.4 2 1 3.2-3 1.1-1 3.1L14.4 22 12 24l-2.4-2-3.1 1.4-1-3.1-3-1.1 1-3.2L1 13l2.4-2.5-1-3.2 3-1.1 1-3.2L9.6 4z"/></svg>
+                Verified
+              </span>
+            </div>
+            <p class="sd-desc">Generate, validate, and troubleshoot docker-compose files with multi-service awareness, healthcheck suggestions, and rootless defaults.</p>
+            <div class="sd-author-row">
+              <span>by <strong style="font-weight:500; color:var(--color-text-secondary);">platform-team</strong></span>
+              <span class="dot"></span>
+              <span>MIT license</span>
+              <span class="dot"></span>
+              <span>Updated 3 days ago</span>
+              <span class="dot"></span>
+              <span>DevOps</span>
+            </div>
+          </div>
+        </div>
+        <div class="sd-actions">
+          <button class="sd-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7z"/></svg>
+            Star
+          </button>
+          <div class="sd-install-wrap">
+            <button class="sd-install">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+              Download v2.1.0
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- stats -->
+      <div class="sd-stats">
+        <div class="sd-stat">
+          <p class="sd-stat-label">Downloads</p>
+          <p class="sd-stat-value">1,284</p>
+          <p class="sd-stat-sub"><span class="sd-trend-up">↑ 18%</span> vs last week</p>
+        </div>
+        <div class="sd-stat">
+          <p class="sd-stat-label">Rating</p>
+          <p class="sd-stat-value">4.8 <span style="font-size:13px; color:var(--color-text-tertiary); font-weight:400;">/ 5</span></p>
+          <p class="sd-stat-sub">42 reviews</p>
+        </div>
+        <div class="sd-stat">
+          <p class="sd-stat-label">Versions</p>
+          <p class="sd-stat-value">7</p>
+          <p class="sd-stat-sub">Latest 3 days ago</p>
+        </div>
+        <div class="sd-stat">
+          <p class="sd-stat-label">Open flags</p>
+          <p class="sd-stat-value">0</p>
+          <p class="sd-stat-sub">No active reports</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="sd-tabs">
+      <div class="sd-tab on">Overview</div>
+      <div class="sd-tab">Risk assessment<span class="badge">5</span></div>
+      <div class="sd-tab">Versions<span class="badge">7</span></div>
+      <div class="sd-tab">Reviews<span class="badge">42</span></div>
+      <div class="sd-tab">Flags</div>
+    </div>
+
+    <!-- Body -->
+    <div class="sd-body">
+
+      <!-- Readme column -->
+      <div class="sd-readme">
+        <!-- SKILL.md frontmatter -->
+        <div class="sd-fm">
+<span class="hr">---</span>
+<span class="k">name:</span> <span class="v">docker-compose-helper</span>
+<span class="k">description:</span> <span class="s">Generate, validate, and troubleshoot docker-compose files with multi-service awareness.</span>
+<span class="k">version:</span> <span class="v">2.1.0</span>
+<span class="k">author:</span> <span class="v">platform-team</span>
+<span class="k">license:</span> <span class="v">MIT</span>
+<span class="k">compatibility:</span> <span class="v">[claude-code, cursor, gemini-cli]</span>
+<span class="hr">---</span>
+        </div>
+
+        <h3>When to use this skill</h3>
+        <p>Invoke this skill when working with <code class="inline">docker-compose.yml</code> files: authoring a new stack, adding services, debugging why containers fail to start, or hardening an existing compose file for production.</p>
+        <ul>
+          <li>Scaffolding new multi-service stacks with sensible defaults</li>
+          <li>Adding healthchecks, depends_on conditions, and restart policies</li>
+          <li>Converting ad-hoc <code class="inline">docker run</code> commands into compose services</li>
+          <li>Reviewing compose files for rootless, resource-limit, and secret-handling issues</li>
+        </ul>
+
+        <h3>Quick install</h3>
+        <div class="sd-code-block">$ skills-hub install platform-team/docker-compose-helper
+✔ Verified signature (platform-team)
+✔ Risk level: LOW
+→ Installed to ~/.claude/skills/docker-compose-helper/</div>
+
+        <!-- Risk panel -->
+        <div class="sd-risk-panel">
+          <div class="sd-risk-head">
+            <div>
+              <p class="sd-risk-title">Automated risk assessment</p>
+              <p class="sd-risk-sub">Scanned 3 days ago · engine v1.4</p>
+            </div>
+            <span class="sd-risk-pill">Low risk</span>
+          </div>
+
+          <div class="sd-check-row">
+            <div class="sd-check-icon pass">✓</div>
+            <div class="sd-check-label">
+              <p>No dangerous shell commands detected</p>
+              <p class="hint">Scanned for rm -rf, chmod 777, curl | bash, eval patterns</p>
+            </div>
+          </div>
+          <div class="sd-check-row">
+            <div class="sd-check-icon pass">✓</div>
+            <div class="sd-check-label">
+              <p>No sensitive path access</p>
+              <p class="hint">No reads of ~/.ssh, ~/.aws, /etc/shadow, or credential stores</p>
+            </div>
+          </div>
+          <div class="sd-check-row">
+            <div class="sd-check-icon pass">✓</div>
+            <div class="sd-check-label">
+              <p>No secret patterns in scripts or SKILL.md</p>
+              <p class="hint">No hardcoded API keys, tokens, or passwords</p>
+            </div>
+          </div>
+          <div class="sd-check-row">
+            <div class="sd-check-icon warn">!</div>
+            <div class="sd-check-label">
+              <p>2 external dependencies listed</p>
+              <p class="hint">docs.docker.com, hub.docker.com — both trusted domains</p>
+            </div>
+          </div>
+          <div class="sd-check-row">
+            <div class="sd-check-icon pass">✓</div>
+            <div class="sd-check-label">
+              <p>File size and count within normal range</p>
+              <p class="hint">12 files, 84 KB total · no binary payloads detected</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Side column -->
+      <aside class="sd-side">
+
+        <div class="sd-card">
+          <p class="sd-card-label">Download trend · 30d</p>
+          <svg class="sd-chart" viewBox="0 0 180 60" width="100%" height="60" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#7F77DD" stroke-width="1.5"
+              points="0,48 12,45 24,47 36,40 48,42 60,36 72,38 84,30 96,33 108,25 120,22 132,20 144,15 156,12 168,8 180,6"/>
+            <polyline fill="#EEEDFE" stroke="none" opacity="0.6"
+              points="0,48 12,45 24,47 36,40 48,42 60,36 72,38 84,30 96,33 108,25 120,22 132,20 144,15 156,12 168,8 180,6 180,60 0,60"/>
+          </svg>
+          <div class="sd-meta-row" style="padding-top: 6px;">
+            <span class="k">Past 7 days</span>
+            <span class="v">284</span>
+          </div>
+          <div class="sd-meta-row">
+            <span class="k">Past 30 days</span>
+            <span class="v">1,102</span>
+          </div>
+        </div>
+
+        <div class="sd-card">
+          <p class="sd-card-label">Details</p>
+          <div class="sd-meta-row"><span class="k">Published</span><span class="v">Jan 12, 2026</span></div>
+          <div class="sd-meta-row"><span class="k">License</span><span class="v">MIT</span></div>
+          <div class="sd-meta-row"><span class="k">Size</span><span class="v">84 KB</span></div>
+          <div class="sd-meta-row"><span class="k">Files</span><span class="v">12</span></div>
+          <div class="sd-meta-row"><span class="k">Scripts</span><span class="v">None</span></div>
+        </div>
+
+        <div class="sd-card">
+          <p class="sd-card-label">Compatibility</p>
+          <div class="sd-chip-wrap">
+            <span class="sd-chip">Claude Code</span>
+            <span class="sd-chip">Cursor</span>
+            <span class="sd-chip">Gemini CLI</span>
+            <span class="sd-chip">Copilot</span>
+          </div>
+        </div>
+
+        <div class="sd-card">
+          <p class="sd-card-label">Version history</p>
+          <div class="sd-ver-row">
+            <div>
+              <span class="sd-ver-num">v2.1.0</span>
+              <span class="sd-ver-latest">Latest</span>
+              <div class="sd-ver-date">3 days ago</div>
+            </div>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          </div>
+          <div class="sd-ver-row">
+            <div>
+              <span class="sd-ver-num">v2.0.1</span>
+              <div class="sd-ver-date">2 weeks ago</div>
+            </div>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          </div>
+          <div class="sd-ver-row">
+            <div>
+              <span class="sd-ver-num">v2.0.0</span>
+              <div class="sd-ver-date">1 month ago</div>
+            </div>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          </div>
+          <div class="sd-ver-row">
+            <div>
+              <span class="sd-ver-num">v1.4.2</span>
+              <div class="sd-ver-date">2 months ago</div>
+            </div>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          </div>
+        </div>
+
+      </aside>
+    </div>
+  </div>
+</div>
+</div>

@@ -1,0 +1,547 @@
+<h2 class="sr-only">My skills author dashboard showing published, pending review, and draft skills with per-skill download trends and metrics</h2>
+
+<style>
+  .ms-root { font-family: var(--font-sans); color: var(--color-text-primary); }
+  .ms-frame {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px;
+  }
+  .ms-app {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+  }
+
+  /* Top bar */
+  .ms-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .ms-brand { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; }
+  .ms-logo {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--color-text-primary); color: var(--color-background-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500;
+  }
+  .ms-nav { display: flex; gap: 18px; font-size: 13px; color: var(--color-text-secondary); }
+  .ms-nav .on { color: var(--color-text-primary); font-weight: 500; }
+  .ms-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: #EEEDFE; color: #3C3489;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500;
+  }
+
+  /* Hero */
+  .ms-hero {
+    padding: 22px 26px 18px;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+  }
+  .ms-h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+  .ms-sub { font-size: 13px; color: var(--color-text-secondary); margin: 0; }
+  .ms-publish-wrap {
+    position: relative;
+    border-radius: var(--border-radius-md);
+    padding: 1px;
+    background: var(--color-border-tertiary);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .ms-publish-wrap::before {
+    content: '';
+    position: absolute; inset: -80%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 300deg, #1D9E75 330deg, #7F77DD 350deg, transparent 360deg);
+    animation: ms-spin 4s linear infinite;
+  }
+  @keyframes ms-spin { to { transform: rotate(360deg); } }
+  .ms-publish {
+    position: relative;
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border: none;
+    font-size: 13px; font-weight: 500;
+    padding: 8px 16px;
+    border-radius: calc(var(--border-radius-md) - 1px);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Summary metrics */
+  .ms-metrics {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px; padding: 0 26px 20px;
+  }
+  .ms-metric {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-md);
+    padding: 12px 14px;
+  }
+  .ms-metric .k {
+    font-size: 11px; color: var(--color-text-tertiary);
+    margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .ms-metric .v { font-size: 20px; font-weight: 500; margin: 0; }
+  .ms-metric .delta { font-size: 11px; color: var(--color-text-secondary); margin: 2px 0 0; }
+  .ms-metric .delta .up { color: #27500A; }
+  .ms-metric .delta .down { color: #A32D2D; }
+  .ms-metric .delta .neutral { color: var(--color-text-tertiary); }
+
+  /* Tabs + filters */
+  .ms-tabs-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 26px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .ms-tabs { display: flex; gap: 2px; }
+  .ms-tab {
+    font-size: 13px; color: var(--color-text-secondary);
+    padding: 10px 14px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -0.5px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ms-tab.on {
+    color: var(--color-text-primary); font-weight: 500;
+    border-bottom-color: var(--color-text-primary);
+  }
+  .ms-tab .badge {
+    font-size: 10px; background: var(--color-background-secondary);
+    padding: 1px 7px; border-radius: 999px;
+    color: var(--color-text-secondary);
+  }
+  .ms-tab.on .badge { background: var(--color-text-primary); color: var(--color-background-primary); }
+  .ms-tab .badge.warn { background: #FAEEDA; color: #633806; }
+
+  .ms-filter-row { display: flex; gap: 8px; align-items: center; }
+  .ms-search-mini {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-md);
+    padding: 5px 10px;
+  }
+  .ms-search-mini input {
+    border: none; outline: none; background: transparent;
+    font-size: 12px; color: var(--color-text-primary);
+    width: 120px;
+  }
+  .ms-sort {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--color-text-secondary);
+    padding: 5px 10px;
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-md);
+  }
+
+  /* Table */
+  .ms-table {
+    padding: 6px 26px 22px;
+  }
+  .ms-table-head {
+    display: grid;
+    grid-template-columns: minmax(0, 2.2fr) minmax(0, 0.8fr) minmax(0, 1fr) 110px 60px 30px;
+    gap: 14px;
+    padding: 10px 10px;
+    font-size: 11px; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .ms-row {
+    display: grid;
+    grid-template-columns: minmax(0, 2.2fr) minmax(0, 0.8fr) minmax(0, 1fr) 110px 60px 30px;
+    gap: 14px;
+    padding: 14px 10px;
+    align-items: center;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .ms-row:last-child { border-bottom: none; }
+
+  /* Name cell */
+  .ms-name-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .ms-icon {
+    width: 32px; height: 32px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500; flex-shrink: 0;
+  }
+  .ms-icon.purple { background: #EEEDFE; color: #3C3489; }
+  .ms-icon.blue   { background: #E6F1FB; color: #0C447C; }
+  .ms-icon.teal   { background: #E1F5EE; color: #085041; }
+  .ms-icon.amber  { background: #FAEEDA; color: #633806; }
+  .ms-icon.gray   { background: var(--color-background-secondary); color: var(--color-text-secondary); }
+  .ms-name-block { min-width: 0; }
+  .ms-name-row { display: flex; align-items: center; gap: 6px; }
+  .ms-name { font-size: 14px; font-weight: 500; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ms-name-meta {
+    font-size: 11px; color: var(--color-text-tertiary); margin: 2px 0 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Status pills */
+  .ms-status {
+    font-size: 11px; padding: 2px 9px; border-radius: 999px;
+    font-weight: 500; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .ms-status.pub { background: #E1F5EE; color: #085041; }
+  .ms-status.pending { background: #FAEEDA; color: #633806; }
+  .ms-status.draft { background: var(--color-background-secondary); color: var(--color-text-secondary); }
+  .ms-status-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+  }
+  .ms-status.pub .ms-status-dot { background: #1D9E75; }
+  .ms-status.pending .ms-status-dot { background: #EF9F27; animation: ms-pulse 1.8s ease-in-out infinite; }
+  .ms-status.draft .ms-status-dot { background: var(--color-text-tertiary); }
+  @keyframes ms-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  /* Downloads cell */
+  .ms-dl-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .ms-dl-num { font-size: 14px; font-weight: 500; margin: 0; }
+  .ms-dl-sub { font-size: 11px; color: var(--color-text-tertiary); margin: 1px 0 0; }
+  .ms-dl-sub .up { color: #27500A; }
+  .ms-dl-sub .down { color: #A32D2D; }
+
+  /* Sparkline */
+  .ms-spark { width: 70px; height: 26px; flex-shrink: 0; }
+
+  /* Version cell */
+  .ms-ver {
+    font-family: var(--font-mono); font-size: 11px;
+    background: var(--color-background-secondary);
+    padding: 2px 7px; border-radius: 4px;
+    color: var(--color-text-secondary);
+    display: inline-block;
+  }
+  .ms-ver-date {
+    font-size: 11px; color: var(--color-text-tertiary);
+    margin: 2px 0 0;
+  }
+
+  /* Rating */
+  .ms-rating {
+    font-size: 13px; color: var(--color-text-primary);
+    display: flex; align-items: center; gap: 4px;
+  }
+  .ms-rating .star { color: #EF9F27; font-size: 13px; }
+  .ms-rating-n { font-size: 11px; color: var(--color-text-tertiary); margin: 1px 0 0; }
+  .ms-rating-empty { font-size: 12px; color: var(--color-text-tertiary); }
+
+  /* Actions */
+  .ms-actions-cell {
+    display: flex; justify-content: flex-end;
+    font-size: 16px; color: var(--color-text-tertiary);
+  }
+  .ms-dots {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+  }
+
+  /* Pending row specific styling */
+  .ms-row.pending {
+    background: #FDF8EC;
+  }
+  .ms-pending-warn {
+    font-size: 11px; color: #854F0B;
+    margin: 2px 0 0; display: flex; align-items: center; gap: 4px;
+  }
+
+  /* Empty / draft row styling */
+  .ms-row.draft { opacity: 0.85; }
+</style>
+
+<div class="ms-root">
+<div class="ms-frame">
+  <div class="ms-app">
+
+    <!-- Top bar -->
+    <div class="ms-topbar">
+      <div class="ms-brand">
+        <div class="ms-logo">S</div>
+        Skills Hub
+      </div>
+      <div class="ms-nav">
+        <span>Browse</span>
+        <span class="on">My skills</span>
+        <span>Analytics</span>
+        <span>Docs</span>
+      </div>
+      <div class="ms-avatar">MC</div>
+    </div>
+
+    <!-- Hero -->
+    <div class="ms-hero">
+      <div>
+        <h1 class="ms-h1">My skills</h1>
+        <p class="ms-sub">7 skills you've published as <strong style="font-weight:500;color:var(--color-text-secondary);">platform-team</strong> · download &amp; rating trends update every hour</p>
+      </div>
+      <div class="ms-publish-wrap">
+        <button class="ms-publish">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+          Publish skill
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary metrics -->
+    <div class="ms-metrics">
+      <div class="ms-metric">
+        <p class="k">Total skills</p>
+        <p class="v">7</p>
+        <p class="delta"><span class="neutral">5 published · 1 pending · 1 draft</span></p>
+      </div>
+      <div class="ms-metric">
+        <p class="k">Total downloads</p>
+        <p class="v">3,241</p>
+        <p class="delta"><span class="up">↑ 12.4%</span> vs last week</p>
+      </div>
+      <div class="ms-metric">
+        <p class="k">Avg rating</p>
+        <p class="v">4.6<span style="font-size:13px;color:var(--color-text-tertiary);font-weight:400;"> / 5</span></p>
+        <p class="delta"><span class="neutral">87 reviews across 5 skills</span></p>
+      </div>
+      <div class="ms-metric">
+        <p class="k">Open flags</p>
+        <p class="v">2</p>
+        <p class="delta"><span class="down">↑ 1</span> new flag this week</p>
+      </div>
+    </div>
+
+    <!-- Tabs row -->
+    <div class="ms-tabs-row">
+      <div class="ms-tabs">
+        <div class="ms-tab on">All <span class="badge">7</span></div>
+        <div class="ms-tab">Published <span class="badge">5</span></div>
+        <div class="ms-tab">Pending review <span class="badge warn">1</span></div>
+        <div class="ms-tab">Drafts <span class="badge">1</span></div>
+      </div>
+      <div class="ms-filter-row">
+        <div class="ms-search-mini">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-tertiary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input placeholder="Filter your skills" />
+        </div>
+        <div class="ms-sort">
+          Sort: Downloads
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="ms-table">
+      <div class="ms-table-head">
+        <span>Skill</span>
+        <span>Status</span>
+        <span>Downloads · 30d</span>
+        <span>Latest</span>
+        <span>Rating</span>
+        <span></span>
+      </div>
+
+      <!-- Row 1: top performer -->
+      <div class="ms-row">
+        <div class="ms-name-cell">
+          <div class="ms-icon purple">DC</div>
+          <div class="ms-name-block">
+            <div class="ms-name-row"><p class="ms-name">docker-compose-helper</p></div>
+            <p class="ms-name-meta">Generate &amp; validate docker-compose files · DevOps · low risk</p>
+          </div>
+        </div>
+        <span class="ms-status pub"><span class="ms-status-dot"></span>Published</span>
+        <div class="ms-dl-cell">
+          <div style="min-width:0;">
+            <p class="ms-dl-num">1,284</p>
+            <p class="ms-dl-sub"><span class="up">↑ 18%</span></p>
+          </div>
+          <svg class="ms-spark" viewBox="0 0 70 26" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#1D9E75" stroke-width="1.3"
+              points="0,20 7,18 14,19 21,15 28,16 35,12 42,13 49,9 56,7 63,5 70,3"/>
+          </svg>
+        </div>
+        <div>
+          <span class="ms-ver">v2.1.0</span>
+          <p class="ms-ver-date">3d ago</p>
+        </div>
+        <div>
+          <div class="ms-rating"><span class="star">★</span> 4.8</div>
+          <p class="ms-rating-n">42</p>
+        </div>
+        <div class="ms-actions-cell"><div class="ms-dots">⋯</div></div>
+      </div>
+
+      <!-- Row 2: steady climb -->
+      <div class="ms-row">
+        <div class="ms-name-cell">
+          <div class="ms-icon blue">K8</div>
+          <div class="ms-name-block">
+            <div class="ms-name-row"><p class="ms-name">k8s-deployment</p></div>
+            <p class="ms-name-meta">Scaffold production-ready Kubernetes manifests · DevOps · medium risk</p>
+          </div>
+        </div>
+        <span class="ms-status pub"><span class="ms-status-dot"></span>Published</span>
+        <div class="ms-dl-cell">
+          <div style="min-width:0;">
+            <p class="ms-dl-num">892</p>
+            <p class="ms-dl-sub"><span class="up">↑ 6%</span></p>
+          </div>
+          <svg class="ms-spark" viewBox="0 0 70 26" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#1D9E75" stroke-width="1.3"
+              points="0,18 7,16 14,17 21,15 28,14 35,13 42,14 49,12 56,11 63,10 70,9"/>
+          </svg>
+        </div>
+        <div>
+          <span class="ms-ver">v1.4.2</span>
+          <p class="ms-ver-date">1w ago</p>
+        </div>
+        <div>
+          <div class="ms-rating"><span class="star">★</span> 4.6</div>
+          <p class="ms-rating-n">28</p>
+        </div>
+        <div class="ms-actions-cell"><div class="ms-dots">⋯</div></div>
+      </div>
+
+      <!-- Row 3: pending review (the high-risk submission) -->
+      <div class="ms-row pending">
+        <div class="ms-name-cell">
+          <div class="ms-icon amber">EB</div>
+          <div class="ms-name-block">
+            <div class="ms-name-row"><p class="ms-name">env-bootstrap</p></div>
+            <p class="ms-pending-warn">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+              3 high-severity findings · waiting on security review
+            </p>
+          </div>
+        </div>
+        <span class="ms-status pending"><span class="ms-status-dot"></span>Pending review</span>
+        <div class="ms-dl-cell">
+          <p class="ms-rating-empty">Hidden from browse</p>
+        </div>
+        <div>
+          <span class="ms-ver">v1.0.0</span>
+          <p class="ms-ver-date">2m ago</p>
+        </div>
+        <div>
+          <p class="ms-rating-empty">—</p>
+        </div>
+        <div class="ms-actions-cell"><div class="ms-dots">⋯</div></div>
+      </div>
+
+      <!-- Row 4: steady mid-tier -->
+      <div class="ms-row">
+        <div class="ms-name-cell">
+          <div class="ms-icon teal">JU</div>
+          <div class="ms-name-block">
+            <div class="ms-name-row"><p class="ms-name">junit-generator</p></div>
+            <p class="ms-name-meta">Write idiomatic JUnit 5 tests with Mockito · Testing · low risk</p>
+          </div>
+        </div>
+        <span class="ms-status pub"><span class="ms-status-dot"></span>Published</span>
+        <div class="ms-dl-cell">
+          <div style="min-width:0;">
+            <p class="ms-dl-num">641</p>
+            <p class="ms-dl-sub"><span class="up">↑ 4%</span></p>
+          </div>
+          <svg class="ms-spark" viewBox="0 0 70 26" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#1D9E75" stroke-width="1.3"
+              points="0,14 7,15 14,13 21,14 28,13 35,12 42,13 49,11 56,12 63,10 70,11"/>
+          </svg>
+        </div>
+        <div>
+          <span class="ms-ver">v1.0.3</span>
+          <p class="ms-ver-date">3w ago</p>
+        </div>
+        <div>
+          <div class="ms-rating"><span class="star">★</span> 4.7</div>
+          <p class="ms-rating-n">17</p>
+        </div>
+        <div class="ms-actions-cell"><div class="ms-dots">⋯</div></div>
+      </div>
+
+      <!-- Row 5: slight decline -->
+      <div class="ms-row">
+        <div class="ms-name-cell">
+          <div class="ms-icon amber">TF</div>
+          <div class="ms-name-block">
+            <div class="ms-name-row"><p class="ms-name">terraform-module-author</p></div>
+            <p class="ms-name-meta">Author reusable Terraform modules with docs · DevOps · medium risk</p>
+          </div>
+        </div>
+        <span class="ms-status pub"><span class="ms-status-dot"></span>Published</span>
+        <div class="ms-dl-cell">
+          <div style="min-width:0;">
+            <p class="ms-dl-num">294</p>
+            <p class="ms-dl-sub"><span class="down">↓ 3%</span></p>
+          </div>
+          <svg class="ms-spark" viewBox="0 0 70 26" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#A32D2D" stroke-width="1.3"
+              points="0,10 7,11 14,10 21,12 28,11 35,13 42,12 49,14 56,13 63,15 70,16"/>
+          </svg>
+        </div>
+        <div>
+          <span class="ms-ver">v0.9.1</span>
+          <p class="ms-ver-date">6w ago</p>
+        </div>
+        <div>
+          <div class="ms-rating"><span class="star">★</span> 4.5</div>
+          <p class="ms-rating-n">11</p>
+        </div>
+        <div class="ms-actions-cell"><div class="ms-dots">⋯</div></div>
+      </div>
+
+      <!-- Row 6: newer -->
+      <div class="ms-row">
+        <div class="ms-name-cell">
+          <div class="ms-icon purple">GA</div>
+          <div class="ms-name-block">
+            <div class="ms-name-row"><p class="ms-name">gha-workflow-builder</p></div>
+            <p class="ms-name-meta">Compose GitHub Actions workflows with caching · DevOps · low risk</p>
+          </div>
+        </div>
+        <span class="ms-status pub"><span class="ms-status-dot"></span>Published</span>
+        <div class="ms-dl-cell">
+          <div style="min-width:0;">
+            <p class="ms-dl-num">130</p>
+            <p class="ms-dl-sub"><span class="up">↑ 52%</span></p>
+          </div>
+          <svg class="ms-spark" viewBox="0 0 70 26" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#1D9E75" stroke-width="1.3"
+              points="0,22 7,21 14,19 21,20 28,17 35,14 42,15 49,10 56,8 63,5 70,3"/>
+          </svg>
+        </div>
+        <div>
+          <span class="ms-ver">v1.2.0</span>
+          <p class="ms-ver-date">4d ago</p>
+        </div>
+        <div>
+          <div class="ms-rating"><span class="star">★</span> 4.4</div>
+          <p class="ms-rating-n">5</p>
+        </div>
+        <div class="ms-actions-cell"><div class="ms-dots">⋯</div></div>
+      </div>
+
+      <!-- Row 7: draft -->
+      <div class="ms-row draft">
+        <div class="ms-name-cell">
+          <div class="ms-icon gray">?</div>
+          <div class="ms-name-block">
+            <div class="ms-name-row"><p class="ms-name" style="color: var(--color-text-secondary);">untitled-skill</p></div>
+            <p class="ms-name-meta">Draft · last edited 5 days ago · not yet uploaded</p>
+          </div>
+        </div>
+        <span class="ms-status draft"><span class="ms-status-dot"></span>Draft</span>
+        <div class="ms-dl-cell">
+          <p class="ms-rating-empty">—</p>
+        </div>
+        <div>
+          <span class="ms-ver" style="opacity:0.5">—</span>
+        </div>
+        <div>
+          <p class="ms-rating-empty">—</p>
+        </div>
+        <div class="ms-actions-cell"><div class="ms-dots">⋯</div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>

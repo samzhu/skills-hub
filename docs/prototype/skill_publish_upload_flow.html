@@ -1,0 +1,616 @@
+<h2 class="sr-only">Skill publishing and upload flow mockup showing drag-and-drop upload, validation results, and risk assessment</h2>
+
+<style>
+  .pb-root { font-family: var(--font-sans); color: var(--color-text-primary); }
+  .pb-frame {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px;
+  }
+  .pb-app {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+  }
+
+  /* Top bar */
+  .pb-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .pb-brand { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; }
+  .pb-logo {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--color-text-primary); color: var(--color-background-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500;
+  }
+  .pb-crumbs { font-size: 13px; color: var(--color-text-tertiary); }
+  .pb-crumbs .sep { margin: 0 8px; }
+  .pb-crumbs .cur { color: var(--color-text-primary); }
+  .pb-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: #EEEDFE; color: #3C3489;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500;
+  }
+
+  /* Header */
+  .pb-hero { padding: 22px 26px 4px; }
+  .pb-h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+  .pb-sub { font-size: 13px; color: var(--color-text-secondary); margin: 0; }
+
+  /* Stepper */
+  .pb-stepper {
+    display: flex; align-items: center;
+    padding: 18px 26px 20px;
+    gap: 8px;
+  }
+  .pb-step { display: flex; align-items: center; gap: 8px; }
+  .pb-step-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500;
+    background: var(--color-background-secondary);
+    color: var(--color-text-tertiary);
+    border: 0.5px solid var(--color-border-tertiary);
+  }
+  .pb-step.done .pb-step-num {
+    background: #E1F5EE; color: #085041; border-color: transparent;
+  }
+  .pb-step.active .pb-step-num {
+    background: var(--color-text-primary); color: var(--color-background-primary);
+    border-color: transparent;
+  }
+  .pb-step-label { font-size: 12px; color: var(--color-text-tertiary); }
+  .pb-step.done .pb-step-label,
+  .pb-step.active .pb-step-label { color: var(--color-text-primary); font-weight: 500; }
+  .pb-step-line { flex: 1; height: 0.5px; background: var(--color-border-tertiary); margin: 0 4px; }
+  .pb-step-line.done { background: #9FE1CB; }
+
+  /* Body */
+  .pb-body {
+    display: grid; grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 22px; padding: 0 26px 24px;
+  }
+  .pb-main { min-width: 0; }
+
+  /* Drop zone with beam */
+  .pb-drop-wrap {
+    position: relative;
+    border-radius: var(--border-radius-lg);
+    padding: 1.5px;
+    background: var(--color-border-tertiary);
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .pb-drop-wrap::before {
+    content: '';
+    position: absolute;
+    inset: -40%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 280deg, #7F77DD 310deg, #378ADD 340deg, transparent 360deg);
+    animation: pb-spin 4s linear infinite;
+  }
+  @keyframes pb-spin { to { transform: rotate(360deg); } }
+  .pb-drop {
+    position: relative;
+    background: var(--color-background-primary);
+    border-radius: calc(var(--border-radius-lg) - 1.5px);
+    padding: 18px 20px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .pb-file-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: #EEEDFE; color: #3C3489;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  }
+  .pb-file-name { font-size: 14px; font-weight: 500; margin: 0 0 2px; }
+  .pb-file-meta { font-size: 12px; color: var(--color-text-tertiary); margin: 0; }
+  .pb-progress {
+    margin-top: 8px; height: 4px;
+    background: var(--color-background-secondary);
+    border-radius: 2px; overflow: hidden;
+    position: relative;
+  }
+  .pb-progress-fill {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg, #7F77DD, #1D9E75);
+    border-radius: 2px;
+  }
+  .pb-file-actions {
+    margin-left: auto; display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+  }
+  .pb-replace-btn {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-secondary);
+    color: var(--color-text-secondary);
+    font-size: 12px; padding: 6px 11px;
+    border-radius: var(--border-radius-md);
+  }
+  .pb-done-badge {
+    background: #E1F5EE; color: #085041;
+    font-size: 11px; padding: 3px 9px; border-radius: 999px;
+    font-weight: 500;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+
+  /* Section */
+  .pb-section {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .pb-sec-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .pb-sec-title-row { display: flex; align-items: center; gap: 10px; }
+  .pb-check-lg {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500;
+    flex-shrink: 0;
+  }
+  .pb-check-lg.pass { background: #E1F5EE; color: #085041; }
+  .pb-check-lg.warn { background: #FAEEDA; color: #633806; }
+  .pb-check-lg.fail { background: #FCEBEB; color: #791F1F; }
+  .pb-sec-title { font-size: 14px; font-weight: 500; margin: 0; }
+  .pb-sec-sub { font-size: 11px; color: var(--color-text-tertiary); margin: 1px 0 0; }
+
+  .pb-risk-tag {
+    font-size: 11px; padding: 2px 9px; border-radius: 999px; font-weight: 500;
+  }
+  .pb-risk-tag.low { background: #EAF3DE; color: #27500A; }
+
+  /* Frontmatter preview */
+  .pb-fm {
+    background: var(--color-background-secondary);
+    padding: 14px 16px;
+    font-family: var(--font-mono); font-size: 12px;
+    line-height: 1.75;
+  }
+  .pb-fm .k { color: var(--color-text-secondary); }
+  .pb-fm .v { color: var(--color-text-primary); }
+  .pb-fm .s { color: #3B6D11; }
+  .pb-fm .hr { color: var(--color-text-tertiary); }
+
+  .pb-fm-meta {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px; padding: 12px 16px;
+    border-top: 0.5px solid var(--color-border-tertiary);
+  }
+  .pb-fm-meta p { margin: 0; }
+  .pb-fm-meta .k {
+    font-size: 11px; color: var(--color-text-tertiary);
+    margin-bottom: 3px;
+  }
+  .pb-fm-meta .v { font-size: 13px; color: var(--color-text-primary); font-weight: 500; }
+
+  /* Risk checks */
+  .pb-check-list { padding: 6px 16px 10px; }
+  .pb-check-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0;
+    border-top: 0.5px solid var(--color-border-tertiary);
+    font-size: 13px;
+  }
+  .pb-check-row:first-child { border-top: none; }
+  .pb-check-icon {
+    width: 16px; height: 16px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 500;
+  }
+  .pb-check-icon.pass { background: #EAF3DE; color: #27500A; }
+  .pb-check-icon.warn { background: #FAEEDA; color: #633806; }
+  .pb-check-label { flex: 1; min-width: 0; }
+  .pb-check-label p { margin: 0; font-size: 13px; color: var(--color-text-primary); }
+  .pb-check-label p.hint { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+
+  /* File tree */
+  .pb-tree {
+    padding: 12px 16px;
+    font-family: var(--font-mono); font-size: 12px;
+    line-height: 1.85; color: var(--color-text-secondary);
+  }
+  .pb-tree .file-name { color: var(--color-text-primary); }
+  .pb-tree .badge {
+    background: #E1F5EE; color: #085041;
+    font-size: 10px; padding: 1px 6px; border-radius: 4px;
+    margin-left: 6px; font-family: var(--font-sans); font-weight: 500;
+  }
+  .pb-tree .badge.opt {
+    background: var(--color-background-secondary);
+    color: var(--color-text-tertiary);
+  }
+
+  /* Version input */
+  .pb-version-card {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .pb-version-label {
+    font-size: 12px; color: var(--color-text-secondary);
+    margin: 0 0 8px;
+  }
+  .pb-version-row {
+    display: flex; gap: 10px; align-items: center;
+  }
+  .pb-version-input {
+    flex: 1; font-family: var(--font-mono); font-size: 13px;
+    padding: 8px 12px;
+    border: 0.5px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+    background: var(--color-background-primary);
+    color: var(--color-text-primary);
+  }
+  .pb-version-bump {
+    display: flex; gap: 4px;
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-md);
+    padding: 3px;
+  }
+  .pb-version-bump span {
+    font-size: 11px; padding: 4px 10px; border-radius: 5px;
+    color: var(--color-text-secondary); font-family: var(--font-mono);
+  }
+  .pb-version-bump span.on {
+    background: var(--color-background-primary);
+    color: var(--color-text-primary); font-weight: 500;
+  }
+  .pb-version-hint {
+    font-size: 11px; color: var(--color-text-tertiary);
+    margin: 8px 0 0;
+  }
+
+  /* Footer actions */
+  .pb-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 18px;
+  }
+  .pb-cancel {
+    background: transparent; border: none;
+    color: var(--color-text-secondary);
+    font-size: 13px; padding: 8px 12px;
+  }
+  .pb-publish-wrap {
+    position: relative;
+    border-radius: var(--border-radius-md);
+    padding: 1px;
+    background: var(--color-border-tertiary);
+    overflow: hidden;
+  }
+  .pb-publish-wrap::before {
+    content: '';
+    position: absolute;
+    inset: -80%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 300deg, #1D9E75 330deg, #7F77DD 350deg, transparent 360deg);
+    animation: pb-spin 4s linear infinite;
+  }
+  .pb-publish {
+    position: relative;
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border: none;
+    font-size: 13px; font-weight: 500;
+    padding: 9px 18px;
+    border-radius: calc(var(--border-radius-md) - 1px);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Sidebar tips */
+  .pb-side {
+    display: flex; flex-direction: column; gap: 14px;
+    min-width: 0;
+  }
+  .pb-tips {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px;
+  }
+  .pb-tips-label {
+    font-size: 11px; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin: 0 0 10px;
+  }
+  .pb-tips-item {
+    font-size: 12.5px; color: var(--color-text-secondary);
+    line-height: 1.55; padding: 8px 0;
+    border-top: 0.5px solid var(--color-border-tertiary);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .pb-tips-item:first-of-type { border-top: none; padding-top: 2px; }
+  .pb-tips-item strong {
+    font-weight: 500; color: var(--color-text-primary);
+    display: block; margin-bottom: 2px;
+  }
+  .pb-tips-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--color-text-tertiary);
+    margin-top: 7px; flex-shrink: 0;
+  }
+
+  .pb-risk-summary {
+    background: #EAF3DE;
+    border-radius: var(--border-radius-lg);
+    padding: 14px;
+  }
+  .pb-risk-summary .title {
+    font-size: 13px; font-weight: 500;
+    margin: 0 0 4px; color: #173404;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pb-risk-summary .body {
+    font-size: 12px; color: #27500A;
+    line-height: 1.55; margin: 0;
+  }
+</style>
+
+<div class="pb-root">
+<div class="pb-frame">
+  <div class="pb-app">
+
+    <!-- Top bar -->
+    <div class="pb-topbar">
+      <div class="pb-brand">
+        <div class="pb-logo">S</div>
+        Skills Hub
+      </div>
+      <div class="pb-crumbs">
+        Browse <span class="sep">/</span> My skills <span class="sep">/</span> <span class="cur">Publish new version</span>
+      </div>
+      <div class="pb-avatar">MC</div>
+    </div>
+
+    <!-- Hero -->
+    <div class="pb-hero">
+      <h1 class="pb-h1">Publish a skill</h1>
+      <p class="pb-sub">Upload a SKILL.md bundle. We'll validate the format and scan for risks before publishing.</p>
+    </div>
+
+    <!-- Stepper -->
+    <div class="pb-stepper">
+      <div class="pb-step done">
+        <div class="pb-step-num">✓</div>
+        <span class="pb-step-label">Upload</span>
+      </div>
+      <div class="pb-step-line done"></div>
+      <div class="pb-step done">
+        <div class="pb-step-num">✓</div>
+        <span class="pb-step-label">Validate</span>
+      </div>
+      <div class="pb-step-line done"></div>
+      <div class="pb-step active">
+        <div class="pb-step-num">3</div>
+        <span class="pb-step-label">Review &amp; publish</span>
+      </div>
+      <div class="pb-step-line"></div>
+      <div class="pb-step">
+        <div class="pb-step-num">4</div>
+        <span class="pb-step-label">Live</span>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="pb-body">
+
+      <div class="pb-main">
+
+        <!-- Upload complete -->
+        <div class="pb-drop-wrap">
+          <div class="pb-drop">
+            <div class="pb-file-icon">zip</div>
+            <div style="flex: 1; min-width: 0;">
+              <p class="pb-file-name">docker-compose-helper-v2.1.0.zip</p>
+              <p class="pb-file-meta">84 KB · 12 files · uploaded just now</p>
+              <div class="pb-progress"><div class="pb-progress-fill"></div></div>
+            </div>
+            <div class="pb-file-actions">
+              <span class="pb-done-badge">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Uploaded
+              </span>
+              <button class="pb-replace-btn">Replace</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Validation: format -->
+        <div class="pb-section">
+          <div class="pb-sec-head">
+            <div class="pb-sec-title-row">
+              <div class="pb-check-lg pass">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div>
+                <p class="pb-sec-title">SKILL.md is valid</p>
+                <p class="pb-sec-sub">Parsed against agentskills.io specification</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="pb-fm">
+<span class="hr">---</span>
+<span class="k">name:</span> <span class="v">docker-compose-helper</span>
+<span class="k">description:</span> <span class="s">Generate, validate, and troubleshoot docker-compose files with multi-service awareness.</span>
+<span class="k">version:</span> <span class="v">2.1.0</span>
+<span class="k">author:</span> <span class="v">platform-team</span>
+<span class="k">license:</span> <span class="v">MIT</span>
+<span class="k">compatibility:</span> <span class="v">[claude-code, cursor, gemini-cli]</span>
+<span class="hr">---</span>
+          </div>
+
+          <div class="pb-fm-meta">
+            <div>
+              <p class="k">Name length</p>
+              <p class="v">22 / 64 chars</p>
+            </div>
+            <div>
+              <p class="k">Description length</p>
+              <p class="v">108 / 1024 chars</p>
+            </div>
+            <div>
+              <p class="k">Required fields</p>
+              <p class="v">All present</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Validation: bundle structure -->
+        <div class="pb-section">
+          <div class="pb-sec-head">
+            <div class="pb-sec-title-row">
+              <div class="pb-check-lg pass">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div>
+                <p class="pb-sec-title">Bundle structure looks good</p>
+                <p class="pb-sec-sub">12 files detected · no unknown directories</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="pb-tree">
+docker-compose-helper/<br>
+├── SKILL.md <span class="badge">required</span><br>
+├── references/ <span class="badge opt">optional</span><br>
+│&nbsp;&nbsp;&nbsp;├── compose-spec.md<br>
+│&nbsp;&nbsp;&nbsp;└── healthcheck-patterns.md<br>
+└── assets/ <span class="badge opt">optional</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;└── templates/<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── web-db.yml<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── microservice-stack.yml
+          </div>
+        </div>
+
+        <!-- Risk scan -->
+        <div class="pb-section">
+          <div class="pb-sec-head">
+            <div class="pb-sec-title-row">
+              <div class="pb-check-lg pass">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div>
+                <p class="pb-sec-title">Risk scan complete</p>
+                <p class="pb-sec-sub">5 checks · engine v1.4 · 0.8s</p>
+              </div>
+            </div>
+            <span class="pb-risk-tag low">Low risk</span>
+          </div>
+
+          <div class="pb-check-list">
+            <div class="pb-check-row">
+              <div class="pb-check-icon pass">✓</div>
+              <div class="pb-check-label">
+                <p>No scripts/ directory present</p>
+                <p class="hint">Pure markdown skill — automatic low-risk classification</p>
+              </div>
+            </div>
+            <div class="pb-check-row">
+              <div class="pb-check-icon pass">✓</div>
+              <div class="pb-check-label">
+                <p>No dangerous shell commands referenced</p>
+                <p class="hint">No rm -rf, curl | bash, chmod 777, or eval patterns</p>
+              </div>
+            </div>
+            <div class="pb-check-row">
+              <div class="pb-check-icon pass">✓</div>
+              <div class="pb-check-label">
+                <p>No sensitive path references</p>
+                <p class="hint">No mentions of ~/.ssh, ~/.aws, /etc/shadow</p>
+              </div>
+            </div>
+            <div class="pb-check-row">
+              <div class="pb-check-icon pass">✓</div>
+              <div class="pb-check-label">
+                <p>No secrets or credential patterns</p>
+                <p class="hint">API key, token, and password patterns all clear</p>
+              </div>
+            </div>
+            <div class="pb-check-row">
+              <div class="pb-check-icon warn">!</div>
+              <div class="pb-check-label">
+                <p>2 external URLs referenced — both trusted</p>
+                <p class="hint">docs.docker.com, hub.docker.com listed in references/</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Version input -->
+        <div class="pb-version-card">
+          <p class="pb-version-label">Version number</p>
+          <div class="pb-version-row">
+            <input class="pb-version-input" value="2.1.0" />
+            <div class="pb-version-bump">
+              <span>major</span>
+              <span class="on">minor</span>
+              <span>patch</span>
+            </div>
+          </div>
+          <p class="pb-version-hint">Previous version: v2.0.1 · published 2 weeks ago. Older versions remain downloadable.</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="pb-footer">
+          <button class="pb-cancel">← Back</button>
+          <div class="pb-publish-wrap">
+            <button class="pb-publish">
+              Publish v2.1.0
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Sidebar -->
+      <aside class="pb-side">
+
+        <div class="pb-risk-summary">
+          <p class="title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+            Safe to auto-publish
+          </p>
+          <p class="body">This bundle contains no executable scripts and passes all automated checks. It will go live immediately after you click publish.</p>
+        </div>
+
+        <div class="pb-tips">
+          <p class="pb-tips-label">Publishing tips</p>
+          <div class="pb-tips-item">
+            <div class="pb-tips-dot"></div>
+            <div>
+              <strong>Describe when to use it</strong>
+              The description is what semantic search indexes against. Focus on the use case, not the mechanics.
+            </div>
+          </div>
+          <div class="pb-tips-item">
+            <div class="pb-tips-dot"></div>
+            <div>
+              <strong>Bump version semantically</strong>
+              Breaking changes → major. New capabilities → minor. Fixes &amp; wording → patch.
+            </div>
+          </div>
+          <div class="pb-tips-item">
+            <div class="pb-tips-dot"></div>
+            <div>
+              <strong>Scripts trigger review</strong>
+              Adding a scripts/ folder will auto-flag the bundle for risk classification.
+            </div>
+          </div>
+        </div>
+
+      </aside>
+    </div>
+  </div>
+</div>
+</div>

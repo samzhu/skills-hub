@@ -1,0 +1,638 @@
+<h2 class="sr-only">Docs page for writing your first SKILL.md bundle, covering the minimal example, bundle structure, required fields, description writing tips, and risk tier rules</h2>
+
+<style>
+  .dc-root { font-family: var(--font-sans); color: var(--color-text-primary); }
+  .dc-frame {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px;
+  }
+  .dc-app {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+  }
+
+  /* Top bar */
+  .dc-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .dc-brand { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; }
+  .dc-logo {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: var(--color-text-primary); color: var(--color-background-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500;
+  }
+  .dc-nav { display: flex; gap: 18px; font-size: 13px; color: var(--color-text-secondary); }
+  .dc-nav .on { color: var(--color-text-primary); font-weight: 500; }
+  .dc-search {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-md);
+    padding: 5px 10px;
+    font-size: 12px; color: var(--color-text-tertiary);
+  }
+  .dc-kbd {
+    font-family: var(--font-mono); font-size: 10px;
+    padding: 1px 5px; border-radius: 3px;
+    background: var(--color-background-primary);
+    color: var(--color-text-tertiary);
+    border: 0.5px solid var(--color-border-tertiary);
+    margin-left: 8px;
+  }
+
+  /* Body — two col */
+  .dc-body {
+    display: grid;
+    grid-template-columns: 168px minmax(0, 1fr);
+    min-height: 600px;
+  }
+
+  /* Left TOC */
+  .dc-side {
+    border-right: 0.5px solid var(--color-border-tertiary);
+    padding: 18px 14px;
+    background: var(--color-background-primary);
+  }
+  .dc-side-group { margin-bottom: 18px; }
+  .dc-side-label {
+    font-size: 10px; color: var(--color-text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin: 0 0 8px; padding: 0 6px;
+  }
+  .dc-side-item {
+    display: block;
+    font-size: 12.5px; color: var(--color-text-secondary);
+    padding: 5px 10px; border-radius: 5px;
+    line-height: 1.4;
+  }
+  .dc-side-item.active {
+    background: #EEEDFE;
+    color: #26215C;
+    font-weight: 500;
+    border-left: 0;
+    position: relative;
+  }
+
+  /* Main article */
+  .dc-main { padding: 24px 28px 26px; min-width: 0; }
+
+  .dc-crumbs {
+    font-size: 11px; color: var(--color-text-tertiary);
+    margin-bottom: 14px;
+  }
+  .dc-crumbs .sep { margin: 0 6px; }
+  .dc-crumbs .cur { color: var(--color-text-primary); }
+
+  .dc-title {
+    font-size: 24px; font-weight: 500; margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+  .dc-meta {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11.5px; color: var(--color-text-tertiary);
+    margin-bottom: 22px;
+    padding-bottom: 16px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .dc-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--color-border-secondary); }
+  .dc-meta .github {
+    margin-left: auto;
+    color: var(--color-text-secondary);
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  .dc-intro {
+    font-size: 14.5px; color: var(--color-text-primary);
+    line-height: 1.7; margin: 0 0 24px;
+  }
+  .dc-p {
+    font-size: 14px; color: var(--color-text-secondary);
+    line-height: 1.7; margin: 0 0 16px;
+  }
+  .dc-p code, .dc-intro code, .dc-li code, .dc-example code {
+    font-family: var(--font-mono); font-size: 12.5px;
+    background: var(--color-background-secondary);
+    padding: 1px 6px; border-radius: 4px;
+    color: var(--color-text-primary);
+  }
+
+  .dc-h2 {
+    font-size: 18px; font-weight: 500; margin: 28px 0 10px;
+    display: flex; align-items: center; gap: 8px;
+    scroll-margin-top: 20px;
+  }
+  .dc-h2 .anchor {
+    font-family: var(--font-mono);
+    color: var(--color-text-tertiary);
+    font-size: 15px; font-weight: 400;
+    opacity: 0.6;
+  }
+
+  .dc-h3 {
+    font-size: 14.5px; font-weight: 500; margin: 20px 0 8px;
+  }
+
+  /* Code block */
+  .dc-code {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+    margin: 0 0 16px;
+    background: var(--color-background-primary);
+  }
+  .dc-code-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 12px;
+    background: var(--color-background-secondary);
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--color-text-tertiary);
+  }
+  .dc-code-head .file { color: var(--color-text-secondary); }
+  .dc-code-copy {
+    display: flex; align-items: center; gap: 4px;
+    font-family: var(--font-sans); font-size: 11px;
+    color: var(--color-text-secondary);
+    padding: 2px 7px; border-radius: 4px;
+  }
+  .dc-code-body {
+    padding: 12px 14px;
+    font-family: var(--font-mono); font-size: 12px;
+    line-height: 1.75;
+    white-space: pre;
+    overflow-x: auto;
+    color: var(--color-text-primary);
+  }
+  .dc-code-body .kw  { color: var(--color-text-secondary); }
+  .dc-code-body .str { color: #3B6D11; }
+  .dc-code-body .cmt { color: var(--color-text-tertiary); }
+  .dc-code-body .num { color: #534AB7; }
+  .dc-code-body .mark {
+    background: #EEEDFE; color: #26215C;
+    padding: 0 3px; border-radius: 3px;
+  }
+  .dc-code-body .sep { color: var(--color-text-tertiary); }
+
+  /* Tree */
+  .dc-tree-line {
+    padding: 0;
+  }
+  .dc-tree-line .name { color: var(--color-text-primary); }
+  .dc-tree-line .req {
+    display: inline-block;
+    font-family: var(--font-sans); font-size: 10px;
+    padding: 1px 7px; border-radius: 999px;
+    margin-left: 8px; font-weight: 500;
+  }
+  .dc-tree-line .req.need { background: #EEEDFE; color: #3C3489; }
+  .dc-tree-line .req.opt  { background: var(--color-background-secondary); color: var(--color-text-tertiary); }
+  .dc-tree-line .req.scan { background: #FAEEDA; color: #633806; }
+
+  /* Callouts */
+  .dc-callout {
+    border: 0.5px solid;
+    border-radius: var(--border-radius-md);
+    padding: 12px 14px;
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 13px; line-height: 1.6;
+    margin: 0 0 16px;
+  }
+  .dc-callout.info {
+    border-color: #CECBF6;
+    background: #F7F6FE;
+    color: #26215C;
+  }
+  .dc-callout.info .dc-co-icon { color: #3C3489; }
+  .dc-callout.warn {
+    border-color: #FAC775;
+    background: #FDF7EA;
+    color: #4A1B0C;
+  }
+  .dc-callout.warn .dc-co-icon { color: #633806; }
+  .dc-co-icon { flex-shrink: 0; margin-top: 2px; }
+  .dc-callout strong { font-weight: 500; }
+
+  /* Field reference */
+  .dc-field {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-md);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    background: var(--color-background-primary);
+  }
+  .dc-field-head {
+    display: flex; align-items: baseline; gap: 10px;
+    margin-bottom: 5px; flex-wrap: wrap;
+  }
+  .dc-field-name {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+    color: var(--color-text-primary);
+    background: var(--color-background-secondary);
+    padding: 1px 7px; border-radius: 4px;
+  }
+  .dc-field-tags {
+    display: flex; gap: 5px; font-size: 10.5px;
+    color: var(--color-text-tertiary);
+  }
+  .dc-field-tags .req { color: #791F1F; font-weight: 500; }
+  .dc-field-tags .opt { color: var(--color-text-tertiary); }
+  .dc-field-tags .dot { width: 2px; height: 2px; border-radius: 50%; background: var(--color-border-secondary); align-self: center; }
+  .dc-field-desc {
+    font-size: 12.5px; color: var(--color-text-secondary);
+    line-height: 1.55; margin: 0;
+  }
+  .dc-field-desc code {
+    font-family: var(--font-mono); font-size: 11.5px;
+    background: var(--color-background-secondary);
+    padding: 1px 5px; border-radius: 3px;
+    color: var(--color-text-primary);
+  }
+
+  /* Good vs bad comparison */
+  .dc-compare {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; margin-bottom: 16px;
+  }
+  .dc-compare-card {
+    border: 0.5px solid;
+    border-radius: var(--border-radius-md);
+    padding: 12px;
+    font-size: 12px;
+  }
+  .dc-compare-card.good {
+    border-color: #C0DD97;
+    background: #F4F9EB;
+  }
+  .dc-compare-card.bad {
+    border-color: #F7C1C1;
+    background: #FDF1F1;
+  }
+  .dc-compare-label {
+    font-size: 10.5px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin: 0 0 6px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .dc-compare-label.good { color: #27500A; }
+  .dc-compare-label.bad  { color: #791F1F; }
+  .dc-compare-body {
+    font-family: var(--font-mono); font-size: 11.5px;
+    color: var(--color-text-primary); line-height: 1.55;
+    margin: 0 0 8px;
+  }
+  .dc-compare-why {
+    font-family: var(--font-sans); font-size: 11.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    padding-top: 8px;
+    border-top: 0.5px solid;
+    margin: 0;
+  }
+  .dc-compare-card.good .dc-compare-why { border-top-color: #C0DD97; }
+  .dc-compare-card.bad  .dc-compare-why { border-top-color: #F7C1C1; }
+
+  /* Risk tiers */
+  .dc-risk-row {
+    display: grid;
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 14px; align-items: flex-start;
+    padding: 10px 0;
+    border-top: 0.5px solid var(--color-border-tertiary);
+    font-size: 13px;
+  }
+  .dc-risk-row:first-of-type { border-top: none; padding-top: 2px; }
+  .dc-risk-pill {
+    font-size: 11px; padding: 2px 9px; border-radius: 999px;
+    font-weight: 500; display: inline-block;
+    text-align: center; flex-shrink: 0;
+  }
+  .dc-risk-pill.low  { background: #EAF3DE; color: #27500A; }
+  .dc-risk-pill.med  { background: #FAEEDA; color: #633806; }
+  .dc-risk-pill.high { background: #FCEBEB; color: #791F1F; }
+  .dc-risk-txt {
+    font-size: 12.5px; color: var(--color-text-secondary);
+    line-height: 1.55;
+  }
+  .dc-risk-txt strong {
+    color: var(--color-text-primary); font-weight: 500;
+  }
+
+  /* Final CTA block */
+  .dc-final {
+    margin-top: 26px; padding: 18px 18px;
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 14px;
+  }
+  .dc-final-body { min-width: 0; }
+  .dc-final-title {
+    font-size: 14px; font-weight: 500; margin: 0 0 2px;
+  }
+  .dc-final-sub {
+    font-size: 12px; color: var(--color-text-secondary); margin: 0;
+  }
+  .dc-final-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+  .dc-cta-wrap {
+    position: relative;
+    border-radius: var(--border-radius-md);
+    padding: 1px;
+    background: var(--color-border-tertiary);
+    overflow: hidden;
+  }
+  .dc-cta-wrap::before {
+    content: '';
+    position: absolute; inset: -80%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 290deg, #7F77DD 320deg, #378ADD 345deg, transparent 360deg);
+    animation: dc-spin 4s linear infinite;
+  }
+  @keyframes dc-spin { to { transform: rotate(360deg); } }
+  .dc-cta {
+    position: relative;
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border: none; font-weight: 500;
+    font-size: 13px; padding: 9px 16px;
+    border-radius: calc(var(--border-radius-md) - 1px);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .dc-cta-secondary {
+    background: transparent; border: none;
+    color: var(--color-text-secondary);
+    font-size: 12.5px; padding: 8px 10px;
+  }
+
+  /* Bottom prev/next */
+  .dc-pagenav {
+    display: flex; justify-content: space-between; gap: 10px;
+    margin-top: 20px;
+    font-size: 12px;
+  }
+  .dc-pn {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-md);
+    padding: 10px 12px; flex: 1;
+  }
+  .dc-pn-label {
+    color: var(--color-text-tertiary);
+    margin: 0 0 2px;
+    font-size: 11px;
+  }
+  .dc-pn-title {
+    font-size: 13px; color: var(--color-text-primary); font-weight: 500;
+    margin: 0;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .dc-pn.next { text-align: right; }
+</style>
+
+<div class="dc-root">
+<div class="dc-frame">
+  <div class="dc-app">
+
+    <!-- Top bar -->
+    <div class="dc-topbar">
+      <div class="dc-brand">
+        <div class="dc-logo">S</div>
+        Skills Hub
+      </div>
+      <div class="dc-nav">
+        <span>Browse</span>
+        <span>My skills</span>
+        <span>Analytics</span>
+        <span class="on">Docs</span>
+      </div>
+      <div class="dc-search">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        Search docs
+        <span class="dc-kbd">⌘K</span>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="dc-body">
+
+      <!-- Left nav -->
+      <aside class="dc-side">
+        <div class="dc-side-group">
+          <p class="dc-side-label">Getting started</p>
+          <a class="dc-side-item">Overview</a>
+          <a class="dc-side-item active">Your first skill</a>
+        </div>
+        <div class="dc-side-group">
+          <p class="dc-side-label">Reference</p>
+          <a class="dc-side-item">SKILL.md spec</a>
+          <a class="dc-side-item">Frontmatter fields</a>
+          <a class="dc-side-item">Bundle structure</a>
+          <a class="dc-side-item">Risk tiers</a>
+        </div>
+        <div class="dc-side-group">
+          <p class="dc-side-label">Publishing</p>
+          <a class="dc-side-item">Upload &amp; validation</a>
+          <a class="dc-side-item">Versioning</a>
+          <a class="dc-side-item">Semantic search</a>
+        </div>
+        <div class="dc-side-group">
+          <p class="dc-side-label">API &amp; webhooks</p>
+          <a class="dc-side-item">REST reference</a>
+          <a class="dc-side-item">Event payloads</a>
+        </div>
+      </aside>
+
+      <!-- Main article -->
+      <main class="dc-main">
+
+        <p class="dc-crumbs">Docs <span class="sep">/</span> Getting started <span class="sep">/</span> <span class="cur">Your first skill</span></p>
+
+        <h1 class="dc-title">Write your first skill</h1>
+
+        <div class="dc-meta">
+          <span>Updated 2 weeks ago</span>
+          <span class="dot"></span>
+          <span>5 min read</span>
+          <span class="dot"></span>
+          <span>Based on agentskills.io v1.2</span>
+          <a class="github" href="#">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Edit on GitHub
+          </a>
+        </div>
+
+        <p class="dc-intro">This is the walkthrough for authors who haven't published before. You'll leave with a working <code>SKILL.md</code> bundle and a mental model for what the auto-scanner checks at publish time. Nothing here is tied to a specific agent — the <a href="#" style="color: var(--color-text-primary); text-decoration: underline; text-decoration-color: var(--color-border-secondary);">agentskills.io format</a> works across every compatible tool.</p>
+
+        <!-- Minimum viable skill -->
+        <h2 class="dc-h2">The minimum viable skill <span class="anchor">#</span></h2>
+        <p class="dc-p">A valid bundle needs exactly one file: <code>SKILL.md</code> with YAML frontmatter and a markdown body. Everything else — <code>scripts/</code>, <code>references/</code>, <code>assets/</code> — is optional. Start here:</p>
+
+        <div class="dc-code">
+          <div class="dc-code-head">
+            <span class="file">date-formatter/SKILL.md</span>
+            <span class="dc-code-copy">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              Copy
+            </span>
+          </div>
+          <div class="dc-code-body"><span class="sep">---</span>
+<span class="kw">name:</span> <span class="mark">date-formatter</span>
+<span class="kw">description:</span> <span class="str">Convert between common date formats. Use when the</span>
+  <span class="str">user pastes a date string and asks to reformat, or</span>
+  <span class="str">when producing structured date output.</span>
+<span class="kw">version:</span> <span class="num">1.0.0</span>
+<span class="kw">license:</span> <span class="str">MIT</span>
+<span class="sep">---</span>
+
+<span class="cmt"># Date formatter</span>
+
+Invoke this skill whenever the user needs to convert a
+date between formats. Accepts free-form input like
+<span class="str">"Jan 3, 2026"</span> or <span class="str">"2026-01-03T08:00Z"</span> and produces any
+ISO 8601 or RFC 2822 variant.
+
+<span class="cmt">## When to use</span>
+- The user pastes a date and asks to reformat it
+- Output needs a specific timezone or locale</div>
+        </div>
+
+        <div class="dc-callout info">
+          <svg class="dc-co-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          <div><strong>Only <code>name</code> and <code>description</code> are required.</strong> Everything else is optional. This bundle passes validation and auto-publishes at low risk because there's no <code>scripts/</code> folder.</div>
+        </div>
+
+        <!-- Bundle structure -->
+        <h2 class="dc-h2">The bundle <span class="anchor">#</span></h2>
+        <p class="dc-p">Once you outgrow a single file, organize your bundle into the four conventional folders. Only <code>SKILL.md</code> is required; the rest are loaded on demand by the agent or used during runtime.</p>
+
+        <div class="dc-code">
+          <div class="dc-code-head">
+            <span class="file">date-formatter/</span>
+            <span class="dc-code-copy">tree</span>
+          </div>
+          <div class="dc-code-body"><span class="dc-tree-line"><span class="name">date-formatter/</span></span>
+<span class="dc-tree-line"><span class="sep">├──</span> <span class="name">SKILL.md</span><span class="req need">required</span></span>
+<span class="dc-tree-line"><span class="sep">├──</span> <span class="name">scripts/</span><span class="req scan">triggers scan</span></span>
+<span class="dc-tree-line"><span class="sep">│   └──</span> <span class="name">normalize.sh</span></span>
+<span class="dc-tree-line"><span class="sep">├──</span> <span class="name">references/</span><span class="req opt">optional</span></span>
+<span class="dc-tree-line"><span class="sep">│   └──</span> <span class="name">iso-8601.md</span></span>
+<span class="dc-tree-line"><span class="sep">└──</span> <span class="name">assets/</span><span class="req opt">optional</span></span>
+<span class="dc-tree-line"><span class="sep">    └──</span> <span class="name">examples.yaml</span></span></div>
+        </div>
+
+        <!-- Required fields -->
+        <h2 class="dc-h2">Required fields <span class="anchor">#</span></h2>
+
+        <div class="dc-field">
+          <div class="dc-field-head">
+            <span class="dc-field-name">name</span>
+            <div class="dc-field-tags">
+              <span class="req">required</span>
+              <span class="dot"></span>
+              <span>string</span>
+              <span class="dot"></span>
+              <span>≤ 64 chars</span>
+            </div>
+          </div>
+          <p class="dc-field-desc">Lowercase, hyphen-separated. Unique within your org — publishing a second skill with the same name will bump the version instead of creating a new one. Used in URLs, CLI commands, and skill imports. Example: <code>docker-compose-helper</code></p>
+        </div>
+
+        <div class="dc-field">
+          <div class="dc-field-head">
+            <span class="dc-field-name">description</span>
+            <div class="dc-field-tags">
+              <span class="req">required</span>
+              <span class="dot"></span>
+              <span>string</span>
+              <span class="dot"></span>
+              <span>≤ 1024 chars</span>
+            </div>
+          </div>
+          <p class="dc-field-desc">One concise paragraph covering what the skill does and when an agent should invoke it. Semantic search indexes against this field — write it like a trigger condition, not a marketing blurb. See the next section for examples.</p>
+        </div>
+
+        <p class="dc-p" style="color: var(--color-text-tertiary); font-size: 12.5px;">Optional fields: <code>version</code>, <code>author</code>, <code>license</code>, <code>compatibility</code>, <code>metadata</code>, <code>allowed-tools</code>. See the <a href="#" style="color: var(--color-text-secondary);">full frontmatter reference</a>.</p>
+
+        <!-- Writing descriptions -->
+        <h2 class="dc-h2">Writing a description that works <span class="anchor">#</span></h2>
+        <p class="dc-p">Semantic search embeds your description with Gemini and matches user queries against the vector. The model picks up on concrete verbs, trigger conditions, and domain nouns — it ignores marketing adjectives. Two examples from the same skill:</p>
+
+        <div class="dc-compare">
+          <div class="dc-compare-card good">
+            <p class="dc-compare-label good">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Indexes well
+            </p>
+            <p class="dc-compare-body">Generate and validate docker-compose files with multi-service awareness. Use when the user edits compose.yml or needs a new stack.</p>
+            <p class="dc-compare-why">Concrete verbs ("generate", "validate"), domain noun ("compose.yml"), trigger condition ("when the user edits"). Matches queries about Docker, orchestration, YAML, and stacks.</p>
+          </div>
+          <div class="dc-compare-card bad">
+            <p class="dc-compare-label bad">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+              Too vague
+            </p>
+            <p class="dc-compare-body">The best helper for Docker stuff — easy to use, powerful, and works with any deployment scenario you throw at it.</p>
+            <p class="dc-compare-why">Adjectives without content. No verbs the embedding can anchor on, no trigger condition. "Docker stuff" is too broad to rank above unrelated skills.</p>
+          </div>
+        </div>
+
+        <!-- Risk tiers -->
+        <h2 class="dc-h2">What triggers each risk tier <span class="anchor">#</span></h2>
+        <p class="dc-p">Every publish runs through the auto-scanner. The tier determines whether the skill goes live immediately or waits for human review.</p>
+
+        <div style="margin-bottom: 16px;">
+          <div class="dc-risk-row">
+            <span class="dc-risk-pill low">Low</span>
+            <p class="dc-risk-txt"><strong>Publishes immediately.</strong> No <code style="font-family: var(--font-mono); font-size: 11.5px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 3px;">scripts/</code> folder, no external URLs, clean frontmatter. This is the default path for most well-written SKILL.md bundles.</p>
+          </div>
+          <div class="dc-risk-row">
+            <span class="dc-risk-pill med">Medium</span>
+            <p class="dc-risk-txt"><strong>Publishes with a warning badge.</strong> Scripts exist but no dangerous patterns detected — up to 3 external URLs, all on the trusted-source registry. Consumers see the tier clearly in search.</p>
+          </div>
+          <div class="dc-risk-row">
+            <span class="dc-risk-pill high">High</span>
+            <p class="dc-risk-txt"><strong>Blocked until a reviewer approves.</strong> Triggered by <code style="font-family: var(--font-mono); font-size: 11.5px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 3px;">rm -rf</code> on user paths, <code style="font-family: var(--font-mono); font-size: 11.5px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 3px;">curl | bash</code>, reads from <code style="font-family: var(--font-mono); font-size: 11.5px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 3px;">~/.ssh</code> or <code style="font-family: var(--font-mono); font-size: 11.5px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 3px;">~/.aws</code>, or untrusted domains.</p>
+          </div>
+        </div>
+
+        <div class="dc-callout warn">
+          <svg class="dc-co-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+          <div><strong>High-risk isn't a rejection.</strong> A reviewer will either approve it (with a note in the public audit log), ask you to fix specific findings, or reject it. Full rule catalog is at <a href="#" style="color: #4A1B0C; text-decoration: underline;">/docs/risk-tiers</a>.</div>
+        </div>
+
+        <!-- Final CTA -->
+        <div class="dc-final">
+          <div class="dc-final-body">
+            <p class="dc-final-title">Ready to publish?</p>
+            <p class="dc-final-sub">You've got a bundle, the frontmatter is clean, and you know what the scanner checks. Ship it.</p>
+          </div>
+          <div class="dc-final-actions">
+            <button class="dc-cta-secondary">See more examples</button>
+            <div class="dc-cta-wrap">
+              <button class="dc-cta">
+                Upload your bundle
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Page nav -->
+        <div class="dc-pagenav">
+          <div class="dc-pn">
+            <p class="dc-pn-label">← Previous</p>
+            <p class="dc-pn-title">Overview</p>
+          </div>
+          <div class="dc-pn next">
+            <p class="dc-pn-label">Next →</p>
+            <p class="dc-pn-title">SKILL.md spec</p>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+</div>
+</div>

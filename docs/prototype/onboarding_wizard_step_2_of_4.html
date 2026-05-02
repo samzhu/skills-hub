@@ -1,0 +1,503 @@
+<h2 class="sr-only">Onboarding wizard step 2 of 4 asking the new user about their primary intent, agent tools, and topic interests to personalize their Skills Hub experience</h2>
+
+<style>
+  .ow-root { font-family: var(--font-sans); color: var(--color-text-primary); }
+  .ow-frame {
+    background: var(--color-background-secondary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px;
+  }
+  .ow-app {
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+  }
+
+  /* Top bar — minimal, no full nav */
+  .ow-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 20px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .ow-brand { display: flex; align-items: center; gap: 10px; }
+  .ow-logo {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: var(--color-text-primary); color: var(--color-background-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500;
+  }
+  .ow-brand-name { font-size: 14px; font-weight: 500; }
+  .ow-brand-badge {
+    font-size: 10px; padding: 2px 7px; border-radius: 4px;
+    background: #EEEDFE; color: #3C3489;
+    font-weight: 500; margin-left: 6px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .ow-step-mini {
+    font-size: 12px; color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .ow-step-mini .total { color: var(--color-text-tertiary); }
+  .ow-exit {
+    font-size: 12px; color: var(--color-text-tertiary);
+    background: transparent; border: none;
+    padding: 4px 8px;
+  }
+
+  /* Stepper */
+  .ow-progress {
+    display: flex; align-items: center;
+    padding: 18px 26px 18px;
+    gap: 6px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    background: var(--color-background-secondary);
+  }
+  .ow-step-item { display: flex; align-items: center; gap: 8px; }
+  .ow-step-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500;
+    background: var(--color-background-primary);
+    color: var(--color-text-tertiary);
+    border: 0.5px solid var(--color-border-tertiary);
+    flex-shrink: 0;
+  }
+  .ow-step-item.done .ow-step-dot {
+    background: #E1F5EE; color: #085041;
+    border-color: transparent;
+  }
+  .ow-step-item.active .ow-step-dot {
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border-color: transparent;
+  }
+  .ow-step-label {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+  }
+  .ow-step-item.done .ow-step-label,
+  .ow-step-item.active .ow-step-label {
+    color: var(--color-text-primary); font-weight: 500;
+  }
+  .ow-step-line {
+    flex: 1; height: 0.5px;
+    background: var(--color-border-tertiary);
+    margin: 0 4px;
+  }
+  .ow-step-line.done { background: #9FE1CB; }
+
+  /* Main content */
+  .ow-main {
+    padding: 28px 36px 20px;
+  }
+
+  .ow-greet { margin-bottom: 22px; }
+  .ow-eyebrow {
+    font-size: 12px; color: #3C3489;
+    margin: 0 0 6px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .ow-eyebrow .sparkle {
+    font-family: var(--font-serif); font-style: italic;
+    color: #7F77DD;
+  }
+  .ow-h1 {
+    font-size: 22px; font-weight: 500; margin: 0 0 6px;
+    letter-spacing: -0.005em;
+  }
+  .ow-sub {
+    font-size: 13px; color: var(--color-text-secondary);
+    line-height: 1.6; margin: 0;
+    max-width: 480px;
+  }
+
+  /* Question block */
+  .ow-q {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .ow-q:last-of-type { border-bottom: none; }
+  .ow-q-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .ow-q-label {
+    font-size: 13px; font-weight: 500; margin: 0;
+  }
+  .ow-q-hint {
+    font-size: 11px; color: var(--color-text-tertiary);
+    margin: 0;
+  }
+  .ow-q-count {
+    font-size: 11px; color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+  .ow-q-count .num { color: var(--color-text-primary); font-weight: 500; }
+
+  /* Role cards */
+  .ow-roles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .ow-role {
+    position: relative;
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    padding: 14px;
+    background: var(--color-background-primary);
+    min-width: 0;
+  }
+  .ow-role.selected {
+    background: #F7F6FE;
+    border-color: #AFA9EC;
+  }
+  .ow-role-icon {
+    width: 30px; height: 30px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+    background: var(--color-background-secondary);
+    color: var(--color-text-secondary);
+  }
+  .ow-role.selected .ow-role-icon {
+    background: #EEEDFE;
+    color: #3C3489;
+  }
+  .ow-role-title {
+    font-size: 13px; font-weight: 500; margin: 0 0 4px;
+  }
+  .ow-role.selected .ow-role-title { color: #26215C; }
+  .ow-role-desc {
+    font-size: 11.5px; color: var(--color-text-tertiary);
+    line-height: 1.5; margin: 0;
+  }
+  .ow-role.selected .ow-role-desc { color: #534AB7; }
+  .ow-role-check {
+    position: absolute;
+    top: 10px; right: 10px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #3C3489; color: #EEEDFE;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
+  }
+  .ow-role-check.hidden {
+    background: transparent; border: 0.5px solid var(--color-border-secondary);
+    color: transparent;
+  }
+
+  /* Chip grid */
+  .ow-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .ow-chip {
+    font-size: 12.5px; padding: 6px 12px; border-radius: 999px;
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    color: var(--color-text-secondary);
+    display: inline-flex; align-items: center; gap: 5px;
+    cursor: pointer;
+  }
+  .ow-chip.selected {
+    background: #EEEDFE;
+    border-color: #AFA9EC;
+    color: #26215C;
+    font-weight: 500;
+  }
+  .ow-chip .chip-check {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #3C3489; color: #EEEDFE;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 7px;
+  }
+
+  /* Live preview */
+  .ow-preview {
+    background: #F7F6FE;
+    border: 0.5px solid #CECBF6;
+    border-radius: var(--border-radius-lg);
+    padding: 12px 14px;
+    display: flex; gap: 10px; align-items: flex-start;
+    margin-top: 6px;
+  }
+  .ow-preview-icon {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: var(--color-background-primary);
+    color: #3C3489;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-family: var(--font-serif); font-style: italic;
+    font-size: 13px;
+  }
+  .ow-preview-body { flex: 1; min-width: 0; }
+  .ow-preview-title {
+    font-size: 11px; color: #534AB7;
+    margin: 0 0 3px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .ow-preview-text {
+    font-size: 12.5px; color: #26215C;
+    line-height: 1.5; margin: 0;
+  }
+  .ow-preview-text strong {
+    font-weight: 500;
+  }
+
+  /* Mini skill preview row */
+  .ow-preview-skills {
+    display: flex; gap: 5px; margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .ow-mini-skill {
+    font-size: 10.5px;
+    background: var(--color-background-primary);
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 0.5px solid #CECBF6;
+    color: #3C3489;
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--font-mono);
+  }
+  .ow-mini-skill .dl {
+    color: var(--color-text-tertiary); font-family: var(--font-sans);
+  }
+
+  /* Footer nav */
+  .ow-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 26px;
+    border-top: 0.5px solid var(--color-border-tertiary);
+    background: var(--color-background-secondary);
+  }
+  .ow-back {
+    background: transparent; border: none;
+    color: var(--color-text-secondary);
+    font-size: 13px; padding: 8px 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ow-footer-right {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .ow-skip {
+    background: transparent; border: none;
+    color: var(--color-text-tertiary);
+    font-size: 12.5px; padding: 4px 0;
+    text-decoration: underline;
+    text-decoration-color: var(--color-border-secondary);
+    text-underline-offset: 3px;
+  }
+
+  /* Continue CTA with beam */
+  .ow-cta-wrap {
+    position: relative;
+    border-radius: var(--border-radius-md);
+    padding: 1px;
+    background: var(--color-border-tertiary);
+    overflow: hidden;
+  }
+  .ow-cta-wrap::before {
+    content: '';
+    position: absolute; inset: -80%;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 290deg, #7F77DD 320deg, #378ADD 345deg, transparent 360deg);
+    animation: ow-spin 4s linear infinite;
+  }
+  @keyframes ow-spin { to { transform: rotate(360deg); } }
+  .ow-cta {
+    position: relative;
+    background: var(--color-text-primary);
+    color: var(--color-background-primary);
+    border: none; font-weight: 500;
+    font-size: 13px; padding: 9px 18px;
+    border-radius: calc(var(--border-radius-md) - 1px);
+    display: flex; align-items: center; gap: 6px;
+  }
+</style>
+
+<div class="ow-root">
+<div class="ow-frame">
+  <div class="ow-app">
+
+    <!-- Minimal top bar -->
+    <div class="ow-topbar">
+      <div class="ow-brand">
+        <div class="ow-logo">S</div>
+        <span class="ow-brand-name">Skills Hub</span>
+        <span class="ow-brand-badge">Setup</span>
+      </div>
+      <div class="ow-step-mini">Step <span style="color:var(--color-text-primary);font-weight:500;">2</span> <span class="total">of 4</span></div>
+      <button class="ow-exit">Exit setup →</button>
+    </div>
+
+    <!-- Progress -->
+    <div class="ow-progress">
+      <div class="ow-step-item done">
+        <div class="ow-step-dot">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <span class="ow-step-label">Welcome</span>
+      </div>
+      <div class="ow-step-line done"></div>
+      <div class="ow-step-item active">
+        <div class="ow-step-dot">2</div>
+        <span class="ow-step-label">Your workflow</span>
+      </div>
+      <div class="ow-step-line"></div>
+      <div class="ow-step-item">
+        <div class="ow-step-dot">3</div>
+        <span class="ow-step-label">Connect tools</span>
+      </div>
+      <div class="ow-step-line"></div>
+      <div class="ow-step-item">
+        <div class="ow-step-dot">4</div>
+        <span class="ow-step-label">Starter pack</span>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <main class="ow-main">
+
+      <div class="ow-greet">
+        <p class="ow-eyebrow"><span class="sparkle">✦</span> Hi Mike, let's personalize</p>
+        <h1 class="ow-h1">Tell us about your workflow</h1>
+        <p class="ow-sub">We'll tailor search ranking, starter pack, and risk defaults based on what you pick. This takes about 30 seconds — nothing is locked in, change it anytime from settings.</p>
+      </div>
+
+      <!-- Q1: Primary intent -->
+      <div class="ow-q">
+        <div class="ow-q-head">
+          <p class="ow-q-label">Primary intent</p>
+          <p class="ow-q-hint">Pick one · determines your home page</p>
+        </div>
+
+        <div class="ow-roles">
+          <div class="ow-role selected">
+            <span class="ow-role-check">
+              <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <div class="ow-role-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            </div>
+            <p class="ow-role-title">Find and install skills</p>
+            <p class="ow-role-desc">I want to reuse what others have built for my work.</p>
+          </div>
+
+          <div class="ow-role">
+            <span class="ow-role-check hidden">
+              <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <div class="ow-role-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+            </div>
+            <p class="ow-role-title">Publish my own skills</p>
+            <p class="ow-role-desc">I want to share skills with my team.</p>
+          </div>
+
+          <div class="ow-role">
+            <span class="ow-role-check hidden">
+              <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <div class="ow-role-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+            </div>
+            <p class="ow-role-title">Govern the registry</p>
+            <p class="ow-role-desc">I review and approve high-risk skills.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q2: Tools -->
+      <div class="ow-q">
+        <div class="ow-q-head">
+          <p class="ow-q-label">Which agent tools do you use?</p>
+          <p class="ow-q-count"><span class="num">2</span> of 6 selected</p>
+        </div>
+        <div class="ow-chips">
+          <span class="ow-chip selected">
+            <span class="chip-check">
+              <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            Claude Code
+          </span>
+          <span class="ow-chip selected">
+            <span class="chip-check">
+              <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            Cursor
+          </span>
+          <span class="ow-chip">GitHub Copilot</span>
+          <span class="ow-chip">OpenAI Codex</span>
+          <span class="ow-chip">Gemini CLI</span>
+          <span class="ow-chip">Other</span>
+        </div>
+      </div>
+
+      <!-- Q3: Interests -->
+      <div class="ow-q">
+        <div class="ow-q-head">
+          <p class="ow-q-label">What are you working on these days?</p>
+          <p class="ow-q-count"><span class="num">3</span> of 7 selected</p>
+        </div>
+        <div class="ow-chips">
+          <span class="ow-chip selected">
+            <span class="chip-check">
+              <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            DevOps
+          </span>
+          <span class="ow-chip selected">
+            <span class="chip-check">
+              <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            Testing
+          </span>
+          <span class="ow-chip">Documentation</span>
+          <span class="ow-chip">Data &amp; ETL</span>
+          <span class="ow-chip">Frontend</span>
+          <span class="ow-chip selected">
+            <span class="chip-check">
+              <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            Security
+          </span>
+          <span class="ow-chip">AI &amp; ML</span>
+        </div>
+      </div>
+
+      <!-- Live preview -->
+      <div class="ow-preview">
+        <div class="ow-preview-icon">✦</div>
+        <div class="ow-preview-body">
+          <p class="ow-preview-title">Based on your picks · preview</p>
+          <p class="ow-preview-text">We'll set up a starter pack of <strong>7 skills</strong> focused on DevOps, Testing, and Security — 6 low-risk, 1 medium. Here's a taste:</p>
+          <div class="ow-preview-skills">
+            <span class="ow-mini-skill">docker-compose-helper <span class="dl">· 1.2k ↓</span></span>
+            <span class="ow-mini-skill">junit-generator <span class="dl">· 641 ↓</span></span>
+            <span class="ow-mini-skill">k8s-deployment <span class="dl">· 892 ↓</span></span>
+            <span class="ow-mini-skill">+ 4 more</span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <div class="ow-footer">
+      <button class="ow-back">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        Back
+      </button>
+      <div class="ow-footer-right">
+        <button class="ow-skip">Skip personalization</button>
+        <div class="ow-cta-wrap">
+          <button class="ow-cta">
+            Continue to tools
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>

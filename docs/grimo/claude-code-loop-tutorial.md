@@ -207,7 +207,7 @@ User 在 marathon 中插話新需求時：
 **直接複製貼上即可用** — 一個 prompt 同時管 (a) 把 roadmap 中所有 active specs 推到 ✅、(b) 對未飽和 surface 做 E2E 測試 + 發現 bug 順手 ship。Tick 內**自動切換**模式，避免兩條 loop 並存。
 
 ```
-/loop 10m
+/loop 30m
 <產品名稱>（<前提：dev permit-all / 預設權限狀態 etc.>）統一 loop —
 每個 tick **先 spec 推進，再 E2E 測試**，serial 不 overlap：
 
