@@ -1,5 +1,17 @@
 # Changelog
 
+## [v3.3.6] — useCategories hook test — hook coverage complete（2026-05-02）
+
+> Mode B — 補完 hook test coverage 三個（useSkill / useVersions / useCategories）。
+
+### ✅ Tests
+- 新檔 `hooks/useCategories.test.tsx` — 3 ACs：fetch + data resolved；data shape 對齊 CategoryCount；error response 觸發 isError state。
+
+### 結果
+- 137 → 140 tests PASS（+3）
+- `npx tsc --noEmit` clean
+- Hook coverage 完整（3/3）：useSkill / useVersions / useCategories
+
 ## [v3.3.5] — Server-side sort: HomePage 跨頁全域 sort（S100b 完成；2026-05-02）
 
 > S100b — HomePage sort chips 改 server-side query param。原 client-side sort 只對「當前頁」生效（page=20 視窗內排序）；user 翻頁會看到不同順序。改用 Spring Pageable `sort=field,direction` 實現跨頁全域 sort。
