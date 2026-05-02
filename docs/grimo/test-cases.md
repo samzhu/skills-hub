@@ -37,12 +37,18 @@ Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 4 negative 
 
 ## Round 2 — Search flow（語意 + keyword 搜尋）
 
+Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 4 negative cases (2.5-2.8) cover empty/boundary/format/malicious 四類。
+
 | # | Category | Scenario | Expected | Status |
 |---|----------|----------|----------|--------|
 | 2.1 | positive | 輸入 keyword → SearchBar 觸發 | useSemanticSearch + fallback useSkillList；結果出現 in 3-col grid | 📋 |
 | 2.2 | positive | 語意搜尋結果頁 → top match 顯 BeamFrame featured 變體 | SearchResultsPage 第一 result 有 BeamFrame 包裝 | 📋 |
-| 2.3 | negative | 0 results query | EmptyState redirect tone「找不到符合的技能」+ 3 suggestions | 📋 |
+| 2.3 | negative (empty results) | 0 results query | EmptyState redirect tone「找不到符合的技能」+ 3 suggestions | 📋 |
 | 2.4 | edge | Gemini API down → fallback to keyword | 仍能搜（keyword regex match） | 📋 needs runtime test |
+| 2.5 | negative (boundary) | query 含 1000+ 字元 | Backend 仍接受但 truncate or reject 4xx；前端 input maxLength 限制 (UX hint) | 📋 |
+| 2.6 | negative (format) | query 含 SQL-like patterns `' OR 1=1--` | Backend NamedParameterJdbcTemplate 防 SQL injection；正常無結果 search；無 backend 500 | 📋 needs SQL injection smoke |
+| 2.7 | negative (malicious xss) | query 含 XSS payload `<svg onload=alert(1)>` | React renders as literal text；Hero 顯 query echo 也安全（已 wrapped in `<span>` not `dangerouslySetInnerHTML`） | 📋 |
+| 2.8 | negative (concurrent) | rapid keyword changes 觸發 multiple useQuery refetches | React Query dedup 機制；最後一次結果為準；UI 不 flash old result | 📋 |
 
 ## Round 3 — Filter / Sort flow（S098d + S098d2）
 
@@ -141,13 +147,13 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 | Round | Total | ✅ Done | 📋 Planned | Negative count |
 |-------|-------|---------|------------|----------------|
 | 1 Browse | **9** (+4 reinforced) | 1 | 8 | **5** ✅ |
-| 2 Search | 4 | 0 | 4 | 1 |
+| 2 Search | **8** (+4 reinforced) | 0 | 8 | **5** ✅ |
 | 3 Filter/Sort | 4 | 2 | 2 | 0 |
 | 4 Publish | **14** (+7 reinforced) | 5 | 9 | **6** ✅ |
 | 5 Skill Detail | **13** (+5 reinforced) | 4 | 9 | **6** ✅ |
 | 6 Docs IA | 2 | 0 | 2 | 0 |
 | 7 Empty state | 3 | 3 | 0 | 0 |
-| **Total** | **49** | **15** | **34** | **18** |
+| **Total** | **53** | **15** | **38** | **22** |
 
 > Per 2026-05-02 methodology upgrade：每 round 至少 3-5 反例。Round 4 已強化（6 反例 cover empty/boundary/format/state-conflict/malicious 五類）；其餘 rounds 待 backfill 至同樣強度（Round 1/2/3/5/6/7 反例 count 0-1 不足）。
 
