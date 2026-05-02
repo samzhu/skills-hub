@@ -1,5 +1,52 @@
 # Changelog
 
+## [v2.82.0] — Notifications stub + bell badge（S096 META 7a/8；M90h1 完成；2026-05-02）
+
+> Same stub pattern as f1/g1, plus first AppShell-level integration: bell badge top-right polls unread count.
+
+### Added
+- **Backend stubs** in new `notification/` package:
+  - `GET /api/v1/notifications` returns `[]`
+  - `GET /api/v1/notifications/unread-count` returns `{count: 0}`
+  - `NotificationSummary` + `UnreadCount` record contracts
+- **Frontend `/notifications` route + NotificationsPage**:
+  - 「通知中心」 hero
+  - 0 results → EmptyState clear tone「都看完了，沒有未讀通知」+ 3 stat placeholders
+  - Row schema: CategoryDot icon (versions/flags/reviews/requests color-coded) + title + body + time + unread indicator
+- **AppShell bell badge integration** per Engineering Handoff §2.17:
+  - Bell icon top-right (replaces nav 結尾，nav 改 flex-1 撐開)
+  - useQuery polls `/notifications/unread-count` every 30s (refetchInterval)
+  - Badge shows count when >0; "99+" when >99; hidden when 0
+  - Click → /notifications
+
+### Changed
+- **AppShell** signature change: now uses `useQuery` requiring `QueryClientProvider` context
+- **Test patches** per ALWAYS「verify caller」 rule:
+  - App.test.tsx + YourFirstSkillPage.test.tsx wrap `<QueryClientProvider client={qc}>` (fresh QueryClient per test for cache isolation)
+
+### Trim from M(12) → XS(6)
+Defer to S096h2:
+- Real notifications projection from `domain_events` + per-user subscription model
+- 4 mutation endpoints (read-all / preferences GET-PATCH / subscriptions GET-DELETE)
+- WebSocket evaluation (vs current 30s poll)
+- Version Diff page `/skills/:author/:name/diff?from=&to=`
+- `@ApplicationModule(notification)` Modulith registration
+
+### Metrics
+- Backend compileJava ✓
+- Frontend tests: 28 → 28 PASS / 0 fail (2 test files patched for QueryClientProvider wrap)
+- JS: 398.40 → 401.54KB (+3.14KB)
+- CSS: 37.93 → 38.08KB (+0.15KB)
+- Build: 177ms
+
+### META progress
+S096 META 7a/8 ✅. Backlog: S096d4 / S096e2 ⏸ / S096f2 / S096g2 / S096h2.
+
+### Live caveat
+Live :8080 backend 仍跑舊 code；bell badge polls fail until graceful restart — gracefully fallback to count=0 (no UI break).
+
+---
+
 ## [v2.81.0] — Collections read-only stub（S096 META 6b/8；M90f1 完成；2026-05-02）
 
 > Same stub pattern as S096g1 — feature visible-but-disabled, full aggregate + install + 2 domain events 留 S096f2.

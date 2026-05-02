@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
+import { Bell } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { fetchUnreadCount } from '@/api/skills'
 
 /**
  * 導覽連結定義。
@@ -28,6 +31,14 @@ const navLinks = [
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
+  // S096h1: bell badge polls unread count every 30s (per Engineering Handoff §2.17)
+  const { data: unread } = useQuery({
+    queryKey: ['notifications-unread'],
+    queryFn: fetchUnreadCount,
+    refetchInterval: 30 * 1000,
+    staleTime: 25 * 1000,
+  })
+  const unreadCount = unread?.count ?? 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,7 +47,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link to="/" className="flex items-center gap-2 font-semibold">
             <span className="text-lg">Skills Hub</span>
           </Link>
-          <nav className="flex items-center gap-4">
+          <nav className="flex flex-1 items-center gap-4">
             {navLinks.map(({ path, label }) => (
               <Link
                 key={path}
@@ -47,6 +58,22 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
+          {/* S096h1: bell icon + unread badge — polls /notifications/unread-count every 30s */}
+          <Link
+            to="/notifications"
+            aria-label="Notifications"
+            className="relative flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <Bell className="h-4 w-4" />
+            {unreadCount > 0 && (
+              <span
+                className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-mono text-[10px] font-medium text-white"
+                style={{ backgroundColor: '#E24B4A' }}
+              >
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </Link>
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>

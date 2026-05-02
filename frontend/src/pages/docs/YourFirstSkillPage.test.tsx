@@ -1,15 +1,21 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { YourFirstSkillPage } from './YourFirstSkillPage'
 
 describe('YourFirstSkillPage — S094d', () => {
-  const renderPage = () =>
-    render(
-      <MemoryRouter initialEntries={['/docs/your-first-skill']}>
-        <YourFirstSkillPage />
-      </MemoryRouter>,
+  // S096h1: AppShell bell badge 用 useQuery，需 QueryClientProvider context.
+  const renderPage = () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    return render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/docs/your-first-skill']}>
+          <YourFirstSkillPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
     )
+  }
 
   it('AC-1: renders title + breadcrumbs + meta row', () => {
     renderPage()

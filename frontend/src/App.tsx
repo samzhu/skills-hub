@@ -10,6 +10,7 @@ import { SearchResultsPage } from './pages/SearchResultsPage'
 import { LandingPage } from './pages/LandingPage'
 import { RequestBoardPage } from './pages/RequestBoardPage'
 import { CollectionsPage } from './pages/CollectionsPage'
+import { NotificationsPage } from './pages/NotificationsPage'
 
 function App() {
   return (
@@ -30,6 +31,8 @@ function App() {
       <Route path="/requests" element={<RequestBoardPage />} />
       {/* S096f1: Collections stub — read-only list；install/create 留 S096f2 */}
       <Route path="/collections" element={<CollectionsPage />} />
+      {/* S096h1: Notifications stub — read-only list + bell badge in AppShell */}
+      <Route path="/notifications" element={<NotificationsPage />} />
       {/* S094b: 語意搜尋結果頁 — split inline → dedicated route */}
       <Route path="/search" element={<SearchResultsPage />} />
       {/* S094d: docs walkthrough — 第一篇 walkthrough；未來 /docs index 與其他 docs sub-routes 待後續 spec */}
