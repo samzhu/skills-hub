@@ -1,5 +1,39 @@
 # Changelog
 
+## [v3.4.0] — PublishPage markdown preview pane（S099b3 完成；2026-05-02）
+
+> S099b3 — PublishPage text mode 加 split-view markdown preview。Hand-rolled MiniMarkdown 取代 50KB+ react-markdown dep。完成 PublishPage text mode 三件套：text mode + frontmatter validation + preview。
+
+### 🎨 Frontend (S099b3)
+- 新檔 `lib/mini-markdown.tsx` — 自寫 line-by-line markdown parser + renderer：
+  - `# / ## / ###` → h1/h2/h3
+  - ` ``` ` fenced code → `<pre>`
+  - `- ` / `1. ` → `<ul>` / `<ol>`
+  - 行內 backtick `code` → `<code>`
+  - 其他 non-empty → `<p>`
+  - YAML frontmatter `---...---` 自動 strip from preview
+  - **零 dep**（避免 react-markdown ~50KB+ remark-gfm bundle）
+- 新檔 `lib/mini-markdown.test.tsx` — **10 ACs** per methodology「3-5 反例 / round」：
+  - 5 positive (h1-3 / p / code / ul / ol)
+  - 3 negatives (empty / unclosed-fence / ##NoSpace)
+  - 2 edges (frontmatter strip / inline code)
+- `pages/PublishPage.tsx`：text mode 加 preview toggle（Eye / EyeOff icon）；split-view 預覽顯在 textarea 右側 (md:grid-cols-2 / max-h-400px scroll)；caption「預覽（不含 frontmatter）」明示 frontmatter 不渲染
+
+### 🐛 Bug found + fixed during dev
+**parser 無窮迴圈** — 「##NoSpace」(無 space) 不符 heading regex 也不符 paragraph collector（首字 `#` 排除），原始 paragraph branch 不 i++ → infinite loop。Tests 跑時讓 vitest 卡死多 worker 在 96-97% CPU。Fix：paragraph fallback 強制包含當前 line + i++ 推進。
+
+### 🐛 Test bug found + fixed
+JSX attribute string `content="...\n..."` 不解 `\n` escape（HTML attribute literal）。原 5 tests 失敗 → 改用 JSX expression form `content={'...\n...'}`。Lessons learned 寫入 mini-markdown.test.tsx 註解供未來參考。
+
+### ✅ Tests
+- 140 → 150 tests PASS（+10 across 1 test file）
+- `npx tsc --noEmit` clean
+
+### S099 META 進度
+- 5/8 sub-specs shipped (S099a / S099b / S099b2 / S099b3 / S099e5)
+- PublishPage text mode 三件套完成 ✅
+- 剩 S099c (cross-marketplace) / S099d (LLM rubric) / S099e1-e4 (scanner upgrades)
+
 ## [v3.3.7] — PublishPage author auto-prefill from /me（S100c reframed；2026-05-02）
 
 > S100 audit 原列 S100c MySkillsPage auth-based filter — 但 inspect 後發現 MySkillsPage 從 S094a 起就已用 useMe()。真正 gap 是 PublishPage 仍要 user 手填 author。Reframe 為 PublishPage author auto-prefill。

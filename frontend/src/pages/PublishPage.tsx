@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
-import { FileText, Upload as UploadIcon, Check, AlertCircle } from 'lucide-react'
+import { FileText, Upload as UploadIcon, Check, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { FileDropZone } from '@/components/FileDropZone'
 import { ErrorState } from '@/components/ErrorState'
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { uploadSkill } from '@/api/skills'
 import { useMe } from '@/hooks/useMe'
 import { localizeApiError } from '@/lib/api-error-messages'
+import { MiniMarkdown } from '@/lib/mini-markdown'
 
 /**
  * S099b2 — Frontmatter live validation。
@@ -71,6 +72,8 @@ export function PublishPage() {
   const [mode, setMode] = useState<Mode>('file')
   const [file, setFile] = useState<File | null>(null)
   const [skillMdText, setSkillMdText] = useState('')
+  // S099b3: 文本 mode preview pane toggle
+  const [showPreview, setShowPreview] = useState(false)
   // 預填 1.0.0 作為首次發佈的慣例起始版本
   const [version, setVersion] = useState('1.0.0')
   // S100c: author 自動 prefill 從 /me.sub；user 仍可改（如 team override / publish-on-behalf）
@@ -150,14 +153,37 @@ export function PublishPage() {
               <FileDropZone onFileSelect={setFile} selectedFile={file} />
             ) : (
               <div>
-                <textarea
-                  value={skillMdText}
-                  onChange={(e) => setSkillMdText(e.target.value)}
-                  placeholder={`---\nname: my-skill\ndescription: 一段精煉描述「skill 做什麼 + agent 何時該呼叫」\nversion: 1.0.0\nlicense: MIT\n---\n\n# My Skill\n\nInvoke this skill when ...`}
-                  required
-                  rows={14}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-[12.5px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:border-[rgba(255,255,255,0.20)] focus:outline-none"
-                />
+                {/* S099b3: textarea + preview toggle header */}
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">
+                    SKILL.md 內容
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowPreview((prev) => !prev)}
+                    disabled={skillMdText.trim().length === 0}
+                    className="inline-flex items-center gap-1 text-[11.5px] text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  >
+                    {showPreview ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    {showPreview ? '收起預覽' : '展開預覽'}
+                  </button>
+                </div>
+                <div className={showPreview ? 'grid gap-3 md:grid-cols-2' : ''}>
+                  <textarea
+                    value={skillMdText}
+                    onChange={(e) => setSkillMdText(e.target.value)}
+                    placeholder={`---\nname: my-skill\ndescription: 一段精煉描述「skill 做什麼 + agent 何時該呼叫」\nversion: 1.0.0\nlicense: MIT\n---\n\n# My Skill\n\nInvoke this skill when ...`}
+                    required
+                    rows={14}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-[12.5px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:border-[rgba(255,255,255,0.20)] focus:outline-none"
+                  />
+                  {showPreview && skillMdText.trim().length > 0 && (
+                    <div className="overflow-y-auto rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] px-4 py-3 max-h-[400px]">
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">預覽（不含 frontmatter）</p>
+                      <MiniMarkdown content={skillMdText} />
+                    </div>
+                  )}
+                </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   含 YAML frontmatter（必填 <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">name</code> + <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">description</code>）+ markdown 內文。詳見 <a href="/docs/skill-md-spec" className="text-[#C9C5F2] hover:underline">SKILL.md 規範</a>。
                 </p>
