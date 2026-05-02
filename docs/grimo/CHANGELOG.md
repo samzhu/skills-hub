@@ -1,5 +1,23 @@
 # Changelog
 
+## [v3.1.7] — IconTile component invariants（S085 contract；2026-05-02）
+
+> Mode B — IconTile 是 SkillCard / SkillDetailPage 共用 primitive。Initial derivation logic + size class + a11y invariants。
+
+### ✅ Tests
+- 新檔 `components/IconTile.test.tsx` — 7 ACs：
+  - single-word → first letter uppercase
+  - hyphenated → first letters of first 2 words
+  - underscore-separated → same split
+  - empty/whitespace → `?` fallback
+  - size sm/md/lg/xl → correct w-* class
+  - aria-hidden=true (decorative)
+  - unknown category → graceful default tile (no crash)
+
+### 結果
+- 70 → 77 tests PASS（+7 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.1.6] — RiskFilterSidebar tests（ledger Round 3.3+3.4 ✅；2026-05-02）
 
 > Mode B — fill 2 ledger 📋 rows (Round 3.3 toggle / 3.4 multi-tier counts)。S098d2 client-side aggregation invariants 驗證。Tests 65 → 70 (+5)。
