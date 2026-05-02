@@ -97,8 +97,8 @@ export function SkillDetailPage() {
           {!isNotFound && (
             <p className="mt-1 text-sm">請稍後重試或重新整理頁面</p>
           )}
-          <Link to="/" className="mt-2 text-sm text-primary hover:underline">
-            返回首頁
+          <Link to="/browse" className="mt-2 text-sm text-primary hover:underline">
+            返回列表
           </Link>
         </div>
       </AppShell>
@@ -107,7 +107,7 @@ export function SkillDetailPage() {
 
   return (
     <AppShell>
-      <Link to="/" className="mb-4 inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
+      <Link to="/browse" className="mb-4 inline-flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" />
         返回列表
       </Link>

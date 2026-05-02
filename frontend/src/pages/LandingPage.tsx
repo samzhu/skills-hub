@@ -156,7 +156,6 @@ export function LandingPage() {
           <div className="flex gap-5">
             <Link to="/docs/your-first-skill" className="hover:text-foreground">文件</Link>
             <a href="/v3/api-docs" className="hover:text-foreground">API</a>
-            <Link to="/" className="hover:text-foreground">狀態</Link>
           </div>
         </div>
       </footer>

@@ -40,7 +40,7 @@ export function SearchResultsPage() {
 
   const handleSearch = (q: string) => {
     if (q.trim().length === 0) {
-      navigate('/')
+      navigate('/browse')
     } else {
       navigate(`/search?q=${encodeURIComponent(q)}`)
     }
@@ -63,7 +63,7 @@ export function SearchResultsPage() {
           tone="invite"
           headline="輸入一句描述或關鍵字搜尋技能。"
           sub="語意模式會用 AI 解析你的意圖，找最匹配的 skill。也可以從首頁瀏覽全部分類。"
-          primaryAction={{ label: '瀏覽全部技能', href: '/' }}
+          primaryAction={{ label: '瀏覽全部技能', href: '/browse' }}
         />
       ) : resultsLoading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">語意分析中...</div>

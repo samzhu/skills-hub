@@ -1,5 +1,32 @@
 # Changelog
 
+## [v3.4.2] — Post-S096e1 routing residual link target fix（S102 完成；2026-05-03）
+
+> S096e1 把 `/` 從 browse list 改為新 LandingPage 之後，4 處 back-navigation / EmptyState CTA 的 target 漏了同步換 `/browse`，造成 label-target 語意打架（label 寫「列表 / 瀏覽」實際跳 LandingPage）；外加 1 處 LandingPage footer placeholder「狀態」自指迴圈。S100 META page-by-page audit 已 confirm 27 pages 0 fake，但對 **inter-page link semantic alignment** 是盲點 — S102 是 sibling to S100e，補這個 cut。
+
+### Changed
+- `frontend/src/pages/SkillDetailPage.tsx`：2 處 `to="/"` → `to="/browse"`；error state link label 「返回首頁」→「返回列表」統一
+- `frontend/src/pages/SearchResultsPage.tsx`：`navigate('/')` → `navigate('/browse')`（清空 query 提交時）；EmptyState `primaryAction.href` `'/'` → `'/browse'`（「瀏覽全部技能」CTA）
+- `frontend/src/pages/LandingPage.tsx`：footer 移除自指 `<Link to="/">狀態</Link>` placeholder
+
+### Added
+- `frontend/src/pages/SearchResultsPage.test.tsx`：AC-3 form clear → `/browse` + AC-4 EmptyState CTA href = `/browse`（用內建 `fireEvent`，**不**新增 user-event dep）
+
+### Updated
+- `frontend/src/pages/SkillDetailPage.test.tsx`：AC-3 既有 test 從 `返回首頁`/`/` 改成 `返回列表`/`/browse`（重命名 `AC-3 (S102)`）
+
+### Verified
+- `cd frontend && npm test -- --run SkillDetailPage SearchResultsPage`：2 files 5/5 PASS（999ms）
+- FE tests 累計 28 → 30（+2）
+
+### Trim
+- AC-5 LandingPage footer DOM test 未寫 — spec §3 trim 順序「5 → 2」明示，footer 是純 JSX 一行移除人眼 review 足夠；polish backlog 若需要再補
+
+### Why
+S100 page-by-page data audit 視角對 inter-page link 對齊是盲點：page 內 fetch 是否假抓得乾淨，但對 「page A 的 outgoing link 指向的 page B 是否仍存在 / 語意對齊」不在自然視野。S102 補這層，S100e (defensive guard) + S102 (routing residual) 共同形成 S100 META 的 post-ship cross-cutting follow-up pattern。
+
+---
+
 ## [v3.4.1] — AnalyticsPage Top 10 link defensive guard（S100e 完成；2026-05-02）
 
 > User 觀察：/analytics 頁面 Top 10 連結點過去 404「找不到此技能」。Root cause：backend runtime 落後 S100a deploy，response 漏 `author` 欄位 → frontend 渲染 `<Link to="/skills/undefined/<name>">`。本 spec 補 frontend 三重 guard（typeof + length + 字面 "undefined" 字串），author 缺失時 row 退回非 link `<div>`，rank/name/downloads 完整保留。

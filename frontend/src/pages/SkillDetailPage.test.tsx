@@ -54,7 +54,7 @@ describe('SkillDetailPage — error paths (ledger Round 1.4)', () => {
     expect(screen.getByText('請稍後重試或重新整理頁面')).toBeInTheDocument()
   })
 
-  it('AC-3: error state shows 返回首頁 link to /', async () => {
+  it('AC-3 (S102): error state shows 返回列表 link to /browse', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 404,
@@ -62,8 +62,8 @@ describe('SkillDetailPage — error paths (ledger Round 1.4)', () => {
     } as Response)
     renderPage('xxx')
     await waitFor(() => {
-      const link = screen.getByText('返回首頁')
-      expect(link.closest('a')).toHaveAttribute('href', '/')
+      const link = screen.getByText('返回列表')
+      expect(link.closest('a')).toHaveAttribute('href', '/browse')
     })
   })
 })
