@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
 import { FileText, Upload as UploadIcon, Check, AlertCircle } from 'lucide-react'
@@ -7,6 +7,7 @@ import { FileDropZone } from '@/components/FileDropZone'
 import { ErrorState } from '@/components/ErrorState'
 import { Input } from '@/components/ui/input'
 import { uploadSkill } from '@/api/skills'
+import { useMe } from '@/hooks/useMe'
 import { localizeApiError } from '@/lib/api-error-messages'
 
 /**
@@ -72,7 +73,14 @@ export function PublishPage() {
   const [skillMdText, setSkillMdText] = useState('')
   // 預填 1.0.0 作為首次發佈的慣例起始版本
   const [version, setVersion] = useState('1.0.0')
+  // S100c: author 自動 prefill 從 /me.sub；user 仍可改（如 team override / publish-on-behalf）
+  const { data: me } = useMe()
   const [author, setAuthor] = useState('')
+  const [authorTouched, setAuthorTouched] = useState(false)
+  // /me 解析完成且 user 未手動改過 → 自動 fill。authorTouched 防 user 清空後又被覆蓋。
+  useEffect(() => {
+    if (me?.sub && !authorTouched && !author) setAuthor(me.sub)
+  }, [me?.sub, authorTouched, author])
   const [category, setCategory] = useState('')
   const navigate = useNavigate()
 
@@ -200,11 +208,19 @@ export function PublishPage() {
               <label className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">作者</label>
               <Input
                 value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-                placeholder="your-name"
+                onChange={(e) => {
+                  setAuthor(e.target.value)
+                  setAuthorTouched(true)
+                }}
+                placeholder={me?.sub ?? 'your-name'}
                 required
                 maxLength={255}
               />
+              {me?.sub && !authorTouched && author === me.sub && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  已自動填入你的識別 <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">{me.sub}</code> — 可改為團隊或代發名稱
+                </p>
+              )}
             </div>
 
             <button

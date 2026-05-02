@@ -1,5 +1,26 @@
 # Changelog
 
+## [v3.3.7] — PublishPage author auto-prefill from /me（S100c reframed；2026-05-02）
+
+> S100 audit 原列 S100c MySkillsPage auth-based filter — 但 inspect 後發現 MySkillsPage 從 S094a 起就已用 useMe()。真正 gap 是 PublishPage 仍要 user 手填 author。Reframe 為 PublishPage author auto-prefill。
+
+### 🎨 Frontend (S100c reframed)
+- `pages/PublishPage.tsx`：
+  - 加 `useMe()` hook + useEffect prefill author from me?.sub on first load
+  - `authorTouched` state — user 手動改後不再 overwrite（防 useMe race / 後續 fetch 覆蓋 user 編輯）
+  - placeholder 從 hardcoded "your-name" 改為動態 `me?.sub ?? 'your-name'`
+  - 顯 helper hint 「已自動填入你的識別 ${me.sub} — 可改為團隊或代發名稱」when prefill 未被改
+
+### Why not「lock author」
+某些 publish 場景：team-publishing / publish-on-behalf。Author 仍 editable，僅以 user 識別為合理 default。
+
+### ✅ Tests
+- 140/140 PASS
+- `npx tsc --noEmit` clean
+
+### S100 META 進度
+- 5/4 sub-specs done — S100a (Top 10 link) / S100b (server sort) / S100c (author prefill) / S100d (ErrorState) — META 全 ✅；S100c 從 backlog 改為 reframed 動作 ship。
+
 ## [v3.3.6] — useCategories hook test — hook coverage complete（2026-05-02）
 
 > Mode B — 補完 hook test coverage 三個（useSkill / useVersions / useCategories）。
