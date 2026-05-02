@@ -55,6 +55,21 @@ export function fetchSkillByAuthorAndName(author: string, name: string): Promise
 }
 
 /**
+ * S096e1 — public Landing stats (per Engineering Handoff §2.1).
+ * Aggregate-only payload；不需 auth。
+ */
+export interface PublicStats {
+  totalSkills: number
+  downloads30d: number
+  activePublishers: number
+  autoPublishPct: number
+}
+
+export function fetchPublicStats(): Promise<PublicStats> {
+  return apiFetch<PublicStats>('/stats')
+}
+
+/**
  * S096d3 — per-skill 下載趨勢 (sparkline 資料源)。
  * 回傳長度 N 的整數陣列：index 0 = 最舊那天，index N-1 = 今天。
  * `period` 接受 `7d` | `30d` (default) | `90d`；其他 fallback 30d.

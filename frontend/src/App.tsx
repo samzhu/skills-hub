@@ -7,11 +7,14 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { YourFirstSkillPage } from './pages/docs/YourFirstSkillPage'
 import { MySkillsPage } from './pages/MySkillsPage'
 import { SearchResultsPage } from './pages/SearchResultsPage'
+import { LandingPage } from './pages/LandingPage'
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      {/* S096e1: / 改為 Landing page (public 入口); /browse 為 authenticated browse */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/browse" element={<HomePage />} />
       {/* /skills 是 listing alias — 使用者輸入網址或書籤回鏈時的直覺路徑 */}
       <Route path="/skills" element={<HomePage />} />
       <Route path="/skills/:id" element={<SkillDetailPage />} />

@@ -1,5 +1,57 @@
 # Changelog
 
+## [v2.79.0] — Landing page `/` public entry + stats endpoint（S096 META 5a/8；M90e1 完成；2026-05-02）
+
+> **Public marketing entry** — 從 `/` direct render HomePage 改為 LandingPage；HomePage 移到 `/browse`. 對應 Engineering Handoff §2.1 + §9 Navigation Map.
+
+### Added
+- **Backend `GET /api/v1/stats`** public endpoint:
+  - `AnalyticsService.getPublicStats()` returns `{totalSkills, downloads30d, activePublishers, autoPublishPct}`
+  - Aggregate-only payload, no PII; permitAll per S027 LAB security path
+  - autoPublishPct = (LOW + NONE) / total * 100 — 包含 S096c 4-tier 的 NONE 也是 auto-publish
+- **Frontend LandingPage** (`/`):
+  - Hero: H1 + sub-text + 2 CTAs (Browse + Publish) + trust row
+  - 4-cell stats band (totalSkills / downloads30d / autoPublishPct / activePublishers)
+  - Popular skills 6-card preview grid (first `featured`)
+  - Compatibility strip (5 agent names + standard reference)
+  - Final CTA section + Footer (Docs / API / Status links)
+
+### Changed
+- **Route restructure**:
+  - `/` 從 HomePage 改為 LandingPage (新 public 入口)
+  - `/browse` 新加為 HomePage 主入口
+  - `/skills` 仍 alias 到 HomePage (per ADR-003 spirit, BC compat)
+- **AppShell nav 「瀏覽」 path**: `/` → `/browse`
+
+### Trim from M(12) → S(8)
+Defer to S096e2:
+- Onboarding wizard `/onboarding` 4-step
+- User preferences endpoint POST /me/preferences
+- onboarding-complete flag
+
+Defer polish:
+- Hero search bar BeamFrame
+- Featured `.beam-card` detail treatment per prototype
+- Skill card tilt CSS animation
+
+### Metrics
+- Backend compileJava ✓
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 384.14 → 392.56KB (+8.42KB; LandingPage)
+- CSS: 36.55 → 37.80KB (+1.25KB)
+- Build: 190ms
+
+### META progress
+S096 META 5a/8 ✅. Next: S096d4 (publish flow defer earlier) OR S096e2 (Onboarding) OR S096f/g/h.
+
+### Live caveat
+Live :8080 backend 仍跑舊 code；Landing page stats 顯 `—` until restart loads new endpoint.
+
+### Beam usage
+Landing has 3 BeamFrame (hero CTA + featured first card + final CTA) — marketing landing 例外接受 1-per-page 規則放寬；其他 page 仍嚴守 1-per-page.
+
+---
+
 ## [v2.78.0] — Per-skill stats endpoint + Sparkline + MySkills integration（S096 META 4c/8；M90d3 完成；2026-05-02）
 
 > **P6 SBE 補完** — Sparkline 從 S094a deferred 終於 ship。MySkills table 顯每個 PUBLISHED skill 的 30d 下載趨勢，作者一眼看出哪 skill 在升 / 降。

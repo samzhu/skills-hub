@@ -36,6 +36,15 @@ public class AnalyticsController {
 	}
 
 	/**
+	 * S096e1 — public stats for Landing page (per Engineering Handoff §2.1).
+	 * No auth required; aggregate-only payload (no PII).
+	 */
+	@GetMapping("/stats")
+	AnalyticsService.PublicStats publicStats() {
+		return analyticsService.getPublicStats();
+	}
+
+	/**
 	 * S096d3 — 取得單一 skill 的每日下載趨勢資料（sparkline 用）。
 	 *
 	 * <p>{@code period} 接受 {@code 7d}、{@code 30d}、{@code 90d}（其他值 fallback 30d）。

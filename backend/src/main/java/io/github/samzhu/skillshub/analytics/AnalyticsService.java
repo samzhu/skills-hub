@@ -130,4 +130,33 @@ public class AnalyticsService {
 		return buckets;
 	}
 
+	/**
+	 * S096e1 — public aggregate stats for Landing page (per Engineering Handoff §2.1).
+	 *
+	 * <p>Public endpoint — 不需 auth；資料是平台 high-level 概觀 (no per-user PII)。
+	 *
+	 * @return platform 4-metric summary
+	 */
+	public PublicStats getPublicStats() {
+		long totalSkills = countOrZero(
+				"SELECT COUNT(*) FROM skills WHERE status = 'PUBLISHED'",
+				new MapSqlParameterSource());
+		var thirtyDaysAgo = Instant.now().minus(30, ChronoUnit.DAYS);
+		long downloads30d = countOrZero(
+				"SELECT COUNT(*) FROM download_events WHERE downloaded_at >= :since",
+				new MapSqlParameterSource("since", java.sql.Timestamp.from(thirtyDaysAgo)));
+		long activePublishers = countOrZero(
+				"SELECT COUNT(DISTINCT author) FROM skills WHERE status = 'PUBLISHED'",
+				new MapSqlParameterSource());
+		// auto-publish rate = LOW + NONE skills 比例（per S096c 4-tier；NONE 也是 auto-publish）
+		long lowOrNone = countOrZero(
+				"SELECT COUNT(*) FROM skills WHERE status = 'PUBLISHED' AND risk_level IN ('LOW', 'NONE')",
+				new MapSqlParameterSource());
+		int autoPublishPct = totalSkills > 0 ? (int) ((lowOrNone * 100L) / totalSkills) : 0;
+		return new PublicStats(totalSkills, downloads30d, activePublishers, autoPublishPct);
+	}
+
+	/** Public Landing page stats payload. */
+	public record PublicStats(long totalSkills, long downloads30d, long activePublishers, int autoPublishPct) {}
+
 }
