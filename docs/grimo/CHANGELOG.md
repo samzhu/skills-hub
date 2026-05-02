@@ -1,5 +1,38 @@
 # Changelog
 
+## [v2.89.0] — EmptyState dark theme migration + 4-step i18n（S098h2 完成；2026-05-02）
+
+> Sister fix to S098h (YourFirstSkillPage 配色) — EmptyState 4-tone 元件原 light-theme inline hex (`#181818` text on `bg-white` container) 在 v2 dark page 上 theme-mismatch（不是 broken contrast，但與已 dark-token 的 SkillCard / FieldCard 等相鄰元件視覺對不上）。
+
+### 🎨 Frontend
+- `components/EmptyState.tsx`：full dark token migration across 4 tones (Seed / Invite / Redirect / Clear) + 通用 `Container` / `PrimaryButton` / `SecondaryButton`：
+  - `#181818` text → `#EEECEA` (--ink primary; 6 處)
+  - `bg-white` Container → `#0F0F12` (--bg-2 card surface)
+  - `bg-[#181818] text-white` PrimaryButton 反白 → `bg-[#EEECEA] text-[#08080A]` (dark theme primary CTA per Engineering Handoff §8)
+  - `bg-white text-[#181818] hover:bg-[#171719]` SecondaryButton → `bg-[#171719] text-[#EEECEA] hover:bg-[#1F1F22]`
+  - `#E6E1D9` border → `rgba(255,255,255,0.06)` (--line)
+  - `#F9F8F4` cream surfaces (Invite icon ring / Redirect suggestions / ghost preview cards) → `#171719` (--bg-3)
+  - `#D8D4FA` lavender border + `rgba(127,119,221,0.18)` 背景 → 加 `rgba(127,119,221,0.10)` bg + `rgba(127,119,221,0.30)` border 配深色更和諧
+  - `#D8D4D0` / `#C5C0BC` light dashed border → `rgba(255,255,255,0.10)`
+  - `#9FE1CB` (light success) delta → `#6FD8B0` (--success-deep dark token)
+
+### 🌐 Frontend i18n（順手收剩餘殘留）
+- InviteTone 4 step labels「Zip / Auto-scan / Publish / Track」→「打包 / 自動掃描 / 發佈 / 追蹤」
+- RedirectTone 「Query · "..."」→「查詢 · "..."」
+
+### ✅ Tests
+- `EmptyState.test.tsx`：AC-2 4 step assertion 改繁中、AC-3 query echo prefix「Query ·」→「查詢 ·」；其餘 ACs 不變（DOM-shape + sub/headline 為 caller-supplied 字串，未受影響）。
+- 全套 33/33 PASS、`tsc --noEmit` clean。
+
+### Out of scope (defer)
+- AppShell brand「Skills Hub」: proper noun 保留
+- LandingPage compatibility strip 工具名（Cursor / Cline）: 第三方品牌名保留
+- HomePage / SkillCard already 繁中 — no work
+
+### S098 META 進度
+- 3/8 sub-specs shipped (S098h 配色 + S098g i18n + S098h2 EmptyState dark)
+- 剩 5：S098a/b/c/d/e/f；下一 tick 自然挑 P2 polish smallest size first
+
 ## [v2.88.0] — i18n 繁中化 audit pass 2（S098 META 2/8 完備；2026-05-02）
 
 > S098g pass 1 (v2.87.0) 收完 5 surface top-of-funnel；本 pass 2 sweep 剩餘散落英文殘留 — CollectionsPage h1、EmptyState helper label、YourFirstSkillPage RiskRow 3 個 strong tag 翻完。

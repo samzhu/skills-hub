@@ -28,11 +28,11 @@ describe('EmptyState — S094c 4 tones', () => {
       />,
     )
     expect(screen.getByText("You haven't published anything yet.")).toBeInTheDocument()
-    // 4 steps: Zip / Auto-scan / Publish / Track
-    expect(screen.getByText('Zip')).toBeInTheDocument()
-    expect(screen.getByText('Auto-scan')).toBeInTheDocument()
-    expect(screen.getByText('Publish')).toBeInTheDocument()
-    expect(screen.getByText('Track')).toBeInTheDocument()
+    // S098h2: 4 steps i18n 繁中 — 打包 / 自動掃描 / 發佈 / 追蹤
+    expect(screen.getByText('打包')).toBeInTheDocument()
+    expect(screen.getByText('自動掃描')).toBeInTheDocument()
+    expect(screen.getByText('發佈')).toBeInTheDocument()
+    expect(screen.getByText('追蹤')).toBeInTheDocument()
   })
 
   it('AC-3: redirect tone renders query echo + headline + suggestions list', () => {
@@ -48,7 +48,8 @@ describe('EmptyState — S094c 4 tones', () => {
         ]}
       />,
     )
-    expect(screen.getByText('Query ·')).toBeInTheDocument()
+    // S098h2: i18n - "Query ·" → "查詢 ·"
+    expect(screen.getByText('查詢 ·')).toBeInTheDocument()
     expect(screen.getByText('"crypto wallet integration for embedded devices"')).toBeInTheDocument()
     expect(screen.getByText("We don't have a skill for that yet.")).toBeInTheDocument()
     expect(screen.getByText('Try "wallet signature verification"')).toBeInTheDocument()

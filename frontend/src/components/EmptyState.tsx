@@ -3,10 +3,14 @@ import type { ReactNode } from 'react'
 import { BeamFrame } from './BeamFrame'
 
 /**
- * S094c — 4-tone empty state component.
+ * S094c → S098h2 — 4-tone empty state component (dark theme migration).
  *
- * 對齊 docs/grimo/ui/prototype/empty_state_collection_four_tones.html。
- * 每個 tone 有不同 voice：
+ * 對齊 docs/grimo/ui/prototype/empty_state_collection_four_tones.html (v2 dark)。
+ * S098h2 sister fix to S098h: 原 light-theme inline hex (`#181818` text on
+ * `bg-white` container) 在 v2 dark page 上 theme-mismatch — 視覺與其他元件
+ * （SkillCard / FieldCard 等已 dark-token 的元件）對不上。
+ *
+ * 每 tone 的 voice：
  * - seed       Fresh deployment / Seeding — 平台空殼，激勵第一次貢獻
  * - invite     New author / Invitational — 個人空殼，邀請加入
  * - redirect   No search results / Redirecting — 搜尋失敗，導流到其他路徑
@@ -52,8 +56,9 @@ export function EmptyState(props: EmptyStateProps) {
 }
 
 function PrimaryButton({ action }: { action: NonNullable<EmptyStateProps['primaryAction']> }) {
+  // Dark theme primary CTA 反白：bg ink + text bg
   const inner = (
-    <span className="inline-flex items-center gap-1.5 rounded-md bg-[#181818] px-4 py-2 text-[13px] font-medium text-white">
+    <span className="inline-flex items-center gap-1.5 rounded-md bg-[#EEECEA] px-4 py-2 text-[13px] font-medium text-[#08080A]">
       {action.label}
       <ArrowRight className="h-3 w-3" />
     </span>
@@ -70,7 +75,7 @@ function PrimaryButton({ action }: { action: NonNullable<EmptyStateProps['primar
 }
 
 function SecondaryButton({ action }: { action: NonNullable<EmptyStateProps['secondaryAction']> }) {
-  const cls = "inline-flex items-center gap-1.5 rounded-md border border-[#E6E1D9] bg-white px-4 py-2 text-[13px] font-medium text-[#181818] hover:bg-[#171719]"
+  const cls = "inline-flex items-center gap-1.5 rounded-md border border-[rgba(255,255,255,0.10)] bg-[#171719] px-4 py-2 text-[13px] font-medium text-[#EEECEA] hover:bg-[#1F1F22]"
   return action.href ? (
     <a href={action.href} className={cls}>{action.label}</a>
   ) : (
@@ -80,7 +85,7 @@ function SecondaryButton({ action }: { action: NonNullable<EmptyStateProps['seco
 
 function Container({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-lg border border-[#E6E1D9] bg-white px-8 py-10 ${className}`}>
+    <div className={`rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] px-8 py-10 ${className}`}>
       {children}
     </div>
   )
@@ -94,12 +99,12 @@ function SeedTone(props: EmptyStateProps) {
       <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-start">
         <div>
           {props.eyebrow && (
-            <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#D8D4FA] bg-[rgba(127,119,221,0.18)] px-2.5 py-0.5 text-[11px] font-medium text-[#C9C5F2]">
+            <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[rgba(127,119,221,0.30)] bg-[rgba(127,119,221,0.10)] px-2.5 py-0.5 text-[11px] font-medium text-[#C9C5F2]">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#7F77DD]" />
               {props.eyebrow}
             </span>
           )}
-          <h2 className="text-[22px] font-semibold tracking-tight text-[#181818]">{props.headline}</h2>
+          <h2 className="text-[22px] font-semibold tracking-tight text-[#EEECEA]">{props.headline}</h2>
           {props.sub && <p className="mt-2 max-w-md text-[13px] leading-relaxed text-[#A8A49C]">{props.sub}</p>}
           {(props.primaryAction || props.secondaryAction) && (
             <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -111,7 +116,7 @@ function SeedTone(props: EmptyStateProps) {
         {/* Ghost preview cards — show the user what populated state will look like */}
         <div className="hidden grid-cols-2 gap-2 md:grid" aria-hidden="true">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-20 w-32 rounded-md border border-dashed border-[#D8D4D0] bg-[#F9F8F4]" />
+            <div key={i} className="h-20 w-32 rounded-md border border-dashed border-[rgba(255,255,255,0.10)] bg-[#171719]" />
           ))}
         </div>
       </div>
@@ -122,25 +127,26 @@ function SeedTone(props: EmptyStateProps) {
 // ============ Invite tone ============
 
 function InviteTone(props: EmptyStateProps) {
-  const steps = ['Zip', 'Auto-scan', 'Publish', 'Track']
+  // S098h2 i18n: 4 step labels 英文 → 繁中 per CLAUDE.md「UI 語言: 繁體中文」
+  const steps = ['打包', '自動掃描', '發佈', '追蹤']
   return (
     <Container className="text-center">
-      <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-[#E6E1D9] bg-[#F9F8F4] text-[#A8A49C]">
+      <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(255,255,255,0.06)] bg-[#171719] text-[#A8A49C]">
         <Upload className="h-4 w-4" />
       </div>
-      <h2 className="text-[20px] font-semibold tracking-tight text-[#181818]">{props.headline}</h2>
+      <h2 className="text-[20px] font-semibold tracking-tight text-[#EEECEA]">{props.headline}</h2>
       {props.sub && <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-[#A8A49C]">{props.sub}</p>}
       {/* Horizontal flow — preview the future workflow */}
       <div className="mx-auto mt-6 flex max-w-md items-center justify-center gap-2 text-[11px] text-[#A8A49C]">
         {steps.map((label, i) => (
           <div key={label} className="flex items-center gap-2">
             <div className="flex flex-col items-center">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-[#C5C0BC] text-[#A09B96]">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-[rgba(255,255,255,0.10)] text-[#A8A49C]">
                 <span className="text-[10px] font-medium">{i + 1}</span>
               </div>
               <span className="mt-1.5 text-[10px] font-medium uppercase tracking-wider">{label}</span>
             </div>
-            {i < steps.length - 1 && <div className="h-px w-6 bg-[#D8D4D0]" />}
+            {i < steps.length - 1 && <div className="h-px w-6 bg-[rgba(255,255,255,0.10)]" />}
           </div>
         ))}
       </div>
@@ -163,19 +169,19 @@ function RedirectTone(props: EmptyStateProps) {
         <div>
           {props.query && (
             <p className="mb-3 text-[12px] text-[#A8A49C]">
-              Query · <span className="font-mono text-[#181818]">"{props.query}"</span>
+              查詢 · <span className="font-mono text-[#EEECEA]">"{props.query}"</span>
             </p>
           )}
-          <h2 className="text-[20px] font-semibold tracking-tight text-[#181818]">{props.headline}</h2>
+          <h2 className="text-[20px] font-semibold tracking-tight text-[#EEECEA]">{props.headline}</h2>
           {props.sub && <p className="mt-2 text-[13px] leading-relaxed text-[#A8A49C]">{props.sub}</p>}
         </div>
         {props.suggestions && props.suggestions.length > 0 && (
           <div className="flex flex-col gap-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A8A49C]">你可以這樣做</p>
             {props.suggestions.map((s, i) => (
-              <div key={i} className="flex items-center justify-between gap-3 rounded-md border border-[#E6E1D9] bg-[#F9F8F4] px-3 py-2.5">
+              <div key={i} className="flex items-center justify-between gap-3 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#171719] px-3 py-2.5">
                 <div className="flex flex-col">
-                  <span className="text-[13px] font-medium text-[#181818]">{s.text}</span>
+                  <span className="text-[13px] font-medium text-[#EEECEA]">{s.text}</span>
                   {s.hint && <span className="mt-0.5 text-[11px] text-[#A8A49C]">{s.hint}</span>}
                 </div>
                 <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#A8A49C]" />
@@ -196,15 +202,15 @@ function ClearTone(props: EmptyStateProps) {
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(29,158,117,0.14)]">
         <Check className="h-6 w-6 text-[#6FD8B0]" strokeWidth={2.5} />
       </div>
-      <h2 className="text-[20px] font-semibold tracking-tight text-[#181818]">{props.headline}</h2>
+      <h2 className="text-[20px] font-semibold tracking-tight text-[#EEECEA]">{props.headline}</h2>
       {props.sub && <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-[#A8A49C]">{props.sub}</p>}
       {props.stats && props.stats.length > 0 && (
-        <div className="mx-auto mt-6 flex max-w-md items-center justify-center divide-x divide-[#E6E1D9]">
+        <div className="mx-auto mt-6 flex max-w-md items-center justify-center divide-x divide-[rgba(255,255,255,0.06)]">
           {props.stats.map((s, i) => (
             <div key={i} className="px-5">
-              <p className="font-mono text-[15px] font-semibold tabular-nums text-[#181818]">
+              <p className="font-mono text-[15px] font-semibold tabular-nums text-[#EEECEA]">
                 {s.value}
-                {s.delta && <span className="ml-1 text-[11px] font-normal text-[#9FE1CB]">{s.delta}</span>}
+                {s.delta && <span className="ml-1 text-[11px] font-normal text-[#6FD8B0]">{s.delta}</span>}
               </p>
               <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[#A8A49C]">{s.label}</p>
             </div>
@@ -212,7 +218,7 @@ function ClearTone(props: EmptyStateProps) {
         </div>
       )}
       {props.auditLink && (
-        <a href={props.auditLink.href} className="mt-5 inline-flex items-center gap-1.5 text-[12px] text-[#A8A49C] hover:text-[#181818]">
+        <a href={props.auditLink.href} className="mt-5 inline-flex items-center gap-1.5 text-[12px] text-[#A8A49C] hover:text-[#EEECEA]">
           <FileText className="h-3 w-3" />
           {props.auditLink.label}
           <ArrowRight className="h-3 w-3" />
