@@ -31,9 +31,10 @@ export function PublishPage() {
       return uploadSkill(file, version, author, category)
     },
     onSuccess: (data) => {
-      // S096d4a: 上傳成功後 navigate 到 /publish/review?id=X
-      // — 取代既有 inline success card；URL 可分享 / bookmark
-      navigate(`/publish/review?id=${data.id}`)
+      // S098a: 上傳成功後 navigate 到 /publish/validate?id=X 中介頁
+      // — 顯 4-step stepper + scan polling；scan 完成 (riskLevel 設值) 自動跳 /publish/review
+      // 取代 S096d4a 直接跳 review（user 在 review 看到 spinner 心智模型不清；validate 頁明示 stepper 狀態）
+      navigate(`/publish/validate?id=${data.id}`)
     },
     onError: (err) => {
       console.error('[PublishPage] 發佈技能失敗', err)

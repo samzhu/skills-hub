@@ -1,5 +1,42 @@
 # Changelog
 
+## [v2.95.0] — Publish Step 2 `/publish/validate` 中介頁（S098a 完成；2026-05-02）
+
+> S098a — 完成 publish 流程「Step 1 上傳 → **Step 2 驗證** → Step 3 審視 → Step 4 上架」中介頁。對齊 prototype `Skills Hub Publish Step 2.html`。原 PublishPage 直接跳 review 心智模型不清（user 看到 spinner 不知在等什麼）；新中介頁明示 4-step stepper 狀態。
+
+### 🎨 Frontend
+- 新檔 `pages/PublishValidatePage.tsx`：4-step stepper UI + auto-poll + auto-navigate。
+  - `Upload (done) → Validate (active) → Review (future) → Live (future)` 視覺狀態
+  - 步圈顏色 per prototype `.step-num` palette：done = `rgba(29,158,117,0.18)` + ✓ / active = `bg-foreground` filled + 數字 / future = `#171719` outline + 數字
+  - 連接線 `step-line` done = `rgba(29,158,117,0.40)` / future = `rgba(255,255,255,0.10)`
+  - StatusCallout 4 tone (info/warning/success/danger) — scanning 為 warning + spinner；完成短暫顯 success「即將跳轉」後 useEffect 出走
+  - useQuery refetchInterval 2s pattern（同 PublishReviewPage S096d5a）；scan 完 (riskLevel 設值) 即停 poll + navigate `/publish/review?id=X` (replace mode 防 back-button 循環)
+- `pages/PublishPage.tsx`：onSuccess 改 navigate `/publish/validate?id=X` 取代既有 `/publish/review?id=X`
+- `App.tsx`：新 route `/publish/validate`
+
+### Trim 紀錄
+原 M(10) 估含「stepper + SSE event stream + per-event 即時動畫 + upload-strip file detail + check-list 三項即時打勾」。本 commit ship XS(5)：
+- ✅ stepper 4-step UI + status indicators
+- ✅ auto-poll + auto-navigate
+- ✅ 4 tone status callout (loading/scanning/success/error)
+- ⏸ S098a2: 真 SSE event stream — 需 backend 三 events (BundleParsed / FrontmatterValidated / RiskScanCompleted)；目前 poll-based 已 cover 80% UX
+- ⏸ S098a3: upload-strip file detail (filename / size / 檔案數)；需 backend `/skills/{id}/bundle-info` endpoint
+
+### Reuse
+- `useQuery` refetchInterval pattern from PublishReviewPage S096d5a — 同樣 callback-driven enable/disable
+- `fetchSkillById` API client — 零 new endpoint
+- 純 composition pattern；零 new shared component
+
+### ✅ Tests
+- `npx vitest run` (cwd=frontend) → 7 files / 33 tests PASS
+- `npx tsc --noEmit` (cwd=frontend) → no errors
+
+### 流程完整性
+S098a + S098b + S098b2 + S096d4a + S096d5a 構成 publish 流程閉合：
+- 上傳成功 → `/publish/validate` (S098a) → 自動跳 `/publish/review` (S096d4a/d5a)
+- 上傳失敗 → `/publish/failed?state=A` (S098b)
+- HIGH-risk 觸發 → `/publish/failed?state=B` (S098b2 from review)
+
 ## [v2.94.0] — Docs IA expansion: Overview + Risk Tiers（S098 META 8/8 ✅ 完成；M92f 完成；2026-05-02）
 
 > S098f — `/docs/overview` 入門概覽頁 + `/docs/risk-tiers` 風險層級完整說明頁。對齊 prototype `Skills Hub Docs.html` sidebar IA。**S098 META 8 sub-specs 全達成 ✅**。

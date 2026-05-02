@@ -15,6 +15,7 @@ import { CollectionsPage } from './pages/CollectionsPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { PublishReviewPage } from './pages/PublishReviewPage'
 import { PublishFailedPage } from './pages/PublishFailedPage'
+import { PublishValidatePage } from './pages/PublishValidatePage'
 
 function App() {
   return (
@@ -28,7 +29,9 @@ function App() {
       {/* S096c: canonical route per ADR-003；既有 :id alias 並行不破 */}
       <Route path="/skills/:author/:name" element={<SkillDetailPage />} />
       <Route path="/publish" element={<PublishPage />} />
-      {/* S096d4a: post-upload result page; defer /publish/validate poll page 至 S096d5 */}
+      {/* S098a: Step 2 中介驗證頁 — 4-step stepper + auto-poll + auto-navigate to /publish/review */}
+      <Route path="/publish/validate" element={<PublishValidatePage />} />
+      {/* S096d4a: post-upload result page (Step 3 Review) */}
       <Route path="/publish/review" element={<PublishReviewPage />} />
       {/* S098b: dedicated failure page — State A frontmatter error / State B high-risk submitted */}
       <Route path="/publish/failed" element={<PublishFailedPage />} />
