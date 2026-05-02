@@ -1,5 +1,36 @@
 # Changelog
 
+## [v2.93.0] — SkillDetailPage 5-tab + sparkline hero（S098 META 7/8；M92e 完成；2026-05-02）
+
+> S098e — SkillDetailPage v2 polish per prototype `Skills Hub Skill Detail.html`。加 Reviews + Flags tabs (stub) + 30d 下載 sparkline 至 hero strip（reuse S096d3 Sparkline + `/skills/{id}/stats`）。
+
+### 🎨 Frontend
+- `pages/SkillDetailPage.tsx`：
+  - hero 抽出為 `SkillHero` sub-component；加 30-day download sparkline (size 120×32, accent purple `#7F77DD`)，僅 PUBLISHED 狀態顯示，DRAFT/SUSPENDED 數據不具參考性所以 hidden。
+  - tabs 結構從 4 → 6：新增「評論」(reviews) + 「回報」(flags) tabs；保留既有 Files (S082 file browser, 偏離 prototype 5-tab 是 trade-off — 不破壞既有功能)。Reviews stub 用 EmptyState invite tone「評論系統即將推出」；Flags stub 用 EmptyState clear tone「目前沒有任何回報」。
+  - 加 `useQuery(['skill-stats', id, '30d'])` 配 `staleTime: 5min` + `enabled: status==='PUBLISHED'`；複用既有 fetchSkillStats endpoint（S096d3 ship）。
+
+### Trim 紀錄
+原 S(8-9) 估完整含「5-tab + sparkline + Reviews aggregate + Flags 回報流程」。本 commit ship XS(5)：
+- ✅ 5-tab structure（+Files = 6 實際；偏離 prototype 但 preserve 既有功能）+ sparkline
+- ⏸ S098e2: Reviews aggregate (review submission + ratings + listing)
+- ⏸ S098e3: Flags 回報流程 (flag submission + reviewer queue integration)
+- 兩 follow-up 都需 backend aggregate + 新 endpoints；此 commit 只交付 UI shell
+
+### Reuse
+- `Sparkline` (S096d3 ship；同樣 component 已用於 MySkillsPage row 30d trend)
+- `EmptyState` (S094c ship + S098h2 dark migration)
+- `fetchSkillStats(id, '30d')` API client (S096d3 ship)
+- 零新 component / 零新 endpoint — 純 composition
+
+### ✅ Tests
+- `npx vitest run` (cwd=frontend) → 7 files / 33 tests PASS
+- `npx tsc --noEmit` (cwd=frontend) → no errors
+
+### S098 META 進度
+- 7/8 sub-specs shipped (S098h/g/h2/d/b core/b2/e core)
+- 剩 1：S098f Docs IA M=10 + S098a/c (M+) follow-ups + S098d2/b3/e2/e3 spawn
+
 ## [v2.92.0] — PublishReviewPage HIGH-risk auto-redirect（S098 META 6/8；M92b2 完成；2026-05-02）
 
 > S098b2 closes State B navigation flow — PublishReviewPage 在 polling 偵測到 `riskLevel === 'HIGH'` 時自動 redirect 到 `/publish/failed?state=B&id=X`，user 不會在「review」頁停留並誤以為已成功上架。

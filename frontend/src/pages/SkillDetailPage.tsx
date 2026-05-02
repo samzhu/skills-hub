@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router'
 import { ArrowLeft, Download, AlertCircle } from 'lucide-react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppShell } from '@/components/AppShell'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -12,9 +12,11 @@ import { MetricCard } from '@/components/MetricCard'
 import { VersionList } from '@/components/VersionList'
 import { FileDropZone } from '@/components/FileDropZone'
 import { FilesPanel } from '@/components/FilesPanel'
+import { Sparkline } from '@/components/Sparkline'
+import { EmptyState } from '@/components/EmptyState'
 import { useSkill, useSkillByAuthorAndName } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
-import { addVersion } from '@/api/skills'
+import { addVersion, fetchSkillStats } from '@/api/skills'
 import { ApiError } from '@/api/client'
 import { localizeApiError } from '@/lib/api-error-messages'
 import type { RiskLevel, SkillStatus } from '@/types/skill'
@@ -110,37 +112,8 @@ export function SkillDetailPage() {
         返回列表
       </Link>
 
-      {/* S087: hero row — IconTile xl + name 22px + author tertiary + version mono pill + risk pill + status pill + 下載 CTA */}
-      <div className="mb-6 flex items-start gap-4">
-        <IconTile name={skill.name} category={skill.category} size="xl" />
-        <div className="min-w-0 flex-1">
-          <h1 className="m-0 truncate text-[22px] font-medium leading-[1.2]">{skill.name}</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">by {skill.author}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {skill.latestVersion && (
-              <span className="rounded font-mono text-[11px] bg-secondary text-foreground/80 px-1.5 py-0.5">
-                v{skill.latestVersion}
-              </span>
-            )}
-            <RiskBadge level={skill.riskLevel} />
-            <span
-              className="rounded-full px-2 py-0.5 text-[11px] font-medium"
-              style={STATUS_PILL_STYLE[skill.status]}
-            >
-              {STATUS_LABEL[skill.status]}
-            </span>
-          </div>
-        </div>
-        {skill.latestVersion && skill.status === 'PUBLISHED' && (
-          <a
-            href={`/api/v1/skills/${skill.id}/download`}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-foreground"
-          >
-            <Download className="h-4 w-4" />
-            下載
-          </a>
-        )}
-      </div>
+      {/* S087 → S098e: hero row — IconTile xl + name 22px + author + sparkline 30d 下載趨勢 + 版本/風險/狀態 pills + 下載 CTA */}
+      <SkillHero skill={skill} />
 
       {/* S087: SUSPENDED callout per DESIGN.md card-callout-danger pattern */}
       {skill.status === 'SUSPENDED' && (
@@ -180,11 +153,16 @@ export function SkillDetailPage() {
       <Separator className="mb-6" />
 
       <Tabs defaultValue="overview">
+        {/* S098e: 5-tab structure per prototype #3 (Overview / Risk / Versions / Reviews / Flags)
+            + Files preserved (S082 file browser) — 存留 6 tabs。Reviews/Flags 為 stub，後續
+            S098e2/e3 接 aggregates。 */}
         <TabsList>
           <TabsTrigger value="overview">概要</TabsTrigger>
-          <TabsTrigger value="files">檔案</TabsTrigger>
-          <TabsTrigger value="versions">版本歷史</TabsTrigger>
           <TabsTrigger value="risk">風險評估</TabsTrigger>
+          <TabsTrigger value="versions">版本歷史</TabsTrigger>
+          <TabsTrigger value="reviews">評論</TabsTrigger>
+          <TabsTrigger value="flags">回報</TabsTrigger>
+          <TabsTrigger value="files">檔案</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="mt-4">
           <div className="prose max-w-none">
@@ -231,8 +209,79 @@ export function SkillDetailPage() {
             )}
           </div>
         </TabsContent>
+        {/* S098e: Reviews tab stub — 真 review aggregate + ratings 待 S098e2 ship */}
+        <TabsContent value="reviews" className="mt-4">
+          <EmptyState
+            tone="invite"
+            headline="尚未有任何評論"
+            sub="評論系統即將推出 — 屆時用戶可以為使用過的技能打分數並留下文字回饋，協助其他人選擇。"
+          />
+        </TabsContent>
+        {/* S098e: Flags tab stub — 真 flag aggregate + 回報流程待 S098e3 ship */}
+        <TabsContent value="flags" className="mt-4">
+          <EmptyState
+            tone="clear"
+            headline="目前沒有任何回報"
+            sub="若你發現此技能含惡意指令、誤導 description 或其他問題，回報功能即將推出，可送至審核佇列由 reviewer 處理。"
+          />
+        </TabsContent>
       </Tabs>
     </AppShell>
+  )
+}
+
+/**
+ * S098e — Hero row with download sparkline (reuses S096d3 Sparkline + /skills/{id}/stats endpoint).
+ * 把 hero 的展示密度提升 — 30d 趨勢迷你圖讓 user 立刻看到「該技能還活著嗎？」
+ */
+function SkillHero({ skill }: { skill: import('@/types/skill').Skill }) {
+  // S098e: sparkline 30d trend — query 失敗或 0 data 時 EmptyState（"—"）由 Sparkline 處理
+  const { data: trend30d } = useQuery({
+    queryKey: ['skill-stats', skill.id, '30d'],
+    queryFn: () => fetchSkillStats(skill.id, '30d'),
+    staleTime: 5 * 60 * 1000,
+    // 當 PUBLISHED 才有意義抓 trend；DRAFT/SUSPENDED 數據不具參考性
+    enabled: skill.status === 'PUBLISHED',
+  })
+
+  return (
+    <div className="mb-6 flex items-start gap-4">
+      <IconTile name={skill.name} category={skill.category} size="xl" />
+      <div className="min-w-0 flex-1">
+        <h1 className="m-0 truncate text-[22px] font-medium leading-[1.2]">{skill.name}</h1>
+        <p className="mt-1 text-[13px] text-muted-foreground">by {skill.author}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {skill.latestVersion && (
+            <span className="rounded font-mono text-[11px] bg-secondary text-foreground/80 px-1.5 py-0.5">
+              v{skill.latestVersion}
+            </span>
+          )}
+          <RiskBadge level={skill.riskLevel} />
+          <span
+            className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+            style={STATUS_PILL_STYLE[skill.status]}
+          >
+            {STATUS_LABEL[skill.status]}
+          </span>
+        </div>
+      </div>
+      {/* S098e: 30d sparkline — 只 PUBLISHED 顯示；無資料時 Sparkline 自身呈 "—" */}
+      {skill.status === 'PUBLISHED' && (
+        <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">近 30 日下載</span>
+          <Sparkline data={trend30d ?? []} width={120} height={32} color="#7F77DD" />
+        </div>
+      )}
+      {skill.latestVersion && skill.status === 'PUBLISHED' && (
+        <a
+          href={`/api/v1/skills/${skill.id}/download`}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-foreground"
+        >
+          <Download className="h-4 w-4" />
+          下載
+        </a>
+      )}
+    </div>
   )
 }
 
