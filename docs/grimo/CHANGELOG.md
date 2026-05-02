@@ -1,5 +1,16 @@
 # Changelog
 
+## [v3.1.8] — SearchBar controlled input invariants（2026-05-02）
+
+> Mode B — SearchBar is reused on HomePage + LandingPage; basic controlled-input contract verified.
+
+### ✅ Tests
+- 新檔 `components/SearchBar.test.tsx` — 4 ACs：input value reflected; type="search" attribute; typing → onChange callback; clearing → empty-string callback。
+
+### 結果
+- 77 → 81 tests PASS（+4 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.1.7] — IconTile component invariants（S085 contract；2026-05-02）
 
 > Mode B — IconTile 是 SkillCard / SkillDetailPage 共用 primitive。Initial derivation logic + size class + a11y invariants。
