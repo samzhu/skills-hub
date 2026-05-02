@@ -10,6 +10,11 @@ import { RiskTiersPage } from './pages/docs/RiskTiersPage'
 import { SkillMdSpecPage } from './pages/docs/SkillMdSpecPage'
 import { FrontmatterPage } from './pages/docs/FrontmatterPage'
 import { BundleStructurePage } from './pages/docs/BundleStructurePage'
+import { UploadValidatePage } from './pages/docs/UploadValidatePage'
+import { VersioningPage } from './pages/docs/VersioningPage'
+import { SemanticSearchPage } from './pages/docs/SemanticSearchPage'
+import { RestApiPage } from './pages/docs/RestApiPage'
+import { EventPayloadPage } from './pages/docs/EventPayloadPage'
 import { MySkillsPage } from './pages/MySkillsPage'
 import { SearchResultsPage } from './pages/SearchResultsPage'
 import { LandingPage } from './pages/LandingPage'
@@ -61,6 +66,12 @@ function App() {
       <Route path="/docs/skill-md-spec" element={<SkillMdSpecPage />} />
       <Route path="/docs/frontmatter" element={<FrontmatterPage />} />
       <Route path="/docs/bundle" element={<BundleStructurePage />} />
+      {/* S098f3: 5 final docs pages — 發佈 + API & Webhook 兩 group */}
+      <Route path="/docs/upload-validate" element={<UploadValidatePage />} />
+      <Route path="/docs/versioning" element={<VersioningPage />} />
+      <Route path="/docs/semantic-search" element={<SemanticSearchPage />} />
+      <Route path="/docs/rest-api" element={<RestApiPage />} />
+      <Route path="/docs/event-payload" element={<EventPayloadPage />} />
       {/* unmatched URL 之前 render 空白 root，user 看不到 navbar 也沒 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

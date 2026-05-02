@@ -37,16 +37,16 @@ const GROUPS: SidebarGroup[] = [
   {
     label: '發佈',
     items: [
-      { label: '上傳與驗證' },
-      { label: '版本管理' },
-      { label: '語意搜尋' },
+      { label: '上傳與驗證', path: '/docs/upload-validate' },
+      { label: '版本管理', path: '/docs/versioning' },
+      { label: '語意搜尋', path: '/docs/semantic-search' },
     ],
   },
   {
     label: 'API 與 Webhook',
     items: [
-      { label: 'REST 參考' },
-      { label: 'Event payload' },
+      { label: 'REST 參考', path: '/docs/rest-api' },
+      { label: 'Event payload', path: '/docs/event-payload' },
     ],
   },
 ]

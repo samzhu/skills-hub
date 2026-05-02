@@ -1,5 +1,40 @@
 # Changelog
 
+## [v2.98.0] — Docs IA 完整收官（S098f3 完成；發佈群 + API/Webhook 群 5 stub pages；2026-05-02）
+
+> S098f3 — 完成 DocsSidebar 剩 5 placeholder items：發佈群（上傳與驗證 / 版本管理 / 語意搜尋）+ API & Webhook 群（REST 參考 / Event payload）。**Skills Hub Docs IA 11/11 全 active link ✅**。
+
+### 🎨 Frontend
+- 新檔 `pages/docs/UploadValidatePage.tsx` — 4-step 流程說明（Step component + 編號 dot + 常見錯誤列表）。
+- 新檔 `pages/docs/VersioningPage.tsx` — SemVer 規則 + PATCH/MINOR/MAJOR 升版時機 + suspended/reactivate 行為。
+- 新檔 `pages/docs/SemanticSearchPage.tsx` — Gemini text-embedding-004 + pgvector cosine similarity 流程 + fallback 行為（Gemini 不可用 → keyword）。
+- 新檔 `pages/docs/RestApiPage.tsx` — quick reference table 列 14 個主要 endpoints（依「瀏覽 / 發佈 / 搜尋與聚合」三組）；連 OpenAPI Swagger UI。
+- 新檔 `pages/docs/EventPayloadPage.tsx` — 6 個 domain event schema (SkillPublished / VersionPublished / SkillRiskAssessed / SkillFlagged / SkillSuspended / SkillDownloaded) 包裝結構 + 各自 payload 範例。
+- `App.tsx`：新 5 routes (`/docs/upload-validate`、`/docs/versioning`、`/docs/semantic-search`、`/docs/rest-api`、`/docs/event-payload`)
+- `DocsSidebar.tsx`：發佈群 3 items + API/Webhook 群 2 items 補 path → **全 11 sidebar items 變 active link**
+
+### Reuse-only
+- DocsLayout（既有）+ 同 H2/Callout/inline 元件 pattern（每 page inline 定義避免抽取過早）
+- 零 backend / 零 new shared component / 零 backend dependency
+
+### Trim 紀錄
+原 M(8) 估 5 page。本 commit ship 全 5 — fit one tick 沒觸發 trim（pattern 已建立，純 markup work fast）。
+
+### ✅ Tests
+- `npx vitest run` (cwd=frontend) → 7 files / 33 tests PASS
+- `npx tsc --noEmit` (cwd=frontend) → no errors
+
+### 🎉 Skills Hub Docs IA 完整 11/11 ✅
+
+| Group | Items shipped |
+|---|---|
+| 入門 | 概覽 / 撰寫第一個技能 (2/2) |
+| 參考 | SKILL.md 規範 / Frontmatter 欄位 / Bundle 結構 / 風險層級 (4/4) |
+| 發佈 | 上傳與驗證 / 版本管理 / 語意搜尋 (3/3) |
+| API & Webhook | REST 參考 / Event payload (2/2) |
+
+DocsSidebar 全 11 個 items 都是 active link；無更多 placeholder。Docs IA 達到 prototype #16 設計完整對等。
+
 ## [v2.97.0] — Docs 參考群 3 stub pages（S098f2 完成；2026-05-02）
 
 > S098f2 — 完成 DocsSidebar「參考」群剩 3 item path wiring：SKILL.md 規範 / Frontmatter 欄位 / Bundle 結構。Reuse `DocsLayout` + 在 `OverviewPage` / `RiskTiersPage` 確立的 dark-token markup pattern。
