@@ -21,13 +21,19 @@
 
 ## Round 1 — Browse skill flow（瀏覽技能流程）
 
+Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 4 negative cases (1.6-1.9) cover 5 reqd categories：empty / boundary / format / state-conflict / malicious。
+
 | # | Category | Scenario | Expected | Status | Notes |
 |---|----------|----------|----------|--------|-------|
 | 1.1 | positive | Visit `/` | Landing page renders Hero h1 「你的團隊真的可以信任的技能登錄中心」+ stats band 4 cells + 6 popular SkillCards + footer | 📋 | covered by partial test |
 | 1.2 | positive | Click「瀏覽技能登錄」CTA | Navigate to `/browse`；HomePage renders SearchBar + sidebar + 3-col grid | 📋 | |
 | 1.3 | positive | `/browse` → 點 Skill card | Navigate to `/skills/:id`；hero + 4 metric cards + 6-tab structure | 📋 | |
-| 1.4 | negative | `/skills/non-existent-uuid` | 404 message「找不到此技能」（不顯 retry hint）；500 顯「載入技能時發生錯誤」+ retry hint；返回首頁 link | ✅ | SkillDetailPage.test.tsx 3 ACs |
-| 1.5 | edge | `/browse` query 1000+ skills, pagination works | 「上一頁」「下一頁」disabled when at boundary | 📋 | |
+| 1.4 | negative (404) | `/skills/non-existent-uuid` | 404「找不到此技能」（不顯 retry hint）；500「載入技能時發生錯誤」+ retry hint；返回首頁 link | ✅ | SkillDetailPage.test.tsx 3 ACs |
+| 1.5 | edge (boundary) | `/browse` query 1000+ skills, pagination works | 「上一頁」「下一頁」disabled when at boundary | 📋 | |
+| 1.6 | negative (empty) | empty Skills DB → /browse | EmptyState seed tone「技能庫等著被開啟」+ Publish primary CTA | 📋 | SkillCardGrid empty path |
+| 1.7 | negative (format) | `/skills/<malformed-uuid>` (e.g. `/skills/abc`) | Backend 400 invalid UUID → frontend ErrorState「載入技能時發生錯誤」 | 📋 | needs ApiError mapping |
+| 1.8 | negative (state conflict) | 直接 URL `/skills/{suspended-id}` | SkillDetailPage 顯 SUSPENDED status pill + danger callout「此技能已被停用」+ download disabled | 📋 | covered partially by SUSPENDED branch in SkillDetailPage |
+| 1.9 | negative (malicious) | search keyword 含 XSS payload `<script>alert(1)</script>` | 後端 LIKE 搜尋對特殊字元跳脫 + 前端 React 自動 escape；無 script execution | 📋 | XSS smoke test |
 
 ## Round 2 — Search flow（語意 + keyword 搜尋）
 
@@ -127,14 +133,14 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 
 | Round | Total | ✅ Done | 📋 Planned | Negative count |
 |-------|-------|---------|------------|----------------|
-| 1 Browse | 5 | 1 | 4 | 1 |
+| 1 Browse | **9** (+4 reinforced) | 1 | 8 | **5** ✅ |
 | 2 Search | 4 | 0 | 4 | 1 |
 | 3 Filter/Sort | 4 | 2 | 2 | 0 |
 | 4 Publish | **14** (+7 reinforced) | 5 | 9 | **6** ✅ |
 | 5 Skill Detail | 8 | 3 | 5 | 1 |
 | 6 Docs IA | 2 | 0 | 2 | 0 |
 | 7 Empty state | 3 | 3 | 0 | 0 |
-| **Total** | **40** | **14** | **26** | **9** |
+| **Total** | **44** | **14** | **30** | **13** |
 
 > Per 2026-05-02 methodology upgrade：每 round 至少 3-5 反例。Round 4 已強化（6 反例 cover empty/boundary/format/state-conflict/malicious 五類）；其餘 rounds 待 backfill 至同樣強度（Round 1/2/3/5/6/7 反例 count 0-1 不足）。
 
