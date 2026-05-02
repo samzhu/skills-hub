@@ -57,6 +57,20 @@ describe('HomePage — S104 filter-active 0-hits UX', () => {
     expect(screen.getByText('sk1')).toBeInTheDocument()
   })
 
+  it('AC-S106: 預設 sortMode=recommended 時 fetchSkills URL 含 sort=downloadCount,desc (S106 fix)', async () => {
+    renderPage()
+    await waitFor(() => {
+      expect(screen.getByText('sk1')).toBeInTheDocument()
+    })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fetchMock = (globalThis as any).fetch as ReturnType<typeof vi.fn>
+    const skillsCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/api/v1/skills'))
+    expect(skillsCalls.length).toBeGreaterThan(0)
+    // 預設「推薦」chip 起始 active；S106 fix 後 URL 必須含 sort param 不再 fall-through
+    const url = String(skillsCalls[0][0])
+    expect(url).toMatch(/sort=downloadCount(%2C|,)desc/)
+  })
+
   it('AC-1 + AC-3: 點「無風險」filter (DB 0 NONE) → EmptyState headline 含「無風險」+ count 顯「0 個技能（共 103）」', async () => {
     renderPage()
     await waitFor(() => {

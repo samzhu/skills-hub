@@ -13,8 +13,11 @@ import { useSemanticSearch } from '@/hooks/useSemanticSearch'
 import type { RiskLevel, Skill } from '@/types/skill'
 
 /**
- * S098d 排序模式（client-side sort，不打 backend 額外 query）。
- * 因 backend `/skills` 預設 downloadCount desc，"推薦"= identity，無需轉換。
+ * S098d 排序模式 — frontend mode 對應 backend `?sort=field,direction`。
+ * S106: "推薦" 暫 = downloadCount,desc（與 "下載最多" 同 mapping，但 UX chip 仍
+ * distinct，future evolve 為 recommendation algorithm 時改 mapping 即可）；
+ * backend default 實為 createdAt DESC（per SkillQueryService.search fallback）—
+ * 不能依賴 fall-through 到 default，必須 explicit param。
  */
 type SortMode = 'recommended' | 'newest' | 'risk-low' | 'most-downloaded'
 const SORT_LABELS: Record<SortMode, string> = {

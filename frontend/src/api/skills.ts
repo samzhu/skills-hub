@@ -20,7 +20,9 @@ export interface SkillSearchParams {
   /**
    * S100b: server-side sort。Spring Pageable 接收 `sort=field,direction` query param。
    * 白名單對齊 backend SkillQueryService.SORTABLE_PROPERTIES：
-   * - 'recommended'  → 不傳 sort（後端 default = createdAt DESC，與 size 內隱排序對齊）
+   * - 'recommended'  → downloadCount,desc（S106 對齊 design intent；同 most-downloaded
+   *                     mapping 但 UX chip distinct，future 改 recommendation algorithm
+   *                     時直接改 mapping，UI 結構不變）
    * - 'newest'       → createdAt,desc
    * - 'most-downloaded' → downloadCount,desc
    * - 'risk-low'     → riskLevel,asc (NONE→LOW→MEDIUM→HIGH 字典序)
@@ -43,8 +45,12 @@ export function fetchSkills(params: SkillSearchParams): Promise<SpringPage<Skill
   search.set('page', String(params.page ?? 0))
   search.set('size', String(params.size ?? 20))
   // S100b: server-side sort — frontend mode → Spring Pageable `sort=field,direction`
-  if (params.sort && params.sort !== 'recommended') {
+  // S106: 'recommended' explicit mapped (避免 fall-through 到 backend default 與 'newest'
+  // 行為重複；UX 4 chip 各自 distinct param，future evolve recommendation algorithm 時
+  // 改 mapping 即可)。
+  if (params.sort) {
     const sortMap = {
+      recommended: 'downloadCount,desc',
       newest: 'createdAt,desc',
       'most-downloaded': 'downloadCount,desc',
       'risk-low': 'riskLevel,asc',

@@ -1,6 +1,6 @@
 # S106 — `推薦` sort behavior alignment with design intent
 
-> **Status**: 📋 planned (Spec-Only-Handoff — written by 2026-05-03 cron-loop Mode B Round 11 audit tick, awaits implement tick)
+> **Status**: ✅ shipped `v3.4.6` (2026-05-03 — implement cron tick 11)
 > **Type**: Frontend sort param mapping fix + comment correction
 > **Estimate**: XS (2 pts)
 > **Triggered by**: 2026-05-03 cron Tick 10 Mode B E2E live browser walk-through (Chrome MCP) — Round 11 (sort chips + category filter combined cut)
@@ -112,17 +112,52 @@ npm run build  # ensure no broken imports
 
 ## §7 Result
 
-待 implement tick 填。
+**Shipped 2026-05-03 cron Tick 11 @ ~06:23**.
 
-**Implement tick checklist**:
-- [ ] `skills.ts:46-50` 改寫為 explicit mapping
-- [ ] HomePage.tsx:17 comment update
-- [ ] 補測（fetchSkills sort mapping）
-- [ ] `npm test --run skills HomePage` 全綠
-- [ ] Chrome MCP smoke：`/browse` 4 chip 各自 distinct first row（推薦 ≠ 最新 with current dataset）
-- [ ] CHANGELOG 加 patch 版本（建議 `v3.4.6`）
-- [ ] roadmap row → ✅
-- [ ] spec doc 移 archive/
+### Implement checklist
+
+- [x] `skills.ts:46` 改寫為 explicit mapping — `recommended: 'downloadCount,desc'` 加入 sortMap，移除 `!== 'recommended'` exclusion
+- [x] `skills.ts:23` JSDoc update — `recommended → downloadCount,desc` (+ future evolution note)
+- [x] `HomePage.tsx:15` JSDoc update — backend default 標 createdAt DESC + S106 alignment 說明
+- [x] `HomePage.test.tsx` 加 AC-S106 — 預設 sortMode=recommended 時 fetch URL 必須含 `sort=downloadCount,desc`
+- [x] `npm test --run HomePage`：5/5 PASS（1.28s；既有 4 + 新 AC-S106 = 5）
+- [x] Chrome MCP live smoke 4 chip first card：
+  - 推薦 → `r19-lifecycle` (downloadCount,desc — most-downloaded first) ✓
+  - 最新 → `r35-docker-1777685322` (createdAt,desc) ✓
+  - 風險低 → `r35-docker-1777685322` (riskLevel,asc) ✓
+  - 下載最多 → `r19-lifecycle` (downloadCount,desc — 同 推薦 per design) ✓
+- [x] CHANGELOG `v3.4.6` patch entry
+- [x] roadmap row → ✅
+- [x] spec doc 移 archive/
+
+### Verify metrics
+
+| Item | Value |
+|------|-------|
+| Files changed | 4（skills.ts + HomePage.tsx + HomePage.test.tsx + spec/CHANGELOG/roadmap docs）|
+| LOC delta | ~+10 / -5（含 comment expansion）|
+| FE tests | 既有 36 → 37（+1 AC-S106 in HomePage.test.tsx）|
+| Backend touch | 0（純 frontend mapping fix）|
+| Wall clock | ~10 min（IMPLEMENT 3 + tests 2 + Chrome smoke 2 + DOCUMENT 2）|
+
+### Live render validation (Chrome MCP)
+
+| Sort chip | Before (Tick 10 audit) | After (Tick 11 ship) |
+|-----------|----------------------|---------------------|
+| 推薦 | r35-docker-1777685322 (LOW) — fall-through to backend default createdAt DESC = 最新 | r19-lifecycle (LOW) — explicit downloadCount,desc — distinct from 最新 |
+| 最新 | r35-docker-1777685322 — same as 推薦 (重複 bug) | r35-docker-1777685322 — distinct from 推薦 ✓ |
+| 風險低 | r35-docker-1777685322 | r35-docker-1777685322 — 不變 |
+| 下載最多 | r19-lifecycle | r19-lifecycle — 不變（推薦 同 mapping，UX chip 仍 distinct） |
+
+### Trim deferred
+
+- **真正 recommendation algorithm**（mix recency × popularity × user history）— future M+ spec；本 ship 留 mapping placeholder（推薦 = downloadCount,desc）等 future 改 mapping 即可，UI chip 結構不變
+- **「下載最多」與「推薦」是否該合併為單一 chip** — UX 設計決定，超 fix-spec scope；本 ship 保留 distinct 4 chips per existing intent
+- **development-standards.md §UI** "control label 與 underlying behavior 必須 1:1 mapping，不可 fall-through" rule — sibling lesson，列入 polish backlog 與 S103/S104/S105 doc-side rules 集中 ship
+
+### Sibling chain validation
+
+S100e (defensive guard v3.4.1) → S102 (routing residual v3.4.2) → S103 (UX copy hygiene v3.4.3) → S104 (interactive state consistency v3.4.4) → S105 (component-context alignment v3.4.5) → **S106 (control-behavior alignment v3.4.6)** — 第 6 個 cross-cutting follow-up，cut 累積 6 層。發現方式 = Chrome MCP click sort chips + compare first card across modes（前 5 cut 都看不見此 bug，需 same-page multi-control 對比才浮現）。Round 11 內同 page 上 category filter cut **passed**（DevOps → 38 個技能，server-side 正確）— 證明 audit cut 多樣化是 cumulative quality 累積方式，不同 cut 揭露不同層 bug。
 
 ## §8 Lesson — sort/filter behavior alignment audit cut
 

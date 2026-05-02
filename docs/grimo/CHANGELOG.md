@@ -1,5 +1,26 @@
 # Changelog
 
+## [v3.4.6] — Sort `推薦` behavior alignment with design intent（S106 完成；2026-05-03）
+
+> Mode B Round 11 (Chrome MCP click sort chips + compare first card across 4 modes) Tick 10 audit 找到 control-behavior misalignment：「推薦」chip 與「最新」chip 行為相同 — 都 fall through 到 backend default `ORDER BY created_at DESC`，UI 4 chip 但只實際有 3 種 sort 行為。Tick 11 frontend-only fix：加 explicit `recommended → downloadCount,desc` mapping，per HomePage:17 design intent (stale comment claimed backend default = downloadCount desc)；推薦 與 下載最多 暫同 mapping 但 UX chip 仍 distinct，future evolve 為 recommendation algorithm 時改 mapping 即可。
+
+### Changed
+- `frontend/src/api/skills.ts`：sortMap 加 `recommended: 'downloadCount,desc'`；conditional 改寫去除 `!== 'recommended'` exclusion；JSDoc 更新 mapping 說明
+- `frontend/src/pages/HomePage.tsx`：line 15 stale JSDoc 更新（backend default 實為 createdAt DESC，非舊 comment 聲稱的 downloadCount desc；S106 alignment + future evolution note）
+
+### Added
+- `frontend/src/pages/HomePage.test.tsx`：AC-S106 — 預設 sortMode=recommended 時 fetchSkills URL 必須含 `sort=downloadCount,desc`（不再 fall-through）
+
+### Verified
+- `cd frontend && npm test -- --run HomePage`：1 file 5/5 PASS（1.28s）
+- Chrome MCP live smoke 4 chip first card：推薦 r19-lifecycle ✓ ≠ 最新 r35-docker ✓ ≠ 風險低 r35-docker (NONE→LOW asc) ≠ 下載最多 r19-lifecycle (= 推薦 per design)
+- FE tests 累計 36 → 37（+1）
+
+### Why
+S100e → S102 → S103 → S104 → S105 → **S106** 第 6 個 S100 META cross-cutting follow-up — cut 從「page-level data → cross-cutting links → user-visible strings → interactive state → component-context → control-behavior alignment」累積 6 層。發現方式 = Chrome MCP click sort chips + compare first card across 4 modes（前 5 cut 都看不見此 bug，需 same-page multi-control 對比才浮現）。同 round 內 category filter cut **passed**（DevOps → 38 個技能，server-side 正確）— 證明 audit cut 多樣化是 cumulative quality 累積方式，不同 cut 揭露不同層 bug。
+
+---
+
 ## [v3.4.5] — EmptyState invite-tone steps decoupling（S105 完成；2026-05-03）
 
 > Mode B Round 10 (Chrome MCP focus+Space keyboard nav for Radix Tabs — synthetic .click() 與 React event system 衝突需真 keyboard event) Tick 8 audit 找到 component-context misalignment：`EmptyState` `invite` tone 內部 hardcode 4-step strip `['打包','自動掃描','發佈','追蹤']`，但 5 個 production callsite 中只有 MySkillsPage（新作者 publish onboarding）真符合此 context；其他 4 處（CollectionsPage / RequestBoardPage / SkillDetailPage Reviews tab / SearchResultsPage no-query）顯無關 publish flow steps 造成 user 疑惑。Tick 9 frontend-only fix：抽 `steps?: string[]` 為 optional prop（default hide）+ MySkillsPage explicit opt-in。
