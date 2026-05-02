@@ -18,13 +18,13 @@ const SIZE_CLASS: Record<Size, string> = {
 
 // Per DESIGN.md category palette + prototype `.sh-icon.*`
 const CATEGORY_COLORS: Record<Category, { bg: string; fg: string }> = {
-  devops:   { bg: '#EEEDFE', fg: '#3C3489' },
-  infra:    { bg: '#E6F1FB', fg: '#0C447C' },
-  testing:  { bg: '#E1F5EE', fg: '#085041' },
-  docs:     { bg: '#FAECE7', fg: '#712B13' },
-  data:     { bg: '#FAEEDA', fg: '#633806' },
-  security: { bg: '#FBEAF0', fg: '#72243E' },
-  default:  { bg: '#F5F4ED', fg: '#5C5C5C' },
+  devops:   { bg: 'rgba(127,119,221,0.18)', fg: '#C9C5F2' },
+  infra:    { bg: 'rgba(55,138,221,0.14)', fg: '#B0D5F2' },
+  testing:  { bg: 'rgba(29,158,117,0.14)', fg: '#6FD8B0' },
+  docs:     { bg: 'rgba(226,75,74,0.18)', fg: '#F2A6A6' },
+  data:     { bg: 'rgba(239,159,39,0.14)', fg: '#FAC775' },
+  security: { bg: 'rgba(217,56,138,0.18)', fg: '#F0A2C5' },
+  default:  { bg: '#171719', fg: '#A8A49C' },
 }
 
 /**

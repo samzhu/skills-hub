@@ -70,7 +70,7 @@ function PrimaryButton({ action }: { action: NonNullable<EmptyStateProps['primar
 }
 
 function SecondaryButton({ action }: { action: NonNullable<EmptyStateProps['secondaryAction']> }) {
-  const cls = "inline-flex items-center gap-1.5 rounded-md border border-[#E6E1D9] bg-white px-4 py-2 text-[13px] font-medium text-[#181818] hover:bg-[#F5F4ED]"
+  const cls = "inline-flex items-center gap-1.5 rounded-md border border-[#E6E1D9] bg-white px-4 py-2 text-[13px] font-medium text-[#181818] hover:bg-[#171719]"
   return action.href ? (
     <a href={action.href} className={cls}>{action.label}</a>
   ) : (
@@ -94,13 +94,13 @@ function SeedTone(props: EmptyStateProps) {
       <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-start">
         <div>
           {props.eyebrow && (
-            <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#D8D4FA] bg-[#EEEDFE] px-2.5 py-0.5 text-[11px] font-medium text-[#3C3489]">
+            <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#D8D4FA] bg-[rgba(127,119,221,0.18)] px-2.5 py-0.5 text-[11px] font-medium text-[#C9C5F2]">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#7F77DD]" />
               {props.eyebrow}
             </span>
           )}
           <h2 className="text-[22px] font-semibold tracking-tight text-[#181818]">{props.headline}</h2>
-          {props.sub && <p className="mt-2 max-w-md text-[13px] leading-relaxed text-[#5C5751]">{props.sub}</p>}
+          {props.sub && <p className="mt-2 max-w-md text-[13px] leading-relaxed text-[#A8A49C]">{props.sub}</p>}
           {(props.primaryAction || props.secondaryAction) && (
             <div className="mt-5 flex flex-wrap items-center gap-3">
               {props.primaryAction && <PrimaryButton action={props.primaryAction} />}
@@ -125,13 +125,13 @@ function InviteTone(props: EmptyStateProps) {
   const steps = ['Zip', 'Auto-scan', 'Publish', 'Track']
   return (
     <Container className="text-center">
-      <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-[#E6E1D9] bg-[#F9F8F4] text-[#5C5751]">
+      <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-[#E6E1D9] bg-[#F9F8F4] text-[#A8A49C]">
         <Upload className="h-4 w-4" />
       </div>
       <h2 className="text-[20px] font-semibold tracking-tight text-[#181818]">{props.headline}</h2>
-      {props.sub && <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-[#5C5751]">{props.sub}</p>}
+      {props.sub && <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-[#A8A49C]">{props.sub}</p>}
       {/* Horizontal flow — preview the future workflow */}
-      <div className="mx-auto mt-6 flex max-w-md items-center justify-center gap-2 text-[11px] text-[#5C5751]">
+      <div className="mx-auto mt-6 flex max-w-md items-center justify-center gap-2 text-[11px] text-[#A8A49C]">
         {steps.map((label, i) => (
           <div key={label} className="flex items-center gap-2">
             <div className="flex flex-col items-center">
@@ -162,23 +162,23 @@ function RedirectTone(props: EmptyStateProps) {
       <div className="grid gap-8 md:grid-cols-[1fr_1fr]">
         <div>
           {props.query && (
-            <p className="mb-3 text-[12px] text-[#5C5751]">
+            <p className="mb-3 text-[12px] text-[#A8A49C]">
               Query · <span className="font-mono text-[#181818]">"{props.query}"</span>
             </p>
           )}
           <h2 className="text-[20px] font-semibold tracking-tight text-[#181818]">{props.headline}</h2>
-          {props.sub && <p className="mt-2 text-[13px] leading-relaxed text-[#5C5751]">{props.sub}</p>}
+          {props.sub && <p className="mt-2 text-[13px] leading-relaxed text-[#A8A49C]">{props.sub}</p>}
         </div>
         {props.suggestions && props.suggestions.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#5C5751]">What you can do instead</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A8A49C]">What you can do instead</p>
             {props.suggestions.map((s, i) => (
               <div key={i} className="flex items-center justify-between gap-3 rounded-md border border-[#E6E1D9] bg-[#F9F8F4] px-3 py-2.5">
                 <div className="flex flex-col">
                   <span className="text-[13px] font-medium text-[#181818]">{s.text}</span>
-                  {s.hint && <span className="mt-0.5 text-[11px] text-[#5C5751]">{s.hint}</span>}
+                  {s.hint && <span className="mt-0.5 text-[11px] text-[#A8A49C]">{s.hint}</span>}
                 </div>
-                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#5C5751]" />
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#A8A49C]" />
               </div>
             ))}
           </div>
@@ -193,26 +193,26 @@ function RedirectTone(props: EmptyStateProps) {
 function ClearTone(props: EmptyStateProps) {
   return (
     <Container className="text-center">
-      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#E1F5EE]">
-        <Check className="h-6 w-6 text-[#085041]" strokeWidth={2.5} />
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[rgba(29,158,117,0.14)]">
+        <Check className="h-6 w-6 text-[#6FD8B0]" strokeWidth={2.5} />
       </div>
       <h2 className="text-[20px] font-semibold tracking-tight text-[#181818]">{props.headline}</h2>
-      {props.sub && <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-[#5C5751]">{props.sub}</p>}
+      {props.sub && <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-[#A8A49C]">{props.sub}</p>}
       {props.stats && props.stats.length > 0 && (
         <div className="mx-auto mt-6 flex max-w-md items-center justify-center divide-x divide-[#E6E1D9]">
           {props.stats.map((s, i) => (
             <div key={i} className="px-5">
               <p className="font-mono text-[15px] font-semibold tabular-nums text-[#181818]">
                 {s.value}
-                {s.delta && <span className="ml-1 text-[11px] font-normal text-[#27500A]">{s.delta}</span>}
+                {s.delta && <span className="ml-1 text-[11px] font-normal text-[#9FE1CB]">{s.delta}</span>}
               </p>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[#5C5751]">{s.label}</p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[#A8A49C]">{s.label}</p>
             </div>
           ))}
         </div>
       )}
       {props.auditLink && (
-        <a href={props.auditLink.href} className="mt-5 inline-flex items-center gap-1.5 text-[12px] text-[#5C5751] hover:text-[#181818]">
+        <a href={props.auditLink.href} className="mt-5 inline-flex items-center gap-1.5 text-[12px] text-[#A8A49C] hover:text-[#181818]">
           <FileText className="h-3 w-3" />
           {props.auditLink.label}
           <ArrowRight className="h-3 w-3" />

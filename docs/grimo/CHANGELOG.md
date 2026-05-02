@@ -1,5 +1,34 @@
 # Changelog
 
+## [v2.76.0] — Inline-hex bulk migration to dark tokens（S096 META 4a/8；M90d1 完成；2026-05-02）
+
+> **Mechanical bulk migration** — 8 files inline-style hex strings 從 v1 light tokens → v2 dark equivalents。S096d 從 L(15-16) split d1+d2，d1 為 hex polish；d2 留 publish flow restructure + new domain events + prototype design polish。
+
+### Added
+- **20-color sed bulk replacement** across 8 files: IconTile / IntentSummaryCard / RiskBadge / EmptyState / AnalyticsPage / PublishPage / SkillDetailPage / MySkillsPage / YourFirstSkillPage
+- v1 → v2 mapping examples:
+  - `#FCEBEB` (danger-soft warm) → `rgba(226,75,74,0.14)` (dark overlay)
+  - `#791F1F` (danger-deep) → `#F2A6A6` (danger-text light)
+  - `#F5F4ED` (warm secondary) → `#171719` (bg-3 dark)
+  - 6 category palette migrated to rgba alpha overlays
+- Result: existing inline-styled components 視覺對齊 S096b global token system
+
+### Trim from L(15-16) → S(8) — split into d1/d2
+- d1 (this): mechanical hex migration only
+- d2 (defer): publish flow restructure (single → 3-step SSE) + 3 new domain events (SkillBundleExtracted / SkillFrontmatterValidated / SkillRiskScanStarted) + per-skill stats endpoint + prototype design polish (per user mid-tick request)
+
+### Metrics
+- grep v1 hex: zero hits ✓
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 382.54 → 382.91KB (+0.37KB rgba string)
+- CSS: 36.47 → 36.70KB (+0.23KB)
+- Build: 216ms
+
+### META progress
+S096 META 4a/8 ✅. Next: S096d2 publish flow + prototype polish (M).
+
+---
+
 ## [v2.75.0] — Routing schema dual-route + Risk tier 4-level（S096 META 3/8；M90c 完成；2026-05-02；absorbs S095）
 
 > **Architectural sub-spec** — `/skills/:author/:name` canonical (per ADR-003) + `RiskLevel` 4-tier (per PRD D27)。S095 (Risk tier NONE) absorbed 進此 sub-spec 一次到位。

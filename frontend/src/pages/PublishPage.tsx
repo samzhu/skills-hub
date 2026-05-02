@@ -105,7 +105,7 @@ export function PublishPage() {
           {mutation.isSuccess && (
             <div
               className="mt-4 flex items-start gap-3 rounded-md p-3 text-[13px]"
-              style={{ backgroundColor: '#EAF3DE', color: '#27500A' }}
+              style={{ backgroundColor: 'rgba(29,158,117,0.14)', color: '#9FE1CB' }}
             >
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="flex-1">
@@ -125,7 +125,7 @@ export function PublishPage() {
           {mutation.isError && (
             <div
               className="mt-4 flex items-start gap-3 rounded-md p-3 text-[13px]"
-              style={{ backgroundColor: '#FCEBEB', color: '#791F1F' }}
+              style={{ backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' }}
             >
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="flex-1">

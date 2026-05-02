@@ -32,7 +32,7 @@ export function AnalyticsPage() {
       ) : error ? (
         <div
           className="flex items-center justify-center rounded-md p-4 text-[13px]"
-          style={{ backgroundColor: '#FCEBEB', color: '#791F1F' }}
+          style={{ backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' }}
         >
           載入數據失敗，請重新整理頁面
         </div>
@@ -73,7 +73,7 @@ export function AnalyticsPage() {
                             {skill.downloads}
                           </span>
                         </div>
-                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: '#F5F4ED' }}>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: '#171719' }}>
                           {/* DESIGN.md accent #7F77DD purple progress bar (vs generic primary) */}
                           <div
                             className="h-full rounded-full transition-all"

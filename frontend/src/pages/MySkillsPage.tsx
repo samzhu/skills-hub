@@ -190,7 +190,7 @@ function SkillRow({ skill, isLast }: { skill: Skill; isLast: boolean }) {
         <span className="text-[10px] text-muted-foreground">downloads</span>
       </div>
       <div className="shrink-0 text-right">
-        <span className="rounded-sm bg-[#F5F4ED] px-2 py-0.5 font-mono text-[11px]">
+        <span className="rounded-sm bg-[#171719] px-2 py-0.5 font-mono text-[11px]">
           v{skill.latestVersion ?? '—'}
         </span>
       </div>
@@ -202,11 +202,11 @@ function StatusPill({ status }: { status: string }) {
   // S094a: status semantic pill aligned with DESIGN.md 4-tier
   // PUBLISHED → success-soft / DRAFT → warning-soft / SUSPENDED → danger-soft
   const styles: Record<string, { bg: string; fg: string; label: string }> = {
-    PUBLISHED: { bg: '#E1F5EE', fg: '#085041', label: '已發布' },
-    DRAFT: { bg: '#FAEEDA', fg: '#633806', label: '草稿' },
-    SUSPENDED: { bg: '#FCEBEB', fg: '#791F1F', label: '已停用' },
+    PUBLISHED: { bg: 'rgba(29,158,117,0.14)', fg: '#6FD8B0', label: '已發布' },
+    DRAFT: { bg: 'rgba(239,159,39,0.14)', fg: '#FAC775', label: '草稿' },
+    SUSPENDED: { bg: 'rgba(226,75,74,0.14)', fg: '#F2A6A6', label: '已停用' },
   }
-  const s = styles[status] ?? { bg: '#F5F4ED', fg: '#5C5751', label: status }
+  const s = styles[status] ?? { bg: '#171719', fg: '#A8A49C', label: status }
   return (
     <span
       className="inline-block rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"

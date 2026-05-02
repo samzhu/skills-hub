@@ -17,14 +17,14 @@ import { BeamFrame } from '@/components/BeamFrame'
 export function YourFirstSkillPage() {
   return (
     <DocsLayout>
-      <p className="mb-1 text-[12px] text-[#5C5751]">
+      <p className="mb-1 text-[12px] text-[#A8A49C]">
         Docs <span className="mx-1 text-[#C5C0BC]">/</span>
         Getting started <span className="mx-1 text-[#C5C0BC]">/</span>
         <span className="text-[#181818]">Your first skill</span>
       </p>
       <h1 className="text-[28px] font-semibold tracking-tight text-[#181818]">Write your first skill</h1>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-[#5C5751]">
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-[#A8A49C]">
         <span>Updated 2 weeks ago</span>
         <Dot />
         <span>5 min read</span>
@@ -32,7 +32,7 @@ export function YourFirstSkillPage() {
         <span>Based on agentskills.io v1.2</span>
         <a
           href="https://github.com/samzhu/skills-hub"
-          className="ml-auto inline-flex items-center gap-1 text-[#5C5751] hover:text-[#181818]"
+          className="ml-auto inline-flex items-center gap-1 text-[#A8A49C] hover:text-[#181818]"
         >
           <Edit className="h-3 w-3" />
           Edit on GitHub
@@ -119,7 +119,7 @@ ISO 8601 or RFC 2822 variant.
           <p className="font-mono text-[12.5px] text-[#181818]">
             Generate and validate docker-compose files with multi-service awareness. Use when the user edits compose.yml or needs a new stack.
           </p>
-          <p className="mt-3 border-t border-dashed border-[#C5DDC9] pt-3 text-[11.5px] leading-relaxed text-[#27500A]">
+          <p className="mt-3 border-t border-dashed border-[#C5DDC9] pt-3 text-[11.5px] leading-relaxed text-[#9FE1CB]">
             具體動詞（"generate"、"validate"）、領域名詞（"compose.yml"）、trigger 條件（"when the user edits"）。配對 Docker、orchestration、YAML、stack 各種查詢。
           </p>
         </CompareCard>
@@ -127,7 +127,7 @@ ISO 8601 or RFC 2822 variant.
           <p className="font-mono text-[12.5px] text-[#181818]">
             Powerful and elegant container orchestration helper that delivers seamless productivity gains.
           </p>
-          <p className="mt-3 border-t border-dashed border-[#F5C2C2] pt-3 text-[11.5px] leading-relaxed text-[#791F1F]">
+          <p className="mt-3 border-t border-dashed border-[rgba(226,75,74,0.20)] pt-3 text-[11.5px] leading-relaxed text-[#F2A6A6]">
             形容詞無 content（"powerful"、"elegant"、"seamless"）— embedding 認不出 trigger 條件，semantic search 不到。Marketing blurb，不是 skill description。
           </p>
         </CompareCard>
@@ -161,7 +161,7 @@ ISO 8601 or RFC 2822 variant.
       {/* §6 Final CTA */}
       <div className="mt-10 rounded-lg border border-[#E6E1D9] bg-[#F9F8F4] p-5">
         <p className="text-[15px] font-semibold text-[#181818]">Ready to publish?</p>
-        <p className="mt-1 text-[13px] text-[#5C5751]">
+        <p className="mt-1 text-[13px] text-[#A8A49C]">
           你的 bundle 有了、frontmatter 乾淨、知道 scanner 在檢查什麼。下一步把 zip 傳上來。
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -176,7 +176,7 @@ ISO 8601 or RFC 2822 variant.
           </BeamFrame>
           <a
             href="https://github.com/anthropics/skills"
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#E6E1D9] bg-white px-4 py-2 text-[13px] font-medium text-[#181818] hover:bg-[#F5F4ED]"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[#E6E1D9] bg-white px-4 py-2 text-[13px] font-medium text-[#181818] hover:bg-[#171719]"
           >
             <FileText className="h-3 w-3" />
             See more examples
@@ -217,7 +217,7 @@ function P({ children }: { children: React.ReactNode }) {
 
 function Code({ children }: { children: React.ReactNode }) {
   return (
-    <code className="rounded-sm bg-[#F5F4ED] px-1 py-0.5 font-mono text-[12.5px] text-[#181818]">
+    <code className="rounded-sm bg-[#171719] px-1 py-0.5 font-mono text-[12.5px] text-[#181818]">
       {children}
     </code>
   )
@@ -226,7 +226,7 @@ function Code({ children }: { children: React.ReactNode }) {
 function CodeBlock({ filename, children }: { filename: string; children: string }) {
   return (
     <div className="mt-3 overflow-hidden rounded-md border border-[#E6E1D9]">
-      <div className="flex items-center justify-between border-b border-[#E6E1D9] bg-[#F9F8F4] px-3 py-2 text-[11.5px] text-[#5C5751]">
+      <div className="flex items-center justify-between border-b border-[#E6E1D9] bg-[#F9F8F4] px-3 py-2 text-[11.5px] text-[#A8A49C]">
         <span className="font-mono">{filename}</span>
         <span className="text-[10px] uppercase tracking-wider text-[#A09B96]">copy</span>
       </div>
@@ -246,8 +246,8 @@ function Callout({
 }) {
   const styles =
     tone === 'info'
-      ? { bg: '#EEEDFE', fg: '#3C3489', icon: <Info className="h-3.5 w-3.5" /> }
-      : { bg: '#FAEEDA', fg: '#633806', icon: <AlertTriangle className="h-3.5 w-3.5" /> }
+      ? { bg: 'rgba(127,119,221,0.18)', fg: '#C9C5F2', icon: <Info className="h-3.5 w-3.5" /> }
+      : { bg: 'rgba(239,159,39,0.14)', fg: '#FAC775', icon: <AlertTriangle className="h-3.5 w-3.5" /> }
   return (
     <div
       className="mt-4 flex items-start gap-2.5 rounded-md p-3 text-[13px] leading-relaxed"
@@ -271,11 +271,11 @@ function FieldCard({
   return (
     <div className="mt-3 rounded-md border border-[#E6E1D9] bg-white p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <code className="rounded-sm bg-[#F5F4ED] px-2 py-0.5 font-mono text-[13px] text-[#181818]">
+        <code className="rounded-sm bg-[#171719] px-2 py-0.5 font-mono text-[13px] text-[#181818]">
           {name}
         </code>
         {tags.map((t, i) => (
-          <span key={i} className="text-[11px] text-[#5C5751]">
+          <span key={i} className="text-[11px] text-[#A8A49C]">
             {i > 0 && <span className="mr-2 text-[#C5C0BC]">·</span>}
             {t}
           </span>
@@ -295,8 +295,8 @@ function CompareCard({
 }) {
   const styles =
     tone === 'good'
-      ? { border: '#C5DDC9', bg: '#F0F8F0', label: '#27500A', icon: <Check className="h-3 w-3" />, labelText: 'Indexes well' }
-      : { border: '#F5C2C2', bg: '#FCEBEB', label: '#791F1F', icon: <X className="h-3 w-3" />, labelText: 'Misses' }
+      ? { border: '#C5DDC9', bg: '#F0F8F0', label: '#9FE1CB', icon: <Check className="h-3 w-3" />, labelText: 'Indexes well' }
+      : { border: 'rgba(226,75,74,0.20)', bg: 'rgba(226,75,74,0.14)', label: '#F2A6A6', icon: <X className="h-3 w-3" />, labelText: 'Misses' }
   return (
     <div className="rounded-md border p-4" style={{ borderColor: styles.border, backgroundColor: styles.bg }}>
       <p className="mb-2 inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider" style={{ color: styles.label }}>
@@ -318,9 +318,9 @@ function RiskRow({
   children: React.ReactNode
 }) {
   const styles = {
-    success: { bg: '#E1F5EE', fg: '#085041' },
-    warning: { bg: '#FAEEDA', fg: '#633806' },
-    danger: { bg: '#FCEBEB', fg: '#791F1F' },
+    success: { bg: 'rgba(29,158,117,0.14)', fg: '#6FD8B0' },
+    warning: { bg: 'rgba(239,159,39,0.14)', fg: '#FAC775' },
+    danger: { bg: 'rgba(226,75,74,0.14)', fg: '#F2A6A6' },
   }[tone]
   return (
     <div className="flex items-start gap-3 rounded-md border border-[#E6E1D9] bg-white p-4">

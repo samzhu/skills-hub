@@ -29,9 +29,9 @@ const STATUS_LABEL: Record<SkillStatus, string> = {
 }
 
 const STATUS_PILL_STYLE: Record<SkillStatus, { backgroundColor: string; color: string }> = {
-  DRAFT:     { backgroundColor: '#FAEEDA', color: '#633806' },  // warning-soft / warning-deep
-  PUBLISHED: { backgroundColor: '#EAF3DE', color: '#085041' },  // success-soft / success-text
-  SUSPENDED: { backgroundColor: '#FCEBEB', color: '#791F1F' },  // danger-soft / danger-deep
+  DRAFT:     { backgroundColor: 'rgba(239,159,39,0.14)', color: '#FAC775' },  // warning-soft / warning-deep
+  PUBLISHED: { backgroundColor: 'rgba(29,158,117,0.14)', color: '#6FD8B0' },  // success-soft / success-text
+  SUSPENDED: { backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' },  // danger-soft / danger-deep
 }
 
 /**
@@ -143,7 +143,7 @@ export function SkillDetailPage() {
       {skill.status === 'SUSPENDED' && (
         <div
           className="mb-6 flex items-start gap-3 rounded-md p-3 text-[13px]"
-          style={{ backgroundColor: '#FCEBEB', color: '#791F1F' }}
+          style={{ backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' }}
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="flex-1">
