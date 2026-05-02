@@ -1,5 +1,33 @@
 # Changelog
 
+## [v2.84.0] — Auto-poll /publish/review during scan（S096 META 8b/8；M90d5a 完成；2026-05-02）
+
+> **Micro UX polish** — PublishReviewPage 改用 react-query `refetchInterval` 2s 自動更新 risk_level，免 user 手動 refresh.
+
+### Changed
+- **PublishReviewPage**: `useSkill` → 直接 `useQuery` with `refetchInterval` callback:
+  - risk_level === null → 2000ms 重抓
+  - risk_level set (NONE/LOW/MEDIUM/HIGH) → return false 停 poll
+- **Scanning callout**: 加 Loader2 spinner + 文字改「每 2 秒自動更新」
+
+### Trim from M(10) → XS(3)
+Defer S096d6:
+- Dedicated /publish/validate?id=X Step 2 page (separate URL between upload + review)
+- 3 new domain events (SkillBundleExtracted / SkillFrontmatterValidated / SkillRiskScanStarted)
+- SSE event stream backend (poll-based for now)
+- Per-event UI animation
+
+### Metrics
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 405.64 → 405.86KB (+0.22KB)
+- CSS: 38.25 → 38.25KB
+- Build: 189ms
+
+### META progress
+S096 META 8b/8 ✅. 主 sub-spec 與 micro polish 皆 ship；剩 stub→full 升級陣（S096d6 / e2 ⏸ / f2 / g2 / h2）.
+
+---
+
 ## [v2.83.0] — /publish/review post-upload result page（S096 META 8a/8；M90d4a 完成；2026-05-02）
 
 > **Publish flow URL split (Step 3)** — 上傳成功後 navigate 到 `/publish/review?id=X` 獨立頁面，URL 可分享 / bookmark。S096d4 narrow trim — Step 2 validate poll page + 3 domain events + SSE 留 S096d5.

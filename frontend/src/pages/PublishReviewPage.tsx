@@ -1,8 +1,10 @@
 import { Link, useSearchParams } from 'react-router'
 import { ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { AppShell } from '@/components/AppShell'
 import { RiskBadge } from '@/components/RiskBadge'
-import { useSkill } from '@/hooks/useSkill'
+import { fetchSkillById } from '@/api/skills'
+import type { Skill } from '@/types/skill'
 
 /**
  * S096d4a — `/publish/review?id={skillId}` post-upload result page.
@@ -21,7 +23,19 @@ import { useSkill } from '@/hooks/useSkill'
 export function PublishReviewPage() {
   const [params] = useSearchParams()
   const skillId = params.get('id') ?? ''
-  const { data: skill, isLoading, error } = useSkill(skillId)
+  // S096d5a: auto-poll while risk scan async — refetchInterval 2s 直到 risk_level 設值
+  // 取代既有 useSkill（fixed cache）；scan 完成後 React Query 自動停 poll（query 為 callback 驅動）
+  const { data: skill, isLoading, error } = useQuery<Skill>({
+    queryKey: ['skills', skillId],
+    queryFn: () => fetchSkillById(skillId),
+    enabled: !!skillId,
+    refetchInterval: (query) => {
+      // 仍 scanning (riskLevel null) → 每 2s 重抓；scan 完成 → 0 = 停 poll
+      const data = query.state.data as Skill | undefined
+      return data && data.riskLevel == null ? 2000 : false
+    },
+    refetchIntervalInBackground: false,
+  })
 
   if (!skillId) {
     return (
@@ -84,8 +98,9 @@ export function PublishReviewPage() {
 
             {/* Risk scan note — render based on current risk_level */}
             {skill.riskLevel == null ? (
-              <div className="mt-4 rounded-md p-3 text-[13px]" style={{ backgroundColor: 'rgba(239,159,39,0.14)', color: '#FAC775' }}>
-                風險掃描進行中 — 重新整理頁面以查看最新結果（S096d5 將加 SSE 即時 push）
+              <div className="mt-4 flex items-center gap-2 rounded-md p-3 text-[13px]" style={{ backgroundColor: 'rgba(239,159,39,0.14)', color: '#FAC775' }}>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                風險掃描進行中 — 每 2 秒自動更新（無需手動重新整理）
               </div>
             ) : skill.riskLevel === 'HIGH' ? (
               <div className="mt-4 rounded-md p-3 text-[13px]" style={{ backgroundColor: 'rgba(226,75,74,0.14)', color: '#F2A6A6' }}>
