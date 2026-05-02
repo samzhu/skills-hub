@@ -1,5 +1,17 @@
 # Changelog
 
+## [v3.0.1] — Test coverage backfill：PublishFailedPage + VersionDiffPage（2026-05-02）
+
+> Mode B E2E round — 為 v3.0.0 ship 的 S098b/c 兩 page 補 component test。Tests 33 → 40 (+7)。Test backfill 不算 spec，純 regression 防護。
+
+### ✅ Tests
+- 新檔 `pages/PublishFailedPage.test.tsx` — 4 ACs covering State A 紅 tone (validation error msg) / State B 橘 tone (HIGH-risk + id echo) / missing-state fallback to A / footer CTA href targets
+- 新檔 `pages/VersionDiffPage.test.tsx` — 3 ACs：default to/from selection (latest 2 versions) / query param override (from=1.0.0&to=1.2.0) / insufficient versions (<2) fallback message。Mock global fetch 餵 versions/skill JSON。
+
+### 結果
+- 33 → 40 tests PASS（+7 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.0.0] — v2.x polish 系列里程碑 + PublishValidate upload-strip（S098a3 完成；2026-05-02）
 
 > **v3.0.0 milestone release** — 標誌 v2.x 14-version polish 系列完成（v2.86.0 → v2.99.0），同時 ship S098a3 PublishValidatePage 上傳資訊 strip（frontend-only trim）。S098 META 8/8 全達 + 4 個 split P1 spec 全 ship + Docs IA 11/11 全 active link + Homepage v2 polish trio 完整。
