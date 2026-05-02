@@ -137,8 +137,15 @@ Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 3 negative 
 |--------|-----------|--------------|---------|----------|------------------|
 | **A** | tick 55 (2026-05-02) | S099b3 dev — MiniMarkdown parser | `##NoSpace` 等 lines 不符 heading regex 也不符 paragraph collector（首字 `#` 排除）→ outer while loop 不 advance `i` → infinite loop。Vitest workers 卡 96-97% CPU 直到 manual kill。發現於寫 negative case AC-9 試跑時。 | inline fix in S099b3 commit 17c432a — paragraph fallback 強制 push 當前 line + i++ 避免 infinite loop；任意 line 都 guarantee i 推進。 | v3.4.0 |
 | **B** | tick 55 (2026-05-02) | S099b3 test setup — JSX attribute string | JSX `<Component content="...\n..." />` 的 attribute 字串 form **不解** `\n` escape（HTML attribute 慣例 `\n` 為 literal backslash + n，非 LF）。原 6 tests 寫成 `content="\n"` form → 5 個 fail（empty content + paragraph 那 1 沒 `\n` 倖免）。 | inline fix in S099b3 — 用 JSX expression form `content={"\n"}` 或 template literal。Lessons 寫入 mini-markdown.test.tsx 註解供未來 reference。 | v3.4.0 |
+| **C** | session #3 tick 1 (2026-05-03) | Cross-cutting link audit — SkillDetailPage header back-nav | `<Link to="/">返回列表</Link>` 但 `/` 經 S096e1 routing change 已是 LandingPage 非 list，label-target 語意打架。 | S102（spec seed e41d71f → impl 0c11d39） | v3.4.2 (commit 0c11d39) |
+| **D** | session #3 tick 1 (2026-05-03) | Cross-cutting link audit — SkillDetailPage error state | error state 「返回首頁」`<Link to="/">` 同 root cause，user 從 `/browse` 進來時應回 list。 | S102 | v3.4.2 |
+| **E** | session #3 tick 1 (2026-05-03) | Cross-cutting link audit — SearchResultsPage 清空 query | `handleSearch('')` `navigate('/')` 中斷流；清搜尋應回 browse list。 | S102 | v3.4.2 |
+| **F** | session #3 tick 1 (2026-05-03) | Cross-cutting link audit — SearchResultsPage EmptyState | `primaryAction={{ label: '瀏覽全部技能', href: '/' }}` label 與 href 直接矛盾。 | S102 | v3.4.2 |
+| **G** | session #3 tick 1 (2026-05-03) | Cross-cutting link audit — LandingPage footer placeholder | footer `<Link to="/">狀態</Link>` 自指迴圈無 status page；Option A 移除 link。 | S102 | v3.4.2 |
 
 > 編號規則：A → Z → AA → AB → ...；跨 session monotonic。發現新 bug 時 append + 寫 fix-spec 入 Mode A。
+>
+> **Bug C-G 共同根因**：S096e1 把 `/` 從 browse list 改 LandingPage 時沒 sweep callsites。Spec-design lesson（S102 §8）：下次 routing-touching spec 應內建 AC「grep `to="/"` / `navigate("/")` 全 codebase verify post-change 語意」防範同類 residual。
 >
 > **Bug 來源觀察**：兩個 bug 都被 negative case test 抓到（per 2026-05-02 methodology「3-5 反例 / round」生效）— 證明 negative test 投資高效。Bug A 是 production bug；Bug B 是 test infra bug（不影響 production behavior 但 block test pass）。
 
