@@ -16,6 +16,7 @@ import { NotificationsPage } from './pages/NotificationsPage'
 import { PublishReviewPage } from './pages/PublishReviewPage'
 import { PublishFailedPage } from './pages/PublishFailedPage'
 import { PublishValidatePage } from './pages/PublishValidatePage'
+import { VersionDiffPage } from './pages/VersionDiffPage'
 
 function App() {
   return (
@@ -26,6 +27,8 @@ function App() {
       {/* /skills 是 listing alias — 使用者輸入網址或書籤回鏈時的直覺路徑 */}
       <Route path="/skills" element={<HomePage />} />
       <Route path="/skills/:id" element={<SkillDetailPage />} />
+      {/* S098c: version diff page — frontend-only stub reuses /versions endpoint */}
+      <Route path="/skills/:id/diff" element={<VersionDiffPage />} />
       {/* S096c: canonical route per ADR-003；既有 :id alias 並行不破 */}
       <Route path="/skills/:author/:name" element={<SkillDetailPage />} />
       <Route path="/publish" element={<PublishPage />} />

@@ -1,4 +1,5 @@
-import { Download } from 'lucide-react'
+import { Download, GitCompare } from 'lucide-react'
+import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import type { SkillVersion } from '@/types/skill'
 
@@ -18,8 +19,21 @@ export function VersionList({ versions }: { versions: SkillVersion[] }) {
     return <p className="text-muted-foreground">尚無版本記錄</p>
   }
 
+  // S098c: 多版本時顯「比較版本」捷徑（連結到 VersionDiffPage 預設 from=次新 / to=最新）
+  const hasMultiple = versions.length >= 2
+  const skillId = versions[0]?.skillId
+
   return (
     <div className="space-y-2">
+      {hasMultiple && skillId && (
+        <Link
+          to={`/skills/${skillId}/diff`}
+          className="mb-2 inline-flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground"
+        >
+          <GitCompare className="h-3 w-3" />
+          比較版本變化
+        </Link>
+      )}
       {versions.map((v, i) => (
         <div
           key={v.id}

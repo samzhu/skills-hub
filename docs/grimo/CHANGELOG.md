@@ -1,5 +1,45 @@
 # Changelog
 
+## [v2.96.0] — Version Diff 頁（frontend-only stub）（S098c 完成；2026-05-02）
+
+> S098c — `/skills/:id/diff?from=&to=` 版本比較頁。Frontend-only trim：reuse 既有 `/skills/{id}/versions` endpoint，零 backend 改動。對齊 prototype `Skills Hub Version Diff.html`。
+
+### 🎨 Frontend
+- 新檔 `pages/VersionDiffPage.tsx`：side-by-side metadata diff。
+  - hero 顯 skill name + GitCompare icon + 比對 from/to version code chips
+  - version selector chips：點任一 version 即更新 from（紅）或 to（綠）；color-coded per `tone` palette (danger/success rgba)
+  - VersionCard side-by-side：from / `→` / to 三欄；md:grid-cols-[1fr_auto_1fr]
+  - 各 card 顯：v{version} (font-mono large) / 套件大小 (formatBytes B/KB/MB) / 發布時間 (zh-TW localized)
+  - Delta 卡：套件大小 delta (絕對 + %) / 發布間隔 (天數)；浮點精度 `.1`
+  - Default selection: 最新（to）+ 倒數第二新（from）；query params override
+- `components/VersionList.tsx`：當 versions ≥ 2 顯「比較版本變化」連結 (GitCompare icon + 12px subtle text)，連到 VersionDiffPage 預設值
+- `App.tsx`：新 route `/skills/:id/diff`
+
+### Trim 紀錄
+原 M(12) 估含 backend `/api/v1/skills/{id}/diff?from=&to=` 端點 + risk/description/scripts hash diff + file content side-by-side。本 commit ship S(6)：
+- ✅ frontend-only metadata diff（version + size + publishedAt + delta 計算）
+- ✅ from/to query params + selectable chips
+- ✅ VersionList 連結 entry point
+- ⏸ S098c2: backend `/diff` endpoint 含 description / risk-level / scripts SHA per version snapshot（需 SkillVersion 加 riskLevel + sha 欄位 + projection）
+- ⏸ S098c3: file content line-level diff（需 zip extract 與 line-level diff library）
+
+### Reuse
+- `useSkill` + `useVersions` hooks（既有；零 new endpoint）
+- 純 composition；零 new backend / 零 new shared component
+
+### ✅ Tests
+- `npx vitest run` (cwd=frontend) → 7 files / 33 tests PASS
+- `npx tsc --noEmit` (cwd=frontend) → no errors
+
+### S098 META 收尾統計
+P1 主要 backlog 全完成：
+- S098 META 8/8 ✅ (h/g/h2/d/b/b2/e/f) — v2.86.0 → v2.94.0
+- S098a Publish Step 2 ✅ — v2.95.0
+- S098c Version Diff ✅ — v2.96.0
+總共 11 個 user-facing v2 polish ship 完。
+
+剩 polish backlog：S098a2/a3 / b3 / c2/c3 / d2 / e2/e3 / f2/f3 / 既有 S096f2/g2/h2 / S094e admin review (post-MVP)。
+
 ## [v2.95.0] — Publish Step 2 `/publish/validate` 中介頁（S098a 完成；2026-05-02）
 
 > S098a — 完成 publish 流程「Step 1 上傳 → **Step 2 驗證** → Step 3 審視 → Step 4 上架」中介頁。對齊 prototype `Skills Hub Publish Step 2.html`。原 PublishPage 直接跳 review 心智模型不清（user 看到 spinner 不知在等什麼）；新中介頁明示 4-step stepper 狀態。
