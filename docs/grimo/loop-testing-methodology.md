@@ -142,7 +142,7 @@ User mid-flight 提新需求時：
 
 ---
 
-## §8 設計領悟模式（從 13 個 bug 萃取）
+## §8 設計領悟模式（從 14 個 bug 萃取）
 
 | Pattern | 範例 |
 |---------|------|
@@ -151,8 +151,11 @@ User mid-flight 提新需求時：
 | **Theme physics** | npm package light theme 在白背景物理上做不出 glow（Bug AH 後續 S089） |
 | **Framework hook leak** | Spring Data JDBC `Persistable.isNew()` 序列化進 API JSON（Bug AA / AI 兩次） |
 | **State-machine guards 對稱** | suspend → reactivate 兩個方向都要 409（R23.5 vs R1） |
+| **LLM default 是「找問題」** | 不給 severity 分級指引時，theoretical concerns 全標 HIGH（Bug AN）— prompt 必須定義「what counts as HIGH」+ anti-pattern 列表「what is NOT a finding」 |
 
 「同 pattern 兩次出現」是 **architectural sweep** 訊號 — 找出整類同 root cause 的漏洞一次掃光（如 Bug AK 出現後 audit 找出 AL 的 risk_level 同 pattern）。
+
+**1-shot prompt fix leverage**：LLM-driven engine 的 calibration bug（如 Bug AN）改 prompt 一段就同時 fix 所有同類 over-classification — 比 rule-based 改十幾條規則快得多（R35 5/5 fixtures 全方位驗證）。代價：LLM 行為非 deterministic，需 regression sweep 確認沒誤殺真風險。
 
 ---
 
@@ -181,18 +184,26 @@ User mid-flight 提新需求時：
 
 ---
 
-## §11 整體效能（本案實測）
+## §11 整體效能（本案實測 — final）
 
 ```
-~30 cron ticks（10 min interval）
-17 specs shipped（S073-S089）
-13 bugs found + fixed（A→AM）
-4 polish ships
-1 META spec planning（S084）
+37 cron ticks（10 min interval；session 中含 ~7 個 user-driven 中斷處理）
+22 specs shipped（S073-S084 + S090-S091）
+14 bugs found + fixed（A→AN）
+4 polish ships（S079 / S081 / S090 + S091 為 bug-fix 兼 polish）
+1 META spec planning（S084）— 含 5 sub-specs roadmap S085-S089
+1 Calibration regression sweep（R35）驗證 prompt fix 全方位
 0 active bugs
 ```
 
-平均：每 ~2 ticks 1 個 ship。Bug discovery rate 隨 testing surface 飽和遞減（前 10 ticks 多 / 後 10 ticks 少）→ 觸發 pivot 訊號。
+平均：每 ~1.7 ticks 1 個 ship。Bug discovery rate 曲線：
+- 前 10 ticks：~1 bug/tick（surface 開放掃）
+- 中 10 ticks：~0.5 bug/tick（saturation 浮現）
+- 後 10 ticks：~0.2 bug/tick（saturation；但仍偶爾抓到 architectural-level bugs 如 AN）
+
+**Bug discovery 並非單調遞減**：表層 saturation 後仍可透過 cross-system audit / corpus re-scan 找到更深層問題。AN 是在 「連續 5 ticks 0 bugs」 之後因 R34 anthropic skill re-scan with new engine 才暴露。
+
+**Polish ship 與 Bug ship 比例**：6 polish / 14 bug-fix。saturation 後 polish 是良好出口，但別忘了重新檢視（R34 就是 saturation 後找到的真 bug）。
 
 ---
 
@@ -215,3 +226,15 @@ User mid-flight 提新需求時：
 - **跨 host 並發** dev 環境 timing 太緊重現不到 — Bug AL preemptive 用 architectural sweep 替代 reproduce
 - **Cron prompt 太長** 容易爆 cache window — 每 5 min cache TTL 理論上每 tick 都 cache miss；實務上 conversation summary 機制幫忙壓
 - **/loop 7-day auto-expire** — 長期跑要 user 重啟（或改 schedule 雲端版）
+- **LLM behavior 非 deterministic** — calibration 像 S091 改 prompt 後同 fixture 不同 run 可能略差；需 regression sweep（R35 pattern）確認方向正確而非單一 datapoint
+- **Cron prompt 改寫風險** — 改了 prompt 就改了 contract，下次 cron 讀的 progress 對不起來；要改先 CronDelete 再 CronCreate
+
+## §14 何時停 loop
+
+下列任一觸發應停 cron：
+- **連續 ≥3 ticks 0 bugs 且 saturation pivot 也用完**（polish 全清 / audit sweep 跑完 / 沒新 user-driven request）
+- **要做 user-driven feature spec**（`/planning-spec`）— spec 期間 cron testing 會干擾 spec 設計，需 stop 後做 spec 再重啟
+- **Cron prompt 需要更新**（cron 是 immutable contract）
+- **Backend / DB schema 重構中** — testing 拿不到一致狀態
+
+停 cron：`CronDelete <job-id>`。重啟：`/loop <interval> <prompt>` 或直接重新 invoke。
