@@ -1,5 +1,22 @@
 # Changelog
 
+## [v3.1.4] — VersionList tests（ledger Round 5.5 ✅；2026-05-02）
+
+> Mode B — fill 1 ledger 📋 row (Round 5.5 VersionList diff link)。Tests 53 → 58 (+5)。
+
+### ✅ Tests
+- 新檔 `components/VersionList.test.tsx` — 5 ACs：
+  - empty versions → 「尚無版本記錄」fallback
+  - single version → 不顯 diff link
+  - 2+ versions → 「比較版本變化」link with href `/skills/:skillId/diff`
+  - 最新 badge on index 0
+  - download link href `/api/v1/skills/{skillId}/versions/{version}/download`
+- `docs/grimo/test-cases.md`：Round 5.5 標 ✅；Round 5 done count 2→3；Total 9→10（23 still planned）
+
+### 結果
+- 53 → 58 tests PASS（+5 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.1.3] — Notifications + Collections empty state tests（ledger Round 7.1+7.2 ✅；2026-05-02）
 
 > Mode B — fill 2 ledger 📋 rows (Round 7.1 NotificationsPage + Round 7.2 CollectionsPage)。Tests 47 → 53 (+6)。

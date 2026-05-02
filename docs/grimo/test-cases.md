@@ -56,7 +56,7 @@
 | 5.2 | positive | DRAFT/SUSPENDED → sparkline 不顯 | Conditional hidden | 📋 |
 | 5.3 | positive | 切 Reviews tab | EmptyState invite tone「評論系統即將推出」 | 📋 |
 | 5.4 | positive | 切 Flags tab | EmptyState clear tone「目前沒有任何回報」 | 📋 |
-| 5.5 | positive | Version Diff entry — VersionList ≥ 2 versions → 顯「比較版本變化」連結 | Click → /skills/:id/diff | 📋 |
+| 5.5 | positive | Version Diff entry — VersionList ≥ 2 versions → 顯「比較版本變化」連結 | href = `/skills/:skillId/diff`；單版本不顯；空版本顯「尚無版本記錄」；最新 badge + download href 一併驗 | ✅ VersionList.test.tsx 5 ACs |
 | 5.6 | positive | `/skills/:id/diff` default | Compares latest 2 versions | ✅ AC-1 in VersionDiffPage.test.tsx |
 | 5.7 | edge | `?from=&to=` 同版本 | Should still render（delta = 0）| 📋 |
 | 5.8 | negative | versions < 2 | Fallback message「技能版本不足 2 個」| ✅ AC-3 in VersionDiffPage.test.tsx |
@@ -108,9 +108,9 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 | 2 Search | 4 | 0 | 4 |
 | 3 Filter/Sort | 4 | 0 | 4 |
 | 4 Publish | 7 | 3 | 4 |
-| 5 Skill Detail | 8 | 2 | 6 |
+| 5 Skill Detail | 8 | 3 | 5 |
 | 6 Docs IA | 2 | 0 | 2 |
 | 7 Empty state | 3 | 3 | 0 |
-| **Total** | **33** | **9** | **24** |
+| **Total** | **33** | **10** | **23** |
 
 current component test count: 44（cover ~6 ledger ACs + 38 unit-level invariants）。E2E browser-level scenarios（27 planned）需 Playwright / Cypress —— defer until backend stabilizes 或 cloud-scheduled E2E run。
