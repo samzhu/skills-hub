@@ -1,8 +1,11 @@
 # Loop-Driven E2E Testing & Ship Methodology
 
-> 一個自動執行的測試 / 修 bug / 發版工作流。已在 Skills Hub 累積 ~30 cron ticks / 17 specs shipped / 13 bugs (A→AM) / 0 active bugs 驗證有效。
+> 兩個互補的自動執行工作流：(A) cron-driven testing → bug → ship；(B) roadmap-driven spec advancement → all active → ✅。
+> 已在 Skills Hub 累積 37+ cron ticks / 23+ specs shipped / 14 bugs (A→AN) / 0 active bugs 驗證有效。
 >
-> 設計目的：在系統持續演進中保持「找 bug → 修 → ship」的固定節奏；用 cron 機械化開頭，讓 testing surface 慢慢被掃光。
+> 設計目的：在系統持續演進中保持兩種節奏並行：
+> - **(A) Bug 驅動**：「找 bug → 修 → ship」用 cron 機械化開頭，讓 testing surface 慢慢被掃光
+> - **(B) Spec 驅動**：「讀 roadmap → 推進 active → ship → 標 ✅」直到清空 backlog
 
 ---
 
@@ -238,3 +241,155 @@ User mid-flight 提新需求時：
 - **Backend / DB schema 重構中** — testing 拿不到一致狀態
 
 停 cron：`CronDelete <job-id>`。重啟：`/loop <interval> <prompt>` 或直接重新 invoke。
+
+---
+
+# Part B: Roadmap-Driven Spec Advancement
+
+> 第二種工作流：用 `docs/grimo/specs/spec-roadmap.md` 當 work queue，**把所有 active specs 推到 ✅**。
+
+## §15 何時用 spec advancement loop
+
+| 場景 | Action |
+|------|--------|
+| Cron testing surface 飽和（Part A §6） | 切到 spec advancement 把累積 backlog 清空 |
+| User 明確下指令「推進所有 active specs」 | 直接進入 spec marathon |
+| 某 META spec 拆出多個 sub-specs（如 S084 拆 S085-S089） | sub-specs 連續 ship 直到 META 全 ✅ |
+| Phase 結束前清 backlog（v1.x → v2.0 等 milestone 收尾） | 推進直到該 phase 全 ✅ |
+
+## §16 Spec advancement loop 結構
+
+```
+讀 spec-roadmap.md
+   │
+   ├── grep -E "📋|📐|🚧|⏸"  → 列出所有 active specs
+   ├── 排優先序：dependency 先（meta → foundation → consumer）
+   │              size 小先（XS → S → M）建立節奏
+   │
+   ├── For each active spec:
+   │     1. 讀 spec doc (or roadmap row description if doc 還沒寫)
+   │     2. 讀對應 prototype / reference material
+   │     3. Research dependencies (per planning-spec Phase 2 protocol)
+   │     4. Implement minimum viable diff
+   │     5. Run test suite (npm test / gradlew test)
+   │     6. Restart service if backend change
+   │     7. Smoke test (Chrome / curl)
+   │     8. Write spec doc with §1-§7 (or fill §7 Result if doc existed)
+   │     9. Update CHANGELOG (top, v bump)
+   │     10. Update roadmap row：📋 → ✅ + version + date + 一句話 fix 摘要
+   │     11. Archive spec：mv to docs/grimo/specs/archive/
+   │     12. Commit (single commit per spec; conventional message)
+   │
+   ├── 每 3-5 ships 同步一次 progress (累計 metric)
+   └── exit when grep "📋|📐|🚧|⏸" 為 0 行
+```
+
+## §17 Spec ordering 啟發式
+
+```
+1. META specs 不算 implementation work — 標 ✅ 後直接 archive
+2. Sub-spec dependency：foundation 先 (S089 BeamFrame → S085 HomePage 用)
+3. 共享 components 抽取 spec 先 (S085 抽 IconTile/Pill → S086-S088 用)
+4. 同 size 內：UI rework 優先在最常見入口頁 (HomePage > 子頁)
+5. Risky / large specs 留最後 — 前面 momentum 累積後再啃
+```
+
+## §18 Per-spec ship pipeline (與 Part A §5 對齊但加 spec doc 寫入)
+
+```
+1. Plan
+   - Read prototype HTML (if UI)
+   - Read current code (if rework)
+   - Identify minimum viable diff
+   - Decide acceptance criteria
+
+2. Implement
+   - Single-purpose changes only
+   - No drive-by refactors
+   - Inline comment explain non-obvious decisions
+
+3. Verify
+   - Build & test must pass
+   - Smoke test for end-to-end flow
+   - Visual regression for UI specs
+
+4. Document
+   - spec doc §1 Problem / §2 Approach / §3 AC / §4 Fix / §5 Test plan / §6 Verify / §7 Result
+   - Result section 包含實測 metrics + smoke output
+
+5. Persist
+   - CHANGELOG entry (semver bump)
+   - roadmap row：status icon + version + date + 一句話 highlight
+   - archive spec doc
+
+6. Commit
+   - Single commit per spec
+   - Conventional message (feat: / fix: / polish: / chore: / docs:)
+   - Co-Authored-By trailer if AI-assisted
+```
+
+## §19 何時 batch 多個 specs 在一個 commit
+
+**預設不 batch**：每 spec 一個 commit。
+
+**例外允許 batch**：
+- 兩個 specs 改同一個 component 且互相 dependency（如 S089 + S085 SearchBar 一起改）
+- 修同一類 architectural pattern（如 lost-update sweep 一次 fix S077 + S078）— 仍可分兩 commit 但同 PR
+
+**永遠不 batch**：
+- 不同類型的 change（feat + fix）
+- 不同 page 的 rework（每個 page 一個 commit）
+- ship + progress doc（progress 必另一個 docs: commit）
+
+## §20 Roadmap row update 範例
+
+```diff
+- | Phase 4 | M85: BorderBeam BeamFrame | S089 | XS(3) | — | 📋 backlog — drop border-beam npm... |
++ | Phase 4 | M85: BorderBeam BeamFrame | S089 | XS(3) | 561 | ✅ `v2.62.0` (2026-05-02 — `BeamFrame.tsx` 1:1 port prototype；drop border-beam npm dep；JS bundle 396KB→347KB) |
+```
+
+四個變動點：
+1. **Status icon**：📋 → ✅
+2. **累計 points**：填入該 spec 的 size pts 加上去
+3. **Version**：`vX.Y.Z` semver tag
+4. **一句話 highlight**：(date — fix 摘要 + impact)
+
+## §21 已知 spec advancement 失敗模式
+
+| 反模式 | 為何避 |
+|--------|--------|
+| 同時 in-flight 兩個 spec | spec 互相 reference 變 spaghetti；half-done 累積 |
+| 跳過 spec 寫文件直接 commit code | 半年後沒人記得這 spec 為什麼 / 怎麼測 |
+| Roadmap row 不及時更新 | 下次讀 roadmap 找 active 找錯，做重複工作 |
+| Sub-spec 全 ship 後 META 不關閉 | META spec 一直 in-design 看起來 dangling |
+| Skip smoke test 直接 ship | 編譯過但 runtime 壞，下個 spec 受影響時才發現 |
+
+## §22 Spec marathon 累積 metric
+
+每 3-5 ships 在 progress log append：
+
+```
+=== Marathon batch X (yyyy-mm-dd) ===
+Ships: SXXX, SXXX, SXXX
+Bugs found in process: 0 / N (見 ledger AO+)
+Cumulative tech debt added: ...
+Cumulative tech debt closed: ...
+Next 3 specs in queue: SYYY, SZZZ, SAAA
+```
+
+讓 user / future maintainer 看到 marathon 進度與 health。
+
+## §23 整體 (Part A + Part B) 移植到其他專案
+
+最小安裝（A + B 共用）：
+1. `.claude/progress/loop-e2e-test-coverage.md` + `test-case.md` 起點為空（Part A）
+2. `docs/grimo/specs/spec-roadmap.md` table 列所有 specs + status icon（Part B）
+3. `docs/grimo/specs/archive/` 目錄存放 shipped specs（Part B）
+4. `CLAUDE.md` 記 Finish-Current-First principle
+5. 約定 spec naming + commit convention + progress 寫入位置
+
+兩種啟動命令：
+- Part A：`/loop 10m <test prompt>`（cron testing）
+- Part B：`/spec-marathon` 或 user 直接「讀 roadmap 推進所有 active specs 直到全部 ✅」（manual marathon）
+
+兩者共用 ship pipeline（§5 / §18）和 Finish-Current-First（§7）。
