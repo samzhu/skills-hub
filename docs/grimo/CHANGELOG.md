@@ -1,5 +1,16 @@
 # Changelog
 
+## [v3.1.11] — IntentSummaryCard component invariants（S094b；2026-05-02）
+
+> Mode B — IntentSummaryCard concept-chip conditional rendering verified。
+
+### ✅ Tests
+- 新檔 `components/IntentSummaryCard.test.tsx` — 4 ACs：「已理解你的意圖」label render；summary text 直接顯示；empty concepts → 無 chips；concepts > 0 → 各 chip render。
+
+### 結果
+- 92 → 96 tests PASS（+4 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.1.10] — MetricCard component invariants（2026-05-02）
 
 > Mode B — MetricCard shallow render contract verified。
