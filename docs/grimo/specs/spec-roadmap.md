@@ -190,6 +190,14 @@ S019 ─▶ S020 ─▶ S021 ─▶ S022   Phase 2.5（Project Infra · M17 · 3
 | Phase 4 | M81: LlmJudge prompt calibration | S091 | XS(3) | 558 | ✅ `v2.61.0` (2026-05-02 — `SYSTEM_PROMPT` 重寫區分 demonstrated vs theoretical；fix Anthropic canonical skills 全 HIGH bug AN；handover/planning/deep-research HIGH→LOW，真風險維持 HIGH) |
 | Phase 4 | M86: FE i18n VALIDATION_ERROR detail concat | S092 | XS(2) | 588 | ✅ `v2.67.0` (2026-05-02 — `ERROR_MESSAGE_BUILDER` function map；VALIDATION_ERROR / CONSTRAINT_VIOLATION concat backend field-aware message；FE tests 11→18；close R18.3 tech-debt「訊息過於 generic」) |
 | Phase 4 | M87: Dev DB persistence (compose named volume) | S093 | XS(2) | 590 | ✅ `v2.68.0` (2026-05-02 — `compose.yaml` 加 named volume `backend_pgvector-data` + `application-local.yaml` `lifecycle-management: start-only`；dev PG 跨 session 持久；首次 transition 一次 fresh，自此 onwards 累積) |
+| Phase 4 | M88: UI Round 2 META — 4 prototype mockups → 4 sub-specs | S094 | M-L (38-41) | — | 📐 in-design — META spec written 2026-05-02；4 sub-specs C→D→A→B order；3 mockups (admin/onboarding/landing) deferred post-MVP；source: `docs/grimo/ui/prototype/` + DESIGN.md |
+| Phase 4 | M88a: Empty State Collection (4 tones) | S094c | XS(5-6) | — | 📋 planned — `EmptyState.tsx` 4-tone variant (seed/invite/redirect/clear)；reusable across HomePage 0-results / MySkills / SearchResults / Admin；prototype `empty_state_collection_four_tones.html` |
+| Phase 4 | M88b: Docs Walkthrough `/docs/your-first-skill` | S094d | XS(5-6) | — | 📋 planned — new `/docs/your-first-skill` route + `react-markdown`；prototype `docs_page_write_your_first_skill.html`；P2 entry point |
+| Phase 4 | M88c: My Skills (Author Dashboard) `/my-skills` | S094a | M(12-13) | — | 📋 planned — `?author=` filter + `/skills/{id}/analytics/trend?days=30` endpoint + Sparkline component；prototype `my_skills_author_dashboard.html`；P6 SBE missing |
+| Phase 4 | M88d: Semantic Search Results `/search` | S094b | M(12-13) | — | 📋 planned — split inline → dedicated route + AI intent summary endpoint (POC required: prompt + ≤2s P95 latency)；prototype `semantic_search_results_page.html`；P5 polish |
+| Phase 4 | (deferred) Admin Review Queue | S094e | — | — | ⏸ post-MVP — PRD B6 Backlog；`admin_review_queue_and_detail.html` |
+| Phase 4 | (deferred) Onboarding Wizard | S094f | — | — | ⏸ post-MVP — `onboarding_wizard_step_2_of_4.html` |
+| Phase 4 | (deferred) Landing Page | S094g | — | — | ⏸ post-MVP — `skills_hub_landing_page.html` |
 
 **MVP（v1.0.0）**：14 specs / 147 story points 已完成 🎉
 **Phase 1（PostgreSQL 遷移 v1.1.0）**：1 spec / 20 story points 已完成（S015 absorbed）
