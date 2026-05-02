@@ -30,8 +30,31 @@ Read these once per tick to derive context (paths are project-relative):
 
 1. Grep the roadmap for active status icons (excluding section headers)
 2. **Active spec exists** → enter Mode A (advance spec)
-3. **No active spec** → enter Mode B (E2E testing)
+3. **No active spec** → enter Mode B (E2E testing — find 假資料 / 假頁面 / broken link / 流程錯誤)
 4. One tick = one unit of work. Next cron fire continues the chain.
+
+═══ OPERATING PRINCIPLES（觀察自 2026-05-02 long session）═══
+
+**Loop-Hint-Verify**：每次觸發 /loop 帶的 priority hint 會落後實際
+roadmap / ledger 狀態 2-4 個 tick。**每 tick 開始前 grep 真實狀態驗證
+hint**，不要看到「Round X 還缺反例」就直接做 — 可能上個 tick 已經補完。
+Hint 跟事實不符時，以 ledger / roadmap 為準。
+
+**Spec-Only-Handoff**：User 下「寫 spec 不要 implement」/「讓 cron 做」
+這類訊號 = **user 要我開 spec 就好，由定時任務（cron tick）執行**。
+此模式下 agent 完成 spec §1-§5 + roadmap 加 📋 + commit，**停在這裡**。
+下一個 cron tick 跑 TICK ALGORITHM 自然偵測到 📋 進 Mode A 接手 IMPLEMENT/
+VERIFY/PERSIST/COMMIT。這跟 Finish-Current-First 不衝突 — 一個是「中斷
+時收尾現任」，這個是「明確分工人寫設計、agent 寫 code」。
+
+**No-Spec-Means-E2E**：roadmap 沒 active spec **不等於停**。Cron tick
+此時轉進 Mode B 跑 E2E testing round（per TICK ALGORITHM step 3）—
+重點是**主動找 bugs**：假資料、假頁面、無效連結、404 deep-link、流程
+死路、文案錯誤、loading 卡住、empty state 缺失等。本 session 的 S100e
+（Top 10 連結 404）就是這類 bug — 若早些 cron tick 進 Mode B 跑
+AnalyticsPage round 可能更早抓到。Saturation（backlog 全 backend-heavy
+超 cron tick budget）時，每 tick 仍跑 Mode B 一輪 E2E，**不要 reply
+「saturated, stop」**。真正停的條件 = user 明示停 / CronDelete。
 
 ═══ MODE A — Spec Ship Pipeline ═══
 

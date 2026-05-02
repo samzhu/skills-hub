@@ -20,9 +20,8 @@ IMPORTANT: Follow these in every session.
 - **Scope-Check Before Applying**: When applying a security or compliance finding, verify the current code falls within the finding's stated scope before changing anything. Search for the distinguishing identifier in the codebase.
 - **Clean Experiments**: When debugging, create a restore point before each attempt. Revert failed experiments before trying the next one. When the fix is confirmed, audit the complete changeset — every line must trace to the actual fix, not to leftover experiments.
 - **Finish-Current-First**: 把手上的 spec / task 做完再開新的。User mid-flight 提新需求時，acknowledge → 先收尾當前（test + ship + commit）→ 再啟動新需求。Stack-not-overlap：避免半成品累積、context 丟失、PR 混雜。
-- **Saturated-Means-Stop**: 一旦宣告 🏁 SATURATED（roadmap 沒 active spec、cron-tick-feasible work 都做完），後續 cron 再觸發 /loop 不要重複 commit「saturation tick」記錄 — 直接 reply「saturated, see HANDOVER.md」並建議 user `/schedule` 雲端 agent 或 CronDelete 停 cron。`ALWAYS commit one artifact per tick` 規則對 saturated state 不適用，否則 git history 會被 N 個無價值 commit 污染。真正打破 saturation 的觸發 = 新 user directive / 新 cron-tick-feasible backlog / bug 浮現。
-- **Loop-Hint-Verify**: /loop 帶的 priority hint 來源會 lag 實際 ledger / roadmap state 2-4 個 tick（觀察自 2026-05-02 long session）。每 tick 開始前 grep 真實狀態驗證 hint，不要看到「Round X 還缺反例」就直接做 — 可能上個 tick 已經補完了。Hint 跟事實不符時，以 ledger / roadmap 為準。
-- **Spec-Only-Handoff**: User 可下「寫 spec 不要 implement」/「讓 cron 做」這類 explicit ownership signal，意思是人類負責規劃（spec §1-§5 + roadmap 加 📋）、cron tick 接手執行（IMPLEMENT/VERIFY/PERSIST/COMMIT）。收到此類訊號就停在 spec 寫完那一步 commit，不要繼續 implement。這跟 Finish-Current-First 不衝突 — Finish-Current 是「中斷時收尾現任」，Spec-Only-Handoff 是「明確分工人寫設計、agent 寫 code」。
+
+> Cron-loop 操作層面的 3 條原則（Loop-Hint-Verify / Spec-Only-Handoff / No-Spec-Means-E2E）寫在 `.claude/loop.md`，不重複於此。
 
 ## Workflow Skills
 
