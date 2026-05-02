@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { useNavigate } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
-import { ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { FileDropZone } from '@/components/FileDropZone'
 import { Input } from '@/components/ui/input'
@@ -23,11 +23,17 @@ export function PublishPage() {
   const [version, setVersion] = useState('1.0.0')
   const [author, setAuthor] = useState('')
   const [category, setCategory] = useState('')
+  const navigate = useNavigate()
 
   const mutation = useMutation({
     mutationFn: () => {
       if (!file) throw new Error('請選取檔案')
       return uploadSkill(file, version, author, category)
+    },
+    onSuccess: (data) => {
+      // S096d4a: 上傳成功後 navigate 到 /publish/review?id=X
+      // — 取代既有 inline success card；URL 可分享 / bookmark
+      navigate(`/publish/review?id=${data.id}`)
     },
     onError: (err) => {
       console.error('[PublishPage] 發佈技能失敗', err)
@@ -101,25 +107,7 @@ export function PublishPage() {
             </button>
           </form>
 
-          {/* S086: success callout per DESIGN.md card-callout pattern with success-soft fill + success-deep text */}
-          {mutation.isSuccess && (
-            <div
-              className="mt-4 flex items-start gap-3 rounded-md p-3 text-[13px]"
-              style={{ backgroundColor: 'rgba(29,158,117,0.14)', color: '#9FE1CB' }}
-            >
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-              <div className="flex-1">
-                <p className="m-0 font-medium">發佈成功！</p>
-                <p className="m-0 mt-0.5 font-mono text-[11px] opacity-80">{mutation.data.id}</p>
-                <Link
-                  to={`/skills/${mutation.data.id}`}
-                  className="mt-1.5 inline-flex items-center gap-1 text-[12px] font-medium underline-offset-2 hover:underline"
-                >
-                  查看技能 <ArrowRight className="h-3 w-3" />
-                </Link>
-              </div>
-            </div>
-          )}
+          {/* S096d4a: success state 改 navigate 到 /publish/review?id=X — 不再顯 inline card */}
 
           {/* S086: error callout per DESIGN.md card-callout-danger with danger-soft + danger-deep */}
           {mutation.isError && (

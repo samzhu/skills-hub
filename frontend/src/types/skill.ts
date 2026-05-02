@@ -7,12 +7,14 @@
 export type SkillStatus = 'DRAFT' | 'PUBLISHED' | 'SUSPENDED'
 
 /**
- * 風險評估等級（由後端 RiskScanner 分析 scripts/ 目錄後設定）。
- * - LOW：僅含 SKILL.md，無可執行腳本
+ * 風險評估等級（由後端 RiskScanner 分析後設定）。
+ * S096c: 4-tier per ADR-future + PRD D27.
+ * - NONE：pure docs skill — 0 findings + 無 scripts/ + 無 allowed-tools
+ * - LOW：0 findings 但有 capability declaration；OR findings 全 LOW severity
  * - MEDIUM：含腳本但未偵測到高風險模式
  * - HIGH：偵測到高風險模式，應謹慎使用
  */
-export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH'
+export type RiskLevel = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH'
 
 /**
  * 技能讀取模型，對應後端 SkillReadModel 的 JSON 序列化結果。

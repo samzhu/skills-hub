@@ -11,6 +11,7 @@ import { LandingPage } from './pages/LandingPage'
 import { RequestBoardPage } from './pages/RequestBoardPage'
 import { CollectionsPage } from './pages/CollectionsPage'
 import { NotificationsPage } from './pages/NotificationsPage'
+import { PublishReviewPage } from './pages/PublishReviewPage'
 
 function App() {
   return (
@@ -24,6 +25,8 @@ function App() {
       {/* S096c: canonical route per ADR-003；既有 :id alias 並行不破 */}
       <Route path="/skills/:author/:name" element={<SkillDetailPage />} />
       <Route path="/publish" element={<PublishPage />} />
+      {/* S096d4a: post-upload result page; defer /publish/validate poll page 至 S096d5 */}
+      <Route path="/publish/review" element={<PublishReviewPage />} />
       <Route path="/analytics" element={<AnalyticsPage />} />
       {/* S094a: 作者視角 dashboard — P6 SBE「作者查看自己的數據」 */}
       <Route path="/my-skills" element={<MySkillsPage />} />

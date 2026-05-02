@@ -1,5 +1,44 @@
 # Changelog
 
+## [v2.83.0] — /publish/review post-upload result page（S096 META 8a/8；M90d4a 完成；2026-05-02）
+
+> **Publish flow URL split (Step 3)** — 上傳成功後 navigate 到 `/publish/review?id=X` 獨立頁面，URL 可分享 / bookmark。S096d4 narrow trim — Step 2 validate poll page + 3 domain events + SSE 留 S096d5.
+
+### Added
+- **Frontend `/publish/review?id={skillId}` route + PublishReviewPage**:
+  - 用 existing useSkill hook fetch skill data
+  - Hero「發佈完成 — 檢視結果」+ skill metadata card (name/risk badge/desc/author/category/version/status)
+  - Risk-level conditional callout:
+    - null → warning「掃描中」 encourage refresh
+    - HIGH → danger「進入人工審核」
+    - NONE → success「未發現 risk patterns — auto-published」
+    - LOW/MEDIUM → success generic auto-publish
+  - 下載 CTA（detail page 跳轉）+ 「發佈下一個技能」secondary
+- **PublishPage onSuccess 改 navigate**:
+  - 取代既有 inline success card
+  - `navigate('/publish/review?id=' + data.id)`
+- **RiskLevel type widening** (frontend → backend parity per S096c):
+  - `types/skill.ts` RiskLevel union `'LOW'|'MEDIUM'|'HIGH'` → `'NONE'|'LOW'|'MEDIUM'|'HIGH'`
+  - `SkillDetailPage` RISK_DESCRIPTION + RISK_TEXT_CLASS exhaustive Records +NONE entry
+
+### Trim from M(10-12) → XS(5)
+Defer to S096d5:
+- /publish/validate?id=X Step 2 poll page (between Step 1 upload and Step 3 review)
+- 3 new domain events (SkillBundleExtracted / SkillFrontmatterValidated / SkillRiskScanStarted)
+- SSE event stream backend (poll based for now)
+- Auto-poll on /publish/review for live risk_level update
+
+### Metrics
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 401.54 → 405.64KB (+4.10KB)
+- CSS: 38.08 → 38.25KB (+0.17KB)
+- Build: 178ms
+
+### META progress
+S096 META 8a/8 ✅ 主 sub-spec 全 ship。Stub→full upgrade backlog: S096d5 / e2 ⏸ / f2 / g2 / h2.
+
+---
+
 ## [v2.82.0] — Notifications stub + bell badge（S096 META 7a/8；M90h1 完成；2026-05-02）
 
 > Same stub pattern as f1/g1, plus first AppShell-level integration: bell badge top-right polls unread count.

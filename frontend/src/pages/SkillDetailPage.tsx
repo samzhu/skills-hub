@@ -38,13 +38,16 @@ const STATUS_PILL_STYLE: Record<SkillStatus, { backgroundColor: string; color: s
  * S036 — Risk tab 段落說明（mirror STATUS_LABEL pattern；exhaustive Record 防漏）。
  * RiskBadge 是 inline 短訊；本表是 detail page 段落級別的詳述。
  */
+// S096c 4-tier — NONE 加為純文件 skill 描述
 const RISK_DESCRIPTION: Record<RiskLevel, string> = {
-  LOW: '此技能僅含 SKILL.md，不含可執行腳本，風險等級為低。',
-  MEDIUM: '此技能含可執行腳本，但未偵測到高風險模式。建議審視 scripts/ 內容後再使用。',
+  NONE: '此技能僅含 SKILL.md，無 scripts/ 或 allowed-tools，掃描器未發現任何 risk patterns（注意：NONE ≠ 100% 安全）。',
+  LOW: '此技能含 scripts 或 allowed-tools 宣告，但未偵測到危險指令，風險等級為低。',
+  MEDIUM: '此技能含可執行腳本，且偵測到中等風險模式。建議審視 scripts/ 內容後再使用。',
   HIGH: '此技能的 scripts/ 中偵測到高風險模式，請謹慎使用。',
 }
 
 const RISK_TEXT_CLASS: Record<RiskLevel, string> = {
+  NONE: 'text-muted-foreground',
   LOW: 'text-muted-foreground',
   MEDIUM: 'text-amber-700',
   HIGH: 'text-red-600',
