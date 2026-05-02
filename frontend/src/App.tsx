@@ -15,6 +15,8 @@ function App() {
       {/* /skills 是 listing alias — 使用者輸入網址或書籤回鏈時的直覺路徑 */}
       <Route path="/skills" element={<HomePage />} />
       <Route path="/skills/:id" element={<SkillDetailPage />} />
+      {/* S096c: canonical route per ADR-003；既有 :id alias 並行不破 */}
+      <Route path="/skills/:author/:name" element={<SkillDetailPage />} />
       <Route path="/publish" element={<PublishPage />} />
       <Route path="/analytics" element={<AnalyticsPage />} />
       {/* S094a: 作者視角 dashboard — P6 SBE「作者查看自己的數據」 */}

@@ -52,6 +52,16 @@ public class SkillQueryController {
 	}
 
 	/**
+	 * S096c — 依 author/name canonical route 取得 Skill (per ADR-003).
+	 * `/skills/:id` 為永久 alias，`/skills/:author/:name` 為 canonical；兩者 resolve 同 aggregate。
+	 * Path 區分：UUID 為 single-segment（既有 endpoint），author/name 為 two-segment（本 endpoint）。
+	 */
+	@GetMapping("/skills/{author}/{name}")
+	Skill getByAuthorAndName(@PathVariable String author, @PathVariable String name) {
+		return queryService.findByAuthorAndName(author, name);
+	}
+
+	/**
 	 * 搜尋技能 — 支援 keyword（name/description 模糊匹配）、category（精確匹配）、author（精確匹配）。
 	 * 三個參數皆為可選，都不帶則回傳全部。
 	 *

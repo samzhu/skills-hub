@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
+import io.github.samzhu.skillshub.security.RiskLevel;
 import io.github.samzhu.skillshub.security.scan.sarif.SarifReporter;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
@@ -140,7 +141,7 @@ class ScanOrchestrator {
 			// 全部 findings 用於最終 severity 計算
 			var allFindings = new ArrayList<SecurityFinding>(combinedSoFar);
 			for (var output : phase3Outputs.values()) allFindings.addAll(output.findings());
-			Severity finalLevel = aggregateMaxSeverity(allFindings);
+			RiskLevel finalLevel = classifyRiskLevel(allFindings, initialContext);
 
 			// 渲染 SARIF
 			Map<String, Object> sarif = sarifReporter.render(analyzers, perEngine, event);
@@ -236,13 +237,30 @@ class ScanOrchestrator {
 	}
 
 	/**
-	 * Max severity 規則：HIGH > MEDIUM > LOW。無 finding → LOW（與 S005 行為相容）。
+	 * S096c 4-tier classification rule（per ADR-future + PRD D27 + Cisco Skill Scanner alignment）:
+	 * <ol>
+	 *   <li>0 findings AND scripts 為空 AND frontmatter 無 allowed-tools → {@link RiskLevel#NONE}
+	 *       （純文件 skill，scanner 找不到 known patterns）</li>
+	 *   <li>0 findings 但 has scripts OR has allowed-tools → {@link RiskLevel#LOW}
+	 *       （capability declared 但 0 demonstrated risk）</li>
+	 *   <li>有 findings → max(severity) → HIGH / MEDIUM / LOW</li>
+	 * </ol>
+	 *
+	 * NONE ≠ certified safe，僅表示 scanner 未抓到威脅指紋（per ADR-future §1）。
+	 * tooltip 與 UX 訊息需明確標示此 caveat。
 	 */
-	private Severity aggregateMaxSeverity(List<SecurityFinding> findings) {
-		return findings.stream()
+	private RiskLevel classifyRiskLevel(List<SecurityFinding> findings, ScanContext ctx) {
+		if (findings.isEmpty()) {
+			boolean hasScripts = ctx.scripts() != null && !ctx.scripts().isEmpty();
+			boolean hasAllowedTools = ctx.frontmatter() != null && ctx.frontmatter().get("allowed-tools") != null;
+			return (hasScripts || hasAllowedTools) ? RiskLevel.LOW : RiskLevel.NONE;
+		}
+		var maxSev = findings.stream()
 				.map(SecurityFinding::severity)
-				.min(Comparator.comparingInt(Severity::ordinal))   // ordinal: HIGH=0, MEDIUM=1, LOW=2 → min = highest
+				.min(Comparator.comparingInt(Severity::ordinal))
 				.orElse(Severity.LOW);
+		// Severity name 對齊 RiskLevel name（HIGH/MEDIUM/LOW），直接 valueOf 安全
+		return RiskLevel.valueOf(maxSev.name());
 	}
 
 	/**
@@ -257,7 +275,7 @@ class ScanOrchestrator {
 	 * </ol>
 	 */
 	private void persist(SkillVersionPublishedEvent event,
-			Severity finalLevel,
+			RiskLevel finalLevel,
 			List<SecurityFinding> allFindings,
 			Map<String, AnalysisOutput> perEngine,
 			Map<String, Object> sarif) {

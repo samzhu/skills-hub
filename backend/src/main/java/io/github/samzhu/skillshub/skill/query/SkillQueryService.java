@@ -96,6 +96,16 @@ public class SkillQueryService {
 	}
 
 	/**
+	 * S096c — 依 (author, name) 查詢 Skill (canonical route per ADR-003).
+	 * case-insensitive；找不到回 {@link NoSuchElementException} → 404 by GlobalExceptionHandler.
+	 */
+	public Skill findByAuthorAndName(String author, String name) {
+		return skillRepo.findByAuthorAndName(author, name)
+				.orElseThrow(() -> new NoSuchElementException(
+						"Skill not found: " + author + "/" + name));
+	}
+
+	/**
 	 * 關鍵字 + 分類組合搜尋（動態 SQL）。
 	 *
 	 * <p>keyword 做 case-insensitive LIKE 比對，同時匹配 name 和 description（OR）；

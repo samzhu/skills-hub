@@ -42,6 +42,16 @@ public interface SkillRepository extends ListCrudRepository<Skill, String> {
     Optional<Skill> findByName(String name);
 
     /**
+     * S096c — 依 (author, name) 組合查詢 Skill；用於 `/skills/:author/:name` canonical route
+     * (per ADR-003)。case-insensitive 比對對齊 GitHub/npm/Docker Hub 慣例（`Platform-Team` ≡ `platform-team`）。
+     *
+     * <p>schema 上 `name` 已 UNIQUE per-org（per S041），但 `(author, name)` 組合在 v1 設計上
+     * 也唯一（同一 author 不會發兩個同名 skill）。LIMIT 1 防範資料漂移情況。
+     */
+    @Query("SELECT * FROM skills WHERE LOWER(author) = LOWER(:author) AND LOWER(name) = LOWER(:name) LIMIT 1")
+    Optional<Skill> findByAuthorAndName(@Param("author") String author, @Param("name") String name);
+
+    /**
      * S024 T5 — Cross-aggregate projection: 由 {@code ScanOrchestrator} multi-engine
      * scan pipeline 完成後寫入 {@code skills.risk_level}（衍生自 {@code SkillVersion.riskAssessment}）。
      *

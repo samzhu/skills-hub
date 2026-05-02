@@ -12,7 +12,7 @@ import { MetricCard } from '@/components/MetricCard'
 import { VersionList } from '@/components/VersionList'
 import { FileDropZone } from '@/components/FileDropZone'
 import { FilesPanel } from '@/components/FilesPanel'
-import { useSkill } from '@/hooks/useSkill'
+import { useSkill, useSkillByAuthorAndName } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
 import { addVersion } from '@/api/skills'
 import { ApiError } from '@/api/client'
@@ -56,9 +56,17 @@ const RISK_TEXT_CLASS: Record<RiskLevel, string> = {
  * 從 URL 參數 `:id` 取得技能 ID；id 不存在時 hooks 的 `enabled: false` 防止請求發送。
  */
 export function SkillDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  // id 可能為 undefined（型別安全），fallback 空字串讓 useSkill/useVersions 的 enabled 守衛生效
-  const { data: skill, isLoading, error } = useSkill(id ?? '')
+  // S096c — dual-route support per ADR-003：兩個 React Routes 都 mount 此 component
+  // - `/skills/:id` legacy alias → useParams returns { id }
+  // - `/skills/:author/:name` canonical → useParams returns { author, name }
+  const params = useParams<{ id?: string; author?: string; name?: string }>()
+  const skillByIdQuery = useSkill(params.id ?? '')
+  const skillByAuthorNameQuery = useSkillByAuthorAndName(params.author, params.name)
+  // Pick whichever query has data; both have `enabled` gates so only one fires
+  const activeQuery = params.id ? skillByIdQuery : skillByAuthorNameQuery
+  const { data: skill, isLoading, error } = activeQuery
+  // 後續 hook (useVersions / mutations) 仍需 skill UUID — 從 fetched skill aggregate 取
+  const id = skill?.id ?? params.id ?? ''
   const { data: versions } = useVersions(id ?? '')
 
   if (isLoading) {

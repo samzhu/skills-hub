@@ -1,5 +1,49 @@
 # Changelog
 
+## [v2.75.0] — Routing schema dual-route + Risk tier 4-level（S096 META 3/8；M90c 完成；2026-05-02；absorbs S095）
+
+> **Architectural sub-spec** — `/skills/:author/:name` canonical (per ADR-003) + `RiskLevel` 4-tier (per PRD D27)。S095 (Risk tier NONE) absorbed 進此 sub-spec 一次到位。
+
+### Added
+- **Backend RiskLevel 4-tier**:
+  - Enum 加 `NONE` value：純文件 skill（0 findings + 無 scripts + 無 allowed-tools）
+  - `ScanOrchestrator.classifyRiskLevel(findings, ScanContext)` 取代 `aggregateMaxSeverity` — 三條件分流
+  - `persist()` signature `Severity` → `RiskLevel`；DB `skills.risk_level` 字串值新增 `NONE` 可能
+- **Backend dual-route per ADR-003**:
+  - `SkillRepository.findByAuthorAndName(author, name)` — case-insensitive, LIMIT 1
+  - `SkillQueryService.findByAuthorAndName(...)` — 包裝 NoSuchElementException → 404
+  - `GET /api/v1/skills/{author}/{name}` endpoint — canonical
+  - 既有 `GET /api/v1/skills/{id}` UUID 仍可用（永久 alias）
+- **Frontend dual-route**:
+  - `fetchSkillByAuthorAndName(author, name)` API
+  - `useSkillByAuthorAndName(author, name)` hook with separate cache key
+  - `SkillDetailPage` `useParams` dispatch logic — id 或 author/name 任一可進
+  - `<Route path="/skills/:author/:name" element={<SkillDetailPage />}>` register
+- **Frontend RiskBadge 4-tier dark theme**:
+  - NONE 綠 / LOW 藍 / MEDIUM 琥珀 / HIGH 紅 — 對齊 DESIGN.md v2 dark semantic palette (rgba alpha overlays + light text variants)
+  - NONE tooltip caveat: "scanner 未發現 known patterns；不代表 100% 安全" (per Cisco Skill Scanner 「NONE ≠ certified safe」原則)
+
+### Trim from M(12) → ~9 pts
+Flyway SQL migration for既有 87 LOW skills deferred — runtime classify only-new-uploads。既有 LOW skills 透過 admin re-scan trigger 或 future polish spec 處理。
+
+### Metrics
+- Backend tests (SkillSearchTest + SkillQueryControllerApiContractTest): BUILD SUCCESSFUL 1m 31s ✓
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 381.91 → 382.54KB (+0.63KB)
+- CSS: 37.21 → 36.47KB (-0.74KB；inline-style hex drop tailwind utility classes)
+- Build: 284ms
+
+### S095 superseded
+S095 (Risk tier 4-level standalone spec) ⛔ absorbed into S096c per Q3 grill 2026-05-02. ship 一次到位 with RiskBadge dark theme redesign 而非 ship-then-redesign。
+
+### META progress
+S096 META 3/8 ✅. Next: S096d Existing pages v2 refresh (L / 15-16 pts).
+
+### Live caveat
+Live :8080 backend 仍跑舊 code；新 endpoint + classify 邏輯生效需下次 graceful restart (S093 transition first-restart-fresh-DB caveat applies)。
+
+---
+
 ## [v2.74.0] — DESIGN.md v2 + global dark theme migration foundation（S096 META 2/8；M90b 完成；2026-05-02）
 
 > **Theme foundation ship** — frontend 一夜變 dark theme via global CSS token swap。Foundation 而非 polish；inline-hex 細節留 S096d 統一 update。

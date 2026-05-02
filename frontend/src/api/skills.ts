@@ -47,6 +47,14 @@ export function fetchSkillById(id: string): Promise<Skill> {
 }
 
 /**
+ * S096c — 依 (author, name) canonical route 取得 Skill (per ADR-003).
+ * `/skills/:author/:name` 為 v2 canonical；`/skills/:id` 仍為永久 alias。
+ */
+export function fetchSkillByAuthorAndName(author: string, name: string): Promise<Skill> {
+  return apiFetch(`/skills/${encodeURIComponent(author)}/${encodeURIComponent(name)}`)
+}
+
+/**
  * 取得所有技能分類及其數量，供側邊欄篩選使用。
  *
  * @returns 分類清單（後端依數量降冪排序）
