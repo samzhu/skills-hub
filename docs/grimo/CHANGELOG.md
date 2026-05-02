@@ -1,5 +1,24 @@
 # Changelog
 
+## [v3.4.1] — AnalyticsPage Top 10 link defensive guard（S100e 完成；2026-05-02）
+
+> User 觀察：/analytics 頁面 Top 10 連結點過去 404「找不到此技能」。Root cause：backend runtime 落後 S100a deploy，response 漏 `author` 欄位 → frontend 渲染 `<Link to="/skills/undefined/<name>">`。本 spec 補 frontend 三重 guard（typeof + length + 字面 "undefined" 字串），author 缺失時 row 退回非 link `<div>`，rank/name/downloads 完整保留。
+
+### Added
+- `frontend/src/pages/AnalyticsPage.test.tsx`：4 ACs cover positive / no-author key / "undefined" string / empty topSkills（vi.mock useOverview fixture provider）
+
+### Changed
+- `frontend/src/api/analytics.ts`：`topSkills[].author` 改為 optional 反映 backend stale-runtime 真實風險
+- `frontend/src/pages/AnalyticsPage.tsx`：map block 加 `hasValidAuthor` guard + ternary 切 Link / div polymorphic row
+
+### Verified
+- `cd frontend && npx vitest run src/pages/AnalyticsPage.test.tsx`：1 file 4/4 PASS（1.07s）
+
+### Why
+S100e 是 S100a 的 defensive sibling — S100a 加了 author 欄位但 stale runtime 不一定送出；frontend 需 own 自己的 fail-safe，不能 assume backend payload schema 完整。
+
+---
+
 ## [v3.4.0] — PublishPage markdown preview pane（S099b3 完成；2026-05-02）
 
 > S099b3 — PublishPage text mode 加 split-view markdown preview。Hand-rolled MiniMarkdown 取代 50KB+ react-markdown dep。完成 PublishPage text mode 三件套：text mode + frontmatter validation + preview。

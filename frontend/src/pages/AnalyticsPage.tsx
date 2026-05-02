@@ -58,13 +58,18 @@ export function AnalyticsPage() {
                 {stats.topSkills.map((skill, i) => {
                   const top = stats.topSkills[0].downloads
                   const pct = top > 0 ? (skill.downloads / top) * 100 : 0
-                  // S100a: wrap Link 至 canonical /skills/:author/:name route
-                  return (
-                    <Link
-                      key={`${skill.author}/${skill.name}`}
-                      to={`/skills/${skill.author}/${skill.name}`}
-                      className="flex items-center gap-3 rounded-md transition-colors hover:bg-[rgba(255,255,255,0.04)]"
-                    >
+                  // S100e: backend stale runtime 可能漏 author；JS undefined 拼進 path
+                  // template 會字面化成字串 "undefined" 再被 React Router 轉成 404 URL，
+                  // 故 typeof + length + 字面字串三重 guard。缺 author 時 row 退回非
+                  // link `<div>`（rank/name/downloads 不變），不產生壞 URL。
+                  const hasValidAuthor =
+                    typeof skill.author === 'string' &&
+                    skill.author.length > 0 &&
+                    skill.author !== 'undefined'
+                  const rowClassName =
+                    'flex items-center gap-3 rounded-md transition-colors hover:bg-[rgba(255,255,255,0.04)]'
+                  const rowContent = (
+                    <>
                       <span className="w-6 text-right font-mono text-[13px] font-medium text-muted-foreground">
                         {i + 1}
                       </span>
@@ -83,7 +88,20 @@ export function AnalyticsPage() {
                           />
                         </div>
                       </div>
+                    </>
+                  )
+                  return hasValidAuthor ? (
+                    <Link
+                      key={`${skill.author}/${skill.name}`}
+                      to={`/skills/${skill.author}/${skill.name}`}
+                      className={rowClassName}
+                    >
+                      {rowContent}
                     </Link>
+                  ) : (
+                    <div key={`_/${skill.name}`} className={rowClassName}>
+                      {rowContent}
+                    </div>
                   )
                 })}
               </div>
