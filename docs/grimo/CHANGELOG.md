@@ -1,5 +1,44 @@
 # Changelog
 
+## [v2.74.0] — DESIGN.md v2 + global dark theme migration foundation（S096 META 2/8；M90b 完成；2026-05-02）
+
+> **Theme foundation ship** — frontend 一夜變 dark theme via global CSS token swap。Foundation 而非 polish；inline-hex 細節留 S096d 統一 update。
+
+### Added
+- **`frontend/src/index.css` token swap**:
+  - `--color-background: #FFFFFF` → `#08080A` (page bg)
+  - `--color-foreground: #181818` → `#EEECEA` (primary ink)
+  - `--color-card: #FFFFFF` → `#0F0F12` (bg-2)
+  - `--color-muted: #F5F4ED` → `#171719` (bg-3)
+  - `--color-muted-foreground: #5C5C5C` → `#A8A49C` (ink-2)
+  - `--color-border: #E0DDD3` → `rgba(255,255,255,0.06)` hairline
+  - 4-tier semantic palette adjusted for dark bg（success-text/warning-text/danger-text 改 light variants `#6FD8B0` / `#FAC775` / `#F2A6A6`）
+  - 6 category palette 改 rgba alpha overlays
+  - Legacy `:root` `--color-text-primary` 等同步 dark
+- **`BeamFrame.tsx` v2 rewrite** per Engineering Handoff §8:
+  - 5-color conic-gradient (purple → magenta → amber → green → blue)
+  - 1.5px padding (was 1px) + 1.96s spin (was 4s)
+  - `::after` blur(10px) opacity 0.5 glow halo for dark bg
+  - inner bg #08080A
+  - `isolation: isolate` z-index discipline
+
+### Why test不破
+既有 28 vitest tests 用 `screen.getByText(...)` / `getByRole(...)` DOM-shape API，**不 assert hex color strings**。token swap 視覺改動 — 符合「test code structure, not pixels」。
+
+### Inline-hex 暫不動
+S087 status pill / S088 progress bar / S094a/b/c/d 內 inline-style hex 仍顯舊 light-theme 色。**defer 到 S096d existing pages refresh 統一 polish**，避免 S096b scope creep。
+
+### Metrics
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 381.66 → 381.91KB (+0.25KB)
+- CSS: 37.09 → 37.21KB (+0.12KB)
+- Build: 162ms
+
+### META progress
+S096 META 2/8 ✅. Next: S096c Routing schema + Risk tier 4-level (M / 12 pts; absorbs S095).
+
+---
+
 ## [v2.73.0] — ADR-003 + PRD P7-P9 + Glossary（S096 META sub-spec 1/8；M90a 完成；2026-05-02）
 
 > **Docs-only gate** — S096 META 第一個 sub-spec，把 v2 redesign 的架構決定寫進文件，後續 sub-specs reference 這些 docs 為 source of truth。

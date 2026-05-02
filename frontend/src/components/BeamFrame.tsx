@@ -1,21 +1,30 @@
 import type { ReactNode } from 'react'
 
 /**
- * S089: Hand-rolled conic-gradient beam frame.
+ * S089 → S096b — 5-color conic-gradient beam frame for dark theme.
  *
- * 取代 border-beam npm package（light theme 在白背景物理上做不出 glow，per S084 §2.2 研究）。
- * 1:1 對齊 prototype `skills_hub_homepage_mockup.html` `.sh-search-wrap` 結構：
- * - 1px padding wrapper，背景 = `--color-border-tertiary`（#E0DDD3）— 露出 ring
- * - `::before` 偽元素 conic-gradient，從 0° 到 360° 一圈：transparent 0-300° / accent 紫 #7F77DD 330° / info 藍 #378ADD 345° / transparent 360°
- * - inset: -50% 讓 gradient 蓋滿父容器並 spin 出邊外
- * - 4s linear infinite spin，per DESIGN.md §Elevation §3 「4-5s per rotation」
+ * 改寫對齊 Engineering Handoff §8 BorderBeam Usage Rules：
+ * - padding 1.5px（vs S089 1px）— 在 dark bg `#08080A` 上 ring 更可見
+ * - background `#1A1A1E`（per Handoff §8）取代 light theme 的 hairline border token
+ * - 5-color stops 對齊 v2 prototype HTML：purple → magenta → amber → green → blue
+ * - animation 1.96s（vs S089 4s）— Handoff §8 specifies 此 timing 為「scarce motion primitive」
+ * - blur(10px) opacity 0.5 ::after layer — glow halo effect on dark bg
  *
- * Inner content 套 `--color-background-primary`（#FFFFFF），shape 與 wrapper 對齊但 -1px radius。
+ * Inner content 用 `--color-background`（dark `#08080A`）對齊頁面，shape 與 wrapper 對齊。
+ *
+ * **Usage rules** (per Handoff §8): beam 屬稀有 motion primitive，**ONE per page**。
+ * 限用於：
+ * - Hero search bar (HomePage)
+ * - Primary CTA button (one per page)
+ * - FileDropZone (PublishPage Step 1)
+ * - Featured / top-match skill card
+ *
+ * **Never use on**: metric cards, navigation, sidebar items, secondary buttons, list rows.
  *
  * @example
  * ```tsx
  * <BeamFrame>
- *   <div className="search-input-content">...</div>
+ *   <button className="primary-cta">...</button>
  * </BeamFrame>
  * ```
  */
@@ -26,29 +35,38 @@ export function BeamFrame({ children }: { children: ReactNode }) {
         @keyframes beam-frame-spin { to { transform: rotate(360deg); } }
         .beam-frame {
           position: relative;
-          border-radius: var(--border-radius-lg, 12px);
-          padding: 1px;
-          background: var(--color-border-tertiary, #E0DDD3);
+          padding: 1.5px;
+          border-radius: 8px;
+          background: #1A1A1E;
           overflow: hidden;
+          isolation: isolate;
         }
-        .beam-frame::before {
+        .beam-frame::before,
+        .beam-frame::after {
           content: '';
           position: absolute;
-          inset: -50%;
-          background: conic-gradient(
-            from 0deg,
-            transparent 0deg,
-            transparent 300deg,
-            #7F77DD 330deg,
-            #378ADD 345deg,
-            transparent 360deg
-          );
-          animation: beam-frame-spin 4s linear infinite;
+          inset: -120%;
+          background: conic-gradient(from 0deg,
+            transparent 0deg, transparent 197deg,
+            rgba(127,119,221,.95) 230deg,
+            rgba(217,56,138,.95) 268deg,
+            rgba(239,159,39,.95) 300deg,
+            rgba(29,158,117,.95) 332deg,
+            rgba(55,138,221,.95) 360deg,
+            transparent 360deg);
+          animation: beam-frame-spin 1.96s linear infinite;
+          pointer-events: none;
+          z-index: 0;
+        }
+        .beam-frame::after {
+          filter: blur(10px);
+          opacity: 0.5;
         }
         .beam-frame > .beam-frame-inner {
           position: relative;
-          background: var(--color-background-primary, #FFFFFF);
-          border-radius: calc(var(--border-radius-lg, 12px) - 1px);
+          z-index: 1;
+          background: var(--color-background, #08080A);
+          border-radius: 6.5px;
         }
       `}</style>
       <div className="beam-frame">

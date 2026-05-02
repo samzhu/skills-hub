@@ -1,93 +1,97 @@
 @import "tailwindcss";
 
 /*
- * S081: Design token migration — DESIGN.md token system.
+ * S096b — Dark theme migration (UI v2 META).
  *
- * 採 shadcn-convention 命名（--color-primary 等）保 backward compat；hex 值改用
- * DESIGN.md spec。新增 accent / success / warning / danger / info × soft/mid/deep/text 4-tier
- * semantic palette + 6 category tints + Inter/JetBrains Mono/Source Serif Pro 字體 stack。
+ * 替換 S081 light-theme tokens 為 DESIGN.md v2 dark token system
+ * （per Engineering Handoff §7）。整個 frontend 一夜變 dark theme：
+ * - shadcn primitives (`bg-background` / `bg-card` / `bg-muted` 等) 自動 dark
+ * - 既有 inline-style hex 由 S096d existing pages refresh 階段個別 polish
  *
- * Tailwind v4 `@theme inline` 自動把 `--color-X` 生成 `bg-X` / `text-X` / `border-X` utility，
- * 不需手動維護 utility class table。
+ * Tailwind v4 `@theme inline` 自動把 `--color-X` 生成 `bg-X` / `text-X` / `border-X` utility。
  */
 @theme inline {
-  /* === Neutrals — warm off-white surface with deep ink text === */
-  --color-background:           #FFFFFF;  /* surface */
-  --color-foreground:           #181818;  /* primary text (DESIGN.md primary) */
-  --color-card:                 #FFFFFF;
-  --color-card-foreground:      #181818;
-  --color-popover:              #FFFFFF;
-  --color-popover-foreground:   #181818;
+  /* === Neutrals — dark layered surfaces (DESIGN.md v2 bg / bg-2 / bg-3 / bg-4) === */
+  --color-background:           #08080A;  /* page background */
+  --color-foreground:           #EEECEA;  /* primary ink */
+  --color-card:                 #0F0F12;  /* card surface (bg-2) */
+  --color-card-foreground:      #EEECEA;
+  --color-popover:              #171719;  /* bg-3 */
+  --color-popover-foreground:   #EEECEA;
 
-  /* shadcn primary = brand fill button bg = DESIGN.md primary text color (#181818) */
-  --color-primary:              #181818;
-  --color-primary-foreground:   #FFFFFF;
+  /* shadcn primary = brand fill button bg.
+   * 在 dark theme 中，primary CTA 用 ink (#EEECEA) 為背景 + bg 為文字 — 反白對比，
+   * 讓 primary 動作仍是視覺最強錨點（per Engineering Handoff §10「Disable, don't hide」原則）*/
+  --color-primary:              #EEECEA;
+  --color-primary-foreground:   #08080A;
 
-  /* shadcn secondary = subtle surface = DESIGN.md surface-secondary (warm limestone) */
-  --color-secondary:            #F5F4ED;
-  --color-secondary-foreground: #181818;
+  /* shadcn secondary = subtle elevated surface = DESIGN.md bg-3 */
+  --color-secondary:            #171719;
+  --color-secondary-foreground: #EEECEA;
 
-  /* muted = same as secondary surface but text uses DESIGN.md secondary (#5C5C5C) */
-  --color-muted:                #F5F4ED;
-  --color-muted-foreground:     #5C5C5C;
+  /* muted — bg-3 surface + ink-2 text (DESIGN.md secondary text) */
+  --color-muted:                #171719;
+  --color-muted-foreground:     #A8A49C;
 
-  --color-border:               #E0DDD3;  /* DESIGN.md border (hairline) */
-  --color-border-strong:        #C8C5BB;
-  --color-input:                #E0DDD3;
-  --color-ring:                 #7F77DD;  /* focus ring uses accent */
+  /* Hairline borders only (per Engineering Handoff §10「No drop shadows; hierarchy via tonal layers + hairlines」) */
+  --color-border:               rgba(255,255,255,0.06);
+  --color-border-strong:        rgba(255,255,255,0.10);
+  --color-input:                rgba(255,255,255,0.06);
+  --color-ring:                 #7F77DD;
 
-  /* === Accent — AI / personalization / focus === */
+  /* === Accent — AI / semantic / selected state === */
   --color-accent:               #7F77DD;
-  --color-accent-foreground:    #FFFFFF;
-  --color-accent-soft:          #EEEDFE;
-  --color-accent-mid:           #AFA9EC;
-  --color-accent-deep:          #3C3489;
-  --color-accent-text:          #26215C;
+  --color-accent-foreground:    #EEECEA;
+  --color-accent-soft:          rgba(127,119,221,0.12);
+  --color-accent-mid:           rgba(127,119,221,0.18);
+  --color-accent-deep:          #C9C5F2;
+  --color-accent-text:          #C9C5F2;
 
   /* === Info — links / k8s/infra === */
   --color-info:                 #378ADD;
-  --color-info-soft:            #E6F1FB;
-  --color-info-deep:            #0C447C;
+  --color-info-soft:            rgba(55,138,221,0.14);
+  --color-info-deep:            #B0D5F2;
+  --color-info-text:            #B0D5F2;
 
   /* === Success — low risk / approved / pass / growth === */
   --color-success:              #1D9E75;
-  --color-success-soft:         #EAF3DE;
-  --color-success-mid:          #9FE1CB;
-  --color-success-deep:         #27500A;
-  --color-success-text:         #085041;
+  --color-success-soft:         rgba(29,158,117,0.14);
+  --color-success-mid:          rgba(29,158,117,0.20);
+  --color-success-deep:         #6FD8B0;
+  --color-success-text:         #6FD8B0;
 
   /* === Warning — medium risk / pending review / caution === */
   --color-warning:              #EF9F27;
-  --color-warning-soft:         #FAEEDA;
-  --color-warning-mid:          #FAC775;
-  --color-warning-deep:         #633806;
-  --color-warning-text:         #412402;
+  --color-warning-soft:         rgba(239,159,39,0.14);
+  --color-warning-mid:          rgba(239,159,39,0.20);
+  --color-warning-deep:         #FAC775;
+  --color-warning-text:         #FAC775;
 
   /* === Danger — high risk / rejected / blocked === */
   --color-danger:               #E24B4A;
-  --color-danger-soft:          #FCEBEB;
-  --color-danger-mid:           #F7C1C1;
-  --color-danger-deep:          #791F1F;
-  --color-danger-text:          #501313;
+  --color-danger-soft:          rgba(226,75,74,0.14);
+  --color-danger-mid:           rgba(226,75,74,0.20);
+  --color-danger-deep:          #F2A6A6;
+  --color-danger-text:          #F2A6A6;
   /* shadcn destructive alias */
   --color-destructive:          #E24B4A;
-  --color-destructive-foreground:#501313;
+  --color-destructive-foreground:#F2A6A6;
 
   /* === Category palette — identity per-skill (NOT severity) === */
-  --color-category-devops:       #EEEDFE;
-  --color-category-devops-deep:  #3C3489;
-  --color-category-infra:        #E6F1FB;
-  --color-category-infra-deep:   #0C447C;
-  --color-category-testing:      #E1F5EE;
-  --color-category-testing-deep: #085041;
-  --color-category-docs:         #FAECE7;
-  --color-category-docs-deep:    #712B13;
-  --color-category-data:         #FAEEDA;
-  --color-category-data-deep:    #633806;
-  --color-category-security:     #FBEAF0;
-  --color-category-security-deep:#72243E;
+  --color-category-devops:       rgba(127,119,221,0.18);
+  --color-category-devops-deep:  #C9C5F2;
+  --color-category-infra:        rgba(55,138,221,0.18);
+  --color-category-infra-deep:   #B0D5F2;
+  --color-category-testing:      rgba(29,158,117,0.18);
+  --color-category-testing-deep: #9FE1CB;
+  --color-category-docs:         rgba(226,75,74,0.18);
+  --color-category-docs-deep:    #F2A6A6;
+  --color-category-data:         rgba(239,159,39,0.18);
+  --color-category-data-deep:    #FAC775;
+  --color-category-security:     rgba(217,56,138,0.18);
+  --color-category-security-deep:#F0A2C5;
 
-  /* === Radius scale (DESIGN.md §Shapes) === */
+  /* === Radius scale (DESIGN.md §Shapes — unchanged in v2) === */
   --radius:     0.5rem;   /* shadcn default — md = 8px */
   --radius-xs:  3px;
   --radius-sm:  4px;
@@ -96,25 +100,24 @@
   --radius-xl:  16px;
   --radius-pill:999px;
 
-  /* === Fonts === */
+  /* === Fonts (unchanged in v2) === */
   --font-sans:  Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono:  "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --font-serif: "Source Serif Pro", ui-serif, Georgia, "Times New Roman", serif;
 }
 
 /*
- * Prototype HTML 引用的舊變數命名（--color-text-primary 等）— 對應到上面 @theme tokens。
- * 不在 @theme 內以避免 Tailwind 生成奇怪 utility（如 text-text-primary）；放這裡讓 prototype
- * port 過來的 plain CSS / styled 模式可直接使用。
+ * S081 legacy variables — prototype-ported plain CSS 仍用這些命名。
+ * S096b 同步 swap 為 dark token values，避免 v1/v2 token 並存造成混色。
  */
 :root {
-  --color-text-primary:         #181818;
-  --color-text-secondary:       #5C5C5C;
-  --color-text-tertiary:        #888780;
-  --color-background-primary:   #FFFFFF;
-  --color-background-secondary: #F5F4ED;
-  --color-border-secondary:     #C8C5BB;
-  --color-border-tertiary:      #E0DDD3;
+  --color-text-primary:         #EEECEA;
+  --color-text-secondary:       #A8A49C;
+  --color-text-tertiary:        #5E5B55;
+  --color-background-primary:   #08080A;
+  --color-background-secondary: #0F0F12;
+  --color-border-secondary:     rgba(255,255,255,0.10);
+  --color-border-tertiary:      rgba(255,255,255,0.06);
 
   --border-radius-xs: 3px;
   --border-radius-sm: 4px;
