@@ -202,11 +202,80 @@ User 在 marathon 中插話新需求時：
 
 ## 標準提示詞庫
 
-### A.1 — E2E 測試 loop 啟動
+### ⭐ U.1 — 統一 Loop（Spec 推進 + E2E 測試合一；建議首選）
+
+**直接複製貼上即可用** — 一個 prompt 同時管 (a) 把 roadmap 中所有 active specs 推到 ✅、(b) 對未飽和 surface 做 E2E 測試 + 發現 bug 順手 ship。Tick 內**自動切換**模式，避免兩條 loop 並存。
 
 ```
 /loop 10m
-<產品名稱> 完整 E2E 測試（<前提：dev permit-all / 預設權限狀態 etc.>）：
+<產品名稱>（<前提：dev permit-all / 預設權限狀態 etc.>）統一 loop —
+每個 tick **先 spec 推進，再 E2E 測試**，serial 不 overlap：
+
+═══ 共用持久化檔案 ═══
+- docs/grimo/specs/spec-roadmap.md — spec backlog + status icon (📋/📐/🚧/⏸/✅)
+- docs/grimo/specs/archive/ — 已 ship 的 spec doc 歸檔
+- docs/grimo/CHANGELOG.md — semver release notes
+- .claude/progress/loop-e2e-test-coverage.md — tick 累積 + bug ledger A-…
+- .claude/progress/test-case.md — 按 round 分類 case 表（PASS/FAIL + 對應 spec）
+
+═══ Tick 演算法（每次觸發跑一次） ═══
+1. **Check active specs**: `grep -E "📋|📐|🚧|⏸" docs/grimo/specs/spec-roadmap.md`
+   排除標題行（`## 📋 Status Summary` 之類）。
+2. **若有 active spec** → 進 Mode A（spec 推進）
+3. **若無 active spec** → 進 Mode B（E2E 測試）
+4. 一個 tick 做完一件事就結束；下次 cron 自動接續
+
+═══ Mode A — Spec 推進 ═══
+依 dependency 順序選 1 個 spec（META 先 / foundation 先 / 共享 component 抽取先 / size 小先）。
+走完整 ship pipeline：
+  Plan: 讀 spec doc + prototype/reference + 列 minimum diff + AC ≥3 cases
+  Implement: 單 spec 1 commit；no drive-by refactor；註解寫 why
+  Verify: test suite 跑過 + 重啟服務 + smoke (curl/Chrome)
+  Document: spec doc §1-§7（§7 Result 含實測 metrics）
+  Persist: CHANGELOG entry + roadmap row（📋→✅ + 累計 points + version + 一句話 highlight）
+         + archive spec to docs/grimo/specs/archive/
+  Commit: feat: / fix: / polish: / chore: / docs:（Conventional + Co-Authored-By trailer）
+
+═══ Mode B — E2E 測試 ═══
+從 .claude/progress/loop-e2e-test-coverage.md 與 test-case.md 接續上輪未測 round。
+每個 round 涵蓋【正例 / 反例 / 邊緣案例】三類。
+- 發現 bug → 切 Mode A（自寫 spec → 研究修法 → 實作 → 測試 → ship）；下個 tick 再回 Mode B
+- 全 PASS → 記 progress（這 round 結束）→ 等下次 tick
+
+═══ Saturation pivot ═══
+連續 ≥3 ticks 0 bugs 且無 active spec → testing surface 飽和 + spec 清空 → loop 自然終結。
+最後一 tick 印 final summary（specs / bugs / version / metrics）並停 ScheduleWakeup。
+
+═══ Stacked user request ═══
+User mid-flight 提新需求時：
+1. acknowledge「收到，先收尾當前 X」
+2. complete current（spec ship 全 6 phases / round 全 3 類）
+3. queue：把新需求加進 roadmap 為 SXXX 📋 backlog row（讓下個 tick 自然接到）
+4. NEVER overlap parallel half-done
+
+═══ 觸發暫停 loop（不 ScheduleWakeup）回報 user ═══
+- /planning-spec 進 grill 階段需要 user 答 a/b/c
+- /verifying-quality 回 REJECT-BLOCKED（testability gap）
+- POC HALT（baseline 不在預期區間）
+- Spec scope 模糊需重設計
+- Build / smoke 連續 2 次失敗無法自解
+```
+
+**啟動前檢查**：
+1. 5 個持久化檔案存在（progress 可空）
+2. CLAUDE.md 含 Finish-Current-First 原則
+3. backend / frontend 服務跑得起來
+4. roadmap 有 status icon 標示
+
+---
+
+### A.1 — 純 E2E 測試 loop（無 spec 推進）
+
+如果你只想跑 testing 不碰 spec marathon，用這個短版：
+
+```
+/loop 10m
+<產品名稱> 完整 E2E 測試（<前提>）：
 - 從 .claude/progress/loop-e2e-test-coverage.md 與 .claude/progress/test-case.md 接續上輪未測 round
 - 每個 round 涵蓋【正例 / 反例 / 邊緣案例】三類
 - 發現 bug → 自寫 spec → 研究修法 → 實作 → 測試 → 沒問題就 release（commit + CHANGELOG + roadmap）
