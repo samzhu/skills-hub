@@ -1,5 +1,16 @@
 # Changelog
 
+## [v3.1.9] — CategorySidebar component invariants（2026-05-02）
+
+> Mode B — CategorySidebar 互動 contract 驗證。
+
+### ✅ Tests
+- 新檔 `components/CategorySidebar.test.tsx` — 7 ACs：全部按鈕 + 各 category render；全部 count = sum；各 category 顯自身 count；selected=null/string active state；click 全部/category → onSelect(null|name)。
+
+### 結果
+- 81 → 88 tests PASS（+7 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.1.8] — SearchBar controlled input invariants（2026-05-02）
 
 > Mode B — SearchBar is reused on HomePage + LandingPage; basic controlled-input contract verified.
