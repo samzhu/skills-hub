@@ -72,8 +72,8 @@
 
 | # | Category | Scenario | Expected | Status |
 |---|----------|----------|----------|--------|
-| 7.1 | positive | `/notifications` 0 results | EmptyState clear tone + 3 stats 「0 / 0 / —」 | 📋 |
-| 7.2 | positive | `/collections` 0 results | EmptyState 顯 + 「建立集合」disabled CTA | 📋 |
+| 7.1 | positive | `/notifications` 0 results | EmptyState clear tone + 3 stats 「本週新通知 / 未讀 / 上次接收」+ h1「通知中心」+ non-empty branch render | ✅ NotificationsPage.test.tsx 3 ACs |
+| 7.2 | positive | `/collections` 0 results | h1「精選技能集合」+「建立集合」disabled CTA + 不 crash | ✅ CollectionsPage.test.tsx 3 ACs |
 | 7.3 | positive | 4 EmptyState tones 各別 render | seed/invite/redirect/clear 結構不同 | ✅ EmptyState.test.tsx 5 ACs |
 
 ---
@@ -110,7 +110,7 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 | 4 Publish | 7 | 3 | 4 |
 | 5 Skill Detail | 8 | 2 | 6 |
 | 6 Docs IA | 2 | 0 | 2 |
-| 7 Empty state | 3 | 1 | 2 |
-| **Total** | **33** | **7** | **26** |
+| 7 Empty state | 3 | 3 | 0 |
+| **Total** | **33** | **9** | **24** |
 
 current component test count: 44（cover ~6 ledger ACs + 38 unit-level invariants）。E2E browser-level scenarios（27 planned）需 Playwright / Cypress —— defer until backend stabilizes 或 cloud-scheduled E2E run。

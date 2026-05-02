@@ -1,5 +1,19 @@
 # Changelog
 
+## [v3.1.3] — Notifications + Collections empty state tests（ledger Round 7.1+7.2 ✅；2026-05-02）
+
+> Mode B — fill 2 ledger 📋 rows (Round 7.1 NotificationsPage + Round 7.2 CollectionsPage)。Tests 47 → 53 (+6)。
+
+### ✅ Tests
+- 新檔 `pages/NotificationsPage.test.tsx` — 3 ACs：empty list → EmptyState clear tone with 3 stats; h1「通知中心」+ intro; non-empty list renders rows (no EmptyState)
+- 新檔 `pages/CollectionsPage.test.tsx` — 3 ACs：h1「精選技能集合」; 「建立集合」disabled CTA (S096f1 stub); empty fetch 不 crash
+- `docs/grimo/test-cases.md`：Round 7.1 + 7.2 標 ✅；Round 7 done count 1→3；Total 7→9（24 still planned）
+
+### 結果
+- 47 → 53 tests PASS（+6 new across 2 new test files）
+- `npx tsc --noEmit` clean
+- Ledger Round 7 (Empty state polish) **3/3 全 done**
+
 ## [v3.1.2] — SkillDetailPage error path tests（ledger Round 1.4 ✅；2026-05-02）
 
 > Mode B — fill 1 ledger 📋 row (Round 1.4 negative)：404 not-found / 500 server error / 返回首頁 link 三 ACs。對齊 S039 區分 4xx vs 5xx error 邏輯。Tests 44 → 47 (+3)。
