@@ -55,6 +55,23 @@ export function fetchSkillByAuthorAndName(author: string, name: string): Promise
 }
 
 /**
+ * S096g1 — Request Board: skill needs that the community wants published.
+ * Stub backend returns empty list; voting/claim/domain events defer to S096g2.
+ */
+export interface SkillRequest {
+  id: string
+  title: string
+  description: string
+  votes: number
+  status: 'OPEN' | 'IN_PROGRESS' | 'FULFILLED'
+  createdAt: string
+}
+
+export function fetchRequests(): Promise<SkillRequest[]> {
+  return apiFetch<SkillRequest[]>('/requests')
+}
+
+/**
  * S096e1 — public Landing stats (per Engineering Handoff §2.1).
  * Aggregate-only payload；不需 auth。
  */

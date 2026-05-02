@@ -1,5 +1,52 @@
 # Changelog
 
+## [v2.80.0] — Request Board read-only stub + S096e2 ⏸ blocked（S096 META 6a/8；M90g1 完成；2026-05-02）
+
+> **Stub ship + roadmap surgery** — Request Board feature visible-but-disabled，nav entry shipped。S096e2 Onboarding 同時 mark ⏸ 因 prototype 缺 + Collections 依賴。
+
+### Added
+- **Backend stub `GET /api/v1/requests`**: returns `[]` (empty list)
+  - New `community/` package (Modulith new module pre-registration; `@ApplicationModule` 留 S096g2)
+  - `RequestSummary` record contract (id/title/description/votes/status/createdAt)
+- **Frontend `/requests` route + RequestBoardPage**:
+  - Hero: 「技能需求看板」 title + sub-text
+  - 「發起新需求」button disabled with tooltip「即將開放 — S096g2 後啟用」per Engineering Handoff §10「Disable, don't hide」
+  - 0 results → EmptyState invite tone「目前還沒人發起需求」
+  - row schema: vote count + title + status pill (OPEN/IN_PROGRESS/FULFILLED) + date
+- **AppShell `需求` nav link** → /requests
+
+### Changed
+- **S096e2 Onboarding** ⏸ blocked:
+  - prototype 16 mockups 中無 Onboarding HTML（Engineering Handoff §2.14 描述但 designer 未交設計稿）
+  - Step 4 「install starter pack」依賴未 ship 的 S096f Collections aggregate
+  - unblock 條件：S096f ship + designer 補 prototype
+- **S096g** split into:
+  - g1 (this) — XS read-only stub
+  - g2 (📋 planned) — full aggregate + voting + claim + 3 domain events
+
+### Trim from M(12) → XS(5)
+Defer to S096g2 (full feature):
+- Request aggregate domain + persistence
+- 3 mutation endpoints (POST create / POST vote / POST claim)
+- 3 domain events (RequestPosted / RequestVoted / RequestFulfilled)
+- Filter chips (All / High / Medium / Mine)
+- @ApplicationModule community module registration
+
+### Metrics
+- Backend compileJava ✓
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 392.56 → 395.66KB (+3.10KB)
+- CSS: 37.80 → 37.83KB
+- Build: 177ms
+
+### META progress
+S096 META 6a/8 ✅. Backlog: S096d4 / S096e2 ⏸ / S096f / S096g2 / S096h.
+
+### Live caveat
+Live :8080 backend 仍跑舊 code；/requests page 在 live 看到 fetch error；S093 graceful restart 後即正常 stub response.
+
+---
+
 ## [v2.79.0] — Landing page `/` public entry + stats endpoint（S096 META 5a/8；M90e1 完成；2026-05-02）
 
 > **Public marketing entry** — 從 `/` direct render HomePage 改為 LandingPage；HomePage 移到 `/browse`. 對應 Engineering Handoff §2.1 + §9 Navigation Map.

@@ -8,6 +8,7 @@ import { YourFirstSkillPage } from './pages/docs/YourFirstSkillPage'
 import { MySkillsPage } from './pages/MySkillsPage'
 import { SearchResultsPage } from './pages/SearchResultsPage'
 import { LandingPage } from './pages/LandingPage'
+import { RequestBoardPage } from './pages/RequestBoardPage'
 
 function App() {
   return (
@@ -24,6 +25,8 @@ function App() {
       <Route path="/analytics" element={<AnalyticsPage />} />
       {/* S094a: 作者視角 dashboard — P6 SBE「作者查看自己的數據」 */}
       <Route path="/my-skills" element={<MySkillsPage />} />
+      {/* S096g1: Request Board stub — read-only list；voting/claim 留 S096g2 */}
+      <Route path="/requests" element={<RequestBoardPage />} />
       {/* S094b: 語意搜尋結果頁 — split inline → dedicated route */}
       <Route path="/search" element={<SearchResultsPage />} />
       {/* S094d: docs walkthrough — 第一篇 walkthrough；未來 /docs index 與其他 docs sub-routes 待後續 spec */}
