@@ -1,8 +1,8 @@
 # S100 META — Page-by-Page Data Authenticity Audit
 
-> **Status**: in-design (planning artefact)
+> **Status**: ✅ shipped (META complete, 5/5 sub-specs shipped 2026-05-02)
 > **Type**: META audit + impl roadmap consolidation
-> **Estimate**: most rows already in roadmap (S096f2/g2/h2 + S098e2/e3); 5-7 new rows from gaps
+> **Estimate**: 5 sub-specs ≈ 12 pts (all XS); supplementary backlog 9 sub-specs queued in S096/S098
 > **Triggered by**: 2026-05-02 user directive — 「自己看頁面規劃 spec 實作，才不會都是假頁面」
 
 ## §1 Goal
@@ -106,10 +106,24 @@
 
 ## §7 Result
 
-待 S100b/c/d ship 後填。
+**META 結論**：全站 27 pages，0 ❌ fake — audit 假設成立。3 個 stub backends（Notifications / Collections / Requests）走 EmptyState graceful path，frontend 無硬寫死資料。
 
-**Plan summary**:
-- ✅ S100 META audit 完成 — 全站無 fake page
-- ✅ S100a Top 10 link shipped (v3.2.6)
-- 📋 S100b/c/d new 3 sub-specs ≈ 13 pts
-- 📋 既有 backlog 9 sub-specs（覆蓋所有 stub-state pages）
+**Sub-specs shipped (5/5)**：
+
+| Sub-spec | Page Issue | Estimate | Shipped | Highlights |
+|----------|------------|----------|---------|-----------|
+| S100a | AnalyticsPage Top 10 link | XS(2) | v3.2.6 | backend OverviewStats.TopSkill +author；frontend wrap Link → /skills/:author/:name canonical route per ADR-003 |
+| S100b | HomePage server-side sort | XS(3) trim from S(5) | v3.3.5 | backend SkillQueryService SORTABLE_PROPERTIES +riskLevel；frontend fetchSkills 跨頁全域 sort；defer hot-30d-rank polish |
+| S100c | PublishPage author prefill | XS(2) reframed | v3.3.7 | useMe + useEffect prefill；authorTouched state 防 overwrite。Reframed 因 MySkillsPage 早已用 useMe (S094a) |
+| S100d | ErrorState component | XS(3) | v3.3.2 | inline/centered variants + danger-soft palette；6 ACs tests；AnalyticsPage/PublishPage migrations |
+| S100e | AnalyticsPage Top 10 defensive guard | XS(2) | v3.4.1 | typeof + length + "undefined" 字串三重 guard；row 退回非 link `<div>`；validates Spec-Only-Handoff principle (user 提需求 → agent 寫 spec → cron tick implement) |
+
+**Cumulative**: 12 pts shipped over v3.2.6 → v3.4.1（5 versions, 1 day calendar）
+
+**Existing backlog（觸發 audit 但未本 META 範疇）**：S096f2/g2/h2 (community modules) + S098c2/c3/b3-2/e2/e3 (SkillDetail tabs/diff) — 9 sub-specs 持續 queued in roadmap，由各自 META 領動。
+
+**Lessons learned**:
+- **Audit-first 設計奏效**：先掃 27 pages、確認 0 fake，再 spawn fix-spec — 避免「先寫實作、後發現實際無 bug」的 wasted work（e.g., S100c 經 audit 發現 MySkillsPage 已有 useMe，省 reframe S100c 為 PublishPage 真正 gap）
+- **XS estimate 蹭 META 速度**：5 sub-specs 全 XS(2-3)，1 calendar day 全收 — META 應傾向碎片化 sub-spec，避免 M+ block 整 META timeline
+- **Defensive sibling pattern (S100a → S100e)**：feature 加欄位（S100a backend）+ frontend 同期 ship 不夠；stale runtime risk 真實存在；下次設計 backend payload 變更類 spec，spec 內就應加 frontend defensive guard 條目，不另開 fix-spec
+- **Stub-and-defer pattern 透明化價值**：community module stubs (Notifications/Collections/Requests) 在 audit table 明確標 🟡 + 對應 sub-spec，比硬塞 fake data 後續清理省工
