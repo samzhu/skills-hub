@@ -1,5 +1,29 @@
 # Changelog
 
+## [v2.70.0] — Docs Walkthrough page `/docs/your-first-skill`（M88b 完成；2026-05-02）
+
+> **S094 META sub-spec 2/4 ship** — Skills Hub 第一份開發者 docs entry，把 frontmatter / semantic search / risk tier 三個核心機制在一頁內讓作者建立心智模型。
+
+### Added
+- **S094d: Docs Walkthrough**（M88b / XS 5 pts）：
+  - 新 route `/docs/your-first-skill` + `YourFirstSkillPage.tsx` (single-page JSX, no markdown parser; XS scope 不引 react-markdown ~30KB dep)
+  - `DocsLayout.tsx`: AppShell chrome + 224px sidebar + 680px main column
+  - `DocsSidebar.tsx`: 4 IA group full structure（Getting started / Reference / Publishing / API & webhooks），只「Your first skill」是 active link，其他 placeholder
+  - 6 main sections + final CTA + prev/next nav 對齊 prototype `docs_page_write_your_first_skill.html`
+  - Helper components inline (`H2`/`P`/`Code`/`CodeBlock`/`Callout`/`FieldCard`/`CompareCard`/`RiskRow`); 5 vitest tests cover AC-1~5
+- **AppShell**: 加「文件」nav link → `/docs/your-first-skill`
+
+### Metrics
+- Frontend tests: 23 → 28 PASS / 0 fail
+- JS bundle: 358 → 372KB (+14KB pure JSX no parser dep)
+- CSS: 35.1 → 36.7KB (+1.6KB)
+- Build time: 166ms
+
+### META progress
+S094 META 4 sub-specs：2/4 ✅ (S094c + S094d)。Next: S094a My Skills Author Dashboard (M / first backend touch).
+
+---
+
 ## [v2.69.0] — EmptyState component (4 tones) + HomePage 0-results 改寫（M88a 完成；2026-05-02）
 
 > **S094 META sub-spec 1/4 ship** — 抽取共享 `EmptyState` 元件，4 種 voice（seed/invite/redirect/clear）對齊 prototype；先 ship 給後續 sub-specs（S094a MySkills + S094b SearchResults）reuse。

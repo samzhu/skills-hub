@@ -4,6 +4,7 @@ import { SkillDetailPage } from './pages/SkillDetailPage'
 import { PublishPage } from './pages/PublishPage'
 import { AnalyticsPage } from './pages/AnalyticsPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { YourFirstSkillPage } from './pages/docs/YourFirstSkillPage'
 
 function App() {
   return (
@@ -14,6 +15,8 @@ function App() {
       <Route path="/skills/:id" element={<SkillDetailPage />} />
       <Route path="/publish" element={<PublishPage />} />
       <Route path="/analytics" element={<AnalyticsPage />} />
+      {/* S094d: docs walkthrough — 第一篇 walkthrough；未來 /docs index 與其他 docs sub-routes 待後續 spec */}
+      <Route path="/docs/your-first-skill" element={<YourFirstSkillPage />} />
       {/* unmatched URL 之前 render 空白 root，user 看不到 navbar 也沒 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
