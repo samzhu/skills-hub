@@ -125,6 +125,9 @@ Reinforced 2026-05-02 per methodology「3-5 反例 / round」— 加 3 negative 
 | 7.1 | positive | `/notifications` 0 results | EmptyState clear tone + 3 stats 「本週新通知 / 未讀 / 上次接收」+ h1「通知中心」+ non-empty branch render | ✅ NotificationsPage.test.tsx 3 ACs |
 | 7.2 | positive | `/collections` 0 results | h1「精選技能集合」+「建立集合」disabled CTA + 不 crash | ✅ CollectionsPage.test.tsx 3 ACs |
 | 7.3 | positive | 4 EmptyState tones 各別 render | seed/invite/redirect/clear 結構不同 | ✅ EmptyState.test.tsx 5 ACs |
+| 7.4 | negative (malicious XSS) | EmptyState `title` / `description` props 內含 `<script>alert(1)</script>` 或 `<img onerror>` | React 預設 escape — render 為 literal text 不執行 JS；no console error；no alert popup | 📋 EmptyState.test.tsx negative AC needed |
+| 7.5 | negative (boundary overflow) | NotificationsPage stats 值 = `999,999,999`（9 位數）或極長字串 | MetricCard text 不溢出 layout（truncate 或 wrap）；3-stat grid 不破版 | 📋 NotificationsPage.test.tsx negative AC needed |
+| 7.6 | negative (format invalid tone) | `<EmptyState tone="invalid-tone-xyz" />`（runtime prop 非預期 union） | TS 型別保護擋下；若 bypass（test forced cast），fallback 樣式不 crash（default tone 或 visible warning）| 📋 EmptyState.test.tsx negative AC needed |
 
 ---
 
@@ -163,10 +166,10 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 | 4 Publish | **14** (+7 reinforced) | 5 | 9 | **6** ✅ |
 | 5 Skill Detail | **13** (+5 reinforced) | 4 | 9 | **6** ✅ |
 | 6 Docs IA | **5** (+3 reinforced) | 2 | 3 | **3** ✅ |
-| 7 Empty state | 3 | 3 | 0 | 0 |
-| **Total** | **60** | **18** | **42** | **29** |
+| 7 Empty state | **6** (+3 reinforced) | 3 | 3 | **3** ✅ |
+| **Total** | **63** | **18** | **45** | **32** |
 
-> Per 2026-05-02 methodology upgrade：每 round 至少 3-5 反例。Round 4 已強化（6 反例 cover empty/boundary/format/state-conflict/malicious 五類）；其餘 rounds 待 backfill 至同樣強度（Round 1/2/3/5/6/7 反例 count 0-1 不足）。
+> Per 2026-05-02 methodology upgrade：每 round 至少 3-5 反例。**全 7 rounds 已 backfill 至 methodology 最低門檻（≥3 反例 / round）**。Negative count 累計 32（cover empty / boundary / format / state-conflict / malicious 五類）— ledger methodology compliance 達成。
 
 ---
 
