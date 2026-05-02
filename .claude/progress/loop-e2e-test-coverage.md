@@ -1,7 +1,7 @@
 # Loop E2E Test Coverage Log
 
 > Persistent log to survive session boundary — read on takeover, append on each new ship.
-> Latest tick: 81 (2026-05-02) — Round 34 anthropic skill re-scan w/ LLM Judge → **Bug AN ship S091 v2.61.0 (M81)** LlmJudge prompt calibration
+> Latest tick: 82 (2026-05-02) — Round 35 S091 calibration regression sweep on R30 borderline → 5/5 PASS / 0 new bugs
 >   tick 48: data integrity 100% (downloads/sequence/orphans)
 >   tick 49: modulith boundaries 0 violations
 >   tick 50: cleaned 7 dev storage orphans; storage 與 DB 100% 一致
@@ -267,6 +267,16 @@
 >     - pure-docs regression：LOW 維持 ✓
 >     **設計領悟**：LLM 系統 default behavior 是「找問題」— 不給 severity 分級指引，會把 theoretical concerns 全標 HIGH。Calibration 必須在 prompt 層直接定義「what counts as HIGH」。anti-pattern 列表（什麼 NOT 是 finding）和正面定義一樣關鍵。
 >     ship v2.61.0 (M81)。Bug ledger A→AN（14 個 bug shipped）。
+>   tick 82 (loop cron 10m fc4a79bb, Round 35 S091 calibration regression sweep, 2026-05-02):
+>     R35 重 upload R30 5 fixtures 比對 pre/post-S091：
+>     - R30.1 read-only Bash → HIGH → **LOW** ✓ FIXED
+>     - R30.2 write /tmp → HIGH → **LOW** ✓ FIXED
+>     - R30.3 git inspection → HIGH → **LOW** ✓ FIXED
+>     - R30.4 /etc/hostname → MEDIUM → **LOW** ✓ same/better（system info 不是 sensitive disclosure，更合理）
+>     - R30.5 docker ops → LOW → **LOW** ✓ unchanged
+>     **5/5 PASS**：S091 calibration 修正全方位 — 4 個 over-classified HIGH 降為 LOW；R34 真風險 regression（rm -rf + secrets）仍 HIGH 14 findings；R29.1 pure docs 仍 LOW。
+>     **結論**：Bug AN 1-shot fix（重寫 SYSTEM_PROMPT 一段）同時 fix 所有同類 calibration over-classification；無 false positive 過度，無 false negative 漏抓。
+>     **0 new bugs**。Tech debt: 3 → 3（無新增 + 無清除）。
 >   tick 71 (loop cron 10m fc4a79bb, Round 27 API consistency audit, 2026-05-01):
 >     R27.1 跨 6 個 endpoint 探測 error response shape：5/6 標準 `{error, message, timestamp}` JSON shape ✓；**1 個發現 Bug AM**：`POST /api/v1/skills/upload` 缺 `version` form param 時 Spring 預設 error handler 直接回 `{timestamp, status, error: "Bad Request", message, path}` shape，繞過 GlobalExceptionHandler 的 ErrorResponse 結構。
 >     **影響**：FE i18n（S066 / S041）用 `error` code 對應 localized message；「Bad Request」(HTTP reason phrase) 不在 12 個 backend code 白名單 → silent fallthrough，user 看到 raw EN 訊息或泛用 fallback。

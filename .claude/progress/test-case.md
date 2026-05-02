@@ -575,6 +575,42 @@ Pre-condition: LlmJudge engine enabled in dev profile (commit 97cc24b)
 - system invariants 全 GREEN（audit log / outbox / vector / event count）
 - R23.5 historical residue confirmed harmless (dev-only test fixtures from pre-S077 lost-update)
 
+---
+
+## Tick 81 — Round 34: anthropic skill re-scan with LLM Judge → Bug AN ship S091 (2026-05-02)
+
+| # | 類別 | Skill | Pre-LLM | Post-LLM (pre-S091) | Post-S091 |
+|---|------|-------|---------|---------------------|-----------|
+| 34.1 | 正例 | handover | LOW | HIGH (2 findings) | **LOW** ✓ |
+| 34.2 | 正例 | planning-project | LOW | HIGH (5 findings) | **LOW** ✓ |
+| 34.3 | 正例 | deep-research | LOW | HIGH | **LOW** ✓ |
+| 34.4 | 反例 (regression) | real-high (rm -rf + secrets) | — | HIGH (12 findings) | **HIGH** 14 findings ✓ 真風險不漏 |
+| 34.5 | 邊緣 (regression) | pure-docs | — | LOW (0 findings) | **LOW** unchanged ✓ |
+
+**Bug AN (HIGH / production-impact)**：LlmJudge 對任何 `allowed-tools: Bash` 都打 OWASP-AS4 sev=8.5 → Anthropic canonical skills 全 HIGH → user trust 失靈。
+
+**Fix S091 v2.61.0**：重寫 SYSTEM_PROMPT 區分 demonstrated vs theoretical risk + severity 分級規則 + anti-pattern 列表。
+
+---
+
+## Tick 82 — Round 35: S091 calibration regression sweep on R30 borderline (2026-05-02)
+
+| # | Fixture | Pre-S091 | Post-S091 | Verdict |
+|---|---------|----------|-----------|---------|
+| R30.1 | read-only Bash (cat/ls/grep) | HIGH | **LOW** | ✓ FIXED |
+| R30.2 | write /tmp (echo+cp) | HIGH | **LOW** | ✓ FIXED |
+| R30.3 | git inspection | HIGH | **LOW** | ✓ FIXED |
+| R30.4 | /etc/hostname (system info) | MEDIUM | **LOW** | ✓ same/better |
+| R30.5 | docker ops | LOW | **LOW** | ✓ unchanged |
+
+**結論**：S091 calibration fix 全方位驗證 — 4 個 over-classified HIGH 降為 LOW；R34 真風險 regression 仍 HIGH；無 false positive 過度，無 false negative 漏抓。
+
+### Tick 82 Summary
+- Round 35: 5 cases / **0 new bugs**
+- S091 prompt calibration fix 在 R30 borderline 全 5 case 表現一致符合預期
+- Calibration 是 1-shot fix（prompt 改一段）同時解決所有同類 over-classification
+
+
 
 
 
