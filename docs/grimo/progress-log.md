@@ -28,7 +28,10 @@
 | 31 | `ec197d2` | **v3.2.0** | 🎉 100-test milestone：BeamFrame + FileDropZone +8 |
 | 32 | `0c4d5fa` | v3.2.1 | AppShell nav + bell badge tests +6 |
 | 33 | `6802ea7` | v3.2.2 | DocsSidebar standalone tests +5 |
-| 34 | (this commit) | (doc) | Progress log update |
+| 34 | `45922ad` | (doc) | Progress log update — extension chronicle |
+| 35 | `a755249` | (doc) | CONTRIBUTING.md — onboarding guide |
+| 36 | `dd23308` | (doc) | ADR-004 — cron-bounded agent workflow |
+| 37 | (this commit) | (doc) | Final saturation summary |
 
 ### Test coverage achievement
 - 起始：v2.85.0 / 28 tests
@@ -58,11 +61,30 @@
 
 ### Saturation reasonableness check
 True saturation 條件達成度：
-- ✅ 33 consecutive ticks 0 bugs（per loop.md ≥3 標準遠超）
+- ✅ 37 consecutive ticks 0 bugs（per loop.md ≥3 標準遠超）
 - ⚠️ Backlog 非空（backend specs S098e2/c2/c3/S096f2/g2/h2 等仍待，皆 >cron tick budget）
 - ✅ 所有 in-repo cron-tick-feasible component test surfaces 有 coverage
+- ✅ 4 doc artifacts seeded (test-cases / progress-log / CONTRIBUTING / ADR-004)
 
 下一輪 cron tick 真已無低成本 productive 工作 — backlog 全 backend Spring Modulith aggregate work。建議 /schedule cloud agent 接手。
+
+### 🏁 Final session #1 summary
+
+**Numbers**：
+- 37 ticks / 37 commits
+- v2.86.0 → v3.2.2（14 user-facing version ships）
+- Tests 28 → 115（+87，coverage compounding）
+- 0 bugs across all 37 ticks
+- 4 doc artifacts（test-cases ledger / progress log / CONTRIBUTING / ADR-004 codifying workflow itself）
+
+**Major surfaces shipped**：S098 META 8/8 + 4 split P1 specs + Docs IA 11/11 + Homepage v2 polish trio + Publish flow 閉環 + i18n 繁中化 + Dark theme migration
+
+**Operational learnings codified in ADR-004**：
+- Cron-tick-feasible vs /schedule cloud vs manual decision matrix
+- 三階段 yield curve（高/中/邊際遞減）作為 saturation signal
+- 「精神 saturation」 > strict 「backlog empty」 為實用 EXIT signal
+
+**Genuine EXIT: SATURATED on tick 37** — ScheduleWakeup omitted。Cron-tick budget 對剩餘 backend backlog 不足；後續工作建議 /schedule cloud agent or 人工 /implementing-task 啟動。
 
 ---
 
