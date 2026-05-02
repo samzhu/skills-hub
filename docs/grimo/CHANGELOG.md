@@ -1,5 +1,23 @@
 # Changelog
 
+## [v3.2.0] — 🎉 100-test milestone：BeamFrame + FileDropZone（2026-05-02）
+
+> Mode B — 跨 100-test milestone（28 → 104 tests in 31 ticks）。BeamFrame thin wrapper + FileDropZone S037/S048/S053 guard tests。
+
+### ✅ Tests
+- 新檔 `components/BeamFrame.test.tsx` — 2 ACs：children render；nested tree 完整 pass-through。
+- 新檔 `components/FileDropZone.test.tsx` — 6 ACs：empty prompt；selected file 顯 name+KB；invalid ext inline error + skip callback；oversized error；valid zip triggers callback；S053 .md multi-ext support。
+
+### 結果
+- 96 → 104 tests PASS（+8 new across 2 files）
+- `npx tsc --noEmit` clean
+
+### 🎉 100-test milestone
+- 起點：v2.85.0 28 tests
+- v3.2.0：104 tests（+76 new in 31 cron ticks）
+- 0 bugs found in 31 consecutive ticks
+- All component primitives have isolated tests
+
 ## [v3.1.11] — IntentSummaryCard component invariants（S094b；2026-05-02）
 
 > Mode B — IntentSummaryCard concept-chip conditional rendering verified。
