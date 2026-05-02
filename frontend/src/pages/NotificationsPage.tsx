@@ -25,8 +25,8 @@ export function NotificationsPage() {
   return (
     <AppShell>
       <div className="mb-6">
-        <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">通知中心</p>
-        <h1 className="mt-1 text-[22px] font-semibold tracking-tight">Notifications</h1>
+        <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">即時更新</p>
+        <h1 className="mt-1 text-[22px] font-semibold tracking-tight">通知中心</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
           訂閱的 skill 有新版本、被 flag、進入審核、需求看板回應 — 都會出現在這裡。
         </p>
@@ -91,7 +91,7 @@ function CategoryDot({ category }: { category: Notification['category'] }) {
     <Bell
       className="mt-0.5 h-4 w-4 shrink-0"
       style={{ color: colorMap[category] }}
-      aria-label={`${category} notification`}
+      aria-label={`${category} 通知`}
     />
   )
 }

@@ -19,20 +19,23 @@ describe('YourFirstSkillPage — S094d', () => {
 
   it('AC-1: renders title + breadcrumbs + meta row', () => {
     renderPage()
-    expect(screen.getByText('Write your first skill')).toBeInTheDocument()
-    expect(screen.getByText('Getting started')).toBeInTheDocument() // breadcrumb middle
-    expect(screen.getByText('5 min read')).toBeInTheDocument()
-    expect(screen.getByText('Based on agentskills.io v1.2')).toBeInTheDocument()
+    expect(screen.getByText('撰寫你的第一個技能')).toBeInTheDocument()
+    // breadcrumb middle group label — DocsSidebar 與 breadcrumb 同字串會匹配多個
+    expect(screen.getAllByText('入門').length).toBeGreaterThan(0)
+    expect(screen.getByText('閱讀 5 分鐘')).toBeInTheDocument()
+    expect(screen.getByText('依 agentskills.io v1.2')).toBeInTheDocument()
   })
 
   it('AC-2: renders all 6 main sections with anchor headings', () => {
     renderPage()
-    expect(screen.getByText('The minimum viable skill')).toBeInTheDocument()
-    expect(screen.getByText('The bundle')).toBeInTheDocument()
-    expect(screen.getByText('Required fields')).toBeInTheDocument()
-    expect(screen.getByText('Writing a description that works')).toBeInTheDocument()
-    expect(screen.getByText('What triggers each risk tier')).toBeInTheDocument()
-    expect(screen.getByText('Ready to publish?')).toBeInTheDocument()
+    // S098g 之後 DocsSidebar 與 section heading 部分字串重複 (Bundle 結構)；用 heading role + name regex (suffix #) scope 至 H2
+    expect(screen.getByRole('heading', { level: 2, name: /最小可行技能/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /Bundle 結構/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /必填欄位/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /撰寫有效的 description/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /各風險層級的觸發條件/ })).toBeInTheDocument()
+    // §6 CTA 標題用 <p> not <h2>，獨立 assertion
+    expect(screen.getByText('準備發佈了嗎？')).toBeInTheDocument()
   })
 
   it('AC-3: renders 3 risk tiers (LOW/MEDIUM/HIGH) with semantic styling', () => {
@@ -55,7 +58,7 @@ describe('YourFirstSkillPage — S094d', () => {
 
   it('AC-5: renders Upload your bundle CTA linking to /publish', () => {
     renderPage()
-    const cta = screen.getByText('Upload your bundle')
+    const cta = screen.getByText('上傳你的 bundle')
     expect(cta).toBeInTheDocument()
     // closest <a> goes to /publish
     const link = cta.closest('a')

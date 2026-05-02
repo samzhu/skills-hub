@@ -17,24 +17,24 @@ export function YourFirstSkillPage() {
   return (
     <DocsLayout>
       <p className="mb-1 text-[12px] text-[#A8A49C]">
-        Docs <span className="mx-1 text-[#5E5B55]">/</span>
-        Getting started <span className="mx-1 text-[#5E5B55]">/</span>
-        <span className="text-[#EEECEA]">Your first skill</span>
+        文件 <span className="mx-1 text-[#5E5B55]">/</span>
+        入門 <span className="mx-1 text-[#5E5B55]">/</span>
+        <span className="text-[#EEECEA]">撰寫第一個技能</span>
       </p>
-      <h1 className="text-[28px] font-semibold tracking-tight text-[#EEECEA]">Write your first skill</h1>
+      <h1 className="text-[28px] font-semibold tracking-tight text-[#EEECEA]">撰寫你的第一個技能</h1>
 
       <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-[#A8A49C]">
-        <span>Updated 2 weeks ago</span>
+        <span>2 週前更新</span>
         <Dot />
-        <span>5 min read</span>
+        <span>閱讀 5 分鐘</span>
         <Dot />
-        <span>Based on agentskills.io v1.2</span>
+        <span>依 agentskills.io v1.2</span>
         <a
           href="https://github.com/samzhu/skills-hub"
           className="ml-auto inline-flex items-center gap-1 text-[#A8A49C] hover:text-[#EEECEA]"
         >
           <Edit className="h-3 w-3" />
-          Edit on GitHub
+          在 GitHub 編輯
         </a>
       </div>
 
@@ -45,7 +45,7 @@ export function YourFirstSkillPage() {
       </p>
 
       {/* §1 Minimum viable skill */}
-      <H2 anchor="minimum">The minimum viable skill</H2>
+      <H2 anchor="minimum">最小可行技能</H2>
       <P>
         一份合法 bundle 只需要 1 個檔案：<Code>SKILL.md</Code>，含 YAML frontmatter
         與 markdown 內文。其他全部 optional（<Code>scripts/</Code>、
@@ -78,7 +78,7 @@ ISO 8601 or RFC 2822 variant.
       </Callout>
 
       {/* §2 Bundle structure */}
-      <H2 anchor="bundle">The bundle</H2>
+      <H2 anchor="bundle">Bundle 結構</H2>
       <P>
         當單檔不夠用時，把 bundle 組成下方四個慣例資料夾。只有 <Code>SKILL.md</Code>{' '}
         必填，其他由 agent 在執行時或載入時依需求取用。
@@ -93,7 +93,7 @@ ISO 8601 or RFC 2822 variant.
     └── examples.yaml`}</CodeBlock>
 
       {/* §3 Required fields */}
-      <H2 anchor="required">Required fields</H2>
+      <H2 anchor="required">必填欄位</H2>
       <FieldCard name="name" tags={['required', 'string', '≤ 64 chars']}>
         Lowercase + hyphen 連接；同一 org 內 unique — 若同名再 publish，會 bump 版本而非建新 skill。
         用於 URL、CLI 指令、skill imports。範例：<Code>docker-compose-helper</Code>
@@ -103,12 +103,12 @@ ISO 8601 or RFC 2822 variant.
         寫成 trigger 條件，不是行銷文案。下一節有範例。
       </FieldCard>
       <p className="mt-3 text-[12.5px] text-[#A8A49C]">
-        Optional fields: <Code>version</Code>、<Code>author</Code>、<Code>license</Code>、{' '}
+        選用欄位：<Code>version</Code>、<Code>author</Code>、<Code>license</Code>、{' '}
         <Code>compatibility</Code>、<Code>metadata</Code>、<Code>allowed-tools</Code>。
       </p>
 
       {/* §4 Writing description */}
-      <H2 anchor="description">Writing a description that works</H2>
+      <H2 anchor="description">撰寫有效的 description</H2>
       <P>
         Semantic search 用 Gemini 把你寫的 description embed 成向量，與 user query 比對。
         模型認得具體動詞、trigger 條件、領域名詞 — 它忽略行銷形容詞。同一 skill 兩種寫法：
@@ -133,7 +133,7 @@ ISO 8601 or RFC 2822 variant.
       </div>
 
       {/* §5 Risk tiers */}
-      <H2 anchor="risk">What triggers each risk tier</H2>
+      <H2 anchor="risk">各風險層級的觸發條件</H2>
       <P>
         每次 publish 都跑 auto-scanner。Tier 決定 skill 是即時上架還是等人工審核。
       </P>
@@ -159,7 +159,7 @@ ISO 8601 or RFC 2822 variant.
 
       {/* §6 Final CTA */}
       <div className="mt-10 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-5">
-        <p className="text-[15px] font-semibold text-[#EEECEA]">Ready to publish?</p>
+        <p className="text-[15px] font-semibold text-[#EEECEA]">準備發佈了嗎？</p>
         <p className="mt-1 text-[13px] text-[#A8A49C]">
           你的 bundle 有了、frontmatter 乾淨、知道 scanner 在檢查什麼。下一步把 zip 傳上來。
         </p>
@@ -169,7 +169,7 @@ ISO 8601 or RFC 2822 variant.
               to="/publish"
               className="inline-flex items-center gap-1.5 rounded-md bg-[#EEECEA] px-4 py-2 text-[13px] font-medium text-[#08080A]"
             >
-              Upload your bundle
+              上傳你的 bundle
               <ArrowRight className="h-3 w-3" />
             </Link>
           </BeamFrame>
@@ -178,18 +178,18 @@ ISO 8601 or RFC 2822 variant.
             className="inline-flex items-center gap-1.5 rounded-md border border-[rgba(255,255,255,0.10)] bg-[#171719] px-4 py-2 text-[13px] font-medium text-[#EEECEA] hover:bg-[#1F1F22]"
           >
             <FileText className="h-3 w-3" />
-            See more examples
+            查看更多範例
           </a>
         </div>
       </div>
 
       {/* §7 Prev/Next nav */}
       <nav className="mt-8 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[12px]">
-        <span className="cursor-not-allowed text-[#5E5B55]" title="Coming soon">
-          ← Overview
+        <span className="cursor-not-allowed text-[#5E5B55]" title="即將推出">
+          ← 概覽
         </span>
-        <span className="cursor-not-allowed text-[#5E5B55]" title="Coming soon">
-          SKILL.md spec →
+        <span className="cursor-not-allowed text-[#5E5B55]" title="即將推出">
+          SKILL.md 規範 →
         </span>
       </nav>
     </DocsLayout>

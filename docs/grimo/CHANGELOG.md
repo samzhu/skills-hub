@@ -1,5 +1,33 @@
 # Changelog
 
+## [v2.87.0] — i18n 繁中化 audit pass 1（S098 META 2/8；M92g 完成；2026-05-02）
+
+> User mid-tick directive：「頁面要繁體中文版的」per CLAUDE.md「UI 語言: 繁體中文（zh-TW）」原則。S098g audit pass 1 — 修復 top-of-funnel 5 個 surface 殘留英文 user-facing 字串。
+
+### 🌐 Frontend i18n
+- `pages/LandingPage.tsx`：Hero h1 / sub / 2 CTAs / 4 stats labels + sub / final CTA / footer / nav / compatibility strip / popular skills section heading 全英 → 繁中。Hero「The skills registry your team can actually trust」→「你的團隊真的可以信任的技能登錄中心」；CTAs「Browse the registry」→「瀏覽技能登錄」、「Publish your first skill」→「發佈第一個技能」；StatCells 全 4 個 label 繁中。
+- `pages/NotificationsPage.tsx`：「Notifications」h1 → 「通知中心」；「通知中心」eyebrow 改為「即時更新」；CategoryDot aria-label 「${category} notification」 → 「${category} 通知」。
+- `components/IntentSummaryCard.tsx`：「Understood your intent」label → 「已理解你的意圖」；同步做 dark migration（text `#181818` → `#EEECEA`、bg-white chip → `#171719`、border tweaked），bg lavender 透明度由 `.18` → `.10` 配深色背景更和諧。
+- `components/DocsSidebar.tsx`：4 group labels (Getting started / Reference / Publishing / API & webhooks) → 繁中（入門 / 參考 / 發佈 / API 與 Webhook）；11 nav item labels 全繁中（Overview/Your first skill/SKILL.md spec/...）；同步 dark migration（border-[#E6E1D9] → rgba(255,255,255,0.06)、active bg `#EEEDFE` → `rgba(127,119,221,0.10)`、text `#181818` → `#EEECEA` 等 6 處 hex 替換）。
+- `pages/docs/YourFirstSkillPage.tsx`：breadcrumbs / h1 / meta row / 5 H2 section titles / Optional fields label / final CTA + 2 buttons / prev-next nav 全繁中。例：「Write your first skill」→「撰寫你的第一個技能」、「Upload your bundle」→「上傳你的 bundle」、「← Overview」→「← 概覽」。
+
+### ✅ Tests
+- `YourFirstSkillPage.test.tsx`：3 ACs 字串 assertion 改繁中（'Write your first skill' → '撰寫你的第一個技能' 等）；AC-2 改 `getByRole('heading', { level: 2, name: /.../ })` scope to H2，因 DocsSidebar i18n 後與 H2 部分字串 (Bundle 結構) collision；測試從 5/5 → 5/5 PASS。
+- 全套 33/33 PASS（regression-free），`tsc --noEmit` clean。
+
+### Trim 紀錄
+原估 M(10)；trim 為 S(7)：
+- ✅ pass 1（本 commit）：LandingPage / NotificationsPage / IntentSummaryCard / DocsSidebar / YourFirstSkillPage
+- ⏸ defer pass 2（S098g 子追蹤）：HomePage 殘留英文（"Live in the registry" eyebrow、SkillCard 內字串如 "Auto-published" / "Reviewing" / "by ..."）；EmptyState 4 tone defaults audit；其他散落 surface
+
+### Verify
+- `npx vitest run` → 7 files / 33 tests PASS
+- `npx tsc --noEmit` → no errors
+
+### S098 META 進度
+- 2/8 sub-specs shipped (S098h ✅ 配色 + S098g ✅ i18n pass 1)
+- 剩 6：S098a/b/c/d/e/f；S098g pass 2 (HomePage / SkillCard) defer 至 polish backlog
+
 ## [v2.86.0] — YourFirstSkillPage 配色對比修復（S098 META 1/8；M92h 完成；2026-05-02）
 
 > User 截圖回報：`/docs/your-first-skill` 卡片 / inputs / code blocks 在 v2 dark page bg `#08080A` 上呈 black-on-near-black（S094d 寫頁時尚未做 dark theme migration，全部 hardcoded `#181818` text + `bg-white` cards + `#F9F8F4` cream surfaces 殘留 light theme）。

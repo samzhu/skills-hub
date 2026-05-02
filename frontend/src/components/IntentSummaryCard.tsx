@@ -18,20 +18,20 @@ export function IntentSummaryCard({
 }) {
   return (
     <div
-      className="mb-5 rounded-lg border border-[#D8D4FA] p-4"
-      style={{ backgroundColor: 'rgba(127,119,221,0.18)' }}
+      className="mb-5 rounded-lg border border-[rgba(127,119,221,0.30)] p-4"
+      style={{ backgroundColor: 'rgba(127,119,221,0.10)' }}
     >
       <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#C9C5F2]">
         <Sparkles className="h-3 w-3" />
-        Understood your intent
+        已理解你的意圖
       </div>
-      <p className="text-[14px] leading-relaxed text-[#181818]">{summary}</p>
+      <p className="text-[14px] leading-relaxed text-[#EEECEA]">{summary}</p>
       {concepts.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {concepts.map((c, i) => (
             <span
               key={i}
-              className="inline-flex items-center rounded-full border border-[#D8D4FA] bg-white px-2.5 py-1 font-mono text-[11.5px] text-[#C9C5F2]"
+              className="inline-flex items-center rounded-full border border-[rgba(127,119,221,0.30)] bg-[#171719] px-2.5 py-1 font-mono text-[11.5px] text-[#C9C5F2]"
             >
               {c}
             </span>

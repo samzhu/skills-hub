@@ -19,34 +19,34 @@ interface SidebarGroup {
 
 const GROUPS: SidebarGroup[] = [
   {
-    label: 'Getting started',
+    label: '入門',
     items: [
-      { label: 'Overview' }, // future S094d-extension
-      { label: 'Your first skill', path: '/docs/your-first-skill' },
+      { label: '概覽' }, // future S094d-extension
+      { label: '撰寫第一個技能', path: '/docs/your-first-skill' },
     ],
   },
   {
-    label: 'Reference',
+    label: '參考',
     items: [
-      { label: 'SKILL.md spec' },
-      { label: 'Frontmatter fields' },
-      { label: 'Bundle structure' },
-      { label: 'Risk tiers' },
+      { label: 'SKILL.md 規範' },
+      { label: 'Frontmatter 欄位' },
+      { label: 'Bundle 結構' },
+      { label: '風險層級' },
     ],
   },
   {
-    label: 'Publishing',
+    label: '發佈',
     items: [
-      { label: 'Upload & validation' },
-      { label: 'Versioning' },
-      { label: 'Semantic search' },
+      { label: '上傳與驗證' },
+      { label: '版本管理' },
+      { label: '語意搜尋' },
     ],
   },
   {
-    label: 'API & webhooks',
+    label: 'API 與 Webhook',
     items: [
-      { label: 'REST reference' },
-      { label: 'Event payloads' },
+      { label: 'REST 參考' },
+      { label: 'Event payload' },
     ],
   },
 ]
@@ -54,11 +54,11 @@ const GROUPS: SidebarGroup[] = [
 export function DocsSidebar() {
   const location = useLocation()
   return (
-    <aside className="w-56 shrink-0 border-r border-[#E6E1D9] pr-6">
+    <aside className="w-56 shrink-0 border-r border-[rgba(255,255,255,0.06)] pr-6">
       <nav className="flex flex-col gap-5">
         {GROUPS.map((g) => (
           <div key={g.label} className="flex flex-col gap-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A09B96]">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A8A49C]">
               {g.label}
             </p>
             {g.items.map((it) => {
@@ -67,8 +67,8 @@ export function DocsSidebar() {
                 return (
                   <span
                     key={it.label}
-                    className="cursor-not-allowed text-[13px] text-[#C5C0BC]"
-                    title="Coming soon"
+                    className="cursor-not-allowed text-[13px] text-[#5E5B55]"
+                    title="即將推出"
                   >
                     {it.label}
                   </span>
@@ -80,8 +80,8 @@ export function DocsSidebar() {
                   to={it.path}
                   className={
                     isActive
-                      ? 'rounded-md bg-[#EEEDFE] px-2 py-1 text-[13px] font-medium text-[#3C3489]'
-                      : 'px-2 py-1 text-[13px] text-[#5C5751] hover:text-[#181818]'
+                      ? 'rounded-md bg-[rgba(127,119,221,0.10)] px-2 py-1 text-[13px] font-medium text-[#C9C5F2]'
+                      : 'px-2 py-1 text-[13px] text-[#A8A49C] hover:text-[#EEECEA]'
                   }
                 >
                   {it.label}
