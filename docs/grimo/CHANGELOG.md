@@ -1,5 +1,21 @@
 # Changelog
 
+## [v3.1.1] — Test coverage backfill：PublishValidatePage（2026-05-02）
+
+> Mode B E2E round — 為 v2.95.0 ship 的 S098a PublishValidatePage 補 component test。Tests 40 → 44 (+4)。最後一個未測 newly-shipped page 補完。
+
+### ✅ Tests
+- 新檔 `pages/PublishValidatePage.test.tsx` — 4 ACs：
+  - AC-1: missing id query renders error callout
+  - AC-2: scanning state (riskLevel=null) renders 4-step stepper + scanning callout
+  - AC-3: scan complete (riskLevel set) triggers useEffect navigate to `/publish/review`（用 sentinel route「REDIRECTED_TO_REVIEW」斷言 redirect transition）
+  - AC-4: upload-strip renders skill metadata（S098a3 派生 filename「date-formatter-1.0.0.zip」+「✓ 已上傳」badge）
+
+### 結果
+- 40 → 44 tests PASS（+4 new）
+- `npx tsc --noEmit` clean
+- 此 session 所有 newly-shipped pages（PublishFailed / VersionDiff / PublishValidate）皆有 component test 覆蓋
+
 ## [v3.1.0] — PublishFailedPage State A 結構化驗證 breakdown UI（S098b3 完成；2026-05-02）
 
 > S098b3 — 把 PublishFailedPage State A 從「單段紅色 callout + msg pre-block」升級為對齊 prototype #7 的多段 v-section UI shell（SKILL.md 驗證 / Bundle 結構 / 風險掃描 三段並列）。每段含 status badge + err-row 列表；目前 backend 只送 flat msg → 派生為 single error row，未來結構化 findings payload 可填多 row 不需改 component。
