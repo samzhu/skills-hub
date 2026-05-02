@@ -21,9 +21,11 @@ export function RestApiPage() {
       </p>
       <h1 className="text-[28px] font-semibold tracking-tight text-[#EEECEA]">REST 參考</h1>
       <p className="mt-3 text-[15px] leading-relaxed text-[#A8A49C]">
-        Skills Hub 提供 OpenAPI 3.1 spec 與 Swagger UI（基於 SpringDoc）— 完整 schema 在
+        Skills Hub 提供 OpenAPI 3.1 spec 與 Swagger UI（基於 SpringDoc 3.x；
+        <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[12px] text-[#EEECEA]">version: openapi_3_1</code> 設定）— local profile 下完整 schema 在
         <a href="/v3/api-docs" className="ml-1 text-[#C9C5F2] hover:underline">/v3/api-docs</a>（raw JSON）或
         <a href="/swagger-ui.html" className="ml-1 text-[#C9C5F2] hover:underline">/swagger-ui.html</a>（互動 UI）。
+        Production profile (gcp) 預設 disabled — public spec endpoint 不該暴露。
         本頁是 quick reference，依 controller 群分組。
       </p>
 

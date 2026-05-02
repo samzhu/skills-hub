@@ -55,3 +55,15 @@ skillshub:
   security:
     oauth:
       enabled: false
+
+# ----- S099a / S100：local 啟用 OpenAPI 3.1 spec + Swagger UI -----
+# Base application.yaml 預設 disabled (production 不該暴露 spec)。Local profile 啟用方便
+# 開發時 quick reference + RestApiPage docs 連結 /v3/api-docs 與 /swagger-ui.html。
+# `version: openapi_3_1` — SpringDoc 3.x（Swagger Core 2.2.22+）explicit 產 OpenAPI 3.1.0
+# spec（vs 預設 3.0.3）；JSON schema 對齊 latest standard。
+springdoc:
+  api-docs:
+    enabled: true
+    version: openapi_3_1
+  swagger-ui:
+    enabled: true
