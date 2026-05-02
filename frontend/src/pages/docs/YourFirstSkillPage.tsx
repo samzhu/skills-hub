@@ -4,25 +4,24 @@ import { DocsLayout } from '@/components/DocsLayout'
 import { BeamFrame } from '@/components/BeamFrame'
 
 /**
- * S094d — `/docs/your-first-skill` walkthrough page.
+ * S094d → S098h: `/docs/your-first-skill` walkthrough page (dark theme migration).
  *
- * 對齊 docs/grimo/ui/prototype/docs_page_write_your_first_skill.html.
- * 設計目的（per README ll.245-279）：把 Skills Hub 三個核心機制（frontmatter
- * validation / semantic search indexing / risk tier classification）在一頁內
- * 讓作者從「不知道」變成「有心智模型」— P2-P5 SBE 的 prerequisite。
- *
- * 不用 react-markdown 是刻意選擇：單頁靜態內容直接 JSX 比解析 .md 快、bundle
- * 小、可直接 lint；後續 docs spec 若需多頁 + 動態檢索可再考慮 markdown parser。
+ * 對齊 docs/grimo/ui/prototype/Skills Hub Docs.html (v2 dark theme)。
+ * S098h: bug fix — 原 light-theme inline hex (`#181818` text on `bg-white`)
+ * 在 v2 dark page bg `#08080A` 上呈 black-on-near-black (user 截圖回報)。
+ * Migration map：page `--bg`(#08080A) / card `--bg-2`(#0F0F12) / elevated
+ * `--bg-3`(#171719) / ink `--ink`(#EEECEA) / muted `--ink-2`(#A8A49C) / `--line`
+ * (rgba(255,255,255,0.06))。Tests are DOM-shape only — color swap doesn't break them.
  */
 export function YourFirstSkillPage() {
   return (
     <DocsLayout>
       <p className="mb-1 text-[12px] text-[#A8A49C]">
-        Docs <span className="mx-1 text-[#C5C0BC]">/</span>
-        Getting started <span className="mx-1 text-[#C5C0BC]">/</span>
-        <span className="text-[#181818]">Your first skill</span>
+        Docs <span className="mx-1 text-[#5E5B55]">/</span>
+        Getting started <span className="mx-1 text-[#5E5B55]">/</span>
+        <span className="text-[#EEECEA]">Your first skill</span>
       </p>
-      <h1 className="text-[28px] font-semibold tracking-tight text-[#181818]">Write your first skill</h1>
+      <h1 className="text-[28px] font-semibold tracking-tight text-[#EEECEA]">Write your first skill</h1>
 
       <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-[#A8A49C]">
         <span>Updated 2 weeks ago</span>
@@ -32,14 +31,14 @@ export function YourFirstSkillPage() {
         <span>Based on agentskills.io v1.2</span>
         <a
           href="https://github.com/samzhu/skills-hub"
-          className="ml-auto inline-flex items-center gap-1 text-[#A8A49C] hover:text-[#181818]"
+          className="ml-auto inline-flex items-center gap-1 text-[#A8A49C] hover:text-[#EEECEA]"
         >
           <Edit className="h-3 w-3" />
           Edit on GitHub
         </a>
       </div>
 
-      <p className="mt-5 text-[14.5px] leading-relaxed text-[#181818]">
+      <p className="mt-5 text-[14.5px] leading-relaxed text-[#A8A49C]">
         這份是給沒發過技能的作者看的 walkthrough。看完你會帶走一份能用的{' '}
         <Code>SKILL.md</Code> 與一個對「上傳時自動掃描器在檢查什麼」的心智模型。
         本頁不綁特定 agent — agentskills.io 標準下任何相容工具都通用。
@@ -103,7 +102,7 @@ ISO 8601 or RFC 2822 variant.
         一段簡潔段落描述「skill 做什麼 + agent 何時該呼叫」。Semantic search 對此欄位做 embedding —
         寫成 trigger 條件，不是行銷文案。下一節有範例。
       </FieldCard>
-      <p className="mt-3 text-[12.5px] text-[#A09B96]">
+      <p className="mt-3 text-[12.5px] text-[#A8A49C]">
         Optional fields: <Code>version</Code>、<Code>author</Code>、<Code>license</Code>、{' '}
         <Code>compatibility</Code>、<Code>metadata</Code>、<Code>allowed-tools</Code>。
       </p>
@@ -116,18 +115,18 @@ ISO 8601 or RFC 2822 variant.
       </P>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <CompareCard tone="good">
-          <p className="font-mono text-[12.5px] text-[#181818]">
+          <p className="font-mono text-[12.5px] text-[#EEECEA]">
             Generate and validate docker-compose files with multi-service awareness. Use when the user edits compose.yml or needs a new stack.
           </p>
-          <p className="mt-3 border-t border-dashed border-[#C5DDC9] pt-3 text-[11.5px] leading-relaxed text-[#9FE1CB]">
+          <p className="mt-3 border-t border-dashed border-[rgba(29,158,117,0.20)] pt-3 text-[11.5px] leading-relaxed text-[#5E5B55]">
             具體動詞（"generate"、"validate"）、領域名詞（"compose.yml"）、trigger 條件（"when the user edits"）。配對 Docker、orchestration、YAML、stack 各種查詢。
           </p>
         </CompareCard>
         <CompareCard tone="bad">
-          <p className="font-mono text-[12.5px] text-[#181818]">
+          <p className="font-mono text-[12.5px] text-[#EEECEA]">
             Powerful and elegant container orchestration helper that delivers seamless productivity gains.
           </p>
-          <p className="mt-3 border-t border-dashed border-[rgba(226,75,74,0.20)] pt-3 text-[11.5px] leading-relaxed text-[#F2A6A6]">
+          <p className="mt-3 border-t border-dashed border-[rgba(226,75,74,0.20)] pt-3 text-[11.5px] leading-relaxed text-[#5E5B55]">
             形容詞無 content（"powerful"、"elegant"、"seamless"）— embedding 認不出 trigger 條件，semantic search 不到。Marketing blurb，不是 skill description。
           </p>
         </CompareCard>
@@ -159,8 +158,8 @@ ISO 8601 or RFC 2822 variant.
       </Callout>
 
       {/* §6 Final CTA */}
-      <div className="mt-10 rounded-lg border border-[#E6E1D9] bg-[#F9F8F4] p-5">
-        <p className="text-[15px] font-semibold text-[#181818]">Ready to publish?</p>
+      <div className="mt-10 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-5">
+        <p className="text-[15px] font-semibold text-[#EEECEA]">Ready to publish?</p>
         <p className="mt-1 text-[13px] text-[#A8A49C]">
           你的 bundle 有了、frontmatter 乾淨、知道 scanner 在檢查什麼。下一步把 zip 傳上來。
         </p>
@@ -168,7 +167,7 @@ ISO 8601 or RFC 2822 variant.
           <BeamFrame>
             <Link
               to="/publish"
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#181818] px-4 py-2 text-[13px] font-medium text-white"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#EEECEA] px-4 py-2 text-[13px] font-medium text-[#08080A]"
             >
               Upload your bundle
               <ArrowRight className="h-3 w-3" />
@@ -176,7 +175,7 @@ ISO 8601 or RFC 2822 variant.
           </BeamFrame>
           <a
             href="https://github.com/anthropics/skills"
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#E6E1D9] bg-white px-4 py-2 text-[13px] font-medium text-[#181818] hover:bg-[#171719]"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[rgba(255,255,255,0.10)] bg-[#171719] px-4 py-2 text-[13px] font-medium text-[#EEECEA] hover:bg-[#1F1F22]"
           >
             <FileText className="h-3 w-3" />
             See more examples
@@ -185,11 +184,11 @@ ISO 8601 or RFC 2822 variant.
       </div>
 
       {/* §7 Prev/Next nav */}
-      <nav className="mt-8 flex items-center justify-between border-t border-[#E6E1D9] pt-5 text-[12px]">
-        <span className="cursor-not-allowed text-[#C5C0BC]" title="Coming soon">
+      <nav className="mt-8 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[12px]">
+        <span className="cursor-not-allowed text-[#5E5B55]" title="Coming soon">
           ← Overview
         </span>
-        <span className="cursor-not-allowed text-[#C5C0BC]" title="Coming soon">
+        <span className="cursor-not-allowed text-[#5E5B55]" title="Coming soon">
           SKILL.md spec →
         </span>
       </nav>
@@ -200,24 +199,24 @@ ISO 8601 or RFC 2822 variant.
 // ============= Inline helpers =============
 
 function Dot() {
-  return <span className="inline-block h-1 w-1 rounded-full bg-[#C5C0BC]" />
+  return <span className="inline-block h-1 w-1 rounded-full bg-[#5E5B55]" />
 }
 
 function H2({ anchor, children }: { anchor: string; children: React.ReactNode }) {
   return (
-    <h2 id={anchor} className="mt-10 text-[18px] font-semibold tracking-tight text-[#181818]">
-      {children} <span className="ml-1 text-[#A09B96]">#</span>
+    <h2 id={anchor} className="mt-10 text-[18px] font-semibold tracking-tight text-[#EEECEA]">
+      {children} <span className="ml-1 text-[#5E5B55]">#</span>
     </h2>
   )
 }
 
 function P({ children }: { children: React.ReactNode }) {
-  return <p className="mt-3 text-[14px] leading-relaxed text-[#181818]">{children}</p>
+  return <p className="mt-3 text-[14px] leading-relaxed text-[#A8A49C]">{children}</p>
 }
 
 function Code({ children }: { children: React.ReactNode }) {
   return (
-    <code className="rounded-sm bg-[#171719] px-1 py-0.5 font-mono text-[12.5px] text-[#181818]">
+    <code className="rounded-sm bg-[#171719] px-1 py-0.5 font-mono text-[12.5px] text-[#EEECEA]">
       {children}
     </code>
   )
@@ -225,13 +224,13 @@ function Code({ children }: { children: React.ReactNode }) {
 
 function CodeBlock({ filename, children }: { filename: string; children: string }) {
   return (
-    <div className="mt-3 overflow-hidden rounded-md border border-[#E6E1D9]">
-      <div className="flex items-center justify-between border-b border-[#E6E1D9] bg-[#F9F8F4] px-3 py-2 text-[11.5px] text-[#A8A49C]">
+    <div className="mt-3 overflow-hidden rounded-md border border-[rgba(255,255,255,0.06)]">
+      <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] bg-[#0F0F12] px-3 py-2 text-[11.5px] text-[#A8A49C]">
         <span className="font-mono">{filename}</span>
-        <span className="text-[10px] uppercase tracking-wider text-[#A09B96]">copy</span>
+        <span className="text-[10px] uppercase tracking-wider text-[#5E5B55]">copy</span>
       </div>
-      <pre className="overflow-x-auto bg-[#FFFFFF] p-3 text-[12px] leading-relaxed">
-        <code className="font-mono text-[#181818]">{children}</code>
+      <pre className="overflow-x-auto bg-[#0F0F12] p-3 text-[12px] leading-relaxed">
+        <code className="font-mono text-[#EEECEA]">{children}</code>
       </pre>
     </div>
   )
@@ -246,12 +245,12 @@ function Callout({
 }) {
   const styles =
     tone === 'info'
-      ? { bg: 'rgba(127,119,221,0.18)', fg: '#C9C5F2', icon: <Info className="h-3.5 w-3.5" /> }
-      : { bg: 'rgba(239,159,39,0.14)', fg: '#FAC775', icon: <AlertTriangle className="h-3.5 w-3.5" /> }
+      ? { bg: 'rgba(127,119,221,0.10)', border: 'rgba(127,119,221,0.20)', fg: '#A8A49C', icon: <Info className="h-3.5 w-3.5 text-[#C9C5F2]" /> }
+      : { bg: 'rgba(239,159,39,0.08)', border: 'rgba(239,159,39,0.20)', fg: '#A8A49C', icon: <AlertTriangle className="h-3.5 w-3.5 text-[#FAC775]" /> }
   return (
     <div
-      className="mt-4 flex items-start gap-2.5 rounded-md p-3 text-[13px] leading-relaxed"
-      style={{ backgroundColor: styles.bg, color: styles.fg }}
+      className="mt-4 flex items-start gap-2.5 rounded-md border p-3 text-[13px] leading-relaxed"
+      style={{ backgroundColor: styles.bg, borderColor: styles.border, color: styles.fg }}
     >
       <span className="mt-0.5 shrink-0">{styles.icon}</span>
       <div className="flex-1">{children}</div>
@@ -269,19 +268,19 @@ function FieldCard({
   children: React.ReactNode
 }) {
   return (
-    <div className="mt-3 rounded-md border border-[#E6E1D9] bg-white p-4">
+    <div className="mt-3 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <code className="rounded-sm bg-[#171719] px-2 py-0.5 font-mono text-[13px] text-[#181818]">
+        <code className="rounded-sm bg-[#171719] px-2 py-0.5 font-mono text-[13px] text-[#EEECEA]">
           {name}
         </code>
         {tags.map((t, i) => (
           <span key={i} className="text-[11px] text-[#A8A49C]">
-            {i > 0 && <span className="mr-2 text-[#C5C0BC]">·</span>}
+            {i > 0 && <span className="mr-2 text-[#5E5B55]">·</span>}
             {t}
           </span>
         ))}
       </div>
-      <p className="mt-2 text-[13px] leading-relaxed text-[#181818]">{children}</p>
+      <p className="mt-2 text-[13px] leading-relaxed text-[#A8A49C]">{children}</p>
     </div>
   )
 }
@@ -295,8 +294,8 @@ function CompareCard({
 }) {
   const styles =
     tone === 'good'
-      ? { border: '#C5DDC9', bg: '#F0F8F0', label: '#9FE1CB', icon: <Check className="h-3 w-3" />, labelText: 'Indexes well' }
-      : { border: 'rgba(226,75,74,0.20)', bg: 'rgba(226,75,74,0.14)', label: '#F2A6A6', icon: <X className="h-3 w-3" />, labelText: 'Misses' }
+      ? { border: 'rgba(29,158,117,0.20)', bg: 'rgba(29,158,117,0.07)', label: '#6FD8B0', icon: <Check className="h-3 w-3" />, labelText: 'Indexes well' }
+      : { border: 'rgba(226,75,74,0.20)', bg: 'rgba(226,75,74,0.07)', label: '#F2A6A6', icon: <X className="h-3 w-3" />, labelText: 'Misses' }
   return (
     <div className="rounded-md border p-4" style={{ borderColor: styles.border, backgroundColor: styles.bg }}>
       <p className="mb-2 inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider" style={{ color: styles.label }}>
@@ -323,14 +322,14 @@ function RiskRow({
     danger: { bg: 'rgba(226,75,74,0.14)', fg: '#F2A6A6' },
   }[tone]
   return (
-    <div className="flex items-start gap-3 rounded-md border border-[#E6E1D9] bg-white p-4">
+    <div className="flex items-start gap-3 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-4">
       <span
         className="mt-0.5 shrink-0 rounded-md px-2 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-wider"
         style={{ backgroundColor: styles.bg, color: styles.fg }}
       >
         {tier}
       </span>
-      <p className="flex-1 text-[13px] leading-relaxed text-[#181818]">{children}</p>
+      <p className="flex-1 text-[13px] leading-relaxed text-[#A8A49C]">{children}</p>
     </div>
   )
 }

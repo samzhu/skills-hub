@@ -1,5 +1,32 @@
 # Changelog
 
+## [v2.86.0] — YourFirstSkillPage 配色對比修復（S098 META 1/8；M92h 完成；2026-05-02）
+
+> User 截圖回報：`/docs/your-first-skill` 卡片 / inputs / code blocks 在 v2 dark page bg `#08080A` 上呈 black-on-near-black（S094d 寫頁時尚未做 dark theme migration，全部 hardcoded `#181818` text + `bg-white` cards + `#F9F8F4` cream surfaces 殘留 light theme）。
+
+### 🎨 Frontend
+- `frontend/src/pages/docs/YourFirstSkillPage.tsx`：full dark token migration per `Skills Hub Docs.html` prototype。Color map：
+  - `text-[#181818]` → `text-[#EEECEA]`（`--ink` primary）
+  - `text-[#A09B96]` / `text-[#C5C0BC]` → `text-[#5E5B55]`（`--ink-3` separator/disabled）
+  - `bg-white` / `bg-[#FFFFFF]` → `bg-[#0F0F12]`（`--bg-2` card surface）
+  - `bg-[#F9F8F4]` → `bg-[#0F0F12]`（CodeBlock 統一 dark surface）
+  - `border-[#E6E1D9]` → `border-[rgba(255,255,255,0.06)]`（`--line`）
+  - `bg-[#181818] text-white` (CTA) → `bg-[#EEECEA] text-[#08080A]`（dark theme primary CTA 反白）
+  - `bg-white hover:bg-[#171719]` (secondary CTA) → `bg-[#171719] hover:bg-[#1F1F22]`
+  - CompareCard 兩 tone (good/bad) 改 rgba `.07` bg + `.20` border 對齊 prototype `.desc-card.good/.bad` 規格
+  - Callout 加 border + icon color 提取，配色維持 prototype `.callout.info/.warn` 風格
+
+### ✅ Tests
+- `YourFirstSkillPage.test.tsx`：5/5 PASS（DOM-shape only — 無 color assertion，token 替換不破壞 ACs）
+
+### Verify
+- `npx vitest run src/pages/docs/YourFirstSkillPage.test.tsx` → 5/5 PASS
+- `npx tsc --noEmit` → no errors
+
+### S098 META 進度
+- S098h ✅ shipped — P0 user-blocking visual bug，直接 ship 不走 sub-spec 文件流程（patch-only fix；scope 全在單一 .tsx file color migration）
+- 剩 7 sub-specs 待 ship：S098a-g（i18n / Step 2 / Failures / Diff / Homepage polish / Skill Detail polish / Docs IA）
+
 ## [v2.85.0] — Swap BeamFrame to official border-beam package（M91 完成；2026-05-02）
 
 > User UX feedback — current S089/S096b hand-roll BeamFrame 視覺效果不對；swap 回 `border-beam@1.0.1` npm package with locked configurable defaults.
