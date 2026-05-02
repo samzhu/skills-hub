@@ -1,5 +1,42 @@
 # Changelog
 
+## [v2.81.0] — Collections read-only stub（S096 META 6b/8；M90f1 完成；2026-05-02）
+
+> Same stub pattern as S096g1 — feature visible-but-disabled, full aggregate + install + 2 domain events 留 S096f2.
+
+### Added
+- **Backend stub `GET /api/v1/collections`**: returns `[]`
+  - `community/CollectionController` (shares package with `RequestController` — community module pre-aggregation; `@ApplicationModule` registration 留 S096f2 + S096g2 統一)
+  - `CollectionSummary` record contract (id/name/description/skillCount/installs/category/createdAt)
+- **Frontend `/collections` route + CollectionsPage**:
+  - Hero: 「Curated skill collections」 title + 範例 use case 解釋
+  - 「建立集合」disabled CTA with tooltip per Engineering Handoff §10
+  - 0 results → EmptyState invite tone
+  - Card grid: name + category + description + skill count + installs
+- **AppShell `集合` nav link** → /collections
+
+### Trim from M(12) → XS(5)
+Defer to S096f2:
+- Collection aggregate + persistence
+- 3 mutation endpoints (POST create / POST install / GET single)
+- 2 domain events (CollectionCreated / CollectionInstalled)
+- @ApplicationModule(community) registration
+
+### Metrics
+- Backend compileJava ✓
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 395.66 → 398.40KB (+2.74KB)
+- CSS: 37.83 → 37.93KB
+- Build: 181ms
+
+### META progress
+S096 META 6b/8 ✅. Backlog: S096d4 / S096e2 ⏸ / S096f2 / S096g2 / S096h.
+
+### Live caveat
+Live :8080 backend 仍跑舊 code；/collections fetch error 直到 graceful restart.
+
+---
+
 ## [v2.80.0] — Request Board read-only stub + S096e2 ⏸ blocked（S096 META 6a/8；M90g1 完成；2026-05-02）
 
 > **Stub ship + roadmap surgery** — Request Board feature visible-but-disabled，nav entry shipped。S096e2 Onboarding 同時 mark ⏸ 因 prototype 缺 + Collections 依賴。

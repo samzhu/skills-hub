@@ -72,6 +72,24 @@ export function fetchRequests(): Promise<SkillRequest[]> {
 }
 
 /**
+ * S096f1 — Collections: curated skill bundles for one-click install.
+ * Stub backend returns empty list; install/create/single endpoints defer to S096f2.
+ */
+export interface SkillCollection {
+  id: string
+  name: string
+  description: string
+  skillCount: number
+  installs: number
+  category: string
+  createdAt: string
+}
+
+export function fetchCollections(): Promise<SkillCollection[]> {
+  return apiFetch<SkillCollection[]>('/collections')
+}
+
+/**
  * S096e1 — public Landing stats (per Engineering Handoff §2.1).
  * Aggregate-only payload；不需 auth。
  */

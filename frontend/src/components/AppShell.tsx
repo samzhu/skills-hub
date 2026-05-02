@@ -9,6 +9,7 @@ import { Link, useLocation } from 'react-router'
 const navLinks = [
   // S096e1: Browse 改 /browse；/ 改為 public Landing page
   { path: '/browse', label: '瀏覽' },
+  { path: '/collections', label: '集合' }, // S096f1: Collections stub
   { path: '/requests', label: '需求' }, // S096g1: Request Board stub
   { path: '/my-skills', label: '我的技能' }, // S094a: author dashboard
   { path: '/publish', label: '發佈' },
