@@ -1,5 +1,16 @@
 # Changelog
 
+## [v3.2.2] — DocsSidebar standalone tests（S098f3 close verification；2026-05-02）
+
+> Mode B — DocsSidebar 控制 11 doc page navigation；Active link contract + group label contract verified。
+
+### ✅ Tests
+- 新檔 `components/DocsSidebar.test.tsx` — 5 ACs：4 group labels render；all 11 nav items render；current path highlights matching link；non-active items use muted style；各 link href 對應 sidebar 路徑。
+
+### 結果
+- 110 → 115 tests PASS（+5 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.2.1] — AppShell nav + bell badge invariants（S096h1；2026-05-02）
 
 > Mode B — AppShell 是 every-page wrapper；7 nav links + bell badge poll-driven unread count contract verified。
