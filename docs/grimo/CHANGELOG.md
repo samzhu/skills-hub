@@ -1,5 +1,37 @@
 # Changelog
 
+## [v2.77.0] — SkillCard prototype polish + featured variant（S096 META 4b/8；M90d2 完成；2026-05-02）
+
+> **Shared component polish** — SkillCard 為 3 page reused (HomePage / MySkills / SearchResults)，1 polish 同時提升 3 page 視覺品質。Cherry-pick prototype `Skills Hub Homepage.html` `.sc` design.
+
+### Added
+- **SkillCard polish align prototype `.sc`**:
+  - radius `lg` (12px) → `xl` (16px) per DESIGN.md v2
+  - author 文字改 mono font (對齊 `.sc-author`)
+  - SUSPENDED/DRAFT status pill + similarity badge 改 inline style with dark rgba/light-text (S096d1 sed 漏 SkillCard 的 6 hex 殘留 belated patch)
+- **`featured` prop variant** per Engineering Handoff §8 BorderBeam usage rule:
+  - top-match in semantic search 套 BeamFrame 視覺強化
+  - SearchResultsPage 第一個 result `featured={i === 0}`
+  - Featured card 移除 hairline border（被 beam ring 取代）
+
+### Trim from M(10-12) → S(7)
+S096d2 原 scope 5 items。只 ship SkillCard polish；defer 其他 4 items 至 sub-specs:
+- S096d3: Publish flow restructure (single → 3-step SSE)
+- S096d3 / Future: 3 new domain events (Bundle/Frontmatter/RiskScan)
+- S096d3 / S096e: Per-skill stats endpoint
+- 各 page 細節 polish 隨各自 sub-spec
+
+### Metrics
+- Frontend tests: 28 → 28 PASS / 0 fail
+- JS: 382.91 → 383.18KB (+0.27KB)
+- CSS: 36.70 → 36.47KB (-0.23KB; tailwind utility class drop for inline-style hex)
+- Build: 190ms
+
+### META progress
+S096 META 4b/8 ✅. Next: S096d3 (publish restructure) or sibling sub-specs.
+
+---
+
 ## [v2.76.0] — Inline-hex bulk migration to dark tokens（S096 META 4a/8；M90d1 完成；2026-05-02）
 
 > **Mechanical bulk migration** — 8 files inline-style hex strings 從 v1 light tokens → v2 dark equivalents。S096d 從 L(15-16) split d1+d2，d1 為 hex polish；d2 留 publish flow restructure + new domain events + prototype design polish。

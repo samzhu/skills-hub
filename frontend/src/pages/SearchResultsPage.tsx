@@ -101,12 +101,15 @@ export function SearchResultsPage() {
             />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {results.map((r) => (
+              {results.map((r, i) => (
                 <SkillCard
                   key={r.id}
                   // SemanticSearchResult 與 Skill 欄位高度重疊；S094b 仍用既有 SkillCard
                   skill={r as unknown as Parameters<typeof SkillCard>[0]['skill']}
                   score={r.score}
+                  // S096d2: 第一個 result = top match → featured beam ring per Handoff §8
+                  // (1-per-page rule already met — 沒其他 BeamFrame on this page)
+                  featured={i === 0}
                 />
               ))}
             </div>
