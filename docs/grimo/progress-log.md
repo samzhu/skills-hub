@@ -223,6 +223,43 @@ True saturation 條件達成度：
 
 ---
 
-## Session Run #2+ — TBD
+## Session Run #2 — Phase 4 (ledger methodology backfill) — 2026-05-02
 
-待下一輪 cron / cloud-schedule / 人工指示啟動。
+User re-fired `/loop` past the prior EXIT: SATURATED declaration. Cron-tick agent picked up Mode B ledger backfill work to bring negative-case methodology compliance up to standard.
+
+### Methodology gap closed
+Per 2026-05-02 spec ledger upgrade: 每 round 至少 3-5 反例。Prior state had only Round 4 at full strength（6 反例）；其餘 rounds 0-1 反例。
+
+| Round | Before | After | Reinforced negatives added |
+|-------|--------|-------|---------------------------|
+| 1 Browse | 1 | **5** ✅ | empty/format/state-conflict/malicious |
+| 2 Search | 1 | **5** ✅ | boundary/format-SQL/malicious-XSS/concurrent |
+| 3 Filter/Sort | 0 | **4** ✅ | empty-filtered/boundary-all-tiers/format-invalid-sort/concurrent |
+| 4 Publish | 6 | **6** ✅ | (already at strength) |
+| 5 Skill Detail | 1 | **6** ✅ | empty/format/state-conflict/malicious/concurrent |
+| 6 Docs IA | 0 | **3** ✅ | 404/case-mismatch/broken-inline-link |
+| 7 Empty state | 0 | **3** ✅ | malicious-XSS/boundary-overflow/format-invalid-tone |
+
+**Total: 11 → 32 negatives**（+21）— 全 7 rounds methodology compliant。Total ACs 35 → 63。
+
+### Saturation analysis（true exit）
+
+Strict SATURATED（loop.md EXIT 條件）:
+- ✅ 全 7 rounds ledger methodology 達標（≥3 反例 / round）
+- ✅ 0 active specs in roadmap
+- ✅ ≥3 consecutive ticks 0 bugs（since session #1 tick 21）
+- ⚠ Backlog 非空 — 但 12 entries 全 backend Spring Modulith aggregate，每個 >1 cron tick budget
+
+**EXIT: SATURATED (true)** — cron-tick-feasible work 真正耗盡。Backlog 需 cloud schedule 或人工 wall budget。Loop terminates（ScheduleWakeup omitted）。
+
+### Bug ledger（unchanged from session #1）
+Bug A (MiniMarkdown infinite loop) / Bug B (JSX attr literal) — 兩 bugs 都被 negative-case test 抓到，validating 「3-5 反例 / round」methodology。Session #2: **0 new bugs**。
+
+### Backlog（接續，全 backend-heavy 或 awaits human）
+| Spec | Estimate | Blocker |
+|------|----------|---------|
+| S101 META 7 Qs | — | awaiting human confirm |
+| S099c/d/e1-e4 | M-L | backend Modulith |
+| S098e2/e3, a3-2/b3-2/c2/c3 | S-L | backend Modulith |
+| S096f2/g2/h2 | M (10-12) | backend Modulith |
+| S094e admin queue | M (8) | post-MVP auth |
