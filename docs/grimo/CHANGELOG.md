@@ -1,5 +1,31 @@
 # Changelog
 
+## [v2.69.0] — EmptyState component (4 tones) + HomePage 0-results 改寫（M88a 完成；2026-05-02）
+
+> **S094 META sub-spec 1/4 ship** — 抽取共享 `EmptyState` 元件，4 種 voice（seed/invite/redirect/clear）對齊 prototype；先 ship 給後續 sub-specs（S094a MySkills + S094b SearchResults）reuse。
+
+### Added
+- **S094c: Empty State Collection (4 tones)**（M88a / XS 5 pts）：
+  - `EmptyState.tsx` 含 4 個 sub-renderer（`SeedTone` / `InviteTone` / `RedirectTone` / `ClearTone`）對應 prototype 4 種 empty state
+  - Props: `tone | headline | sub? | eyebrow? | query? | suggestions? | stats? | primaryAction? | secondaryAction? | auditLink?`
+  - Primary CTA 套 `BeamFrame`；secondary 用 hairline border；color tokens 對齊 DESIGN.md 4-tier semantic
+  - 5 vitest test cover AC-1/2/3/4/5（4 tone render + optional fields）
+- **HomePage 0-results 改寫**（取代 generic 「找不到符合的技能」inline empty）：
+  - keyword 模式無 query → seed tone「技能庫等著被開啟」
+  - keyword 模式有 query → redirect tone（query echo + 3 suggestions）
+  - semantic 模式 0 結果 → redirect tone（同上 + sub 文案不同）
+- **SkillCardGrid**: 加 `query?: string` prop 用於 0-results tone 區分
+
+### Metrics
+- Frontend tests: 18 → 23 PASS / 0 fail
+- JS bundle: 351KB → 358KB (+7KB) / CSS: 32.7KB → 35.1KB (+2.4KB)
+- Build time: 166ms（無 regression）
+
+### META progress
+S094 META 4 sub-specs：1/4 ✅。Next: S094d Docs Walkthrough.
+
+---
+
 ## [v2.68.0] — Dev DB persistence: compose named volume + start-only lifecycle（M87 完成；2026-05-02）
 
 > **Dev infra polish** — 解 dev DB 不持久問題；加 named volume + `start-only` lifecycle 讓 PG container 跨 backend stop/restart 完整保留資料。

@@ -5,6 +5,7 @@ import { SearchBar } from '@/components/SearchBar'
 import { CategorySidebar } from '@/components/CategorySidebar'
 import { SkillCard } from '@/components/SkillCard'
 import { SkillCardGrid } from '@/components/SkillCardGrid'
+import { EmptyState } from '@/components/EmptyState'
 import { useSkillList } from '@/hooks/useSkillList'
 import { useCategories } from '@/hooks/useCategories'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
@@ -128,10 +129,18 @@ export function HomePage() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <p className="text-lg font-medium">未找到匹配的技能</p>
-                  <p className="text-sm">試試換個描述方式</p>
-                </div>
+                // S094c: replace inline 0-results with EmptyState redirect tone — query echo + suggestions
+                <EmptyState
+                  tone="redirect"
+                  query={query}
+                  headline="這個描述還沒有匹配的技能。"
+                  sub="現有技能與你描述的概念相似度都偏低。可以調整描述、改用關鍵字模式，或邀請團隊發布。"
+                  suggestions={[
+                    { text: '改用關鍵字搜尋', hint: '更直接的詞彙比喻；trim fallback 仍會回所有技能' },
+                    { text: '換個描述方式', hint: '把技能要做的「動詞」拉到開頭' },
+                    { text: '發布這個技能', hint: '你可能是第一個遇到此需求的人' },
+                  ]}
+                />
               )}
             </>
           ) : (
@@ -140,7 +149,8 @@ export function HomePage() {
               <div className="mb-4 text-sm text-muted-foreground">
                 共 {skillsPage?.page.totalElements ?? 0} 個技能
               </div>
-              <SkillCardGrid skills={skillsPage?.content ?? []} />
+              {/* S094c: pass query so 0-results can show seed (no query) vs redirect (with query) tone */}
+              <SkillCardGrid skills={skillsPage?.content ?? []} query={query} />
               {skillsPage && skillsPage.page.totalPages > 1 && (
                 <div className="mt-6 flex items-center justify-center gap-2">
                   <button
