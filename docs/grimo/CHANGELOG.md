@@ -1,5 +1,19 @@
 # Changelog
 
+## [v3.2.3] — useSkill / useSkillByAuthorAndName hook tests（2026-05-02）
+
+> Mode B 最後一輪 — useSkill hook 是核心 query primitive；S096c dual-route enabled-guard 行為驗證。Tests 115 → 120。
+
+### ✅ Tests
+- 新檔 `hooks/useSkill.test.tsx` — 5 ACs：
+  - useSkill empty id → query disabled (no fetch)
+  - useSkill valid id → fetch invoked + data resolved
+  - useSkillByAuthorAndName missing author / missing name / both present 三種 enabled-guard scenarios
+
+### 結果
+- 115 → 120 tests PASS（+5 new）
+- `npx tsc --noEmit` clean
+
 ## [v3.2.2] — DocsSidebar standalone tests（S098f3 close verification；2026-05-02）
 
 > Mode B — DocsSidebar 控制 11 doc page navigation；Active link contract + group label contract verified。
