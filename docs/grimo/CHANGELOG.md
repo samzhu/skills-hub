@@ -1,5 +1,31 @@
 # Changelog
 
+## [v3.1.0] — PublishFailedPage State A 結構化驗證 breakdown UI（S098b3 完成；2026-05-02）
+
+> S098b3 — 把 PublishFailedPage State A 從「單段紅色 callout + msg pre-block」升級為對齊 prototype #7 的多段 v-section UI shell（SKILL.md 驗證 / Bundle 結構 / 風險掃描 三段並列）。每段含 status badge + err-row 列表；目前 backend 只送 flat msg → 派生為 single error row，未來結構化 findings payload 可填多 row 不需改 component。
+
+### 🎨 Frontend
+- `pages/PublishFailedPage.tsx`：State A 重構
+  - 加 `ErrRow` 結構 type `{ severity: 'error'|'warning', title, hint? }`
+  - 派生邏輯：msg 非空 → single ErrRow severity='error' （未來可解析 JSON payload 為多筆）
+  - 拆 `ValidationSection` 子 component：head（icon tile + title + sub + status badge）+ err-rows divide-y list
+  - State A 渲染順序：top callout 「驗證在第 2 步停止」→ SKILL.md section（failed + 1 error row）→ Bundle section（skipped + opacity-60）→ Risk scan section（skipped + opacity-60）
+  - 三段並列示意「驗證流程的依賴鏈」— 即使 SKILL.md 失敗，user 也看到後續步驟存在但被略過
+
+### 設計理由
+prototype #7 用 multi v-section 顯示完整驗證流程；前一版只 single callout 失去階段感。本 commit ship UI shell — backend 結構化 findings payload spec 為後續 backend work（S098b3-2 候選）；目前 flat msg 仍 work，UI 已 ready for upgrade。
+
+### Skipped 兩段視覺處理
+Bundle 結構 + 風險掃描 status='skipped' opacity-60；不顯 ✓ 但顯 — 圖示 + 「略過」標籤；hint sub 解釋「修正 SKILL.md 後再跑」。
+
+### ✅ Tests
+- `npx vitest run` (cwd=frontend) → 9 files / 40 tests PASS
+  - 既有 PublishFailedPage.test.tsx 4 ACs 全 pass — heading「驗證在第 2 步停止 — 沒有任何資料寫入。」+ msg decoded + footer CTA 都保留
+- `npx tsc --noEmit` (cwd=frontend) → no errors
+
+### Polish backlog 進度
+- S098b3 ✅ shipped — 留 S098b3-2 待 backend 結構化 findings payload spec ready 後 ship
+
 ## [v3.0.1] — Test coverage backfill：PublishFailedPage + VersionDiffPage（2026-05-02）
 
 > Mode B E2E round — 為 v3.0.0 ship 的 S098b/c 兩 page 補 component test。Tests 33 → 40 (+7)。Test backfill 不算 spec，純 regression 防護。
