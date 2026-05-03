@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
 import { Boxes, Download } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { EmptyState } from '@/components/EmptyState'
-import { fetchCollections, type SkillCollection } from '@/api/skills'
+import { useCollections } from '@/hooks/useCollections'
+import type { SkillCollection } from '@/api/skills'
 
 /**
  * S096f1 — Collections read-only stub at `/collections`.
@@ -20,11 +20,7 @@ import { fetchCollections, type SkillCollection } from '@/api/skills'
  * 「Disable, don't hide, blocked actions」.
  */
 export function CollectionsPage() {
-  const { data: collections, isLoading } = useQuery<SkillCollection[]>({
-    queryKey: ['collections'],
-    queryFn: fetchCollections,
-    staleTime: 60 * 1000,
-  })
+  const { data: collections, isLoading } = useCollections()
 
   return (
     <AppShell>

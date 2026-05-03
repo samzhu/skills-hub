@@ -125,4 +125,21 @@ T04 將進一步加 category filter chip + Modal trigger；本 task 只做 hook 
 - T01 + T02（backend collection endpoints ship — 本 task helpers 才能 typecheck against real shape）
 
 ## Status
-pending
+shipped 2026-05-03 — commit pending（本 tick 內）
+
+## Result
+
+- **Files**：
+  - `frontend/src/api/skills.ts`（modify — `SkillCollection.description` `string → string | null` 對齊 backend nullable + 新增 `CollectionSkillSummary` / `CollectionDetail` / `CreateCollectionRequest` 3 type + `fetchCollection` / `createCollection` / `installCollection` 3 helper + `fetchCollections(category?)` 加 optional category filter）
+  - `frontend/src/hooks/useCollections.ts`（new — list with optional category；30s staleTime + refetchOnWindowFocus 對齊 useRequests / useNotifications canonical）
+  - `frontend/src/hooks/useCollection.ts`（new — single detail；對齊 useSkill / useRequest enabled-gate pattern）
+  - `frontend/src/pages/CollectionsPage.tsx`（modify — minimal: `useQuery` inline → `useCollections()` hook；移除 `fetchCollections` 直接 import；保留所有 UI 結構）
+- **Tests**：
+  - CollectionsPage.test.tsx 4/4 PASS @ 1.35s（regression — 既有 stub-state assertions 走 hook 後仍綠；T04 將升級為 AC-10/11/12 BDD）
+  - 全 frontend suite **193/193 PASS** @ 7.70s（0 regression）
+  - npx tsc --noEmit PASS
+- **Design notes**：
+  - **`description: string → string | null`**：backend `String description nullable` (V12 schema TEXT column) → frontend type 對齊；既有 CollectionsPage `<p>{collection.description}</p>` React 對 null 渲染為 nothing（safe），無 UI 副作用
+  - **`fetchCollections(category?)` 不破 既有 caller**：optional param + default no qs；CollectionsPage 既有 inline query 不傳 category 故等同 `?category` 不附加，行為一致
+  - **`useCollection` 走 `enabled: !!id` gate**：對齊 useSkill / useRequest 既驗 — undefined id 時不 fetch，避 fetcher `id!` non-null assertion 在 runtime 出錯
+  - **無新 mutation hook**：T04 將加 `useCreateCollection` / `useInstallCollection` mutation hooks（避免 hook layer 為 unused mutation 提早建抽象 — 對齊 CLAUDE.md「真的有第三個 use case 才抽」原則）

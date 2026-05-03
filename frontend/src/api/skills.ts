@@ -190,21 +190,68 @@ export async function deleteRequest(requestId: string): Promise<void> {
 }
 
 /**
- * S096f1 — Collections: curated skill bundles for one-click install.
- * Stub backend returns empty list; install/create/single endpoints defer to S096f2.
+ * S096f1 / S096f2 — Collections: curated skill bundles for one-click install.
+ *
+ * S096f2-T03: list/single/install/create endpoints upgraded from stub。`description`
+ * 改 nullable 對齊 backend `String description nullable`（Spring Data JDBC TEXT column）。
  */
 export interface SkillCollection {
   id: string
   name: string
-  description: string
+  description: string | null
   skillCount: number
   installs: number
   category: string
   createdAt: string
 }
 
-export function fetchCollections(): Promise<SkillCollection[]> {
-  return apiFetch<SkillCollection[]>('/collections')
+/** S096f2 — single collection detail（GET /collections/{id}）含 skills summary。 */
+export interface CollectionSkillSummary {
+  id: string
+  name: string
+  category: string
+  riskLevel: string | null
+  latestVersion: string | null
+}
+
+export interface CollectionDetail {
+  id: string
+  name: string
+  description: string | null
+  category: string
+  ownerId: string
+  installCount: number
+  createdAt: string
+  skills: CollectionSkillSummary[]
+}
+
+/** S096f2 — POST /collections body shape；對齊 backend CreateCollectionBody record。 */
+export interface CreateCollectionRequest {
+  name: string
+  description: string | null
+  category: string
+  skillIds: string[]
+}
+
+export function fetchCollections(category?: string): Promise<SkillCollection[]> {
+  const qs = category ? `?category=${encodeURIComponent(category)}` : ''
+  return apiFetch<SkillCollection[]>(`/collections${qs}`)
+}
+
+export function fetchCollection(id: string): Promise<CollectionDetail> {
+  return apiFetch<CollectionDetail>(`/collections/${id}`)
+}
+
+export function createCollection(body: CreateCollectionRequest): Promise<{ id: string }> {
+  return apiFetch<{ id: string }>('/collections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+export function installCollection(id: string): Promise<{ downloadUrls: string[] }> {
+  return apiFetch<{ downloadUrls: string[] }>(`/collections/${id}/install`, { method: 'POST' })
 }
 
 /**
