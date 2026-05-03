@@ -493,7 +493,33 @@
 - **Total skills DB**: 36 PUBLISHED + 18 DRAFT + 2 SUSPENDED
 - **No active bugs**
 
+## Tick — Mode B Round 36 — API projection field completeness audit (2026-05-03)
+
+> Cut: API projection field completeness — same entity 跨 endpoint 欄位是否一致 expose。觸發點：剛 ship 多個 spec (S098a3-2 fileCount / S116 visibility / S096f2 install_count) 增加 column / field surface 後可能 inconsistency。
+
+### Findings
+
+| Bug | Severity | Path | 描述 |
+|-----|----------|------|------|
+| **AP** | LOW | Frontend `SkillVersion` type | backend `SkillVersion.fileCount` getter 自動序列化 expose，但 `frontend/src/types/skill.ts` `SkillVersion` interface 缺 `fileCount` field — VersionList 顯版本歷史時無「N 個檔案」資訊；S098a3-2 ship 只把 fileCount expose 在 `/bundle-info` endpoint frontend `BundleInfo` type，漏了同步 `SkillVersion` type |
+| **AQ** | LOW | Backend `Collection` DTO naming | `CollectionSummary.installs` (list endpoint) vs `CollectionDetail.installCount` (single endpoint) — 同 entity 同 metric 兩個 field name；frontend type 跟著走 same inconsistent；S096f2 ship 時 oversight |
+| **AR** | MEDIUM | `SkillQueryService.search()` SELECT clause | 缺 `average_rating, review_count` 兩 columns — list endpoint 永遠回 averageRating=0 / reviewCount=0；single endpoint (`findById` 走 Spring Data JDBC auto-load) 回真值；frontend SkillCard 顯 rating 星星永遠 0；S098e2 ship review averageRating projection 後此 list endpoint 漏 update SELECT |
+
+**Status**：本 round 0 修；按 Mode B rule「找到 bug → 切回 Mode A 寫 fix-spec」走 backlog row。
+
+### Roadmap rows added
+
+- **S117** (XS=1): Frontend `SkillVersion` type sync `fileCount` field（Bug AP fix）— 1 行 type addition + optional VersionList component update 顯示
+- **S118** (XS=2): Collection DTO field naming alignment（Bug AQ fix）— rename `installs → installCount` in CollectionSummary + frontend type sync；可能 affect SkillCollection caller migration
+- **S119** (XS=2): `SkillQueryService.search()` SELECT 加 `average_rating, review_count`（Bug AR fix）— SQL 加 2 column；frontend SkillCard 顯 rating 星星驗證 + spec ID-leak audit invariant carry-forward
+
+### Cuts not exercised this round
+
+- Cross-cutting links（routing change 後漏 callsite）— 排隊
+- User-visible string compliance — 排隊（last 跑 tick 56 R12-14）
+- Anonymous vs authenticated flow 比對 — 排隊（S116 ship 後此 cut 高 value，但需要 Chrome MCP 啟動 backend，wall budget 風險）
+- Form interaction (publish / version add / ACL grant) — 排隊
+
 ## Next Tick Suggestions
-- 監控 cron 運行情況
-- E2E 已飽和；新 bug 須從 user-reported / production telemetry 找
-- 維持 health check baseline；如新 bug 才 ship
+- Pick up S117 / S118 / S119 implement (XS each, single-tick ship 候選)
+- OR 換 Mode B cut（Cross-cutting links / User-visible string compliance / Form interaction Chrome MCP）
