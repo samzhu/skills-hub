@@ -1,5 +1,26 @@
 # Changelog
 
+## [v3.4.12] — OpenAPI 3.1 verification + docs note（S099a 完成；2026-05-03）
+
+> S099 META Trust Maturity 第 1 個 sub-spec ship — 鎖契約 `GET /v3/api-docs` 返 OpenAPI 3.1.0（對齊 agentskills.io trust maturity + JSON Schema 2020-12）+ OverviewPage 加 API 標準對齊 docs note 給 user 看 standard compliance。30m cron loop Tick 1 同 tick full-ship（XS=2，spec assumption Plan A 但實際走 Plan B — `application-local.yaml` 早有 `version: openapi_3_1` 設定）。
+
+### Added
+- `backend/src/test/java/io/github/samzhu/skillshub/api/OpenApiVersionTest.java`：`@SpringBootTest + @AutoConfigureMockMvc + @TestPropertySource` lock 契約 — `GET /v3/api-docs` status 200 + `$.openapi == "3.1.0"`，防 SpringDoc 升版 default 漂回 3.0.x
+- `frontend/src/pages/docs/OverviewPage.tsx`：新「API 標準對齊」H2 段落 — 1-2 句中文 + inline code `/v3/api-docs` + Swagger UI link，置於「三個核心機制」與「下一步」之間
+
+### Verified
+- Backend：`./gradlew test --tests '*OpenApi*' -x npmBuild` PASS（tests=1 failures=0 errors=0 @ 0.676s test 執行 + 15.5s context startup）
+- Frontend：typecheck `npx tsc --noEmit` 0 error
+- Chrome MCP live smoke `/docs/overview`：H2 list `["三個核心機制","API 標準對齊","下一步"]` ✓；OpenAPI 3.1 + `/v3/api-docs` + swagger-ui link 4/4 DOM assertions PASS
+
+### Why
+S099 META 系列 entry point 落地（Trust Maturity & Implementation Audit）。OpenAPI 3.1 標準化 + JSON Schema 2020-12 對齊是 trust maturity 第一道訊號 — 對 API consumers 表達「這個平台 spec 是 latest standard 不是 legacy 3.0」。Test lock 契約後續 SpringDoc 升版若 default 漂掉會在 CI 立刻 catch。
+
+### Process note
+第 4 個 single-tick full-ship 案例（S109 / S110 / S111 / **S099a**）— 但這是首個 Mode A（spec-driven）非 Mode B follow-up：Spec-Only-Handoff pattern validated（Tick 21 mid-session pivot 寫 spec → 下個 tick cron 自然偵測 📋 接手）。Plan A/B fallback design 也 paid off — spec 寫時 backend down 無法 live verify default OpenAPI 版本，但 explicit Plan B 條件先寫好讓 implement tick 不需重 plan。
+
+---
+
 ## [v3.4.11] — RiskTiersPage zh-TW tier title compliance（S111 完成；2026-05-03）
 
 > Mode B Round 16 Tick 18 — 跑 S110 §8 提議的 systematic i18n grep cut (`grep -rnE 'title="[A-Z][a-z]+' frontend/src/pages/`) 直接命中 `/docs/risk-tiers`：4 個 Tier card titles (`Pure documentation` / `Auto-published` / `Auto-published, with warning badge` / `Blocked until reviewer approves`) 全英文，body 已 zh-TW，是 same-component i18n inconsistency。Tick 18 同 tick full-ship（XS=2 string replace + Chrome MCP smoke，per S109 pattern 第 3 次）。

@@ -47,6 +47,13 @@ export function OverviewPage() {
         />
       </div>
 
+      <H2>API 標準對齊</H2>
+      <p className="mt-3 text-[18px] leading-relaxed text-[#A8A49C]">
+        Skills Hub REST API 對齊 <span className="text-[#EEECEA]">OpenAPI 3.1</span> 標準（JSON Schema 2020-12 對齊），
+        對應 agentskills.io trust maturity 規範。完整 spec 可從 <code className="rounded bg-[#171719] px-1.5 py-0.5 text-[16px] text-[#C9C5F2]">/v3/api-docs</code> 取得，
+        或瀏覽互動式文件 <a href="/swagger-ui/index.html" className="text-[#C9C5F2] hover:underline">Swagger UI</a>（dev profile 啟用）。
+      </p>
+
       <H2>下一步</H2>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <BeamFrame>

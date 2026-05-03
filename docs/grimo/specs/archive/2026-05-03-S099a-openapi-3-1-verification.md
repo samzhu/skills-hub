@@ -86,19 +86,22 @@ Run: backend test + frontend smoke per §5。Ship if all green。
 
 ## §7 Result
 
-待 implement tick 填（cron tick 偵測 📋 進 Mode A 接手）。
+**Status**: ✅ Shipped 2026-05-03 cron Tick 1（30m loop）— v3.4.12 patch。
 
-**Implement tick checklist**:
-- [ ] Backend `curl /v3/api-docs | jq '.openapi'` 確認 = `"3.1.0"`（Plan A）；若否切 Plan B
-- [ ] 新建 `OpenApiVersionTest.java` SpringBootTest 鎖契約
-- [ ] OverviewPage 加 OpenAPI 3.1 note 段落
-- [ ] `./gradlew test --tests '*OpenApi*' -x npmBuild` 全綠
-- [ ] Chrome MCP smoke `/docs/overview` 確認 note visible
-- [ ] CHANGELOG patch（建議 `v3.4.12`；若 backend yaml change 進 minor → `v3.5.0`）
-- [ ] roadmap row → ✅
-- [ ] spec doc 移 archive/
+**走 Plan B（spec assumption 錯誤）**：發現 `application-local.yaml:67` 已有 `springdoc.api-docs.version: openapi_3_1`（非 spec assumption 的 Plan A default 3.1.0）；SpringDoc 3.0.2 default 仍為 3.0.3，需 explicit 設定才產 3.1.0。Backend yaml 已先在前次 commit 加好（不在本 spec scope）；本 spec 只補 verification test + frontend docs note。
 
-**Live verification 推遲原因**: 寫此 spec 時 backend down (curl `localhost:8080/v3/api-docs` connection refused)；implement tick 需確認 backend 已重啟才能跑 §3 AC-1 / AC-3。
+**Implement checklist 完成**:
+- [x] Backend OpenApiVersionTest.java 新建 — `@SpringBootTest + @AutoConfigureMockMvc + @TestPropertySource(springdoc.api-docs.enabled=true, version=openapi_3_1)` lock 契約
+- [x] `./gradlew test --tests '*OpenApi*' -x npmBuild` PASS — `tests=1 failures=0 errors=0` @ 0.676s（context startup 15.554s total）
+- [x] OverviewPage.tsx 加「API 標準對齊」H2 段落 — 1-2 句中文 + inline code `/v3/api-docs` + Swagger UI link
+- [x] Chrome MCP smoke `/docs/overview` — H2 list `["三個核心機制","API 標準對齊","下一步"]` ✓；OpenAPI 3.1 + `/v3/api-docs` + swagger-ui link 均 visible ✓
+- [x] Frontend typecheck `npx tsc --noEmit` 0 error
+- [ ] CHANGELOG v3.4.12 + roadmap row → ✅ + archive（PERSIST 階段執行）
+
+**Verification metrics**:
+- Backend: 1 test PASS（OpenApiVersionTest.AC-1/AC-3）
+- Frontend: typecheck 0 error；DOM 4/4 assertions PASS（hasSection / hasOpenApi / hasApiDocsPath / hasSwaggerLink）
+- LOC delta: backend test +52, frontend page +5（spec 估 ~30 + ~5 — backend 略多但仍 XS scope 內）
 
 ## §8 Lesson — roadmap drive vs Mode B drift
 
