@@ -23,10 +23,12 @@ import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 class RequestCommandController {
 
     private final RequestService service;
+    private final RequestVoteService voteService;
     private final CurrentUserProvider users;
 
-    RequestCommandController(RequestService service, CurrentUserProvider users) {
+    RequestCommandController(RequestService service, RequestVoteService voteService, CurrentUserProvider users) {
         this.service = service;
+        this.voteService = voteService;
         this.users = users;
     }
 
@@ -36,6 +38,13 @@ class RequestCommandController {
         var requesterId = users.current().userId();
         var id = service.createRequest(body.title(), body.description(), requesterId);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id));
+    }
+
+    /** AC-5/AC-6 — vote toggle；同 user 重 POST 切 on/off。 */
+    @PostMapping("/{requestId}/vote")
+    ResponseEntity<RequestVoteService.VoteResult> toggleVote(@PathVariable String requestId) {
+        var userId = users.current().userId();
+        return ResponseEntity.ok(voteService.toggle(requestId, userId));
     }
 
     /** AC-7/AC-8 — 認領；OPEN→IN_PROGRESS。 */

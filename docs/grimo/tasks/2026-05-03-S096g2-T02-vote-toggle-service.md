@@ -97,4 +97,17 @@ ResponseEntity<RequestVoteService.VoteResult> toggleVote(@PathVariable String re
 T01（Request aggregate + RequestCommandController + request_votes table 已建）
 
 ## Status
-pending
+✅ shipped 2026-05-03 cron Tick 19
+
+## Result
+
+實作 per spec template — atomic SQL toggle (INSERT ON CONFLICT DO NOTHING + UPDATE +1/-1 with GREATEST guard + DELETE)；ApplicationEventPublisher 直接發 RequestVotedEvent（不走 aggregate outbox 因 vote_count @ReadOnlyProperty + atomic SQL；對齊 Skill downloadCount S076 同 pattern）。
+
+**Verification**：
+- `RequestVoteServiceTest` 5/5 PASS @ 9.7s（Testcontainers）— AC-5 toggle on / AC-6 toggle off / 多 user 互不影響 / non-existent → RequestNotFoundException / vote_count CHECK >= 0 schema-level guard
+- `ModularityTests` 2/2 PASS
+
+**Files changed**：
+- `backend/src/main/java/io/github/samzhu/skillshub/community/RequestVoteService.java` (new — atomic SQL toggle + RequestVotedEvent publish)
+- `backend/src/main/java/io/github/samzhu/skillshub/community/RequestCommandController.java` (modify — 注入 RequestVoteService + 加 POST `/{requestId}/vote` endpoint)
+- `backend/src/test/java/io/github/samzhu/skillshub/community/RequestVoteServiceTest.java` (new — 5 tests)
