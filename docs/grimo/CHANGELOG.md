@@ -1,5 +1,35 @@
 # Changelog
 
+## [v3.8.2] — JWT + ACL Safety graceful degradation（S115 完成；2026-05-03）
+
+> S115 跨 2 個 cron tick (Tick 33 spec planning + Tick 34 trimmed implement) — user 2026-05-03 mid-tick directive 「把權限設計落成安全設計文件 + 當 token 內容跟原先設計不一樣時不要直接壞掉」。**PATCH bump** — 純 safety policy；無 user-visible 行為變動，但補完既有 `jwt.getName()` NPE 風險（500 → 401）+ 加 graceful claim parsing + Micrometer 觀測能力。
+
+### Added — Backend
+- `backend/.../shared/security/CurrentUserProvider.java`（modify）— ctor 2-arg 加 `JwtClaimAnomalyMetrics`；sub null check via `getSubject()` + 預檢空字串 → throw MissingJwtSubException（取代既有 `jwt.getName()` NPE 路徑）；新增 `parseStringListClaim(token, claimName)` helper graceful 處理 4 種情境：(1) 缺 silent → empty list；(2) 型別錯（非 List）→ empty + WARN + counter；(3) 含非字串元素 → skip per element + WARN + counter；(4) 純淨 List<String> → immutable copy
+- `backend/.../shared/security/JwtClaimAnomalyMetrics.java`（new）— Micrometer counter wrapper component；shape `jwt_claim_anomaly_total{claim, reason}`；對齊既有 OpenTelemetry / Grafana LGTM stack
+- `backend/.../shared/api/MissingJwtSubException.java`（new）— RuntimeException；對齊既有 RequestNotFoundException naming convention
+- `backend/.../shared/api/GlobalExceptionHandler.java`（modify）— 加 MissingJwtSubException → 401 + RFC 6750 `WWW-Authenticate: Bearer error="invalid_token"` header
+- `backend/src/test/.../shared/security/CurrentUserProviderTest.java`（modify）— ctor migration 走新 2-arg；加 6 個 S115 AC tests（AC-1 missing sub / AC-1 blank sub / AC-2 roles type mismatch / AC-3 non-string element skip / AC-4 groups null silent fallback / AC-5 unknown claim forward-compat）
+
+### Added — Documentation
+- `docs/grimo/adr/ADR-006-jwt-acl-safety.md`（new）— 5-段範本（Status / Context / Decision / Consequences / Alternatives）+ 4 個 matrix 表（Required vs optional claims / ACL principal types fail-closed safety / Spring Security OAuth2 error → HTTP / Observability）+ Implementation snapshot；對齊 ADR-002 / ADR-003 / ADR-004 既驗 doc structure
+- `docs/grimo/specs/archive/2026-05-03-S115-jwt-acl-safety-design.md`（archived）— 含 §6 trimmed task plan + §7 verification + 4 deviation entries + lessons learned
+
+### Verified
+- `CurrentUserProviderTest` 11/11 PASS @ 0.396s（既有 S012 5 個 AC-4/5 regression + S115 新加 6 個 AC-1/2/3/4/5）
+- `ModularityTests` 2/2 + `MeControllerTest` + `AdminControllerTest` regression PASS（ctor 2-arg migration 不破既有 Spring DI；codebase 唯一 `new CurrentUserProvider(` 直接用法為本 test 自身）
+
+### Why
+- **User 2026-05-03 mid-tick directive 1/2 完成**：把權限設計落成「安全設計文件」（ADR-006）+ 當 token 內容跟原先設計不一樣時不要直接壞掉（graceful degradation policy）
+- **取代既有 `jwt.getName()` NPE 風險**：S012 既有 path 對 sub=null 直接 NPE → 500（user-visible 災難）；本 spec 補 explicit null check + 401 RFC-compliant 路徑
+- **Forward-compat IdP claim schema 演化**：未知新 claim（如未來 `tenant_id` / `scope_v2`）不破 parsing；型別錯由 silent fallback 升級為「fallback empty + WARN + counter」，給 ops alerting 介入空間
+- **ADR + Spec 雙寫**：ADR 是 policy 永久記錄；spec 是 ship how-to 可 archive；對齊既有 ADR-002/003/004 慣例；user directive 明示需要 doc level 落實
+- **Trimmed M(8-10) → 單 tick ship**：核心 invariant + ADR + 11 unit tests 落地；AC-8 端到端 prod fallback guard test / JwtSafetyTest E2E / glossary / dev-standards 更新 4 項 polish 走 backlog
+
+### Pattern milestones
+- 第 6 次 Exception 獨立 class 升級 naming canonical（MissingJwtSubException + 既有 5 個 RequestNotFoundException / NotRequestClaimerException / NotificationNotFoundException / NotNotificationRecipientException / CollectionNotFoundException + SkillNotPublishableException + BundleNotPublishedException）
+- codebase 第 1 次採用 `SimpleMeterRegistry` test pattern（Micrometer counter 直接 read 不走 Spring context；後續 metrics-related test 可借鏡）
+
 ## [v3.8.1] — Bundle-info endpoint + PublishValidatePage 真值（S098a3-2 完成；2026-05-03）
 
 > S098a3-2 跨 2 個 cron tick (Tick 31 spec planning + Tick 32 ship) — 取代 S098a3 frontend-only upload-strip 派生 placeholder 為 backend 真資料路徑（filename canonical / fileSize / fileCount / uploadedAt）。**PATCH bump** — 純 polish；新加 endpoint + V13 migration column；既有 row file_count=0 走 frontend hide 路徑；無 breaking change。

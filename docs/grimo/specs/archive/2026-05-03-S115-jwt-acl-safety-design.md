@@ -398,4 +398,65 @@ public class JwtClaimAnomalyMetrics {
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task plan
+
+**Trimmed single-tick ship**（M(8-10) → trimmed core + defer 大量 polish）：
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| Core implement | CurrentUserProvider sub null check + parseStringListClaim helper + JwtClaimAnomalyMetrics counter inject + MissingJwtSubException + GlobalExceptionHandler mapping | ✅ ship 本 commit |
+| Tests | CurrentUserProviderTest 加 S115 6 個 AC test（AC-1/2/3/4/5）+ ctor migration（既有 5 個 AC-4/5 test 走新 2-arg ctor） | ✅ ship 本 commit |
+| Doc | ADR-006 完整 5-段範本 + 4 個 matrix 表 + Implementation snapshot | ✅ ship 本 commit |
+| Persist | CHANGELOG v3.8.2 + roadmap ✅ + spec doc archive | ✅ ship 本 commit |
+
+**Deferred to polish backlog**（per spec §2.7 trim list）：
+
+- AC-8 端到端 prod fallback guard test（`oauth.enabled=true` 模式 anonymous 不誤打 branch 3）— 需 @SpringBootTest + Spring profile setup + Micrometer counter assertion infra
+- JwtSafetyTest @SpringBootTest E2E（AC-7 OAuth2 error → 401 / AC-10/11 ACL principal types invariant）
+- JwtDecoder OIDC discovery 失敗 graceful 503
+- glossary.md 加 graceful degradation / fail-closed / claim anomaly 中英對照
+- development-standards.md 加 §Security 「JWT claim parsing safety policy」段（指向 ADR-006）
+- Grafana dashboard panel JSON
+
+## 7. Result
+
+### Verification metrics
+
+- **Backend**：CurrentUserProviderTest **11/11 PASS** @ 0.396s（既有 5 個 AC-4/5 + S115 新加 6 個 AC-1/2/3/4/5：missing sub + blank sub + roles type mismatch + non-string element skip + groups null + unknown claim forward-compat）+ ModularityTests 2/2 + MeControllerTest + AdminControllerTest regression PASS（ctor 2-arg migration 不破既有 DI）
+- **Documentation**：ADR-006 5-段範本 + 4 個 matrix 表（claim 必要性 / ACL principal types / OAuth2 error → HTTP / Observability）+ Implementation snapshot；對齊 ADR-002 既驗 doc structure
+
+### Behavior validation outcome
+
+| 決策 | Pre-ship Confidence | Result |
+|------|---------------------|--------|
+| `sub` REQUIRED → 401 | Validated | AC-1 / AC-1-blank test 全綠；既有 jwt.getName() NPE 路徑成功取代 |
+| `roles` / `groups` 缺 → empty list fallback | Validated | AC-4 (groups null) PASS；S012 既有 5 個 test regression 全綠 |
+| 型別錯 / non-string element graceful + counter | Validated | AC-2 / AC-3 PASS；SimpleMeterRegistry 攔截 counter 確認 increment 量正確 |
+| 未知新 claim forward-compat | Validated | AC-5 (unknown claim) PASS — `tenant_id` / `scope_v2` 不 emit anomaly counter |
+| Anonymous fallback branch 在 prod 模式不被打到 | **Hypothesis**（未 ship 自動化驗證） | spec 級別 invariant 鎖在 ADR-006；polish backlog 加 AC-8 test |
+
+### Deviations from spec design
+
+| # | Spec design | Actual implementation | Why |
+|---|-------------|----------------------|-----|
+| 1 | spec §5 範本 拆 3 個 test 檔（CurrentUserProviderTest unit + JwtSafetyTest @SpringBootTest E2E + JwtAnonymousFallbackProdGuardTest） | 走單一 CurrentUserProviderTest unit 11 個 test | 既有 codebase 對 Jwt builder API 走 unit-level mock 是更輕量 + 更快路徑（@SpringBootTest 拉 35+s context vs unit < 1s）；spec invariant 在 ADR-006 doc 鎖住，自動化驗證為 polish |
+| 2 | spec §4.5 範本 BearerTokenAuthenticationEntryPoint default | 走自訂 GlobalExceptionHandler MissingJwtSubException → 401 + WWW-Authenticate header | Spring Security 預設 entry point 對 application-level exception (如 MissingJwtSubException) 不會自動翻 401；走 GlobalExceptionHandler 補完 RFC 6750 header header；對齊既有 RequestNotFoundException 翻譯 pattern |
+| 3 | AC-8 prod fallback guard test ship | Defer 至 polish backlog | @SpringBootTest setup + Micrometer counter infra 拉 wall budget；ADR-006 已 doc-level 鎖 invariant |
+| 4 | spec §5 加 glossary / development-standards 更新 | Defer | Polish；本 spec 已透過 ADR-006 落 doc，development-standards 加段指向 ADR 即可（小 commit follow-up） |
+
+### Trim list outcome — defer 為 polish backlog
+
+- **AC-8 prod fallback guard test**（spec §3 AC-8）— polish backlog row（單 issue）
+- **JwtSafetyTest @SpringBootTest E2E**（spec §4.6）— polish backlog
+- **JwtDecoder OIDC discovery graceful 503** — polish backlog
+- **Grafana dashboard panel JSON** — polish backlog
+- **glossary.md / development-standards.md 更新** — polish
+
+### Lessons learned
+
+- **`Jwt.withTokenValue(...).build()` 不強制 sub claim**：Spring Security 6+ Jwt builder API 接受沒設 `subject()` 的 token；測試 missing sub 場景無需 mock，直接用 builder 即可。Lesson：unit-level test 可走 builder API > 比 @SpringBootTest 端到端輕量 35x（0.4s vs 15s+）。
+- **`SimpleMeterRegistry` 是 Micrometer 測試標準**：對 counter increment 斷言走 `registry.find(name).tag(...).counter().count()` 直接讀；無需 Spring `@MeterRegistry`-managed setup。本 spec 第一次 codebase 採用此 pattern；後續 metrics-related test 可借鏡。
+- **CurrentUserProvider ctor 2-arg migration 影響面 = 1**：codebase grep `new CurrentUserProvider(` 只有 CurrentUserProviderTest；其他 caller 走 Spring DI（`@MockitoBean` 或 `@Autowired`），ctor 變更不破 wiring。Lesson：constructor injection 對 single-instance Spring component 是 safe-to-evolve；direct `new` 用法是 minor surface。
+- **ADR + Spec 雙寫**：ADR 是「為什麼這樣決策」永久記錄（policy）；spec 是「具體 how to ship」可 archive。本 spec 走雙寫對齊 ADR-002 / ADR-003 / ADR-004 既驗慣例；user 直接 directive 「落成安全設計文件」明示需要 ADR 而非 transient task spec。
+
+

@@ -187,6 +187,23 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
+	 * S115 AC-1 — JWT 通過簽名驗證但 sub claim 缺失 / blank → 401。
+	 *
+	 * <p>RFC 6750 Bearer error="invalid_token"；取代既有 {@code jwt.getName()} 對 sub=null 的
+	 * NPE 路徑（500 → 改 401 + 結構化錯誤 body）。WWW-Authenticate header 對齊 Spring Security
+	 * BearerTokenAuthenticationEntryPoint default。
+	 */
+	@ExceptionHandler(MissingJwtSubException.class)
+	ResponseEntity<ErrorResponse> handleMissingJwtSub(MissingJwtSubException ex) {
+		log.atError().addKeyValue("errorCode", "invalid_token")
+				.log("JWT missing required sub claim; request rejected");
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+				.header("WWW-Authenticate",
+						"Bearer error=\"invalid_token\", error_description=\"missing sub claim\"")
+				.body(new ErrorResponse("invalid_token", ex.getMessage(), Instant.now()));
+	}
+
+	/**
 	 * S037：處理 multipart 超 size 限制（{@link MaxUploadSizeExceededException}）。
 	 *
 	 * <p>{@code @ExceptionHandler} most-specific-first 規則 — 此 handler 必早於
