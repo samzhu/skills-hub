@@ -1,5 +1,27 @@
 # Changelog
 
+## [v3.4.8] — Vite dev proxy for SpringDoc + footer API link UX（S108 完成；2026-05-03）
+
+> Mode B Round 13 (curl 對比 dev :5173 vs backend :8080 同 path response) Tick 14 audit 找到 dev environment proxy completeness gap：vite.config.ts proxy 只有 `/api/v1/*`，footer 「API」link `/v3/api-docs` 在 dev 環境 fallback 到 SPA NotFoundPage（prod single-port deploy 不受影響因 Spring Boot 同時 serve SPA + API + SpringDoc）。Tick 15 frontend-only fix：vite proxy 補 SpringDoc 兩條 (`/v3/api-docs` + `/swagger-ui`) + LandingPage footer link 從 raw JSON 改 Swagger UI（end-user 友善視覺 API explorer）。
+
+### Changed
+- `frontend/vite.config.ts`：proxy table 加 `/v3/api-docs` + `/swagger-ui` 兩條規則 → `http://localhost:8080`，與既有 `/api/v1/*` 同 target
+- `frontend/src/pages/LandingPage.tsx`：footer 「API」link href 從 `/v3/api-docs` (raw JSON) 改 `/swagger-ui/index.html` (visual API explorer)
+
+### Added
+- `frontend/src/pages/LandingPage.test.tsx`（新建）：3 ACs — AC-3 footer 「API」link href = swagger-ui + S102 baseline 「文件」link + S102 baseline「狀態」placeholder 已移除
+
+### Verified
+- `cd frontend && npm test -- --run LandingPage`：1 file 3/3 PASS（1.23s）
+- Manual smoke: `curl :5173/v3/api-docs` → `200 application/json`（before: `200 text/html` SPA fallback）✓
+- Manual smoke: `curl :5173/swagger-ui/index.html` → `200 text/html`（content 由 SPA fallback 變 Swagger UI 真內容）✓
+- FE tests 累計 37 → 40（+3）
+
+### Why
+S100e → S102 → S103 → S104 → S105 → S106 → S107 → **S108** 第 8 個 S100 META cross-cutting follow-up — cut 從「page-level data → cross-cutting links → user-visible strings → interactive state → component-context → control-behavior → API projection → **dev environment proxy completeness**」累積 8 層。發現方式 = curl 對比 dev :5173 vs backend :8080 同 path 不同 response；prod single-port deploy 自然遮蔽此 bug。本 ship 後 v3.4.x patch series 8 個全 land。
+
+---
+
 ## [v3.4.7] — Semantic search response uses canonical Skill aggregate（S107 完成；2026-05-03）
 
 > Mode B Round 12 (Chrome MCP semantic search live + backend curl 對比) Tick 12 audit 找到 API projection field completeness gap：`GET /api/v1/search/semantic` response 缺 author / category / riskLevel 欄位（全 empty/null），但同 skill `/skills/{id}` 返回完整 (author=r30, category=Testing, riskLevel=LOW)，造成 `/search?q=docker` 全顯「未評估」risk badge。Tick 13 backend fix 採 **service read path lookup from canonical Skill aggregate** — `SemanticSearchService` 注入 `SkillRepository`，`similaritySearch` 拿 documents 後 batch `findAllById(skillIds)` 撈 Skills，`toResult(doc, skill)` 從 aggregate 取 metadata（不依賴 vector_store metadata，徹底 bypass 歷史 projection 寫入不一致）。Race condition graceful — skill 已刪 fallback empty defaults。

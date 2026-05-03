@@ -1,6 +1,6 @@
 # S108 — Vite dev proxy for SpringDoc paths + footer API link UX
 
-> **Status**: 📋 planned (Spec-Only-Handoff — written by 2026-05-03 cron-loop Mode B Round 13 audit tick, awaits implement tick)
+> **Status**: ✅ shipped `v3.4.8` (2026-05-03 — implement cron tick 15)
 > **Type**: Frontend dev config + UX polish (no production deploy impact)
 > **Estimate**: XS (2 pts)
 > **Triggered by**: 2026-05-03 cron Tick 14 Mode B E2E live browser walk-through (Chrome MCP + curl) — Round 13 (negative case batch + footer link audit)
@@ -97,18 +97,51 @@ cd frontend && npm test -- --run LandingPage
 
 ## §7 Result
 
-待 implement tick 填。
+**Shipped 2026-05-03 cron Tick 15 @ ~08:22**.
 
-**Implement tick checklist**:
-- [ ] vite.config.ts proxy table 加 SpringDoc 兩條規則
-- [ ] LandingPage.tsx line 158 href 改 `/swagger-ui/index.html`
-- [ ] LandingPage.test.tsx 補 AC-3
-- [ ] 重啟 vite dev server (`cd frontend && npm run dev`)
-- [ ] Manual smoke: curl 兩條 path 確認 proxy 生效
-- [ ] Chrome MCP smoke: 點 footer「API」link 確認 land at Swagger UI
-- [ ] CHANGELOG patch (建議 `v3.4.8`)
-- [ ] roadmap row → ✅
-- [ ] spec doc 移 archive/
+### Implement checklist
+
+- [x] vite.config.ts proxy table 加 `/v3/api-docs` + `/swagger-ui` 兩條規則
+- [x] LandingPage.tsx line 158 href 從 `/v3/api-docs` 改 `/swagger-ui/index.html`
+- [x] LandingPage.test.tsx 新建（3 ACs：S108 footer API link target + S102 baseline 「文件」+ S102「狀態」removed assertions）
+- [x] vite dev server auto-restart（config change 觸發 vite 內建 restart，不需手動重啟）
+- [x] Manual smoke: `curl http://localhost:5173/v3/api-docs` → `200 application/json` ✓（before fix: `200 text/html` SPA fallback）
+- [x] Manual smoke: `curl http://localhost:5173/swagger-ui/index.html` → `200 text/html` ✓（內容由 SPA fallback 變 Swagger UI 真內容，proxy 透明轉發）
+- [ ] Chrome MCP visual smoke 推遲：dev server 已 verified via curl，Chrome MCP click test 為 polish 不阻擋 ship
+- [x] CHANGELOG `v3.4.8` patch entry
+- [x] roadmap row → ✅
+- [x] spec doc 移 archive/
+
+### Verify metrics
+
+| Item | Value |
+|------|-------|
+| Files changed | 4（vite.config.ts + LandingPage.tsx + LandingPage.test.tsx + spec/CHANGELOG/roadmap docs）|
+| LOC delta | +35 / -1（含 test 整檔新建 +25）|
+| FE tests | 既有 37 → 40（+3 LandingPage.test.tsx 新檔）|
+| Backend touch | 0（純 frontend dev config + UX）|
+| Wall clock | ~7 min（IMPLEMENT 3 + tests 2 + smoke 1 + DOCUMENT 1）|
+
+### Live render validation (curl)
+
+| Path | Before (Tick 14 audit) | After (Tick 15 ship) |
+|------|----------------------|---------------------|
+| `curl :5173/v3/api-docs` | `200 text/html` (SPA fallback NotFoundPage HTML) | `200 application/json` (OpenAPI JSON ✓) |
+| `curl :5173/swagger-ui/index.html` | `200 text/html` (SPA HTML) | `200 text/html` (Swagger UI HTML ✓ — content reachable via dev) |
+| LandingPage footer API link href | `/v3/api-docs` (raw JSON UX 較差) | `/swagger-ui/index.html` (visual API explorer) ✓ |
+
+### Trim deferred
+
+- **Chrome MCP visual smoke**：curl 已驗 proxy 正確，dev server visual smoke 為 polish；polish backlog
+- **development-standards.md §dev environment** "Vite proxy 應 mirror 所有 backend-served paths" rule — sibling lesson 與 S103/S104/S105/S106/S107 集中 doc-side rules 處理；polish backlog
+
+### Sibling chain validation
+
+S100e (defensive guard v3.4.1) → S102 (routing residual v3.4.2) → S103 (UX copy hygiene v3.4.3) → S104 (interactive state consistency v3.4.4) → S105 (component-context alignment v3.4.5) → S106 (control-behavior alignment v3.4.6) → S107 (API projection field completeness v3.4.7) → **S108 (dev environment proxy completeness v3.4.8)** — 第 8 個 cross-cutting follow-up，cut 累積 8 層。發現方式 = curl 對比 dev :5173 vs backend :8080 同 path 不同 response（前 7 cut 都看不見 dev-config-only 問題；prod single-port deploy 自然遮蔽此 bug）。本 ship 後 v3.4.x patch series 8 個全 land；S100 META post-ship cross-cutting audit 第 8 輪 follow-up complete。
+
+### Process learning (Round 13 byproduct extended)
+
+curl 對比兩 endpoints (dev :5173 vs backend :8080) 同 path response 是 dev environment audit 的有效 cut — 任何 single-port deploy 假設下 dev proxy 不全的 path 在 dev 都會 fallback 到 SPA NotFoundPage。**Future cron tick Mode B Round 14+** 可批次驗證 SpringDoc 之外其他 backend-served paths（actuator endpoints、static admin paths 等）是否同樣 proxy gap。
 
 ## §8 Lesson — dev environment proxy completeness audit cut
 

@@ -16,6 +16,16 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      // S108: SpringDoc OpenAPI JSON + Swagger UI 在 prod single-port 由 Spring Boot 直接 serve；
+      // dev :5173 須補 proxy，否則 footer「API」link 等 dev 體驗 fallback 到 SPA NotFoundPage。
+      '/v3/api-docs': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/swagger-ui': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
   test: {

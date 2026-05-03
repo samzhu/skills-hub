@@ -155,7 +155,7 @@ export function LandingPage() {
           <span>Skills Hub · SKILL.md bundle 企業技能登錄中心</span>
           <div className="flex gap-5">
             <Link to="/docs/your-first-skill" className="hover:text-foreground">文件</Link>
-            <a href="/v3/api-docs" className="hover:text-foreground">API</a>
+            <a href="/swagger-ui/index.html" className="hover:text-foreground">API</a>
           </div>
         </div>
       </footer>
