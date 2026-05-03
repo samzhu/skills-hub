@@ -300,6 +300,19 @@ Job `d09deead`，cron `*/30 * * * *`，session-only（7 天 auto-expire）。
 - Implement: separate tick 接手 → ship `0c11d39`（v3.4.2）→ S102 archived
 - Outcome: 5 bugs 同日 found + fixed；S100 META 「page-level audit 對 inter-page link 有盲點」假設驗證
 
+**Tick 3**（form / button / mutation handler audit — user-initiated action 路徑）:
+- Method: Explore agent 跑 4 軸 — onSubmit handlers / onClick handlers (non-trivial) / `useMutation` completeness / disabled-placeholder buttons
+- Findings: 1 novel + 4 known
+  | # | Gap | Verdict |
+  |---|-----|---------|
+  | novel | `POST /skills/{id}/suspend` + `/reactivate` 後端有 endpoint（含 `@PreAuthorize`）但 frontend 無 UI 入口；admin 只能 curl/Swagger | auth-adjacent + S094e 已 post-MVP defer → 跳過 per user 範圍 |
+  | known 1 | CollectionsPage「建立集合」永久 disabled | S096f2 |
+  | known 2 | RequestBoardPage「發起新需求」永久 disabled | S096g2 |
+  | known 3 | SkillDetailPage Reviews / Flags tabs stub EmptyState | S098e2/e3 |
+  | known 4 | MySkillsPage「平均評分」MetricCard 顯 "—" placeholder | rating system MVP defer |
+- Action: **0 new spec opened** — novel gap 屬 user excluded scope，known gaps 已 roadmap tracked
+- Outcome: 0 user-scope-actionable bugs；validates Form audit cut 完整 — 無 console.log-only handler / 無 empty `() => {}` stub / 無 navigate-to-unregistered-route
+
 **Tick 2**（API contract audit — frontend api/* vs backend controllers）:
 - Method: Explore agent 跑 4 軸 — endpoint 存在 / type-payload 欄位 / query param / WebSocket-SSE
 - Findings: 3 untracked gaps
@@ -315,9 +328,12 @@ Job `d09deead`，cron `*/30 * * * *`，session-only（7 天 auto-expire）。
 
 - Session #2 close 已宣告 SATURATED；tick 1 找 5 bugs 直接 break saturation
 - Tick 2 0 bugs → 1/3 toward re-saturation
+- **Tick 3 0 user-scope-actionable bugs** → 2/3 toward re-saturation
+  - 1 novel gap found（suspend/reactivate UI 缺）但 auth-adjacent + S094e 已 roadmap post-MVP defer，per user「除了 Auth 相關」跳過
+  - 4 known gaps 已在 roadmap（S096f2/g2 disabled buttons、S098e2/e3 stub tabs、rating MVP placeholder）
 - Backlog 仍非空（S101 awaits human + 9+ backend specs）
 
-State: NOT yet re-saturated; cron 繼續 audit ticks。任何 tick 找 0 user-scope-actionable gap 不 force 開無價值 spec。
+State: NOT yet re-saturated（need 1 more 0-bug tick）；cron 繼續 audit ticks。任何 tick 找 0 user-scope-actionable gap 不 force 開無價值 spec。
 
 ### Audit cuts attempted vs remaining
 
@@ -326,12 +342,14 @@ State: NOT yet re-saturated; cron 繼續 audit ticks。任何 tick 找 0 user-sc
 | Page-by-page data source | (S100 META prior session) | 27 pages, 0 fake |
 | Cross-cutting link target | Tick 1 | 5 bugs → S102 |
 | API contract (endpoint / payload / param / WS-SSE) | Tick 2 | 3 gaps, 0 actionable |
+| Form / button / mutation handler 對應後端 | Tick 3 | 1 novel gap (suspend/reactivate 無 UI 入口) deferred — auth-adjacent + S094e roadmap post-MVP |
 | Chrome MCP live E2E（DOM / network / console） | — | 待 backend + dev server up；wall budget 大 |
 | TypeScript build errors（per S102 ship commit 提到 13 pre-existing TS errors） | — | 候選 next tick；frontend-only fix 範圍適合 cron |
-| Form action / hidden inputs | — | 候選 |
 | Backend response field naming consistency（snake_case vs camelCase） | — | 候選 |
 | Public assets path（OG meta, favicon, fonts） | — | 候選 |
 | Static text content language compliance（per CLAUDE.md zh-TW only） | — | 候選；S098g 已 pass 1+2 |
+| ARIA labels / a11y semantic | — | 候選 |
+| Loading skeleton / shimmer 是否與真實資料 shape 一致 | — | 候選 |
 
 ### Spec-Only-Handoff 模式運作觀察
 
