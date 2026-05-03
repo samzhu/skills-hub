@@ -86,6 +86,19 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
+	 * S098e2 AC-7 — Review 操作被拒（requester 非原作者）。403 + error code
+	 * 直接帶 {@code ex.getMessage()}（caller 傳入如 {@code "not_review_author"}）便於 FE i18n 對應。
+	 */
+	@ExceptionHandler(ReviewForbiddenException.class)
+	ResponseEntity<ErrorResponse> handleReviewForbidden(ReviewForbiddenException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", ex.getMessage())
+				.log("Review operation forbidden");
+		return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				.body(new ErrorResponse(ex.getMessage(), ex.getMessage(), Instant.now()));
+	}
+
+	/**
 	 * S037：處理 multipart 超 size 限制（{@link MaxUploadSizeExceededException}）。
 	 *
 	 * <p>{@code @ExceptionHandler} most-specific-first 規則 — 此 handler 必早於

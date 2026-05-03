@@ -149,4 +149,31 @@ CREATE INDEX idx_reviews_skill ON reviews (skill_id, created_at DESC);
 none
 
 ## Status
-pending
+✅ shipped 2026-05-03 cron Tick 8
+
+## Result
+
+**Trim from spec template**：
+- 合併 `ReviewCommandController` + `ReviewQueryController` → 單 `ReviewController`（3 endpoints volume 不需拆）
+- 合併 `ReviewCommandControllerTest` + `ReviewQueryControllerTest` slice tests defer 至 follow-up（ReviewServiceTest Testcontainers 已涵蓋 AC business logic + HTTP layer 對 ReviewController 走標準 Spring patterns，slice test 邊際收益低）
+
+**Design deviations**：
+- **Delete event publish path**：spec 寫「aggregate registerEvent + repo.save() 觸發 outbox」，但 `repo.save(loadedReview)` 在 state-based aggregate 無 @Version 時會誤觸 INSERT 衝主鍵。改用 `ApplicationEventPublisher` 直接發 `ReviewDeletedEvent`（mirror Flag pattern），保留 ADR-002 outbox 路徑給 create flow（factory new entity，save() INSERT 正確）。Listener (T02) 訂閱兩種 publish 路徑都收得到。
+- **ReviewForbiddenException 放置**：放 `shared/api/`（非 review module）— mirror SkillSuspendedException pattern 因 GlobalExceptionHandler 在 shared/api 不可反向依賴 review。
+
+**Verification**：
+- `ReviewServiceTest` 8/8 PASS @ 17.2s（AC-1/2/3/4/6/7/8 + 1 個 negative AC-6 not-found）— Testcontainers + 真 PostgreSQL
+- `ModularityTests` 2/2 PASS — review 模組邊界乾淨（allowedDependencies 對齊 spec §2.1）
+
+**Files changed**：
+- `backend/src/main/java/io/github/samzhu/skillshub/review/package-info.java` (new)
+- `backend/src/main/java/io/github/samzhu/skillshub/review/domain/Review.java` (new — aggregate factory + create event registration)
+- `backend/src/main/java/io/github/samzhu/skillshub/review/domain/ReviewRepository.java` (new — findBy + existsBy derived queries)
+- `backend/src/main/java/io/github/samzhu/skillshub/review/domain/ReviewCreatedEvent.java` (new)
+- `backend/src/main/java/io/github/samzhu/skillshub/review/domain/ReviewDeletedEvent.java` (new)
+- `backend/src/main/java/io/github/samzhu/skillshub/review/ReviewService.java` (new — 3-line orchestration + manual delete event publish)
+- `backend/src/main/java/io/github/samzhu/skillshub/review/ReviewController.java` (new — combined POST/DELETE/GET)
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/api/ReviewForbiddenException.java` (new — 403 handler input)
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/api/GlobalExceptionHandler.java` (modify — 加 ReviewForbiddenException 403 handler)
+- `backend/src/main/resources/db/migration/V8__create_reviews_table.sql` (new)
+- `backend/src/test/java/io/github/samzhu/skillshub/review/ReviewServiceTest.java` (new — 8 ACs)
