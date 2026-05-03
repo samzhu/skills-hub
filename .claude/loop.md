@@ -59,20 +59,22 @@ Hint 跟事實不符時，以 ledger / roadmap 為準。
 VERIFY/PERSIST/COMMIT。這跟 Finish-Current-First 不衝突 — 一個是「中斷
 時收尾現任」，這個是「明確分工人寫設計、agent 寫 code」。
 
-**No-Spec-Means-Design-First-Then-E2E**：roadmap 沒 active spec **不等於停，
-也不等於直接 Mode B**。決策 tree：
+**Continuous-Operation-No-Stop**（per user directive 2026-05-03）：cron 為
+持續性 audit-watchdog，**永不因 backlog 暫空 / 0-bug streak 而停**。決策 tree：
 
-1. roadmap 有 📋 sub-spec 但 specs/ 無 doc → step 3 寫 spec doc（XS
-   sub-specs 優先，per Selection priority "smallest size first when ties remain"）
-2. specs/ 全有 doc 且 designed/shipped → step 4 Mode B E2E
-3. **任一情況都不 reply「saturated, stop」**（per EXIT: SATURATED 條件 =
-   empty backlog AND ≥3 連續 0-bug；backlog 非空時不觸發）
+1. roadmap 有 active 📋 / 📐 spec doc → Mode A（implement / closeout）
+2. roadmap 有 📋 sub-spec 但 specs/ 無 doc → 主動 /planning-spec 寫 sub-spec
+   doc（XS / S 優先，Spec-Only-Handoff style §1-§5）
+3. 全 spec doc designed / shipped → Mode B E2E + edge case round（換 cut
+   軸 — pagination / form interaction / accessibility / cross-endpoint
+   consistency / a11y / network / cache header / etc.）
+4. Mode B 連續 0-bug → 不停，輪換新 cut 繼續探索（surface 永遠有 untouched
+   corners）；同時可主動掃 polish backlog 集中 ship 一輪 doc-side rules
+5. 真正停的條件 = user 明示停 / `CronDelete fd48748a` / 7 天 auto-expire
 
-本 session 的 S100e（Top 10 連結 404）案例：若早些 cron tick 進 Mode B
-可能更早抓到，但更早的 prevention 是 step 3 寫 backlog spec docs 持續
-推進 roadmap progression，Mode B drift 是 step 3 沒事做才轉的 fallback。
-
-真正停的條件 = user 明示停 / CronDelete。
+本 session 的 S100e（Top 10 連結 404）案例：早些 cron tick 進 Mode B 可能
+更早抓到，但更早的 prevention 是 step 2 寫 backlog spec docs。Mode B 不是
+fallback 而是 step 3 與 step 2 並列的 productive cycle 的一部分。
 
 ═══ MODE A — Spec Ship Pipeline ═══
 
@@ -115,14 +117,31 @@ COMMIT   — Conventional Commits prefix matching the change type. Subject ≤72
            a separate chore commit; do not bundle into the spec ship commit.
 ```
 
-═══ MODE B — E2E Testing Round ═══
+═══ MODE B — E2E + Edge Case Audit Round（持續性，per user directive） ═══
 
 Resume from the last untested round in the test-case ledger. Each round must cover
-**three categories**: positive case, negative case, edge case.
+**three categories**: positive case, negative case, edge case。
 
-- Bug found → branch to Mode A: write a fix-spec, ship it, return to Mode B next tick.
-- All pass → record the round's outcomes in progress log; tick ends.
-- Bug ledger uses A→Z→AA→AB→… letters; keep numbering monotonic across sessions.
+**完整 cut 軸 menu**（cron 持續輪換，不重複同一 cut 連續多 ticks）：
+- Page-level data audit（每 page fetch 哪 endpoint，是否假資料 / 缺 link / 404）
+- Cross-cutting links（routing change 後 grep `to="/"` / `navigate("/")` 漏的 callsites）
+- User-visible string compliance（i18n grep / spec ID leak / hardcoded English）
+- Interactive state consistency（filter / pagination / count / empty state 4 signal 對齊）
+- Component-context alignment（shared component 在多 context reuse 是否語意一致）
+- Control-behavior alignment（chip / button label 與 underlying behavior 1:1 mapping）
+- API projection field completeness（同 entity 跨 endpoint 欄位 consistent；S107 cut）
+- Dev environment proxy completeness（curl 對比 dev :5173 vs backend :8080 同 path response）
+- Accessibility（keyboard-only navigation / aria-label / focus order）
+- Anonymous user vs authenticated flow 比對
+- Negative deep-link patterns（`/skills/null` / 不存在 author / 超長 query string）
+- Backend response timing / cache headers / ETag / CORS preflight
+- Form interaction（publish / version add / ACL grant 流程）
+
+**規則**：
+- Bug found → branch to Mode A: write fix-spec（Spec-Only-Handoff 或 single-tick full-ship per S109/S110/S111 pattern），下個 tick 繼續 Mode B 其他 cut
+- All pass（0 bug）→ **不停**；記錄 round outcomes，下個 tick 換新 cut 軸繼續
+- Bug ledger uses A→Z→AA→AB→… letters; keep numbering monotonic across sessions
+- Mode B 同 cut 軸不連續多 ticks 跑（換 cut 持續探索 testing surface）
 
 ═══ INTERRUPT PROTOCOL — Stacked User Request ═══
 
@@ -135,23 +154,30 @@ When a new directive arrives mid-tick:
 
 **NEVER** overlap two units in flight. Half-finished spec + half-finished spec = both lost.
 
-═══ EXIT CONDITIONS ═══
+═══ EXIT CONDITIONS — Per-Tick Labels（不終止 Cron Loop） ═══
 
-Each exit is a labelled state. Print the label at end-of-tick when triggered.
+每個 tick 結尾印一個 label 表本 tick 結果。**沒有任何 EXIT 條件會終止 cron**
+— 終止 = user 明示停 / `CronDelete`。Cron 持續執行直到 user 主動停止或 7 天
+auto-expire。
 
-- **EXIT: DONE** — All AC for the current spec are green and the commit lands. Tick succeeds.
-- **EXIT: WIP** — Wall hit before completion. Commit partial progress with [WIP] marker
-  in the spec doc; next tick resumes from §6 Verification or earlier as appropriate.
-- **EXIT: BLOCKED** — One of: planning-spec is awaiting user choice mid-grill; QA gate
-  rejected for testability gap; POC baseline diverged from expectation; spec scope
-  proved ambiguous; build/smoke failed twice with no self-fix path. Write a blocker
-  note in the spec doc and stop without scheduling a wakeup.
-- **EXIT: SATURATED** — Backlog is empty AND ≥3 consecutive ticks found 0 bugs.
-  Print final summary (specs shipped / bugs cleared / version range / metrics) and
-  terminate the loop (CronDelete in cron mode; omit ScheduleWakeup in dynamic mode).
-- **EXIT: TICK_WALL_HIT** — Approaching wall with a phase still mid-flight. Commit
-  the most recent atomic step (e.g., "tests pass" without spec doc) and label clearly
-  for the next tick to pick up.
+- **EXIT: DONE** — 本 tick AC 全綠 + commit 落地，tick 成功。下個 tick 繼續。
+- **EXIT: WIP** — Wall hit 前未完成；commit 部分進度（spec doc 加 [WIP]
+  marker），下個 tick 從 §6 Verification 或 earlier 繼續。
+- **EXIT: BLOCKED** — Spec 設計需 user input（grill 中 / 7 open question 無法
+  自決 / POC baseline 偏差需 design 重構）。寫 blocker note 進 spec doc，**本
+  tick 結束**，但 cron 繼續 — 下個 tick TICK ALGORITHM 重新評估，可能 pick 其他
+  📋 sub-spec / 跑 Mode B audit / 寫新 spec。
+- **EXIT: NO-BUGS-MODE-B** — Mode B audit round 0 bugs 找到。**這不是停止信號**
+  — 下個 tick 切其他 cut（form / pagination / accessibility / 跨 endpoint
+  consistency / new audit angle），或回 step 3 寫 backlog spec doc。Mode B
+  surface 永遠有 untouched corners（per NEVER-treat-saturation-as-correctness rule）。
+- **EXIT: TICK_WALL_HIT** — 接近 30min wall 仍 phase mid-flight。Commit 最近
+  atomic step（e.g., "tests pass" without spec doc），label 清楚讓下個 tick pick up。
+
+**重要**：原 EXIT: SATURATED「terminate the loop」已移除 per user directive
+2026-05-03 — 「按照我的設計應該是定時起來執行任務 spec 開發 & 任務，沒有 spec
+就自己進行檢查、完整 E2E 跟邊緣案例測試才對，不應該有停下來發生」。Cron 為
+持續性 audit-watchdog，不因 backlog 暫空 / 連續 0-bug 而停。
 
 ═══ ALWAYS / NEVER — Bidirectional Constraints ═══
 
