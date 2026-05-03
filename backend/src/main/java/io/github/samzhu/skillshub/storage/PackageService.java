@@ -118,6 +118,37 @@ public class PackageService {
 
 
 	/**
+	 * S098a3-2：計算 zip 內檔案 entry 數（排除 directories）。
+	 *
+	 * <p>給 PublishValidatePage upload-strip 顯「N 個檔案」用；走標準
+	 * {@link ZipInputStream#getNextEntry()} 迭代 + {@code entry.isDirectory()} 過濾，
+	 * 對齊既有 {@link #extractSkillMd} / {@link #normalizeToZip} pattern（同一 zip 物件不
+	 * 重複 stream，每次新建 InputStream — 上傳 pipeline 已驗 byte[] in-memory 路徑）。
+	 *
+	 * @param zipBytes 上傳 zip 的 byte[]（既經 {@link #normalizeToZip} normalize）
+	 * @return 檔案 entry 數；非合法 zip 或 IOError → 0（caller 走 fallback path，不破上傳流程）
+	 */
+	public int countEntries(byte[] zipBytes) {
+		if (!isZipFile(zipBytes)) {
+			return 0;
+		}
+		int count = 0;
+		try (var zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
+			var entry = zis.getNextEntry();
+			while (entry != null) {
+				if (!entry.isDirectory()) {
+					count++;
+				}
+				entry = zis.getNextEntry();
+			}
+		} catch (IOException e) {
+			// MVP: log 由 caller 決定；本層回 0 表 unknown，不阻擋既有上傳路徑（per spec §2.3）
+			return 0;
+		}
+		return count;
+	}
+
+	/**
 	 * 從 zip 壓縮檔中提取 {@code SKILL.md} 的文字內容。
 	 *
 	 * <p>同時支援根目錄（{@code SKILL.md}）與子目錄（{@code xxx/SKILL.md}）兩種位置，

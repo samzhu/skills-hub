@@ -43,11 +43,11 @@ class SkillVersionQueryTest extends RepositorySliceTestBase {
                 new CreateSkillCommand("version-query-skill", "Test", "tester", "Testing"));
 
         commandService.publishVersion(new PublishVersionCommand(
-                skillId, "1.0.0", "gs://bucket/" + skillId + "/1.0.0.zip", 100L, Map.of()));
+                skillId, "1.0.0", "gs://bucket/" + skillId + "/1.0.0.zip", 100L, 0, Map.of()));
         // Ensure distinct publishedAt timestamps for stable DESC sort
         Thread.sleep(2);
         commandService.publishVersion(new PublishVersionCommand(
-                skillId, "1.1.0", "gs://bucket/" + skillId + "/1.1.0.zip", 150L, Map.of()));
+                skillId, "1.1.0", "gs://bucket/" + skillId + "/1.1.0.zip", 150L, 0, Map.of()));
 
         var versions = queryService.findVersionsBySkillId(skillId);
 

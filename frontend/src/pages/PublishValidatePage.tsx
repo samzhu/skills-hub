@@ -5,6 +5,7 @@ import { Loader2, AlertCircle, Check, FileArchive } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { ErrorState } from '@/components/ErrorState'
 import { fetchSkillById } from '@/api/skills'
+import { useBundleInfo } from '@/hooks/useBundleInfo'
 import type { Skill } from '@/types/skill'
 
 /**
@@ -47,6 +48,8 @@ export function PublishValidatePage() {
     },
     refetchIntervalInBackground: false,
   })
+  // S098a3-2: bundle-info hook fetch 失敗時 strip fall back 派生 placeholder（既有 UX 不破）
+  const { data: bundleInfo } = useBundleInfo(skillId)
 
   // S098a: scan 完成（riskLevel 設值）即 navigate 到 review；replace mode 避免 back-button 循環
   useEffect(() => {
@@ -86,22 +89,40 @@ export function PublishValidatePage() {
           系統正在掃描你的 bundle — 通常需要 5-15 秒。完成後自動跳轉至審視頁面。
         </p>
 
-        {/* S098a3: Upload-strip — 顯示已上傳 bundle 的識別資訊 (per prototype #5)。
-            Trim：filename / fileSize / fileCount 需 backend `/skills/{id}/bundle-info` (defer S098a3-2)；
-            目前用 skill.name + version 替代 filename，為「user 知道在驗證哪個 bundle」最低需求。 */}
+        {/* S098a3-2: Upload-strip 顯實值。bundleInfo (BundleInfo) 來自 GET /skills/{id}/bundle-info；
+            fetch 失敗時 fall back 派生 placeholder（既有 UX 不破，per spec §AC-7）。
+            fileCount=0 為 V13 migration legacy row signal — hide 該欄。 */}
         {skill && (
           <div className="mt-6 flex items-center gap-3 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#171719] text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               <FileArchive className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium text-foreground">{skill.name}-{skill.latestVersion ?? '0.0.0'}.zip</p>
+              <p className="truncate text-[13px] font-medium text-foreground">
+                {bundleInfo?.filename ?? `${skill.name}-${skill.latestVersion ?? '0.0.0'}.zip`}
+              </p>
               <p className="text-[11px] text-muted-foreground">
                 <span className="font-mono">v{skill.latestVersion ?? '—'}</span>
                 <span className="mx-1.5 text-[#5E5B55]">·</span>
                 <span>{skill.category}</span>
-                <span className="mx-1.5 text-[#5E5B55]">·</span>
-                <span>剛剛上傳</span>
+                {bundleInfo && (
+                  <>
+                    <span className="mx-1.5 text-[#5E5B55]">·</span>
+                    <span>{(bundleInfo.fileSize / 1024).toFixed(1)} KB</span>
+                    {bundleInfo.fileCount > 0 && (
+                      <>
+                        <span className="mx-1.5 text-[#5E5B55]">·</span>
+                        <span>{bundleInfo.fileCount} 個檔案</span>
+                      </>
+                    )}
+                  </>
+                )}
+                {!bundleInfo && (
+                  <>
+                    <span className="mx-1.5 text-[#5E5B55]">·</span>
+                    <span>剛剛上傳</span>
+                  </>
+                )}
               </p>
             </div>
             <span

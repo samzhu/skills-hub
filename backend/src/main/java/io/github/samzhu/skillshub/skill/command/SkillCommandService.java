@@ -106,8 +106,10 @@ public class SkillCommandService {
 		skillRepo.save(skill);
 
 		// SkillVersion 獨立 aggregate INSERT + publish SkillVersionPublishedEvent（含 storagePath / fileSize / allowedTools 完整載荷）
+		// S098a3-2: fileCount 從 packageService 計算給 PublishValidatePage upload-strip 顯實值用
+		var fileCount = packageService.countEntries(zipBytes);
 		var publishCmd = new PublishVersionCommand(
-				skill.getId(), version, storagePath, zipBytes.length, validation.metadata());
+				skill.getId(), version, storagePath, zipBytes.length, fileCount, validation.metadata());
 		skillVersionRepo.save(SkillVersion.publish(publishCmd));
 
 		log.atInfo()
@@ -115,6 +117,7 @@ public class SkillCommandService {
 				.addKeyValue("name", name)
 				.addKeyValue("version", version)
 				.addKeyValue("storagePath", storagePath)
+				.addKeyValue("fileCount", fileCount)
 				.log("技能上傳完成，已發佈首版");
 		return skill.getId();
 	}
@@ -168,8 +171,10 @@ public class SkillCommandService {
 		var storagePath = "skills/" + skillId + "/" + version + "/skill.zip";
 		storageService.upload(storagePath, zipBytes);
 
+		// S098a3-2: fileCount 計算對齊 uploadSkill path
+		var fileCount = packageService.countEntries(zipBytes);
 		var publishCmd = new PublishVersionCommand(
-				skillId, version, storagePath, zipBytes.length, validation.metadata());
+				skillId, version, storagePath, zipBytes.length, fileCount, validation.metadata());
 		skillVersionRepo.save(SkillVersion.publish(publishCmd));
 
 		log.atInfo()

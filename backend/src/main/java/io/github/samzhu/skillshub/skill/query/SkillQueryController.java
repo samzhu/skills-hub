@@ -40,15 +40,26 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersion;
 public class SkillQueryController {
 
 	private final SkillQueryService queryService;
+	private final BundleInfoQueryService bundleInfoService;
 
-	public SkillQueryController(SkillQueryService queryService) {
+	public SkillQueryController(SkillQueryService queryService, BundleInfoQueryService bundleInfoService) {
 		this.queryService = queryService;
+		this.bundleInfoService = bundleInfoService;
 	}
 
 	/** 依 ID 取得單一技能詳情。找不到時回傳 404。 */
 	@GetMapping("/skills/{id}")
 	Skill getById(@PathVariable String id) {
 		return queryService.findById(id);
+	}
+
+	/**
+	 * S098a3-2 — Bundle metadata for PublishValidatePage upload-strip。回 canonical
+	 * filename + fileSize + fileCount + uploadedAt；404 = skill 不存在 OR 無 published version。
+	 */
+	@GetMapping("/skills/{id}/bundle-info")
+	BundleInfoQueryService.BundleInfoResponse bundleInfo(@PathVariable String id) {
+		return bundleInfoService.get(id);
 	}
 
 	/**

@@ -74,6 +74,10 @@ public class SkillVersion extends AbstractAggregateRoot<SkillVersion> implements
     @Column("file_size")
     private long fileSize;
 
+    /** S098a3-2: zip 檔案 entry 數（排除 directories）；0 = legacy row（V13 migration default）。 */
+    @Column("file_count")
+    private int fileCount;
+
     @Column("frontmatter")
     private Map<String, Object> frontmatter;
 
@@ -113,6 +117,7 @@ public class SkillVersion extends AbstractAggregateRoot<SkillVersion> implements
         sv.version = cmd.version();
         sv.storagePath = cmd.storagePath();
         sv.fileSize = cmd.fileSize();
+        sv.fileCount = cmd.fileCount();
         sv.frontmatter = cmd.frontmatter() == null ? Map.of() : cmd.frontmatter();
         sv.riskAssessment = null;
         sv.publishedAt = Instant.now();
@@ -159,6 +164,7 @@ public class SkillVersion extends AbstractAggregateRoot<SkillVersion> implements
     @com.fasterxml.jackson.annotation.JsonIgnore
     public String getStoragePath() { return storagePath; }
     public long getFileSize() { return fileSize; }
+    public int getFileCount() { return fileCount; }
     public Map<String, Object> getFrontmatter() { return frontmatter; }
     public Map<String, Object> getRiskAssessment() { return riskAssessment; }
     public Instant getPublishedAt() { return publishedAt; }

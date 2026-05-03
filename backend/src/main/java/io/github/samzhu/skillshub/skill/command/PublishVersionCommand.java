@@ -13,6 +13,9 @@ import java.util.Map;
  * @param version     要發布的語意化版本號（SemVer，如 {@code 1.0.0}）
  * @param storagePath 套件在 GCS 的完整物件路徑
  * @param fileSize    套件的位元組大小
+ * @param fileCount   zip 內 entry 數（排除 directories）— S098a3-2；upload pipeline
+ *                    透過 {@link io.github.samzhu.skillshub.storage.PackageService#countEntries}
+ *                    計算後填入；0 表 unknown / legacy
  * @param frontmatter 從 SKILL.md YAML frontmatter 解析出的 metadata 鍵值對
  */
 public record PublishVersionCommand(
@@ -20,5 +23,6 @@ public record PublishVersionCommand(
 		String version,
 		String storagePath,
 		long fileSize,
+		int fileCount,
 		Map<String, Object> frontmatter
 ) {}

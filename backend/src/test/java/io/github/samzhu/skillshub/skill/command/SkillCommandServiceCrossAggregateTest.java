@@ -94,7 +94,7 @@ class SkillCommandServiceCrossAggregateTest {
         var skill = Skill.create(new CreateSkillCommand("cross-tx-skill", "POC test", "alice", "DevOps"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
-                skill.getId(), "1.0.0", "gs://bucket/cross-tx/1.0.0.zip", 100,
+                skill.getId(), "1.0.0", "gs://bucket/cross-tx/1.0.0.zip", 100, 0,
                 Map.of("name", "cross-tx-skill", "description", "POC test")));
 
         helper.saveCrossAggregate(skill, sv);
@@ -164,7 +164,7 @@ class SkillCommandServiceCrossAggregateTest {
         var skill = Skill.create(new CreateSkillCommand("rollback-skill", "rollback test", "alice", "DevOps"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
-                skill.getId(), "1.0.0", "gs://bucket/rollback/1.0.0.zip", 100, Map.of()));
+                skill.getId(), "1.0.0", "gs://bucket/rollback/1.0.0.zip", 100, 0, Map.of()));
 
         assertThatThrownBy(() -> helper.saveCrossAggregateThenFail(skill, sv))
                 .isInstanceOf(RuntimeException.class)

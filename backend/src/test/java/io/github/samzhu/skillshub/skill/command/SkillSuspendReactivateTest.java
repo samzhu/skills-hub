@@ -138,7 +138,7 @@ class SkillSuspendReactivateTest {
                 new CreateSkillCommand("published-" + uniqueSuffix(),
                         "test fixture", "owner", "Testing"));
         commandService.publishVersion(new PublishVersionCommand(
-                skillId, "1.0.0", "gs://bucket/p", 0L, Map.of()));
+                skillId, "1.0.0", "gs://bucket/p", 0L, 0, Map.of()));
         return skillId;
     }
 

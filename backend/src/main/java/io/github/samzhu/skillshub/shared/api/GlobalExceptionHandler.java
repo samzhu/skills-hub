@@ -178,6 +178,14 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse("not_notification_recipient", ex.getMessage(), Instant.now()));
 	}
 
+	/** S098a3-2 AC-3 — skill 存在但無 published version → 404 bundle_not_published（區分於 skill_not_found）。 */
+	@ExceptionHandler(BundleNotPublishedException.class)
+	ResponseEntity<ErrorResponse> handleBundleNotPublished(BundleNotPublishedException ex) {
+		log.atWarn().addKeyValue("errorCode", "bundle_not_published").log("Bundle metadata unavailable: skill has no published version");
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse("bundle_not_published", ex.getMessage(), Instant.now()));
+	}
+
 	/**
 	 * S037：處理 multipart 超 size 限制（{@link MaxUploadSizeExceededException}）。
 	 *

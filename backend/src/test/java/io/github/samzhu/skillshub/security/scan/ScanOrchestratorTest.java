@@ -97,7 +97,7 @@ class ScanOrchestratorTest {
 		when(versionRepo.hasRiskAssessmentFromEvent(anyString(), anyString(), anyString())).thenReturn(false);
 		// findBySkillIdAndVersion 回傳一個真實 SkillVersion aggregate（透過 publish factory 建立）
 		var sv = SkillVersion.publish(new PublishVersionCommand(
-				"agg-1", "1.0.0", "gs://b/x.zip", 100, Map.of("name", "demo")));
+				"agg-1", "1.0.0", "gs://b/x.zip", 100, 0, Map.of("name", "demo")));
 		when(versionRepo.findBySkillIdAndVersion(eq("agg-1"), eq("1.0.0")))
 				.thenReturn(Optional.of(sv));
 		// save 直接 echo argument（aggregate state mutation 在傳入物件上完成）

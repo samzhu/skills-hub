@@ -59,7 +59,7 @@ class SkillCommandServiceTest extends RepositorySliceTestBase {
                 new CreateSkillCommand("k8s-deploy", "K8s deployment skill", "jane", "DevOps"));
 
         commandService.publishVersion(
-                new PublishVersionCommand(skillId, "1.0.0", "gs://bucket/k8s-deploy/1.0.0.zip", 0, java.util.Map.of()));
+                new PublishVersionCommand(skillId, "1.0.0", "gs://bucket/k8s-deploy/1.0.0.zip", 0, 0, java.util.Map.of()));
 
         var versions = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
         assertThat(versions).hasSize(1);

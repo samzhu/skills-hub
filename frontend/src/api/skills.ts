@@ -79,6 +79,24 @@ export function fetchSkillByAuthorAndName(author: string, name: string): Promise
 }
 
 /**
+ * S098a3-2 — Bundle metadata for PublishValidatePage upload-strip。
+ *
+ * `filename` 走 backend canonical derive `<name>-<version>.zip`；`fileCount=0` 表 legacy
+ * row（V13 migration default；frontend hide 該欄）。404 路徑：skill 不存在 (NOT_FOUND)
+ * vs 無 published version (`bundle_not_published`)。
+ */
+export interface BundleInfo {
+  filename: string
+  fileSize: number
+  fileCount: number
+  uploadedAt: string
+}
+
+export function fetchBundleInfo(id: string): Promise<BundleInfo> {
+  return apiFetch<BundleInfo>(`/skills/${id}/bundle-info`)
+}
+
+/**
  * S096g2 — Request Board read model (對齊 backend RequestQueryController.RequestResponse).
  *
  * Vote count 由 backend `request_votes` 表 atomic SQL 維護（mirror Skill downloadCount

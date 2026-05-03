@@ -60,7 +60,7 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
         var skill = Skill.create(new CreateSkillCommand("exists-test", "desc", "alice", "DevOps"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
-                skill.getId(), "1.0.0", "gs://b/exists/1.0.0.zip", 100, Map.of()));
+                skill.getId(), "1.0.0", "gs://b/exists/1.0.0.zip", 100, 0, Map.of()));
 
         helper.saveCrossAggregate(skill, sv);
 
@@ -77,18 +77,18 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
         helper.save(skill);
 
         var sv1 = SkillVersion.publish(new PublishVersionCommand(
-                skill.getId(), "1.0.0", "gs://b/o/1.0.0.zip", 100, Map.of()));
+                skill.getId(), "1.0.0", "gs://b/o/1.0.0.zip", 100, 0, Map.of()));
         helper.save(skill);   // no-op for skill
         helper.saveVersionOnly(sv1);
         Thread.sleep(20);   // 確保 publishedAt 嚴格遞增
 
         var sv2 = SkillVersion.publish(new PublishVersionCommand(
-                skill.getId(), "1.1.0", "gs://b/o/1.1.0.zip", 100, Map.of()));
+                skill.getId(), "1.1.0", "gs://b/o/1.1.0.zip", 100, 0, Map.of()));
         helper.saveVersionOnly(sv2);
         Thread.sleep(20);
 
         var sv3 = SkillVersion.publish(new PublishVersionCommand(
-                skill.getId(), "2.0.0", "gs://b/o/2.0.0.zip", 100, Map.of()));
+                skill.getId(), "2.0.0", "gs://b/o/2.0.0.zip", 100, 0, Map.of()));
         helper.saveVersionOnly(sv3);
 
         var versions = skillVersionRepo.findBySkillIdOrderByPublishedAtDesc(skill.getId());
@@ -106,7 +106,7 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
         var skill = Skill.create(new CreateSkillCommand("find-test", "desc", "alice", "DevOps"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
-                skill.getId(), "1.0.0", "gs://b/find/1.0.0.zip", 100, Map.of()));
+                skill.getId(), "1.0.0", "gs://b/find/1.0.0.zip", 100, 0, Map.of()));
         helper.saveCrossAggregate(skill, sv);
 
         var found = skillVersionRepo.findBySkillIdAndVersion(skill.getId(), "1.0.0");
@@ -124,12 +124,12 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
         var skill = Skill.create(new CreateSkillCommand("uniq-test", "desc", "alice", "DevOps"));
         skill.recordVersionPublished("1.0.0");
         var sv1 = SkillVersion.publish(new PublishVersionCommand(
-                skill.getId(), "1.0.0", "gs://b/uniq/1.0.0.zip", 100, Map.of()));
+                skill.getId(), "1.0.0", "gs://b/uniq/1.0.0.zip", 100, 0, Map.of()));
         helper.saveCrossAggregate(skill, sv1);
 
         // 第二筆 SkillVersion 相同 (skill_id, version) — 預期 DB UNIQUE 兜底
         var sv2 = SkillVersion.publish(new PublishVersionCommand(
-                skill.getId(), "1.0.0", "gs://b/uniq/1.0.0-dup.zip", 200, Map.of()));
+                skill.getId(), "1.0.0", "gs://b/uniq/1.0.0-dup.zip", 200, 0, Map.of()));
 
         assertThatThrownBy(() -> helper.saveVersionOnly(sv2))
                 .isInstanceOf(DataIntegrityViolationException.class);
@@ -147,7 +147,7 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
         var skill = Skill.create(new CreateSkillCommand("risk-test", "desc", "alice", "DevOps"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
-                skill.getId(), "1.0.0", "gs://b/risk/1.0.0.zip", 100, Map.of()));
+                skill.getId(), "1.0.0", "gs://b/risk/1.0.0.zip", 100, 0, Map.of()));
         helper.saveCrossAggregate(skill, sv);
 
         // 重新 load → mutate → save（測試 UPDATE path；@PersistenceCreator 載入 isNew=false）
@@ -173,7 +173,7 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
         var skill = Skill.create(new CreateSkillCommand("idem-test", "desc", "alice", "DevOps"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
-                skill.getId(), "1.0.0", "gs://b/idem/1.0.0.zip", 100, Map.of()));
+                skill.getId(), "1.0.0", "gs://b/idem/1.0.0.zip", 100, 0, Map.of()));
         helper.saveCrossAggregate(skill, sv);
 
         // 尚未 attachRiskAssessment（risk_assessment IS NULL）→ 任何 sourceEventId 查詢皆 false

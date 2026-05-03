@@ -1,5 +1,37 @@
 # Changelog
 
+## [v3.8.1] — Bundle-info endpoint + PublishValidatePage 真值（S098a3-2 完成；2026-05-03）
+
+> S098a3-2 跨 2 個 cron tick (Tick 31 spec planning + Tick 32 ship) — 取代 S098a3 frontend-only upload-strip 派生 placeholder 為 backend 真資料路徑（filename canonical / fileSize / fileCount / uploadedAt）。**PATCH bump** — 純 polish；新加 endpoint + V13 migration column；既有 row file_count=0 走 frontend hide 路徑；無 breaking change。
+
+### Added — Backend
+- `backend/.../skill/query/BundleInfoQueryService.java`（new — Skill + SkillVersion JOIN read；filename derive `<name>-<version>.zip` per S041 canonical；NoSuchElement → 404 NOT_FOUND；無 latestVersion → 404 bundle_not_published distinct）
+- `backend/.../skill/query/SkillQueryController.java`（modify）— 加 `GET /api/v1/skills/{id}/bundle-info` + 構造 BundleInfoQueryService 注入
+- `backend/.../shared/api/BundleNotPublishedException.java`（new — 404；對齊既有 RequestNotFoundException naming）
+- `backend/.../shared/api/GlobalExceptionHandler.java`（modify — 加 bundle_not_published 404 mapping）
+- `backend/.../storage/PackageService.java`（modify — 加 `countEntries(byte[]): int` helper；走 ZipInputStream + entry.isDirectory() 過濾；非 zip / IOError → 0 不破上傳路徑）
+- `backend/.../skill/command/PublishVersionCommand.java`（modify — 加 `int fileCount` field）
+- `backend/.../skill/domain/SkillVersion.java`（modify — 加 `@Column("file_count") int fileCount` + factory + getter）
+- `backend/.../skill/command/SkillCommandService.java`（modify — `uploadSkill` + `addVersion` 兩 path 走 `packageService.countEntries(zipBytes)` 寫入 cmd）
+- V13 migration — `ALTER TABLE skill_versions ADD COLUMN file_count INTEGER NOT NULL DEFAULT 0` + COMMENT；既有 row 0 = legacy unknown signal（per spec §2.3 MVP 不 backfill；下次 publish 該 skill 才 update）
+- `backend/src/test/.../skill/query/BundleInfoQueryServiceTest.java`（new — 6 個 Testcontainers tests AC-1/2/3/5 + orphan latestVersion pointer + blank latestVersion corner case）
+- 6 個 cross-test 檔 PublishVersionCommand callsite migration（SkillVersionRepositoryTest + SkillCommandServiceTest + SkillSuspendReactivateTest + SkillCommandServiceCrossAggregateTest + SkillVersionAggregateTest + SkillVersionQueryTest + ScanOrchestratorTest；統一加 `, 0,` for fileCount 預設）
+
+### Added — Frontend
+- `frontend/src/api/skills.ts`（modify — 加 `BundleInfo` interface + `fetchBundleInfo` helper）
+- `frontend/src/hooks/useBundleInfo.ts`（new — TanStack Query hook with `enabled: !!id` gate + 60s staleTime + `retry: false`（404 為 expected fallback path 不 retry））
+- `frontend/src/pages/PublishValidatePage.tsx`（modify — strip render 走 `bundleInfo` 真值；fileSize KB rounded + fileCount 「N 個檔案」(fileCount > 0 gate)；endpoint 404 / loading state fall back 派生 placeholder 「剛剛上傳」）
+
+### Verified
+- Backend：BundleInfoQueryServiceTest 6/6 + SkillVersionRepositoryTest 6/6 + SkillCommandServiceTest 2/2 + SkillVersionAggregateTest 4/4 + ModularityTests 2/2 PASS @ Testcontainers
+- Frontend：PublishValidatePage.test.tsx 4/4 PASS @ 1.38s + 全 frontend suite 193/193 PASS @ 7.32s（0 regression）；npx tsc --noEmit PASS
+
+### Why
+- **補完 S098a3 frontend-only ship 留 defer hook**：S098a3 (v3.0.0) ship 為 derived placeholder；本 spec 走 backend 真資料路徑提升 PublishValidatePage upload-strip UX 一致性
+- **fileCount 走「上傳時計算 + 寫 column」而非「即時 GCS scan」**：避免每次 endpoint 走 GCS download + zip extract 災難；既有 row 走 0 fallback signal + frontend hide 該欄屬 graceful policy
+- **filename canonical derive 不存原始上傳檔名**：對齊 S041 既驗 download endpoint canonical naming；user 上傳檔名與系統識別無 invariant 關係
+- **第 5 次 enabled-gate hook canonical 採用**：對齊 useSkill / useRequest / useCollection / useNotificationPreferences 既驗 pattern
+
 ## [v3.8.0] — Collections full feature（S096f2 完成；2026-05-03）
 
 > S096f2 跨 5 個 cron tick (Tick 26 spec planning + Tick 27 T01 backend infra + Tick 28 T02 service/controllers + Tick 29 T03 FE infra + Tick 30 T04 frontend full + spec ship) ship — 取代 ✅ S096f1 read-only stub：完整 Collection aggregate（ADR-002 canonical Spring Data JDBC 充血 + @MappedCollection skills + Modulith Outbox）+ Command/Query controllers split + 4 REST endpoints + 一鍵 install (Approach C frontend orchestration) + 2 frontend components (CreateCollectionModal + InstallButton)。**MINOR bump** — 新 aggregate + V12 schema 2 表 + 2 domain events + 4 REST endpoints + 2 frontend components + community module formal `@ApplicationModule` register。為 S101b Impact Score 提供 install event hook。

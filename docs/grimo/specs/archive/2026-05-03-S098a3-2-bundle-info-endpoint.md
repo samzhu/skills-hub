@@ -319,4 +319,60 @@ const { data: bundleInfo } = useBundleInfo(skillId)
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task plan（單 tick ship — 無 task split）
+
+XS(2) size，單 tick 完成；不拆 BDD task files（對齊 S099a / S110 / S111 single-tick ship pattern 慣例）。
+
+| Phase | 內容 | Commit |
+|-------|------|--------|
+| Backend infra | V13 migration + PackageService.countEntries + PublishVersionCommand + SkillVersion + 兩 upload pipeline 計算 + BundleInfoQueryService + endpoint + BundleNotPublishedException + GlobalExceptionHandler | 本 commit |
+| Backend tests | BundleInfoQueryServiceTest 6 個 + 6 test 檔 cross-callsite migration（PublishVersionCommand 加 fileCount 參數） | 本 commit |
+| Frontend infra | api/skills.ts BundleInfo + fetchBundleInfo + useBundleInfo hook | 本 commit |
+| Frontend page | PublishValidatePage strip swap 真值 + fileCount=0 hide gate + 404 fallback | 本 commit |
+| Persist | CHANGELOG v3.8.1 + roadmap ✅ + spec doc archive | 本 commit |
+
+## 7. Result
+
+### Verification metrics
+
+- **Backend**：
+  - `BundleInfoQueryServiceTest` 6/6 PASS @ Testcontainers（AC-1 happy / AC-2 skill not found / AC-3 DRAFT no version + blank latestVersion + orphan pointer / AC-5 legacy file_count=0 fallback）
+  - Regression：`SkillVersionRepositoryTest` 6/6 + `SkillCommandServiceTest` 2/2 + `SkillVersionAggregateTest` 4/4 + `ModularityTests` 2/2 PASS（cross-test PublishVersionCommand callsite migration ✓）
+- **Frontend**：
+  - `PublishValidatePage.test.tsx` 4/4 PASS @ 1.38s
+  - 全 frontend suite 193/193 PASS @ 7.32s（0 regression）
+  - `npx tsc --noEmit` PASS
+
+### Behavior validation outcome
+
+| 決策 | Pre-ship Confidence | Result |
+|------|---------------------|--------|
+| `skill_versions.file_count` ALTER TABLE | Validated | V13 migration apply 成功；既有 row 0 default + 新 publish update 路徑運作 |
+| Spring Data JDBC 加 column 不破既有 SkillVersion factory | Validated | factory 加 `sv.fileCount = cmd.fileCount()` + 既有 18 個 cross-test 走 `0` 預設 fileCount 全綠 |
+| GCS zip scan 取代真檔名 | Validated（partial — 走 derive） | filename canonical S041 既驗；無 GCS open 需求 |
+| frontend `useBundleInfo` enabled-gate hook | Validated | 對齊 useSkill / useRequest canonical 第 5 次採用；retry:false 對 404 fallback path 行為對齊 |
+
+### Deviations from spec design
+
+| # | Spec design | Actual implementation | Why |
+|---|-------------|----------------------|-----|
+| 1 | spec §4.4 範本 加新 `SkillNotFoundException` 獨立 class | 走既有 `NoSuchElementException` 路徑（既有 GlobalExceptionHandler `handleNotFound` 翻 NOT_FOUND） | spec §4.4 範本 over-engineered；既有 SkillQueryService 已用 NoSuchElementException 路徑十多 endpoint，加新 class 違反 minimal diff 原則。BundleNotPublishedException 仍獨立 class 為 distinct error code 提供 i18n 能力 |
+| 2 | spec §3 AC-2 預期 401 / `error: "skill_not_found"` distinct | 走既有 NOT_FOUND error code（既有 SkillQueryController 既驗） | 對齊既有 codebase 路徑；frontend i18n key 已對應 "NOT_FOUND" |
+| 3 | spec §3 AC-7 frontend 404 fall back 派生 placeholder | 加 retry:false 給 useBundleInfo 避免 404 重試誤觸 ops alerting | 既有 ApiError throw 路徑無區分 expected vs unexpected 404；retry:false 是 minimal 不擴 ApiError shape 達同等效果 |
+| 4 | 預期 spec §6 拆 4 BDD task files | 單 tick ship；無 task split | XS(2) size 適合 single-tick ship pattern；對齊 S099a / S110 / S111 既驗 |
+
+### Trim list — 已 defer 為 polish backlog
+
+- **既有 row backfill job**（per §2.3 / §2.5）— polish backlog row；MVP 不 backfill；新 publish 自動有 fileCount
+- **Hover tooltip 顯精確 byte size**（如 `12,853 bytes`）— defer
+- **uploadedAt relative time formatter**（「3 分鐘前」）— defer；MVP 無 uploadedAt 直接顯（fall back 用「剛剛上傳」signal）
+- **Strip alternative copy** 當 fileCount=0：MVP hide；polish 可考慮顯「檔案數未知」
+- **Multi-language unknown count signal**：MVP 走 hide；i18n 對應留 polish
+
+### Lessons learned
+
+- **加 record field 觸發 6 test 檔 cross-callsite migration**：`PublishVersionCommand` 為 record（immutable + canonical ctor）；新增 field 雖然安全但 caller 全要 update。本 spec 6 個 test 檔 + 9 callsites 修改為「加 `, 0` for fileCount 預設」單行修改；用 replace_all + 個別 Edit 兩種策略混合處理。Lesson：record field 加 field 是 widespread change，commit body 必須含完整 caller migration list。
+- **`retry: false` 取代 ApiError 區分**：TanStack Query 預設 3 次 retry on error；對 404 expected fallback path 不該 retry。`retry: false` 是 minimal-diff 解法不需擴 ApiError shape。
+- **`fileCount=0` 為 legacy unknown signal**：column nullable vs default-0 兩案，DEFAULT 0 walking 較安全（INSERT 必須有值，無 null check 路徑）。frontend gate `fileCount > 0` 過濾 + fallback hide 該欄。
+- **single-tick XS spec 不需 BDD task split**：對齊既有 S099a / S110 / S111 慣例；XS(2)+ 直接 ship + DOCUMENT + PERSIST 一 commit 落地。
+

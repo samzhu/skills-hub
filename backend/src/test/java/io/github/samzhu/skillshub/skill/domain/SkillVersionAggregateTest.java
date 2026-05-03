@@ -37,7 +37,7 @@ class SkillVersionAggregateTest {
     @DisplayName("AC-5 partial: SkillVersion.publish(...) factory 設 state + register SkillVersionPublishedEvent")
     void publishFactorySetsStateAndRegistersEvent() {
         var cmd = new PublishVersionCommand(
-                "skill-uuid-1", "1.0.0", "gs://bucket/skill-uuid-1/1.0.0.zip", 1024,
+                "skill-uuid-1", "1.0.0", "gs://bucket/skill-uuid-1/1.0.0.zip", 1024, 0,
                 Map.of("name", "test-skill", "description", "desc",
                         "allowed-tools", "Bash Edit Read"));
 
@@ -68,7 +68,7 @@ class SkillVersionAggregateTest {
     @DisplayName("AC-5 partial: publish(null frontmatter) → frontmatter 為空 Map + allowedTools 為空 list")
     void publishWithNullFrontmatter() {
         var cmd = new PublishVersionCommand(
-                "skill-uuid-2", "1.0.0", "gs://b/s/1.0.0.zip", 100, null);
+                "skill-uuid-2", "1.0.0", "gs://b/s/1.0.0.zip", 100, 0, null);
 
         var sv = SkillVersion.publish(cmd);
 
@@ -81,7 +81,7 @@ class SkillVersionAggregateTest {
     @DisplayName("AC-5 partial: attachRiskAssessment mutate riskAssessment + register SkillRiskAssessedEvent")
     void attachRiskAssessmentMutatesStateAndRegistersEvent() {
         var sv = SkillVersion.publish(new PublishVersionCommand(
-                "skill-1", "1.0.0", "gs://b/s/1.0.0.zip", 100, Map.of()));
+                "skill-1", "1.0.0", "gs://b/s/1.0.0.zip", 100, 0, Map.of()));
         clearDomainEvents(sv);   // 清 publish event
 
         var assessment = Map.<String, Object>of(
@@ -109,7 +109,7 @@ class SkillVersionAggregateTest {
     @DisplayName("AC-5 partial: allowedTools 解析 — space-separated string 切割正確")
     void allowedToolsParsing() {
         var cmd = new PublishVersionCommand(
-                "skill-3", "1.0.0", "gs://b/s/1.0.0.zip", 100,
+                "skill-3", "1.0.0", "gs://b/s/1.0.0.zip", 100, 0,
                 Map.of("allowed-tools", "Bash(git:*) Edit Read WebFetch"));
 
         var sv = SkillVersion.publish(cmd);
