@@ -19,6 +19,7 @@ import { useVersions } from '@/hooks/useVersions'
 import { addVersion, fetchSkillStats } from '@/api/skills'
 import { ApiError } from '@/api/client'
 import { localizeApiError } from '@/lib/api-error-messages'
+import { FlagsList } from '@/components/FlagsList'
 import type { RiskLevel, SkillStatus } from '@/types/skill'
 
 /**
@@ -217,13 +218,9 @@ export function SkillDetailPage() {
             sub="評論系統即將推出 — 屆時用戶可以為使用過的技能打分數並留下文字回饋，協助其他人選擇。"
           />
         </TabsContent>
-        {/* S098e: Flags tab stub — 真 flag aggregate + 回報流程待 S098e3 ship */}
+        {/* S112-T03: Flags tab — 接 GET /skills/{id}/flags；POST 回報 form 待 S098e3 */}
         <TabsContent value="flags" className="mt-4">
-          <EmptyState
-            tone="clear"
-            headline="目前沒有任何回報"
-            sub="若你發現此技能含惡意指令、誤導 description 或其他問題，回報功能即將推出，可送至審核佇列由 reviewer 處理。"
-          />
+          <FlagsList skillId={skill.id} />
         </TabsContent>
       </Tabs>
     </AppShell>
@@ -354,3 +351,4 @@ function AddVersionForm({ skillId }: { skillId: string }) {
     </div>
   )
 }
+

@@ -134,4 +134,18 @@ it('AC-2: Flags tab 渲染 list with type/status pill 當 >0 flags', async () =>
 T02（需要 `api/flags.ts` 的 `Flag` type / `fetchFlags` + `lib/flag-labels.ts` 中譯表）
 
 ## Status
-pending
+✅ shipped 2026-05-03 cron Tick 5
+
+## Result
+
+**Design deviation from outline**：spec template 寫「FlagsList + FlagRow internal components within SkillDetailPage.tsx」但 implementation 將 FlagsList extract 到 `frontend/src/components/FlagsList.tsx` 獨立檔，因 Radix Tabs `fireEvent.click` 在 JSDOM 中不可靠（無 user-event dep），改 unit test FlagsList 直接 isolation 比 page-level tab interaction 穩定。
+
+**Verification**：
+- `npx vitest run src/components/FlagsList.test.tsx src/pages/SkillDetailPage.test.tsx` → 5/5 PASS（FlagsList AC-1 / AC-2 + SkillDetailPage error path 3 個）@ 880ms
+- `npx tsc --noEmit` → 0 error（排除 pre-existing `global` 問題）
+
+**Files changed**：
+- `frontend/src/hooks/useFlags.ts` (new)
+- `frontend/src/components/FlagsList.tsx` (new — extracted to standalone component)
+- `frontend/src/components/FlagsList.test.tsx` (new — AC-1 + AC-2)
+- `frontend/src/pages/SkillDetailPage.tsx` (modify — replace EmptyState stub with `<FlagsList skillId={skill.id}>`)
