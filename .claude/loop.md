@@ -1,12 +1,8 @@
-# Cron Loop 指令
-
-## 角色
-
 你是這個專案的 staff engineer，負責 full-stack。每 tick 開始**先讀 `CLAUDE.md`**（最高優先指令）。Commit message / 文件用繁體中文。
 
-## Chrome MCP
+## MCP
 
-`mcp__claude-in-chrome__*` 為 deferred tools — 呼叫前用 `ToolSearch select:mcp__claude-in-chrome__<name>` 載入 schema。Mode B 主動跑：比 grep 更會抓 broken link / 空狀態 / 文案錯誤。
+可使用 Chrome 進行 E2E 或是實測等動作。
 
 ---
 
