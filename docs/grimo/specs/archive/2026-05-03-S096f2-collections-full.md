@@ -444,4 +444,55 @@ MVP 接受**最簡實作**：modal 內提供「選擇技能」按鈕 → 開 sec
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task plan
+
+| Task | Scope | Status | Commit |
+|------|-------|--------|--------|
+| T01 — Collection aggregate + V12 schema + community @ApplicationModule + 2 events | `Collection` aggregate (`AbstractAggregateRoot + @Version + @MappedCollection skills`)；`CollectionSkillRef` join record；`CollectionRepository` 2 derived queries；V12 migration 含 PK `(collection_id, position)` + UNIQUE `(collection_id, skill_id)` + ON DELETE CASCADE；2 events records；`SkillRepository.findAllByIdInAndStatus` cross-module helper；smoke test 9 個 | ✅ shipped | `b8b2798` |
+| T02 — Service + Command/Query controllers + 2 exceptions + caller migration | `CollectionService` 業務邏輯（create with PUBLISHED 預檢 + install Approach C + getCollectionSkills helper）；Command/Query controllers split；`CollectionNotFoundException` 404 + `SkillNotPublishableException` 400 (with invalidSkillIds) + GlobalExceptionHandler；`RequestService.fulfill` caller migration；2 test files 17 個 | ✅ shipped | `a083db5` |
+| T03 — Frontend api/skills.ts + 2 hooks + page extract | api/skills.ts 加 3 helper + 3 type + `fetchCollections(category?)` optional param；`useCollections` + `useCollection` hooks；CollectionsPage 抽 inline `useQuery` → `useCollections()` | ✅ shipped | `bf101f4` |
+| T04 — CreateCollectionModal + InstallButton + page rewrite + tests | `CreateCollectionModal` (textarea skill picker per §2.6 trim) + `InstallButton` (50ms loop browser download trigger) + CollectionsPage CTA enable + AC-10/11/12 tests + S103 carry-forward | ✅ shipped | `<本 commit>` |
+
+## 7. Result
+
+### Verification metrics
+
+- **Backend**：`CollectionModuleSmokeTest` 9/9 + `CollectionServiceTest` 9/9 + `CollectionControllerTest` 8/8 PASS @ Testcontainers + `ModularityTests` 2/2 PASS（M90f2 spec 整合 26 個新 backend test）+ regression `RequestService/VoteService` 18/18 PASS（caller migration 後仍綠）
+- **Frontend**：`CollectionsPage.test.tsx` 4/4 PASS @ 1.44s（AC-10/11/12 + S103 carry-forward）+ 全 frontend suite 193/193 PASS @ 7.82s（0 regression）；`npx tsc --noEmit` PASS
+
+### Behavior validation outcome
+
+| 決策 | Pre-ship Confidence | Result |
+|------|---------------------|--------|
+| ADR-002 canonical pattern | Validated | 9/9 smoke test 全綠（aggregate + events + UNIQUE + CASCADE + ApplicationEvents 流） |
+| `@MappedCollection` 處理 collection → skills 一對多 | Validated（首次 codebase 採用） | list ordering test 確認 position 0..N 順序保留；factory unique 守則 + DB UNIQUE 雙保護 |
+| `@DomainEvents` outbox auto-publish | Validated（partially — MVP 無 listener，event_publication 表空；走 `@RecordApplicationEvents` 驗證） | ApplicationEventPublisher 流確認 events 觸發；future S101b 加 listener 時 outbox 自動 wire |
+| Modulith `community` allowedDependencies 含 `skill::domain` | Validated | ModularityTests 2/2 PASS；`SkillRepository.findAllByIdInAndStatus` 跨模組 lookup 運作如預期 |
+| Frontend N 個 browser download 50ms 間隔 | Validated（前 Hypothesis） | JSDOM `<a>.click` spy 驗 3 個 download 全 fire；real browser cross-platform smoke 留 manual QA（Chrome MCP 已驗 throttle 行為符合預期） |
+
+### Deviations from spec design
+
+| # | Spec design | Actual implementation | Why |
+|---|-------------|----------------------|-----|
+| 1 | spec §4.3 範本 走 Persistable + 自訂 `isNew()` | `extends AbstractAggregateRoot<Collection> + @Version Long version`（無 Persistable） | factory 設 `createdAt=Instant.now()` 會讓 `Persistable.isNew(createdAt==null)` always false → INSERT 失敗（已是 codebase 第 4 次踩坑教訓）；`@Version` 是 Spring Data JDBC mutable INSERT/UPDATE 區分標準路徑 |
+| 2 | spec §4.2 collection_skills PK = `(collection_id, skill_id)` | PK = `(collection_id, position)` + 加 `UNIQUE (collection_id, skill_id)` | Spring Data JDBC `@MappedCollection(keyColumn="position")` canonical pattern 要求 PK 含 keyColumn；child entity Optional<@Id> 與 keyColumn 衝突；改 PK 對齊 + UNIQUE 維持「同 collection 內 skill 不重複」語意 |
+| 3 | spec §4.5 `RequestService.fulfill` throw `IllegalArgumentException("skill_not_publishable: ...")` | 升級為獨立 `SkillNotPublishableException` class | 對齊 `RequestNotFoundException` / `NotRequestClaimerException` naming + 給 GlobalExceptionHandler 路由更精確（specific error code 而非 fall through 到 generic VALIDATION_ERROR）；本 spec 同 commit migrate caller + assertion |
+| 4 | spec §4.4 「outbox 會自動寫 event_publication」 | event_publication 表 MVP 無 row（無 listener 訂閱）；smoke test 改用 `@RecordApplicationEvents` | Modulith Event Publication Registry 只追蹤 `(event, listener_id)` pair；MVP 無 listener 故 outbox 表空。Future S101b 加 listener 時 outbox 自動 wire；本 spec 對齊 spec §4.4 「預留 hook 給 future S101b」設計，僅 test 驗證走 ApplicationEvents 流 |
+| 5 | spec §4.8 「modal 內 secondary modal 開 PUBLISHED skills 多選 checkbox」 | 走 textarea「每行貼一個 skill UUID」 | per spec §2.6 trim list — 已標 defer fancy picker；MVP 用 textarea functional ship，漂亮 multi-select 留 polish 給後續 spec |
+
+### Trim list — 已 defer 為 polish backlog
+
+- **Risk filter**（PRD §P7 SBE Scenario 3）— 排隊 S096f3 polish；JOIN `collection_skills × skills.risk_level`
+- **Skill picker UI 漂亮版**（搜尋 + 多選 chip + autocomplete）— MVP textarea 走形；polish defer
+- **Collection detail page**（`/collections/{id}` 獨立路由）— MVP 用 modal 顯細節；獨立路由 + edit/delete defer
+- **Edit / Delete Collection**（owner 自己的）— 完全 defer 至後續 spec
+- **install_count optimistic updates**（樂觀 +1 reduce flicker）— MVP 走 invalidate refetch；polish defer
+
+### Lessons learned
+
+- **`@MappedCollection(keyColumn="position")` 第一次 codebase 採用**：child entity table PK 須含 keyColumn 對齊 Spring Data JDBC canonical；對應 list 順序保留靠 keyColumn 而非 INSERT 順序。本 spec 為 codebase 第一個用此 pattern 的 aggregate（既有 Skill `aclEntries` 走 JSONB；SkillVersion 是獨立 aggregate；Notification + Request 都單表）。
+- **`@RecordApplicationEvents` 取代 outbox 表查 assertion**：Modulith Event Publication Registry 只追蹤有 listener 的 events；無 listener spec smoke test 走 `@RecordApplicationEvents` 攔截 ApplicationEventPublisher 流，等同 at-least-once 保證測試。本 spec 為 codebase 第一個採用此 pattern；Notification spec smoke test 應該借鏡。
+- **Exception 獨立 class 升級走 caller migration 是 codebase 慣例**：本 spec 為第 5 次（RequestNotFound / NotRequestClaimer / NotificationNotFound / NotNotificationRecipient / CollectionNotFound + SkillNotPublishable）；`SkillNotPublishableException` 兩個 ctor 兼顧 multi-skill (Collection) 與 single-skill (Request) 場景，避免兩個 mapping path。
+- **`@WebMvcTest(controllers = {Cmd, Query})` 同時拉雙 controller**：兩 controller 共 path mapping 時，slice 一次拉兩個對齊 path-based routing 測試慣例；不需 split test class。本 spec 第一次採用此 pattern。
+
+

@@ -1,5 +1,50 @@
 # Changelog
 
+## [v3.8.0] — Collections full feature（S096f2 完成；2026-05-03）
+
+> S096f2 跨 5 個 cron tick (Tick 26 spec planning + Tick 27 T01 backend infra + Tick 28 T02 service/controllers + Tick 29 T03 FE infra + Tick 30 T04 frontend full + spec ship) ship — 取代 ✅ S096f1 read-only stub：完整 Collection aggregate（ADR-002 canonical Spring Data JDBC 充血 + @MappedCollection skills + Modulith Outbox）+ Command/Query controllers split + 4 REST endpoints + 一鍵 install (Approach C frontend orchestration) + 2 frontend components (CreateCollectionModal + InstallButton)。**MINOR bump** — 新 aggregate + V12 schema 2 表 + 2 domain events + 4 REST endpoints + 2 frontend components + community module formal `@ApplicationModule` register。為 S101b Impact Score 提供 install event hook。
+
+### Added — Backend
+- `backend/.../community/Collection.java` — Aggregate root extends AbstractAggregateRoot + `@Version` Long version + `@MappedCollection(idColumn="collection_id", keyColumn="position")` 一對多 skills；factory `create()` 驗 5 個 fields + skillIds unique 守則；mutation `recordInstall(installerId)` bump install_count + register `CollectionInstalledEvent`；defensive `getSkills()` copy 對齊既有 Skill aggregate 慣例
+- `backend/.../community/CollectionSkillRef.java` — `record (@Column("skill_id") String skillId)` 不持有 own @Id，Spring Data JDBC derived PK 模式
+- `backend/.../community/CollectionRepository.java` — `ListCrudRepository<Collection, String>` + `findAllByOrderByCreatedAtDesc` + `findAllByCategoryOrderByCreatedAtDesc`（single-property sort 不觸 AOT compound-sort bug）
+- `backend/.../community/CollectionService.java` — create/install/list/get + getCollectionSkills helper（保 collection 順序 + filter SUSPENDED missing skills 防外洩）
+- `backend/.../community/CollectionCommandController.java` — POST create + POST install；CreateCollectionBody / InstallResponse record
+- `backend/.../community/CollectionQueryController.java` — GET list?category= + GET single；CollectionSummary / CollectionDetail / CollectionSkillSummary 3 record DTO；取代既有 S096f1 stub `CollectionController`
+- `backend/.../community/events/CollectionCreatedEvent.java` + `CollectionInstalledEvent.java` — record；MVP 無 listener，預留 hook 給 future S101b Impact Score
+- `backend/.../community/package-info.java`（modify）— 加 `displayName="Community"` 對齊 audit/notification/analytics 既驗 module metadata 慣例
+- `backend/.../skill/domain/SkillRepository.java`（modify）— 加 `findAllByIdInAndStatus(Collection<String>, SkillStatus)` derived query；給 CollectionService.create 預檢全 PUBLISHED 用
+- `backend/.../shared/api/CollectionNotFoundException.java` + `SkillNotPublishableException.java`（with `List<String> invalidSkillIds`）+ GlobalExceptionHandler 加 404/400 mapping
+- `backend/.../community/RequestService.java`（modify）— `fulfill` caller migration 從 `IllegalArgumentException("skill_not_publishable: ...")` 升級為新 `SkillNotPublishableException`，attached single-skill ctor `(String invalidSkillId, String reason)`
+- V12 migration — `collections` 表 (含 `version` BIGINT DEFAULT 0 樂觀鎖) + `collection_skills` 表 (PK `(collection_id, position)` + UNIQUE `(collection_id, skill_id)` + ON DELETE CASCADE + 4 indexes 對齊 sort/filter axis)
+- `backend/src/test/.../community/CollectionModuleSmokeTest.java` — 9 個 schema/aggregate round-trip + @MappedCollection ordering + UNIQUE 守則 + CASCADE + ApplicationEvents 流驗證
+- `backend/src/test/.../community/CollectionServiceTest.java` — 9 個 Testcontainers test（AC-1/2/3/4/5/6/7/8 + cross-recipient install + SUSPENDED skill 仍能 read）
+- `backend/src/test/.../community/CollectionControllerTest.java` — 8 個 `@WebMvcTest` slice test（HTTP routing + status code + exception → 翻譯）
+- `backend/src/test/.../community/RequestServiceTest.java`（modify）— AC-12 assertion 升級為 `isInstanceOf(SkillNotPublishableException.class)`
+
+### Added — Frontend
+- `frontend/src/api/skills.ts`（modify）— 加 `CreateCollectionRequest` / `CollectionDetail` / `CollectionSkillSummary` 3 type + `fetchCollection` / `createCollection` / `installCollection` 3 helper；`fetchCollections` 加 optional `category` param；`SkillCollection.description` 改 nullable 對齊 backend
+- `frontend/src/hooks/useCollections.ts`（new）— list with optional category filter（30s staleTime + refetchOnWindowFocus 對齊 useRequests / useNotifications canonical）
+- `frontend/src/hooks/useCollection.ts`（new）— single detail；對齊 useSkill / useRequest enabled-gate pattern
+- `frontend/src/components/CreateCollectionModal.tsx`（new）— mirror CreateRequestModal pattern；4 個欄位（name / description / category / textarea skill UUID list per §2.6 trim — fancy multi-select picker defer）
+- `frontend/src/components/InstallButton.tsx`（new）— mutation + 50ms 間隔 loop trigger N 個 `<a download>` click（spec §1 Approach C frontend orchestration；reuse 既有 `/skills/{id}/download` 自然累計 each skill download_count）
+- `frontend/src/pages/CollectionsPage.tsx`（modify）— full rewrite：CTA active 開 modal + InstallButton on card；移除 S096f1 stub disabled 提示
+- `frontend/src/pages/CollectionsPage.test.tsx`（modify）— 取代既有 stub-state assertions 為 AC-10/11/12 BDD + S103 spec ID leak invariant carry-forward；URL-aware fetchMock + spy on `HTMLAnchorElement.prototype.click` 驗 N 個 download 觸發
+
+### Verified
+- Backend：CollectionModuleSmokeTest 9/9 + CollectionServiceTest 9/9 + CollectionControllerTest 8/8 PASS @ Testcontainers + RequestService/VoteService regression 18/18 PASS（caller migration ✓）+ ModularityTests 2/2 PASS
+- Frontend：CollectionsPage.test.tsx 4/4 PASS @ 1.44s（AC-10 CTA enable / AC-11 create modal happy / AC-12 install + N download trigger / S103 carry-forward）+ 全 frontend suite 193/193 PASS @ 7.82s（0 regression）；npx tsc --noEmit PASS
+
+### Why
+- **補完 ✅ S096f1 stub**：S096f1 ship 為 read-only `[]` + disabled CTA + EmptyState invite tone；本 spec 把 backend stub 升為實 Collection aggregate 完整 CRUD + curate + 一鍵 install，UX 啟用「建立 → 瀏覽 → 安裝」完整流程，對齊 PRD §P7 SBE Scenarios。
+- **走 ADR-002 canonical pattern + 第 4 次 @Version + AbstractAggregateRoot 採用**：對齊 Skill / Request / Collection 既驗，Persistable + 自訂 isNew 範本第 4 次 deviate（factory 設 createdAt 會破 isNew flag — 已成 codebase 慣例知識）。
+- **Command/Query split 第 2 次**：對齊 Request (S096g2) canonical；POST 走 command、GET 走 query，便於 future read-side optimization 不污染 mutation 路徑。
+- **community module displayName 補完**：S096g2 ship 時補 allowedDependencies；本 spec 補 displayName 對齊 audit / notification / analytics module metadata 慣例。
+- **Spec-Only-Handoff pattern 第 8 次端到端 demo**：Tick 26 spec planning → Tick 27-30 implement loop（每 tick 1 task = 1 commit）→ ship。Cron-driven，task scope 設計準度高（4 task 各約 1 tick wall budget）。
+
+### Deviations
+- 詳 spec doc archive §6/§7（含 collection_skills PK 從 `(collection_id, skill_id)` 改 `(collection_id, position)` 對齊 @MappedCollection canonical / @Version 取代 spec §4.3 Persistable 範本 / SkillNotPublishableException 升級獨立 class 取代既有 IllegalArgumentException 路徑等）
+
 ## [v3.7.0] — Notifications full projection（S096h2 完成；2026-05-03）
 
 > S096h2 跨 4 個 cron tick (Tick 22 spec planning + Tick 23 backend infra T01+T02 + Tick 24 backend service/controller T03 + Tick 25 frontend full T04) ship — 取代 ✅ S096h1 read-only stub：完整 cross-module event projection（4 個 `@ApplicationModuleListener` 訂閱 SkillFlagged / ReviewCreated / RequestClaimed / RequestFulfilled）+ 2 個 mutable aggregate（Notification + NotificationPreference 走 `@Version`）+ 7 REST endpoints + 4 frontend pieces（api split / 2 hooks / PreferencesModal / NotificationsPage rewrite）。**MINOR bump** — 新 module + V11 schema + 5 個 domain event subscriptions + UNIQUE idempotency 守則 + 訂閱偏好 4 toggle UX。
