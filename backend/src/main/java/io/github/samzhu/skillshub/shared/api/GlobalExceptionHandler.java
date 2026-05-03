@@ -124,6 +124,22 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse("flag_not_found", ex.getMessage(), Instant.now()));
 	}
 
+	/** S096g2 — Request id 不存在 → 404 request_not_found。 */
+	@ExceptionHandler(RequestNotFoundException.class)
+	ResponseEntity<ErrorResponse> handleRequestNotFound(RequestNotFoundException ex) {
+		log.atWarn().addKeyValue("errorCode", "request_not_found").log("Request not found");
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse("request_not_found", ex.getMessage(), Instant.now()));
+	}
+
+	/** S096g2 AC-9/AC-11 — release/fulfill requester 非 claimer → 403 not_request_claimer。 */
+	@ExceptionHandler(NotRequestClaimerException.class)
+	ResponseEntity<ErrorResponse> handleNotClaimer(NotRequestClaimerException ex) {
+		log.atWarn().addKeyValue("errorCode", "not_request_claimer").log("Request operation forbidden");
+		return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				.body(new ErrorResponse("not_request_claimer", ex.getMessage(), Instant.now()));
+	}
+
 	/**
 	 * S037：處理 multipart 超 size 限制（{@link MaxUploadSizeExceededException}）。
 	 *
