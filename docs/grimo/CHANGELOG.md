@@ -1,5 +1,36 @@
 # Changelog
 
+## [v3.10.2] — List endpoint rating projection（S119 完成；2026-05-04 — Bug AR fix user-visible）
+
+> S119 single-tick ship — Mode B Round 36 (2026-05-03) Bug AR (MEDIUM, user-visible) backlog 候選。**PATCH bump** — SQL SELECT clause 補 2 column + factory backward-compat overload；零 schema 變動；無 caller migration。LAB 員工瀏覽 skills list SkillCard rating 星星顯示真實評分（before fix 永遠 0）。
+
+### Fixed — Backend
+- `backend/.../skill/query/SkillQueryService.java`：`search()` raw JDBC SQL SELECT clause 加 `average_rating, review_count` 兩 column；`mapSkillRow` 走 15-arg `Skill.fromRow` 餵真值。對齊 single GET findById 既驗行為（auto-load 已含真值），補完 list path 數據一致性。
+- `backend/.../skill/domain/Skill.java`：`fromRow` 15-arg overload 加 `averageRating + reviewCount` 兩參數；既有 13-arg overload 改為 backward-compat delegate to 15-arg with `(0.0, 0L)` defaults — **0 callsite migration**（既有 12+ test/production caller 行為不變；對齊 S116 既驗 ctor delegate pattern）
+
+### Changed — Backend (test)
+- `backend/src/test/.../skill/query/SkillSearchTest.java`：加 `@Autowired JdbcTemplate jdbcTemplate` + AC-S119-1（list endpoint 回 rating projection — 走 raw SQL UPDATE 模擬 SkillRatingService.refresh 寫入路徑，因 `@ReadOnlyProperty` 字段不能走 aggregate save）
+
+### Verify metric
+- E2E manual smoke (dev backend OAuth=true)：DB seed `UPDATE skills SET average_rating=4.5, review_count=2` → list endpoint 回 `averageRating=4.5, reviewCount=2`（before fix=0/0）；single GET 一致回 4.5/2 ✓
+- SkillSearchTest：14 ACs（13 既驗 + S119-1 新加；待 commit 前確認）
+- Backend devtools restart：2.9s
+- `compileJava` 1s
+
+### Design decisions
+- **Backward-compat overload** vs 全 callsite migration — 12+ caller 都加 `(0.0, 0L)` 是高 churn 成本；對齊 S116 既驗 100x 節省 pattern
+- **不改 @ReadOnlyProperty** — averageRating/reviewCount 走 atomic SQL UPDATE 路徑（per S077/AK regression 教訓：aggregate full-row save 會覆蓋並發 projection update，破壞 invariant）
+- **Test seed via raw SQL UPDATE** — 模擬 `SkillRatingService.refresh` projection 寫入路徑；對齊 `@ReadOnlyProperty` 字段唯讀於 aggregate path 的設計
+
+### Roadmap progress
+- ✅ S119 (XS=2, v3.10.2) shipped — Phase 5 row M114
+- 📋 Round 36 backlog 剩 S117 (frontend SkillVersion type sync) + S118 (Collection DTO naming alignment) — 同 round chain 2/3 待續
+
+### Pattern reuse
+- 第 12 次 single-tick XS/S spec ship（per session lessons learned）
+- 第 3 次 backward-compat overload pattern（S116 ctor delegate / S119 fromRow overload）
+- @ReadOnlyProperty 字段測試 seed 第 N 次採用 raw SQL UPDATE pattern
+
 ## [v3.10.1] — SkillDetail subscribe button（S125c 完成；2026-05-04 — LAB user-visible flow chain 3/3 closer）
 
 > S125c single-tick ship — S125 chain 收尾。**PATCH bump** — 純 frontend addition（API helper + hook + UI button）；無 backend 改動；無 schema 變動。LAB 封測員工從 UI 可 self-service 訂閱 / 取消訂閱 flow。

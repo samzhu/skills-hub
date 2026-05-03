@@ -149,10 +149,15 @@ public class SkillQueryService {
 		var aclPatterns = aclExpander.expand(currentUserProvider.current(), "read");
 		// S016: ?? escape 必要 — pgJDBC 仍會 parse ? 為 placeholder；?? → ? 後送 ?| operator
 		var aclClause = " AND acl_entries ??| :aclPatterns ";
+		// S119: SELECT 加 average_rating + review_count — list endpoint 過去缺此 2 column
+		// 致 SkillCard rating 永遠 0（user-visible bug）。S098e2 ship review averageRating
+		// projection 後此 list endpoint 漏 update SELECT；single GET findById 走 Spring Data
+		// JDBC auto-load 已含真值，本 fix 補齊 list path 一致性。
 		var sql = new StringBuilder("""
 				SELECT id, name, description, author, category,
 				       latest_version, risk_level, status, download_count,
-				       created_at, updated_at, acl_entries, version
+				       created_at, updated_at, acl_entries, version,
+				       average_rating, review_count
 				  FROM skills
 				""").append(statusClause).append(aclClause);
 		var countSql = new StringBuilder("SELECT COUNT(*) FROM skills")
@@ -250,6 +255,8 @@ public class SkillQueryService {
 	private Skill mapSkillRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
 		var versionVal = rs.getObject("version");
 		Long version = versionVal == null ? null : ((Number) versionVal).longValue();
+		// S119: average_rating + review_count 兩 column 同 SELECT 一起讀；avg 為 nullable 時 (no review)
+		// rs.getDouble 回 0.0；count 為 NOT NULL DEFAULT 0 安全
 		return Skill.fromRow(
 				rs.getString("id"),
 				rs.getString("name"),
@@ -263,7 +270,9 @@ public class SkillQueryService {
 				rs.getTimestamp("created_at").toInstant(),
 				rs.getTimestamp("updated_at").toInstant(),
 				parseAclEntries(rs.getString("acl_entries")),
-				version);
+				version,
+				rs.getDouble("average_rating"),
+				rs.getLong("review_count"));
 	}
 
 	/**

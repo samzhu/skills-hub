@@ -234,6 +234,22 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     public static Skill fromRow(String id, String name, String description, String author, String category,
             String latestVersion, String riskLevel, String status, long downloadCount,
             Instant createdAt, Instant updatedAt, List<String> aclEntries, Long version) {
+        // S119: 13-arg backward-compat overload — delegate to 15-arg with averageRating=0.0 / reviewCount=0
+        // defaults。既有 12+ 個 caller (production + test) 行為不變。對齊 S116 ctor delegate 既驗 pattern
+        // （100x 成本節省 vs 全 callsite migration）。
+        return fromRow(id, name, description, author, category, latestVersion, riskLevel, status,
+                downloadCount, createdAt, updatedAt, aclEntries, version, 0.0, 0L);
+    }
+
+    /**
+     * S119 — 15-arg full row factory 含 review rating projection（averageRating / reviewCount）。
+     * SkillQueryService.search() raw JDBC SQL SELECT 兩 column 後走此 factory；既有 single-skill
+     * findById 走 Spring Data JDBC auto-load 不經此 path。
+     */
+    public static Skill fromRow(String id, String name, String description, String author, String category,
+            String latestVersion, String riskLevel, String status, long downloadCount,
+            Instant createdAt, Instant updatedAt, List<String> aclEntries, Long version,
+            double averageRating, long reviewCount) {
         var skill = new Skill();
         skill.id = id;
         skill.name = name;
@@ -249,6 +265,8 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         // mutable ArrayList — 物化後不應再 mutate（query path 唯讀），但保持與 create() 行為一致避免後續混淆
         skill.aclEntries = aclEntries == null ? new ArrayList<>() : new ArrayList<>(aclEntries);
         skill.version = version;
+        skill.averageRating = averageRating;
+        skill.reviewCount = reviewCount;
         return skill;
     }
 

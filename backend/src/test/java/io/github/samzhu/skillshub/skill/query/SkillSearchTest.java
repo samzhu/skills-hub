@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
@@ -45,6 +46,9 @@ class SkillSearchTest extends RepositorySliceTestBase {
 
     @Autowired
     private SkillRepository skillRepo;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @MockitoBean
     private CurrentUserProvider currentUserProvider;
@@ -207,6 +211,28 @@ class SkillSearchTest extends RepositorySliceTestBase {
         var page = queryService.search(null, null, null, PageRequest.of(0, 20));
         assertThat(page.getContent()).extracting(Skill::getName)
                 .contains("private-shared-with-bob");
+    }
+
+    @Test
+    @DisplayName("AC-S119-1: list endpoint 回 averageRating + reviewCount（before fix=0/0；after fix=projection 真值）")
+    void listEndpointReturnsRatingProjection() {
+        var now = Instant.now();
+        var skillId = UUID.randomUUID().toString();
+        skillRepo.save(Skill.fromRow(
+                skillId, "rated-skill-x", "rated 4.5 from 2 reviews",
+                "alice", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now,
+                List.of("*:read"), null));
+        // average_rating / review_count 為 @ReadOnlyProperty — 走 raw SQL UPDATE 模擬
+        // SkillRatingService.refresh projection 寫入路徑（per S098e2 既驗）
+        jdbcTemplate.update(
+                "UPDATE skills SET average_rating = ?, review_count = ? WHERE id = ?",
+                4.5, 2L, skillId);
+
+        var page = queryService.search("rated-skill-x", null, null, PageRequest.of(0, 20));
+        assertThat(page.getContent()).hasSize(1);
+        var s = page.getContent().getFirst();
+        assertThat(s.getAverageRating()).isEqualTo(4.5);
+        assertThat(s.getReviewCount()).isEqualTo(2L);
     }
 
     @Test
