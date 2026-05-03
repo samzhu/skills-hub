@@ -99,6 +99,32 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
+	 * S098e3 AC-7 — Flag status transition 違規（如 RESOLVED → OPEN）或 unknown status。
+	 * 400 + error code {@code "invalid_status_transition"} 對齊 spec error code naming。
+	 */
+	@ExceptionHandler(InvalidStatusTransitionException.class)
+	ResponseEntity<ErrorResponse> handleInvalidStatusTransition(InvalidStatusTransitionException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "invalid_status_transition")
+				.addKeyValue("message", ex.getMessage())
+				.log("Invalid flag status transition");
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ErrorResponse("invalid_status_transition", ex.getMessage(), Instant.now()));
+	}
+
+	/**
+	 * S098e3 AC-8 — Flag id 不存在。404 + error code {@code "flag_not_found"}。
+	 */
+	@ExceptionHandler(FlagNotFoundException.class)
+	ResponseEntity<ErrorResponse> handleFlagNotFound(FlagNotFoundException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "flag_not_found")
+				.log("Flag not found");
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse("flag_not_found", ex.getMessage(), Instant.now()));
+	}
+
+	/**
 	 * S037：處理 multipart 超 size 限制（{@link MaxUploadSizeExceededException}）。
 	 *
 	 * <p>{@code @ExceptionHandler} most-specific-first 規則 — 此 handler 必早於

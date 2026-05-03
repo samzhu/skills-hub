@@ -39,11 +39,22 @@ class FlagControllerTest extends WebMvcSliceTestBase {
     @MockitoBean
     private FlagService flagService;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private io.github.samzhu.skillshub.shared.security.CurrentUserProvider currentUserProvider;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUpCurrentUser() {
+        // S098e3：FlagController 注入 CurrentUserProvider 抽 reporter；mock 預設 anonymous
+        Mockito.when(currentUserProvider.current())
+                .thenReturn(new io.github.samzhu.skillshub.shared.security.CurrentUser(
+                        "anonymous", java.util.List.of(), java.util.List.of()));
+    }
+
     @Test
     @DisplayName("AC-4: 社群回報 — POST /flags → 201 + flag id")
     void createFlag() throws Exception {
         Mockito.when(flagService.createFlag(
-                        ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+                        ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenReturn("flag-id-123");
 
         mockMvc.perform(post("/api/v1/skills/some-skill-id/flags")
@@ -60,7 +71,7 @@ class FlagControllerTest extends WebMvcSliceTestBase {
     void getFlags() throws Exception {
         var fixture = new FlagReadModel(
                 "flag-1", "skill-1", "SECURITY", "可疑連線", "anonymous", Instant.now(), "OPEN");
-        Mockito.when(flagService.getFlagsBySkillId(ArgumentMatchers.any()))
+        Mockito.when(flagService.getFlagsBySkillId(ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenReturn(List.of(fixture));
 
         mockMvc.perform(get("/api/v1/skills/skill-1/flags"))
@@ -74,7 +85,7 @@ class FlagControllerTest extends WebMvcSliceTestBase {
     @DisplayName("S072: type 不在白名單 → service 拋 IllegalArgumentException → 400")
     void rejectInvalidType() throws Exception {
         Mockito.when(flagService.createFlag(
-                        ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+                        ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenThrow(new IllegalArgumentException("Flag type must be one of [...] (got: bogus)"));
 
         mockMvc.perform(post("/api/v1/skills/some-skill-id/flags")
@@ -90,7 +101,7 @@ class FlagControllerTest extends WebMvcSliceTestBase {
     void getFlagsExcludesIsNewArtifact() throws Exception {
         var fixture = new FlagReadModel(
                 "flag-1", "skill-1", "SECURITY", "test", "anonymous", Instant.now(), "OPEN");
-        Mockito.when(flagService.getFlagsBySkillId(ArgumentMatchers.any()))
+        Mockito.when(flagService.getFlagsBySkillId(ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenReturn(List.of(fixture));
 
         mockMvc.perform(get("/api/v1/skills/skill-1/flags"))
@@ -103,7 +114,7 @@ class FlagControllerTest extends WebMvcSliceTestBase {
     @DisplayName("S072: description 超 500 字元 → service 拋 IllegalArgumentException → 400")
     void rejectLongDescription() throws Exception {
         Mockito.when(flagService.createFlag(
-                        ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+                        ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenThrow(new IllegalArgumentException("Flag description exceeds 500 characters"));
 
         mockMvc.perform(post("/api/v1/skills/some-skill-id/flags")

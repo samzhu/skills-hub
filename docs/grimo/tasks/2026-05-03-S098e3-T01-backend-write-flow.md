@@ -93,4 +93,28 @@ class FlagAdminQueryController {
 none
 
 ## Status
-pending
+✅ shipped 2026-05-03 cron Tick 13
+
+## Result
+
+**Trim from spec template**：
+- FlagAdminQueryControllerTest slice test defer — FlagServiceTest 已涵蓋 cross-skill list 業務邏輯（AC-3/4），Controller 純 thin pass-through to service；slice test 邊際收益低
+- AC-5 per-skill status filter 也由 FlagServiceTest 涵蓋（service 層 derived query 路徑）
+
+**Verification**：
+- FlagServiceTest 9/9 PASS @ 8s（AC-1/2/6×2/7×2/8 + AC-3/4/5 derived query 涵蓋）
+- FlagControllerTest 5/5 PASS（既有 4 + 我加 1 個 BeforeEach mock setup；AC-4 GET shape 仍綠）
+- ModularityTests 2/2 PASS（無新模組依賴 — FlagAdminQueryController 仍在 security module）
+
+**Files changed**：
+- `backend/src/main/java/io/github/samzhu/skillshub/security/FlagStatus.java` (new — enum + canTransitionTo + fromName)
+- `backend/src/main/java/io/github/samzhu/skillshub/security/FlagStatusChangedEvent.java` (new — record，給 future audit)
+- `backend/src/main/java/io/github/samzhu/skillshub/security/FlagService.java` (modify — createFlag 加 reporter 4th 參數 + null/blank fallback；新 updateStatus + listAllFlags + getFlagsBySkillId 2-arg overload)
+- `backend/src/main/java/io/github/samzhu/skillshub/security/FlagController.java` (modify — 注入 CurrentUserProvider + createFlag 抽 sub + getFlags 加 ?status= + 新 PATCH)
+- `backend/src/main/java/io/github/samzhu/skillshub/security/FlagAdminQueryController.java` (new — cross-skill GET /api/v1/flags?status=)
+- `backend/src/main/java/io/github/samzhu/skillshub/security/FlagReadModelRepository.java` (modify — 加 3 derived queries + @Modifying @Query updateStatus)
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/api/InvalidStatusTransitionException.java` (new — 400 handler)
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/api/FlagNotFoundException.java` (new — 404 handler)
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/api/GlobalExceptionHandler.java` (modify — 加 2 個 exception handlers)
+- `backend/src/test/java/io/github/samzhu/skillshub/security/FlagServiceTest.java` (new — 9 tests)
+- `backend/src/test/java/io/github/samzhu/skillshub/security/FlagControllerTest.java` (modify — 加 CurrentUserProvider mock + BeforeEach；3 處 createFlag mock 從 3-arg 改 4-arg；getFlagsBySkillId mock 從 1-arg 改 2-arg)

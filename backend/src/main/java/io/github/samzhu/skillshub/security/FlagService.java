@@ -15,6 +15,8 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.samzhu.skillshub.shared.api.FlagNotFoundException;
+import io.github.samzhu.skillshub.shared.api.InvalidStatusTransitionException;
 import io.github.samzhu.skillshub.shared.events.DomainEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 
@@ -59,13 +61,17 @@ public class FlagService {
 	/**
 	 * 建立一筆新的 Flag（舉報），並依 Event Sourcing 流程持久化後發布領域事件。
 	 *
+	 * <p>S098e3 AC-1：加 reporter 參數紀錄真實 submitter；null/blank 走 anonymous fallback
+	 * 對齊 LAB mode 行為。
+	 *
 	 * @param skillId     被舉報的 Skill 識別碼
-	 * @param type        舉報類型代碼，例如 {@code MALICIOUS_CODE}
+	 * @param type        舉報類型代碼，例如 {@code malicious}
 	 * @param description 舉報原因說明
+	 * @param reporter    舉報人識別（null/blank → "anonymous" fallback）
 	 * @return 新建立的 Flag UUID 字串
 	 */
 	@Transactional
-	public String createFlag(String skillId, String type, String description) {
+	public String createFlag(String skillId, String type, String description, String reporter) {
 		// S058: 預驗 — type 為 DB NOT NULL varchar(20)；description nullable；
 		// Map.of 不接受 null values 也是 NPE 來源
 		if (type == null || type.isBlank()) {
@@ -120,10 +126,12 @@ public class FlagService {
 		);
 		eventStore.save(domainEvent);
 
-		var flag = new FlagReadModel(flagId, skillId, trimmedType, trimmedDescription, "anonymous", Instant.now(), "OPEN");
+		// S098e3 AC-1/AC-2：reporter null/blank → anonymous fallback（保留 LAB mode 行為）
+		var resolvedReporter = (reporter == null || reporter.isBlank()) ? "anonymous" : reporter.trim();
+		var flag = new FlagReadModel(flagId, skillId, trimmedType, trimmedDescription, resolvedReporter, Instant.now(), "OPEN");
 		flagRepo.save(flag);
 
-		events.publishEvent(new SkillFlaggedEvent(skillId, trimmedType, trimmedDescription, "anonymous"));
+		events.publishEvent(new SkillFlaggedEvent(skillId, trimmedType, trimmedDescription, resolvedReporter));
 
 		log.atInfo()
 				.addKeyValue("skillId", skillId)
@@ -165,6 +173,71 @@ public class FlagService {
 		var params = Map.of("author", author);
 		Long count = jdbc.queryForObject(sql, params, Long.class);
 		return count == null ? 0L : count;
+	}
+
+	/** S098e3 AC-5：per-skill 加 status filter；null/blank 等價無 filter。 */
+	public List<FlagReadModel> getFlagsBySkillId(String skillId, String status) {
+		if (status == null || status.isBlank()) {
+			return flagRepo.findBySkillIdOrderByCreatedAtDesc(skillId);
+		}
+		return flagRepo.findBySkillIdAndStatusOrderByCreatedAtDesc(skillId, status);
+	}
+
+	/** S098e3 AC-3 / AC-4：cross-skill 列表；null/blank 回全部。 */
+	public List<FlagReadModel> listAllFlags(String status) {
+		if (status == null || status.isBlank()) {
+			return flagRepo.findAllByOrderByCreatedAtDesc();
+		}
+		return flagRepo.findByStatusOrderByCreatedAtDesc(status);
+	}
+
+	/**
+	 * S098e3 AC-6/7/8 — Flag status mutation。
+	 *
+	 * @throws FlagNotFoundException            AC-8 flag id 不存在
+	 * @throws InvalidStatusTransitionException AC-7 transition 違規或 newStatus 不合法
+	 */
+	@Transactional
+	public void updateStatus(String flagId, String newStatusName, String actor) {
+		// AC-7：parse + validate
+		var newStatus = FlagStatus.fromName(newStatusName);
+		if (newStatus == null) {
+			throw new InvalidStatusTransitionException(
+					"unknown flag status: " + newStatusName + " (allowed: OPEN, RESOLVED, DISMISSED)");
+		}
+
+		// AC-8：load existing
+		var current = flagRepo.findById(flagId)
+				.orElseThrow(() -> new FlagNotFoundException(flagId));
+
+		// AC-7：transition check — 走 enum state machine
+		var currentStatus = FlagStatus.fromName(current.status());
+		if (currentStatus == null) {
+			throw new IllegalStateException(
+					"corrupt DB state: flag " + flagId + " has unknown status " + current.status());
+		}
+		if (!currentStatus.canTransitionTo(newStatus)) {
+			throw new InvalidStatusTransitionException(
+					"cannot transition flag " + flagId + " from " + currentStatus + " to " + newStatus);
+		}
+
+		// AC-6：UPDATE via @Modifying @Query（FlagReadModel.isNew=true 不能用 save）
+		int updated = flagRepo.updateStatus(flagId, newStatus.name());
+		if (updated == 0) {
+			// 罕見 race：load 成功但 update affected=0；當 not-found 處理
+			throw new FlagNotFoundException(flagId);
+		}
+
+		var resolvedActor = (actor == null || actor.isBlank()) ? "anonymous" : actor.trim();
+		events.publishEvent(new FlagStatusChangedEvent(
+				flagId, current.skillId(), currentStatus, newStatus, resolvedActor, Instant.now()));
+
+		log.atInfo()
+				.addKeyValue("flagId", flagId)
+				.addKeyValue("oldStatus", currentStatus)
+				.addKeyValue("newStatus", newStatus)
+				.addKeyValue("actor", resolvedActor)
+				.log("Flag status changed");
 	}
 
 }
