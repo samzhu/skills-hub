@@ -1,5 +1,43 @@
 # Changelog
 
+## [v3.4.13] — Flag wiring full-stack（S112 完成；2026-05-03）
+
+> S112 跨 4 個 cron tick ship — 把既有 `FlagController` GET endpoint 真接到 SkillDetail Flags tab，新加 `GET /me/flags-summary` aggregate count 接到 MySkillsPage「待處理回報」MetricCard，同時移除 MySkillsPage「平均評分」假 metric（等 S101a Quality Score）。Page audit fresh round 發現 backend 早 ship 完整但前端兩處未串 → 4 task 接下：T01 backend (Tick 3) + T02 fe-infra (Tick 4) + T03 SkillDetail tab (Tick 5) + T04 MySkills rework (Tick 6)。
+
+### Added
+- `backend/src/main/java/io/github/samzhu/skillshub/security/MeFlagsController.java` — `GET /api/v1/me/flags-summary` 回 `{openCount: N}`；CurrentUserProvider + FlagService 注入
+- `backend/src/main/java/io/github/samzhu/skillshub/security/FlagService.java`：`countOpenFlagsForAuthor(String): long` 跨 flags + skills 兩表 SQL COUNT，過濾 `f.status='OPEN' AND skills.author=:author AND skills.status='PUBLISHED'`
+- `frontend/src/api/flags.ts`：`Flag` / `FlagsSummary` type + `fetchFlags` / `fetchFlagsSummary` helper
+- `frontend/src/lib/flag-labels.ts`：6 type + 2 status 中譯 + warning-soft / success-soft pill palette
+- `frontend/src/hooks/useFlags.ts` + `frontend/src/hooks/useFlagsSummary.ts`：TanStack Query hook with 60s staleTime
+- `frontend/src/components/FlagsList.tsx`：standalone Flags tab body component（FlagRow internal）
+- 5 test files：`MeFlagsControllerTest` (1) + `FlagServiceTest` (3) + `FlagsList.test.tsx` (2) + 2 new tests in `MySkillsPage.test.tsx`
+
+### Changed
+- `backend/.../security/package-info.java`：allowedDependencies 加 `shared :: security`（與 skill / search 模組同 pattern；解 MeFlagsController 對 CurrentUserProvider 的 cross-module 依賴）
+- `frontend/src/pages/SkillDetailPage.tsx`：「回報」tab 從永遠 render `<EmptyState>` 改為 `<FlagsList skillId={skill.id}>`；0 flag 自然 fallback 到 EmptyState
+- `frontend/src/pages/MySkillsPage.tsx`：移除「平均評分」MetricCard；4-card grid `lg:grid-cols-4` → 3-card `lg:grid-cols-3`；「待處理回報」value 從寫死 `0` 改 `flagsSummary?.openCount ?? 0`，subtitle「MVP 暫缺」→「未處理 OPEN 狀態」
+- `frontend/src/pages/MySkillsPage.test.tsx`：S110 AC-1「4 個 metric cards」更新為「3 個」（移除「平均評分」assertion）
+
+### Verified
+- Backend：`MeFlagsControllerTest` (slice 1 test) + `FlagServiceTest` (Testcontainers 3 tests, AC-6 user 隔離 + AC-7×2 graceful) + `ModularityTests` (2 tests, boundary 仍乾淨) → 全 PASS
+- Frontend：`FlagsList.test.tsx` (AC-1/AC-2) + `SkillDetailPage.test.tsx` (3 既有 error path) + `MySkillsPage.test.tsx` (3 S110 + 2 S112 AC-3/AC-4) → 10/10 PASS @ 1.09s
+- Typecheck `npx tsc --noEmit` 0 error（排除 pre-existing `Cannot find name 'global'`）
+
+### Why
+- **MVP scope** — 既有 backend FlagController 早 ship（S058/S072/S075）但 frontend 兩處未串：(1) SkillDetailPage Flags tab 永遠空、(2) MySkillsPage「待處理回報」寫死 0，看似真資料但不是。S112 把這個 visibility-vs-reality gap 補上。
+- **不重複 S098e2/S098e3 future scope** — 本 spec 只接 GET 側（顯示既有 OPEN flags + count）；POST 回報表單 + reviewer queue + Reviews aggregate 等屬 S098e3（4 個月後 reviewer 流程系列）。
+
+### Deviations
+- **T01 endpoint placement**：spec §4.1 寫「擴 MeController」但 MeController 在 `shared/security` 模組、FlagService 在 `security` 模組，`shared → security` 反向不允許（Modulith 邊界）。改建獨立 `security/MeFlagsController` + 加 `shared :: security` 到 security 模組 allowedDependencies（與 skill/search 同 pattern）。Endpoint path 不變仍是 `/api/v1/me/flags-summary`。
+- **T03 component extraction**：spec template 寫「FlagsList + FlagRow internal components within SkillDetailPage.tsx」但 Radix Tabs `fireEvent.click` 在 JSDOM 不可靠（無 user-event dep）— page-level test 2/2 fail。改 extract 至 `components/FlagsList.tsx` 獨立檔，unit test 直接 isolation → 5/5 PASS。Bonus single-responsibility。
+- **T04 hook placement**：`useFlagsSummary` 必須放早 return 前（Rules of Hooks ordering），不能放 `metric calc` 之後。
+
+### Process note
+S112 是首次「user mid-flight 寫 spec → cron 自動接手實作 4 個 sequential task」走通的端到端 demo。Spec-Only-Handoff pattern 第 2 個成功案例（首個是 S099a OpenAPI 3.1）。4 ticks 連續 ship 4 task 平均每 tick ~21min wall（含 Testcontainers/AOT context 啟動 ~15s × 多次），全部 single-tick scope-fit；無 wall-hit / WIP / BLOCKED。
+
+---
+
 ## [v3.4.12] — OpenAPI 3.1 verification + docs note（S099a 完成；2026-05-03）
 
 > S099 META Trust Maturity 第 1 個 sub-spec ship — 鎖契約 `GET /v3/api-docs` 返 OpenAPI 3.1.0（對齊 agentskills.io trust maturity + JSON Schema 2020-12）+ OverviewPage 加 API 標準對齊 docs note 給 user 看 standard compliance。30m cron loop Tick 1 同 tick full-ship（XS=2，spec assumption Plan A 但實際走 Plan B — `application-local.yaml` 早有 `version: openapi_3_1` 設定）。

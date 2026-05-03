@@ -339,4 +339,25 @@ POC: not required — 全部使用既有專案內 pattern（Spring Data JDBC + N
 
 ---
 
-<!-- Section 7 added by /planning-tasks after all tasks PASS -->
+## 7. Result
+
+**Status**: ✅ Shipped 2026-05-03 cron Tick 3-6（30m loop，4 ticks）— v3.4.13 minor。
+
+**Task ledger**：
+- T01 (Tick 3, ~26min) — backend `/me/flags-summary` endpoint + `FlagService.countOpenFlagsForAuthor` + 4 tests (AC-5/AC-6/AC-7×2)；deviation：spec §4.1 寫「擴 MeController」但 Modulith `shared → security` 反向不允許 → 改建獨立 `security/MeFlagsController`，security 模組 allowedDependencies 加 `shared :: security`（與 skill/search 同 pattern）
+- T02 (Tick 4, ~10min) — 純 type-only / const-only frontend infra：`api/flags.ts` Flag/FlagsSummary type + fetch helper，`lib/flag-labels.ts` 6 type + 2 status 中譯 + pill semantic-soft palette
+- T03 (Tick 5, ~25min) — SkillDetail Flags tab 接 `useFlags` + AC-1/AC-2 tests；deviation：spec template 寫「FlagsList + FlagRow internal」但 Radix Tabs `fireEvent.click` 在 JSDOM 不可靠（無 user-event dep），改 extract 至 `components/FlagsList.tsx` 獨立 component → unit test 直接 isolation；bonus single-responsibility
+- T04 (Tick 6, ~22min) — MySkillsPage MetricCards rework：移除「平均評分」card（等 S101a Quality Score）、grid 4-col → 3-col、接 `useFlagsSummary` 寫真 openCount + AC-3/AC-4 tests；既有 S110 zh-TW test 第 1 個更新移除「平均評分」assertion
+
+**Verification metrics**：
+- Backend: `MeFlagsControllerTest` (1 test) + `FlagServiceTest` (3 tests) + `ModularityTests` (2 tests) — 全 PASS @ 11s context
+- Frontend cross-spec: `FlagsList.test.tsx` (2) + `SkillDetailPage.test.tsx` (3 既有 error path) + `MySkillsPage.test.tsx` (3 S110 + 2 S112) — 10/10 PASS @ 1.09s
+- Typecheck: 0 error（排除 pre-existing `Cannot find name 'global'`）
+- LOC delta: backend +197（含 90 LOC test），frontend +203（含 86 LOC test）
+
+**Lessons**：
+- **Modulith 邊界 deviation 比 spec template 預想常見** — spec author 假設「擴既有 controller」最快但跨模組依賴限制讓「新 controller in correct module」反而更乾淨；下次 spec 階段先 grep `package-info.java` allowedDependencies 確認跨模組路徑
+- **Radix Tabs JSDOM fireEvent.click 不可靠** — 沒 `@testing-library/user-event` dep 時，避免測試依賴 tab 切換；單一職責 component extraction 是 testing-driven cleaner pattern
+- **Conditional hook order matter** — `useFlagsSummary(!!author)` 必須放早 return 前（Rules of Hooks 嚴格 ordering），不能放 metric calc 之後。
+
+---

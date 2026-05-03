@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MySkillsPage } from './MySkillsPage'
@@ -24,13 +24,12 @@ beforeEach(() => {
 })
 
 describe('MySkillsPage — S110 zh-TW label compliance', () => {
-  it('AC-1: 4 個 metric cards 用 zh-TW labels', async () => {
+  it('AC-1: 3 個 metric cards 用 zh-TW labels（S112-T04 移除平均評分後）', async () => {
     renderPage()
     await waitFor(() => {
       expect(screen.getByText('技能總數')).toBeInTheDocument()
     })
     expect(screen.getByText('下載總數')).toBeInTheDocument()
-    expect(screen.getByText('平均評分')).toBeInTheDocument()
     expect(screen.getByText('待處理回報')).toBeInTheDocument()
   })
 
@@ -49,5 +48,45 @@ describe('MySkillsPage — S110 zh-TW label compliance', () => {
     expect(screen.queryByText('Total downloads')).not.toBeInTheDocument()
     expect(screen.queryByText('Avg rating')).not.toBeInTheDocument()
     expect(screen.queryByText('Open flags')).not.toBeInTheDocument()
+  })
+})
+
+describe('MySkillsPage — Flags wiring (S112-T04)', () => {
+  it('S112 AC-3: 待處理回報 MetricCard 顯示 useFlagsSummary openCount', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/v1/me/flags-summary')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ openCount: 2 }) } as Response)
+      }
+      if (url.includes('/api/v1/me')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ sub: 'alice', roles: ['user'], groups: [], companyId: null, deptId: null, scope: '' }) } as Response)
+      }
+      if (url.includes('/api/v1/skills')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [], page: { number: 0, size: 200, totalPages: 0, totalElements: 0 } }) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) } as Response)
+    })
+    renderPage()
+    await waitFor(() => {
+      expect(screen.getByText('待處理回報')).toBeInTheDocument()
+    })
+    // openCount 從 useFlagsSummary 注入；subtitle 為「未處理 OPEN 狀態」
+    await waitFor(() => {
+      expect(screen.getByText('未處理 OPEN 狀態')).toBeInTheDocument()
+    })
+    // 在「待處理回報」MetricCard 內部找 value "2"（避開 DOM 內其他「2」字元）
+    const card = screen.getByText('待處理回報').closest('div')
+    if (!card) throw new Error('待處理回報 card 未找到')
+    expect(within(card).getByText('2')).toBeInTheDocument()
+  })
+
+  it('S112 AC-4: 「平均評分」MetricCard 不存在（grid 變 3-card）', async () => {
+    renderPage()
+    await waitFor(() => {
+      expect(screen.getByText('技能總數')).toBeInTheDocument()
+    })
+    // 移除「平均評分」card 後不應出現此 label / subtitle
+    expect(screen.queryByText('平均評分')).not.toBeInTheDocument()
+    expect(screen.queryByText('評分系統未啟用')).not.toBeInTheDocument()
   })
 })

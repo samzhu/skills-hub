@@ -11,6 +11,7 @@ import { Sparkline } from '@/components/Sparkline'
 import { useMe } from '@/hooks/useMe'
 import { useSkillList } from '@/hooks/useSkillList'
 import { useSkillStats } from '@/hooks/useSkillStats'
+import { useFlagsSummary } from '@/hooks/useFlagsSummary'
 import type { Skill } from '@/types/skill'
 
 /**
@@ -39,6 +40,8 @@ export function MySkillsPage() {
     author,
     size: 200, // dashboard 全顯，避免分頁干擾
   })
+  // S112-T04: 待處理回報 — me 已 loaded 才查（避免 anonymous 拒接）；放早 return 前以對齊 Rules of Hooks
+  const { data: flagsSummary } = useFlagsSummary(!!author)
   const [tab, setTab] = useState<'all' | 'PUBLISHED' | 'DRAFT' | 'SUSPENDED'>('all')
 
   if (meLoading || skillsLoading) {
@@ -82,8 +85,8 @@ export function MySkillsPage() {
         </div>
       </div>
 
-      {/* 4 metrics */}
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* S112-T04: 3-card grid — 移除「平均評分」（等 S101a Quality Score）；接 useFlagsSummary 真資料 */}
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard
           label="技能總數"
           value={total}
@@ -94,8 +97,11 @@ export function MySkillsPage() {
           value={totalDownloads.toLocaleString()}
           subtitle="累積下載"
         />
-        <MetricCard label="平均評分" value="—" subtitle="評分系統未啟用" />
-        <MetricCard label="待處理回報" value={0} subtitle="MVP 暫缺" />
+        <MetricCard
+          label="待處理回報"
+          value={flagsSummary?.openCount ?? 0}
+          subtitle="未處理 OPEN 狀態"
+        />
       </div>
 
       {/* Empty state when 0 skills (use S094c invite tone) */}
