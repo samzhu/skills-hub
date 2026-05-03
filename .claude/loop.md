@@ -13,6 +13,12 @@ the project's CLAUDE.md first; it is the highest-priority instruction set and de
 the local stack, conventions, and forbidden patterns. Comments answer **why**, never
 **what**. Use the project's natural language for commits and documentation.
 
+**Chrome MCP available**：`mcp__claude-in-chrome__*` tools 可用（navigate / get_page_text /
+javascript_tool / read_console_messages / read_network_requests …）。Mode B E2E round
+應主動用 Chrome 跑 — 真實 DOM / network / console 比靜態 grep 更會抓 broken link、
+404 deep-link、empty state、loading 卡住、文案錯誤。Tools 是 deferred，呼叫前需
+ToolSearch `select:mcp__claude-in-chrome__<name>` 載入 schema。
+
 ═══ PERSISTENT STATE FILES ═══
 
 Read these once per tick to derive context (paths are project-relative):
@@ -29,11 +35,17 @@ Read these once per tick to derive context (paths are project-relative):
 ═══ TICK ALGORITHM ═══
 
 1. Grep the roadmap for active status icons (excluding section headers)
-2. **Active spec exists** → enter Mode A (advance spec)
-3. **No active spec** → enter Mode B (E2E testing — find 假資料 / 假頁面 / broken link / 流程錯誤)
-4. One tick = one unit of work. Next cron fire continues the chain.
+2. **Active spec doc 存在 (specs/ 內 + 📋 / 📐 / 🚧)** → Mode A (advance spec)
+3. **roadmap 有 📋 sub-spec 但 specs/ 內無 doc** → 主動 /planning-spec 寫 sub-spec doc (Spec-Only-Handoff style §1-§5；smallest size first per Selection priority)；commit 後停
+4. **roadmap 全 spec doc 都 designed / shipped → Mode B** (E2E testing — find 假資料 / 假頁面 / broken link / 流程錯誤)
+5. One tick = one unit of work. Next cron fire continues the chain.
 
-═══ OPERATING PRINCIPLES（觀察自 2026-05-02 long session）═══
+**Roadmap-Drive-Over-Mode-B-Drift**：當 roadmap 仍多 📋 backlog 但連續 ticks
+跑 Mode B 0-bug round 是「Mode B drift」— 應主動 design backlog spec docs
+（step 3）而非繼續 Mode B audit。Mode B 是「全 spec 都已 designed」的 fallback
+不是 default。例：4 個 META 全 design state + 多個 backend 📋 sub-specs 無 doc
+時，正確路徑是寫 sub-spec doc 把它們從「無 doc」推進到「有 doc」，而非跑 Mode B
+audit round。
 
 **Loop-Hint-Verify**：每次觸發 /loop 帶的 priority hint 會落後實際
 roadmap / ledger 狀態 2-4 個 tick。**每 tick 開始前 grep 真實狀態驗證
@@ -47,14 +59,20 @@ Hint 跟事實不符時，以 ledger / roadmap 為準。
 VERIFY/PERSIST/COMMIT。這跟 Finish-Current-First 不衝突 — 一個是「中斷
 時收尾現任」，這個是「明確分工人寫設計、agent 寫 code」。
 
-**No-Spec-Means-E2E**：roadmap 沒 active spec **不等於停**。Cron tick
-此時轉進 Mode B 跑 E2E testing round（per TICK ALGORITHM step 3）—
-重點是**主動找 bugs**：假資料、假頁面、無效連結、404 deep-link、流程
-死路、文案錯誤、loading 卡住、empty state 缺失等。本 session 的 S100e
-（Top 10 連結 404）就是這類 bug — 若早些 cron tick 進 Mode B 跑
-AnalyticsPage round 可能更早抓到。Saturation（backlog 全 backend-heavy
-超 cron tick budget）時，每 tick 仍跑 Mode B 一輪 E2E，**不要 reply
-「saturated, stop」**。真正停的條件 = user 明示停 / CronDelete。
+**No-Spec-Means-Design-First-Then-E2E**：roadmap 沒 active spec **不等於停，
+也不等於直接 Mode B**。決策 tree：
+
+1. roadmap 有 📋 sub-spec 但 specs/ 無 doc → step 3 寫 spec doc（XS
+   sub-specs 優先，per Selection priority "smallest size first when ties remain"）
+2. specs/ 全有 doc 且 designed/shipped → step 4 Mode B E2E
+3. **任一情況都不 reply「saturated, stop」**（per EXIT: SATURATED 條件 =
+   empty backlog AND ≥3 連續 0-bug；backlog 非空時不觸發）
+
+本 session 的 S100e（Top 10 連結 404）案例：若早些 cron tick 進 Mode B
+可能更早抓到，但更早的 prevention 是 step 3 寫 backlog spec docs 持續
+推進 roadmap progression，Mode B drift 是 step 3 沒事做才轉的 fallback。
+
+真正停的條件 = user 明示停 / CronDelete。
 
 ═══ MODE A — Spec Ship Pipeline ═══
 
