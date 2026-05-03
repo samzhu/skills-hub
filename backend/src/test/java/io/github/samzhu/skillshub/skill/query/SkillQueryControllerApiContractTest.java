@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -50,6 +51,21 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
     // + GET /skills (search) JSON shape，不 cover bundle-info endpoint，stub return 不需。
     @MockitoBean
     private BundleInfoQueryService bundleInfoQueryService;
+
+    /**
+     * S122: GET /skills/{id} 加 @PreAuthorize("hasPermission(#id, 'Skill', 'read')") 後，
+     * 本 test 僅驗 JSON contract 不關心 ACL 邏輯；stub permissionEvaluator 一律放行避免
+     * 401 (anonymous mock 預設 hasPermission=false)。
+     */
+    @BeforeEach
+    void allowAllPermissions() {
+        Mockito.when(permissionEvaluator.hasPermission(
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any(),
+                ArgumentMatchers.any()))
+                .thenReturn(true);
+    }
 
     @Test
     @DisplayName("AC-11: GET /api/v1/skills/{id} JSON 含 v1.5.0 fields，無 internal version 欄位")
