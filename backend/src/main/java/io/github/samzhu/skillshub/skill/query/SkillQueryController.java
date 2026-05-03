@@ -117,10 +117,15 @@ public class SkillQueryController {
 	}
 
 	/**
-	 * 下載某技能的最新版本 zip。回傳 {@code application/octet-stream}。
+	 * 下載某技能的最新版本 zip。回傳 {@code application/octet-stream}；無權讀取時回 403。
 	 * 同時透過 aggregate 充血方法 {@code Skill.recordDownload} 觸發 {@code SkillDownloaded} 事件供 analytics 消費。
+	 *
+	 * <p>S123: 加 row-level ACL 守則 — 對應 S121 list path + S122 single GET path 三 endpoint
+	 * ACL chain 收尾。Anonymous 對 PRIVATE skill 走 401（per ExceptionTranslationFilter）；
+	 * authenticated 但無 grant 走 403。download_count 累計 invariant 不變（仍走 atomic SQL）。
 	 */
 	@GetMapping("/skills/{id}/download")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
 	ResponseEntity<byte[]> downloadLatest(@PathVariable String id) {
 		// S061: filename 含 skill name + version 區分 — name 已限 [a-z0-9-]{1,64}（S041）filename 安全
 		var skill = queryService.findById(id);
@@ -132,8 +137,13 @@ public class SkillQueryController {
 				.body(bytes);
 	}
 
-	/** 下載某技能的指定版本 zip。 */
+	/**
+	 * 下載某技能的指定版本 zip；無權讀取時回 403。
+	 *
+	 * <p>S123: 同 {@link #downloadLatest} ACL 守則 — 歷史版本對非 grantee 一視同仁不可下載。
+	 */
 	@GetMapping("/skills/{id}/versions/{version}/download")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
 	ResponseEntity<byte[]> downloadVersion(@PathVariable String id, @PathVariable String version) {
 		// S061: filename 含 skill name + 指定 version
 		var skill = queryService.findById(id);

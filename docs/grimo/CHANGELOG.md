@@ -1,5 +1,34 @@
 # Changelog
 
+## [v3.8.6] — Download endpoint ACL gate（S123 完成；2026-05-04 — read-side ACL chain closer）
+
+> S123 single-tick ship — Mode B Round 37 (2026-05-04) Bug AU 直接修。完成 read-side ACL chain：S121 (list) + S122 (single GET / versions / bundle-info) + S123 (download / downloadVersion) **6 個 read endpoint 統一 ACL 守則**。**PATCH bump** — controller annotation 加 only；零 schema 變動；無 evaluator 改動（reuse S122 既驗 anon-read 路徑）。
+
+### Fixed — Backend (LAB-blocker)
+- `backend/.../skill/query/SkillQueryController.java`：`downloadLatest` + `downloadVersion` 兩 method 加 `@PreAuthorize("hasPermission(#id, 'Skill', 'read')")` 守則。修補 anonymous 直打 `/api/v1/skills/{private-id}/download` (+ `/versions/{version}/download`) 拿到 zip body 含實際 SKILL.md 內容的 critical leak。LAB 封測前對「私人 skill 真私人」承諾恢復生效。對齊 S121 list path + S122 single GET path 既驗 enforcement，補完 read-side ACL chain 最後兩個 endpoint。
+
+### Verify metric
+- E2E manual smoke (Round 37 fixture) **12/12 case all PASS**：
+  - downloadLatest 5 case：anon PUBLIC=200 / anon PRIVATE=401 / A owner=200 / B no-grant=403 / B granted=200
+  - downloadVersion 3 case：anon PUBLIC=200 / anon PRIVATE=401 / B granted=200
+  - regression 4 case：S121 list + S122 single GET 仍 OK
+  - download_count invariant 維持：PUBLIC=2 / PRIVATE=6 累計正確（S076 atomic SQL 不受 ACL gate 影響）
+- Backend devtools restart：2.7s
+
+### Design decisions
+- **Reuse S122 evaluator anon-read 路徑** — 不需另外修補 DelegatingPermissionEvaluator；S122 已補上 anonymous + read → `[*:read]` pseudo-principal 評估，PUBLIC skill 對 anonymous 仍可下載
+- **Download counter atomic invariant 不變** — S076 原子 SQL UPDATE 路徑不受 @PreAuthorize gate 影響；ACL 失敗在 controller layer 攔截，counter UPDATE 不會被觸發
+- **不加 unit test** — touched files 限於 controller annotation；行為驗證走 E2E manual smoke 直接 curl 即足以 audit；既驗 SkillQueryControllerApiContractTest 不 cover download 路徑（focus 在 JSON shape）
+
+### Roadmap progress
+- ✅ S123 (XS=2) shipped — Phase 5 row M118
+- 📋 S124 (getByAuthorAndName ACL gate) 待 implement — 不同 SpEL signature；非 LAB 封測 critical
+- **Read-side ACL chain 完整收尾**：S121 + S122 + S123 = 6 個 read endpoint（list / single GET / versions / bundle-info / download / downloadVersion）統一 ACL 守則
+
+### Pattern reuse
+- 第 8 次 single-tick XS/S spec ship（per session lessons learned）
+- 第 4 次採用 controller-level `@PreAuthorize("hasPermission(#id, 'Skill', 'read')")`（對齊 SkillAclController.listAcl + S122 三 endpoint）
+
 ## [v3.8.5] — Read-side single-skill ACL gate（S122 完成；2026-05-04 — LAB-blocker fix continuation）
 
 > S122 single-tick ship — Mode B Round 37 (2026-05-04) Bug AT 直接修。S121 (v3.8.4) chain follow-up，補完 single-skill read endpoint 的 ACL 守則。**PATCH bump** — controller annotation 加 + evaluator 對 anonymous-read 修補；零 schema 變動；無新 dep。
