@@ -1,5 +1,36 @@
 # Changelog
 
+## [v3.10.5] — getByAuthorAndName ACL gate（S124 完成；2026-05-04 — read-side ACL chain final closer）
+
+> S124 single-tick ship — read-side ACL chain 最後一個 endpoint。**PATCH bump** — 純 controller annotation 改動（@PostAuthorize resolve-then-check）；無新 strategy / 無 schema 變動。**read-side ACL chain 完整收尾 7 個 endpoint**（S121 + S122 + S123 + S124）。
+
+### Added — Backend
+- `backend/.../skill/query/SkillQueryController.java`：`getByAuthorAndName` 加 `@PostAuthorize("hasPermission(returnObject.id, 'Skill', 'read')")`。修補 alias path `GET /skills/{author}/{name}` (canonical per S096c / ADR-003) 漏裝的 ACL 守則。`@PostAuthorize` resolve-then-check pattern：先 findByAuthorAndName 拿 Skill aggregate，再對 returnObject.id 走 hasPermission；reuse 既驗 SkillPermissionStrategy SQL，不需自訂 byAuthorAndName strategy overload（per spec §2.1 Approach B rejected — 「真的有第三 use case 才抽」原則）
+
+### Verify metric
+- E2E manual smoke (Round 38 fixture) **8/8 case all PASS**：
+  - anon GET PUBLIC by author/name=200 / anon PRIVATE=401 / nonexistent=404
+  - A owner=200 / B no-grant=403 / B granted=200
+  - regression id-based + list 仍 OK
+- Backend devtools restart 2.9s
+
+### Design decisions
+- **`@PostAuthorize` resolve-then-check** vs 自訂 `PermissionStrategy.byAuthorAndName` overload — alias path 是 alias，reuse 既驗 SQL + 多 1 次 DB read 是 acceptable trade-off；新 strategy method 違反 minimal diff
+- **安全性 invariant**：findByAuthorAndName 結果不會 leak（PostAuthorize 失敗時 ExceptionTranslationFilter 翻 401/403，response body 為標準 ErrorResponse 不含 returnObject 內容）
+
+### Roadmap progress
+- ✅ S124 (XS=2, v3.10.5) shipped — Phase 5 row M119
+- **Read-side ACL chain 完整收尾 7 個 read endpoint**：
+  - ✅ S121 (v3.8.4) — list `GET /skills`
+  - ✅ S122 (v3.8.5) — single GET / versions / bundle-info
+  - ✅ S123 (v3.8.6) — download / downloadVersion
+  - ✅ **S124 (v3.10.5) — author/name canonical alias**
+
+### Pattern reuse
+- 第 15 次 single-tick XS/S spec ship（per session lessons learned）
+- **第 1 次 `@PostAuthorize("hasPermission(returnObject.id, ...)")` resolve-then-check pattern**：對 alias path / multi-pathvar endpoint 補 ACL 不需自訂 strategy method
+- Read-side ACL chain 完整收尾 — LAB 封測 read-side 安全 invariant 全 ship
+
 ## [v3.10.4] — Collection DTO naming alignment（S118 完成；2026-05-04 — Bug AQ fix；Round 36 chain 3/3 closer）
 
 > S118 single-tick ship — Mode B Round 36 (2026-05-03) Bug AQ (LOW) backlog 候選；**Round 36 backlog chain 完整收尾 3/3**。**PATCH bump** — atomic field rename (`installs → installCount`) 跨 5 個 callsite；breaking change 對 list endpoint 但全 repo internal callers，無 external 影響。

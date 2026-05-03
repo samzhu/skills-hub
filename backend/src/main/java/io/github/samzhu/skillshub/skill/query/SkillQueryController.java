@@ -8,6 +8,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -80,8 +81,20 @@ public class SkillQueryController {
 	 * S096c — 依 author/name canonical route 取得 Skill (per ADR-003).
 	 * `/skills/:id` 為永久 alias，`/skills/:author/:name` 為 canonical；兩者 resolve 同 aggregate。
 	 * Path 區分：UUID 為 single-segment（既有 endpoint），author/name 為 two-segment（本 endpoint）。
+	 *
+	 * <p>S124: 走 {@code @PostAuthorize} 對 returnObject.id 套 ACL — 因 {@code @PreAuthorize} 對
+	 * (author, name) 兩 path variable 沒對應的 hasPermission 評估器（既有 SkillPermissionStrategy
+	 * 走 skillId String）。Resolve-then-check pattern：先 findByAuthorAndName 拿 Skill，再對 id
+	 * 走 hasPermission；不存在拋 NoSuchElementException → 404 in handler；無權拋 AccessDenied →
+	 * 401/403。對齊 S121/S122/S123 既驗 ACL chain；補完 read-side 最後 1 個 endpoint 的 ACL gap。
+	 *
+	 * <p>Trade-off：相較 @PreAuthorize 多 1 次 DB read（resolve），但 hasPermission 評估器本身
+	 * 也走 EXISTS sub-query (per SkillPermissionStrategy SQL) — 與 PreAuthorize 路徑成本對齊。
+	 * 安全性：findByAuthorAndName 結果不會 leak 到 client（PostAuthorize 拒絕後 ExceptionTranslationFilter
+	 * 翻 401/403 + 空 body）。
 	 */
 	@GetMapping("/skills/{author}/{name}")
+	@PostAuthorize("hasPermission(returnObject.id, 'Skill', 'read')")
 	Skill getByAuthorAndName(@PathVariable String author, @PathVariable String name) {
 		return queryService.findByAuthorAndName(author, name);
 	}
