@@ -96,4 +96,17 @@ export function FlagSubmitModal({ skillId, onClose }: { skillId: string; onClose
 T02（需要 createFlag from api/flags.ts；FLAG_TYPE_LABEL 既有 S112-T02 ship）
 
 ## Status
-pending
+✅ shipped 2026-05-03 cron Tick 15
+
+## Result
+
+實作 per spec template — 新建 `FlagSubmitModal` 獨立 component (per S112-T03 啟示，避開 inline + Tab interaction 不可靠路徑)，FlagsList 加「回報問題」CTA 永顯（不論有無既存 flag）。
+
+**Verification**：
+- `FlagsList.test.tsx` 4/4 PASS @ 1.78s（既有 AC-1/AC-2 + 新 AC-9/AC-10）
+- typecheck 0 error
+
+**Files changed**：
+- `frontend/src/components/FlagSubmitModal.tsx` (new — 6 type radio + description optional textarea + useMutation 呼叫 createFlag + onSuccess invalidate ['skill-flags'] + ['me-flags-summary'])
+- `frontend/src/components/FlagsList.tsx` (modify — 加 useState showModal + CTA button + FlagSubmitModal trigger；CTA 上方一律顯，0 flag 時 EmptyState 文案調整為「使用上方按鈕送出回報」)
+- `frontend/src/components/FlagsList.test.tsx` (modify — 加 fireEvent import + AC-9 / AC-10 兩 test)

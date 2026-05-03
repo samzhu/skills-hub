@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { FlagsList } from './FlagsList'
 
@@ -37,6 +37,57 @@ describe('FlagsList (S112-T03)', () => {
     renderFlagsList()
     await waitFor(() => {
       expect(screen.getByText('目前沒有任何回報')).toBeInTheDocument()
+    })
+  })
+
+  it('S098e3 AC-9: 不論 0 或 N flags 都顯「回報問題」CTA', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(globalThis as any).fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve([]),
+    } as Response)
+    renderFlagsList()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '回報問題' })).toBeInTheDocument()
+    })
+  })
+
+  it('S098e3 AC-10: 點 CTA 開 modal → 選 type + 填 desc + Submit 觸發 POST', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/flags') && init?.method === 'POST') {
+        return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ id: 'new-flag-id' }) } as Response)
+      }
+      // GET flags → 空 list
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
+    })
+    renderFlagsList()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '回報問題' })).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: '回報問題' }))
+
+    // Modal 開
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: '回報問題' })).toBeInTheDocument()
+    })
+
+    // 選 type=spam radio
+    const spamRadio = screen.getByRole('radio', { name: '垃圾內容' })
+    fireEvent.click(spamRadio)
+    // 填 description
+    fireEvent.change(screen.getByLabelText(/說明/), { target: { value: '重複內容' } })
+    // Submit
+    fireEvent.click(screen.getByRole('button', { name: '送出' }))
+
+    await waitFor(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const calls = ((globalThis as any).fetch as ReturnType<typeof vi.fn>).mock.calls
+      const postCall = calls.find((c) => c[1]?.method === 'POST')
+      expect(postCall).toBeDefined()
+      expect(postCall![1].body).toContain('"type":"spam"')
+      expect(postCall![1].body).toContain('重複內容')
     })
   })
 

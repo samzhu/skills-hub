@@ -1,32 +1,52 @@
+import { useState } from 'react'
 import { EmptyState } from '@/components/EmptyState'
+import { FlagSubmitModal } from '@/components/FlagSubmitModal'
 import { useFlags } from '@/hooks/useFlags'
 import type { Flag } from '@/api/flags'
 import { FLAG_TYPE_LABEL, FLAG_STATUS_LABEL, FLAG_STATUS_STYLE } from '@/lib/flag-labels'
 
 /**
- * S112-T03: Skill 回報列表（Flags tab 主體）。
+ * S112-T03 → S098e3-T03: Skill 回報列表（Flags tab 主體）。
  *
  * 0 flag → 既有 EmptyState；>0 flags → 直接列；後端 ORDER BY desc 故前端不再排。
- * `status` pill 預留 RESOLVED 樣式但目前 backend 只寫 OPEN（per S072 / S058
- * createFlag 寫死 "OPEN"），UI 結構待 S098e3 reviewer 流程上線自然支援。
+ * 上方一律顯「回報問題」CTA（S098e3-T03 ship；不論有無既存 flag）；點擊開
+ * FlagSubmitModal。
  */
 export function FlagsList({ skillId }: { skillId: string }) {
   const { data: flags, isLoading } = useFlags(skillId)
+  const [showModal, setShowModal] = useState(false)
+
   if (isLoading) {
     return <div className="py-8 text-sm text-muted-foreground">載入中...</div>
   }
-  if (!flags || flags.length === 0) {
-    return (
-      <EmptyState
-        tone="clear"
-        headline="目前沒有任何回報"
-        sub="若你發現此技能含惡意指令、誤導 description 或其他問題，回報功能即將推出，可送至審核佇列由 reviewer 處理。"
-      />
-    )
-  }
+
   return (
-    <div className="space-y-2">
-      {flags.map((f) => <FlagRow key={f.id} flag={f} />)}
+    <div>
+      <div className="mb-3">
+        <button
+          type="button"
+          onClick={() => setShowModal(true)}
+          className="rounded-md bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          回報問題
+        </button>
+      </div>
+
+      {!flags || flags.length === 0 ? (
+        <EmptyState
+          tone="clear"
+          headline="目前沒有任何回報"
+          sub="若你發現此技能含惡意指令、誤導 description 或其他問題，可使用上方按鈕送出回報，由 reviewer 處理。"
+        />
+      ) : (
+        <div className="space-y-2">
+          {flags.map((f) => <FlagRow key={f.id} flag={f} />)}
+        </div>
+      )}
+
+      {showModal && (
+        <FlagSubmitModal skillId={skillId} onClose={() => setShowModal(false)} />
+      )}
     </div>
   )
 }
