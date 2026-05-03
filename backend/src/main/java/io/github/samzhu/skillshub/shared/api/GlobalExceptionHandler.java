@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -248,6 +249,33 @@ public class GlobalExceptionHandler {
 				.log("Missing required parameter");
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(new ErrorResponse("VALIDATION_ERROR", ex.getMessage(), Instant.now()));
+	}
+
+	/**
+	 * S126：處理 {@code @PathVariable} 型別轉換失敗（{@link MethodArgumentTypeMismatchException}）。
+	 *
+	 * <p>當 controller 宣告 {@code @PathVariable UUID id} 但 user 傳入 invalid UUID format
+	 * （如 {@code null}、{@code undefined}、非 UUID 字串），Spring 內建 UUID converter 在
+	 * argument resolution 階段（早於 @PreAuthorize 等 method 級 interceptor）就拋出此例外。
+	 *
+	 * <p>本 handler 翻譯為標準 ErrorResponse + 400 修補 Bug AX (Mode B Round 39 finding LOW UX)：
+	 * Spring Security {@code @PreAuthorize} interceptor **早於** method validation interceptor
+	 * fire；故 {@code @Validated + @Pattern} 對 path var 的驗證會被 fail-secure 路徑搶先 → 401/403。
+	 * 改用 UUID type + 內建 converter，是唯一在 arg resolution 階段就 throw 的乾淨 fast-fail 路徑。
+	 *
+	 * <p><b>合法 UUID 但不存在的 id 不在此 handler 範圍</b> — 仍走 @PreAuthorize → 401/403
+	 * （security-first；Spring Security 預設「hide existence」設計避免 anonymous 探測）。
+	 */
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "VALIDATION_ERROR")
+				.addKeyValue("paramName", ex.getName())
+				.addKeyValue("rejectedValue", String.valueOf(ex.getValue()))
+				.log("Path variable / query param type mismatch");
+		var msg = "Invalid format for parameter '" + ex.getName() + "': " + ex.getValue();
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ErrorResponse("VALIDATION_ERROR", msg, Instant.now()));
 	}
 
 	/**

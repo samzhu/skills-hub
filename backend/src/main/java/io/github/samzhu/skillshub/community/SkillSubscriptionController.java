@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.community;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class SkillSubscriptionController {
 
+    /**
+     * S126: skill id UUID 格式驗證 走 {@link UUID} {@code @PathVariable} 內建 converter；
+     * invalid format 走 Spring `MethodArgumentTypeMismatchException` → 400 早於 @PreAuthorize。
+     * 對齊 SkillQueryController 既驗 pattern。
+     */
     private final SkillSubscriptionService service;
 
     SkillSubscriptionController(SkillSubscriptionService service) {
@@ -44,8 +50,8 @@ class SkillSubscriptionController {
      */
     @PostMapping("/api/v1/skills/{id}/subscribe")
     @PreAuthorize("hasPermission(#id, 'Skill', 'read')")
-    ResponseEntity<Void> subscribe(@PathVariable String id) {
-        service.subscribe(id);
+    ResponseEntity<Void> subscribe(@PathVariable UUID id) {
+        service.subscribe(id.toString());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
@@ -53,8 +59,8 @@ class SkillSubscriptionController {
      * AC-S125b-2 — Unsubscribe 指定 skill。204 always — 對未訂閱 skill 安靜 noop。
      */
     @DeleteMapping("/api/v1/skills/{id}/subscribe")
-    ResponseEntity<Void> unsubscribe(@PathVariable String id) {
-        service.unsubscribe(id);
+    ResponseEntity<Void> unsubscribe(@PathVariable UUID id) {
+        service.unsubscribe(id.toString());
         return ResponseEntity.noContent().build();
     }
 

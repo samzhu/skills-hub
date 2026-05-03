@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.skill.query;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,6 +42,19 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersion;
 @RequestMapping("/api/v1")
 public class SkillQueryController {
 
+	/**
+	 * S126: Skill id 格式驗證 走 {@link UUID} {@code @PathVariable} 內建 converter — invalid format
+	 * （{@code null}、{@code undefined}、非 UUID 字串）走 Spring `MethodArgumentTypeMismatchException`
+	 * → 400 VALIDATION_ERROR（per GlobalExceptionHandler S126 handler），早於 {@code @PreAuthorize}
+	 * 走 SkillPermissionStrategy SQL 評估的 fail-secure 路徑（會誤回 401/403 致 LAB UX 混淆）。
+	 *
+	 * <p>{@code @Validated + @Pattern} 不可行 — Spring Security {@code @PreAuthorize} interceptor
+	 * 在 method validation interceptor **之前** fire，無法早於 fail-secure。`UUID` 內建 converter
+	 * 在 argument resolution 階段就 throw，是唯一乾淨的 pre-PreAuthorize fast-fail 路徑。
+	 *
+	 * <p>合法 UUID 但不存在的 id 仍走 @PreAuthorize → 401/403（security-first，per Spring Security
+	 * 預設「hide existence」設計，避免 anonymous 探測 PRIVATE skill 存在性）。
+	 */
 	private final SkillQueryService queryService;
 	private final BundleInfoQueryService bundleInfoService;
 
@@ -59,8 +73,8 @@ public class SkillQueryController {
 	 */
 	@GetMapping("/skills/{id}")
 	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
-	Skill getById(@PathVariable String id) {
-		return queryService.findById(id);
+	Skill getById(@PathVariable UUID id) {
+		return queryService.findById(id.toString());
 	}
 
 	/**
@@ -73,8 +87,8 @@ public class SkillQueryController {
 	 */
 	@GetMapping("/skills/{id}/bundle-info")
 	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
-	BundleInfoQueryService.BundleInfoResponse bundleInfo(@PathVariable String id) {
-		return bundleInfoService.get(id);
+	BundleInfoQueryService.BundleInfoResponse bundleInfo(@PathVariable UUID id) {
+		return bundleInfoService.get(id.toString());
 	}
 
 	/**
@@ -125,8 +139,8 @@ public class SkillQueryController {
 	 */
 	@GetMapping("/skills/{id}/versions")
 	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
-	List<SkillVersion> getVersions(@PathVariable String id) {
-		return queryService.findVersionsBySkillId(id);
+	List<SkillVersion> getVersions(@PathVariable UUID id) {
+		return queryService.findVersionsBySkillId(id.toString());
 	}
 
 	/**
@@ -139,10 +153,11 @@ public class SkillQueryController {
 	 */
 	@GetMapping("/skills/{id}/download")
 	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
-	ResponseEntity<byte[]> downloadLatest(@PathVariable String id) {
+	ResponseEntity<byte[]> downloadLatest(@PathVariable UUID id) {
 		// S061: filename 含 skill name + version 區分 — name 已限 [a-z0-9-]{1,64}（S041）filename 安全
-		var skill = queryService.findById(id);
-		var bytes = queryService.downloadLatest(id);
+		var idStr = id.toString();
+		var skill = queryService.findById(idStr);
+		var bytes = queryService.downloadLatest(idStr);
 		return ResponseEntity.ok()
 				.contentType(MediaType.APPLICATION_OCTET_STREAM)
 				.header(HttpHeaders.CONTENT_DISPOSITION,
@@ -157,10 +172,11 @@ public class SkillQueryController {
 	 */
 	@GetMapping("/skills/{id}/versions/{version}/download")
 	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
-	ResponseEntity<byte[]> downloadVersion(@PathVariable String id, @PathVariable String version) {
+	ResponseEntity<byte[]> downloadVersion(@PathVariable UUID id, @PathVariable String version) {
 		// S061: filename 含 skill name + 指定 version
-		var skill = queryService.findById(id);
-		var bytes = queryService.downloadVersion(id, version);
+		var idStr = id.toString();
+		var skill = queryService.findById(idStr);
+		var bytes = queryService.downloadVersion(idStr, version);
 		return ResponseEntity.ok()
 				.contentType(MediaType.APPLICATION_OCTET_STREAM)
 				.header(HttpHeaders.CONTENT_DISPOSITION,

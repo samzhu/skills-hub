@@ -1,5 +1,38 @@
 # Changelog
 
+## [v3.10.7] — Skill id format validation pre-PreAuthorize（S126 完成；2026-05-04 — Bug AX fix；Round 39 chain 收尾）
+
+> S126 single-tick ship — Mode B Round 39 (Tick 13) Bug AX (LOW UX) backlog 候選。**PATCH bump** — controller `@PathVariable String → UUID` 7 處 + GlobalExceptionHandler 加 1 handler；無新 dep；無 schema 變動。**Round 39 backlog 完整收尾 2/2**（S127 + S126）。
+
+### Fixed — Backend
+- `backend/.../skill/query/SkillQueryController.java`：5 個 endpoints (getById / bundleInfo / getVersions / downloadLatest / downloadVersion) `@PathVariable String id → UUID id` + service 邊界 `id.toString()`。Invalid format（`null`、`undefined`、非 UUID 字串）走 Spring 內建 UUID converter throw `MethodArgumentTypeMismatchException` 在 argument resolution 階段，**早於** `@PreAuthorize` interceptor，由新 handler 翻譯為 400 VALIDATION_ERROR。修補 LAB 員工 typo URL 反饋從 401/403 混淆改為清楚的 400 invalid format。
+- `backend/.../community/SkillSubscriptionController.java`：2 個 endpoints (subscribe / unsubscribe) 同 pattern
+- `backend/.../shared/api/GlobalExceptionHandler.java`：加 `@ExceptionHandler(MethodArgumentTypeMismatchException.class)` 翻譯為標準 ErrorResponse + 400，含 paramName + rejectedValue 的 user-friendly message
+
+### Verify metric
+- E2E manual smoke (Round 39 fixture) **9/9 case all PASS**：
+  - invalid format (`null` / `not-a-uuid`) → 400 VALIDATION_ERROR ✓
+  - valid UUID nonexistent → 401 (security-first 不變) ✓
+  - valid PUBLIC → 200 / valid PRIVATE → 401 (regression) ✓
+  - 3 路徑 paths (versions / subscribe / download) 對 invalid id 全 400 ✓
+- Backend devtools restart 2.6s × 2（Approach B retry 至 Approach A）
+
+### Design decisions / lesson
+- **`@PathVariable UUID` + 內建 converter** vs `@Validated + @Pattern`（per spec §2.1 Approach B rejected）— **Spring Security `@PreAuthorize` interceptor 早於 method validation interceptor**；`@Pattern` 不會在 fail-secure 之前 fire。改用 type-level converter 在 argument resolution 階段就 throw，是唯一乾淨 fast-fail 路徑。**Critical lesson 紀錄入 spec §2.2 + commit body** — 未來類似 fix 直接走 type converter 不浪費 retry。
+- **Security-first hide-existence 不改**（per spec §1）— valid UUID nonexistent 仍 401/403 是 Spring Security 預設 feature；本 spec 只 fix invalid format 路徑
+
+### Roadmap progress
+- ✅ **S126 (XS=2-3, v3.10.7) shipped** — Phase 5 row M121
+- **Round 39 backlog 完整收尾 2/2**：
+  - ✅ S127 (v3.10.6) — NoResourceFoundException 一致性 (Bug AY)
+  - ✅ S126 (v3.10.7) — Skill id format validation (Bug AX)
+
+### Pattern reuse
+- 第 17 次 single-tick XS/S spec ship（per session lessons learned）
+- **Interceptor order critical lesson**：Spring Security `@PreAuthorize` 早於 `@Validated` method validation — 想在 fail-secure 之前驗證須走 argument resolution 階段
+- GlobalExceptionHandler 第 20 個 handler 加（既有 19 個）— 持續對齊 ErrorResponse shape 一致性 invariant
+- **Approach B 失敗 → A 修正 retry pattern**：Mode A `VERIFY` 階段揭露 implement 設計缺陷時，spec doc §2.1 加 `Approach B rejected mid-implementation` 紀錄
+
 ## [v3.10.6] — NoResourceFoundException ErrorResponse 一致性（S127 完成；2026-05-04 — Bug AY fix）
 
 > S127 single-tick ship — Mode B Round 39 (2026-05-04 Tick 13) Bug AY (LOW) backlog 候選。**PATCH bump** — 純 GlobalExceptionHandler 加 1 個 handler；無新 dep；無 schema 變動。對齊「ErrorResponse shape 一致性」session 持續 invariant。
