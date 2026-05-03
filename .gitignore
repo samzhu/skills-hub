@@ -6,3 +6,6 @@ verify-all.log
 scheduled_tasks.lock
 
 .vscode/
+
+# vite cache 殘留（若不小心從 root cwd 跑 vite 會建空 .vite cache）
+node_modules/

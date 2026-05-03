@@ -142,7 +142,7 @@ skills-hub/
 ## Build commands
 
 ```bash
-
+# 不需要單獨去啟動 backend/compose.yaml, spring boot 啟動時自動會去啟動 docker compose
 cd backend && ./gradlew bootRun
 
 # Full build (frontend + backend)
