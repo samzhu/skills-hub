@@ -1,7 +1,9 @@
 # S098e3: Flag Write Flow + Reviewer Queue (POST form + status mutations)
 
-> Spec: S098e3 | Size: S(8) re-est from M(7) | Status: ⏳ Design
+> Spec: S098e3 | Size: S(8) re-est from M(7) | Status: 🚧 in-progress (4 tasks queued — cron tick handoff)
 > Date: 2026-05-03
+
+> **Tasks**: T01 backend write flow (FlagStatus enum + status mutations + cross-skill list + reporter param) → T02 frontend infra (api/flags.ts mutations + useFlagsQueue + DISMISSED label) → T03 SkillDetail FlagsList CTA + FlagSubmitModal → T04 FlagsQueuePage + AppShell nav + /flags route。Execution order T01→T02→T03→T04。
 
 ---
 
