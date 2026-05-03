@@ -79,4 +79,16 @@ export const FLAG_STATUS_STYLE: Record<Flag['status'], { backgroundColor: string
 none
 
 ## Status
-pending
+✅ shipped 2026-05-03 cron Tick 4
+
+## Result
+
+純 type-only / const-only infra：2 個新檔（`api/flags.ts` 39 LOC + `lib/flag-labels.ts` 28 LOC）。`Flag.type` enum 對齊後端 `FlagService.ALLOWED_TYPES`（S072 6 個）；`status` 含 OPEN + RESOLVED（OPEN 為 backend 既有，RESOLVED 預留 S098e3 reviewer 流程）。
+
+**Verification**：
+- `cd frontend && npx tsc --noEmit` → 0 error
+- vitest suite 不跑（infra 無 callsite，既有 tests 不會 import 新檔）
+
+**T03/T04 後續**：
+- T03 將 import `fetchFlags` + 中譯 const 渲染 SkillDetail Flags tab；自建 `useFlags` hook 在 page 內或新 `hooks/useFlags.ts`
+- T04 將 import `fetchFlagsSummary` 給 MySkillsPage MetricCard；自建 `useFlagsSummary` hook 同上
