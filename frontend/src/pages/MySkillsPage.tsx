@@ -85,17 +85,17 @@ export function MySkillsPage() {
       {/* 4 metrics */}
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Total skills"
+          label="技能總數"
           value={total}
-          subtitle={`${published} published · ${drafts} draft · ${suspended} suspended`}
+          subtitle={`已發布 ${published} · 草稿 ${drafts} · 已停用 ${suspended}`}
         />
         <MetricCard
-          label="Total downloads"
+          label="下載總數"
           value={totalDownloads.toLocaleString()}
           subtitle="累積下載"
         />
-        <MetricCard label="Avg rating" value="—" subtitle="評分系統未啟用" />
-        <MetricCard label="Open flags" value={0} subtitle="MVP 暫缺" />
+        <MetricCard label="平均評分" value="—" subtitle="評分系統未啟用" />
+        <MetricCard label="待處理回報" value={0} subtitle="MVP 暫缺" />
       </div>
 
       {/* Empty state when 0 skills (use S094c invite tone) */}

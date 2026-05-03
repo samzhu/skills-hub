@@ -1,5 +1,28 @@
 # Changelog
 
+## [v3.4.10] — MySkillsPage zh-TW label compliance（S110 完成；2026-05-03）
+
+> Mode B Round 15 Tick 17 audit (Chrome MCP `/my-skills`) 找到 i18n compliance gap：4 個 MetricCard label (`Total skills` / `Total downloads` / `Avg rating` / `Open flags`) 與 status subtitle (`X published · X draft · X suspended`) 仍英文，違反 CLAUDE.md「UI 語言: 繁體中文」rule。同 page TabPill labels（line 117-128）已 zh-TW（「全部」「已發布」「草稿」「已停用」），是 same-page i18n inconsistency。Tick 17 同 tick full-ship（XS=2 string replace + minimal test，per S109 process pattern）。
+
+### Changed
+- `frontend/src/pages/MySkillsPage.tsx`：5 處 user-facing string 從英文改 zh-TW — `Total skills`→`技能總數`、`Total downloads`→`下載總數`、`Avg rating`→`平均評分`、`Open flags`→`待處理回報`、`X published · X draft · X suspended`→`已發布 X · 草稿 X · 已停用 X`（與既有 TabPill labels terminology 一致）
+
+### Added
+- `frontend/src/pages/MySkillsPage.test.tsx`（新建）：3 ACs — AC-1 zh-TW labels present + AC-2 status subtitle 不含 English token + AC-3 English leftover regression guard
+
+### Verified
+- `cd frontend && npm test -- --run MySkillsPage`：1 file 3/3 PASS（1.03s）
+- Chrome MCP live smoke `/my-skills`：4 zh-TW labels render ✓ + 5 English leftover 全 removed ✓
+- FE tests 累計 40 → 43（+3）
+
+### Why
+S100e → S102 → S103 → S104 → S105 → S106 → S107 → S108 → S109 → **S110** 第 10 個 S100 META cross-cutting follow-up — cut 累積 10 層（S103 同軸延伸：user-visible string compliance；S103 修 stub copy spec ID leak，S110 修 page label English leftover，都是 zh-TW i18n compliance audit cut）。
+
+### Process note
+第 2 個 single-tick full-ship 案例（首例 S109 vite proxy actuator）。Pattern 持續驗證：(1) XS scope (2) CLAUDE.md rule clear (3) Sibling pattern proven (4) Smoke < 30s via Chrome MCP。對 i18n compliance / copy polish / dev-config 類 micro fix，single-tick full-ship 比 two-tick Spec-Only-Handoff 高效。
+
+---
+
 ## [v3.4.9] — Vite dev proxy for Spring Boot Actuator endpoints（S109 完成；2026-05-03）
 
 > Mode B Round 14 (extends S108 audit cut to actuator paths) Tick 16 audit 確認 dev environment proxy completeness gap continues：vite.config.ts proxy 已涵蓋 `/api/v1/*` + S108 加的 `/v3/api-docs` + `/swagger-ui`，但 actuator 路徑仍 fallback。Tick 16 同 tick full-ship（XS=1 pt 純 dev config）：proxy 加 `/actuator` prefix 一條規則 → 自動 cover all sub-paths (health/info/prometheus/metrics)；prod single-port deploy 不受影響。S108 §8 polish-backlog rule「proxy 應 mirror all backend-served paths」直接延伸驗證。
