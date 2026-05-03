@@ -51,7 +51,11 @@ class CollectionQueryController {
 
     /**
      * Public list DTO — 對齊既有 frontend `SkillCollection` interface（skills.ts）。
-     * 不含 ownerId / installCount detail（list view 不需）。
+     * 不含 ownerId detail（list view 不需）。
+     *
+     * <p>S118 (2026-05-04): rename `installs` → `installCount` 對齊 {@link CollectionDetail}
+     * 既驗欄位命名（per Mode B Round 36 finding Bug AQ — 同 entity 跨 endpoint field name
+     * 一致性）。S096f2 ship 時 oversight；本 fix breaking change 但 chain 收尾可一次完整 ship。
      */
     record CollectionSummary(
             String id,
@@ -59,7 +63,7 @@ class CollectionQueryController {
             String description,
             String category,
             int skillCount,
-            int installs,
+            int installCount,
             Instant createdAt) {
         static CollectionSummary from(Collection c) {
             return new CollectionSummary(c.getId(), c.getName(), c.getDescription(),

@@ -17,12 +17,13 @@ import { CollectionsPage } from './CollectionsPage'
 
 const sampleCollections = [
   {
+    // S118: rename installs → installCount 對齊 backend CollectionSummary
     id: 'c1', name: 'DevOps Starter', description: 'k8s + terraform tooling',
-    skillCount: 3, installs: 12, category: 'DevOps', createdAt: '2026-04-30T10:00:00Z',
+    skillCount: 3, installCount: 12, category: 'DevOps', createdAt: '2026-04-30T10:00:00Z',
   },
   {
     id: 'c2', name: 'Frontend Quality', description: 'a11y + lint + i18n suite',
-    skillCount: 5, installs: 8, category: 'Frontend', createdAt: '2026-04-29T10:00:00Z',
+    skillCount: 5, installCount: 8, category: 'Frontend', createdAt: '2026-04-29T10:00:00Z',
   },
 ]
 
@@ -59,7 +60,7 @@ const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       ...state.collections,
       {
         id: newId, name: body.name, description: body.description ?? '',
-        skillCount: body.skillIds?.length ?? 0, installs: 0,
+        skillCount: body.skillIds?.length ?? 0, installCount: 0,
         category: body.category, createdAt: '2026-05-03T10:00:00Z',
       },
     ]

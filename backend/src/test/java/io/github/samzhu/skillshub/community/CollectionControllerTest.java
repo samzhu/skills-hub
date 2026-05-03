@@ -104,7 +104,8 @@ class CollectionControllerTest extends WebMvcSliceTestBase {
                 .andExpect(jsonPath("$[0].name").value("DevOps Pack"))
                 .andExpect(jsonPath("$[0].category").value("DevOps"))
                 .andExpect(jsonPath("$[0].skillCount").value(1))
-                .andExpect(jsonPath("$[0].installs").value(0));
+                // S118: rename installs → installCount 對齊 CollectionDetail 既驗
+                .andExpect(jsonPath("$[0].installCount").value(0));
     }
 
     @Test

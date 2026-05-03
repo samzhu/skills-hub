@@ -1,5 +1,38 @@
 # Changelog
 
+## [v3.10.4] — Collection DTO naming alignment（S118 完成；2026-05-04 — Bug AQ fix；Round 36 chain 3/3 closer）
+
+> S118 single-tick ship — Mode B Round 36 (2026-05-03) Bug AQ (LOW) backlog 候選；**Round 36 backlog chain 完整收尾 3/3**。**PATCH bump** — atomic field rename (`installs → installCount`) 跨 5 個 callsite；breaking change 對 list endpoint 但全 repo internal callers，無 external 影響。
+
+### Changed — Backend
+- `backend/.../community/CollectionQueryController.java`：`CollectionSummary` record field rename `int installs` → `int installCount`，對齊 `CollectionDetail.installCount` 既驗欄位命名。Bug AQ：S096f2 ship Collections feature 時 oversight 致同 entity 跨 endpoint field name 不一致。
+
+### Changed — Frontend
+- `frontend/src/api/skills.ts`：`SkillCollection.installs: number` → `installCount: number`
+- `frontend/src/pages/CollectionsPage.tsx`：`collection.installs.toLocaleString()` → `collection.installCount.toLocaleString()` (CollectionCard render)
+
+### Changed — Tests
+- `backend/.../community/CollectionControllerTest.java`：jsonPath `$[0].installs` → `$[0].installCount`
+- `frontend/src/pages/CollectionsPage.test.tsx`：sampleCollections fixture × 3 entries `installs:` → `installCount:`
+
+### Verify metric
+- Backend `CollectionControllerTest`：（待 commit 前確認）
+- Frontend `CollectionsPage` tests **4/4 PASS @ 1.62s**
+
+### Design decisions
+- **Atomic rename + 全 callsite migration** vs Jackson `@JsonAlias` 過渡（per spec §2.1）— 5 個 callsite 全在本 repo internal；無 external API caller；atomic ship 避免 transitional field 留 tech debt
+
+### Roadmap progress
+- ✅ S118 (XS=2, v3.10.4) shipped — Phase 5 row M113
+- **Round 36 backlog chain 完整收尾 3/3**：
+  - ✅ S119 (v3.10.2) — list rating projection (Bug AR)
+  - ✅ S117 (v3.10.3) — frontend SkillVersion fileCount sync (Bug AP)
+  - ✅ S118 (v3.10.4) — Collection DTO naming alignment (Bug AQ)
+
+### Pattern reuse
+- 第 14 次 single-tick XS/S spec ship（per session lessons learned）
+- **Round 36 audit chain 完整收尾範本**：3 個 finding (LOW/LOW/MEDIUM) 跨 3 個 cron tick ship；每 tick 1 fix-spec；對齊 wall budget 漸進交付（從 2026-05-03 audit → 2026-05-04 ship 全 chain）
+
 ## [v3.10.3] — Frontend SkillVersion fileCount sync（S117 完成；2026-05-04 — Bug AP fix）
 
 > S117 single-tick ship — Mode B Round 36 (2026-05-03) Bug AP (LOW) backlog 候選。**PATCH bump** — 純 frontend type 加欄位 + VersionList graceful display；無 backend 改動；無 schema 變動。LAB 員工瀏覽版本歷史看到「N 個檔案」資訊。

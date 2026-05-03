@@ -218,7 +218,9 @@ export interface SkillCollection {
   name: string
   description: string | null
   skillCount: number
-  installs: number
+  // S118: rename installs → installCount 對齊 CollectionDetail.installCount
+  // (per Mode B Round 36 Bug AQ fix — 同 entity 跨 endpoint field name 一致性)
+  installCount: number
   category: string
   createdAt: string
 }

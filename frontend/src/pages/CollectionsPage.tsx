@@ -75,7 +75,7 @@ function CollectionCard({ collection }: { collection: SkillCollection }) {
         <span>{collection.skillCount} 個技能</span>
         <span className="flex items-center gap-1">
           <Download className="h-3 w-3" />
-          {collection.installs.toLocaleString()}
+          {collection.installCount.toLocaleString()}
         </span>
       </div>
       <div className="mt-3">
