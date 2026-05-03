@@ -1,5 +1,54 @@
 # Changelog
 
+## [v3.5.0] — Reviews aggregate + ratings full-stack（S098e2 完成；2026-05-03）
+
+> S098e2 跨 5 個 cron tick (含 Tick 7 spec planning) ship — 新建 `review/` Modulith 模組（ADR-002 canonical pattern：Spring Data JDBC 充血聚合 + Modulith Outbox + AFTER_COMMIT projection）；3 個 REST endpoints (POST/DELETE/GET)；2 schema migrations (V8 reviews 表 + V9 skills 加 average_rating/review_count)；前端 SkillDetail Reviews tab 從永遠 EmptyState 接上完整 hero + list + form 流程。Minor 版本因引入新 module + new schema column。
+
+### Added — Backend (review module)
+- `backend/src/main/java/io/github/samzhu/skillshub/review/package-info.java` — `@ApplicationModule` allowedDependencies = shared::events/api/security + skill::domain + skill::query
+- `backend/src/main/java/io/github/samzhu/skillshub/review/domain/Review.java` — Aggregate root (state-based 充血) + create factory + AC-2/3 validation；ReviewCreated event registration
+- `backend/src/main/java/io/github/samzhu/skillshub/review/domain/ReviewRepository.java` — Spring Data JDBC repo + findBySkillIdOrderByCreatedAtDesc / existsBySkillIdAndAuthorId derived queries
+- `backend/src/main/java/io/github/samzhu/skillshub/review/domain/ReviewCreatedEvent.java` + `ReviewDeletedEvent.java` — record events
+- `backend/src/main/java/io/github/samzhu/skillshub/review/ReviewService.java` — 3-line create / delete orchestration + AC-4 dup check + AC-7 author check
+- `backend/src/main/java/io/github/samzhu/skillshub/review/ReviewController.java` — 合併 POST/DELETE/GET 單 controller (3 endpoints volume 不需拆)
+- `backend/src/main/java/io/github/samzhu/skillshub/review/SkillRatingProjectionListener.java` — `@ApplicationModuleListener` × 2 訂閱 ReviewCreated/Deleted
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/query/SkillRatingService.java` — raw SQL UPDATE projection helper (NamedParameterJdbcTemplate；COALESCE 處理 0-review)
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/api/ReviewForbiddenException.java` — 403 handler input (AC-7)
+- `backend/src/main/resources/db/migration/V8__create_reviews_table.sql` — reviews 表 (rating CHECK [1,5] + content CHECK length≤2000 + (skill_id,author_id) UNIQUE)
+- `backend/src/main/resources/db/migration/V9__add_skill_rating_projection_columns.sql` — skills 加 average_rating NUMERIC(3,2) + review_count BIGINT (DEFAULT 0)
+- 3 個 backend test 檔：ReviewServiceTest (Testcontainers AC-1/2/3/4/6/7/8) + SkillRatingProjectionListenerTest (Modulith Scenario API AC-5×2) + 修改 GlobalExceptionHandler 加 ReviewForbiddenException 403 handler
+
+### Added — Frontend
+- `frontend/src/api/reviews.ts` — Review type + fetchReviews + createReview + deleteReview helpers
+- `frontend/src/hooks/useReviews.ts` — TanStack Query hook 60s staleTime
+- `frontend/src/components/RatingStars.tsx` — 5-star icon row (lucide Star) readonly + interactive ARIA radiogroup
+- `frontend/src/components/ReviewsPanel.tsx` — main panel + RatingHero + ReviewRow + ReviewForm internal components
+- 2 個 frontend test 檔：RatingStars.test.tsx (5 unit) + ReviewsPanel.test.tsx (4 isolation, AC-10/11/12)
+
+### Changed
+- `backend/.../skill/domain/Skill.java`：加 `averageRating` + `reviewCount` `@ReadOnlyProperty` field + getters；read-only column 防 aggregate save() 並發覆蓋（mirror downloadCount S077 pattern）
+- `frontend/src/types/skill.ts`：Skill interface 加 averageRating: number + reviewCount: number 對齊後端 DTO
+- `frontend/src/pages/SkillDetailPage.tsx`：Reviews tab 從 永遠 `<EmptyState>` 改 `<ReviewsPanel skill={skill} currentUserId={me?.sub}>`；加 useMe + ReviewsPanel imports
+
+### Verified
+- Backend：ReviewServiceTest 8/8 PASS @ 17.2s（Testcontainers + 真 PostgreSQL）+ SkillRatingProjectionListenerTest 2/2 PASS @ 16.9s（Modulith Scenario API）+ ModularityTests 2/2 PASS（review allowedDependencies 加 `skill :: query` 後 boundary 仍乾淨）
+- Frontend cross-spec：ReviewsPanel 4 + RatingStars 5 + FlagsList 2 + MySkillsPage 5 + SkillDetailPage 3 → 19/19 PASS @ 1.73s
+- Typecheck 0 error（排除 pre-existing `Cannot find name 'global'`）
+
+### Why
+- **PRD §316 B3 + §80/§221 真實 review feature**：原 Reviews tab 永遠空 EmptyState 不 honor PRD「社群評分」期望；S098e2 接 backend aggregate + projection + frontend full UI 走通端到端。
+- **為 S101b Impact Score 預備 rating sub-metric**：S101b Impact Score 4-sub-metric 中 rating 來源就是這個 averageRating；先 ship S098e2 解 unblock。
+
+### Deviations
+- **T01 delete event publish path**：spec 寫 aggregate registerEvent + repo.save() 觸發 outbox，但 state-based aggregate 無 @Version → load 後 save() 誤觸 INSERT 衝主鍵。改用 ApplicationEventPublisher 直接發 ReviewDeletedEvent；Create flow 仍走 outbox（factory new entity, save() INSERT 正確）。Listener 訂閱兩種 publish 路徑都收得到。
+- **T02 listener 放置位置 + bootstrap mode**：listener 放 review/ 而非 skill/，review allowedDependencies 加 skill::query（與 ScanOrchestrator 既有 cross-module SPI 同 pattern）；@ApplicationModuleTest(DIRECT_DEPENDENCIES) 拉到 SkillAclController → StorageService missing → 改 @SpringBootTest full bootstrap。
+- **T04 ReviewsPanel extract 至獨立檔**：spec template 寫 internal components；per S112-T03 啟示 Radix Tabs JSDOM fireEvent.click 不可靠（無 user-event dep），改 extract → unit test 直接 isolation。
+
+### Process note
+S098e2 是第二個「user 寫 spec → cron 拆 task → cron 連續 ship」端到端 demo（首例 S112，S099a 是 single task）。Spec-Only-Handoff pattern 走第三次成功。5 ticks（含 1 tick 純 spec planning + 4 tick implement）平均 ~22min/tick；Modulith boundary 兩個跨模組 SPI（skill::query → security 既有 + review）pattern 一致。
+
+---
+
 ## [v3.4.13] — Flag wiring full-stack（S112 完成；2026-05-03）
 
 > S112 跨 4 個 cron tick ship — 把既有 `FlagController` GET endpoint 真接到 SkillDetail Flags tab，新加 `GET /me/flags-summary` aggregate count 接到 MySkillsPage「待處理回報」MetricCard，同時移除 MySkillsPage「平均評分」假 metric（等 S101a Quality Score）。Page audit fresh round 發現 backend 早 ship 完整但前端兩處未串 → 4 task 接下：T01 backend (Tick 3) + T02 fe-infra (Tick 4) + T03 SkillDetail tab (Tick 5) + T04 MySkills rework (Tick 6)。

@@ -412,4 +412,32 @@ export function useReviews(skillId: string | undefined) {
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 7. Result
+
+**Status**: ✅ Shipped 2026-05-03 cron Tick 7-11（30m loop，5 ticks 含 spec planning）— v3.5.0 minor。
+
+**Task ledger**：
+- T01 (Tick 8) — review/ 模組 + Review aggregate (state-based 充血) + ReviewService (3-line orchestration) + 合併 ReviewController + V8 migration + ReviewServiceTest 8/8 PASS @ 17.2s。Deviation：delete flow 改 ApplicationEventPublisher 直接發 event（state-based aggregate 無 @Version 不適合 save loaded entity）；ReviewForbiddenException 放 shared/api/（mirror SkillSuspendedException）。
+- T02 (Tick 9) — V9 migration ALTER skills 加 average_rating + review_count；Skill aggregate `@ReadOnlyProperty` field（mirror downloadCount S077 pattern）；SkillRatingService raw SQL UPDATE in skill::query NamedInterface；SkillRatingProjectionListener `@ApplicationModuleListener` × 2 訂閱 ReviewCreated/Deleted。Listener 放 review/，review allowedDependencies 加 skill::query（與 ScanOrchestrator 既有 cross-module SPI 同 pattern）。Bootstrap deviation：DIRECT_DEPENDENCIES 拉到 SkillAclController 但 StorageService missing → 改 @SpringBootTest。SkillRatingProjectionListenerTest Scenario API 2/2 PASS @ 16.9s。
+- T03 (Tick 10) — frontend infra 5 個新檔：api/reviews.ts + useReviews + RatingStars (readonly + interactive ARIA radiogroup) + Skill type field。RatingStars.test.tsx 5/5 PASS。
+- T04 (Tick 11) — ReviewsPanel extract 獨立 component (per S112-T03 啟示)；含 RatingHero / ReviewRow / ReviewForm internal；SkillDetailPage Reviews tab integration。Trim：edit affordance defer（spec §2.4），已寫過後 CTA 隱藏避免 DUP 衝 AC-4。ReviewsPanel.test.tsx 4/4 PASS。
+
+**Verification metrics**：
+- Backend: ReviewServiceTest 8 (AC-1/2/3/4/6/7/8 + not-found) + SkillRatingProjectionListenerTest 2 (AC-5 created + deleted) + ModularityTests 2 — 全 PASS
+- Frontend cross-spec: ReviewsPanel 4 + RatingStars 5 + FlagsList 2 + MySkillsPage 5 + SkillDetailPage 3 — 19/19 PASS @ 1.73s
+- Typecheck 0 error；ModularityTests boundary 仍乾淨
+- LOC delta: backend +650 (含 ~280 LOC test)，frontend +500 (含 ~210 LOC test)
+
+**12 ACs 涵蓋**：
+- AC-1～8 backend by ReviewServiceTest + SkillRatingProjectionListenerTest
+- AC-9 (auth) deferred — Spring Security MVP permit-all 暫無強制 401，per spec §3 留待 security 階段重審
+- AC-10～12 frontend by ReviewsPanel.test.tsx
+- AC-12 edit happy-path 部分達成（create → modal close → list refresh by query invalidate）；edit affordance defer per §2.4
+
+**Lessons**：
+- **State-based aggregate + delete event 不適合 save() proxy publishing**：load 後再 save() 觸發 outbox 會誤觸 INSERT 衝主鍵（因 isNew() 不易判斷）；改用 ApplicationEventPublisher 直接發是乾淨 fallback。
+- **Cross-module SPI via NamedInterface**：`skill::query` 暴露 SkillRatingService 給 review module 跨模組 call，與 ScanOrchestrator security → skill::query 同 pattern；ModularityTests 守 boundary 不變形。
+- **Modulith bootstrap mode 限制**：DIRECT_DEPENDENCIES 拉直接依賴模組會 transitively 拉到 sibling controller bean（如 SkillAclController），但這些 bean 的依賴（如 StorageService）不在 DIRECT_DEPENDENCIES 裡。Workaround：Listener integration test 改用 @SpringBootTest full bootstrap。
+- **Component extract 比 Tab interaction test 可靠**：RadixTabs 在 JSDOM 沒 user-event dep 時 fireEvent.click 不觸發 panel 渲染；S112-T03 + S098e2-T04 兩次驗證 — 直接 unit test 獨立 component 是 testing-driven cleaner pattern。
+
+---

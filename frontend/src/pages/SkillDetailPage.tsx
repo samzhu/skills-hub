@@ -16,10 +16,12 @@ import { Sparkline } from '@/components/Sparkline'
 import { EmptyState } from '@/components/EmptyState'
 import { useSkill, useSkillByAuthorAndName } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
+import { useMe } from '@/hooks/useMe'
 import { addVersion, fetchSkillStats } from '@/api/skills'
 import { ApiError } from '@/api/client'
 import { localizeApiError } from '@/lib/api-error-messages'
 import { FlagsList } from '@/components/FlagsList'
+import { ReviewsPanel } from '@/components/ReviewsPanel'
 import type { RiskLevel, SkillStatus } from '@/types/skill'
 
 /**
@@ -68,6 +70,7 @@ export function SkillDetailPage() {
   const params = useParams<{ id?: string; author?: string; name?: string }>()
   const skillByIdQuery = useSkill(params.id ?? '')
   const skillByAuthorNameQuery = useSkillByAuthorAndName(params.author, params.name)
+  const { data: me } = useMe()
   // Pick whichever query has data; both have `enabled` gates so only one fires
   const activeQuery = params.id ? skillByIdQuery : skillByAuthorNameQuery
   const { data: skill, isLoading, error } = activeQuery
@@ -210,13 +213,9 @@ export function SkillDetailPage() {
             )}
           </div>
         </TabsContent>
-        {/* S098e: Reviews tab stub — 真 review aggregate + ratings 待 S098e2 ship */}
+        {/* S098e2-T04: Reviews tab — ReviewsPanel 接 useReviews + RatingHero + ReviewForm */}
         <TabsContent value="reviews" className="mt-4">
-          <EmptyState
-            tone="invite"
-            headline="尚未有任何評論"
-            sub="評論系統即將推出 — 屆時用戶可以為使用過的技能打分數並留下文字回饋，協助其他人選擇。"
-          />
+          <ReviewsPanel skill={skill} currentUserId={me?.sub} />
         </TabsContent>
         {/* S112-T03: Flags tab — 接 GET /skills/{id}/flags；POST 回報 form 待 S098e3 */}
         <TabsContent value="flags" className="mt-4">
