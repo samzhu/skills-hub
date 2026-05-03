@@ -573,7 +573,67 @@ LAB profile 應用 `oauth.enabled=true` mode（**不是** `local` profile 預設
 
 `oauth.enabled=false`（LabSecurityFilter 注入 ROLE_admin）僅適合 dev local — admin 角色 bypass 全 ACL，對 ACL invariant 驗證無意義。`docs/grimo/architecture.md` / `development-standards.md` 文件 LAB profile config 須補此說明（polish backlog）。
 
+## Tick — Mode B Round 38 — Subscription / Notification flow gap audit (2026-05-04)
+
+> Cut: 訂閱 + 通知 flow E2E（user directive 「上傳/下載/訂閱/通知/分享/ACL」中尚未驗證的兩 surface）。觸發點：S121-S123 完成 read-side ACL chain 後，繼續走 user directive 列舉的 flow；訂閱/通知為 PRD P9 SBE scenarios 但 codebase 實作狀態未確認。
+
+### Setup
+- Backend：OAuth=true mode（從 Tick 1 起的 backend instance；S121-S123 ACL chain 已 ship）
+- Mock OAuth tokens：A=dev-042 / B=viewer-007（已 grant `user:viewer-007:read` on PRIVATE skill）
+- Notification 已 ship（S096h2 v3.7.0；author-recipient pattern；4 個 listener: SkillFlagged / ReviewCreated / RequestClaimed / RequestFulfilled）
+
+### E2E Probe
+
+| Probe | 結果 | 預期 (per PRD P9) |
+|-------|------|-------------------|
+| `GET /api/v1/notifications` (A 視角) | `{items: [], hasNext: false}` | ✓（A 無 flag/review/claim/fulfill，0 條合理） |
+| `GET /api/v1/notifications` (B 視角) | `{items: [], hasNext: false}` | ✓（B 同上） |
+| `POST /api/v1/skills/{id}/subscribe` (B 訂閱 PRIVATE) | **HTTP 405** | ❌ 應 201 + 寫 skill_subscriptions row（per PRD P9 scenario 1 GIVEN） |
+| `GET /api/v1/skills/{id}/subscribers` | **HTTP 404** | ❌ 應回 subscriber 清單 |
+| `POST /api/v1/skills/{id}/follow` | **HTTP 405** | ❌（替代命名同樣未實作） |
+| Backend `SkillSubscription` aggregate | **完全不存在** | ❌（glossary line 37 定義 `SkillSubscription` 但無對應 Java class / DB schema） |
+| `NotificationProjectionListener.onVersionPublished` | **完全不存在** | ❌（PRD P9 scenario 1：「該 skill 作者發布 v2.1.0 → 訂閱者收 notification」實作 missing） |
+
+### Findings
+
+| Bug | Severity | Path | 描述 |
+|-----|----------|------|------|
+| **AV** | **HIGH (LAB-blocker for 訂閱 flow)** | `SkillSubscription` feature 完全未實作 | PRD §285-§291 P9 SBE scenario 1「Given 使用者訂閱了 docker-compose-helper skill / When 該 skill 作者發布 v2.1.0 / Then 使用者通知中心顯示 1 unread badge + 通知列表顯示 v2.1.0 已發布」**無法 LAB 封測** — `SkillSubscription` aggregate / V14+ schema / `POST /skills/{id}/subscribe` endpoint / `NotificationProjectionListener.onVersionPublished` 全缺。Glossary line 37 定義 `SkillSubscription` 但 codebase 0 實作。S096h2 ship notification infra 走 author-recipient (4 listener) 而非 subscriber-recipient — subscription path 從未被實作。 |
+
+**Status**：本 round 0 修；按 Mode B rule「找到 bug → 切回 Mode A 寫 fix-spec」走 backlog row。
+
+### Roadmap rows added
+
+- **S125** (M=10-12)：SkillSubscription + NotificationProjectionListener.onVersionPublished — Bug AV fix
+  - **Backend infra**：`SkillSubscription` aggregate (`@Version + AbstractAggregateRoot` per ADR-002 canonical) / V14 migration `skill_subscriptions(skill_id, subscriber_id, created_at)` + UNIQUE constraint / `SkillSubscriptionRepository` / `SubscriptionService` (subscribe / unsubscribe / listSubscribersOf / listSubscriptionsOf)
+  - **Endpoint**：`POST /api/v1/skills/{id}/subscribe` (201) / `DELETE /api/v1/skills/{id}/subscribe` (204) / `GET /api/v1/me/subscriptions` (list user's subscriptions)；@PreAuthorize 守 `read` permission（避免 anon subscribe）
+  - **Listener**：`NotificationProjectionListener.onVersionPublished` 訂閱 `SkillVersionPublishedEvent` → 查 `findSubscribersOf(skillId)` → 對每個 subscriber 寫 notification（category=`versions`，title=「{skill.name} {version} 已發布」）；自我 skip (author 不通知自己)；UNIQUE(recipient_id, ref_event_id, category) idempotency
+  - **Frontend**：SkillDetail page 加「訂閱」按鈕 + state；Bell badge 自動更新（既有 30s poll）；Notifications page 既有 filter chips 自動含 `versions` category（per S096h2 ship）
+  - **Trim path** (M+→S)：可分 split — S125a = backend infra (XS=4)；S125b = listener + 1 endpoint (XS=3)；S125c = frontend (XS=3)；單 tick 可分 3 ship
+  - **LAB 封測 priority**：subscription 是 user directive 明示之 flow；建議 LAB 部署前 ship 至少 S125a/b 讓員工可測 flow；frontend 可 LAB 後補
+  - 既有 NotificationProjectionListener 4 listener 為對應 pattern；`SkillVersionPublishedEvent` 已存在於 `skill::domain`（`Skill.recordVersionPublished` 既驗）— 只需加 listener subscribe + DB lookup
+
+### Cuts not exercised this round
+- User-visible string compliance — 排隊（last 跑 tick 56 R12-14）
+- Cross-cutting links — 排隊
+- Form interaction (publish flow Chrome MCP) — 排隊
+- Frontend Chrome MCP visual regression — 排隊
+
+### LAB 封測準備度更新（Tick 5 結算）
+
+✅ **Read-side ACL chain 完整**（Tick 1-4 ship S121/S122/S123）：
+- list / single GET / versions / bundle-info / download / downloadVersion 6 個 endpoint 統一 ACL 守則
+- visibility (PUBLIC/PRIVATE) end-to-end 真實生效
+- anonymous PUBLIC 可訪問；anonymous PRIVATE 401；authenticated 無 grant 403；authenticated granted 200
+
+⏳ **Subscription/Notification flow 缺**（本 round finding）：
+- LAB 封測時員工**無法 demo「訂閱 skill → 收新版通知」flow**（PRD P9 scenario 1）
+- Notification author-recipient path 已 ship（S096h2）但 subscriber-recipient path 完全缺
+- S125 (M=10-12) 待 implement；建議 split S125a/b/c 分 3 tick ship 解 LAB 封測 user-visible gap
+
+✅ **上傳 / 下載 / ACL 分享** flow 已 verified（Tick 1）。
+
 ## Next Tick Suggestions
-- Pick up S121 implement (S=4-5, **LAB-blocker priority**) — 解 list endpoint ACL filter gap，讓 visibility 真實生效
-- 然後 S122 + S123（XS each）補 single GET + download ACL 守則
-- S117 / S118 / S119 (XS each) 仍可單 tick ship — Round 36 既開 backlog
+- Pick up S125a (XS=4) implement — backend SkillSubscription infra (aggregate + V14 + repo + service)
+- 或補 S117 / S118 / S119（XS each — Round 36 backlog 仍積壓）
+- 或開 S124 (XS getByAuthorAndName ACL gate；S122/S123 follow-up)
