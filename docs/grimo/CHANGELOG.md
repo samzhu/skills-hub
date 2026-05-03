@@ -1,5 +1,36 @@
 # Changelog
 
+## [v3.10.9] — Personal endpoints auth gate（S130 完成；2026-05-04 — Bug BB fix；LAB session integrity）
+
+> S130 single-tick ship — Mode B Round 41 (Tick 17) Bug BB (HIGH LAB session integrity) 同 tick ship。**PATCH bump** — 純 SecurityConfig path matcher 擴充；無新 dep；無 schema 變動。修補 anonymous 透過 CurrentUserProvider lab-user fallback 共享 personal state 的 LAB session integrity 漏洞。
+
+### Fixed — Backend
+- `backend/.../shared/security/SecurityConfig.java`：`filterChain` OAuth branch 擴充 `requestMatchers` 加 `/api/v1/me/**` + `/api/v1/notifications, /api/v1/notifications/**` require authenticated。修補 Bug BB：anonymous HTTP 原可訪問 `/me/subscriptions` / `/notifications` / `/notifications/unread-count` / `/notifications/read-all` / `/notifications/preferences` 全 200（lab-user fallback），LAB 多匿名員工 session 共享 lab-user shared state 違反 personal endpoints 隔離設計。
+
+### Verify metric
+- E2E manual smoke (Round 41 fixture) **14/14 case all PASS**：
+  - 6 個 anon personal endpoints → 401（was 200/204）✓
+  - 4 個 auth user (A/B) personal endpoints → 200 ✓
+  - 3 個 anon public endpoints (skills list / single GET / categories) → 200（regression）✓
+  - 1 個 out-of-scope observation (anon subscribe POST=201) ✓
+- Backend devtools restart 2.6s
+- Compile 1s
+
+### Design decisions
+- **SecurityFilterChain pattern** vs `@PreAuthorize("isAuthenticated()")` per controller method — single config point 對齊 S011 既驗 `/api/v1/me` + `/api/v1/admin/**` 設計
+- **CurrentUserProvider fallback 不改** — S115 既驗 fallback 路徑廣（background thread / test）；本 spec 用 SecurityFilterChain pattern 隔離 anonymous HTTP request 而非 patch fallback core
+- **`/api/v1/me/**` 涵蓋 me/subscriptions** — Spring Security ant pattern `/me` 不包含 `/me/...`；須顯式加 `/**` 子路徑
+- **Out-of-scope observation**：anon POST /skills/{id}/subscribe 仍 201 (lab-user write) — write-side anonymous 仍可建立 lab-user subscription；架構 smell 但 LAB 影響小（subscriber-recipient notification 對 lab-user 不會 fire trigger）；future polish 候選
+
+### Roadmap progress
+- ✅ S130 (XS=1, v3.10.9) shipped — Phase 5 row M125
+- 📋 Subscribe-side anon write — observation 留 future polish
+
+### Pattern reuse
+- 第 19 次 single-tick XS/S spec ship（per session lessons learned）
+- **Mode B finding 同 tick ship pattern** 第 2 次採用（S128 R40 + S130 R41）— LAB-blocker XS fix 同 tick implement→VERIFY→ship pipeline
+- SecurityFilterChain pattern 擴充 canonical pattern 對齊 S011 既驗 require-auth path matcher
+
 ## [v3.10.8] — CORS configuration（S128 完成；2026-05-04 — Bug AZ fix；LAB cross-origin deploy unblock）
 
 > S128 single-tick ship — Mode B Round 40 (Tick 16) Bug AZ (HIGH LAB-blocker for cross-origin deploy) backlog 候選同 tick ship。**PATCH bump** — SkillshubProperties 加 1 record + SecurityConfig 加 CorsConfigurationSource bean + http.cors() 啟用；無 schema 變動。**LAB 部署前 critical fix**（已知 tech debt 自 tick 63 R20.4）。

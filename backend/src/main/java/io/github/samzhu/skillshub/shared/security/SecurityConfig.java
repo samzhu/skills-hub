@@ -86,8 +86,14 @@ class SecurityConfig {
 
         if (props.security().oauth().enabled()) {
             // ── OAuth 模式（S011 行為）──
+            // S130 (Mode B Round 41 Bug BB fix)：personal endpoints 全 require auth；anonymous 不再
+            // 透過 CurrentUserProvider lab-user fallback 共享 state（subscriptions / notifications）。
+            // - /api/v1/me + /api/v1/me/** (含 /me/subscriptions)
+            // - /api/v1/notifications + /api/v1/notifications/** (含 /unread-count / /{id}/read / /preferences)
+            // - /api/v1/admin/** (既驗 S011)
             http.authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/api/v1/me").authenticated()
+                    .requestMatchers("/api/v1/me", "/api/v1/me/**").authenticated()
+                    .requestMatchers("/api/v1/notifications", "/api/v1/notifications/**").authenticated()
                     .requestMatchers("/api/v1/admin/**").authenticated()
                     .anyRequest().permitAll())
                 .oauth2ResourceServer(oauth2 -> oauth2

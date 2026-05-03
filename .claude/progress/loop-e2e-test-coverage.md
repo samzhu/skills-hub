@@ -745,7 +745,52 @@ LAB profile 應用 `oauth.enabled=true` mode（**不是** `local` profile 預設
 - Component-context alignment — 排隊
 - Frontend Chrome MCP visual regression — 排隊（待 extension 連線）
 
+## Tick — Mode B Round 41 — Anonymous vs authenticated flow audit (2026-05-04 Tick 17)
+
+> Cut: Anonymous vs authenticated 雙模式 endpoint behavior 比對。LAB 員工兩種狀態都會用，high value cut。
+
+### E2E Probe — 28+ case across 8 groups
+
+| Group | Endpoint behavior | 結果 |
+|-------|------------------|------|
+| A list | anon=PUBLIC only / B granted=both / A owner=both | ✅ S121 既驗 |
+| B /me | anon=401 / A=200 (含 sub/roles/groups) / B=200 | ✅ S011 既驗 |
+| C /notifications | anon=200 (lab-user fallback) / A,B=200 | ❌ Bug BB |
+| C /notifications/unread-count | anon=200 / A=200 | ❌ Bug BB |
+| D /me/subscriptions | anon=200 (lab-user fallback) / A=200 / B=200 | ❌ Bug BB |
+| E upload anon | 409 (DUPLICATE)，未真 reject — 但 dev path 全 permitAll 是 Feature First | ⚠ note |
+| E grant anon | 401 ✅ (per @PreAuthorize hasPermission write) | ✅ |
+| E grant B (B has write) | 201 — false positive；實際 B 從前 round 已 grant write | ✅ (not bug) |
+| F mark notification read anon | POST /null/read=404 (NoSuchElementException OK) / read-all=204 | ❌ Bug BB |
+| G subscribe anon PUBLIC | 201 (lab-user write) | ⚠ note (out-of-scope) |
+| G unsubscribe anon | 204 (lab-user delete) | ⚠ note |
+| H admin endpoint anon | 401 ✅ | ✅ S011 既驗 |
+| H admin endpoint B (no admin role) | 403 ✅ | ✅ S027 既驗 |
+
+### Findings
+
+| Bug | Severity | Path | 描述 |
+|-----|----------|------|------|
+| **BB** | **HIGH (LAB session integrity)** | `SecurityConfig` `/api/v1/me/**` + `/api/v1/notifications/**` 漏 require-auth | Anonymous HTTP 透過 CurrentUserProvider lab-user fallback 讀寫 lab-user shared state（subscriptions/notifications/mark-read/preferences）。LAB 多匿名員工 session 共享 lab-user 身分 — 違反 personal endpoints 隔離設計。`/me` 401 ✓ 但 `/me/subscriptions` / `/notifications` / `/notifications/unread-count` / POST `/notifications/read-all` / `/notifications/preferences` 全 200 anon — inconsistent。 |
+
+### Notes（非 bug，design 觀察）
+- **Anonymous POST /skills/{id}/subscribe still 201 after S130** — write-side anonymous 仍可建立 lab-user subscription；anonymous 寫入後其他 anonymous user 看不到（/me/subscriptions 已 401），僅 lab-user 累積。架構 smell 但 LAB 影響小（subscriber-recipient notification path 對 lab-user 不會 fire trigger）。Future polish 候選。
+- **Group E grant B (false positive)**：B 從前 round 已被 grant `user:viewer-007:write`（測試 pollution），故 grant 操作 201 是正確行為。Test fixture cleanup 候選。
+
+**Status**：本 round 1 個 fix 同 tick ship（S130）；1 個 observation 留 future polish。
+
+### Roadmap rows added
+
+- **S130** (XS=1, **HIGH LAB session integrity**)：Personal endpoints auth gate — Bug BB fix。**本 tick 內同步 ship**（per Mode B 「LAB-blocker XS fix 同 tick ship」pattern；對齊 S128 既驗 R40 同 tick ship）。SecurityFilterChain `/api/v1/me/**` + `/api/v1/notifications/**` require authenticated。E2E 14/14 PASS。
+
+### Cuts not exercised this round（chain 候選）
+- User-visible string compliance — 排隊（last 跑 tick 56 R12-14）
+- Cross-cutting links — 排隊
+- Component-context alignment — 排隊
+- Frontend Chrome MCP visual regression — 排隊（待 extension 連線）
+
 ## Next Tick Suggestions
-- Mode B 換新 cut（User-visible string compliance / Component-context / Anonymous vs authenticated flow）
-- S129 (Server compression XS=1) — 若 production 部署前需驗 bandwidth profile
+- Mode B 換新 cut（User-visible string compliance / Component-context / Cross-cutting links）
+- S129 (Server compression XS=1) — production 部署前若需驗 bandwidth
 - S120 (M-size test infra) 仍 backlog；非 LAB-blocking
+- Subscribe-side anon write polish — observation; defer post-LAB
