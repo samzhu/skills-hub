@@ -1,7 +1,9 @@
 # S096f2: Collections Full Feature (aggregate + install + create)
 
-> Spec: S096f2 | Size: M(13) re-est from M(10-12) | Status: ⏳ Design
+> Spec: S096f2 | Size: M(13) re-est from M(10-12) | Status: 🚧 in-progress (4 tasks queued — cron tick handoff)
 > Date: 2026-05-03
+
+> **Tasks**: T01 backend Collection aggregate (AbstractAggregateRoot + @Version + @MappedCollection skills) + V12 schema (collections + collection_skills + ON DELETE CASCADE) + community @ApplicationModule formal register (skill::domain dep) + 2 events (CollectionCreated/Installed) + SkillRepo extension → T02 CollectionService + Command/Query controllers + 2 exceptions (CollectionNotFound 404 / SkillNotPublishable 400 with invalidSkillIds list) + GlobalExceptionHandler mapping + RequestService.fulfill caller migration → T03 frontend api/skills.ts 加 3 helper + 2 type + useCollections hook (category filter) + useCollection hook (single detail) → T04 CreateCollectionModal (MVP textarea skill picker per §2.6 trim) + InstallButton (loop browser download trigger 50ms 間隔) + CollectionsPage CTA enable + AC-10/11/12 tests。Execution order T01→T02→T03→T04（T02 依賴 T01 schema/aggregate；T03 對齊 T02 DTO shape；T04 全 backend + FE infra ship 後）。
 
 ---
 
