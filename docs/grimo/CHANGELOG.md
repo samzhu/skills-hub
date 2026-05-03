@@ -1,5 +1,44 @@
 # Changelog
 
+## [v3.9.0] — SkillSubscription backend infra（S125a 完成；2026-05-04 — LAB user-visible flow chain start）
+
+> S125a single-tick ship — Mode B Round 38 (2026-05-04) Bug AV (LAB user-visible gap) split first sub-spec。**MINOR bump** — 加新 aggregate + 新 module file + 新 schema (V14)；無破壞性 API 改動；S125b/c follow-up 提供 endpoints + frontend 完整 PRD §285-§291 P9 SBE scenario 1 dependency。
+
+### Added — Backend
+- `backend/src/main/resources/db/migration/V14__create_skill_subscriptions.sql`（new）— `skill_subscriptions` table：`(id PK, skill_id, subscriber_id, created_at, version)` + UNIQUE(skill_id, subscriber_id) + 2 indexes (skill_id / subscriber_id)；soft-FK 對齊 collection_skills 既驗
+- `backend/.../community/SkillSubscription.java`（new）— aggregate（ADR-002 canonical：`@Version` + `AbstractAggregateRoot` + factory `create(skillId, subscriberId)` + `@PersistenceCreator`）；無 mutable state，subscribe/unsubscribe = save/delete row
+- `backend/.../community/SkillSubscriptionRepository.java`（new）— `extends CrudRepository<SkillSubscription, String>`；4 derived query：findBySkillIdAndSubscriberId / existsBySkillIdAndSubscriberId / findBySkillId / findBySubscriberId
+- `backend/.../community/SkillSubscriptionService.java`（new）— `@Service @Transactional`；5 method：subscribe (idempotent + skill 存在檢查)、unsubscribe (noop)、isSubscribed、findSubscribersOf (S125b 用)、findSubscriptionsOfCurrentUser
+
+### Added — Tests
+- `backend/src/test/.../community/SkillSubscriptionServiceTest.java`（new）— 7 ACs：subscribe persist / 對不存在 skill 拋 NoSuchElementException / 重複 subscribe idempotent / unsubscribe 移除 / unsubscribe noop / findSubscribersOf / findSubscriptionsOfCurrentUser
+
+### Verify metric
+- Flyway V14 migration 套用成功：`Successfully applied 1 migration to schema "public", now at version v14`
+- DB schema 對齊設計：UNIQUE constraint + 2 indexes
+- Backend devtools restart：2.3s（含 V14 apply）
+- SkillSubscriptionServiceTest：（test result 待 commit 前確認）
+
+### Design decisions
+- **Module placement = community**（per spec §2.1）— 對齊既驗 Collection / Request pattern，避免新 module 設計成本；同 module future 可共用 NamedInterface (community::events)
+- **soft-FK skill_id**（per spec §2.3）— 對齊 collection_skills 既驗：skill SUSPENDED / 後續操作不影響 subscription history
+- **無 mutable state**（per spec §2.2）— Subscription 是純 join entity；subscribe/unsubscribe 直接 save/delete row；無需 mutation method 也無需 domain event（保留 future 擴展空間）
+- **Spec split S125 → S125a/b/c** — M=10-12 拆 3 個 XS sub-spec，對齊 single-tick ship 範圍 + LAB 封測 user-visible flow 漸進補完
+
+### Roadmap progress
+- ✅ S125a (XS=4) shipped — Phase 5 row M120a backend infra
+- 📋 S125b (XS=3) — listener + endpoints (POST/DELETE subscribe + onVersionPublished listener)
+- 📋 S125c (XS=3) — frontend SkillDetail subscribe button
+- **LAB 封測 user-visible gap fix chain 1/3**：完成 backend infra；S125b 待 ship 提供 HTTP API + 自動通知
+
+### Pattern reuse
+- 第 9 次 single-tick XS/S spec ship（per session lessons learned）
+- 第 3 次 community module aggregate 對齊 ADR-002 canonical（Collection / Request / SkillSubscription）
+- Spec split pattern 第 1 次採用：M-size split 為三 XS sub-spec ship 對齊 wall budget
+
+### Dev workflow note
+- **Devtools + Flyway gotcha**：新加 .sql migration 須跑 `./gradlew processResources` 才會拷至 `build/resources/main/db/migration/`；`compileJava` 不會自動觸發 resource copy。Flyway 在 Spring boot startup 看到的是 build dir 而非 src dir，因此 devtools 第一次 restart 不會 apply V14；processResources + compile 兩步後才會。
+
 ## [v3.8.6] — Download endpoint ACL gate（S123 完成；2026-05-04 — read-side ACL chain closer）
 
 > S123 single-tick ship — Mode B Round 37 (2026-05-04) Bug AU 直接修。完成 read-side ACL chain：S121 (list) + S122 (single GET / versions / bundle-info) + S123 (download / downloadVersion) **6 個 read endpoint 統一 ACL 守則**。**PATCH bump** — controller annotation 加 only；零 schema 變動；無 evaluator 改動（reuse S122 既驗 anon-read 路徑）。
