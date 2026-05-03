@@ -99,4 +99,22 @@ per spec §4.2：
 - 既有 skill::domain SkillRepository
 
 ## Status
-pending
+shipped 2026-05-03 — commit pending（本 tick 內）
+
+## Result
+
+- **Files**：
+  - `backend/.../community/Collection.java`（new — `extends AbstractAggregateRoot<Collection>` + `@Version Long version` + `@MappedCollection(idColumn="collection_id", keyColumn="position")`；factory `create()` + `recordInstall()` + 5 個 validator + 對齊 Request defensive copy 慣例）
+  - `backend/.../community/CollectionSkillRef.java`（new — `@Table("collection_skills") record (@Column("skill_id") String skillId)` 不持有 own @Id，Spring Data JDBC derived PK 模式）
+  - `backend/.../community/CollectionRepository.java`（new — `ListCrudRepository<Collection,String>` + 2 derived query；single-property sort 不觸 AOT bug 故無需 `@Query` workaround）
+  - `backend/.../community/events/CollectionCreatedEvent.java` + `CollectionInstalledEvent.java`（new — record；MVP 無 listener，預留 hook 給 future S101b）
+  - `backend/.../community/package-info.java`（modify — 加 `displayName="Community"` 對齊 audit/notification/analytics 既驗 metadata 慣例；既有 allowedDependencies 含 `skill::domain` 已給 SkillRepo 跨模組 lookup 用）
+  - `backend/.../skill/domain/SkillRepository.java`（modify — 加 `findAllByIdInAndStatus(Collection<String>, SkillStatus)` derived query；給 T02 service create 預檢全 PUBLISHED 用）
+  - `backend/src/main/resources/db/migration/V12__create_collections_tables.sql`（new — collections 表含 `version` BIGINT DEFAULT 0 + collection_skills 表 PK (collection_id, position) + UNIQUE (collection_id, skill_id) + ON DELETE CASCADE + 4 indexes）
+  - `backend/src/test/.../community/CollectionModuleSmokeTest.java`（new — 9 個 smoke + factory rejection + DB UNIQUE + CASCADE + ApplicationEvents 流驗證）
+- **Tests**：CollectionModuleSmokeTest 9/9 PASS @ 15.8s；ModularityTests 2/2 PASS（無 violation；community 模組 metadata 補 displayName 不破既有 module map）；regression RequestServiceTest 13/13 + RequestVoteServiceTest 5/5 PASS（@SkillRepository import 加 `Collection` 不衝突 — 已是 `java.util.Collection` 完整 path）。
+- **Design notes**：
+  - **不走 spec §4.3 範本的 Persistable**：對齊 Request (S096g2-T01) 既驗，`@Version` 為 INSERT/UPDATE 唯一區分器（version=null INSERT；loaded UPDATE）。Persistable + 自訂 `isNew(createdAt==null)` 範本會破 isNew flag — codebase 第 4 次踩坑教訓
+  - **Factory 必設 `createdAt = Instant.now()`**：DB DEFAULT NOW() 不會 fire 因 Spring Data JDBC INSERT explicit pass column value（即使 null 也走 explicit）。本 task ship 前第一輪 fail 6 個 test 即此 root cause；對齊 Request factory pattern 修正
+  - **collection_skills PK = (collection_id, position)**：spec §4.2 範本 PK = (collection_id, skill_id) 與 Spring Data JDBC `@MappedCollection(keyColumn="position")` canonical pattern 衝突（child entity Optional<@Id> 與 keyColumn 衝突）。改 PK = (collection_id, position) + 加 UNIQUE (collection_id, skill_id) 維持「同 collection 內 skill 不重複」語意 — 由 factory + DB 雙保護
+  - **MVP 無 listener 訂閱**（per spec §4.4）：Modulith Event Publication Registry 只追蹤 `(event, listener_id)` pair；無 listener 故 outbox 表空。Smoke test 改用 Spring Test `@RecordApplicationEvents` 驗證 ApplicationEventPublisher 流（同等 at-least-once 保證；未來加 listener 時 outbox 自動 wire）

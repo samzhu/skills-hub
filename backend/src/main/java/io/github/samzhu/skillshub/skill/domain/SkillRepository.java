@@ -1,6 +1,8 @@
 package io.github.samzhu.skillshub.skill.domain;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jdbc.repository.query.Modifying;
@@ -88,4 +90,13 @@ public interface SkillRepository extends ListCrudRepository<Skill, String> {
     @Modifying
     @Query("UPDATE skills SET download_count = download_count + 1, updated_at = :ts WHERE id = :id")
     int incrementDownloadCount(@Param("id") String id, @Param("ts") Instant ts);
+
+    /**
+     * S096f2 — 批次查詢指定 status 的 skills；用於 CollectionService.create 預檢
+     * skillIds 全 PUBLISHED。caller 比對 returned skill IDs 與輸入 list 找 invalid。
+     *
+     * <p>Single-property sort 不觸發 Spring Boot 4.0.6 AOT codegen compound-sort bug
+     * — derived query naming 安全，不需 `@Query` workaround。
+     */
+    List<Skill> findAllByIdInAndStatus(Collection<String> ids, SkillStatus status);
 }
