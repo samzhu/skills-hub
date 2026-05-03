@@ -77,7 +77,7 @@ function RequestRow({ req, isLast }: { req: SkillRequest; isLast: boolean }) {
       {/* Vote column */}
       <div className="flex shrink-0 flex-col items-center">
         <ArrowUp className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="font-mono text-[13px] font-medium tabular-nums">{req.votes}</span>
+        <span className="font-mono text-[13px] font-medium tabular-nums">{req.voteCount}</span>
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">

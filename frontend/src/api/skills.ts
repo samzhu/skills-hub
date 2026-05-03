@@ -79,20 +79,114 @@ export function fetchSkillByAuthorAndName(author: string, name: string): Promise
 }
 
 /**
- * S096g1 — Request Board: skill needs that the community wants published.
- * Stub backend returns empty list; voting/claim/domain events defer to S096g2.
+ * S096g2 — Request Board read model (對齊 backend RequestQueryController.RequestResponse).
+ *
+ * Vote count 由 backend `request_votes` 表 atomic SQL 維護（mirror Skill downloadCount
+ * S077 pattern）；frontend 收到的 `voteCount` 為 strong-consistent 即時值，無需 client 累計。
+ *
+ * `claimerId` / `fulfilledSkillId`：state-driven UX gate 用 — null 即未認領 / 未完成。
  */
 export interface SkillRequest {
   id: string
   title: string
   description: string
-  votes: number
+  requesterId: string
   status: 'OPEN' | 'IN_PROGRESS' | 'FULFILLED'
+  claimerId: string | null
+  fulfilledSkillId: string | null
+  voteCount: number
   createdAt: string
+  updatedAt: string
 }
 
-export function fetchRequests(): Promise<SkillRequest[]> {
-  return apiFetch<SkillRequest[]>('/requests')
+/**
+ * S096g2 — Request list 支援 status filter + sort（per AC-3/AC-4）。
+ * Backend：`GET /api/v1/requests?status=&sort=`；皆 optional。
+ */
+export interface RequestsQuery {
+  status?: SkillRequest['status']
+  sort?: 'votes' | 'created'
+}
+
+export function fetchRequests(opts?: RequestsQuery): Promise<SkillRequest[]> {
+  const params = new URLSearchParams()
+  if (opts?.status) params.set('status', opts.status)
+  if (opts?.sort) params.set('sort', opts.sort)
+  const qs = params.toString()
+  return apiFetch<SkillRequest[]>(qs ? `/requests?${qs}` : '/requests')
+}
+
+export function fetchRequest(id: string): Promise<SkillRequest> {
+  return apiFetch<SkillRequest>(`/requests/${id}`)
+}
+
+export interface CreateRequestBody {
+  title: string
+  description: string
+}
+
+export function createRequest(body: CreateRequestBody): Promise<{ id: string }> {
+  return apiFetch<{ id: string }>('/requests', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+/**
+ * Vote toggle response — backend `RequestVoteService.VoteResult`：
+ * `voted=true` 表示本次 toggle 後該 user 持有 vote；false 表示已 cancel。
+ * `voteCount` 為 atomic GREATEST(0, count±1) 後值，可直接當 UI 顯示。
+ */
+export interface VoteResult {
+  voted: boolean
+  voteCount: number
+}
+
+export function toggleVote(requestId: string): Promise<VoteResult> {
+  return apiFetch<VoteResult>(`/requests/${requestId}/vote`, { method: 'POST' })
+}
+
+export interface ClaimResult {
+  claimer: string
+  status: 'IN_PROGRESS'
+}
+
+export function claimRequest(requestId: string): Promise<ClaimResult> {
+  return apiFetch<ClaimResult>(`/requests/${requestId}/claim`, { method: 'POST' })
+}
+
+export async function releaseClaim(requestId: string): Promise<void> {
+  // backend 回 204 no content；apiFetch 預期 JSON 反序列化會 throw — 改走原生 fetch
+  const res = await fetch(`/api/v1/requests/${requestId}/claim`, { method: 'DELETE' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    const b = body as { message?: string; error?: string }
+    throw new ApiError(res.status, b.message ?? `Release failed: ${res.status}`, b.error)
+  }
+}
+
+export interface FulfillResult {
+  status: 'FULFILLED'
+  fulfilledSkillId: string
+}
+
+export function fulfillRequest(requestId: string, skillId: string): Promise<FulfillResult> {
+  return apiFetch<FulfillResult>(`/requests/${requestId}/fulfill`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ skillId }),
+  })
+}
+
+export async function deleteRequest(requestId: string): Promise<void> {
+  // backend 回 204；走原生 fetch 同 releaseClaim
+  const res = await fetch(`/api/v1/requests/${requestId}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    const b = body as { message?: string; error?: string }
+    throw new ApiError(res.status, b.message ?? `Delete failed: ${res.status}`, b.error)
+  }
 }
 
 /**

@@ -73,4 +73,14 @@ Single detail：對齊 `useSkill` 既有 pattern。
 T01, T02（backend endpoints 需 ship；frontend type 同步可早）
 
 ## Status
-pending
+✅ completed — 2026-05-03
+
+**Verification**：
+- `npx tsc --noEmit` PASS（無錯誤）
+- `npx vitest run src/hooks/useSkill.test.tsx` 5/5 PASS @ 1.34s（adjacent hook smoke 確認 React Query infra 不破）
+
+**Files changed**：
+- `frontend/src/api/skills.ts` (modify — 重寫 SkillRequest 對齊 backend RequestResponse；fetchRequests 加 sort/status opts；新增 fetchRequest / createRequest / toggleVote / claimRequest / releaseClaim / fulfillRequest / deleteRequest 共 7 個 helper + VoteResult / ClaimResult / FulfillResult / CreateRequestBody / RequestsQuery 5 個 type)
+- `frontend/src/hooks/useRequests.ts` (new — list with sort + status filter；30s cache + refetchOnWindowFocus 對齊 useFlagsQueue)
+- `frontend/src/hooks/useRequest.ts` (new — single detail；對齊 useSkill pattern)
+- `frontend/src/pages/RequestBoardPage.tsx` (modify 1 line — `req.votes` → `req.voteCount` 對齊新 type；T04 會做完整 page 重建)
