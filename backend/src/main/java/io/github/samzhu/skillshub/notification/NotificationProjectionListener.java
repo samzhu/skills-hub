@@ -9,22 +9,25 @@ import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 import io.github.samzhu.skillshub.community.RequestRepository;
+import io.github.samzhu.skillshub.community.SkillSubscriptionService;
 import io.github.samzhu.skillshub.community.events.RequestClaimedEvent;
 import io.github.samzhu.skillshub.community.events.RequestFulfilledEvent;
 import io.github.samzhu.skillshub.review.domain.ReviewCreatedEvent;
 import io.github.samzhu.skillshub.security.SkillFlaggedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
+import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 
 /**
- * S096h2-T02 — Cross-module event projection 寫 notifications 表（per spec §4.4）。
+ * S096h2-T02 + S125b — Cross-module event projection 寫 notifications 表（per spec §4.4）。
  *
- * <p>4 個 {@code @ApplicationModuleListener}（Modulith AFTER_COMMIT async + outbox redelivery
+ * <p>5 個 {@code @ApplicationModuleListener}（Modulith AFTER_COMMIT async + outbox redelivery
  * 保護）訂閱跨模組 domain events：
  * <ul>
- *   <li>{@link SkillFlaggedEvent}      → skill.author（owner）</li>
- *   <li>{@link ReviewCreatedEvent}     → skill.author</li>
- *   <li>{@link RequestClaimedEvent}    → request.requester_id</li>
- *   <li>{@link RequestFulfilledEvent}  → request.requester_id</li>
+ *   <li>{@link SkillFlaggedEvent}            → skill.author（owner）</li>
+ *   <li>{@link ReviewCreatedEvent}           → skill.author</li>
+ *   <li>{@link RequestClaimedEvent}          → request.requester_id</li>
+ *   <li>{@link RequestFulfilledEvent}        → request.requester_id</li>
+ *   <li>{@link SkillVersionPublishedEvent}   → SkillSubscription.findSubscribersOf（S125b）</li>
  * </ul>
  *
  * <p><b>Idempotency</b>：UNIQUE(recipient_id, ref_event_id, category) constraint 守護
@@ -47,15 +50,18 @@ public class NotificationProjectionListener {
     private final NotificationPreferenceRepository prefRepo;
     private final SkillRepository skillRepo;
     private final RequestRepository requestRepo;
+    private final SkillSubscriptionService subscriptionService;
 
     NotificationProjectionListener(NotificationRepository notifRepo,
                                    NotificationPreferenceRepository prefRepo,
                                    SkillRepository skillRepo,
-                                   RequestRepository requestRepo) {
+                                   RequestRepository requestRepo,
+                                   SkillSubscriptionService subscriptionService) {
         this.notifRepo = notifRepo;
         this.prefRepo = prefRepo;
         this.skillRepo = skillRepo;
         this.requestRepo = requestRepo;
+        this.subscriptionService = subscriptionService;
     }
 
     /**
@@ -137,6 +143,40 @@ public class NotificationProjectionListener {
                 + (skill != null ? "（skill: " + skill.getName() + "）" : "");
         var refEventId = e.requestId() + ":fulfill";
         save(requesterId, "requests", title, null, e.fulfilledSkillId(), refEventId);
+    }
+
+    /**
+     * S125b — Skill 新版發布通知所有訂閱者（PRD §285-§291 P9 SBE scenario 1）。
+     *
+     * <p>{@code ref_event_id = skillId + ":" + version}：每個 (skill, version) 組合至多 1 次通知；
+     * outbox redelivery 由 UNIQUE(recipient_id, ref_event_id, category) 攔截。
+     *
+     * <p><b>Self-action skip</b>：當 subscriber == skill.author 時 skip — 作者不通知自己（per
+     * 既驗 onReviewCreated / onRequestClaimed pattern）。
+     *
+     * <p><b>Preferences gate</b>：每 subscriber 各自查 NotificationPreference category=`versions`；
+     * opt-out 者不寫 notification。
+     */
+    @ApplicationModuleListener
+    public void onVersionPublished(SkillVersionPublishedEvent e) {
+        var skill = skillRepo.findById(e.aggregateId()).orElse(null);
+        if (skill == null) {
+            log.debug("VersionPublished listener: skill {} not found, skip", e.aggregateId());
+            return;
+        }
+        var ownerId = skill.getAuthor();
+        var subscribers = subscriptionService.findSubscribersOf(e.aggregateId());
+        if (subscribers.isEmpty()) {
+            log.debug("VersionPublished listener: no subscribers for skill {}, skip", e.aggregateId());
+            return;
+        }
+        var refEventId = e.aggregateId() + ":" + e.version();
+        var title = skill.getName() + " " + e.version() + " 已發布";
+        for (var subscriberId : subscribers) {
+            if (Objects.equals(ownerId, subscriberId)) continue; // skip 作者自己訂閱自己
+            if (!isCategoryEnabled(subscriberId, "versions")) continue;
+            save(subscriberId, "versions", title, null, e.aggregateId(), refEventId);
+        }
     }
 
     private boolean isCategoryEnabled(String userId, String category) {

@@ -1,5 +1,44 @@
 # Changelog
 
+## [v3.10.0] — Subscription endpoints + version-published listener（S125b 完成 + Bug AW fix；2026-05-04 — LAB user-visible flow chain 2/3）
+
+> S125b single-tick ship + Bug AW 同 spec 修補。**MINOR bump** — 加 controller (3 endpoints) + 第 5 個 NotificationProjectionListener listener；evaluator anonymous/authenticated read 路徑對稱補完。LAB 封測員工可從 API 完整測 PRD §285-§291 P9 SBE scenario 1（訂閱 → 新版發布 → 收通知）。
+
+### Added — Backend
+- `backend/.../community/SkillSubscriptionController.java`（new）— 3 endpoints：
+  - `POST /api/v1/skills/{id}/subscribe` 201（@PreAuthorize 守 read 權限；idempotent）
+  - `DELETE /api/v1/skills/{id}/subscribe` 204（noop on未訂閱；不加 @PreAuthorize）
+  - `GET /api/v1/me/subscriptions` 200 List<String> skillIds（個人訂閱清單）
+- `backend/.../notification/NotificationProjectionListener.java`（modify）— 加 `onVersionPublished` 第 5 個 `@ApplicationModuleListener`：訂閱 `SkillVersionPublishedEvent` → `subscriptionService.findSubscribersOf(skillId)` → 對每個 subscriber 寫 notification（category=`versions`，title=「{name} {version} 已發布」）；self-action skip + preferences gate + UNIQUE(recipient_id, ref_event_id, category) idempotency；`ref_event_id = skillId + ":" + version`
+
+### Fixed — Backend (Bug AW critical)
+- `backend/.../shared/security/DelegatingPermissionEvaluator.java`：`expandPrincipals(auth, permission)` 對 read permission 加 `*:read` pseudo-principal — 對齊 S026「read 預設公開」設計 + `AclPrincipalExpander.expand` line 41 既驗。**Bug AW**：S122 ship `@PreAuthorize` 後 authenticated user 對 PUBLIC skill (acl_entries 含 `*:read` 但無 `user:{userId}:read`) 反而 false → 403 — **LAB 員工拿 JWT 看不到 PUBLIC skills**。Bug timeline：S122 ship 引入 → Tick 7 S125b ship 過程 surface（B subscribe PUBLIC → 403 揭露）→ 同 spec 內補修（per S122 既驗 scope-creep handling）。Anonymous 路徑 (S122 既驗) 與 authenticated 路徑現對稱一致。
+
+### Verify metric
+- E2E manual smoke (Round 38 fixture) **10/10 case all PASS**：
+  - subscribe endpoints：B PUBLIC=201 / B PRIVATE granted=201 / 重複=201 (1 row in DB)
+  - GET /me/subscriptions=200 List(2 ids)
+  - ACL gate：anon subscribe PRIVATE=401
+  - **PRD P9 SBE scenario 1 端到端**：B subscribe PRIVATE → A `PUT /skills/{id}/versions` v2.0.0 → B `GET /notifications` 含 `category=versions, title="e2e-private-skill 2.0.0 已發布", refEventId={pid}:2.0.0`
+  - Bug AW regression：B GET PUBLIC=200（before fix=403）
+  - 既有 read-side ACL chain (S121/S122/S123) 不 regression
+- DB skill_subscriptions=2 rows；notifications=1 row（subscriber-recipient path 首次寫入）
+- Backend devtools restart：2.6s × 2
+
+### Roadmap progress
+- ✅ S125a (XS=4, v3.9.0) shipped — backend infra
+- ✅ **S125b (XS=3, v3.10.0) shipped — endpoints + listener** — Phase 5 row M120b
+- 📋 S125c (XS=3) — frontend SkillDetail subscribe button（可 LAB 後補；員工已可從 API 測 flow）
+
+### Pattern reuse
+- 第 10 次 single-tick XS/S spec ship（per session lessons learned）
+- 第 5 次 NotificationProjectionListener listener method（4→5；對齊既驗 ApplicationModuleListener pattern）
+- DelegatingPermissionEvaluator **第 2 次補 `*:read`**：Tick 3 S122 anonymous-read + 本 tick S125b authenticated-read symmetric fix
+- Spec split chain 2/3 ship — S125a + S125b 兩 tick 完成 LAB 封測 user-visible gap；S125c 為 nice-to-have
+
+### Bug AW lesson
+加 `@PreAuthorize` 在 read endpoint 時 ALWAYS 須端到端驗證 5-case 矩陣：(anon, authenticated) × (PUBLIC, PRIVATE) + owner。S122 ship 漏「authenticated + PUBLIC」case → edge case slipped 至 S125b ship 才被 catch。Future @PreAuthorize ship 須完整覆蓋此矩陣。
+
 ## [v3.9.0] — SkillSubscription backend infra（S125a 完成；2026-05-04 — LAB user-visible flow chain start）
 
 > S125a single-tick ship — Mode B Round 38 (2026-05-04) Bug AV (LAB user-visible gap) split first sub-spec。**MINOR bump** — 加新 aggregate + 新 module file + 新 schema (V14)；無破壞性 API 改動；S125b/c follow-up 提供 endpoints + frontend 完整 PRD §285-§291 P9 SBE scenario 1 dependency。
