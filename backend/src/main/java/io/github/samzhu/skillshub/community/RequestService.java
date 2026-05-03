@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.samzhu.skillshub.shared.api.RequestNotFoundException;
+import io.github.samzhu.skillshub.shared.api.SkillNotPublishableException;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillStatus;
@@ -65,15 +66,22 @@ public class RequestService {
         repo.save(request);
     }
 
-    /** AC-10/AC-11/AC-12 — fulfill：claimer 比對 + skill PUBLISHED 驗（cross-module skill::domain SkillRepository.findById）。 */
+    /**
+     * AC-10/AC-11/AC-12 — fulfill：claimer 比對 + skill PUBLISHED 驗（cross-module
+     * skill::domain SkillRepository.findById）。
+     *
+     * <p>S096f2-T02 caller migration：原 throw {@code IllegalArgumentException("skill_not_publishable: ...")}
+     * 改用獨立 {@link SkillNotPublishableException} class — 對齊 RequestNotFoundException /
+     * NotRequestClaimerException naming + 給 GlobalExceptionHandler 路由更精確（400 with
+     * specific error code 而非 fall through 到 generic VALIDATION_ERROR）。
+     */
     @Transactional
     public Request fulfill(String requestId, String userId, String skillId) {
-        // AC-12：先驗 skill 存在且 PUBLISHED — 失敗時 400 skill_not_publishable
         Skill skill = skillRepo.findById(skillId)
-                .orElseThrow(() -> new IllegalArgumentException("skill_not_publishable: skill not found"));
+                .orElseThrow(() -> new SkillNotPublishableException(skillId, "skill not found"));
         if (skill.getStatus() != SkillStatus.PUBLISHED) {
-            throw new IllegalArgumentException(
-                    "skill_not_publishable: skill status is " + skill.getStatus() + ", expected PUBLISHED");
+            throw new SkillNotPublishableException(skillId,
+                    "skill status is " + skill.getStatus() + ", expected PUBLISHED");
         }
         var request = getRequest(requestId);
         request.fulfill(userId, skillId);

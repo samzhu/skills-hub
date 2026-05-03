@@ -140,6 +140,28 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse("not_request_claimer", ex.getMessage(), Instant.now()));
 	}
 
+	/** S096f2-T02 AC-8 — Collection id 不存在 → 404 collection_not_found。 */
+	@ExceptionHandler(CollectionNotFoundException.class)
+	ResponseEntity<ErrorResponse> handleCollectionNotFound(CollectionNotFoundException ex) {
+		log.atWarn().addKeyValue("errorCode", "collection_not_found").log("Collection not found");
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse("collection_not_found", ex.getMessage(), Instant.now()));
+	}
+
+	/**
+	 * S096f2-T02 AC-3 / S096g2 AC-12 caller migration — 一個或多個 skillId 非 PUBLISHED
+	 * 或不存在 → 400。invalidSkillIds 已 join 進 message 字串便於 frontend 解析（structured
+	 * field 留 polish；ErrorResponse shape 不擴）。
+	 */
+	@ExceptionHandler(SkillNotPublishableException.class)
+	ResponseEntity<ErrorResponse> handleSkillNotPublishable(SkillNotPublishableException ex) {
+		log.atWarn().addKeyValue("errorCode", "skill_not_publishable")
+				.addKeyValue("invalidSkillIds", ex.getInvalidSkillIds())
+				.log("Skill not publishable");
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ErrorResponse("skill_not_publishable", ex.getMessage(), Instant.now()));
+	}
+
 	/** S096h2-T03 AC-6/AC-8 — Notification id 不存在 → 404 notification_not_found。 */
 	@ExceptionHandler(NotificationNotFoundException.class)
 	ResponseEntity<ErrorResponse> handleNotificationNotFound(NotificationNotFoundException ex) {

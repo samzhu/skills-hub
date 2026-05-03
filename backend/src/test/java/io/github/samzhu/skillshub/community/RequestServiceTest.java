@@ -18,6 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.api.NotRequestClaimerException;
 import io.github.samzhu.skillshub.shared.api.RequestNotFoundException;
+import io.github.samzhu.skillshub.shared.api.SkillNotPublishableException;
 
 /**
  * S096g2-T01 — RequestService 業務邏輯整合測試（Testcontainers + 真 PostgreSQL）。
@@ -187,14 +188,14 @@ class RequestServiceTest {
 
     @Test
     @Tag("AC-12")
-    @DisplayName("AC-12: 非 PUBLISHED skill fulfill → 400 skill_not_publishable")
+    @DisplayName("AC-12: 非 PUBLISHED skill fulfill → 400 SkillNotPublishableException（S096f2-T02 caller migration）")
     void fulfill_nonPublishedSkill_rejected() {
         var id = service.createRequest("a", "x", "alice");
         service.claim(id, "bob");
         var draftSkillId = insertSkill("bob", "DRAFT");
 
         assertThatThrownBy(() -> service.fulfill(id, "bob", draftSkillId))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(SkillNotPublishableException.class)
                 .hasMessageContaining("skill_not_publishable");
     }
 
