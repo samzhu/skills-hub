@@ -55,4 +55,20 @@ S112 — Flag wiring full-stack（spec doc: `docs/grimo/specs/2026-05-03-S112-fl
 none
 
 ## Status
-pending
+✅ shipped 2026-05-03 cron Tick 3
+
+## Result
+
+**Design deviation from spec §4.1**：spec 寫「擴既有 MeController」但 MeController 在 `shared/security` 模組，FlagService 在 `security` 模組 — `shared → security` 反向依賴會破壞 Modulith 結構。改設計為新建 `security/MeFlagsController.java` + `security` 模組 allowedDependencies 加 `shared :: security`（與 skill / search 模組同 pattern）。Endpoint path 不變，仍是 `/api/v1/me/flags-summary`。
+
+**Verification**：
+- `MeFlagsControllerTest` (slice + mock) — AC-5 PASS @ 1.226s
+- `FlagServiceTest` (Testcontainers) — AC-6 + AC-7×2 PASS @ 8.771s（3 tests）
+- `ModularityTests` 2/2 PASS（boundary 仍乾淨）
+
+**Files changed**：
+- `backend/src/main/java/io/github/samzhu/skillshub/security/MeFlagsController.java` (new, 30 LOC)
+- `backend/src/main/java/io/github/samzhu/skillshub/security/FlagService.java` (+22 LOC `countOpenFlagsForAuthor`)
+- `backend/src/main/java/io/github/samzhu/skillshub/security/package-info.java` (+1 token `shared :: security`)
+- `backend/src/test/java/io/github/samzhu/skillshub/security/MeFlagsControllerTest.java` (new, 56 LOC)
+- `backend/src/test/java/io/github/samzhu/skillshub/security/FlagServiceTest.java` (new, 100 LOC)

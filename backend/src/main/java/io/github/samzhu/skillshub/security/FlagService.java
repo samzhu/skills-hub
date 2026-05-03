@@ -144,4 +144,27 @@ public class FlagService {
 		return flagRepo.findBySkillIdOrderByCreatedAtDesc(skillId);
 	}
 
+	/**
+	 * S112: 統計指定 author 名下所有 PUBLISHED skill 的 OPEN flag 總數。
+	 *
+	 * <p>用於 MySkillsPage「待處理回報」MetricCard，避免前端 N+1 fetch。
+	 * 跨 {@code flags} + {@code skills} 兩表，故走原生 SQL 而非 derived query。
+	 *
+	 * @param author 作者帳號（對應 {@code skills.author}）
+	 * @return 該 author 名下 PUBLISHED skill 的 OPEN flag 總數；無資料時回 0
+	 */
+	public long countOpenFlagsForAuthor(String author) {
+		var sql = """
+				SELECT COUNT(*) FROM flags f
+				WHERE f.status = 'OPEN'
+				  AND f.skill_id IN (
+				      SELECT id FROM skills
+				      WHERE author = :author AND status = 'PUBLISHED'
+				  )
+				""";
+		var params = Map.of("author", author);
+		Long count = jdbc.queryForObject(sql, params, Long.class);
+		return count == null ? 0L : count;
+	}
+
 }

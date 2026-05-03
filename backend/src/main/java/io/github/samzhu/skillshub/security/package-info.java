@@ -9,6 +9,7 @@
  */
 @org.springframework.modulith.ApplicationModule(
     allowedDependencies = {"shared :: events", "shared :: api", "shared :: persistence",
+                           "shared :: security",
                            "skill :: domain", "skill :: query", "storage"}
 )
 package io.github.samzhu.skillshub.security;
