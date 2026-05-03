@@ -17,6 +17,6 @@
  */
 @org.springframework.modulith.ApplicationModule(
     allowedDependencies = {"shared :: events", "shared :: api", "shared :: security",
-                           "skill :: domain"}
+                           "skill :: domain", "skill :: query"}
 )
 package io.github.samzhu.skillshub.review;

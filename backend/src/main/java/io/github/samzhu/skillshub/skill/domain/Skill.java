@@ -76,6 +76,19 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     @org.springframework.data.annotation.ReadOnlyProperty
     @Column("download_count")
     private long downloadCount;
+    /**
+     * S098e2-T02：review averageRating projection — 由 review module 的
+     * SkillRatingProjectionListener 訂閱 ReviewCreatedEvent / ReviewDeletedEvent
+     * 後呼叫 {@link io.github.samzhu.skillshub.skill.query.SkillRatingService#refresh}
+     * 走 raw SQL UPDATE 寫入。{@code @ReadOnlyProperty} mirror downloadCount 同 pattern：
+     * 防 aggregate full-row save 覆蓋並發 projection update。
+     */
+    @org.springframework.data.annotation.ReadOnlyProperty
+    @Column("average_rating")
+    private double averageRating;
+    @org.springframework.data.annotation.ReadOnlyProperty
+    @Column("review_count")
+    private long reviewCount;
     @Column("acl_entries")
     private List<String> aclEntries;
     @Column("created_at")
@@ -352,6 +365,8 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     public String getLatestVersion() { return latestVersion; }
     public String getRiskLevel() { return riskLevel; }
     public long getDownloadCount() { return downloadCount; }
+    public double getAverageRating() { return averageRating; }
+    public long getReviewCount() { return reviewCount; }
     public List<String> getAclEntries() {
         return aclEntries == null ? List.of() : List.copyOf(aclEntries);
     }

@@ -97,4 +97,36 @@ class SkillRatingProjectionListener {
 T01（Review aggregate + events 已在；listener 訂閱才有 source）
 
 ## Status
-pending
+✅ shipped 2026-05-03 cron Tick 9
+
+## Result
+
+**Listener placement**：放 `review/SkillRatingProjectionListener` —
+review module 訂閱自家 events，呼叫 `skill :: query` 暴露的 SkillRatingService。
+review 模組 allowedDependencies 加 `skill :: query`（與 skill::domain 並列；
+與 ScanOrchestrator security → skill::query 既有 cross-module SPI pattern 一致）。
+ModularityTests verifier 接受。
+
+**Trim**：spec template 寫「ReviewServiceTest + SkillRatingProjectionListenerTest +
+SkillRatingServiceTest 三 test」。Trim 至 2 個（ReviewService + Listener）— Listener
+integration test 走真 SQL UPDATE，已涵蓋 SkillRatingService 同 code path。
+
+**Bootstrap mode deviation**：spec 寫 `@ApplicationModuleTest(DIRECT_DEPENDENCIES)`
+但 review 直接依賴的 skill::domain transitively 拉到 SkillAclController →
+StorageService 在 storage module 不在 DIRECT_DEPENDENCIES 內，bean missing。
+改用 `@SpringBootTest + @EnableScenarios` full bootstrap，與 ReviewServiceTest
+同 pattern；犧牲 module 隔離 bootstrap 優化換 reliability。
+
+**Verification**：
+- `SkillRatingProjectionListenerTest` 2/2 PASS @ 16.9s（AC-5 ReviewCreated +
+  AC-5 ReviewDeleted projection 更新 — Scenario API andWaitForStateChange 等
+  AFTER_COMMIT listener 完成）
+- `ModularityTests` 2/2 PASS（review 加 skill::query 後 verifier 仍乾淨）
+
+**Files changed**：
+- `backend/src/main/resources/db/migration/V9__add_skill_rating_projection_columns.sql` (new)
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/domain/Skill.java` (modify — 加 averageRating + reviewCount @ReadOnlyProperty fields + getters)
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/query/SkillRatingService.java` (new — raw SQL UPDATE projection)
+- `backend/src/main/java/io/github/samzhu/skillshub/review/SkillRatingProjectionListener.java` (new — @ApplicationModuleListener × 2)
+- `backend/src/main/java/io/github/samzhu/skillshub/review/package-info.java` (modify — allowedDependencies 加 `skill :: query`)
+- `backend/src/test/java/io/github/samzhu/skillshub/review/SkillRatingProjectionListenerTest.java` (new — Modulith Scenario API)
