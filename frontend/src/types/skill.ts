@@ -38,6 +38,10 @@ export interface Skill {
   status: SkillStatus
   /** 累計下載次數 */
   downloadCount: number
+  /** S098e2-T02：review 平均星等（1.00-5.00；尚無 review 時為 0.00） */
+  averageRating: number
+  /** S098e2-T02：review 總數（尚無 review 時為 0） */
+  reviewCount: number
   /** 建立時間（ISO 8601 UTC） */
   createdAt: string
   /** 最後更新時間（ISO 8601 UTC） */

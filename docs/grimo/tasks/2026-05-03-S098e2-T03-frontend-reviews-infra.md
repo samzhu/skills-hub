@@ -115,4 +115,20 @@ export interface Skill {
 - T02（Skill DTO 加欄位需要 backend ship 才有真資料；frontend type 同步可早）
 
 ## Status
-pending
+✅ shipped 2026-05-03 cron Tick 10
+
+## Result
+
+純 type-only / hook + small component infra：5 個新檔。RatingStars 含 readonly + interactive 兩 mode；interactive 走 ARIA radiogroup pattern（5 顆 button + aria-checked）。
+
+**Verification**：
+- `RatingStars.test.tsx` 5/5 PASS（readonly fill 比例 / 0 顆 / 4.7 round to 5 / interactive click → onChange / aria-checked 反映 value）
+- 跨 spec sanity: RatingStars + FlagsList + MySkillsPage → 12/12 PASS @ 1.97s
+- `npx tsc --noEmit` → 0 error（排除 pre-existing `global`）
+
+**Files changed**：
+- `frontend/src/api/reviews.ts` (new — Review type + fetch/create/delete helpers)
+- `frontend/src/hooks/useReviews.ts` (new — TanStack Query hook 60s staleTime)
+- `frontend/src/components/RatingStars.tsx` (new — readonly + interactive modes, lucide Star icon, 28 LOC)
+- `frontend/src/components/RatingStars.test.tsx` (new — 5 unit tests)
+- `frontend/src/types/skill.ts` (modify — Skill interface 加 averageRating + reviewCount fields)
