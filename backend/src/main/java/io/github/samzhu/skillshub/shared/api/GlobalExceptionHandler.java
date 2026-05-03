@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 全域例外處理器。
@@ -247,6 +248,29 @@ public class GlobalExceptionHandler {
 				.log("Missing required parameter");
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(new ErrorResponse("VALIDATION_ERROR", ex.getMessage(), Instant.now()));
+	}
+
+	/**
+	 * S127：處理 Spring 6+ {@link NoResourceFoundException}（trailing slash / 不存在路徑 default 404）。
+	 *
+	 * <p>原 Spring DefaultErrorAttributes 走 {@code BasicErrorController} 回 {@code {timestamp,
+	 * status, error: "Not Found", message: "No static resource ...", path}} — 與既有
+	 * {@link NoSuchElementException} → NOT_FOUND ErrorResponse shape 不一致；frontend i18n
+	 * `error` code 對 "Not Found" 字串無對應翻譯，silent fallthrough。本 handler 統一翻譯為
+	 * 標準 ErrorResponse shape 對齊 Mode B Round 39 finding (Bug AY)。
+	 *
+	 * <p><b>Tomcat-level limitation</b>：empty path segment（如 {@code /api/v1/skills//foo}）
+	 * 由 Tomcat 直接拒絕回 400 不進 Spring exception flow — 本 handler 無法 cover；
+	 * 屬 known limitation，frontend 不會生 double-slash URL，影響面 acceptable。
+	 */
+	@ExceptionHandler(NoResourceFoundException.class)
+	ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex) {
+		log.atDebug()
+				.addKeyValue("errorCode", "NOT_FOUND")
+				.addKeyValue("path", ex.getResourcePath())
+				.log("No resource found at path");
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse("NOT_FOUND", ex.getMessage(), Instant.now()));
 	}
 
 	/**

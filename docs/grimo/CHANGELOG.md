@@ -1,5 +1,35 @@
 # Changelog
 
+## [v3.10.6] — NoResourceFoundException ErrorResponse 一致性（S127 完成；2026-05-04 — Bug AY fix）
+
+> S127 single-tick ship — Mode B Round 39 (2026-05-04 Tick 13) Bug AY (LOW) backlog 候選。**PATCH bump** — 純 GlobalExceptionHandler 加 1 個 handler；無新 dep；無 schema 變動。對齊「ErrorResponse shape 一致性」session 持續 invariant。
+
+### Added — Backend
+- `backend/.../shared/api/GlobalExceptionHandler.java`：加 `@ExceptionHandler(NoResourceFoundException.class)` 翻譯 Spring 6+ trailing slash / 不存在 endpoint 預設 404 為標準 ErrorResponse shape (`{error: "NOT_FOUND", message, timestamp}`)。修補 Bug AY：原 `BasicErrorController` 預設 shape (`{timestamp, status, error: "Not Found", message: "No static resource ...", path}`) 與既驗 `NoSuchElementException` → NOT_FOUND ErrorResponse 不一致；frontend i18n `error` code 對 "Not Found" 字串 silent fallthrough。
+
+### Verify metric
+- E2E manual smoke (Round 39 fixture) **6/6 case all PASS**：
+  - `/skills/abc/` (trailing slash on nonexistent id) → 404 + `{error:"NOT_FOUND",...}` ✓
+  - `/skills/` → 404 + 同 shape ✓
+  - `/totally-nonexistent-endpoint` → 404 + 同 shape ✓
+  - `/skills/null/null` (NoSuchElementException 既驗) → 404 + 同 shape (regression OK) ✓
+  - `/skills//foo` (Tomcat 400, known limitation per spec §2.2) → unchanged 400 ✓
+  - `/skills?keyword=` (success regression) → 200 ✓
+- Backend devtools restart 2.9s
+
+### Design decisions
+- **Tomcat-level `/skills//foo` 400 不 fix**（per spec §2.2 trim list）— Tomcat 直接拒絕 empty path segment 不進 Spring exception flow；安全 feature；frontend 不會生 double-slash URL；影響面 acceptable
+- **Single handler vs ErrorAttributes override**（per spec §2.1 Approach B rejected）— 對齊既驗 GlobalExceptionHandler pattern 是 minimal diff；override BasicErrorController side effect 風險高
+
+### Roadmap progress
+- ✅ S127 (XS=1, v3.10.6) shipped — Phase 5 row M122
+- 📋 Round 39 backlog 剩 S126 (Bug AX skill id format validation pre-PreAuthorize) — chain 2/2 待續
+
+### Pattern reuse
+- 第 16 次 single-tick XS/S spec ship（per session lessons learned）
+- GlobalExceptionHandler 第 19 個 handler 加（既有 18 個）— 持續對齊 ErrorResponse shape 一致性 invariant
+- **Tomcat-level vs Spring-level exception 區分** lesson：Mode B finding scope 須區分 layer（Tomcat 安全 layer 不 cover；Spring exception flow cover）
+
 ## [v3.10.5] — getByAuthorAndName ACL gate（S124 完成；2026-05-04 — read-side ACL chain final closer）
 
 > S124 single-tick ship — read-side ACL chain 最後一個 endpoint。**PATCH bump** — 純 controller annotation 改動（@PostAuthorize resolve-then-check）；無新 strategy / 無 schema 變動。**read-side ACL chain 完整收尾 7 個 endpoint**（S121 + S122 + S123 + S124）。
