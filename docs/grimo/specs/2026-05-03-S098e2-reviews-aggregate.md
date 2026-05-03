@@ -1,7 +1,10 @@
 # S098e2: Reviews Aggregate + Ratings + SkillDetail Reviews tab
 
-> Spec: S098e2 | Size: S(11) re-estimated from M(8) | Status: ⏳ Design
+> Spec: S098e2 | Size: S(11) re-estimated from M(8) | Status: 🚧 in-progress (4 tasks queued — cron tick handoff)
 > Date: 2026-05-03
+
+> **Tasks**: T01 review aggregate + endpoints (no projection) → T02 skill rating projection listener + service + skill aggregate field + migrations → T03 frontend infra (api/reviews.ts + useReviews + RatingStars + Skill type) → T04 SkillDetailPage Reviews tab + tests。Execution order T01→T02→T03→T04（T03 type-only 可與 T01/T02 平行）。
+
 
 ---
 
