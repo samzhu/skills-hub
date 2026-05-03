@@ -8,6 +8,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -47,17 +48,30 @@ public class SkillQueryController {
 		this.bundleInfoService = bundleInfoService;
 	}
 
-	/** 依 ID 取得單一技能詳情。找不到時回傳 404。 */
+	/**
+	 * 依 ID 取得單一技能詳情。找不到時回傳 404；無權讀取時回傳 403。
+	 *
+	 * <p>S122: 加 row-level ACL 守則 — anonymous 對 PRIVATE skill 走 401（per Spring
+	 * Security ExceptionTranslationFilter 在 AnonymousAuthenticationToken 場景轉為
+	 * AuthenticationException）；authenticated user 無 grant 走 403。對齊 S121 list endpoint
+	 * ACL filter，補完 read-side 單筆 path 的 LAB-blocker gap。
+	 */
 	@GetMapping("/skills/{id}")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
 	Skill getById(@PathVariable String id) {
 		return queryService.findById(id);
 	}
 
 	/**
 	 * S098a3-2 — Bundle metadata for PublishValidatePage upload-strip。回 canonical
-	 * filename + fileSize + fileCount + uploadedAt；404 = skill 不存在 OR 無 published version。
+	 * filename + fileSize + fileCount + uploadedAt；404 = skill 不存在 OR 無 published version；
+	 * 無權讀取 → 403。
+	 *
+	 * <p>S122: 加 row-level ACL 守則 — bundle metadata 含 filename / fileSize / fileCount
+	 * 對 PRIVATE skill 等同洩漏 skill 名稱與檔案存在性；走 read-permission gate 對齊 getById。
 	 */
 	@GetMapping("/skills/{id}/bundle-info")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
 	BundleInfoQueryService.BundleInfoResponse bundleInfo(@PathVariable String id) {
 		return bundleInfoService.get(id);
 	}
@@ -90,8 +104,14 @@ public class SkillQueryController {
 		return queryService.search(keyword, category, author, pageable);
 	}
 
-	/** 取得某技能的版本歷史，按發佈時間降序排列。 */
+	/**
+	 * 取得某技能的版本歷史，按發佈時間降序排列；無權讀取時回 403。
+	 *
+	 * <p>S122: 加 row-level ACL 守則 — 版本歷史含 publishedAt / fileCount 等
+	 * 對 PRIVATE skill 等同洩漏發佈節奏；走 read-permission gate 對齊 getById。
+	 */
 	@GetMapping("/skills/{id}/versions")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
 	List<SkillVersion> getVersions(@PathVariable String id) {
 		return queryService.findVersionsBySkillId(id);
 	}

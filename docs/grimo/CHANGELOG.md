@@ -1,5 +1,38 @@
 # Changelog
 
+## [v3.8.5] — Read-side single-skill ACL gate（S122 完成；2026-05-04 — LAB-blocker fix continuation）
+
+> S122 single-tick ship — Mode B Round 37 (2026-05-04) Bug AT 直接修。S121 (v3.8.4) chain follow-up，補完 single-skill read endpoint 的 ACL 守則。**PATCH bump** — controller annotation 加 + evaluator 對 anonymous-read 修補；零 schema 變動；無新 dep。
+
+### Fixed — Backend (LAB-blocker)
+- `backend/.../skill/query/SkillQueryController.java`：`getById` + `bundleInfo` + `getVersions` 三 method 加 `@PreAuthorize("hasPermission(#id, 'Skill', 'read')")` 守則。修補 anonymous user 直打 `/api/v1/skills/{private-id}` (+ `/versions` + `/bundle-info`) 拿到完整 JSON body 的 critical leak。對齊 S121 list path enforcement，補完 read-side single-skill 三個 endpoint 的 ACL 一致性。
+- `backend/.../shared/security/DelegatingPermissionEvaluator.java`：修補 S016 anonymous 短路對 read permission 過嚴的問題 — 對齊 S026 設計「`*:read` read 預設公開」，anonymous + read 走 `[*:read]` pseudo-principal 評估 strategy（PUBLIC skill 命中 acl_entries `*:read`）；anonymous + 其他 permission（write/delete/...）維持 S016 §2.4 #8 fail-secure 短路。常數 `ANONYMOUS_READ_PRINCIPALS = Set.of("*:read")` 表達設計意圖。
+
+### Verify metric
+- E2E manual smoke (Round 37 fixture) **15/15 case all PASS**：
+  - anon GET PUBLIC (3 endpoint) → 200 ✓
+  - anon GET PRIVATE (3 endpoint) → 401 ✓
+  - A owner GET PRIVATE → 200 ✓
+  - B no-grant GET PRIVATE → 403 ✓
+  - B granted GET PRIVATE → 200 ✓
+  - regression list（S121）：anon=1 / B granted=2 ✓
+- Backend devtools restart：2.5s（controller 改）+ 2.5s（evaluator 改）
+
+### Design decisions
+- **Scope creep XS → S handled in-spec**（per spec §1）— implement 過程發現 evaluator 缺陷立即修補；不切新 spec 因 controller @PreAuthorize 與 evaluator 短路是同一 ACL 鏈路，分割 ship 會留 broken intermediate state（PUBLIC skill 對 anonymous 也 401，UX 嚴重破壞）
+- **401 vs 403 區分**對齊 Spring Security 7 ExceptionTranslationFilter 既驗 — anonymous(ROLE_ANONYMOUS) 屬未認證走 401；authenticated 但無權走 403
+- **getByAuthorAndName alias path 不在本 spec scope**（不同 SpEL signature，需 resolve-then-check 設計）— 留 S124 follow-up
+
+### Roadmap progress
+- ✅ S122 (XS=2 → S=4-5 actual) shipped — Phase 5 row M117
+- 📋 S123 (download endpoint @PreAuthorize) 待 implement — 同 chain follow-up
+- 📋 S124 (getByAuthorAndName ACL gate) 新加 backlog row — 不同 SpEL signature
+
+### Pattern reuse
+- 第 7 次 single-tick XS/S spec ship（per session lessons learned）
+- 第 N 次採用 controller-level `@PreAuthorize("hasPermission(#id, 'Skill', 'read')")` 既驗 pattern（對齊 SkillAclController.listAcl）
+- DelegatingPermissionEvaluator 第 1 次補 anonymous-read 路徑（修 S016 §2.4 #8 read 過嚴）
+
 ## [v3.8.4] — List endpoint row-level ACL filter（S121 完成；2026-05-04 — LAB-blocker fix）
 
 > S121 single-tick ship — Mode B Round 37 (2026-05-04) finding **CRITICAL** 直接修。User 2026-05-04 directive「LAB 封測前 + ACL 權限控制」觸發。**PATCH bump** — production code 1 file diff（`SkillQueryService.search()` 加 SQL clause）+ test fixture 升級；零 schema 變動；無 controller / API contract change。

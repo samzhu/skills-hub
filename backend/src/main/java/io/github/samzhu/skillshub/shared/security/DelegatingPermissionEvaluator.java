@@ -20,11 +20,18 @@ import org.springframework.stereotype.Component;
  * 只需新增一個 {@code @Component PermissionStrategy} 實作，不需修改 dispatcher
  * （Open/Closed Principle）。
  *
- * <h2>Anonymous 短路</h2>
- * Anonymous / null Authentication 直接拒絕（per spec §2.4 Challenge #8）；HTTP layer
- * 由 Spring Security {@code ExceptionTranslationFilter} 區分 401（未認證）/ 403（已認證但無權）。
+ * <h2>Anonymous 短路（S016 + S122 修訂）</h2>
+ * <ul>
+ *   <li>{@code permission != "read"}：anonymous / null Authentication 直接拒絕（per spec §2.4
+ *       Challenge #8）— mutation 嚴格守。</li>
+ *   <li>{@code permission == "read"}：anonymous 走 {@code [*:read]} pseudo-principal
+ *       評估 strategy（per S026：read 預設開放給所有 user，含 anonymous）。S122 加此
+ *       特例修補：在 read endpoint 加 {@code @PreAuthorize} 後，anonymous 對 PUBLIC skill
+ *       仍可訪問；對 PRIVATE skill 走 strategy 拒絕後 ExceptionTranslationFilter
+ *       區分 401（未認證）/ 403。</li>
+ * </ul>
  * 短路避免 dispatcher 把 anonymous 當合法 principal 展開，造成誤命中 {@code user:anonymous:read}
- * 等病態 entry。
+ * 等病態 entry；read 走 {@code *:read} 是「不展 user 命名空間」的 principle-respecting 設計。
  *
  * <h2>Principal 展開分工</h2>
  * dispatcher 僅展開 {@code user:} / {@code role:} 兩命名空間（從 {@link Authentication}
@@ -37,6 +44,9 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class DelegatingPermissionEvaluator implements PermissionEvaluator {
+
+    /** S122: anonymous read fallback — 對齊 S026 「{@code *:read} read 預設公開」設計。 */
+    private static final Set<String> ANONYMOUS_READ_PRINCIPALS = Set.of("*:read");
 
     private final List<PermissionStrategy> strategies;
 
@@ -52,7 +62,7 @@ public class DelegatingPermissionEvaluator implements PermissionEvaluator {
     public boolean hasPermission(@Nullable Authentication auth,
                                  @Nullable Object target,
                                  Object permission) {
-        if (!authenticated(auth) || target == null) {
+        if (target == null) {
             return false;
         }
         var targetType = target.getClass().getSimpleName();
@@ -67,7 +77,7 @@ public class DelegatingPermissionEvaluator implements PermissionEvaluator {
                                  @Nullable Serializable targetId,
                                  @Nullable String targetType,
                                  Object permission) {
-        if (!authenticated(auth) || targetId == null || targetType == null) {
+        if (targetId == null || targetType == null) {
             return false;
         }
         return evaluate(auth, targetId, targetType, permission.toString());
@@ -83,7 +93,23 @@ public class DelegatingPermissionEvaluator implements PermissionEvaluator {
                 && !(auth instanceof AnonymousAuthenticationToken);
     }
 
-    private boolean evaluate(Authentication auth, Object target, String targetType, String permission) {
+    private boolean evaluate(@Nullable Authentication auth, Object target, String targetType, String permission) {
+        // S122: anonymous + read 走 *:read public principal — 對齊 S026 read 預設開放給所有
+        // user 設計；@PreAuthorize 對 read endpoint 啟用後 anonymous 對 PUBLIC skill 仍可
+        // 通過 strategy 評估（acl_entries 含 *:read 命中），對 PRIVATE skill 走 strategy 拒
+        // 絕後由 ExceptionTranslationFilter 翻 401。其他 permission（write/delete/...）維持
+        // S016 §2.4 #8 anonymous fail-secure（短路 false）。
+        if (!authenticated(auth)) {
+            if ("read".equals(permission)) {
+                return strategies.stream()
+                        .filter(s -> s.supports(targetType))
+                        .findFirst()
+                        .map(s -> s.hasPermission(ANONYMOUS_READ_PRINCIPALS, target, permission))
+                        .orElse(false);
+            }
+            return false;
+        }
+
         // S027: ROLE_admin 全 permission bypass — admin 為 organization-level super-admin role
         // （RBAC 慣例如 GitHub org admin / Atlassian site admin）；對所有 aggregate 都有完整
         // read/write/delete/suspend/reactivate 權限，不查 ACL strategy。
