@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router'
-import { ArrowLeft, Download, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Download, AlertCircle, Bell, BellOff } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppShell } from '@/components/AppShell'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { useSkill, useSkillByAuthorAndName } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
 import { useMe } from '@/hooks/useMe'
+import { useIsSubscribed, useSubscribeSkill, useUnsubscribeSkill } from '@/hooks/useSubscription'
 import { addVersion, fetchSkillStats } from '@/api/skills'
 import { ApiError } from '@/api/client'
 import { localizeApiError } from '@/lib/api-error-messages'
@@ -269,15 +270,68 @@ function SkillHero({ skill }: { skill: import('@/types/skill').Skill }) {
         </div>
       )}
       {skill.latestVersion && skill.status === 'PUBLISHED' && (
-        <a
-          href={`/api/v1/skills/${skill.id}/download`}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-foreground"
-        >
-          <Download className="h-4 w-4" />
-          下載
-        </a>
+        <div className="flex shrink-0 items-center gap-2">
+          <SubscribeButton skill={skill} />
+          <a
+            href={`/api/v1/skills/${skill.id}/download`}
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-foreground"
+          >
+            <Download className="h-4 w-4" />
+            下載
+          </a>
+        </div>
       )}
     </div>
+  )
+}
+
+/**
+ * S125c — 訂閱按鈕。Toggle subscribe / unsubscribe；對齊 PRD §285-§291 P9 SBE
+ * scenario 1 user-facing entry point。
+ *
+ * <p>UX 規則：
+ * <ul>
+ *   <li>作者本人不顯示按鈕（self-subscribe 對 listener 走 self-action skip 無實質效果）</li>
+ *   <li>已訂閱：BellOff icon + 「已訂閱」label；hover variant 提示取消</li>
+ *   <li>未訂閱：Bell icon + 「訂閱」label</li>
+ *   <li>Mutation pending：disabled + 「處理中...」</li>
+ * </ul>
+ */
+function SubscribeButton({ skill }: { skill: import('@/types/skill').Skill }) {
+  const { data: me } = useMe()
+  const isSubscribed = useIsSubscribed(skill.id)
+  const subscribe = useSubscribeSkill()
+  const unsubscribe = useUnsubscribeSkill()
+
+  // 作者本人不顯示按鈕（per P9 self-action skip 設計；UI 與 backend listener 行為對齊）
+  if (me?.sub === skill.author) return null
+
+  const isPending = subscribe.isPending || unsubscribe.isPending
+  const handleClick = () => {
+    if (isPending) return
+    if (isSubscribed) unsubscribe.mutate(skill.id)
+    else subscribe.mutate(skill.id)
+  }
+
+  const label = isPending ? '處理中...' : isSubscribed ? '已訂閱' : '訂閱'
+  const Icon = isSubscribed ? BellOff : Bell
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={isPending}
+      aria-pressed={isSubscribed}
+      className={
+        'inline-flex items-center gap-1.5 rounded-md px-3.5 py-2 text-[13px] font-medium transition-colors disabled:opacity-60 ' +
+        (isSubscribed
+          ? 'bg-secondary text-foreground/80 hover:bg-secondary/70'
+          : 'border border-border bg-transparent text-foreground hover:bg-secondary/50')
+      }
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </button>
   )
 }
 

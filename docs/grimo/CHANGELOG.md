@@ -1,5 +1,39 @@
 # Changelog
 
+## [v3.10.1] — SkillDetail subscribe button（S125c 完成；2026-05-04 — LAB user-visible flow chain 3/3 closer）
+
+> S125c single-tick ship — S125 chain 收尾。**PATCH bump** — 純 frontend addition（API helper + hook + UI button）；無 backend 改動；無 schema 變動。LAB 封測員工從 UI 可 self-service 訂閱 / 取消訂閱 flow。
+
+### Added — Frontend
+- `frontend/src/api/subscriptions.ts`（new）— 3 個 API helper：`subscribeSkill` POST / `unsubscribeSkill` DELETE / `fetchMySubscriptions` GET → `string[]`。對齊 notifications.ts 既驗 helper pattern
+- `frontend/src/hooks/useSubscription.ts`（new）— 4 個 hook：
+  - `useMySubscriptions()` TanStack Query 30s staleTime + refetchOnWindowFocus
+  - `useIsSubscribed(skillId)` derived from list contains
+  - `useSubscribeSkill()` mutation + invalidate `['my-subscriptions']`
+  - `useUnsubscribeSkill()` mirror
+- `frontend/src/pages/SkillDetailPage.tsx`（modify）— SkillHero 加 `SubscribeButton` 元件（70 lines；Bell/BellOff icon toggle；author 自己看不到 per self-action skip 設計；pending state disabled + 「處理中...」；aria-pressed semantics）
+
+### Verify metric
+- TypeScript：`tsc --noEmit` 0 errors
+- Frontend tests：**193/193 PASS @ 41 files** — 0 regression
+- Manual UI smoke：暫 defer（Chrome MCP 未連線；backend E2E S125b Tick 7 已驗 API contract 完整工作）
+
+### Design decisions
+- **Author 自己看不到按鈕**（per spec §2.1）— 對齊 backend listener self-action skip 行為；UI 與 backend 對稱
+- **`useIsSubscribed` derived from list contains** vs 另開 GET status endpoint — `useMySubscriptions` 一次 fetch 即可回答多 skill；多 page 共 cache；簡化 backend surface
+- **Detail-page-only 小元件不抽 separate file**（per S085+ 慣例）— `SubscribeButton` 內 SkillDetailPage.tsx 不抽至 components/，因僅本 page 用
+
+### Roadmap progress
+- ✅ S125a (XS=4, v3.9.0) — backend infra
+- ✅ S125b (XS=3, v3.10.0) — endpoints + listener + Bug AW fix
+- ✅ **S125c (XS=3, v3.10.1) — frontend** — Phase 5 row M120c
+- **S125 chain 完整 ship** — LAB 封測 user-visible flow gap 完整補完，PRD §285-§291 P9 SBE scenario 1 端到端 demo-able
+
+### Pattern reuse
+- 第 11 次 single-tick XS/S spec ship（per session lessons learned）
+- Spec split chain 3/3 完成（S125a + b + c 三 tick）— 對齊 wall budget；M-size 拆 3 XS 範本
+- Stale runtime 不擋 commit（per CLAUDE.md）— Chrome MCP 未連線時，typecheck + test regression + backend E2E 既驗 contract 即足以 ship
+
 ## [v3.10.0] — Subscription endpoints + version-published listener（S125b 完成 + Bug AW fix；2026-05-04 — LAB user-visible flow chain 2/3）
 
 > S125b single-tick ship + Bug AW 同 spec 修補。**MINOR bump** — 加 controller (3 endpoints) + 第 5 個 NotificationProjectionListener listener；evaluator anonymous/authenticated read 路徑對稱補完。LAB 封測員工可從 API 完整測 PRD §285-§291 P9 SBE scenario 1（訂閱 → 新版發布 → 收通知）。
