@@ -14,6 +14,8 @@ const v = (overrides: Partial<SkillVersion> = {}): SkillVersion => ({
   skillId: 'skill-1',
   version: '1.0.0',
   fileSize: 8000,
+  // S117: fileCount=3 為合理預設（多檔 zip）；驗 fileCount=0 graceful hide 場景由獨立 AC cover
+  fileCount: 3,
   publishedAt: '2026-04-01T00:00:00Z',
   ...overrides,
 })
@@ -59,5 +61,15 @@ describe('VersionList — ledger Round 5.5', () => {
     renderWith([v({ version: '2.0.0' })])
     const downloadLink = screen.getByText('下載').closest('a')
     expect(downloadLink).toHaveAttribute('href', '/api/v1/skills/skill-1/versions/2.0.0/download')
+  })
+
+  it('AC-S117-1: fileCount > 0 顯示「N 個檔案」', () => {
+    renderWith([v({ fileCount: 5 })])
+    expect(screen.getByText('5 個檔案')).toBeInTheDocument()
+  })
+
+  it('AC-S117-2: fileCount=0 (pre-S098a3-2 fallback) 隱藏該欄避免「0 個檔案」誤導', () => {
+    renderWith([v({ fileCount: 0 })])
+    expect(screen.queryByText(/個檔案/)).not.toBeInTheDocument()
   })
 })

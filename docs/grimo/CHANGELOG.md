@@ -1,5 +1,29 @@
 # Changelog
 
+## [v3.10.3] — Frontend SkillVersion fileCount sync（S117 完成；2026-05-04 — Bug AP fix）
+
+> S117 single-tick ship — Mode B Round 36 (2026-05-03) Bug AP (LOW) backlog 候選。**PATCH bump** — 純 frontend type 加欄位 + VersionList graceful display；無 backend 改動；無 schema 變動。LAB 員工瀏覽版本歷史看到「N 個檔案」資訊。
+
+### Added — Frontend
+- `frontend/src/types/skill.ts`：SkillVersion interface 加 `fileCount: number` field 對齊 backend 自動序列化（per S098a3-2 ship；v3.8.1 既有 expose 但 frontend type 漏同步）。JSDoc 標 `0` 為 pre-S098a3-2 歷史 row fallback signal
+- `frontend/src/components/VersionList.tsx`：row 內 fileSize 與 publishedAt 之間加 `{v.fileCount > 0 && <span>{v.fileCount} 個檔案</span>}` graceful conditional — fileCount=0 隱藏該欄避免「0 個檔案」誤導
+
+### Changed — Frontend (test)
+- `frontend/src/components/VersionList.test.tsx`：(1) `v` factory 加 `fileCount: 3` default；(2) 加 AC-S117-1（fileCount > 0 顯示「N 個檔案」）+ AC-S117-2（fileCount=0 graceful hide）
+
+### Verify metric
+- VersionList tests 7/7 PASS @ 803ms（既有 5 + S117-1/-2 新加）
+- Full frontend test suite：**195/195 PASS @ 41 files** — 0 regression
+- TypeScript tsc：0 errors
+
+### Roadmap progress
+- ✅ S117 (XS=1, v3.10.3) shipped — Phase 5 row M112
+- 📋 Round 36 backlog 剩 S118 (Collection DTO naming alignment) — chain 3/3 收尾候選
+
+### Pattern reuse
+- 第 13 次 single-tick XS/S spec ship（per session lessons learned）
+- Graceful fallback for projection columns 第 N 次採用（fileCount=0 隱藏；對齊 S098a3-2 fallback signal pattern + S119 averageRating=0 path）
+
 ## [v3.10.2] — List endpoint rating projection（S119 完成；2026-05-04 — Bug AR fix user-visible）
 
 > S119 single-tick ship — Mode B Round 36 (2026-05-03) Bug AR (MEDIUM, user-visible) backlog 候選。**PATCH bump** — SQL SELECT clause 補 2 column + factory backward-compat overload；零 schema 變動；無 caller migration。LAB 員工瀏覽 skills list SkillCard rating 星星顯示真實評分（before fix 永遠 0）。

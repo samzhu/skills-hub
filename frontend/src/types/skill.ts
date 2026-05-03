@@ -119,6 +119,11 @@ export interface SkillVersion {
   version: string
   /** 套件的位元組大小（bytes） */
   fileSize: number
+  /**
+   * S098a3-2/S117 — 套件內檔案數量（zip entries 計算）。
+   * 0 表示資料庫尚未填入該欄位（pre-S098a3-2 上傳之歷史 row 為 fallback signal）。
+   */
+  fileCount: number
   /** 版本發布時間（ISO 8601 UTC） */
   publishedAt: string
 }

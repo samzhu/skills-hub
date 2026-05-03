@@ -47,6 +47,11 @@ export function VersionList({ versions }: { versions: SkillVersion[] }) {
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             {/* fileSize 單位為 bytes，轉換為 KB（1 KB = 1024 bytes）顯示 */}
             <span>{(v.fileSize / 1024).toFixed(1)} KB</span>
+            {/*
+              S117 — 顯示套件檔案數；fileCount=0 為 pre-S098a3-2 歷史 row fallback signal，
+              此情境下隱藏該欄避免「0 個檔案」誤導（per spec §2 graceful policy）。
+            */}
+            {v.fileCount > 0 && <span>{v.fileCount} 個檔案</span>}
             <span>{new Date(v.publishedAt).toLocaleDateString('zh-TW')}</span>
             {/*
               使用原生 <a> 而非 React Router <Link>：
