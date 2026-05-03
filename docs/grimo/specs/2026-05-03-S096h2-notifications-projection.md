@@ -1,7 +1,9 @@
 # S096h2: Notifications Full Projection (community 三件套最後一件)
 
-> Spec: S096h2 | Size: M(12) re-est from M(10-12) | Status: ⏳ Design
+> Spec: S096h2 | Size: M(12) re-est from M(10-12) | Status: 🚧 in-progress (4 tasks queued — cron tick handoff)
 > Date: 2026-05-03
+
+> **Tasks**: T01 backend aggregates (Notification + NotificationPreference) + V11 schema + `notification` module 正式註冊 → T02 NotificationProjectionListener 4 個 `@ApplicationModuleListener` (SkillFlagged / ReviewCreated / RequestClaimed / RequestFulfilled) + UNIQUE constraint idempotency → T03 mutation (mark-read / read-all / delete / update-preferences) + cursor-paginated list + 2 exceptions → T04 frontend api/notifications.ts split + useNotifications/useNotificationPreferences hooks + NotificationsPage 改寫 + PreferencesModal。Execution order T01→T02→T03→T04（T02 依賴 T01 schema；T03 依賴 T01 aggregates；T04 依賴 backend 全 ship）。
 
 ---
 
