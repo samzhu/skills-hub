@@ -1,5 +1,52 @@
 # Changelog
 
+## [v3.7.0] — Notifications full projection（S096h2 完成；2026-05-03）
+
+> S096h2 跨 4 個 cron tick (Tick 22 spec planning + Tick 23 backend infra T01+T02 + Tick 24 backend service/controller T03 + Tick 25 frontend full T04) ship — 取代 ✅ S096h1 read-only stub：完整 cross-module event projection（4 個 `@ApplicationModuleListener` 訂閱 SkillFlagged / ReviewCreated / RequestClaimed / RequestFulfilled）+ 2 個 mutable aggregate（Notification + NotificationPreference 走 `@Version`）+ 7 REST endpoints + 4 frontend pieces（api split / 2 hooks / PreferencesModal / NotificationsPage rewrite）。**MINOR bump** — 新 module + V11 schema + 5 個 domain event subscriptions + UNIQUE idempotency 守則 + 訂閱偏好 4 toggle UX。
+
+### Added — Backend
+- `backend/.../notification/Notification.java` — Mutable aggregate `@Version`；factory `create()` for listener INSERT path；`markRead()` mutation；`isOwnedBy(userId)` ownership 守則
+- `backend/.../notification/NotificationPreference.java` — 4 boolean toggle aggregate（flags/reviews/requests/versions）；`defaults(userId)` factory + partial `update()` + `isEnabled(category)` switch
+- `backend/.../notification/NotificationRepository.java` — Spring Data JDBC repo + `@Query` annotation cursor pagination（Spring Boot 4.0.6 AOT codegen workaround for compound sort）；`findByRecipient` + `findByRecipientAfterCursor`（tuple compare avoid OFFSET 災難）+ `countUnreadByRecipient` + `markAllReadForUser` (@Modifying)
+- `backend/.../notification/NotificationPreferenceRepository.java` — CrudRepository
+- `backend/.../notification/NotificationProjectionListener.java` — 4 個 `@ApplicationModuleListener`（cross-module SPI）+ DuplicateKey catch idempotency + preferences gate（無 row 預設 ON）+ self-action skip（不通知自己）；deterministic `ref_event_id` composite 從 payload 派生
+- `backend/.../notification/NotificationService.java` — markRead / markAllRead / delete / updatePreferences / getPreferences；ownership 守則拋 `NotNotificationRecipientException`；mark-all-read 走 `@Modifying SQL UPDATE WHERE recipient AND read_at IS NULL`（避 N round-trip + N 個 @Version 競賽）
+- `backend/.../notification/NotificationQueryService.java` — list with cursor + category filter；`limit + 1` Slice pattern derive `hasNext`（避 COUNT(*) 災難）；unreadCount partial index path
+- `backend/.../notification/NotificationController.java` — rewrite stub → 7 endpoints (GET list/unread-count/preferences + POST {id}/read + read-all + preferences + DELETE {id})；DTO 對齊 frontend type spec §4.7
+- `backend/.../notification/package-info.java` — `@ApplicationModule(displayName="Notifications", allowedDependencies={"shared::events,security,api", "skill::domain", "community + community::events", "review::domain", "security"})`
+- `backend/.../shared/api/{NotificationNotFoundException,NotNotificationRecipientException}.java` + GlobalExceptionHandler 加 404/403 mapping（small-snake-case error code 便於 FE i18n）
+- `backend/.../community/events/package-info.java`（new — `@NamedInterface("events")` 暴露 RequestClaimed/Fulfilled record 跨 module import）
+- `backend/.../review/domain/package-info.java`（new — `@NamedInterface("domain")` 暴露 ReviewCreatedEvent record 跨 module import）
+- V11 migration — `notifications` 表（含 UNIQUE(recipient_id, ref_event_id, category) idempotency 守則 + partial index `idx_notifications_recipient_unread` for unread queries + version column）+ `notification_preferences` 表（4 boolean defaults TRUE + version column）
+- `backend/src/test/.../notification/NotificationModuleSmokeTest.java` — 8 個 schema/aggregate round-trip + UNIQUE constraint test
+- `backend/src/test/.../notification/NotificationProjectionListenerTest.java` — 6 個 cross-module Scenario API test（AC-1/2/3/4/5/10）
+- `backend/src/test/.../notification/NotificationServiceTest.java` — 12 個 Testcontainers test（AC-6/7/8/9 + AC-list cursor + cross-recipient isolation）
+- `backend/src/test/.../notification/NotificationControllerTest.java` — 10 個 @WebMvcTest slice test（HTTP routing + status code + exception → 翻譯）
+
+### Added — Frontend
+- `frontend/src/api/notifications.ts` — split from skills.ts；`Notification` type（`read: boolean → readAt: string|null` + 加 `refEventId`）+ `NotificationPreferences` type + `NotificationsQuery` + 7 helper（fetchNotifications / fetchUnreadCount / markNotificationRead / markAllNotificationsRead / deleteNotification / fetchPreferences / updatePreferences）；fetchNotifications 內部解 backend wrapper 取 items
+- `frontend/src/hooks/useNotifications.ts` — list with optional category filter（cache 30s + refetchOnWindowFocus 對齊既有 pattern）+ 3 個 mutation hook（mark-read / mark-all-read / delete）；onSuccess invalidate `['notifications']` + `['notifications-unread']` 同步 list + bell badge
+- `frontend/src/hooks/useNotificationPreferences.ts` — get（5min staleTime）+ update mutation（onSuccess setQueryData 立即生效跳過 refetch）
+- `frontend/src/components/PreferencesModal.tsx` — 4 toggle modal（fixed overlay + cancel/save buttons；mirror CreateRequestModal pattern）；submit 只送 diff（避 unchanged 欄位也 POST）；versions toggle disabled 標「敬請期待」
+- `frontend/src/pages/NotificationsPage.tsx` — full rewrite：取代 stub-style EmptyState 為主邏輯：filter chips（全部 / 回報 / 評論 / 需求；versions 不顯）+ 全部已讀 / 設定 hero CTA + interactive row（點 row body → markRead；點 ✕ → delete）+ readAt-derived isRead 視覺
+- `frontend/src/pages/NotificationsPage.test.tsx` — 7 tests 涵蓋 AC-12（list 5 筆 / row click mark-read / 全部已讀 / 點 ✕ delete / 評論 chip filter）+ AC-14（modal 開 + 4 toggle 顯 + flags off 儲存 → POST partial body）
+
+### Modified
+- `frontend/src/api/skills.ts` — 移除舊 `Notification` interface + `fetchNotifications` + `fetchUnreadCount`（已搬至 `api/notifications.ts`）
+- `frontend/src/components/AppShell.tsx` — `fetchUnreadCount` import 從 `'@/api/skills'` 切至 `'@/api/notifications'`（既有 30s poll 機制無改動）
+
+### Verified
+- Backend：NotificationServiceTest 12/12 + NotificationControllerTest 10/10 + NotificationProjectionListenerTest 6/6 + NotificationModuleSmokeTest 8/8 PASS @ Testcontainers + ModularityTests 2/2 PASS
+- Frontend：NotificationsPage.test.tsx 7/7 PASS @ 1.05s + 全 frontend suite 193/193 PASS @ 5.62s（0 regression）；npx tsc --noEmit PASS
+
+### Why
+- **補完 ✅ S096h1 stub**：S096h1 ship 為 read-only `[]` + bell badge 30s poll 機制；本 spec 把 backend stub 升為實 cross-module event-driven projection（CQRS write/read split），UX 啟用 mark-read / 全部已讀 / 刪除 / 訂閱偏好；對齊 PRD §P9 SBE Scenarios + Engineering Handoff §2.17。
+- **第 5 次跨模組 NamedInterface SPI demo**：notification module 訂閱 4 個跨模組 event（review / community / community::events / security），新加 2 個 NamedInterface（community::events + review::domain）對齊既有 skill::domain pattern；ModularityTests 整 spec 從未壞，Modulith 邊界守則 effective。
+- **Spec-Only-Handoff pattern 第 7 次端到端 demo**：Tick 22 拆 4 BDD task → Tick 23-25 implement loop（每 tick 1 task = 1 commit）→ ship。Cron-driven，無人 mid-flight 微調，task scope 設計準度高（4 task 各約 1 tick wall budget）。
+
+### Deviations
+- 詳 spec doc archive §7（含 ref_event_id `VARCHAR(36) → 255` in-place fix / `@Version` 取代 spec §4.3 Persistable 範本 / 加 2 NamedInterface / `@SpringBootTest` 取代 `@ApplicationModuleTest` 等 5 項）
+
 ## [v3.6.0] — Request Board full feature（S096g2 完成；2026-05-03）
 
 > S096g2 跨 5 個 cron tick (Tick 17 spec planning + Tick 18-21 implement) ship — 取代 ✅ S096g1 read-only stub：完整 Request aggregate（ADR-002 canonical Spring Data JDBC 充血 + Modulith Outbox）+ vote toggle (atomic SQL 對齊 S076 download_count pattern) + claim/release/fulfill state machine + state-aware RequestActionBar UI。**MINOR bump** — 新 aggregate + 2 schema migrations + 5 domain events + 7 REST endpoints + 4 frontend components。為 S096h2 Notifications projection 提供 5 個 event hook。

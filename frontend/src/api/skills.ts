@@ -208,28 +208,6 @@ export function fetchCollections(): Promise<SkillCollection[]> {
 }
 
 /**
- * S096h1 — Notification list + unread count (per PRD §P9 + Handoff §2.17).
- * Stub backend returns []; real projection from domain_events 留 S096h2.
- */
-export interface Notification {
-  id: string
-  category: 'versions' | 'flags' | 'reviews' | 'requests'
-  title: string
-  body: string
-  skillId: string | null
-  read: boolean
-  createdAt: string
-}
-
-export function fetchNotifications(): Promise<Notification[]> {
-  return apiFetch<Notification[]>('/notifications')
-}
-
-export function fetchUnreadCount(): Promise<{ count: number }> {
-  return apiFetch<{ count: number }>('/notifications/unread-count')
-}
-
-/**
  * S096e1 — public Landing stats (per Engineering Handoff §2.1).
  * Aggregate-only payload；不需 auth。
  */

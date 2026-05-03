@@ -1,26 +1,47 @@
-import { useQuery } from '@tanstack/react-query'
-import { Bell } from 'lucide-react'
+import { useState } from 'react'
+import { Bell, X } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { EmptyState } from '@/components/EmptyState'
-import { fetchNotifications, type Notification } from '@/api/skills'
+import { PreferencesModal } from '@/components/PreferencesModal'
+import {
+  useDeleteNotification,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotifications,
+} from '@/hooks/useNotifications'
+import type { Notification } from '@/api/notifications'
 
 /**
- * S096h1 — Notification Center read-only stub at `/notifications`.
+ * S096h2-T04 — Notification Center 完整 projection 版（取代 S096h1 read-only stub）。
  *
- * 對齊 PRD §P9 + Engineering Handoff §2.17. 本 spec ship 為 read-only stub：
- * - GET /api/v1/notifications → list（backend stub returns []）
- * - 顯 row list with category icon / title / body / time
- * - 0 results → EmptyState clear tone「都看完了，沒有未讀通知」
+ * - Hero：通知中心 + filter chips + 全部已讀 + 設定 buttons
+ * - List：rows or EmptyState
+ * - Modal：PreferencesModal triggered from「設定」button
  *
- * Defer S096h2: per-user subscription filter / 真實 projection from domain_events /
- * mark-read mutation / preferences endpoint / Version Diff page.
+ * Versions chip 不顯（spec §2.6 trim — listener 不產 versions 通知）。
+ * Delete 無 confirm（MVP；UX polish 留 follow-up）。
  */
+
+type CategoryFilter = 'all' | 'flags' | 'reviews' | 'requests'
+
+const CATEGORY_FILTERS: ReadonlyArray<{ key: CategoryFilter; label: string }> = [
+  { key: 'all', label: '全部' },
+  { key: 'flags', label: '回報' },
+  { key: 'reviews', label: '評論' },
+  { key: 'requests', label: '需求' },
+] as const
+
 export function NotificationsPage() {
-  const { data: notifications, isLoading } = useQuery<Notification[]>({
-    queryKey: ['notifications'],
-    queryFn: fetchNotifications,
-    staleTime: 30 * 1000,
-  })
+  const [filter, setFilter] = useState<CategoryFilter>('all')
+  const [showPreferences, setShowPreferences] = useState(false)
+  const { data: notifications, isLoading } = useNotifications(
+    filter === 'all' ? undefined : filter,
+  )
+  const markRead = useMarkNotificationRead()
+  const markAllRead = useMarkAllNotificationsRead()
+  const deleteNotif = useDeleteNotification()
+
+  const hasItems = !!notifications && notifications.length > 0
 
   return (
     <AppShell>
@@ -28,17 +49,50 @@ export function NotificationsPage() {
         <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">即時更新</p>
         <h1 className="mt-1 text-[22px] font-semibold tracking-tight">通知中心</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          訂閱的 skill 有新版本、被 flag、進入審核、需求看板回應 — 都會出現在這裡。
+          訂閱的 skill 有新版本、被回報、進入審核、需求看板回應 — 都會出現在這裡。
         </p>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {CATEGORY_FILTERS.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => setFilter(c.key)}
+              className={`rounded-full px-3 py-1 text-[12px] ${
+                filter === c.key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'border border-border text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+          <span className="flex-1" />
+          <button
+            type="button"
+            onClick={() => markAllRead.mutate()}
+            disabled={!hasItems || markAllRead.isPending}
+            className="rounded-md border border-border px-3 py-1 text-[12px] hover:bg-muted disabled:opacity-50"
+          >
+            {markAllRead.isPending ? '處理中...' : '全部已讀'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPreferences(true)}
+            className="rounded-md border border-border px-3 py-1 text-[12px] hover:bg-muted"
+          >
+            設定
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">載入中...</div>
-      ) : !notifications || notifications.length === 0 ? (
+      ) : !hasItems ? (
         <EmptyState
           tone="clear"
           headline="都看完了，沒有未讀通知。"
-          sub="當你訂閱的 skill 發布新版本、收到 flag、進入審核時，新通知會即時出現在這裡。bell badge 顯示未讀數量。"
+          sub="當你訂閱的 skill 發布新版本、收到回報、進入審核時，新通知會即時出現在這裡。"
           stats={[
             { value: '0', label: '本週新通知' },
             { value: '0', label: '未讀' },
@@ -48,44 +102,79 @@ export function NotificationsPage() {
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
           {notifications.map((n, i) => (
-            <NotificationRow key={n.id} notif={n} isLast={i === notifications.length - 1} />
+            <NotificationRow
+              key={n.id}
+              notif={n}
+              isLast={i === notifications.length - 1}
+              onMarkRead={() => markRead.mutate(n.id)}
+              onDelete={() => deleteNotif.mutate(n.id)}
+            />
           ))}
         </div>
       )}
+
+      {showPreferences && <PreferencesModal onClose={() => setShowPreferences(false)} />}
     </AppShell>
   )
 }
 
-function NotificationRow({ notif, isLast }: { notif: Notification; isLast: boolean }) {
+function NotificationRow({
+  notif,
+  isLast,
+  onMarkRead,
+  onDelete,
+}: {
+  notif: Notification
+  isLast: boolean
+  onMarkRead: () => void
+  onDelete: () => void
+}) {
+  const isRead = notif.readAt !== null
+
   return (
     <div
       className={
-        'flex items-start gap-3 px-4 py-3 ' +
-        (notif.read ? 'opacity-60 ' : '') +
+        'flex items-start gap-3 px-4 py-3 hover:bg-muted/30 ' +
+        (isRead ? 'opacity-60 ' : '') +
         (isLast ? '' : 'border-b border-border')
       }
     >
       <CategoryDot category={notif.category} />
-      <div className="min-w-0 flex-1">
+      <button
+        type="button"
+        onClick={isRead ? undefined : onMarkRead}
+        disabled={isRead}
+        className="min-w-0 flex-1 cursor-pointer text-left disabled:cursor-default"
+      >
         <div className="flex items-center gap-2">
           <span className="text-[13px] font-medium">{notif.title}</span>
-          {!notif.read && <span className="h-1.5 w-1.5 rounded-full bg-[#7F77DD]" aria-label="unread" />}
+          {!isRead && <span className="h-1.5 w-1.5 rounded-full bg-[#7F77DD]" aria-label="未讀" />}
         </div>
-        <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{notif.body}</p>
-      </div>
+        {notif.body && (
+          <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{notif.body}</p>
+        )}
+      </button>
       <div className="shrink-0 text-[11px] text-muted-foreground">
         {new Date(notif.createdAt).toLocaleDateString('zh-TW')}
       </div>
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label="刪除通知"
+        className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
     </div>
   )
 }
 
 function CategoryDot({ category }: { category: Notification['category'] }) {
   const colorMap: Record<Notification['category'], string> = {
-    versions: '#7F77DD',  // accent purple — version published
-    flags: '#E24B4A',     // danger — flag raised
-    reviews: '#EF9F27',   // warning — review needed
-    requests: '#378ADD',  // info — request response
+    versions: '#7F77DD', // accent purple — version published
+    flags: '#E24B4A',    // danger — flag raised
+    reviews: '#EF9F27',  // warning — review created
+    requests: '#378ADD', // info — request claim/fulfill
   }
   return (
     <Bell

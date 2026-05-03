@@ -586,4 +586,57 @@ function PreferencesModal({ open, onClose }) {
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task plan
+
+| Task | Scope | Status | Commit |
+|------|-------|--------|--------|
+| T01 — backend aggregates + V11 schema + module wiring | `Notification` + `NotificationPreference` mutable aggregates 走 `@Version`；V11 migration 含 UNIQUE(recipient_id, ref_event_id, category) idempotency 守則 + partial index；`@ApplicationModule` minimum deps；2 個 `@Query` repo（AOT compound-sort workaround） | ✅ shipped | `420af6f` |
+| T02 — NotificationProjectionListener + cross-module SPI | 4 個 `@ApplicationModuleListener` 訂閱 SkillFlagged / ReviewCreated / RequestClaimed / RequestFulfilled；DuplicateKey catch idempotency；preferences gate；self-action skip；deterministic `ref_event_id` composite；2 個 NamedInterface（community::events + review::domain）暴露 events 跨模組 | ✅ shipped | `b872d5f` |
+| T03 — mutation/query services + controller 取代 stub | `NotificationService` + `NotificationQueryService` + 2 exception 翻 404/403；`NotificationController` rewrite 7 endpoints；Slice cursor pagination（limit+1 derive hasNext） | ✅ shipped | `e25ce28` |
+| T04 — frontend api split + hooks + page rewrite + PreferencesModal | `api/notifications.ts` split + 7 helper；`useNotifications` + `useNotificationPreferences` hooks；`PreferencesModal` 4 toggle；`NotificationsPage` 全面 rewrite（filter chips + interactive rows + 設定 modal）；`AppShell` import 切換；7 tests AC-12/14 | ✅ shipped | `<本 commit>` |
+
+## 7. Result
+
+### Verification metrics
+
+- **Backend**：`NotificationServiceTest` 12/12 + `NotificationControllerTest` 10/10 + `NotificationProjectionListenerTest` 6/6 + `NotificationModuleSmokeTest` 8/8 PASS @ Testcontainers + `ModularityTests` 2/2 PASS（M90h2 spec 整合 36 個新 backend test）
+- **Frontend**：`NotificationsPage.test.tsx` 7/7 PASS @ 1.05s（AC-12/14）+ 全 frontend suite 193/193 PASS @ 5.62s（0 regression）；`npx tsc --noEmit` PASS
+
+### Behavior validation outcome
+
+| 決策 | Pre-ship Confidence | Result |
+|------|---------------------|--------|
+| `@ApplicationModuleListener` AFTER_COMMIT async + outbox redelivery | Validated | 6/6 listener test 全綠（含 idempotency redelivery 測試 AC-10） |
+| Spring Data JDBC `notifications` 表 | Validated | 8/8 smoke test round-trip + UNIQUE constraint 攔 dup |
+| Cross-module event subscription | Validated | 4 個跨 module listener wire 成功；`ModularityTests` 全 spec 從未壞 |
+| Polling pattern | Validated | AppShell 既有 30s poll 機制無改動，bell badge 自動接真資料 |
+| Listener idempotency UNIQUE 鍵 | Validated（前 Hypothesis） | UNIQUE(recipient_id, ref_event_id, category) + DuplicateKey catch 雙保險；composite ref_event_id 派生策略運作如預期 |
+
+### Deviations from spec design
+
+| # | Spec design | Actual implementation | Why |
+|---|-------------|----------------------|-----|
+| 1 | spec §4.3 範本 走 Persistable + 自訂 isNew | `@Version` Long nullable mutable aggregate | factory 設 `createdAt=Instant.now()` 會讓 `Persistable.isNew(createdAt==null)` always false → INSERT 失敗；`@Version` 是 Spring Data JDBC mutable INSERT/UPDATE 區分標準路徑（version=null → INSERT；loaded → UPDATE）；對齊 Request aggregate (S096g2) 既驗 |
+| 2 | spec §4.4 listener 用 `e.flagId()` 作 ref_event_id | composite `e.aggregateId() + ":" + e.type()` | `SkillFlaggedEvent` record 缺 flagId 欄位（security 模組 design 既有限制）；改 record public signature 會 cascade caller — 改用 deterministic composite ref_event_id workaround；副作用：同 skill 同 type 多筆 flag dedupe 為 1 通知 = spam 防護（owner 知「skill X 有 spam 類回報」一次即可，逐筆 review 進 FlagsList） |
+| 3 | spec §4.2 V11 ref_event_id `VARCHAR(36)` | `VARCHAR(255)` in-place fix in V11 | UUID 36 chars，加 composite suffix（`:type` / `:userId:claim`）會破 36；branch 仍 ahead of origin 無 production DB applied → in-place 比 add V12 ALTER 乾淨 |
+| 4 | spec §4.4 範本 events 直接 import from sub-package | 加 2 NamedInterface（community::events + review::domain）才能跨 module import event records | Modulith 強制要求 sub-package 須 NamedInterface 才能跨模組 import；對齊 skill::domain 既有 pattern；ModularityTests 全 spec 從未壞 |
+| 5 | spec §5 範本 `@WebMvcTest` slice OR `@SpringBootTest` | NotificationServiceTest 走 `@SpringBootTest` + Testcontainers；NotificationControllerTest 走 `@WebMvcTest` extending `WebMvcSliceTestBase` | 對齊 `RequestServiceTest` (S096g2) + `FlagControllerTest` 既驗 deviation；`@ApplicationModuleTest(DIRECT_DEPENDENCIES)` 拉 transitive bean missing（已驗第 3 次） |
+| 6 | spec §4.5 mutation `@Transactional` markAllRead 走 N 次 load+save | 走 `@Modifying` SQL UPDATE WHERE recipient AND read_at IS NULL（partial index path） | N 個 load+save round-trip 對 thousands-of-notifications user 不 scalable；@Modifying SQL + partial index `idx_notifications_recipient_unread` O(unread) 而非 O(total) |
+
+### Trim list — 已 defer 為 polish backlog
+
+- **versions category 整類**：listener 不產（spec §2.6 trim）；UI 隱藏 chip + modal toggle disabled「敬請期待」
+- **broadcast notifications**：vote 過某 request 被 fulfill 通知所有 voters / follow 某 skill 出新版通知 followers — 需 follow 機制
+- **SSE / WebSocket**：30s polling MVP 夠用
+- **Notification grouping / digest**：防 spam 大量同類通知 — listener 路徑已含 dedupe 副作用，無立即需求
+- **Cursor pagination UI**：MVP 一次拉 default 20；hasNext flag 已 server-side ready
+- **Delete confirm**：`window.confirm` modal — 直接刪除 UX 與 iOS notifications swipe-tap pattern 一致
+
+### Lessons learned
+
+- **Spring Data JDBC mutable aggregate 應走 `@Version` 不該走 Persistable**：factory 設 `createdAt=Instant.now()` 會破 isNew flag；Long nullable @Version + DB DEFAULT 0 是標準慣例。本 spec 為第 2/3 次採用（首次 Request S096g2-T01）。
+- **Spring Boot 4.0.6 AOT codegen 對 derived query 多屬性 compound sort 有 bug**：`findAllByOrderByVoteCountDescCreatedAtDesc` 產生壞代碼缺逗號。Workaround：`@Query` annotation explicit SQL。本 spec 第 3 次 ship 套用此 pattern（S096g2-T01 首發現 + T01/T02 預防性套用）。
+- **schema 設計 string columns 應 ≥ 255 是穩妥默認**：UUID 36 chars + composite suffix 會破 36；DB 變更比 application code 變更貴。
+- **domain event 設計時應把所有 listener 可能 idempotency 鍵候選欄位都帶上**：SkillFlaggedEvent 缺 flagId 是 design hindsight；改 record public signature cascade caller — workaround 走 composite ref_event_id 但設計時應預防。
+- **Modulith Scenario API `scenario.publish(event).andWaitForStateChange(...).andVerify(...)`** 是 AFTER_COMMIT async listener 標準 test pattern；對齊 SkillRatingProjectionListenerTest 既驗。
+

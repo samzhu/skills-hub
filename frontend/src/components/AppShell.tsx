@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { Bell } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchUnreadCount } from '@/api/skills'
+import { fetchUnreadCount } from '@/api/notifications'
 
 /**
  * 導覽連結定義。
