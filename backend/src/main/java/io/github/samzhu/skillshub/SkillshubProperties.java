@@ -131,7 +131,8 @@ public record SkillshubProperties(
      */
     public record Security(
             @DefaultValue OAuth oauth,
-            @DefaultValue Lab lab) {}
+            @DefaultValue Lab lab,
+            @DefaultValue Cors cors) {}
 
     /**
      * @param enabled OAuth2 Resource Server 是否啟用；預設 {@code true}（fail-secure）。
@@ -145,4 +146,22 @@ public record SkillshubProperties(
      *               的 fallback userId；預設 {@code "lab-user"}（一眼識別非真實 user）。
      */
     public record Lab(@DefaultValue("lab-user") String userId) {}
+
+    /**
+     * S128：CORS 設定（per Mode B Round 40 Bug AZ fix）。
+     *
+     * <p>LAB / production 部署 frontend 與 backend 不同 origin 時需 CORS allowlist；dev 環境
+     * vite proxy 同 origin 不依賴此設定但仍會 echo 回 Access-Control headers（無傷）。
+     *
+     * <p>{@code allowed-origins} 可由 env var {@code SKILLSHUB_SECURITY_CORS_ALLOWED_ORIGINS}
+     * 注入逗號分隔多 origin（per Spring Boot {@code List<String>} bind 慣例）。
+     *
+     * @param allowedOrigins  允許的 origin list；預設含 dev vite (localhost:5173) 與 backend
+     *                         self (localhost:8080)；production 須顯式覆蓋為 LAB / 對外 host。
+     * @param allowCredentials 是否允許 credentials（cookie / Authorization header）；預設 true 以
+     *                         支援 OAuth bearer token 跨 origin 流程。
+     */
+    public record Cors(
+            @DefaultValue({"http://localhost:5173", "http://localhost:8080"}) java.util.List<String> allowedOrigins,
+            @DefaultValue("true") boolean allowCredentials) {}
 }

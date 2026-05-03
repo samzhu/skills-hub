@@ -699,7 +699,53 @@ LAB profile 應用 `oauth.enabled=true` mode（**不是** `local` profile 預設
 - Component-context alignment — 排隊
 - Frontend Chrome MCP visual regression — 排隊（待 extension 連線）
 
+## Tick — Mode B Round 40 — Backend response headers / CORS audit (2026-05-04 Tick 16)
+
+> Cut: Backend response timing / cache header / ETag / CORS preflight。LAB 部署前重要：reverse proxy / CDN 行為依賴正確 headers；尚未 audit。
+
+### E2E Probe — 16 case via curl
+
+| Group | Case | 結果 |
+|-------|------|------|
+| 1.1 | GET /skills (list) Cache-Control | `no-cache, no-store, max-age=0, must-revalidate` (Spring Security default) — OK |
+| 1.2 | GET /skills/{id} Cache-Control | 同上 — OK for dynamic API |
+| 1.3 | GET /skills/{id}/download | Content-Disposition + Content-Length 正確；Cache-Control no-cache OK |
+| 1.4 | GET /skills/{id}/versions | Cache-Control no-cache OK |
+| 1.5 | GET /categories | Cache-Control no-cache (但本 endpoint 是 stable list 適合 cache — observation) |
+| 2.1 | Security headers (X-Frame / X-Content-Type / X-XSS) | ✅ Spring Security defaults all good |
+| 2.2 | Same on download | ✅ |
+| 3.1 | OPTIONS /skills with Origin | ❌ **NO Access-Control-* headers** — Bug AZ |
+| 3.2 | OPTIONS /skills/{id} cross-origin | ❌ 同 |
+| 3.3 | GET /skills with Origin header | ❌ no Access-Control echo |
+| 4.1 | GET with Accept-Encoding: gzip | ❌ no Content-Encoding echo — Bug BA (LOW) |
+| 4.2 | HEAD /skills/{id} | ✅ works correctly |
+| 4.3 | Response timing /skills × 5 | ✅ 4-6ms — fast |
+| 4.4 | Response timing /skills/{id}/download × 3 | ✅ 9-26ms — fast (含 recordDownload event) |
+| 5.1 | grep CORS source code | ❌ **EMPTY** — confirms Bug AZ root cause |
+| 5.2 | grep `cors:` in application*.yaml | ❌ EMPTY |
+
+### Findings
+
+| Bug | Severity | Path | 描述 |
+|-----|----------|------|------|
+| **AZ** | **HIGH (LAB cross-origin deploy blocker)** | `SecurityConfig` 完全沒設 CORS | OPTIONS 帶 Origin header 沒回任何 Access-Control-* headers；source code grep `addCorsMappings` / `@CrossOrigin` / `CorsConfiguration` 全空。LAB / production 部署 frontend 不同 origin → browser preflight 拒絕。**已知 tech debt 自 tick 63 R20.4 但 LAB 部署前未補**。 |
+| **BA** | LOW | Server compression disabled | `Accept-Encoding: gzip` 沒回 `Content-Encoding: gzip`。Spring Boot default `server.compression.enabled=false`。對小 response (607 bytes) 不重要；large skill list response (>10KB) 浪費 bandwidth。Production polish。 |
+
+**Status**：本 round 1 個 fix 同 tick ship（S128）；1 個留 backlog（S129）。
+
+### Roadmap rows added
+
+- **S128** (XS=2-3, **HIGH LAB-blocker**)：CORS configuration — Bug AZ fix。**本 tick 內同步 ship**（per Mode B「找到 bug → Mode A fix」可同 tick 走 implement→VERIFY→ship pipeline，當 fix 是 LAB-blocker 且 single-tick fits）。
+- **S129** (XS=1, LOW)：Server compression enable — Bug BA polish。`server.compression.enabled=true` + `mime-types` 設定；defer 至 production 部署觀察 bandwidth profile 後再加。
+
+### Cuts not exercised this round（chain 候選）
+- User-visible string compliance — 排隊（last 跑 tick 56 R12-14）
+- Cross-cutting links — 排隊
+- Interactive state consistency — 排隊
+- Component-context alignment — 排隊
+- Frontend Chrome MCP visual regression — 排隊（待 extension 連線）
+
 ## Next Tick Suggestions
-- Pick up S126 / S127 (XS each, LAB polish)
-- 或 Mode B 換 cut（User-visible string compliance / Cache headers / Component-context）
+- Mode B 換新 cut（User-visible string compliance / Component-context / Anonymous vs authenticated flow）
+- S129 (Server compression XS=1) — 若 production 部署前需驗 bandwidth profile
 - S120 (M-size test infra) 仍 backlog；非 LAB-blocking

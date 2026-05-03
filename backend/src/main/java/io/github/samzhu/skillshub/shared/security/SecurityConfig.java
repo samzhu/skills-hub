@@ -18,8 +18,13 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import io.github.samzhu.skillshub.SkillshubProperties;
+
+import java.util.List;
 
 /**
  * Spring Security 7 SecurityFilterChain 設定 — 「顯式 permitAll + 局部收緊」策略，
@@ -75,7 +80,10 @@ class SecurityConfig {
      * LAB 模式雖無 JWT，但同樣為 stateless API（curl/前端），不啟用 CSRF。
      */
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+        // S128：啟用 CORS（per Mode B Round 40 Bug AZ fix）— allowlist 由 SkillshubProperties.Cors 管理
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource));
+
         if (props.security().oauth().enabled()) {
             // ── OAuth 模式（S011 行為）──
             http.authorizeHttpRequests(auth -> auth
@@ -95,6 +103,29 @@ class SecurityConfig {
         }
         http.csrf(AbstractHttpConfigurer::disable);
         return http.build();
+    }
+
+    /**
+     * S128：CORS 設定來源 bean（per Mode B Round 40 Bug AZ fix — LAB 跨 origin 部署 unblock）。
+     *
+     * <p>由 {@link SkillshubProperties.Security#cors()} 提供 allowlist；預設 dev vite (localhost:5173)
+     * + backend self (localhost:8080)。Production / LAB 部署透過 env var
+     * {@code SKILLSHUB_SECURITY_CORS_ALLOWED_ORIGINS} 顯式覆蓋 allowlist（逗號分隔多 origin）。
+     *
+     * <p>{@code allowedMethods} 含 GET/POST/PUT/PATCH/DELETE/OPTIONS — 對齊既有 RestController 用的 method set；
+     * {@code allowedHeaders} 走 {@code "*"} (allow all request headers including Authorization)；
+     * {@code allowCredentials=true} 預設支援 OAuth bearer token 跨 origin 流程。
+     */
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        var config = new CorsConfiguration();
+        config.setAllowedOrigins(props.security().cors().allowedOrigins());
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(props.security().cors().allowCredentials());
+        var source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", config);
+        return source;
     }
 
     /**

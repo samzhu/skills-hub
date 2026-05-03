@@ -1,5 +1,43 @@
 # Changelog
 
+## [v3.10.8] — CORS configuration（S128 完成；2026-05-04 — Bug AZ fix；LAB cross-origin deploy unblock）
+
+> S128 single-tick ship — Mode B Round 40 (Tick 16) Bug AZ (HIGH LAB-blocker for cross-origin deploy) backlog 候選同 tick ship。**PATCH bump** — SkillshubProperties 加 1 record + SecurityConfig 加 CorsConfigurationSource bean + http.cors() 啟用；無 schema 變動。**LAB 部署前 critical fix**（已知 tech debt 自 tick 63 R20.4）。
+
+### Added — Backend
+- `backend/.../SkillshubProperties.java`：`Security` record 加 `cors()` field + 新 `Cors` record（`allowedOrigins: List<String>` + `allowCredentials: boolean`）。Default allowedOrigins = `[localhost:5173, localhost:8080]`；env var `SKILLSHUB_SECURITY_CORS_ALLOWED_ORIGINS=https://lab-ui.example.com,...` 顯式覆蓋為 LAB / production host。
+- `backend/.../shared/security/SecurityConfig.java`：(1) 加 imports `CorsConfiguration` + `UrlBasedCorsConfigurationSource` + `List`；(2) `filterChain` 加 `http.cors(cors -> cors.configurationSource(...))`；(3) 新 `@Bean CorsConfigurationSource` 從 SkillshubProperties.Security.Cors 配置 — 含 `allowedMethods=[GET/POST/PUT/PATCH/DELETE/OPTIONS]` + `allowedHeaders=[*]` + `allowCredentials=true` 預設支援 OAuth bearer token 跨 origin 流程；path pattern `/api/**` 限縮 CORS 只 cover API endpoints。
+
+### Verify metric
+- E2E manual smoke (Round 40 fixture) **6/6 case all PASS**：
+  - OPTIONS allowed origin → 200 + 5 CORS headers (Allow-Origin / Allow-Methods / Allow-Headers / Allow-Credentials / Vary) ✓
+  - GET allowed origin → echo Access-Control-Allow-Origin + Vary ✓
+  - OPTIONS disallowed origin → 403 (correctly rejected) ✓
+  - OPTIONS download endpoint → 200 + CORS echo ✓
+  - GET no Origin → no Access-Control echo (Vary only, CORS-aware) ✓
+  - GET PUBLIC by id → 200 (regression OK) ✓
+- Backend devtools restart 2.8s
+- Compile 1s
+
+### Design decisions
+- **`CorsConfigurationSource` bean + `http.cors(...)` 在 SecurityConfig**（per spec §2.1 Approach A）— 對齊 Spring Security 7 canonical pattern；vs `@CrossOrigin` per-controller method (重複 30+ method 違反 DRY) / `WebMvcConfigurer.addCorsMappings` (less explicit 與 Spring Security 整合)
+- **Path pattern `/api/**`** — 只 cover API endpoints；static resource / actuator 不啟用 CORS（保守設計）
+- **`allowCredentials=true` 預設** — 支援 OAuth bearer token 跨 origin 流程；env var 可覆蓋 false 對 stricter case
+
+### Roadmap progress
+- ✅ S128 (XS=2-3, v3.10.8) shipped — Phase 5 row M123
+- 📋 S129 (XS=1, LOW) — Server compression (Bug BA) polish；defer 至 production 部署觀察 bandwidth profile
+
+### Pattern reuse
+- 第 18 次 single-tick XS/S spec ship（per session lessons learned）
+- **CORS canonical pattern 確立**：`CorsConfigurationSource` bean + `http.cors(...)` + properties-driven allowlist + env var 覆蓋
+- SkillshubProperties.Security 第 3 個 sub-record（OAuth + Lab + Cors）對齊既驗 properties hierarchy
+
+### Bug AZ resolution timeline
+- tick 63 R20.4 (歷史 session)：首次發現 CORS 未啟用，標 known tech debt
+- 2026-05-04 Tick 16 R40：LAB 部署前 audit 重新 surface
+- 2026-05-04 Tick 16：本 spec 同 tick ship 修補
+
 ## [v3.10.7] — Skill id format validation pre-PreAuthorize（S126 完成；2026-05-04 — Bug AX fix；Round 39 chain 收尾）
 
 > S126 single-tick ship — Mode B Round 39 (Tick 13) Bug AX (LOW UX) backlog 候選。**PATCH bump** — controller `@PathVariable String → UUID` 7 處 + GlobalExceptionHandler 加 1 handler；無新 dep；無 schema 變動。**Round 39 backlog 完整收尾 2/2**（S127 + S126）。
