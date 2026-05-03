@@ -136,6 +136,12 @@ public class DelegatingPermissionEvaluator implements PermissionEvaluator {
      *
      * <p>不展 {@code group:} — group 來源是 OIDC claim / LAB property，dispatcher 為了
      * 與 {@link CurrentUserProvider} 解耦不接觸 user context；strategy 端各自補。
+     *
+     * <p><b>Bug AW fix (S125b 揭露)</b>：對 read permission 額外加 {@code *:read} pseudo-principal —
+     * 對齊 S026「read 預設公開」設計 + {@link AclPrincipalExpander#expand} line 41 既有實作。
+     * 若不加，authenticated user 對 PUBLIC skill (acl_entries 含 *:read) 的 @PreAuthorize 評估
+     * 會 false → 403（authenticated user 反而看不到 PUBLIC skill）。S121 list path 走
+     * AclPrincipalExpander.expand 已自動含 *:read，本 dispatcher path 修補後對稱一致。
      */
     private Set<String> expandPrincipals(Authentication auth, String permission) {
         var p = new HashSet<String>();
@@ -145,6 +151,10 @@ public class DelegatingPermissionEvaluator implements PermissionEvaluator {
             var role = a.getAuthority().replaceFirst("^ROLE_", "");
             p.add("role:" + role + ":" + permission);
         });
+        // S125b Bug AW fix: read permission 額外加 *:read（per S026 + AclPrincipalExpander.expand line 41）
+        if ("read".equals(permission)) {
+            p.add("*:read");
+        }
         return p;
     }
 }
