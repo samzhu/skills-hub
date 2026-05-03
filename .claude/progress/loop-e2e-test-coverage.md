@@ -789,8 +789,52 @@ LAB profile 應用 `oauth.enabled=true` mode（**不是** `local` profile 預設
 - Component-context alignment — 排隊
 - Frontend Chrome MCP visual regression — 排隊（待 extension 連線）
 
+## Tick — Mode B Round 42 — User-visible string compliance audit (2026-05-04 Tick 18)
+
+> Cut: i18n / spec ID leak / hardcoded English strings 在 user-facing UI / API error messages 中。Last run tick 56 R12-14 (very old)。LAB 員工 UI 體驗對齊「UI 語言: 繁體中文」原則。
+
+### E2E Probe — 6 groups
+
+| Group | Probe | 結果 |
+|-------|-------|------|
+| 1.1 | Frontend pages spec ID 'S###' in JSX text | ✅ clean (only docs pages 4 處) |
+| 1.2 | Frontend components spec ID in attrs | ✅ clean |
+| 1.3 | Frontend "S0NN/S1NN" 字串 leak | ⚠ 4 occurrences in `pages/docs/` (RiskScannerScopePage + EventPayloadPage) — dev docs 內容 acceptable |
+| 2.1 | Common English UI words hardcoded | ✅ clean |
+| 2.2 | Likely English error message in JSX | ✅ clean (1 false positive 在 JSDoc comment) |
+| 2.3 | AppShell navigation | ✅ clean |
+| 3.1 | Backend GlobalExceptionHandler error code style | ❌ Bug BD — UPPER vs lower_snake_case 不一致 |
+| 3.2 | Live error responses | ❌ confirmed: `collection_not_found` / `notification_not_found` 等 lower-case |
+| 4.x | Error code naming convention count | UPPER=16, lower=10 — **混用** |
+| 5 | Frontend `api-error-messages.ts` mapping | 13 entries 全 UPPER_SNAKE_CASE — lower-case codes **無 i18n 翻譯** |
+| 6 | Trigger live errors | ✅ confirmed `collection_not_found: <id>` 直接 leak 到 frontend message field |
+
+### Findings
+
+| Bug | Severity | Path | 描述 |
+|-----|----------|------|------|
+| **BD** | LOW (UX/i18n polish) | Backend GlobalExceptionHandler **10 個 lower_snake_case error codes** | `invalid_status_transition` / `flag_not_found` / `request_not_found` / `not_request_claimer` / `collection_not_found` / `skill_not_publishable` / `notification_not_found` / `not_notification_recipient` / `bundle_not_published` / `invalid_token` 走 lower_snake_case；frontend `api-error-messages.ts` ERROR_MESSAGE_BUILDER 13 個 entries 全 UPPER_SNAKE_CASE — **這 10 個 codes 無 i18n 翻譯**，frontend `localizeApiError` 走 fallback 直接顯 backend message（如 "collection_not_found: <uuid>"）— LAB 員工看到 raw error code redundant string 而非繁中翻譯。違反 CLAUDE.md「UI 語言: 繁體中文」原則 + qa-strategy.md「API 錯誤訊息: 英文（給前端轉譯用）」分工慣例。LOW 因 functional path 仍 OK，UX polish。 |
+
+### Notes（非 bug，design 觀察）
+- **`pages/docs/` 內 spec ID leak (S099e2/e3/e4 + S098e3)** — 4 處在 dev-facing risk scanner roadmap 描述；對 LAB 員工不太相關（員工不會逛 /docs/* 路徑），acceptable polish backlog 候選但非 LAB-blocker。
+- **All path probes clean for hardcoded English UI** — frontend production paths 全繁中對齊 ✓。
+- **Error code naming convention 16 UPPER + 10 lower** — historical drift；session start 時 16 UPPER 是「正確」convention（per S040 / S092 既驗），10 lower 是後來 spec ship 時 oversight 累積（per F8-section / Request / Collection / Notification / BundleInfo / JWT validation 各 spec 加新 exception 時用了 lower）。
+
+**Status**：本 round 1 個 bug 找到；走 backlog row。Backend rename + frontend i18n 雙改 — **不同 tick 走 chain**（per Mode B「找到 bug → 切回 Mode A 寫 fix-spec」原則 + 此 fix scope 較廣需要 careful approach）。
+
+### Roadmap rows added
+
+- **S131** (XS=2-3, LOW UX/i18n polish)：Error code naming convention alignment — Bug BD fix。Backend GlobalExceptionHandler 10 個 lower_snake_case codes rename UPPER（FLAG_NOT_FOUND / REQUEST_NOT_FOUND / NOT_REQUEST_CLAIMER / COLLECTION_NOT_FOUND / SKILL_NOT_PUBLISHABLE / NOTIFICATION_NOT_FOUND / NOT_NOTIFICATION_RECIPIENT / BUNDLE_NOT_PUBLISHED / INVALID_STATUS_TRANSITION / INVALID_TOKEN）+ frontend `api-error-messages.ts` ERROR_MESSAGE_BUILDER 加 10 個對應繁中翻譯。Atomic rename + frontend mapping 同 PR ship；對齊 Round 36 既驗 atomic rename pattern。**LOW LAB UX polish**；non-LAB-blocker。
+
+### Cuts not exercised this round（chain 候選）
+- Cross-cutting links — 排隊
+- Component-context alignment — 排隊
+- Control-behavior alignment — 排隊
+- Frontend Chrome MCP visual regression — 排隊（待 extension 連線）
+
 ## Next Tick Suggestions
-- Mode B 換新 cut（User-visible string compliance / Component-context / Cross-cutting links）
-- S129 (Server compression XS=1) — production 部署前若需驗 bandwidth
+- S131 (XS=2-3, error code naming alignment) — Round 42 chain 收尾
+- 或 Mode B 換 cut（Component-context / Cross-cutting links / Control-behavior alignment）
+- S129 (Server compression XS=1) — production 部署前 bandwidth 議題
 - S120 (M-size test infra) 仍 backlog；非 LAB-blocking
-- Subscribe-side anon write polish — observation; defer post-LAB
+- Subscribe-side anon write polish (R41 observation) — defer post-LAB
