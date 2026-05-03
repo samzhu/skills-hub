@@ -16,13 +16,13 @@ import { BeamFrame } from '@/components/BeamFrame'
 export function OverviewPage() {
   return (
     <DocsLayout>
-      <p className="mb-1 text-[12px] text-[#A8A49C]">
+      <p className="mb-1 text-[14px] text-[#A8A49C]">
         文件 <span className="mx-1 text-[#5E5B55]">/</span>
         入門 <span className="mx-1 text-[#5E5B55]">/</span>
         <span className="text-[#EEECEA]">概覽</span>
       </p>
       <h1 className="text-[28px] font-semibold tracking-tight text-[#EEECEA]">Skills Hub 概覽</h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-[#A8A49C]">
+      <p className="mt-3 text-[16px] leading-relaxed text-[#A8A49C]">
         Skills Hub 是企業內部的 AI agent 技能登錄中心 — 用同一份 SKILL.md
         bundle 在 Claude Code、Cursor、Gemini CLI 等任一相容 agent 之間共享，
         每次上傳都自動風險評分，讓團隊「分享技能像分享 npm 套件」一樣安全。
@@ -52,7 +52,7 @@ export function OverviewPage() {
         <BeamFrame>
           <Link
             to="/docs/your-first-skill"
-            className="inline-flex items-center gap-1.5 rounded-md bg-[#EEECEA] px-4 py-2 text-[13px] font-medium text-[#08080A]"
+            className="inline-flex items-center gap-1.5 rounded-md bg-[#EEECEA] px-4 py-2 text-[14px] font-medium text-[#08080A]"
           >
             撰寫第一個技能
             <ArrowRight className="h-3 w-3" />
@@ -60,14 +60,14 @@ export function OverviewPage() {
         </BeamFrame>
         <Link
           to="/docs/risk-tiers"
-          className="inline-flex items-center gap-1.5 rounded-md border border-[rgba(255,255,255,0.10)] bg-[#171719] px-4 py-2 text-[13px] font-medium text-[#EEECEA] hover:bg-[#1F1F22]"
+          className="inline-flex items-center gap-1.5 rounded-md border border-[rgba(255,255,255,0.10)] bg-[#171719] px-4 py-2 text-[14px] font-medium text-[#EEECEA] hover:bg-[#1F1F22]"
         >
           <KeySquare className="h-3 w-3" />
           了解風險層級
         </Link>
       </div>
 
-      <p className="mt-10 text-[12px] text-[#5E5B55]">
+      <p className="mt-10 text-[14px] text-[#5E5B55]">
         想看實際技能？前往 <Link to="/browse" className="text-[#C9C5F2] hover:underline">瀏覽技能登錄</Link>。
       </p>
     </DocsLayout>
@@ -76,7 +76,7 @@ export function OverviewPage() {
 
 function H2({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mt-10 text-[18px] font-semibold tracking-tight text-[#EEECEA]">{children}</h2>
+    <h2 className="mt-10 text-[20px] font-semibold tracking-tight text-[#EEECEA]">{children}</h2>
   )
 }
 
@@ -95,7 +95,7 @@ function FeatureCard({
         {icon}
         <h3 className="text-[14px] font-medium text-[#EEECEA]">{title}</h3>
       </div>
-      <p className="text-[13px] leading-relaxed text-[#A8A49C]">{body}</p>
+      <p className="text-[14px] leading-relaxed text-[#A8A49C]">{body}</p>
     </div>
   )
 }

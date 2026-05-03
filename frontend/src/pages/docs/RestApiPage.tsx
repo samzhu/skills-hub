@@ -14,15 +14,15 @@ import { DocsLayout } from '@/components/DocsLayout'
 export function RestApiPage() {
   return (
     <DocsLayout>
-      <p className="mb-1 text-[12px] text-[#A8A49C]">
+      <p className="mb-1 text-[14px] text-[#A8A49C]">
         文件 <span className="mx-1 text-[#5E5B55]">/</span>
         API 與 Webhook <span className="mx-1 text-[#5E5B55]">/</span>
         <span className="text-[#EEECEA]">REST 參考</span>
       </p>
       <h1 className="text-[28px] font-semibold tracking-tight text-[#EEECEA]">REST 參考</h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-[#A8A49C]">
+      <p className="mt-3 text-[16px] leading-relaxed text-[#A8A49C]">
         Skills Hub 提供 OpenAPI 3.1 spec 與 Swagger UI（基於 SpringDoc 3.x；
-        <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[12px] text-[#EEECEA]">version: openapi_3_1</code> 設定）— local profile 下完整 schema 在
+        <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[14px] text-[#EEECEA]">version: openapi_3_1</code> 設定）— local profile 下完整 schema 在
         <a href="/v3/api-docs" className="ml-1 text-[#C9C5F2] hover:underline">/v3/api-docs</a>（raw JSON）或
         <a href="/swagger-ui.html" className="ml-1 text-[#C9C5F2] hover:underline">/swagger-ui.html</a>（互動 UI）。
         Production profile (gcp) 預設 disabled — public spec endpoint 不該暴露。
@@ -126,11 +126,11 @@ export function RestApiPage() {
 
       <Callout>
         <strong className="text-[#EEECEA]">認證：</strong> MVP 階段 Spring Security permitAll；正式環境啟用後將以 OAuth2 bearer token 介接。Row-level ACL 透過{' '}
-        <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[12px] text-[#EEECEA]">@PreAuthorize</code>
+        <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[14px] text-[#EEECEA]">@PreAuthorize</code>
         + DelegatingPermissionEvaluator 在 controller 層執行。
       </Callout>
 
-      <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[12px]">
+      <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[14px]">
         <Link to="/docs/semantic-search" className="text-[#A8A49C] hover:text-[#EEECEA]">← 語意搜尋</Link>
         <Link to="/docs/event-payload" className="text-[#A8A49C] hover:text-[#EEECEA]">Event payload →</Link>
       </nav>
@@ -139,13 +139,13 @@ export function RestApiPage() {
 }
 
 function H2({ children }: { children: React.ReactNode }) {
-  return <h2 className="mt-10 text-[18px] font-semibold tracking-tight text-[#EEECEA]">{children}</h2>
+  return <h2 className="mt-10 text-[20px] font-semibold tracking-tight text-[#EEECEA]">{children}</h2>
 }
 
 function EndpointGroup({ rows }: { rows: Array<{ method: string; path: string; note: string }> }) {
   return (
     <div className="mt-3 overflow-hidden rounded-md border border-[rgba(255,255,255,0.06)]">
-      <table className="w-full text-[13px]">
+      <table className="w-full text-[14px]">
         <tbody>
           {rows.map((r, i) => {
             const colorMap: Record<string, string> = {
@@ -161,7 +161,7 @@ function EndpointGroup({ rows }: { rows: Array<{ method: string; path: string; n
                 <td className="px-3 py-2 align-top">
                   <span className={`rounded px-1.5 py-0.5 font-mono text-[10.5px] font-semibold ${cls}`}>{r.method}</span>
                 </td>
-                <td className="px-3 py-2 align-top font-mono text-[12px] text-[#EEECEA]">{r.path}</td>
+                <td className="px-3 py-2 align-top font-mono text-[14px] text-[#EEECEA]">{r.path}</td>
                 <td className="px-3 py-2 align-top text-[12.5px] leading-relaxed text-[#A8A49C]">{r.note}</td>
               </tr>
             )
@@ -174,7 +174,7 @@ function EndpointGroup({ rows }: { rows: Array<{ method: string; path: string; n
 
 function Callout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-4 rounded-md border p-3 text-[13px] leading-relaxed text-[#A8A49C]" style={{ backgroundColor: 'rgba(239,159,39,0.08)', borderColor: 'rgba(239,159,39,0.20)' }}>
+    <div className="mt-4 rounded-md border p-3 text-[14px] leading-relaxed text-[#A8A49C]" style={{ backgroundColor: 'rgba(239,159,39,0.08)', borderColor: 'rgba(239,159,39,0.20)' }}>
       {children}
     </div>
   )

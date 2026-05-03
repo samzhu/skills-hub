@@ -16,14 +16,14 @@ import { BeamFrame } from '@/components/BeamFrame'
 export function YourFirstSkillPage() {
   return (
     <DocsLayout>
-      <p className="mb-1 text-[12px] text-[#A8A49C]">
+      <p className="mb-1 text-[14px] text-[#A8A49C]">
         文件 <span className="mx-1 text-[#5E5B55]">/</span>
         入門 <span className="mx-1 text-[#5E5B55]">/</span>
         <span className="text-[#EEECEA]">撰寫第一個技能</span>
       </p>
       <h1 className="text-[28px] font-semibold tracking-tight text-[#EEECEA]">撰寫你的第一個技能</h1>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-[#A8A49C]">
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[14px] text-[#A8A49C]">
         <span>2 週前更新</span>
         <Dot />
         <span>閱讀 5 分鐘</span>
@@ -159,15 +159,15 @@ ISO 8601 or RFC 2822 variant.
 
       {/* §6 Final CTA */}
       <div className="mt-10 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-5">
-        <p className="text-[15px] font-semibold text-[#EEECEA]">準備發佈了嗎？</p>
-        <p className="mt-1 text-[13px] text-[#A8A49C]">
+        <p className="text-[16px] font-semibold text-[#EEECEA]">準備發佈了嗎？</p>
+        <p className="mt-1 text-[14px] text-[#A8A49C]">
           你的 bundle 有了、frontmatter 乾淨、知道 scanner 在檢查什麼。下一步把 zip 傳上來。
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <BeamFrame>
             <Link
               to="/publish"
-              className="inline-flex items-center gap-1.5 rounded-md bg-[#EEECEA] px-4 py-2 text-[13px] font-medium text-[#08080A]"
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#EEECEA] px-4 py-2 text-[14px] font-medium text-[#08080A]"
             >
               上傳你的 bundle
               <ArrowRight className="h-3 w-3" />
@@ -175,7 +175,7 @@ ISO 8601 or RFC 2822 variant.
           </BeamFrame>
           <a
             href="https://github.com/anthropics/skills"
-            className="inline-flex items-center gap-1.5 rounded-md border border-[rgba(255,255,255,0.10)] bg-[#171719] px-4 py-2 text-[13px] font-medium text-[#EEECEA] hover:bg-[#1F1F22]"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[rgba(255,255,255,0.10)] bg-[#171719] px-4 py-2 text-[14px] font-medium text-[#EEECEA] hover:bg-[#1F1F22]"
           >
             <FileText className="h-3 w-3" />
             查看更多範例
@@ -184,7 +184,7 @@ ISO 8601 or RFC 2822 variant.
       </div>
 
       {/* §7 Prev/Next nav */}
-      <nav className="mt-8 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[12px]">
+      <nav className="mt-8 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[14px]">
         <span className="cursor-not-allowed text-[#5E5B55]" title="即將推出">
           ← 概覽
         </span>
@@ -204,7 +204,7 @@ function Dot() {
 
 function H2({ anchor, children }: { anchor: string; children: React.ReactNode }) {
   return (
-    <h2 id={anchor} className="mt-10 text-[18px] font-semibold tracking-tight text-[#EEECEA]">
+    <h2 id={anchor} className="mt-10 text-[20px] font-semibold tracking-tight text-[#EEECEA]">
       {children} <span className="ml-1 text-[#5E5B55]">#</span>
     </h2>
   )
@@ -229,7 +229,7 @@ function CodeBlock({ filename, children }: { filename: string; children: string 
         <span className="font-mono">{filename}</span>
         <span className="text-[10px] uppercase tracking-wider text-[#5E5B55]">copy</span>
       </div>
-      <pre className="overflow-x-auto bg-[#0F0F12] p-3 text-[12px] leading-relaxed">
+      <pre className="overflow-x-auto bg-[#0F0F12] p-3 text-[14px] leading-relaxed">
         <code className="font-mono text-[#EEECEA]">{children}</code>
       </pre>
     </div>
@@ -249,7 +249,7 @@ function Callout({
       : { bg: 'rgba(239,159,39,0.08)', border: 'rgba(239,159,39,0.20)', fg: '#A8A49C', icon: <AlertTriangle className="h-3.5 w-3.5 text-[#FAC775]" /> }
   return (
     <div
-      className="mt-4 flex items-start gap-2.5 rounded-md border p-3 text-[13px] leading-relaxed"
+      className="mt-4 flex items-start gap-2.5 rounded-md border p-3 text-[14px] leading-relaxed"
       style={{ backgroundColor: styles.bg, borderColor: styles.border, color: styles.fg }}
     >
       <span className="mt-0.5 shrink-0">{styles.icon}</span>
@@ -270,7 +270,7 @@ function FieldCard({
   return (
     <div className="mt-3 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <code className="rounded-sm bg-[#171719] px-2 py-0.5 font-mono text-[13px] text-[#EEECEA]">
+        <code className="rounded-sm bg-[#171719] px-2 py-0.5 font-mono text-[14px] text-[#EEECEA]">
           {name}
         </code>
         {tags.map((t, i) => (
@@ -280,7 +280,7 @@ function FieldCard({
           </span>
         ))}
       </div>
-      <p className="mt-2 text-[13px] leading-relaxed text-[#A8A49C]">{children}</p>
+      <p className="mt-2 text-[14px] leading-relaxed text-[#A8A49C]">{children}</p>
     </div>
   )
 }
@@ -329,7 +329,7 @@ function RiskRow({
       >
         {tier}
       </span>
-      <p className="flex-1 text-[13px] leading-relaxed text-[#A8A49C]">{children}</p>
+      <p className="flex-1 text-[14px] leading-relaxed text-[#A8A49C]">{children}</p>
     </div>
   )
 }
