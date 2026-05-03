@@ -492,3 +492,36 @@ MVP 走最簡：fulfill 按鈕 → 開 modal → 列出 user 自己的 PUBLISHED
 ---
 
 <!-- Sections 6-7 added by /planning-tasks after implementation -->
+
+## 6. Task Plan
+
+| # | Task | Size | Status |
+|---|------|------|--------|
+| T01 | Backend Request aggregate + endpoints + V10 schema | M | ✅ Tick 18 |
+| T02 | Backend vote toggle service (atomic SQL) + endpoint + race tests | S | ✅ Tick 19 |
+| T03 | Frontend infra (api/skills.ts mutations + useRequests/useRequest hooks) | XS | ✅ Tick 20 |
+| T04 | Frontend RequestBoardPage CTA + CreateRequestModal + VoteButton + RequestActionBar + tests | S | ✅ Tick 21 |
+
+## 7. Result（2026-05-03 ship）
+
+### Verified
+
+- Backend：RequestServiceTest 13/13 PASS（Testcontainers，Tick 18）+ RequestVoteServiceTest 5/5 PASS（Tick 19）+ ModularityTests 2/2 PASS（community 模組正式註冊 ApplicationModule + skill::query / skill::domain SPI 經 NamedInterface 暴露）
+- Frontend：RequestBoardPage.test.tsx 3/3 PASS @ 1.54s (AC-15 list+CTA / AC-16 create modal flow / AC-17 vote toggle 樂觀更新)；T03 typecheck PASS。S103 「no spec ID leak」invariant carry-forward 進 AC-15 assertion。
+
+### Implementation deviations from §4
+
+1. **Vote count 維護**：spec §4.3 列 「DELETE → check rows → branch」pattern，T02 改為 「INSERT ON CONFLICT DO NOTHING + UPDATE GREATEST(0, count±1)」雙保險（DB CHECK >= 0 + application GREATEST guard 防 race；對齊 Skill downloadCount S076 已驗 pattern）。
+2. **`@Query` annotation 取代 derived query method names**：Spring Boot 4.0.6 AOT codegen 對多屬性 compound sort（`findAllByOrderByVoteCountDescCreatedAtDesc`）產生壞 code（缺逗號）；T01 RequestRepository 改用 explicit `@Query("SELECT ... ORDER BY ... DESC, ... DESC")` workaround。
+3. **State-based aggregate delete event**：spec §4.5 假設 `repo.save()` 觸發 `@DomainEvents`；實作發現 state-based aggregate 無 `@Version` 時 `repo.save(loadedEntity)` 誤觸 INSERT 衝主鍵；T01 delete flow 改 `repo.deleteById()` + `ApplicationEventPublisher.publishEvent()` 直接發 `RequestDeletedEvent`（不走 outbox；簡化 path 對齊 security domain pattern）。
+4. **Cross-module SPI 走 NamedInterface**：T01 community 模組需訂閱 `SkillRepository.findById`（fulfill 驗 PUBLISHED）+ `skill::query` rating service（無；defer）；正式註冊 `community` ApplicationModule allowedDependencies 加 `skill::domain` + `skill::query`，對齊 review 模組 Tick 7-11 既有 pattern。
+5. **Sort chips / status filter chips UI defer**：per §2.4 trim list — AC-15/16/17 不要求；T04 預設 votes desc + 全 status mix；future polish spec 補。
+6. **Fulfill skill picker UI defer**：per §2.4 trim — T04 走最簡 `window.prompt('輸入 PUBLISHED skill UUID')`；fancy `useSkillList({author: me.sub, status: 'PUBLISHED'})` modal picker 留 follow-up。
+7. **`votedByMe` 列表欄位 defer**：spec §4.1 GET single 含 `votedByMe`；T01/T02 backend 未實作（list/single 皆無該欄位）；T04 VoteButton initial state 預設 `voted=false`，page reload 視覺重置（vote_count 仍正確）— per task spec §Implementation outline 接受 trim。
+
+### Pattern echo to future specs
+
+- **Atomic SQL counter pattern**（vote_count / download_count）— 走 INSERT ON CONFLICT + UPDATE GREATEST(0, count±1) 雙保險；DB CHECK 約束 + application guard。
+- **State-based aggregate `@DomainEvents` 限制**：無 `@Version` 時 update flow 加 version field + schema column；delete flow 走 `deleteById` + publishEvent；projection update 走 `@Modifying @Query` raw SQL + aggregate 對應 field 標 `@ReadOnlyProperty`。
+- **Cross-module callable service 用 NamedInterface 暴露**：sub-package + `package-info.java` 加 `@NamedInterface("name")`；consumer 模組 allowedDependencies 加 `target :: name`。
+- **Spec-Only-Handoff pattern 第 6 次 demo**：user 寫 spec → cron 拆 4 tasks → cron 連續 4 ticks ship。
