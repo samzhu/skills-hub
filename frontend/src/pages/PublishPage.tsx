@@ -6,7 +6,7 @@ import { AppShell } from '@/components/AppShell'
 import { FileDropZone } from '@/components/FileDropZone'
 import { ErrorState } from '@/components/ErrorState'
 import { Input } from '@/components/ui/input'
-import { uploadSkill } from '@/api/skills'
+import { uploadSkill, type Visibility } from '@/api/skills'
 import { useMe } from '@/hooks/useMe'
 import { localizeApiError } from '@/lib/api-error-messages'
 import { MiniMarkdown } from '@/lib/mini-markdown'
@@ -85,6 +85,8 @@ export function PublishPage() {
     if (me?.sub && !authorTouched && !author) setAuthor(me.sub)
   }, [me?.sub, authorTouched, author])
   const [category, setCategory] = useState('')
+  // S116: visibility radio — default PUBLIC 對齊 v3.x 既有行為
+  const [visibility, setVisibility] = useState<Visibility>('PUBLIC')
   const navigate = useNavigate()
 
   const mutation = useMutation({
@@ -95,7 +97,7 @@ export function PublishPage() {
         ? new File([skillMdText], 'SKILL.md', { type: 'text/markdown' })
         : file
       if (!submitFile) throw new Error('請選取檔案或貼上 SKILL.md 內容')
-      return uploadSkill(submitFile, version, author, category)
+      return uploadSkill(submitFile, version, author, category, visibility)
     },
     onSuccess: (data) => {
       navigate(`/publish/validate?id=${data.id}`)
@@ -248,6 +250,39 @@ export function PublishPage() {
                 </p>
               )}
             </div>
+
+            {/* S116: visibility radio — public/private toggle (GitHub 概念) */}
+            <fieldset className="rounded-md border border-border p-3">
+              <legend className="px-1.5 text-[12px] font-medium text-muted-foreground uppercase tracking-wide">可見性</legend>
+              <label className="flex cursor-pointer items-start gap-2 py-1">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="PUBLIC"
+                  checked={visibility === 'PUBLIC'}
+                  onChange={() => setVisibility('PUBLIC')}
+                  className="mt-1"
+                />
+                <div>
+                  <div className="text-[13px] font-medium">公開</div>
+                  <p className="text-[11px] text-muted-foreground">所有人皆可瀏覽 / 下載</p>
+                </div>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2 py-1">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="PRIVATE"
+                  checked={visibility === 'PRIVATE'}
+                  onChange={() => setVisibility('PRIVATE')}
+                  className="mt-1"
+                />
+                <div>
+                  <div className="text-[13px] font-medium">私人</div>
+                  <p className="text-[11px] text-muted-foreground">僅自己可見；之後可由 owner 在 SkillDetail 頁授予他人</p>
+                </div>
+              </label>
+            </fieldset>
 
             <button
               type="submit"

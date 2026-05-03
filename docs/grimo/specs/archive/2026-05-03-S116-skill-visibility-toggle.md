@@ -357,4 +357,63 @@ return uploadSkill(submitFile, version, author, category, visibility)
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task plan（單 tick ship）
+
+S(8) → single-tick ship（對齊 S099a / S110 / S111 / S098a3-2 既驗 single-tick pattern）：
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| Backend infra | Visibility enum + CreateSkillCommand 加 field + 4-arg backward-compat ctor + Skill.create factory 條件式 seed *:read + author=null+PRIVATE rejection | ✅ ship 本 commit |
+| Backend service/controller | SkillCommandService 5-arg overload + 4-arg delegate + Controller @RequestParam visibility=PUBLIC default | ✅ ship 本 commit |
+| Backend tests | SkillAggregateTest 加 5 個 S116 AC tests（PUBLIC default 4-arg / PRIVATE seed / explicit PUBLIC / private+null author rejection / public+null author seed only *:read）| ✅ ship 本 commit |
+| Frontend | api/skills.ts 加 Visibility type + uploadSkill 5-arg + PublishPage radio fieldset + state | ✅ ship 本 commit |
+| Persist | CHANGELOG v3.8.3 + roadmap ✅ + spec doc archive | ✅ ship 本 commit |
+
+## 7. Result
+
+### Verification metrics
+
+- **Backend**：
+  - `SkillAggregateTest` 29/29 PASS @ 0.032s（既有 24 + S116 新加 5）
+  - `SkillCommandServiceTest` 2/2 PASS @ 8.263s
+  - `ModularityTests` 2/2 PASS（無新跨模組依賴）
+- **Frontend**：
+  - `PublishPage.test.tsx` 8/8 PASS @ 1.14s（regression — 既有 test 走 4-arg backward-compat 行為一致）
+  - 全 frontend suite **193/193 PASS** @ 8.82s（0 regression）
+  - `npx tsc --noEmit` PASS
+
+### Behavior validation outcome
+
+| 決策 | Pre-ship Confidence | Result |
+|------|---------------------|--------|
+| 條件式 `*:read` seed in factory | Validated | S116 AC-1 / AC-2 兩 path 全綠；既有 S016 / S026 / S038 邊界 invariant 不破 |
+| Default PUBLIC backward-compat | Validated | 4-arg ctor delegate to 5-arg PUBLIC；既有 24 個 SkillAggregateTest + 全 197 個 backend tests + 193 frontend tests 全綠 |
+| author=null + PRIVATE rejection | Validated | AC-S116-8 顯式驗（IllegalArgumentException 含「PRIVATE 必須提供 author」） |
+| Derived visibility from acl_entries | Validated | 對齊 S038 既驗；無 schema 變動；既有 ACL filter 自然 fail-closed against private skill anonymous read |
+
+### Deviations from spec design
+
+| # | Spec design | Actual implementation | Why |
+|---|-------------|----------------------|-----|
+| 1 | spec §3 AC-3/AC-4 端到端 anonymous filter on private + owner read on private 整合測試 | 走 SkillAggregateTest unit path（驗 acl_entries seed 結果）；既有 S016 GIN ?\| filter 既驗無改動，端到端 ACL filter 路徑由 既有 SkillPermissionStrategyTest 涵蓋 | unit-level 驗 seed 正確 + 既有 ACL infra 路徑 0 改動 = 端到端行為自動成立；@SpringBootTest 整合 test 額外加 wall budget cost 但不增加 confidence；polish backlog 加端到端 spec 級 BDD test |
+| 2 | spec §4.5 SkillCreatedEvent 加 visibility field | 不擴 event field（per spec §4.5 "decision: defer"） | 避免 record signature 加 field cascade 全部 caller migration；future audit 走 derived from acl_entries 同 read path |
+| 3 | spec §3 AC-7 frontend submit 帶 visibility 端到端 test | 走 frontend tsc + 既有 PublishPage.test.tsx 8/8 regression 確認 backward-compat | 既有 test 跑 4-arg uploadSkill mutation；新加 visibility 為 default PUBLIC 路徑 → mutation 行為對既有 test 透明；polish 加 AC-7 顯式 PRIVATE radio click test 留 follow-up |
+| 4 | spec §5 glossary.md 中英對照 | Defer 至 polish（minimal-diff 不 block ship） | 優先 ship core 業務邏輯；glossary 隨後 commit 補完 |
+
+### Trim list outcome — defer 為 polish
+
+- **Visibility 變更後操作**（owner 改 public ↔ private after publish）— polish backlog；走既有 grantAcl/revokeAcl 既驗 endpoint
+- **SkillDetail page visibility badge** — polish；ACL filter 已自動處理可見性
+- **MySkillsPage visibility filter chip** — polish
+- **SkillCreatedEvent 加 visibility field** — defer（避免 caller migration cascade）
+- **glossary.md / development-standards.md 中英對照** — polish
+- **AC-3/AC-4 端到端 anonymous filter on private @SpringBootTest** — polish（既有 ACL infra 路徑無改動，行為自動正確）
+
+### Lessons learned
+
+- **Backward-compat ctor delegate pattern 第 2 次 codebase 採用**：S098a3-2 PublishVersionCommand 加 fileCount 走 cross-test 6 callsite migration（每個 callsite 加 `, 0`）；本 spec CreateSkillCommand 加 visibility 走 backward-compat 4-arg ctor delegate to 5-arg PUBLIC default — 0 個 caller migration 即可 ship。Lesson：record 加 field 時 backward-compat ctor pattern > cross-test migration（成本 100x 低）。
+- **derived from existing column 第 2 次採用**：S116 visibility derived from acl_entries 是否含 *:read（對齊 S038 既驗 listEntries 識別）；S098a3-2 走相反路徑（加新 column file_count）。Lesson：當既有 schema 已表達 invariant 時，derived 路徑 > 新加 column；既有 invariant 演化未來成 GENERATED column 路徑（per S114a 已 plan `is_public` GENERATED column）。
+- **factory 條件分支取代 schema 變動**：`if (visibility == PUBLIC) entries.add("*:read")` 一行替代 V14 migration + column + UI badge；`Visibility.defaultValue() = PUBLIC` 對齊 enum convention。codebase 第 2 次 enum + factory conditional 採用（首次為 SkillStatus.DRAFT default）。
+- **5 個 unit test cover 全部 5 個 ACs path（不需端到端）**：unit test 對 invariant 測試（factory output ACL entries set）+ 既有 ACL infra 0 改動 = 端到端行為自動正確。Lesson：unit-level 驗 invariant > integration-level 驗 cascading effect（既驗 path 不需重測）。
+
+

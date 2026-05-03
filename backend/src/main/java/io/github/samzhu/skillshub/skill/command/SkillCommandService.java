@@ -67,8 +67,14 @@ public class SkillCommandService {
 		return skill.getId();
 	}
 
-	@Transactional
+	/** S116 backward-compat 4-arg overload — defaults visibility=PUBLIC（v3.x 既有行為）。 */
 	public String uploadSkill(byte[] uploadedBytes, String version, String author, String category) throws IOException {
+		return uploadSkill(uploadedBytes, version, author, category, io.github.samzhu.skillshub.skill.domain.Visibility.PUBLIC);
+	}
+
+	@Transactional
+	public String uploadSkill(byte[] uploadedBytes, String version, String author, String category,
+			io.github.samzhu.skillshub.skill.domain.Visibility visibility) throws IOException {
 		// S053: normalize plain .md → 合法 zip；若已是 zip 原樣返回。下游流程一致 zip contract。
 		var zipBytes = packageService.normalizeToZip(uploadedBytes);
 		log.atInfo()
@@ -96,7 +102,7 @@ public class SkillCommandService {
 		var name = (String) validation.metadata().get("name");
 		var description = (String) validation.metadata().get("description");
 
-		var skill = Skill.create(new CreateSkillCommand(name, description, author, category));
+		var skill = Skill.create(new CreateSkillCommand(name, description, author, category, visibility));
 		skill.recordVersionPublished(version);
 		var storagePath = "skills/" + skill.getId() + "/" + version + "/skill.zip";
 

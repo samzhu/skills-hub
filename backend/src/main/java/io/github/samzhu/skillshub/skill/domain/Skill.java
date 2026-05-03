@@ -161,13 +161,24 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         // S016 自動 seed owner ACL（owner 為 author；無 author 時仍 seed public read）
         // S026: 加 "*:read" public-read pseudo-principal — skill 預設對所有使用者開放讀取
         // （write/delete/suspend/reactivate 仍 owner-only）。
-        skill.aclEntries = author == null
-                ? new ArrayList<>(List.of("*:read"))
-                : new ArrayList<>(List.of(
-                        "user:" + author + ":read",
-                        "user:" + author + ":write",
-                        "user:" + author + ":delete",
-                        "*:read"));
+        // S116: 走 cmd.visibility() 條件分支 — PUBLIC 加 *:read（v3.x 既有行為）；
+        // PRIVATE 不加 *:read（fail-closed by 既有 GIN ?| filter）。author=null + PRIVATE
+        // 不允許（無 owner 即無人可讀；早於 ACL seed reject）。
+        var visibility = cmd.visibility() == null ? Visibility.PUBLIC : cmd.visibility();
+        if (visibility == Visibility.PRIVATE && author == null) {
+            throw new IllegalArgumentException(
+                    "visibility=PRIVATE 必須提供 author（無 owner 即無人可讀）");
+        }
+        var entries = new ArrayList<String>();
+        if (author != null) {
+            entries.add("user:" + author + ":read");
+            entries.add("user:" + author + ":write");
+            entries.add("user:" + author + ":delete");
+        }
+        if (visibility == Visibility.PUBLIC) {
+            entries.add("*:read");
+        }
+        skill.aclEntries = entries;
         skill.createdAt = Instant.now();
         skill.updatedAt = skill.createdAt;
         // version=null → Persistable.isNew()=true → INSERT path；Spring Data prepareVersionForInsert

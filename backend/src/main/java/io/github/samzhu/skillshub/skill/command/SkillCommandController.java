@@ -75,8 +75,13 @@ public class SkillCommandController {
 			@RequestParam("file") MultipartFile file,
 			@RequestParam("version") String version,
 			@RequestParam("author") String author,
-			@RequestParam("category") String category) throws IOException {
-		var id = commandService.uploadSkill(file.getBytes(), version, author, category);
+			@RequestParam("category") String category,
+			@RequestParam(name = "visibility", required = false, defaultValue = "PUBLIC")
+					io.github.samzhu.skillshub.skill.domain.Visibility visibility) throws IOException {
+		// S116: visibility 缺省 PUBLIC 對齊 v3.x 既有行為；前端 PublishPage 顯式透傳
+		// PRIVATE 走私人 skill 路徑（acl_entries 不含 *:read，由既有 GIN ?| filter
+		// 自動 fail-closed against anonymous / non-grant user）。
+		var id = commandService.uploadSkill(file.getBytes(), version, author, category, visibility);
 		return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id));
 	}
 

@@ -440,4 +440,66 @@ class SkillAggregateTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("category must not be blank");
     }
+
+    // ============================================================================
+    // S116 — Visibility public/private toggle
+    // ============================================================================
+
+    @Test
+    @Tag("AC-S116-1")
+    @DisplayName("S116 AC-1: PUBLIC visibility (or 4-arg backward-compat) → acl_entries 含 *:read")
+    void s116_publicVisibility_includesPublicReadEntry() {
+        // 4-arg backward-compat ctor delegates to 5-arg PUBLIC default
+        var skill = Skill.create(new CreateSkillCommand("public-skill", "desc", "alice", "DevOps"));
+
+        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
+                "user:alice:read", "user:alice:write", "user:alice:delete", "*:read");
+    }
+
+    @Test
+    @Tag("AC-S116-2")
+    @DisplayName("S116 AC-2: PRIVATE visibility → acl_entries 不含 *:read")
+    void s116_privateVisibility_excludesPublicReadEntry() {
+        var skill = Skill.create(new CreateSkillCommand(
+                "private-skill", "desc", "alice", "DevOps",
+                io.github.samzhu.skillshub.skill.domain.Visibility.PRIVATE));
+
+        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
+                "user:alice:read", "user:alice:write", "user:alice:delete");
+        assertThat(skill.getAclEntries()).doesNotContain("*:read");
+    }
+
+    @Test
+    @Tag("AC-S116-2")
+    @DisplayName("S116 AC-2 explicit: PUBLIC visibility 顯式傳入 → 同 4-arg backward-compat 行為")
+    void s116_explicitPublic_sameAsDefault() {
+        var skill = Skill.create(new CreateSkillCommand(
+                "public-skill", "desc", "alice", "DevOps",
+                io.github.samzhu.skillshub.skill.domain.Visibility.PUBLIC));
+
+        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
+                "user:alice:read", "user:alice:write", "user:alice:delete", "*:read");
+    }
+
+    @Test
+    @Tag("AC-S116-8")
+    @DisplayName("S116 AC-8: PRIVATE + author=null → IllegalArgumentException（無 owner 不可 private）")
+    void s116_privateWithoutAuthor_throws() {
+        assertThatThrownBy(() -> Skill.create(new CreateSkillCommand(
+                "no-author", "desc", null, "DevOps",
+                io.github.samzhu.skillshub.skill.domain.Visibility.PRIVATE)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("PRIVATE 必須提供 author");
+    }
+
+    @Test
+    @Tag("AC-S116-1")
+    @DisplayName("S116 AC-1 corner: PUBLIC + author=null → 仍含 *:read（無 owner ACL 但公開讀取）")
+    void s116_publicWithoutAuthor_seedsOnlyPublicRead() {
+        var skill = Skill.create(new CreateSkillCommand(
+                "no-author", "desc", null, "DevOps",
+                io.github.samzhu.skillshub.skill.domain.Visibility.PUBLIC));
+
+        assertThat(skill.getAclEntries()).containsExactly("*:read");
+    }
 }

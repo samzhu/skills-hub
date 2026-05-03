@@ -318,12 +318,25 @@ export function fetchCategories(): Promise<CategoryCount[]> {
  * @param category 技能分類
  * @returns 後端分配的技能 UUID
  */
-export async function uploadSkill(file: File, version: string, author: string, category: string): Promise<{ id: string }> {
+/**
+ * S116 — Skill visibility (GitHub repo style)。derived from acl_entries 是否含 *:read；
+ * caller 不傳 visibility → 走 PUBLIC default 與 v3.x 既有行為一致。
+ */
+export type Visibility = 'PUBLIC' | 'PRIVATE'
+
+export async function uploadSkill(
+  file: File,
+  version: string,
+  author: string,
+  category: string,
+  visibility: Visibility = 'PUBLIC',
+): Promise<{ id: string }> {
   const form = new FormData()
   form.append('file', file)
   form.append('version', version)
   form.append('author', author)
   form.append('category', category)
+  form.append('visibility', visibility)
   const res = await fetch('/api/v1/skills/upload', { method: 'POST', body: form })
   if (!res.ok) {
     // S040: 與 apiFetch 對齊 — 拋 ApiError 攜 status + code，讓 caller 可走 i18n 翻譯

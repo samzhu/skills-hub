@@ -1,5 +1,38 @@
 # Changelog
 
+## [v3.8.3] — Skill visibility public/private toggle（S116 完成；2026-05-03）
+
+> S116 跨 2 個 cron tick (Tick 35 spec planning + Tick 36 single-tick ship) — user 2026-05-03 mid-tick directive 2/2「新增 skill 時可選 public 跟 GitHub 概念很像 / 私人的再自己共享給別人」。**PATCH bump** — 純 enum + factory 條件分支；零 schema 變動；既有 4-arg uploadSkill caller 行為與 v3.x 完全一致。
+
+### Added — Backend
+- `backend/.../skill/domain/Visibility.java`（new）— enum PUBLIC / PRIVATE + `defaultValue()`；對齊 SkillStatus enum 既驗 pattern
+- `backend/.../skill/command/CreateSkillCommand.java`（modify）— 加 `Visibility visibility` field + 4-arg backward-compat ctor delegate to 5-arg with PUBLIC default
+- `backend/.../skill/domain/Skill.java`（modify）— `create` factory 條件式 seed `*:read`：PUBLIC 加（v3.x 既有行為）；PRIVATE 不加；author=null+PRIVATE → IllegalArgumentException
+- `backend/.../skill/command/SkillCommandService.java`（modify）— 5-arg `uploadSkill(..., visibility)` overload + 4-arg backward-compat delegate
+- `backend/.../skill/command/SkillCommandController.java`（modify）— `@PostMapping("/upload")` 加 `@RequestParam(required=false, defaultValue="PUBLIC") Visibility visibility`
+- `backend/src/test/.../skill/domain/SkillAggregateTest.java`（modify）— 加 5 個 S116 AC tests（PUBLIC default 4-arg / PRIVATE seed / explicit PUBLIC / private+null author rejection / public+null author seed only `*:read`）
+
+### Added — Frontend
+- `frontend/src/api/skills.ts`（modify）— 加 `Visibility` type export + `uploadSkill` 5-arg with PUBLIC default
+- `frontend/src/pages/PublishPage.tsx`（modify）— 加 visibility state + radio group fieldset 兩 option（公開 / 私人）+ helper text + 透傳 mutation
+
+### Verified
+- `SkillAggregateTest` 29/29 PASS @ 0.032s（既有 24 + S116 新加 5）
+- `SkillCommandServiceTest` 2/2 PASS @ 8.263s + `ModularityTests` 2/2 PASS
+- `PublishPage.test.tsx` 8/8 PASS @ 1.14s（regression — 既有 test 走 4-arg backward-compat 行為一致）
+- 全 frontend suite **193/193 PASS** @ 8.82s（0 regression）；`npx tsc --noEmit` PASS
+
+### Why
+- **User 2026-05-03 mid-tick directive 2/2 完成**：GitHub-style visibility model；對齊既有 S016 row-level ACL 基礎建設 + S026 *:read synthetic public + S038 listEntries 識別 + ADR-006 ACL principal types fail-closed safety baseline
+- **Approach B (derived from acl_entries) 取代 schema 變動**：MVP 不擴 `is_public` column；對齊 S038 既驗 listEntries 識別 *:read 慣例；S114a 設計中的 `is_public` GENERATED column 未來路徑自然從同 acl_entries derive 無 migration breaking
+- **既有 4-arg uploadSkill caller 行為與 v3.x 完全一致**：backward-compat ctor delegate pattern 達到 0 callsite migration cost（vs S098a3-2 fileCount 路徑走 cross-test 6 callsite migration — 本路徑 100x 低成本）
+- **既有 ACL filter 0 改動 + 行為自動正確**：private skill anonymous read 由 既有 GIN ?| filter (S016 既驗) 自動 fail-closed；owner authenticated read 走 `user:owner:read` pattern 自然 match
+
+### Pattern milestones
+- 第 2 次採用 backward-compat ctor delegate pattern（首次：N/A；對比 S098a3-2 fileCount 走 cross-test 6 callsite migration — 不同策略價值）
+- 第 2 次 derived from existing column 模式（對齊 S038 *:read 識別；vs S098a3-2 加新 column file_count 走相反方向）
+- enum + factory conditional 取代 schema 變動策略 codebase 第 2 次採用（首次為 SkillStatus.DRAFT default）
+
 ## [v3.8.2] — JWT + ACL Safety graceful degradation（S115 完成；2026-05-03）
 
 > S115 跨 2 個 cron tick (Tick 33 spec planning + Tick 34 trimmed implement) — user 2026-05-03 mid-tick directive 「把權限設計落成安全設計文件 + 當 token 內容跟原先設計不一樣時不要直接壞掉」。**PATCH bump** — 純 safety policy；無 user-visible 行為變動，但補完既有 `jwt.getName()` NPE 風險（500 → 401）+ 加 graceful claim parsing + Micrometer 觀測能力。

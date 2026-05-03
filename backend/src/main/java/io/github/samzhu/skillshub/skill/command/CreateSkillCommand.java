@@ -1,5 +1,7 @@
 package io.github.samzhu.skillshub.skill.command;
 
+import io.github.samzhu.skillshub.skill.domain.Visibility;
+
 /**
  * 建立技能命令 — 攜帶初始化新技能所需的 metadata。
  *
@@ -11,10 +13,22 @@ package io.github.samzhu.skillshub.skill.command;
  * @param description 技能功能描述（最長 1024 字元）
  * @param author      技能作者名稱
  * @param category    技能分類（如 DevOps、Testing）
+ * @param visibility  S116 — 可見性 (PUBLIC / PRIVATE)；缺省 PUBLIC（對齊 v3.x 既有行為）
  */
 public record CreateSkillCommand(
 		String name,
 		String description,
 		String author,
-		String category
-) {}
+		String category,
+		Visibility visibility
+) {
+	/**
+	 * S116 backward-compat — 4-arg ctor delegate to 5-arg with PUBLIC default。
+	 *
+	 * <p>既有 codebase callers (test + production) 走此 ctor 行為與 v3.x 完全一致；
+	 * 新加 visibility 為 opt-in field 由 SkillCommandController 5-arg endpoint 透傳。
+	 */
+	public CreateSkillCommand(String name, String description, String author, String category) {
+		this(name, description, author, category, Visibility.PUBLIC);
+	}
+}
