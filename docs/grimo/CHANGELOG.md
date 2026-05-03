@@ -1,5 +1,51 @@
 # Changelog
 
+## [v3.5.1] — Flag write flow + reviewer queue（S098e3 完成；2026-05-03）
+
+> S098e3 跨 5 個 cron tick (Tick 12 spec planning + Tick 13-16 implement) ship — 補完 ✅ S112 (read 端) 對應的 write + reviewer 端：FlagSubmitModal 提交 form + FlagsQueuePage reviewer queue + FlagController PATCH status mutation。**零 schema migration**（status 既是 String 欄位，純應用層 enum 擴充 OPEN→RESOLVED/DISMISSED + 既有 row 100% 相容）。
+
+### Added — Backend
+- `backend/.../security/FlagStatus.java` — enum (OPEN/RESOLVED/DISMISSED) + canTransitionTo state machine（terminal 狀態不可逆，保 audit trail）
+- `backend/.../security/FlagStatusChangedEvent.java` — record 預留 future audit listener
+- `backend/.../security/FlagAdminQueryController.java` — cross-skill `GET /api/v1/flags?status=` for reviewer queue
+- `backend/.../shared/api/InvalidStatusTransitionException.java` + `FlagNotFoundException.java` + GlobalExceptionHandler 加 400/404 mapping
+- `backend/src/test/.../security/FlagServiceTest.java` (new) — 9 個 Testcontainers test 涵蓋 AC-1/2/3/4/5/6×2/7×2/8
+
+### Added — Frontend
+- `frontend/src/api/flags.ts` 加 `createFlag` / `fetchFlagsByStatus` / `updateFlagStatus` + `CreateFlagBody` interface；Flag.status 擴充 `'DISMISSED'`
+- `frontend/src/lib/flag-labels.ts` 加 DISMISSED label「已駁回」+ neutral-soft pill style
+- `frontend/src/hooks/useFlagsQueue.ts` — TanStack Query 30s staleTime + refetchOnWindowFocus
+- `frontend/src/components/FlagSubmitModal.tsx` — 6-type radio + description optional textarea + useMutation invalidate
+- `frontend/src/pages/FlagsQueuePage.tsx` — reviewer queue page 含 Resolve/Dismiss buttons
+- 2 個 frontend test 檔：`FlagsQueuePage.test.tsx` (AC-11/12) + 既有 `FlagsList.test.tsx` 加 AC-9/10 (4/4 PASS)
+
+### Changed
+- `backend/.../security/FlagService.java` — `createFlag` 加 reporter 4th 參數 + null/blank → "anonymous" fallback；新 `updateStatus` / `listAllFlags` + `getFlagsBySkillId` 2-arg overload
+- `backend/.../security/FlagController.java` — 注入 CurrentUserProvider 抽 sub for reporter；getFlags 加 `?status=`；新 `PATCH /api/v1/skills/{skillId}/flags/{flagId}` endpoint
+- `backend/.../security/FlagReadModelRepository.java` — 加 3 個 derived queries + `@Modifying @Query updateStatus` (FlagReadModel.isNew=true 不能用 save() path)
+- `frontend/src/components/FlagsList.tsx` — 加 useState showModal + 「回報問題」CTA 永顯（不論有無既存 flag）+ FlagSubmitModal trigger
+- `frontend/src/components/AppShell.tsx` — navLinks 加「待審回報」link target `/flags`
+- `frontend/src/App.tsx` — 加 `/flags` route + import FlagsQueuePage
+- `backend/src/test/.../security/FlagControllerTest.java` — 加 CurrentUserProvider mock + BeforeEach setup；3 處 createFlag mock 從 3-arg 改 4-arg；getFlagsBySkillId mock 從 1-arg 改 2-arg
+
+### Verified
+- Backend：FlagServiceTest 9/9 PASS @ 8s（Testcontainers AC-1/2/3/4/5/6×2/7×2/8）+ FlagControllerTest 5/5 PASS（slice + mock）+ ModularityTests 2/2 PASS（無新跨模組依賴）
+- Frontend cross-spec：FlagsList 4 + ReviewsPanel 4 + RatingStars 5 + FlagsQueuePage 2 + MySkillsPage 5 → 20/20 PASS @ 1.85s
+- Typecheck 0 error（排除 pre-existing `Cannot find name 'global'`）
+
+### Why
+- **補完 ✅ S112 read 端 write loop**：S112 ship 後 SkillDetail Flags tab 能看 flags 但無提交按鈕；FlagController POST 既有但無前端 trigger；FlagReadModel.status 設計含 OPEN 但無轉 RESOLVED 的 path — admin 只能 SQL UPDATE 才能消化 OPEN flag，違反 Feature First 完整性。
+- **零 schema migration**：status 既是 String varchar 欄位，純應用層加 enum + state machine + UI；既有 OPEN row 100% 相容；上線 zero-downtime。
+
+### Deviations
+- **T01 endpoint placement**：FlagAdminQueryController cross-skill GET 放 `/api/v1/flags`（path 跳出 `/api/v1/skills/.../flags` 階層）— 與既有 nested controller 各司其職；reviewer 不需先選 skill 才能看跨 skill queue。
+- **T04 skill name 顯示走 link 而非 N+1 fetch**：reviewer queue 每 row 顯示 `skillId` + link to `/skills/{skillId}`；point-in-time joining skill name 留 polish backlog（per spec §4.1 Approach C simplest）。
+
+### Process note
+S098e3 是第 4 個「user 寫 spec → cron 拆 task → cron 連續 ship」端到端 demo（首例 S099a 單 task / 第 2 例 S112 / 第 3 例 S098e2 / 本例 S098e3）。Spec-Only-Handoff pattern 第 4 次驗證；5 ticks 平均 ~22min/tick。
+
+---
+
 ## [v3.5.0] — Reviews aggregate + ratings full-stack（S098e2 完成；2026-05-03）
 
 > S098e2 跨 5 個 cron tick (含 Tick 7 spec planning) ship — 新建 `review/` Modulith 模組（ADR-002 canonical pattern：Spring Data JDBC 充血聚合 + Modulith Outbox + AFTER_COMMIT projection）；3 個 REST endpoints (POST/DELETE/GET)；2 schema migrations (V8 reviews 表 + V9 skills 加 average_rating/review_count)；前端 SkillDetail Reviews tab 從永遠 EmptyState 接上完整 hero + list + form 流程。Minor 版本因引入新 module + new schema column。

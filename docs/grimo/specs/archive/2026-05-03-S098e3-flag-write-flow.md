@@ -442,4 +442,35 @@ export function useFlagsQueue(status: 'OPEN' | null = 'OPEN') {
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 7. Result
+
+**Status**: ✅ Shipped 2026-05-03 cron Tick 12-16（30m loop，5 ticks 含 Tick 12 spec planning）— v3.5.1 patch（無 schema migration / 無新模組，純擴充既有 Flag domain）。
+
+**Task ledger**：
+- T01 (Tick 13) — backend write flow：FlagStatus enum + canTransitionTo state machine + FlagService updateStatus / listAllFlags / createFlag 加 reporter 4th 參數 + FlagController PATCH/?status= + FlagAdminQueryController + 2 exception types + GlobalExceptionHandler mapping。零 schema migration（status 已是 String column）。FlagServiceTest 9/9 + FlagControllerTest 5/5 + ModularityTests PASS @ ~8s。
+- T02 (Tick 14) — frontend infra：api/flags.ts 加 createFlag/fetchFlagsByStatus/updateFlagStatus + Flag.status 加 'DISMISSED' + lib/flag-labels.ts 加 DISMISSED label/style + useFlagsQueue hook (30s staleTime + refetchOnWindowFocus)。typecheck 0 error + FlagsList regression 2/2 PASS。
+- T03 (Tick 15) — SkillDetail submit：新建 FlagSubmitModal (6-type radio + description optional + useMutation invalidate ['skill-flags'] + ['me-flags-summary']) + FlagsList 加 CTA 永顯。FlagsList.test.tsx 4/4 PASS（既有 AC-1/AC-2 + 新 AC-9/AC-10）。
+- T04 (Tick 16) — reviewer queue：新建 FlagsQueuePage (list OPEN flags + Resolve/Dismiss buttons + skill link) + AppShell nav 加「待審回報」+ /flags route。FlagsQueuePage.test.tsx 2/2 PASS。
+
+**Verification metrics**：
+- Backend: FlagServiceTest 9 (AC-1/2/3/4/5/6×2/7×2/8) + FlagControllerTest 5 + ModularityTests 2 — 全 PASS
+- Frontend cross-spec: FlagsList 4 + ReviewsPanel 4 + RatingStars 5 + FlagsQueuePage 2 + MySkillsPage 5 — 20/20 PASS @ 1.85s
+- Typecheck 0 error；ModularityTests boundary 仍乾淨
+- LOC delta: backend +400 (含 ~210 LOC test)，frontend +560 (含 ~190 LOC test)
+
+**13 ACs 涵蓋**：
+- AC-1～8 backend by FlagServiceTest + FlagControllerTest
+- AC-9 FlagsList CTA + AC-10 modal happy path by FlagsList.test.tsx
+- AC-11 reviewer queue list + AC-12 Resolve action by FlagsQueuePage.test.tsx
+- AC-13 AppShell nav 加入口 — AppShell.tsx 改動覆蓋（無單獨 test 因 nav 高亮邏輯走既有 location.pathname 比對）
+
+**Trim from spec template**：
+- T01 FlagAdminQueryControllerTest slice test defer — FlagServiceTest.listAllFlags 已涵蓋 cross-skill list 業務邏輯
+- T04 skill name 顯示走 link 而非 N+1 fetch（per spec §4.1 Approach C simplest）；user 點進去看 detail page
+
+**Lessons**：
+- **零 schema migration enum 擴充 pattern**：`FlagReadModel.status` 既是 String column；應用層加 enum + canTransitionTo state machine 不需 ALTER TABLE。對既有資料 100% 相容（OPEN row 仍合法）。
+- **FlagReadModel.isNew=true 不能用 save() 做 UPDATE**：`@Modifying @Query` 是 Flag UPDATE 唯一合法路徑（mirror Skill updateRiskLevel S014 pattern）。事先想清避免 DuplicateKey 衝主鍵 (per S098e2-T01 deviation 教訓)。
+- **AppShell nav links 跨 spec 累積**：本次加第 8 個 nav link（待審回報）；nav 容量已開始接近上限（橫向 scroll 邊緣）。Polish 候選：將「集合 / 需求 / 待審回報」collapse 進 dropdown menu，但不在本 spec scope。
+
+---

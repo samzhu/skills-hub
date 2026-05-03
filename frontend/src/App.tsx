@@ -26,6 +26,7 @@ import { PublishReviewPage } from './pages/PublishReviewPage'
 import { PublishFailedPage } from './pages/PublishFailedPage'
 import { PublishValidatePage } from './pages/PublishValidatePage'
 import { VersionDiffPage } from './pages/VersionDiffPage'
+import { FlagsQueuePage } from './pages/FlagsQueuePage'
 
 function App() {
   return (
@@ -50,6 +51,8 @@ function App() {
       <Route path="/analytics" element={<AnalyticsPage />} />
       {/* S094a: 作者視角 dashboard — P6 SBE「作者查看自己的數據」 */}
       <Route path="/my-skills" element={<MySkillsPage />} />
+      {/* S098e3-T04: reviewer queue — list OPEN flags + Resolve/Dismiss */}
+      <Route path="/flags" element={<FlagsQueuePage />} />
       {/* S096g1: Request Board stub — read-only list；voting/claim 留 S096g2 */}
       <Route path="/requests" element={<RequestBoardPage />} />
       {/* S096f1: Collections stub — read-only list；install/create 留 S096f2 */}
