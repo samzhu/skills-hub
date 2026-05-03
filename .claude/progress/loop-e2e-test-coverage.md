@@ -520,6 +520,60 @@
 - Anonymous vs authenticated flow 比對 — 排隊（S116 ship 後此 cut 高 value，但需要 Chrome MCP 啟動 backend，wall budget 風險）
 - Form interaction (publish / version add / ACL grant) — 排隊
 
+## Tick — Mode B Round 37 — Form interaction E2E (LAB 封測前 OAuth + ACL flow) (2026-05-04)
+
+> Cut: Form interaction (publish / download / ACL grant 流程) — user 2026-05-04 directive「LAB 封測前 + 上傳/下載/訂閱/通知/分享/ACL E2E 全 stack」觸發。第一次本 session 真打 mock-oauth2-server (port 9000) + Spring app 跑 OAuth=true mode 完整 flow。對應 S120 spec doc §3 14 ACs scenario，但走 curl + 直 SQL 而非 @SpringBootTest（wall budget 友善）。
+
+### Setup
+- Backend：`SKILLSHUB_SECURITY_OAUTH_ENABLED=true ./gradlew bootRun -x npmBuild -x processAot -x processTestAot`（local profile 預設 oauth=false 須 env override）
+- Frontend：`cd frontend && npm run dev`（Vite 5173）
+- DB：清空 (skills=0 / skill_versions=0 / domain_events=0 / event_publication=0)
+- Mock OAuth：3 clients — admin-client / developer-client (sub=dev-042) / viewer-client (sub=viewer-007)
+- A=dev-042 (developer)，B=viewer-007 (viewer)；fixture 走 SKILL.md zip via curl multipart
+
+### Flow Executed (14 ACs trimmed to ~10)
+1. ✅ A 上傳 public skill (visibility=PUBLIC) → 201 + acl_entries 含 `*:read`
+2. ✅ A 上傳 private skill (visibility=PRIVATE) → 201 + acl_entries **不含** `*:read`（per S116 ship）
+3. 🚨 anonymous list → total=2（**含 private**！應只 public）— **Bug AS**
+4. 🚨 B authenticated list (no grant) → total=2（**含 private**！應只 public）
+5. 🚨 anonymous GET single private → 200（leak JSON body；known S114a gap）— **Bug AT**
+6. 🚨 anonymous download private → 200 + zip body（leak file content）— **Bug AU**
+7. ✅ A grant `user:viewer-007:read` on private → 201；DB acl_entries 加 entry
+8. ✅ B authenticated download private (post-grant) → 200；download_count atomic +1
+
+### Findings
+
+| Bug | Severity | Path | 描述 |
+|-----|----------|------|------|
+| **AS** | **CRITICAL (LAB-blocker)** | `SkillQueryService.search()` line 133-138 | List endpoint SQL 完全沒 acl_entries `?\|` filter — 只 `WHERE status='PUBLISHED'`；S016 ship 的 `SkillPermissionStrategy` 只給 `@PreAuthorize` 用，list 路徑從未套用。**S116 visibility toggle 在 list endpoint 完全失效**（PRIVATE skill 仍 visible 給 anonymous + non-granted user）。`SkillshubPgVectorStore.searchByEmbeddingWithAcl` (S017) 有 filter 但只 semantic search 路徑走；keyword search / 主 list 路徑全裸。**LAB 封測前必補**，否則員工封測時 visibility 設定全失效 |
+| **AT** | HIGH | `SkillQueryController.getById` (read-side) | 單 GET endpoint 缺 `@PreAuthorize`；anonymous 直打 `/api/v1/skills/{private-id}` 拿到完整 JSON body（acl_entries / metadata / version 等）— per S114a plan 已知 gap 但本 round 首次端到端確認 |
+| **AU** | HIGH | `SkillQueryController.download` | 同 AT — anonymous 直打 `/api/v1/skills/{private-id}/download` 拿到 zip body 含實際 SKILL.md 內容；含敏感 / 未公開 skill 內容洩漏風險。**LAB 封測前對「上傳私人 skill 真私人」承諾失效** |
+
+**Status**：本 round 0 修；Bug AS/AT/AU 走 backlog row；按 user directive「發現問題自己開 spec 後修正」走獨立 fix-specs S121-S123（順序：S121 list filter 是其餘 derived 路徑的基礎）。
+
+### Roadmap rows added
+
+- **S121** (S=4-5)：`SkillQueryService.search()` row-level ACL filter — Bug AS fix（**LAB-blocker**）。SQL 加 `AND acl_entries ??| :patterns::text[]` clause；inject `AclPrincipalExpander` + `CurrentUserProvider`；author-mode skip filter（owner 看自己 DRAFT/SUSPENDED 維持 S094a 行為）；對應 countSql 同步加。Test 加 anonymous list 看 PRIVATE skill 應 0 + B grant 後 list 應 +1。Single-tick S。
+- **S122** (XS=2)：`SkillQueryController.getById` 加 `@PreAuthorize("hasPermission(#id, 'Skill', 'read')")` — Bug AT fix。對齊 S114a plan §read-side ACL gap close；single-tick XS。
+- **S123** (XS=2)：`SkillQueryController.download` 加 `@PreAuthorize("hasPermission(#id, 'Skill', 'read')")` — Bug AU fix。同 S122 pattern；對 download_count 累計 invariant 不變（仍 atomic SQL）。
+
+### Cuts not exercised this round
+- User-visible string compliance — 排隊（last 跑 tick 56 R12-14）
+- Cross-cutting links（routing change 後漏 callsite）— 排隊
+- 訂閱 + 通知 flow（S096h2 ship 後完整 chain）— 排隊
+- Frontend Chrome MCP visual regression — 排隊
+
+### LAB Deployment Configuration Note (2026-05-04 重要)
+
+LAB profile 應用 `oauth.enabled=true` mode（**不是** `local` profile 預設的 `oauth.enabled=false` LAB-permitAll mode）。在 LAB 封測時：
+- 員工從 mock-oauth2-server / company SSO 取得 JWT
+- list / single GET / download 全走 ACL filter（S121 ship 後）
+- visibility public/private 對員工生效
+- ACL grant 真實 enforced
+
+`oauth.enabled=false`（LabSecurityFilter 注入 ROLE_admin）僅適合 dev local — admin 角色 bypass 全 ACL，對 ACL invariant 驗證無意義。`docs/grimo/architecture.md` / `development-standards.md` 文件 LAB profile config 須補此說明（polish backlog）。
+
 ## Next Tick Suggestions
-- Pick up S117 / S118 / S119 implement (XS each, single-tick ship 候選)
-- OR 換 Mode B cut（Cross-cutting links / User-visible string compliance / Form interaction Chrome MCP）
+- Pick up S121 implement (S=4-5, **LAB-blocker priority**) — 解 list endpoint ACL filter gap，讓 visibility 真實生效
+- 然後 S122 + S123（XS each）補 single GET + download ACL 守則
+- S117 / S118 / S119 (XS each) 仍可單 tick ship — Round 36 既開 backlog
