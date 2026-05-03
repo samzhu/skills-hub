@@ -17,7 +17,7 @@ CREATE TABLE notifications (
     title           TEXT         NOT NULL,
     body            TEXT,
     skill_id        VARCHAR(36),
-    ref_event_id    VARCHAR(36)  NOT NULL,
+    ref_event_id    VARCHAR(255) NOT NULL,
     read_at         TIMESTAMPTZ,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     version         BIGINT       NOT NULL DEFAULT 0,

@@ -19,6 +19,13 @@
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Notifications",
-    allowedDependencies = {"shared :: events", "shared :: security", "shared :: api"}
+    allowedDependencies = {
+        "shared :: events", "shared :: security", "shared :: api",
+        "skill :: domain",         // SkillRepository owner_id (author) lookup
+        "community",               // RequestRepository requester_id lookup (community top-level)
+        "community :: events",     // RequestClaimed / RequestFulfilled event records (community.events 為 NamedInterface)
+        "review :: domain",        // ReviewCreatedEvent (review.domain 為 NamedInterface)
+        "security"                 // SkillFlaggedEvent record (security 模組 top-level)
+    }
 )
 package io.github.samzhu.skillshub.notification;

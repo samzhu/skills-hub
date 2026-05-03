@@ -92,4 +92,28 @@ public class NotificationProjectionListener {
 - T01 — schema + aggregates + repos + module wiring 必先
 
 ## Status
-pending
+✅ completed — 2026-05-03
+
+**Verification**：
+- `NotificationProjectionListenerTest` 6/6 PASS @ 15.5s（Testcontainers + Modulith Scenario AFTER_COMMIT async）— AC-1 SkillFlagged → owner / AC-2 ReviewCreated 含 self-review skip / AC-3 RequestClaimed 含 self-claim skip / AC-4 RequestFulfilled 含 skill name / AC-5 preferences disabled skip / AC-10 idempotency
+- `ModularityTests` 2/2 PASS（notification 加 4 個跨模組 dep 邊界乾淨）
+- `NotificationModuleSmokeTest` 8/8 仍 PASS（adjacent regression check）
+
+**Files changed**：
+- `backend/.../notification/NotificationProjectionListener.java` (new — 4 個 @ApplicationModuleListener + isCategoryEnabled/save 兩 helper + DuplicateKeyException catch idempotency)
+- `backend/.../notification/package-info.java` (modify — allowedDependencies 加 4 項：skill::domain / community / community::events / review::domain / security)
+- `backend/.../community/events/package-info.java` (new — `@NamedInterface("events")` 暴露 5 個 Request event records 給跨模組 consumer，對齊 skill::domain pattern)
+- `backend/.../review/domain/package-info.java` (new — `@NamedInterface("domain")` 暴露 Review aggregate + events，對齊 skill::domain pattern)
+- `backend/src/main/resources/db/migration/V11__create_notifications.sql` (modify — ref_event_id VARCHAR(36) → VARCHAR(255) 支援 composite ref event id 如 `<uuid>:<type>` / `<uuid>:<userId>:claim`)
+- `backend/src/test/.../notification/NotificationProjectionListenerTest.java` (new — 6 ACs + insertSkill/insertRequest helpers)
+
+**Deviations from task spec**：
+1. **`SkillFlaggedEvent` 缺 flagId 欄位**：spec §4.4 範本假設 `e.flagId()` 存在；實際 record 為 `(aggregateId, type, description, reportedBy)`。改用 `aggregateId + ":" + type` 作 ref_event_id composite。副作用：同 skill 同 type 多筆 flag dedupe 為 1 通知（spam 防護 — owner 知道「skill X 有 spam 類回報」一次即可，逐筆 review 進 FlagsList）。**未改 SkillFlaggedEvent record**（避免改 security 模組 public signature 影響其他 caller）。
+2. **`community.events` + `review.domain` 加 NamedInterface**：originally task 預期直接 `"community" / "review"` whole-module dep 即可訪問內部 event records；實測 Modulith 強制要求 sub-package 須 NamedInterface 暴露才能跨模組 import。Fix：兩個新 package-info.java with `@NamedInterface`，並把 notification 的 deps 改為 `community :: events / review :: domain`。對齊 skill::domain 既有 pattern。
+3. **V11 ref_event_id 拓寬至 VARCHAR(255)**：原 VARCHAR(36) 假設純 UUID；composite ID 如 `<uuid>:<type>` 達 ~46 chars 撐爆。In-place edit V11（branch ahead of origin，無 production DB 已 apply 此 migration）— 比 add V12 ALTER 乾淨。
+4. **3 條 trigger MVP 範圍**：spec §2.1 列「3 條 self-direct」但 routing table §2.4 列 4 個 listener；本 task 4 個全 ship（不額外 trim）— 範圍未變。
+
+**Pattern echo**：
+- **Sub-package events 走 `@NamedInterface` 暴露**：第 2 次驗證（首次 skill::domain，本 task 加 community::events / review::domain）— Modulith 邊界守則 effective，但需主動標 NamedInterface。
+- **Composite ref_event_id**：listener 從 event payload 派生 deterministic key，UNIQUE constraint dedupe redelivery + 副作用 spam 防護。Pattern 適用所有「事件 record 缺穩定 unique id」的場景。
+- **Modulith Scenario API**：`scenario.publish(event).andWaitForStateChange(...).andVerify(...)` — 驗證 AFTER_COMMIT async listener 標準路徑，對齊 SkillRatingProjectionListenerTest 既有 pattern。
