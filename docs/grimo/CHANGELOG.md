@@ -1,5 +1,25 @@
 # Changelog
 
+## [v3.4.11] — RiskTiersPage zh-TW tier title compliance（S111 完成；2026-05-03）
+
+> Mode B Round 16 Tick 18 — 跑 S110 §8 提議的 systematic i18n grep cut (`grep -rnE 'title="[A-Z][a-z]+' frontend/src/pages/`) 直接命中 `/docs/risk-tiers`：4 個 Tier card titles (`Pure documentation` / `Auto-published` / `Auto-published, with warning badge` / `Blocked until reviewer approves`) 全英文，body 已 zh-TW，是 same-component i18n inconsistency。Tick 18 同 tick full-ship（XS=2 string replace + Chrome MCP smoke，per S109 pattern 第 3 次）。
+
+### Changed
+- `frontend/src/pages/docs/RiskTiersPage.tsx`：4 處 Tier title 替換 — `Pure documentation`→`純文件`、`Auto-published`→`自動上架`、`Auto-published, with warning badge`→`自動上架（顯警示標）`、`Blocked until reviewer approves`→`暫不上架，待審核員核准`（選詞對齊 browse / search 既有「上架」+ `reviewer` business term「審核員」）
+
+### Verified
+- Chrome MCP live smoke `/docs/risk-tiers`：4 zh-TW titles render ✓ + 3 English leftover 全 removed ✓
+- 無 npm test scope（page 無既有 test，doc-only reference page，scope XS 不新建）
+- FE tests 累計 43（不變）
+
+### Why
+S110 §8 提議的 systematic i18n grep cut 首次 application — 一條 grep 直接命中 4 處 leftover，**audit cut effectiveness confirmed**。S100e → S102 → S103 → S104 → S105 → S106 → S107 → S108 → S109 → S110 → **S111** 第 11 個 S100 META cross-cutting follow-up；cut 累積 11 層；S110 同軸延伸並驗證 i18n grep audit cut。
+
+### Process note
+第 3 個 single-tick full-ship 案例（S109 vite proxy actuator + S110 MySkillsPage + S111 RiskTiersPage）。Pattern 持續驗證 — XS scope + clear CLAUDE.md rule + sibling pattern proven + smoke < 30s。對 i18n compliance 類 micro fix，single-tick full-ship 已成 cron-bound agent 高效 standard pattern。
+
+---
+
 ## [v3.4.10] — MySkillsPage zh-TW label compliance（S110 完成；2026-05-03）
 
 > Mode B Round 15 Tick 17 audit (Chrome MCP `/my-skills`) 找到 i18n compliance gap：4 個 MetricCard label (`Total skills` / `Total downloads` / `Avg rating` / `Open flags`) 與 status subtitle (`X published · X draft · X suspended`) 仍英文，違反 CLAUDE.md「UI 語言: 繁體中文」rule。同 page TabPill labels（line 117-128）已 zh-TW（「全部」「已發布」「草稿」「已停用」），是 same-page i18n inconsistency。Tick 17 同 tick full-ship（XS=2 string replace + minimal test，per S109 process pattern）。

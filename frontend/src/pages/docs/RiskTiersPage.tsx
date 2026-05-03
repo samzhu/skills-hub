@@ -30,7 +30,7 @@ export function RiskTiersPage() {
         toneBg="rgba(168,164,156,0.10)"
         toneBorder="rgba(168,164,156,0.30)"
         toneText="#A8A49C"
-        title="Pure documentation"
+        title="純文件"
         body="此技能僅含 SKILL.md，無 scripts/ 或 allowed-tools 宣告，掃描器未發現任何 risk patterns。常見於 prompt-only / reference-only skill。"
         note="注意：NONE ≠ 100% 安全 — agent 載入後仍會以該 skill 內容為 instruction，故仍須對 description 內容把關。"
       />
@@ -41,7 +41,7 @@ export function RiskTiersPage() {
         toneBg="rgba(29,158,117,0.10)"
         toneBorder="rgba(29,158,117,0.30)"
         toneText="#6FD8B0"
-        title="Auto-published"
+        title="自動上架"
         body="含 scripts 或 allowed-tools 宣告，但未偵測到危險指令。一般 utility / helper / formatter 多落這層；自動上架，公開搜尋可見。"
       />
 
@@ -51,7 +51,7 @@ export function RiskTiersPage() {
         toneBg="rgba(239,159,39,0.10)"
         toneBorder="rgba(239,159,39,0.30)"
         toneText="#FAC775"
-        title="Auto-published, with warning badge"
+        title="自動上架（顯警示標）"
         body="Scripts 存在且偵測到中等風險模式（例：寬鬆 file system 寫入、network call 至外部 trusted-source registry）。最多 3 個外部 URL 限制；Consumers 在搜尋與詳情頁上看得到 MEDIUM 標。"
         note="MEDIUM 仍自動上架，但 consumer 端會看到警示色 — 鼓勵 reviewer pass / 個人安裝前審視 scripts/ 內容。"
       />
@@ -62,7 +62,7 @@ export function RiskTiersPage() {
         toneBg="rgba(226,75,74,0.08)"
         toneBorder="rgba(226,75,74,0.30)"
         toneText="#F2A6A6"
-        title="Blocked until reviewer approves"
+        title="暫不上架，待審核員核准"
         body="偵測到 dangerous patterns — rm -rf、curl | bash 等 RCE 模式、~/.ssh / ~/.aws 等敏感路徑存取、可疑 shell 解析行為。Skill 暫不上架，進入人工審核佇列；reviewer 可選 approve / 退回作者修正 / reject。"
         note="HIGH ≠ rejection。Reviewer 可能 approve 並附 audit log 備註；亦可能 ask author to fix 特定 finding 後重交。"
       />
