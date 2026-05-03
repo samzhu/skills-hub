@@ -1,6 +1,6 @@
 # S112: Flag Wiring Full-Stack
 
-> Spec: S112 | Size: S(7) | Status: ⏳ Design
+> Spec: S112 | Size: S(7) | Status: ⏳ Plan
 > Date: 2026-05-03
 
 ---
@@ -319,4 +319,24 @@ const { data: flagsSummary } = useFlagsSummary(total > 0)  // 0 skill 不必查
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+POC: not required — 全部使用既有專案內 pattern（Spring Data JDBC + NamedParameterJdbcTemplate / TanStack Query / EmptyState / MetricCard 都是 ship 過的 component），零新框架。
+
+| # | Task | AC | Status | Depends |
+|---|------|-----|--------|---------|
+| T01 | Backend `/me/flags-summary` endpoint + service + tests | AC-5 / AC-6 / AC-7 | pending | none |
+| T02 | Frontend infra — `api/flags.ts` + `lib/flag-labels.ts` | infra | pending | none |
+| T03 | SkillDetail Flags tab — `useFlags` hook + page wiring + tests | AC-1 / AC-2 | pending | T02 |
+| T04 | MySkillsPage MetricCards rework — `useFlagsSummary` hook + page edit + tests | AC-3 / AC-4 | pending | T01 + T02 |
+
+**Execution order**：T01 → T02 → T03 → T04
+（T01 與 T02 互不依賴，可並行；保險走順序）
+
+**Task file 位置**：`docs/grimo/tasks/2026-05-03-S112-T0[1-4]-*.md`（各 task 含 BDD + implementation outline + target files + verify cmd）
+
+**E2E gate**：本 spec 純 wire 既有 endpoint 到既有 UI，無新 infra / credential / subprocess。Backend 走 Testcontainers（真 PostgreSQL），frontend 走標準 vitest mock — Mode B Chrome MCP smoke 由獨立 cron tick 補。**不額外加 dedicated E2E task**。
+
+---
+
+<!-- Section 7 added by /planning-tasks after all tasks PASS -->
