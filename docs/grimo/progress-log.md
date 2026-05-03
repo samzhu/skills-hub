@@ -300,6 +300,19 @@ Job `d09deead`，cron `*/30 * * * *`，session-only（7 天 auto-expire）。
 - Implement: separate tick 接手 → ship `0c11d39`（v3.4.2）→ S102 archived
 - Outcome: 5 bugs 同日 found + fixed；S100 META 「page-level audit 對 inter-page link 有盲點」假設驗證
 
+**Tick 4**（hidden fake data / hardcoded fallback audit — 直接對齊 user「假資料」字面）:
+- Method: Explore agent 跑 5 軸 — 字面 mock/fake/dummy/sample naming / `??` `||` fallback 蓋真資料 / `Math.random` `Date.now()` in render path / hardcoded UUID/email/name / Sparkline-chart hardcoded data
+- Findings: 0 novel ❌ + 1 grey area
+  | # | 軸 | 結果 |
+  |---|---|------|
+  | A | mock naming | 0 — 所有 hit 都是 JSDoc 引用 prototype HTML 或 React Query `placeholderData: keepPreviousData` API |
+  | B | `??` fallback | 1 grey — MySkillsPage:98 `value={0}` for「待處理回報」，但 subtitle 透明標「MVP 暫缺」+ JSDoc:23 acknowledge stub，非隱藏 fake |
+  | C | random/now in render | 0 |
+  | D | hardcoded ID/email/name | 0 |
+  | E | Sparkline data 來源 | 0 — 100% 真 fetch (`fetchSkillStats`)，empty 時退 `'—'` 顯式 EmptyState |
+- Action: **0 new spec opened**
+- Outcome: **直接 reinforce S100 結論** — frontend 沒有「fetch 之後 fallback 蓋真資料」/「`Math.random` 假動畫值」/「hardcoded 真實感數字」這類隱藏假資料；`??` fallback 全為合法 sentinel (`?? []` empty / `?? 0` arithmetic / `?? '—'` 顯式 dash)
+
 **Tick 3**（form / button / mutation handler audit — user-initiated action 路徑）:
 - Method: Explore agent 跑 4 軸 — onSubmit handlers / onClick handlers (non-trivial) / `useMutation` completeness / disabled-placeholder buttons
 - Findings: 1 novel + 4 known
@@ -324,16 +337,58 @@ Job `d09deead`，cron `*/30 * * * *`，session-only（7 天 auto-expire）。
 - Action: **0 new spec opened** — 3 gaps 全部 deferred-not-spec per user scope filter
 - Outcome: 0 bugs found （re-saturation 1/3）
 
-### Saturation state
+### Saturation state — 🏁 RE-SATURATED at tick 4
 
-- Session #2 close 已宣告 SATURATED；tick 1 找 5 bugs 直接 break saturation
-- Tick 2 0 bugs → 1/3 toward re-saturation
-- **Tick 3 0 user-scope-actionable bugs** → 2/3 toward re-saturation
-  - 1 novel gap found（suspend/reactivate UI 缺）但 auth-adjacent + S094e 已 roadmap post-MVP defer，per user「除了 Auth 相關」跳過
-  - 4 known gaps 已在 roadmap（S096f2/g2 disabled buttons、S098e2/e3 stub tabs、rating MVP placeholder）
-- Backlog 仍非空（S101 awaits human + 9+ backend specs）
+| Tick | Cut | Bugs | Net |
+|------|-----|------|-----|
+| 1 | Cross-cutting link target | 5 | → S102 ship 0c11d39 v3.4.2 |
+| 2 | API contract (GET path) | 3 found, 0 actionable | re-sat 1/3 |
+| 3 | Form / button / mutation handler | 1 novel, all deferred | re-sat 2/3 |
+| 4 | Hidden fake data / hardcoded fallback | 0 novel, 1 transparent grey | re-sat 3/3 ✅ |
 
-State: NOT yet re-saturated（need 1 more 0-bug tick）；cron 繼續 audit ticks。任何 tick 找 0 user-scope-actionable gap 不 force 開無價值 spec。
+**3 consecutive 0-actionable-bug ticks reached at tick 4** → 🏁 **EXIT: SATURATED**（session #3）
+
+Per loop.md EXIT: SATURATED 條件 + session #2 precedent，cron-tick-feasible audit work 耗盡。Backlog 仍非空但 entries 全 backend-heavy（S101 awaits human + 9+ Modulith aggregate specs）— 同 session #2 saturation 條件。
+
+### 🏁 Final summary — Session #3
+
+**Audit cuts attempted: 5（含先前 S100 prior session）**
+1. Page-by-page data source（S100 META prior session, 27 pages, 0 fake）
+2. Cross-cutting link target（tick 1, 5 bugs, S102 ship）
+3. API contract GET path（tick 2, 3 gaps, 0 actionable）
+4. Form / button / mutation handler（tick 3, 1+4 gaps, 0 actionable）
+5. Hidden fake data / hardcoded fallback（tick 4, 0+1 grey）
+
+**Specs shipped: 1**
+- S102 — post-S096e1 routing residual link target fix（v3.4.2，commit 0c11d39，5/5 tests PASS, 5 bugs C-G fixed）
+
+**Bugs ledger update: A-G（+5 from session #3 tick 1）**
+
+**Spec-Only-Handoff 模式驗證**：
+- audit tick → spec seed → 隔 implement tick ship cycle 約 28 分鐘 fit cron 30m interval
+- 分工清晰：audit tick **不** implement，implement tick **不** audit
+- spec doc §1-§5 完整足以讓 implement tick 不需 grill user
+
+**Lessons captured（寫入 S102 §8）**：
+- Page-by-page audit 對 inter-page link semantic alignment 是已知盲點 — 下次 routing-touching spec 應內建 AC「grep `to="/"` / `navigate("/")` 全 codebase verify post-change 語意」
+- Audit cut 多角度組合（page / link / API / form / fallback）比單一 audit 完整 — session #3 4 個 cut 互補，validates「audit 切面變化能找到單一 cut 漏掉的 gap」
+
+**未 attempted 的 cut（候選 future session）**：
+| Cut | Why deferred |
+|-----|--------------|
+| Chrome MCP live E2E（DOM / network / console） | Wall budget 大，需 backend + dev server 起 |
+| TypeScript build errors（13 pre-existing per S102 ship note） | Dev-side，非 user-visible，低 user value |
+| Backend response field naming consistency | 對 dev contract 重要，user-facing 已 cover |
+| Public assets path（OG meta, favicon, fonts） | 通常 fine，低 yield |
+| ARIA labels / a11y semantic | 真價值但非 user 框架「假資料/缺頁面」focus |
+| Loading skeleton shape consistency | 細節，subtle |
+| zh-TW pass 3 文案 | S098g pass 1+2 已 cover；殘餘極少 |
+
+### Cron disposition — DO NOT CronDelete (user-owned)
+
+`d09deead` cron 不主動刪除（destructive action 留 user 決定）。下次 cron fire 起，Post-Saturation Policy item 1 啟動：「**第一次 saturated 之後的 re-fire 無新增 commit；只回應 `🏁 EXIT: SATURATED`**」— 直到 user 手動停或 backlog 出現 cron-tick-feasible item。
+
+State: 🏁 **SATURATED** — audit-watchdog mode 完成。
 
 ### Audit cuts attempted vs remaining
 
