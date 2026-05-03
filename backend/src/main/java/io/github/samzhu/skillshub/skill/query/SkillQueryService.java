@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.skill.query;
 
 import java.lang.invoke.MethodHandles;
+import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.jdbc.core.SqlParameterValue;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,8 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.samzhu.skillshub.shared.api.SkillSuspendedException;
+import io.github.samzhu.skillshub.shared.security.AclPrincipalExpander;
+import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
@@ -73,16 +77,21 @@ public class SkillQueryService {
 	private final StorageService storageService;
 	private final ObjectMapper objectMapper;
 	private final ApplicationEventPublisher eventPublisher;
+	private final CurrentUserProvider currentUserProvider;
+	private final AclPrincipalExpander aclExpander;
 
 	public SkillQueryService(SkillRepository skillRepo, SkillVersionRepository skillVersionRepo,
 			NamedParameterJdbcTemplate jdbc, StorageService storageService,
-			ObjectMapper objectMapper, ApplicationEventPublisher eventPublisher) {
+			ObjectMapper objectMapper, ApplicationEventPublisher eventPublisher,
+			CurrentUserProvider currentUserProvider, AclPrincipalExpander aclExpander) {
 		this.skillRepo = skillRepo;
 		this.skillVersionRepo = skillVersionRepo;
 		this.jdbc = jdbc;
 		this.storageService = storageService;
 		this.objectMapper = objectMapper;
 		this.eventPublisher = eventPublisher;
+		this.currentUserProvider = currentUserProvider;
+		this.aclExpander = aclExpander;
 	}
 
 	/**
@@ -130,14 +139,29 @@ public class SkillQueryService {
 		var statusClause = authorMode
 				? " WHERE LOWER(author) = LOWER(:author) "
 				: " WHERE status = 'PUBLISHED' ";
+		// S121: row-level ACL filter — 補上 list endpoint 漏裝的 acl_entries 過濾。
+		// S116 visibility (PUBLIC/PRIVATE) 仰賴 acl_entries 含 *:read 與否判斷可見性，
+		// list 必套此 clause 才會生效。expand("read") 對 read permission 自動加 *:read（S026），
+		// PUBLIC skill (acl_entries 含 *:read) 對任何 user 可見；PRIVATE 僅 owner / 被 grant
+		// 的 principals / role / group 可見。對齊 S016 SkillPermissionStrategy 既驗 ??| ARRAY pattern。
+		// Admin role 不在此處特殊化 — admin 若要看 PRIVATE skill 須走 grant；對齊既有 S016 設計
+		// （admin bypass 集中在 DelegatingPermissionEvaluator @PreAuthorize 路徑，CQRS read 路徑不另立例外）。
+		var aclPatterns = aclExpander.expand(currentUserProvider.current(), "read");
+		// S016: ?? escape 必要 — pgJDBC 仍會 parse ? 為 placeholder；?? → ? 後送 ?| operator
+		var aclClause = " AND acl_entries ??| :aclPatterns ";
 		var sql = new StringBuilder("""
 				SELECT id, name, description, author, category,
 				       latest_version, risk_level, status, download_count,
 				       created_at, updated_at, acl_entries, version
 				  FROM skills
-				""").append(statusClause);
-		var countSql = new StringBuilder("SELECT COUNT(*) FROM skills").append(statusClause);
-		var params = new MapSqlParameterSource();
+				""").append(statusClause).append(aclClause);
+		var countSql = new StringBuilder("SELECT COUNT(*) FROM skills")
+				.append(statusClause).append(aclClause);
+		var params = new MapSqlParameterSource()
+				// S016 §2.4 #3: SqlParameterValue(Types.ARRAY, ...) 強制走 ps.setArray()
+				// 避免 NamedParameterJdbcTemplate 自動展 String[] 為 IN-list 破壞 ?| 單一 ARRAY 語意
+				.addValue("aclPatterns", new SqlParameterValue(Types.ARRAY,
+						aclPatterns.toArray(new String[0])));
 		if (authorMode) {
 			params.addValue("author", author);
 		}

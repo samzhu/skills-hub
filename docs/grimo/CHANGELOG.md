@@ -1,5 +1,35 @@
 # Changelog
 
+## [v3.8.4] — List endpoint row-level ACL filter（S121 完成；2026-05-04 — LAB-blocker fix）
+
+> S121 single-tick ship — Mode B Round 37 (2026-05-04) finding **CRITICAL** 直接修。User 2026-05-04 directive「LAB 封測前 + ACL 權限控制」觸發。**PATCH bump** — production code 1 file diff（`SkillQueryService.search()` 加 SQL clause）+ test fixture 升級；零 schema 變動；無 controller / API contract change。
+
+### Fixed — Backend (LAB-blocker)
+- `backend/.../skill/query/SkillQueryService.java`：`search()` 加 row-level ACL filter — `AND acl_entries ??| :aclPatterns`，patterns 由 `AclPrincipalExpander.expand(currentUserProvider.current(), "read")` 產生。修補 list endpoint 過去完全沒套 acl_entries filter 的 critical gap（S016 ship 的 `SkillPermissionStrategy` 只給 `@PreAuthorize` 用；list path 從未套用）→ S116 visibility toggle (PUBLIC/PRIVATE) 在 list 路徑現在**真實生效**。對齊 S016 §2.4 既驗 `??` escape + `SqlParameterValue(Types.ARRAY)` ARRAY bind 模式。
+
+### Changed — Backend (test)
+- `backend/src/test/.../skill/query/SkillSearchTest.java`：加 `@MockitoBean CurrentUserProvider` + `@MockitoBean AclPrincipalExpander` 兩個 mock；`@BeforeEach` 加 default stub（admin user + patterns 含 `*:read`）；既有 6 fixture acl_entries `List.of()` → `List.of("*:read")` 表達 PUBLIC 語意（ACL filter 啟用後須含此 pseudo-principal）；新加 AC-S121-1（PRIVATE 對 non-grantee 不可見）+ AC-S121-2（granted user 看得到）。
+
+### Verify metric
+- `SkillSearchTest`：13/13 PASS @ 9.6s（既有 11 不 regression + 新加 2 PASS）
+- `compileJava` 8s + `test` 2m 1s（含 Testcontainers PG boot）
+- Backend devtools restart 2.9s
+- E2E manual smoke (Round 37 fixture)：anonymous list 從 total=2 → total=1（PRIVATE 不再 leak）；B grant 後 list 含 PRIVATE；revoke 後 list 不含 — 6 case all PASS
+
+### Design decisions
+- **不加 admin bypass 路徑**（per spec §2.2）— 對齊 S016 既驗：admin bypass 集中於 `DelegatingPermissionEvaluator.hasAdminRole()` 用於 `@PreAuthorize` mutation 路徑；CQRS read 路徑走 ACL 自然 expand pattern。Admin 若需看 PRIVATE skill 須走 grant `role:admin:read`
+- **不改 CurrentUserProvider anonymous fallback**（per spec §2.3）— 利用 `AclPrincipalExpander.expand("read")` 自動加 `*:read`，anonymous fallback (lab-user, [admin]) 自然只看 PUBLIC skill；不引入新 fallback 行為
+- **author-mode 與 ACL 完全正交**（per spec §2.4）— `?author=B` 仍套 ACL filter，A 對 B 的 PRIVATE skill 無 grant 不顯示
+
+### Roadmap progress
+- ✅ S121 (S=4-5) shipped — Phase 5 row M116
+- 📋 S122 / S123 (XS each) 待 implement — 補 single GET + download endpoint @PreAuthorize（同 chain）
+
+### Pattern reuse
+- 第 3 次採用 `AclPrincipalExpander.expand` pattern（S016 / S017 / S121）
+- 第 3 次採用 `??|` + `SqlParameterValue(Types.ARRAY)` 雙 hack（S016 SkillPermissionStrategy / S017 PgVectorStore / S121 SkillQueryService）
+- 第 6 次 single-tick XS/S spec ship（per session lessons learned）
+
 ## [v3.8.3] — Skill visibility public/private toggle（S116 完成；2026-05-03）
 
 > S116 跨 2 個 cron tick (Tick 35 spec planning + Tick 36 single-tick ship) — user 2026-05-03 mid-tick directive 2/2「新增 skill 時可選 public 跟 GitHub 概念很像 / 私人的再自己共享給別人」。**PATCH bump** — 純 enum + factory 條件分支；零 schema 變動；既有 4-arg uploadSkill caller 行為與 v3.x 完全一致。
