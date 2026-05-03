@@ -633,7 +633,73 @@ LAB profile 應用 `oauth.enabled=true` mode（**不是** `local` profile 預設
 
 ✅ **上傳 / 下載 / ACL 分享** flow 已 verified（Tick 1）。
 
+## Tick — Mode B Round 39 — Negative deep-link audit (2026-05-04 Tick 13)
+
+> Cut: Negative deep-link edge cases — `/skills/null` / nonexistent UUIDs / SQL injection / XSS / pagination overflow / sort injection。LAB 封測前防禦性測試，找邊界 case + Spring Security PreAuthorize-vs-NotFound trade-off bugs。
+
+### Setup
+- Backend OAuth=true mode（Tick 12 後狀態）
+- DB：2 skills（PUBLIC + PRIVATE）+ subscription + notification fixtures
+- 21 個 case probe via curl（4 group base + 4 expansion）
+
+### E2E Probe — 21 case
+
+| # | Case | HTTP | 預期 | 結果 |
+|---|------|------|------|------|
+| 1.1 | anon GET /skills/null | 401 | 404/400 | ❌ Bug AX |
+| 1.2 | anon GET /skills/undefined | 401 | 404/400 | ❌ Bug AX |
+| 1.3 | anon GET /skills/00000000-...-000000000000 (zero UUID) | 401 | 404 | ❌ Bug AX |
+| 1.4 | anon GET /skills/not-a-uuid | 401 | 400 | ❌ Bug AX |
+| 2.1 | anon GET /skills/null/null | 404 | 404 | ✅ |
+| 2.2 | anon GET /skills/foo/bar | 404 | 404 | ✅ |
+| 2.3 | anon GET /skills/dev-042/<200-char> | 404 | 404 | ✅ |
+| 2.4 | anon GET /skills//foo (空 author) | 400 (non-standard) | 400/404 | ⚠ Bug AY (LOW) |
+| 3.1 | anon GET /skills?keyword=<1000 chars> | 200 empty | 200/204 | ✅（LIKE escape OK）|
+| 3.2 | anon GET /skills?keyword=';DROP TABLE skills;-- | 200 empty | 200（safe LIKE）| ✅ |
+| 3.3 | anon GET /skills?keyword= | 200 PUBLIC list | 200 | ✅ |
+| 3.4 | anon GET /skills?keyword=<script>alert(1)</script> | 200 empty | 200（escape）| ✅ |
+| 4.1 | anon GET /skills?page=-1 | 200 normal page | 200 / 400 | ✅（Spring graceful clamp）|
+| 4.2 | anon GET /skills?size=99999 | 200 actual page | 200 | ✅（Pageable clamp）|
+| 4.3 | anon GET /skills?sort=ddd;DROP | 200 normal | 200（白名單）| ✅（per S031 SORTABLE_PROPERTIES）|
+| 4.4 | anon GET /skills?sort=name,DESC | 200 sorted | 200 | ✅ |
+| 5.1 | anon GET /skills/null/versions | 401 | 404/400 | ❌ Bug AX |
+| 5.2 | anon GET /skills/null/download | 401 | 404/400 | ❌ Bug AX |
+| 5.3 | anon GET /skills/null/bundle-info | 401 | 404/400 | ❌ Bug AX |
+| 5.4 | anon GET /skills/<valid>/versions/null/download | 404 "Version null not found" | 404 | ✅ |
+| 5.5 | anon GET /skills/<valid>/versions/3.0.0/download (未發布) | 404 | 404 | ✅ |
+| 6.1 | A GET /skills/null | 403 | 404 | ❌ Bug AX |
+| 6.2 | A GET /skills/00000000-...-000000000000 | 403 | 404 | ❌ Bug AX |
+| 7.1 | anon GET /notifications | 200 empty | 401（理論上） | ⚠ note (per Feature First) |
+| 7.2 | A POST /notifications/null/read | 404 | 404 | ✅ |
+| 8.1 | anon POST /skills/null/subscribe | 401 | 404/400 | ❌ Bug AX |
+| 8.2 | A POST /skills/00000000-...-000000000000/subscribe | 403 | 404 | ❌ Bug AX |
+
+### Findings
+
+| Bug | Severity | Path | 描述 |
+|-----|----------|------|------|
+| **AX** | LOW (UX confusion) | `@PreAuthorize("hasPermission(#id, 'Skill', 'read')")` 8 個 endpoints | Invalid / nonexistent skill id（如 `null`、`undefined`、不存在的 UUID、非 UUID 格式）走 Spring Security 預設 fail-secure 路徑回 401（anon）/ 403（auth）。對 LAB 員工 typo URL 反饋會混淆 — 應為 404 / 400 invalid id format。Spring Security default 是「security-first hide existence」設計但對明顯 invalid id（lexical layer）可前置 validation 走 400/404。Affected：getById / bundleInfo / getVersions / downloadLatest / downloadVersion / subscribe + 認證 user 路徑（403 instead of 404）。**Trade-off**：security-first vs UX-first；可走 controller-method-pre-check 或 path variable @Pattern 驗 UUID format → 400/404 早回。 |
+| **AY** | LOW | `/skills//foo` (空 author path variable) | 走 Spring 預設 400 ErrorResponse shape（`status: 400, error: "Bad Request"`）而非標準 GlobalExceptionHandler ErrorResponse（`error: "VALIDATION_ERROR"`）。低衝擊（frontend 不會生此 URL）。可加 GlobalExceptionHandler 對 `MissingPathVariableException` / `NoResourceFoundException` 翻譯。 |
+
+### Notes（非 bug，design 觀察）
+- **Anon /notifications 回 lab-user fallback notifications**（Group 7.1）：CurrentUserProvider 對 anonymous 走 fallback `(lab-user, [admin])`；NotificationController 無 @PreAuthorize → 直接走 currentUserProvider.userId() → list lab-user notifications（empty）。Per Feature First Security Later acceptable，但 OAuth=true mode 嚴格上應該 401（理論潔癖）。
+- **Defenses 全 PASS**：SQL injection (3.2 ;DROP) / XSS (3.4) / 1000-char overflow (3.1) / pagination negative/超大 (4.1/4.2) / sort injection (4.3) — 既驗 LIKE escape + ORDER BY 白名單 + Pageable clamp 全 hold。
+
+**Status**：本 round 0 修；按 Mode B rule「找到 bug → 切回 Mode A 寫 fix-spec」走 backlog row。Bug AX 是 LAB UX polish；Bug AY 是 ErrorResponse 一致性 polish。
+
+### Roadmap rows added
+
+- **S126** (XS=2-3, LOW)：Skill id format validation pre-PreAuthorize — Bug AX fix。對 8 個 @PreAuthorize-protected endpoints 加 path variable UUID format validation（@Pattern + GlobalExceptionHandler）；invalid format → 400 BAD_REQUEST；nonexistent valid UUID → 走 method body throw NoSuchElementException → 404。Trade-off 落點：UX（前置 validation）vs 嚴格 security-first。LAB UX 改善 nice-to-have；非 LAB-blocker。
+- **S127** (XS=1, LOW)：MissingPathVariableException / NoResourceFoundException ErrorResponse 一致性 — Bug AY fix。GlobalExceptionHandler 加 handler 翻 400 with VALIDATION_ERROR shape，對齊既驗 ErrorResponse pattern。
+
+### Cuts not exercised this round（chain 候選）
+- User-visible string compliance — 排隊（last 跑 tick 56 R12-14）
+- Cross-cutting links — 排隊
+- Backend response timing / cache header / ETag — 排隊
+- Component-context alignment — 排隊
+- Frontend Chrome MCP visual regression — 排隊（待 extension 連線）
+
 ## Next Tick Suggestions
-- Pick up S125a (XS=4) implement — backend SkillSubscription infra (aggregate + V14 + repo + service)
-- 或補 S117 / S118 / S119（XS each — Round 36 backlog 仍積壓）
-- 或開 S124 (XS getByAuthorAndName ACL gate；S122/S123 follow-up)
+- Pick up S126 / S127 (XS each, LAB polish)
+- 或 Mode B 換 cut（User-visible string compliance / Cache headers / Component-context）
+- S120 (M-size test infra) 仍 backlog；非 LAB-blocking
