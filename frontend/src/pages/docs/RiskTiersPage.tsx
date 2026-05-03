@@ -12,13 +12,13 @@ import { DocsLayout } from '@/components/DocsLayout'
 export function RiskTiersPage() {
   return (
     <DocsLayout>
-      <p className="mb-1 text-[14px] text-[#A8A49C]">
+      <p className="mb-1 text-[16px] text-[#A8A49C]">
         文件 <span className="mx-1 text-[#5E5B55]">/</span>
         參考 <span className="mx-1 text-[#5E5B55]">/</span>
         <span className="text-[#EEECEA]">風險層級</span>
       </p>
-      <h1 className="text-[28px] font-semibold tracking-tight text-[#EEECEA]">風險層級</h1>
-      <p className="mt-3 text-[16px] leading-relaxed text-[#A8A49C]">
+      <h1 className="text-[30px] font-semibold tracking-tight text-[#EEECEA]">風險層級</h1>
+      <p className="mt-3 text-[18px] leading-relaxed text-[#A8A49C]">
         每次發佈 skill 都會跑自動掃描器，依以下規則歸類為四級之一。Tier 決定
         skill 是否即時上架，以及 consumer 在搜尋結果上看到的標示色。所有層級
         都仍為合法 skill — HIGH ≠ rejection，僅代表需 reviewer 審視。
@@ -67,18 +67,18 @@ export function RiskTiersPage() {
         note="HIGH ≠ rejection。Reviewer 可能 approve 並附 audit log 備註；亦可能 ask author to fix 特定 finding 後重交。"
       />
 
-      <h2 className="mt-10 text-[20px] font-semibold tracking-tight text-[#EEECEA]">遇到 HIGH 風險怎麼辦？</h2>
-      <p className="mt-3 text-[14px] leading-relaxed text-[#A8A49C]">
+      <h2 className="mt-10 text-[22px] font-semibold tracking-tight text-[#EEECEA]">遇到 HIGH 風險怎麼辦？</h2>
+      <p className="mt-3 text-[16px] leading-relaxed text-[#A8A49C]">
         作者：依錯誤訊息提示修正 scripts/ 後重新上傳；常見修正包含拿掉
-        <code className="mx-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[14px] text-[#EEECEA]">curl | bash</code>、
+        <code className="mx-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">curl | bash</code>、
         替換為固定版本下載、或避免 SSH/AWS 設定檔讀取。
       </p>
-      <p className="mt-2 text-[14px] leading-relaxed text-[#A8A49C]">
+      <p className="mt-2 text-[16px] leading-relaxed text-[#A8A49C]">
         Reviewer：在 admin review queue 看完整掃描報告（每 finding 含 rule
         ID + 行號），佐以作者送審理由判斷 approve / reject。
       </p>
 
-      <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[14px]">
+      <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[16px]">
         <Link to="/docs/your-first-skill" className="text-[#A8A49C] hover:text-[#EEECEA]">
           ← 撰寫第一個技能
         </Link>
@@ -119,11 +119,11 @@ function Tier({
         <span className="font-mono text-[10.5px] font-semibold uppercase tracking-wider" style={{ color: toneText }}>
           {level}
         </span>
-        <span className="text-[14px] font-medium text-[#EEECEA]">{title}</span>
+        <span className="text-[16px] font-medium text-[#EEECEA]">{title}</span>
       </div>
-      <p className="mt-2 text-[14px] leading-relaxed text-[#A8A49C]">{body}</p>
+      <p className="mt-2 text-[16px] leading-relaxed text-[#A8A49C]">{body}</p>
       {note && (
-        <p className="mt-2 border-t border-dashed pt-2 text-[14px] leading-relaxed" style={{ borderColor: toneBorder, color: toneText }}>
+        <p className="mt-2 border-t border-dashed pt-2 text-[16px] leading-relaxed" style={{ borderColor: toneBorder, color: toneText }}>
           {note}
         </p>
       )}

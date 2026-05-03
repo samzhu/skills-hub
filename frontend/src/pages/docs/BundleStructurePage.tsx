@@ -9,15 +9,15 @@ import { DocsLayout } from '@/components/DocsLayout'
 export function BundleStructurePage() {
   return (
     <DocsLayout>
-      <p className="mb-1 text-[14px] text-[#A8A49C]">
+      <p className="mb-1 text-[16px] text-[#A8A49C]">
         文件 <span className="mx-1 text-[#5E5B55]">/</span>
         參考 <span className="mx-1 text-[#5E5B55]">/</span>
         <span className="text-[#EEECEA]">Bundle 結構</span>
       </p>
-      <h1 className="text-[28px] font-semibold tracking-tight text-[#EEECEA]">Bundle 結構</h1>
-      <p className="mt-3 text-[16px] leading-relaxed text-[#A8A49C]">
+      <h1 className="text-[30px] font-semibold tracking-tight text-[#EEECEA]">Bundle 結構</h1>
+      <p className="mt-3 text-[18px] leading-relaxed text-[#A8A49C]">
         Skills Hub 的 bundle 是 zip 套件 — 解壓後預設按以下結構放檔。除
-        <code className="mx-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[14px] text-[#EEECEA]">SKILL.md</code>
+        <code className="mx-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">SKILL.md</code>
         必填外，其他資料夾全 optional。
       </p>
 
@@ -50,7 +50,7 @@ export function BundleStructurePage() {
       />
 
       <H2>限制</H2>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-[14px] text-[#A8A49C]">
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-[16px] text-[#A8A49C]">
         <li>整 bundle zip ≤ 5MB</li>
         <li>單檔 ≤ 1MB（避免大 binary）</li>
         <li>檔案數 ≤ 50</li>
@@ -62,7 +62,7 @@ export function BundleStructurePage() {
         <Link to="/docs/risk-tiers" className="text-[#C9C5F2] hover:underline">風險層級</Link>。
       </Callout>
 
-      <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[14px]">
+      <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[16px]">
         <Link to="/docs/frontmatter" className="text-[#A8A49C] hover:text-[#EEECEA]">
           ← Frontmatter 欄位
         </Link>
@@ -75,7 +75,7 @@ export function BundleStructurePage() {
 }
 
 function H2({ children }: { children: React.ReactNode }) {
-  return <h2 className="mt-10 text-[20px] font-semibold tracking-tight text-[#EEECEA]">{children}</h2>
+  return <h2 className="mt-10 text-[22px] font-semibold tracking-tight text-[#EEECEA]">{children}</h2>
 }
 
 function FolderRow({
@@ -100,7 +100,7 @@ function FolderRow({
           </span>
         )}
       </div>
-      <p className="mt-2 text-[14px] leading-relaxed text-[#A8A49C]">{body}</p>
+      <p className="mt-2 text-[16px] leading-relaxed text-[#A8A49C]">{body}</p>
     </div>
   )
 }
@@ -108,7 +108,7 @@ function FolderRow({
 function Callout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="mt-4 rounded-md border p-3 text-[14px] leading-relaxed text-[#A8A49C]"
+      className="mt-4 rounded-md border p-3 text-[16px] leading-relaxed text-[#A8A49C]"
       style={{ backgroundColor: 'rgba(127,119,221,0.08)', borderColor: 'rgba(127,119,221,0.20)' }}
     >
       {children}

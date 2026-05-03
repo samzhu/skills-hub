@@ -13,13 +13,13 @@ import { DocsLayout } from '@/components/DocsLayout'
 export function RiskScannerScopePage() {
   return (
     <DocsLayout>
-      <p className="mb-1 text-[14px] text-[#A8A49C]">
+      <p className="mb-1 text-[16px] text-[#A8A49C]">
         文件 <span className="mx-1 text-[#5E5B55]">/</span>
         參考 <span className="mx-1 text-[#5E5B55]">/</span>
         <span className="text-[#EEECEA]">Risk Scanner 涵蓋範圍</span>
       </p>
-      <h1 className="text-[28px] font-semibold tracking-tight text-[#EEECEA]">Risk Scanner 涵蓋範圍與限制</h1>
-      <p className="mt-3 text-[16px] leading-relaxed text-[#A8A49C]">
+      <h1 className="text-[30px] font-semibold tracking-tight text-[#EEECEA]">Risk Scanner 涵蓋範圍與限制</h1>
+      <p className="mt-3 text-[18px] leading-relaxed text-[#A8A49C]">
         Skills Hub 的自動風險評分系統對齊{' '}
         <a href="https://owasp.org/www-project-top-10-for-large-language-model-applications/" className="text-[#C9C5F2] hover:underline">
           OWASP LLM Top 10 v1.1
@@ -122,7 +122,7 @@ export function RiskScannerScopePage() {
         OWASP LLM Top 10 涵蓋率 ≠ 100% 安全保證。Skills Hub 的掃描器偵測「known patterns」；novel attack 或 SKILL.md instructions 內語意層級風險仍須 consumer 自行評估。建議結合 risk-tier badge + 內文 review + 來源信任綜合判斷。
       </Callout>
 
-      <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[14px]">
+      <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[16px]">
         <Link to="/docs/risk-tiers" className="text-[#A8A49C] hover:text-[#EEECEA]">← 風險層級</Link>
         <span className="text-[#5E5B55]">完 ✓</span>
       </nav>
@@ -131,7 +131,7 @@ export function RiskScannerScopePage() {
 }
 
 function H2({ children }: { children: React.ReactNode }) {
-  return <h2 className="mt-10 text-[20px] font-semibold tracking-tight text-[#EEECEA]">{children}</h2>
+  return <h2 className="mt-10 text-[22px] font-semibold tracking-tight text-[#EEECEA]">{children}</h2>
 }
 
 type Coverage = 'covered' | 'partial' | 'gap' | 'oos'
@@ -162,7 +162,7 @@ function Item({
       style={{ backgroundColor: palette.bg, borderColor: palette.border }}
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-[14px] font-medium text-[#EEECEA]">{title}</h3>
+        <h3 className="text-[16px] font-medium text-[#EEECEA]">{title}</h3>
         <span
           className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider"
           style={{ color: palette.fg }}
@@ -185,7 +185,7 @@ function SummaryCard({ label, count, note }: { label: string; count: number; not
   return (
     <div className="rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-3">
       <p className="text-[11px] font-medium uppercase tracking-wider text-[#A8A49C]">{label}</p>
-      <p className="mt-1 font-mono text-[20px] font-medium text-[#EEECEA]">{count}</p>
+      <p className="mt-1 font-mono text-[22px] font-medium text-[#EEECEA]">{count}</p>
       <p className="mt-0.5 text-[11px] text-[#A8A49C]">{note}</p>
     </div>
   )
@@ -193,7 +193,7 @@ function SummaryCard({ label, count, note }: { label: string; count: number; not
 
 function Callout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-4 rounded-md border p-3 text-[14px] leading-relaxed text-[#A8A49C]" style={{ backgroundColor: 'rgba(127,119,221,0.08)', borderColor: 'rgba(127,119,221,0.20)' }}>
+    <div className="mt-4 rounded-md border p-3 text-[16px] leading-relaxed text-[#A8A49C]" style={{ backgroundColor: 'rgba(127,119,221,0.08)', borderColor: 'rgba(127,119,221,0.20)' }}>
       <Shield className="mr-1.5 inline-block h-3.5 w-3.5 text-[#C9C5F2]" />
       {children}
     </div>

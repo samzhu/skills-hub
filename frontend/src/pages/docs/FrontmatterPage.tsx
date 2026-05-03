@@ -10,13 +10,13 @@ import { DocsLayout } from '@/components/DocsLayout'
 export function FrontmatterPage() {
   return (
     <DocsLayout>
-      <p className="mb-1 text-[14px] text-[#A8A49C]">
+      <p className="mb-1 text-[16px] text-[#A8A49C]">
         文件 <span className="mx-1 text-[#5E5B55]">/</span>
         參考 <span className="mx-1 text-[#5E5B55]">/</span>
         <span className="text-[#EEECEA]">Frontmatter 欄位</span>
       </p>
-      <h1 className="text-[28px] font-semibold tracking-tight text-[#EEECEA]">Frontmatter 欄位</h1>
-      <p className="mt-3 text-[16px] leading-relaxed text-[#A8A49C]">
+      <h1 className="text-[30px] font-semibold tracking-tight text-[#EEECEA]">Frontmatter 欄位</h1>
+      <p className="mt-3 text-[18px] leading-relaxed text-[#A8A49C]">
         SKILL.md 開頭的 YAML 區塊。本表列出 agentskills.io v1.2 規範的所有欄位
         + Skills Hub 在地化解釋。必填 2 個，其餘皆 optional。
       </p>
@@ -52,13 +52,13 @@ export function FrontmatterPage() {
       />
 
       <Callout>
-        加了 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[14px] text-[#EEECEA]">allowed-tools</code> 或
-        <code className="ml-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[14px] text-[#EEECEA]">scripts/</code> 資料夾就會觸發風險掃描；
+        加了 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">allowed-tools</code> 或
+        <code className="ml-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">scripts/</code> 資料夾就會觸發風險掃描；
         詳細層級規則見{' '}
         <Link to="/docs/risk-tiers" className="text-[#C9C5F2] hover:underline">風險層級</Link>。
       </Callout>
 
-      <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[14px]">
+      <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[16px]">
         <Link to="/docs/skill-md-spec" className="text-[#A8A49C] hover:text-[#EEECEA]">
           ← SKILL.md 規範
         </Link>
@@ -71,7 +71,7 @@ export function FrontmatterPage() {
 }
 
 function H2({ children }: { children: React.ReactNode }) {
-  return <h2 className="mt-10 text-[20px] font-semibold tracking-tight text-[#EEECEA]">{children}</h2>
+  return <h2 className="mt-10 text-[22px] font-semibold tracking-tight text-[#EEECEA]">{children}</h2>
 }
 
 function FieldTable({
@@ -81,7 +81,7 @@ function FieldTable({
 }) {
   return (
     <div className="mt-3 overflow-hidden rounded-md border border-[rgba(255,255,255,0.06)]">
-      <table className="w-full text-[14px]">
+      <table className="w-full text-[16px]">
         <thead className="bg-[#0F0F12] text-[11px] uppercase tracking-wider text-[#A8A49C]">
           <tr>
             <th className="px-3 py-2 text-left font-semibold">欄位</th>
@@ -94,8 +94,8 @@ function FieldTable({
           {rows.map((r) => (
             <tr key={r.name} className="border-t border-[rgba(255,255,255,0.06)] align-top">
               <td className="px-3 py-2 font-mono text-[12.5px] text-[#EEECEA]">{r.name}</td>
-              <td className="px-3 py-2 font-mono text-[14px] text-[#A8A49C]">{r.type}</td>
-              <td className="px-3 py-2 text-[14px] text-[#A8A49C]">{r.limit}</td>
+              <td className="px-3 py-2 font-mono text-[16px] text-[#A8A49C]">{r.type}</td>
+              <td className="px-3 py-2 text-[16px] text-[#A8A49C]">{r.limit}</td>
               <td className="px-3 py-2 leading-relaxed text-[#A8A49C]">{r.note}</td>
             </tr>
           ))}
@@ -108,7 +108,7 @@ function FieldTable({
 function Callout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="mt-4 rounded-md border p-3 text-[14px] leading-relaxed text-[#A8A49C]"
+      className="mt-4 rounded-md border p-3 text-[16px] leading-relaxed text-[#A8A49C]"
       style={{ backgroundColor: 'rgba(239,159,39,0.08)', borderColor: 'rgba(239,159,39,0.20)' }}
     >
       {children}
