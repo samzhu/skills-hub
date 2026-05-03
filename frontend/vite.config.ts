@@ -26,6 +26,12 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      // S109: Spring Boot Actuator endpoints (health/info/prometheus/metrics) — 同 S108 pattern；
+      // dev curl /actuator/health 應返 actuator JSON 而非 SPA fallback HTML。
+      '/actuator': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
   test: {

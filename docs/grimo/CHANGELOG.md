@@ -1,5 +1,28 @@
 # Changelog
 
+## [v3.4.9] — Vite dev proxy for Spring Boot Actuator endpoints（S109 完成；2026-05-03）
+
+> Mode B Round 14 (extends S108 audit cut to actuator paths) Tick 16 audit 確認 dev environment proxy completeness gap continues：vite.config.ts proxy 已涵蓋 `/api/v1/*` + S108 加的 `/v3/api-docs` + `/swagger-ui`，但 actuator 路徑仍 fallback。Tick 16 同 tick full-ship（XS=1 pt 純 dev config）：proxy 加 `/actuator` prefix 一條規則 → 自動 cover all sub-paths (health/info/prometheus/metrics)；prod single-port deploy 不受影響。S108 §8 polish-backlog rule「proxy 應 mirror all backend-served paths」直接延伸驗證。
+
+### Changed
+- `frontend/vite.config.ts`：proxy table 加 `/actuator` 一條規則 → `http://localhost:8080`，與既有 `/api/v1/*` + S108 SpringDoc 規則同 target
+
+### Verified
+- Manual smoke: `curl :5173/actuator/health` → `200 application/vnd.spring-boot.actuator.v3+json`（before: `200 text/html` SPA fallback）✓
+- Manual smoke: `curl :5173/actuator` → 同 actuator JSON ✓
+- Vite dev server auto-restart pick up config change（不需手動重啟）
+
+### Why
+S108 §8 lesson 已建議 dev proxy 應 mirror all backend-served paths；S109 補上 actuator 延伸。累積 lesson：dev environment proxy table 該明確列出三類 backend 路徑 — (1) API endpoints (`/api/v1/*`) (2) API documentation (`/v3/api-docs`, `/swagger-ui/*`, S108) (3) Operational endpoints (`/actuator/*`, S109)。Future Spring Boot config 加新 backend-served path 時 dev proxy 應同步。
+
+### Process note
+S109 是首個 cron-bound agent **不經 Spec-Only-Handoff** 直接一 tick 全 ship 的 spec — XS=1 pure dev config + 同 S108 sibling pattern approach 已驗 + smoke < 1 min via curl。對 micro follow-up fix，single-tick full-ship 比 two-tick spec→implement handoff 高效。
+
+### Sibling chain
+S100e → S102 → S103 → S104 → S105 → S106 → S107 → S108 → **S109** 第 9 個 S100 META cross-cutting follow-up；cut 累積 9 層；S108 audit cut 延伸應用。
+
+---
+
 ## [v3.4.8] — Vite dev proxy for SpringDoc + footer API link UX（S108 完成；2026-05-03）
 
 > Mode B Round 13 (curl 對比 dev :5173 vs backend :8080 同 path response) Tick 14 audit 找到 dev environment proxy completeness gap：vite.config.ts proxy 只有 `/api/v1/*`，footer 「API」link `/v3/api-docs` 在 dev 環境 fallback 到 SPA NotFoundPage（prod single-port deploy 不受影響因 Spring Boot 同時 serve SPA + API + SpringDoc）。Tick 15 frontend-only fix：vite proxy 補 SpringDoc 兩條 (`/v3/api-docs` + `/swagger-ui`) + LandingPage footer link 從 raw JSON 改 Swagger UI（end-user 友善視覺 API explorer）。
