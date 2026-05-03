@@ -1,5 +1,44 @@
 # Changelog
 
+## [v3.6.0] — Request Board full feature（S096g2 完成；2026-05-03）
+
+> S096g2 跨 5 個 cron tick (Tick 17 spec planning + Tick 18-21 implement) ship — 取代 ✅ S096g1 read-only stub：完整 Request aggregate（ADR-002 canonical Spring Data JDBC 充血 + Modulith Outbox）+ vote toggle (atomic SQL 對齊 S076 download_count pattern) + claim/release/fulfill state machine + state-aware RequestActionBar UI。**MINOR bump** — 新 aggregate + 2 schema migrations + 5 domain events + 7 REST endpoints + 4 frontend components。為 S096h2 Notifications projection 提供 5 個 event hook。
+
+### Added — Backend
+- `backend/.../community/Request.java` — Aggregate root extends AbstractAggregateRoot + Persistable<String>；create/claim/release/fulfill/assertDeletable 充血方法 + registerEvent
+- `backend/.../community/RequestRepository.java` — Spring Data JDBC repo + `@Query` explicit ORDER BY（AOT codegen 對 derived compound sort 有 bug，workaround 用 annotation）
+- `backend/.../community/RequestService.java` — create/claim/release/fulfill/deleteRequest 3-line orchestration（load → mutate → save 觸發 @DomainEvents 自動 outbox publish）；fulfill 驗 SkillRepository.findById PUBLISHED
+- `backend/.../community/RequestVoteService.java` — atomic SQL toggle (INSERT ON CONFLICT DO NOTHING + UPDATE GREATEST(0, count±1) + DELETE)；對齊 S076 download_count pattern
+- `backend/.../community/RequestCommandController.java` — POST/DELETE endpoints (create/vote/claim/release/fulfill/delete)；reporter 從 CurrentUserProvider 抽 sub
+- `backend/.../community/RequestQueryController.java` — GET list 含 ?status=&sort= filter + GET single；RequestResponse DTO（不外洩 Persistable.isNew/version）
+- `backend/.../community/events/Request{Posted,Voted,Claimed,Released,Fulfilled}Event.java` — 5 個 record；future S096h2 listener 預留 hook
+- `backend/.../community/package-info.java` — community 正式註冊 `@ApplicationModule(allowedDependencies = "skill::domain,skill::query,shared::events,shared::api,shared::security")`
+- `backend/.../shared/api/{NotRequestClaimerException,SkillNotPublishableException}.java` + GlobalExceptionHandler 加 403/400 mapping
+- V10 migration — `requests` 表（含 status CHECK / vote_count CHECK >= 0 / 3 indexes 對齊 sort axis）+ `request_votes` 表（PRIMARY KEY (request_id, user_id) UNIQUE constraint + ON DELETE CASCADE）
+- `backend/src/test/.../community/RequestServiceTest.java` — 13 個 Testcontainers test 涵蓋 AC-1/2/3/4/7/8/9/10/11/12/13 + ModularityTests
+- `backend/src/test/.../community/RequestVoteServiceTest.java` — 5 個 race-aware test 涵蓋 AC-5/6 + 多 user 並發 + non-existent + DB CHECK guard
+
+### Added — Frontend
+- `frontend/src/api/skills.ts` — SkillRequest type 對齊 backend RequestResponse（votes → voteCount + 加 requesterId/claimerId/fulfilledSkillId/updatedAt）；fetchRequests 加 sort+status query；新增 fetchRequest / createRequest / toggleVote / claimRequest / releaseClaim / fulfillRequest / deleteRequest 7 個 helper + VoteResult/ClaimResult/FulfillResult/CreateRequestBody/RequestsQuery 5 個 type
+- `frontend/src/hooks/useRequests.ts` — list with sort+status；30s staleTime + refetchOnWindowFocus 對齊 useFlagsQueue
+- `frontend/src/hooks/useRequest.ts` — single detail；對齊 useSkill pattern
+- `frontend/src/components/CreateRequestModal.tsx` — title input + description textarea + useMutation + invalidate ['requests']
+- `frontend/src/components/VoteButton.tsx` — 樂觀更新 toggle (onMutate 即翻 voted+±1 → onSuccess sync server 真值 → onError rollback)；aria-pressed toggle pattern
+- `frontend/src/components/RequestActionBar.tsx` — 4 種 state-aware 按鈕（OPEN+requester→刪除 / OPEN+others→認領 / IN_PROGRESS+claimer→釋放+完成 / FULFILLED→查看技能 link）；fulfill 走 `window.prompt` MVP trim
+- `frontend/src/pages/RequestBoardPage.tsx` — 全面重建：CTA 啟用 + 串 useRequests + RequestRow 串 VoteButton + RequestActionBar
+- `frontend/src/pages/RequestBoardPage.test.tsx` — 取代 S103 disabled-button assertion（已退場）；新 AC-15/16/17 + S103 「no spec ID leak」invariant carry-forward
+
+### Verified
+- Backend：RequestServiceTest 13/13 + RequestVoteServiceTest 5/5 PASS @ Testcontainers + ModularityTests 2/2 PASS
+- Frontend：RequestBoardPage.test.tsx 3/3 PASS @ 1.54s（AC-15 list+CTA / AC-16 create modal / AC-17 vote 樂觀更新）；npx tsc --noEmit PASS
+
+### Why
+- **補完 ✅ S096g1 stub**：S096g1 ship 為 read-only EmptyState + disabled CTA；本 spec 把 backend `[]` stub 升為實 aggregate + UI 啟用「發起 → 投票 → 認領 → 完成」完整流程，對齊 PRD §P8 SBE Scenarios。
+- **走 ADR-002 canonical pattern**：Spring Data JDBC 充血聚合 + Modulith Outbox + 第 5 次跨模組 NamedInterface SPI（review 模組 Tick 11 + community 模組 Tick 18）— ModularityTests 整 session 從未壞，邊界守則 effective。
+
+### Deviations
+- 詳 spec doc archive §7（7 項 implementation deviations + 4 個 pattern echoes）
+
 ## [v3.5.1] — Flag write flow + reviewer queue（S098e3 完成；2026-05-03）
 
 > S098e3 跨 5 個 cron tick (Tick 12 spec planning + Tick 13-16 implement) ship — 補完 ✅ S112 (read 端) 對應的 write + reviewer 端：FlagSubmitModal 提交 form + FlagsQueuePage reviewer queue + FlagController PATCH status mutation。**零 schema migration**（status 既是 String 欄位，純應用層 enum 擴充 OPEN→RESOLVED/DISMISSED + 既有 row 100% 相容）。
