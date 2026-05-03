@@ -19,9 +19,11 @@ export const FLAG_TYPE_LABEL: Record<Flag['type'], string> = {
 export const FLAG_STATUS_LABEL: Record<Flag['status'], string> = {
   OPEN: '待處理',
   RESOLVED: '已處理',
+  DISMISSED: '已駁回', // S098e3：reviewer 認為非問題（假警報）
 }
 
 export const FLAG_STATUS_STYLE: Record<Flag['status'], { backgroundColor: string; color: string }> = {
-  OPEN: { backgroundColor: 'rgba(239,159,39,0.14)', color: '#FAC775' },
-  RESOLVED: { backgroundColor: 'rgba(29,158,117,0.14)', color: '#6FD8B0' },
+  OPEN: { backgroundColor: 'rgba(239,159,39,0.14)', color: '#FAC775' },     // warning-soft
+  RESOLVED: { backgroundColor: 'rgba(29,158,117,0.14)', color: '#6FD8B0' }, // success-soft
+  DISMISSED: { backgroundColor: 'rgba(94,91,85,0.18)', color: '#A8A49C' },  // neutral-soft（per DESIGN.md tertiary palette）
 }

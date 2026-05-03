@@ -77,4 +77,17 @@ export function useFlagsQueue(status?: Flag['status']) {
 T01（backend endpoints 需 ship 才能跑 manual smoke；test 走 mock 不阻塞）
 
 ## Status
-pending
+✅ shipped 2026-05-03 cron Tick 14
+
+## Result
+
+純 type/hook + label const infra：3 個檔案 modify/new。
+
+**Files changed**：
+- `frontend/src/api/flags.ts` (modify) — Flag.status type union 加 'DISMISSED'；新 `CreateFlagBody` interface + `createFlag` / `fetchFlagsByStatus` / `updateFlagStatus` helpers
+- `frontend/src/lib/flag-labels.ts` (modify) — FLAG_STATUS_LABEL 加 `DISMISSED: '已駁回'`；FLAG_STATUS_STYLE 加 neutral-soft palette (per DESIGN.md tertiary)
+- `frontend/src/hooks/useFlagsQueue.ts` (new) — TanStack Query hook 30s staleTime + refetchOnWindowFocus（reviewer queue 期望 fresh）
+
+**Verification**：
+- typecheck 0 error
+- FlagsList.test.tsx 2/2 regression PASS — Flag.status union 擴充向下相容（既有 OPEN test fixture 仍綠）
