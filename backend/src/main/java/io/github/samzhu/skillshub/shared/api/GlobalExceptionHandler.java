@@ -140,6 +140,22 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse("not_request_claimer", ex.getMessage(), Instant.now()));
 	}
 
+	/** S096h2-T03 AC-6/AC-8 — Notification id 不存在 → 404 notification_not_found。 */
+	@ExceptionHandler(NotificationNotFoundException.class)
+	ResponseEntity<ErrorResponse> handleNotificationNotFound(NotificationNotFoundException ex) {
+		log.atWarn().addKeyValue("errorCode", "notification_not_found").log("Notification not found");
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse("notification_not_found", ex.getMessage(), Instant.now()));
+	}
+
+	/** S096h2-T03 AC-6/AC-8 — Notification mark-read/delete actor 非 recipient → 403。 */
+	@ExceptionHandler(NotNotificationRecipientException.class)
+	ResponseEntity<ErrorResponse> handleNotNotificationRecipient(NotNotificationRecipientException ex) {
+		log.atWarn().addKeyValue("errorCode", "not_notification_recipient").log("Notification operation forbidden");
+		return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				.body(new ErrorResponse("not_notification_recipient", ex.getMessage(), Instant.now()));
+	}
+
 	/**
 	 * S037：處理 multipart 超 size 限制（{@link MaxUploadSizeExceededException}）。
 	 *

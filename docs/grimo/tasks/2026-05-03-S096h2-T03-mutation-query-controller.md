@@ -79,4 +79,28 @@ CurrentUserProvider 抽 sub。
 - T01 + T02（aggregates / repos / listener 都 ship；本 task 對外暴露 mutation API）
 
 ## Status
-pending
+shipped 2026-05-03 — commit pending（本 tick 內）
+
+## Result
+
+- **Files**：
+  - `shared/api/NotificationNotFoundException.java`（new）+ `NotNotificationRecipientException.java`（new）
+  - `shared/api/GlobalExceptionHandler.java`（modify — 加 404 / 403 mapping）
+  - `notification/NotificationService.java`（new — markRead / markAllRead / delete / updatePreferences / getPreferences）
+  - `notification/NotificationQueryService.java`（new — list with cursor + category / unreadCount；Slice pattern with limit+1 hasNext derivation）
+  - `notification/NotificationController.java`（rewrite — 7 endpoints；DTO records inline）
+  - `test/.../notification/NotificationServiceTest.java`（new — 12 tests, AC-6/7/8/9 + AC-list cursor + category isolation）
+  - `test/.../notification/NotificationControllerTest.java`（new — 10 tests, @WebMvcTest slice extending `WebMvcSliceTestBase`）
+- **Tests**：
+  - NotificationServiceTest 12/12 PASS @ 0.287s
+  - NotificationControllerTest 10/10 PASS @ 4.21s
+  - NotificationProjectionListenerTest 6/6 PASS（regression）
+  - NotificationModuleSmokeTest 8/8 PASS（regression）
+  - ModularityTests 2/2 PASS（無 violation）
+- **Design notes**：
+  - Slice pattern 走 `limit + 1` 多查一筆 derive `hasNext` — 避 COUNT(*) 災難；FE 用 `last(items).id` 推導 next cursor
+  - mark-all-read 走 `@Modifying SQL UPDATE WHERE recipient AND read_at IS NULL`（既有 partial index `idx_notifications_recipient_unread`），不走「N 次 load + save aggregate」
+  - getPreferences 純讀；無 row 回 in-memory `defaults`（不 INSERT）— 避免「user 點開 settings 但沒 save」也產生 row 的副作用
+  - updatePreferences upsert：無 row 走 defaults factory（version=null → INSERT），有 row load + update（version=N → UPDATE）
+  - Controller DTO 對齊 frontend Notification interface（spec §4.7）：8 字段（id / category / title / body / skillId / refEventId / readAt / createdAt）；list 包 wrapper `{items, hasNext}`
+  - 兩個新 exception 對齊既有 `RequestNotFoundException` / `NotRequestClaimerException` 命名 + GlobalExceptionHandler error code 走 spec §4.1 small-snake-case（`notification_not_found` / `not_notification_recipient`）便於 FE i18n key 對應
