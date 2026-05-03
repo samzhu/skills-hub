@@ -1,7 +1,9 @@
 # S096g2: Request Board Full Feature (aggregate + voting + claim + fulfillment)
 
-> Spec: S096g2 | Size: S(11) re-est from M(10-12) | Status: ⏳ Design
+> Spec: S096g2 | Size: S(11) re-est from M(10-12) | Status: 🚧 in-progress (4 tasks queued — cron tick handoff)
 > Date: 2026-05-03
+
+> **Tasks**: T01 backend aggregate + service + claim/fulfill/delete endpoints + V10 schema → T02 vote toggle service + endpoint + race tests → T03 frontend infra (api/skills.ts request mutations + useRequests/useRequest hooks) → T04 RequestBoardPage CTA + CreateRequestModal + VoteButton + RequestActionBar + tests。Execution order T01→T02→T03→T04（T03 type-only 可平行 T01/T02）。
 
 ---
 
