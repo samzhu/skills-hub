@@ -1,52 +1,80 @@
 #!/usr/bin/env bash
 # -----------------------------------------------------------------------------
-# Skills Hub — Cloud Run deployment (S013)
+# Skills Hub — Cloud Run deployment
 #
-# 部署當前 git short SHA 對應的 image 到 Cloud Run。
-# Env vars 用 `^@^` 自訂分隔符語法（§2.6 校正項），因 SPRING_PROFILES_ACTIVE
-# 的值含 comma 會被預設 comma 分隔誤切。
-# Secret 透過 --update-secrets 注入為 env var（不直接寫進 service config）。
-# (AC-7)
+# 流程：
+#   1. envsubst 把 scripts/gcp/service.yaml 內 ${...} placeholder 渲染成
+#      scripts/gcp/service.rendered.yaml（注入當前 git SHA / SA / instance / 等）
+#   2. gcloud run services replace 部署 multi-container service
+#      （app + cloud-sql-proxy sidecar，含 container-dependencies + probes）
+#   3. 授權 allUsers → roles/run.invoker（公開 service URL）
+#
+# `services replace` 是宣告式更新：service.yaml 是 single source of truth；
+# 任何 gcloud-CLI 改動會被下次 replace 蓋掉。
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
-: "${GCP_PROJECT_ID:?need GCP_PROJECT_ID}"
+: "${GCP_PROJECT_ID:?need GCP_PROJECT_ID; source scripts/gcp/.env first}"
 : "${GCP_REGION:?need GCP_REGION}"
 
 AR_REPO_NAME="${AR_REPO_NAME:-skillshub}"
 IMAGE_NAME="${IMAGE_NAME:-skillshub}"
-SERVICE_ACCOUNT_NAME="${SERVICE_ACCOUNT_NAME:-skillshub-runtime}"
 CLOUD_RUN_SERVICE_NAME="${CLOUD_RUN_SERVICE_NAME:-skillshub}"
+SERVICE_ACCOUNT_NAME="${SERVICE_ACCOUNT_NAME:-skillshub-runtime}"
 GCS_BUCKET_NAME="${GCS_BUCKET_NAME:-${GCP_PROJECT_ID}-skillshub-pkg}"
-SHA="$(git rev-parse --short HEAD)"
+CLOUDSQL_INSTANCE_NAME="${CLOUDSQL_INSTANCE_NAME:-skillshub-db}"
+DB_NAME="${DB_NAME:-skillshub}"
+DB_USER="${DB_USER:-skillshub_app}"
+CLOUD_RUN_CPU="${CLOUD_RUN_CPU:-1}"
+CLOUD_RUN_MEMORY="${CLOUD_RUN_MEMORY:-1Gi}"
+CLOUD_RUN_MAX_INSTANCES="${CLOUD_RUN_MAX_INSTANCES:-10}"
+SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-lab,gcp}"
 
-IMG="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO_NAME}/${IMAGE_NAME}:${SHA}"
-SA_EMAIL="${SERVICE_ACCOUNT_NAME}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+# envsubst 是 GNU gettext 的 cli；macOS 預設沒有，需 `brew install gettext`
+if ! command -v envsubst &>/dev/null; then
+  echo "ERROR: envsubst not found"
+  echo "  install (macOS): brew install gettext"
+  echo "  install (Linux): apt-get install gettext-base / dnf install gettext"
+  exit 1
+fi
+
+# TAG 對齊 03-build-push.sh：未指定則用 git short SHA。
+# 指定特定版本部署：TAG=v1.2.3 ./scripts/gcp/04-deploy.sh
+TAG="${TAG:-$(git rev-parse --short HEAD)}"
+
+# 全部 export 給 envsubst 用
+# 注：service.yaml 不引用 ${GCP_PROJECT_ID}（project-id 由 Cloud Run metadata server 自動提供給 SDK）；
+# GCP_PROJECT_ID 仍在上方用來組 IMG / SA_EMAIL / CLOUDSQL_INSTANCE_CONN
+export GCP_REGION CLOUD_RUN_SERVICE_NAME GCS_BUCKET_NAME DB_NAME DB_USER
+export CLOUD_RUN_CPU CLOUD_RUN_MEMORY CLOUD_RUN_MAX_INSTANCES SPRING_PROFILES_ACTIVE
+export IMG="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO_NAME}/${IMAGE_NAME}:${TAG}"
+export SA_EMAIL="${SERVICE_ACCOUNT_NAME}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+export CLOUDSQL_INSTANCE_CONN="${GCP_PROJECT_ID}:${GCP_REGION}:${CLOUDSQL_INSTANCE_NAME}"
+
+TMPL="scripts/gcp/service.yaml"
+RENDERED="scripts/gcp/service.rendered.yaml"
+
+echo "▸ Render ${TMPL} → ${RENDERED}"
+envsubst < "${TMPL}" > "${RENDERED}"
 
 echo "▸ Deploy ${CLOUD_RUN_SERVICE_NAME} → ${IMG}"
-
-# --set-env-vars 用 `^@^` 自訂分隔符（gcloud 標準寫法）：
-#   - `^DELIM^` 開頭告訴 gcloud 用 `DELIM` 分隔 key=value pairs
-#   - 用 `@` 是因 env var 名 / 值幾乎不可能含 `@`，比 `,` / `;` 更安全
-#   - 文件：https://cloud.google.com/run/docs/configuring/services/environment-variables
-gcloud run deploy "${CLOUD_RUN_SERVICE_NAME}" \
-  --image="${IMG}" \
+gcloud run services replace "${RENDERED}" \
   --region="${GCP_REGION}" \
-  --service-account="${SA_EMAIL}" \
-  --allow-unauthenticated \
-  --port=8080 \
-  --memory="${CLOUD_RUN_MEMORY:-512Mi}" \
-  --cpu="${CLOUD_RUN_CPU:-1}" \
-  --min-instances=0 \
-  --max-instances="${CLOUD_RUN_MAX_INSTANCES:-10}" \
-  --timeout=300 \
-  --set-env-vars="^@^SPRING_PROFILES_ACTIVE=gcp,prod@GCP_PROJECT_ID=${GCP_PROJECT_ID}@SKILLSHUB_STORAGE_BUCKET=${GCS_BUCKET_NAME}" \
-  --update-secrets="SKILLSHUB_GENAI_API_KEY=skillshub-genai-api-key:latest"
+  --quiet
+
+echo "▸ Allow public access (allUsers → roles/run.invoker)"
+gcloud run services add-iam-policy-binding "${CLOUD_RUN_SERVICE_NAME}" \
+  --member=allUsers \
+  --role=roles/run.invoker \
+  --region="${GCP_REGION}" \
+  --quiet >/dev/null
 
 URL="$(gcloud run services describe "${CLOUD_RUN_SERVICE_NAME}" \
         --region="${GCP_REGION}" \
         --format='value(status.url)')"
 
 echo "✓ deployed: ${URL}"
-echo "  health check:  curl ${URL}/actuator/health"
-echo "  skills API:    curl ${URL}/api/v1/skills"
+echo "  health:    curl ${URL}/actuator/health"
+echo "  readiness: curl ${URL}/actuator/health/readiness"
+echo "  liveness:  curl ${URL}/actuator/health/liveness"
+echo "  skills:    curl ${URL}/api/v1/skills"

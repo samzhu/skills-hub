@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # -----------------------------------------------------------------------------
-# Skills Hub — GCP teardown (S013, AC-9)
+# Skills Hub — GCP teardown
 #
-# 刪除 01~04 創的所有 GCP 資源；GCP project 本身保留（避免誤刪）。
-# 互動 yes/no 確認；嚴格匹配 "yes"，避免 typo（如 "y"、"YES"）誤觸發。
+# 刪除順序（dependency-aware）：
+#   Cloud Run service → Cloud SQL instance → Artifact Registry repo
+#   → GCS bucket → 3 secrets → Service Account
 #
+# 互動 yes/no 確認；嚴格匹配 "yes"，避免 typo（'y'/'Y'/'YES'）誤觸發。
 # 失敗的 delete 用 `|| true` 吞掉（資源可能本就不存在；不該因 partial state 卡住）。
+# Project 本身不刪；要連 project 一起砍：gcloud projects delete ${GCP_PROJECT_ID}
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
@@ -13,19 +16,21 @@ set -euo pipefail
 : "${GCP_REGION:?need GCP_REGION}"
 
 read -r -p "Delete ALL skillshub resources in ${GCP_PROJECT_ID}? Type 'yes' to confirm: " CONFIRM
-# 嚴格比對小寫 yes，避免 'y' / 'Y' / 'YES' 等變體誤觸發
 [[ "${CONFIRM}" == "yes" ]] || { echo "abort"; exit 1; }
 
 AR_REPO_NAME="${AR_REPO_NAME:-skillshub}"
-FIRESTORE_DB_ID="${FIRESTORE_DB_ID:-skillshub}"
 GCS_BUCKET_NAME="${GCS_BUCKET_NAME:-${GCP_PROJECT_ID}-skillshub-pkg}"
 SERVICE_ACCOUNT_NAME="${SERVICE_ACCOUNT_NAME:-skillshub-runtime}"
-CLOUD_RUN_SERVICE_NAME="${CLOUD_RUN_SERVICE_NAME:-skillshub}"
 SA_EMAIL="${SERVICE_ACCOUNT_NAME}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
+CLOUDSQL_INSTANCE_NAME="${CLOUDSQL_INSTANCE_NAME:-skillshub-db}"
+CLOUD_RUN_SERVICE_NAME="${CLOUD_RUN_SERVICE_NAME:-skillshub}"
 
 echo "▸ Cloud Run service: ${CLOUD_RUN_SERVICE_NAME}"
 gcloud run services delete "${CLOUD_RUN_SERVICE_NAME}" \
   --region="${GCP_REGION}" --quiet || true
+
+echo "▸ Cloud SQL instance: ${CLOUDSQL_INSTANCE_NAME}"
+gcloud sql instances delete "${CLOUDSQL_INSTANCE_NAME}" --quiet || true
 
 echo "▸ Artifact Registry repo: ${AR_REPO_NAME}"
 gcloud artifacts repositories delete "${AR_REPO_NAME}" \
@@ -35,11 +40,10 @@ echo "▸ GCS bucket: gs://${GCS_BUCKET_NAME}"
 # --recursive 順便清掉 bucket 內容（否則非空 bucket 不能刪）
 gcloud storage rm --recursive "gs://${GCS_BUCKET_NAME}" --quiet || true
 
-echo "▸ Firestore database: ${FIRESTORE_DB_ID}"
-gcloud firestore databases delete --database="${FIRESTORE_DB_ID}" --quiet || true
-
-echo "▸ Secret: skillshub-genai-api-key"
-gcloud secrets delete skillshub-genai-api-key --quiet || true
+echo "▸ Secrets (2)"
+for name in skillshub-db-password skillshub-genai-api-key; do
+  gcloud secrets delete "${name}" --quiet || true
+done
 
 echo "▸ Service Account: ${SA_EMAIL}"
 gcloud iam service-accounts delete "${SA_EMAIL}" --quiet || true

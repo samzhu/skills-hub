@@ -1,0 +1,171 @@
+# =============================================================================
+# Skills Hub — Cloud Run multi-container service template
+# =============================================================================
+# 架構：
+#   ┌─ app (8080, ingress) ───────┐
+#   │     Spring Boot              │
+#   │     JDBC: user / password    │
+#   │           │                  │
+#   │     localhost:5432           │
+#   │           ▼                  │
+#   │   cloud-sql-proxy ───────────┼──► TLS ──► Cloud SQL PostgreSQL 18
+#   │   (sidecar, 無對外 port)     │            + pgvector (CREATE EXTENSION)
+#   └──────────────────────────────┘
+#
+# 帳密 mode：
+#   - DB user / DB name / storage bucket — env var（非機敏值，envsubst 注入）
+#   - DB password / GenAI API key       — Secret Manager（由 spring-cloud-gcp
+#     secretmanager 在 application-gcp.yaml 透過 ${sm@<secret-id>} placeholder
+#     直接 resolve；service.yaml 不擺 secretKeyRef）
+# 所有 ${...} placeholder 由 04-deploy.sh 透過 envsubst 渲染。
+#
+# Env name 命名慣例：
+#   - 應用程式自有屬性走 Spring property 名 (dot.lower.case) — K8s
+#     RelaxedEnvironmentVariableValidation 自 2025-06-28 GA 後 Cloud Run 接受
+#     dot 字元；env name 直接對齊 SkillshubProperties.java 的 @ConfigurationProperties
+#     prefix，省去命名翻譯
+#   - container env 全部走 dot.lower.case；包含 spring.profiles.active
+#
+# 必要 envsubst 輸入（.env 集中 export，由 04-deploy.sh 注給 envsubst）：
+#   GCP_REGION                — 用於 metadata.labels
+#   CLOUD_RUN_SERVICE_NAME    — service 名
+#   CLOUD_RUN_CPU / CLOUD_RUN_MEMORY / CLOUD_RUN_MAX_INSTANCES — 資源 / autoscaling
+#   SPRING_PROFILES_ACTIVE    — 餵 container env spring.profiles.active 的值
+#   IMG                       — 完整 Artifact Registry image URI（含 tag）
+#   SA_EMAIL                  — runtime service account 完整 email
+#   CLOUDSQL_INSTANCE_CONN    — <project>:<region>:<instance>
+#   DB_NAME / DB_USER / GCS_BUCKET_NAME — 應用 env var 值
+#
+# project-id 不需注入 — Cloud Run metadata server 自動提供，所有 GCP SDK 自己 resolve。
+#
+# Resource：app 1 CPU / 1Gi（per CLOUD_RUN_MEMORY） + sidecar 1 CPU / 256Mi
+#         = 整 instance 2 CPU / 1280Mi（滿足 Cloud Run 2-CPU 最小 1024Mi memory）。
+# Probes：startup + liveness 雙探針 — startup 過了才啟 liveness（per Cloud Run gen2）。
+#
+# 部署：
+#   envsubst < scripts/gcp/service.yaml > scripts/gcp/service.rendered.yaml
+#   gcloud run services replace scripts/gcp/service.rendered.yaml --region=${GCP_REGION}
+# =============================================================================
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ${CLOUD_RUN_SERVICE_NAME}
+  labels:
+    cloud.googleapis.com/location: ${GCP_REGION}
+  annotations:
+    # 允許 internet 直接打到 service URL；要鎖內網改 internal-and-cloud-load-balancing
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        # === Sidecar 啟動順序：app 等 cloud-sql-proxy 先 ready ===
+        # 用此 feature 必須有 startup probe（Cloud Run 官方要求）— 已在下方 containers 設定
+        run.googleapis.com/container-dependencies: '{"app":["cloud-sql-proxy"]}'
+        # === Autoscaling ===
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "${CLOUD_RUN_MAX_INSTANCES}"
+        # === Startup CPU boost：startup 期間每 container 依其 CPU limit 自動 boost，
+        # 大幅縮短 Spring Boot cold start（30–90s → 10–30s）。
+        # 計費：boost 期間（container 啟動 + 10s）按 boosted CPU rate 收費；總額小（一次性）。
+        # Multi-container：所有 container 都受惠，各自依自身 cpu limit 決定 boost 量。 ===
+        run.googleapis.com/startup-cpu-boost: "true"
+        # === Execution environment：sidecar 模式必須走 gen2 ===
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      serviceAccountName: ${SA_EMAIL}
+      timeoutSeconds: 300
+      containerConcurrency: 80
+      containers:
+        # ─────────────────────────────────────────────────────────────────────
+        # Main app container（ingress；唯一可宣告對外 port）
+        # ─────────────────────────────────────────────────────────────────────
+        - name: app
+          image: ${IMG}
+          ports:
+            - name: http1
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: "${CLOUD_RUN_CPU}"
+              memory: "${CLOUD_RUN_MEMORY}"
+          env:
+            # Profile 套用順序：base → behavior（lab/prod）→ infra（gcp）
+            # 行為先載讓基礎設定就位；infra 後載補 GCP 專屬設定 / 覆蓋衝突項
+            # 由 .env 內 SPRING_PROFILES_ACTIVE shell var 決定（預設 lab,gcp；正式 prod,gcp）
+            - name: spring.profiles.active
+              value: ${SPRING_PROFILES_ACTIVE}
+            # 以下走 Spring property 名 1:1 — 直接對齊 application.yaml
+            # 注：project-id 不顯式注入 — Cloud Run runtime metadata server 自動提供，
+            #     spring-cloud-gcp 與 google-cloud-* SDK 都會 fallback 走 metadata 拿到
+            - name: skillshub.storage.bucket
+              value: ${GCS_BUCKET_NAME}
+            # Cloud SQL：透過 sidecar 連 localhost:5432（與 dev Docker Compose 同條 URL；ADR-001 §4.4 dev/prod parity）
+            - name: skillshub.db.name
+              value: ${DB_NAME}
+            # DB user：非機敏值，直接 env var（envsubst 注入；改 user 重跑 04-deploy.sh）
+            - name: skillshub.db.user
+              value: ${DB_USER}
+            # 機敏值（DB password / GenAI API key）不在這裡注入 — 由 spring-cloud-gcp
+            # secretmanager 在 application-gcp.yaml 透過 ${sm@<secret-id>} placeholder
+            # 在 startup 時直接從 Secret Manager 拉取（runtime SA 已有 secretAccessor role）。
+            # 對應 secret：skillshub-db-password / skillshub-genai-api-key
+          # Startup：HTTP 探 readiness（Spring Boot Actuator /actuator/health/readiness 含 db check）
+          # — 確保 Flyway migration + Hikari pool + Modulith 都 ready 才放行 traffic
+          startupProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60   # 60 × 5s = 5 min；首次 cold start + Flyway migration 餘裕
+          # Liveness：startup 過後每 30s 探一次 — 連續 3 次 fail 視為 deadlock，container 重啟
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+        # ─────────────────────────────────────────────────────────────────────
+        # Cloud SQL Auth Proxy sidecar（不對外開 port；僅 listen localhost:5432）
+        # ─────────────────────────────────────────────────────────────────────
+        - name: cloud-sql-proxy
+          # 釘 minor version。發版查 https://github.com/GoogleCloudPlatform/cloud-sql-proxy/releases
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.21.3
+          args:
+            - "--port=5432"
+            # 暴露 /startup /liveness /readiness 在 9090（給下方 startupProbe / livenessProbe 探）
+            - "--health-check"
+            - "--http-address=0.0.0.0"
+            # 結構化 log 對齊 Cloud Logging LogEntry
+            - "--structured-logs"
+            # 預設走 public IP + 加密 tunnel；instance 走 private IP 才打開下行
+            # （搭 Cloud Run --vpc-egress=private-ranges-only + Direct VPC egress / Serverless VPC Access）
+            # - "--private-ip"
+            # Connection string 必須是最後一個 positional arg
+            - "${CLOUDSQL_INSTANCE_CONN}"
+          resources:
+            limits:
+              cpu: "1"
+              memory: "256Mi"
+          startupProbe:
+            httpGet:
+              path: /startup
+              port: 9090
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 12   # 12 × 5s = 60s；proxy 啟動快
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 9090
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+  traffic:
+    - latestRevision: true
+      percent: 100

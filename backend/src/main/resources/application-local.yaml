@@ -24,10 +24,12 @@ spring:
   # 本機 Docker Compose pgvector 容器暴露 localhost:5432；
   # GCP Cloud Run 由 cloud-sql-proxy sidecar 也 listen localhost:5432。
   # 預設值對齊 backend/compose.yaml 的 POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD。
+  # Placeholder 走 dot.lower.case 對齊 service.yaml / application-gcp.yaml 慣例；
+  # 本機 dev 仍可用 SKILLSHUB_DB_NAME 等大寫 env var 覆蓋（Spring relaxed binding 雙向匹配）。
   datasource:
-    url: jdbc:postgresql://localhost:5432/${SKILLSHUB_DB_NAME:mydatabase}
-    username: ${SKILLSHUB_DB_USER:myuser}
-    password: ${SKILLSHUB_DB_PASSWORD:secret}
+    url: jdbc:postgresql://localhost:5432/${skillshub.db.name:mydatabase}
+    username: ${skillshub.db.user:myuser}
+    password: ${skillshub.db.password:secret}
 
   autoconfigure:
     # Profile YAML 覆蓋（非合併）base 的 exclude list，因此必須重複 base 的排除項。
@@ -42,6 +44,10 @@ spring:
       # 本機無 GCP 憑證，停用 GCP 服務。改由 gcp profile 啟用。
       # T7 後 google-cloud-firestore dep 已移除，無需 firestore.enabled 設定。
       storage:
+        enabled: false
+      # spring-cloud-gcp-starter-secretmanager 走 application-gcp.yaml 的 sm@ resolver；
+      # 本機 dev 無 GCP 憑證，明確 disable 避免 startup 嘗試連 SM API
+      secretmanager:
         enabled: false
 
 # ----- S027: dev 模式 LAB security path -----

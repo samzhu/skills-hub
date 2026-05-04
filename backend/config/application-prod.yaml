@@ -4,7 +4,7 @@
 # Profile: prod
 # 用途: GCP Cloud Run 正式部署行為 — INFO 日誌、限縮 actuator endpoint。
 #       springdoc 已由 application.yaml 預設關閉，不需重複。
-# 啟動: SPRING_PROFILES_ACTIVE=gcp,prod
+# 啟動: SPRING_PROFILES_ACTIVE=prod,gcp（順序：behavior 先、infra 後）
 # =============================================================================
 
 # 正式環境僅開放 health 與 info（避免洩漏內部資訊）

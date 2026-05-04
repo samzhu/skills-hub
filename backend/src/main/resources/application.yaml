@@ -9,13 +9,18 @@
 #     local   — Docker Compose（本機開發，預設）
 #     gcp     — GCP 服務（Cloud Run 部署）
 #
-#   行為 profile（config/，Spring Boot 外部配置目錄）：
-#     dev     — 開發行為（DEBUG log、完整 actuator、springdoc、引入 secrets）
-#     prod    — 正式行為（INFO log、限縮 actuator）
+#   行為 profile（config/；prod / lab 由 build.gradle.kts processResources 拷進 image）：
+#     dev     — 開發行為（DEBUG log、完整 actuator、springdoc、引入 secrets；本地專用，不拷進 image）
+#     prod    — 正式行為（INFO log、限縮 actuator；隨 image ship）
+#     lab     — 封測 / MVP 行為（OAuth off、完整 actuator、springdoc、DEBUG app log；隨 image ship）
+#
+# Profile 順序慣例：behavior 先、infra 後（行為 profile 先把基礎設定就位，
+# infra profile 再覆蓋 GCP 專屬項，例如 sm@ 機制需 application-gcp.yaml 啟用）
 #
 # 啟動範例：
-#   本機開發：./gradlew bootRun              → 自動套用 local,dev
-#   GCP 部署：SPRING_PROFILES_ACTIVE=gcp,prod
+#   本機開發：./gradlew bootRun                       → 自動套用 local,dev
+#   GCP 封測：SPRING_PROFILES_ACTIVE=lab,gcp
+#   GCP 正式：SPRING_PROFILES_ACTIVE=prod,gcp
 # =============================================================================
 
 spring:

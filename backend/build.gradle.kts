@@ -31,7 +31,6 @@ dependencies {
 	// implementation("org.springframework.boot:spring-boot-micrometer-tracing-brave")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	// implementation("org.springframework.boot:spring-boot-starter-cache")
-	// S014: PostgreSQL data layer（取代 spring-boot-starter-data-mongodb）
 	implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
 	implementation("org.springframework.boot:spring-boot-starter-jdbc")
 	// S014 T8: Spring AI core artifact（非 auto-config starter）
@@ -41,9 +40,12 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
-	// S014 T7: google-cloud-firestore dep 移除（決策 #10；FirestoreVectorStore.java 同步刪除）
 	implementation("com.google.cloud:spring-cloud-gcp-starter")
 	implementation("com.google.cloud:spring-cloud-gcp-starter-storage")
+	// Spring Cloud GCP Secret Manager — 供 application-gcp.yaml 內 ${sm@<secret-id>}
+	// placeholder 在 startup 時自動 resolve 成實際值（取代 Cloud Run secretKeyRef block）。
+	// BOM 已 manage 8.0.2；無需顯式版本。
+	implementation("com.google.cloud:spring-cloud-gcp-starter-secretmanager")
 	implementation("io.micrometer:micrometer-tracing-bridge-brave")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
 	implementation("org.springframework.ai:spring-ai-markdown-document-reader")
@@ -66,10 +68,6 @@ dependencies {
 	runtimeOnly("org.flywaydb:flyway-database-postgresql")
 	// S014: PostgreSQL JDBC driver
 	runtimeOnly("org.postgresql:postgresql")
-	// NOTE: Cloud SQL Java Connector (com.google.cloud.sql:postgres-socket-factory)
-	// 加入會觸發 spring-cloud-gcp-autoconfigure 的 CloudSqlEnvironmentPostProcessor，
-	// 要求 spring.cloud.gcp.sql.database-name；屬 T5 GCP profile 完整配置範圍，
-	// T1 不引入。
 	runtimeOnly("io.micrometer:micrometer-registry-otlp")
 	developmentOnly("org.springframework.ai:spring-ai-spring-boot-docker-compose")
 	runtimeOnly("org.springframework.modulith:spring-modulith-actuator")
@@ -128,8 +126,14 @@ val copyFrontend by tasks.registering(Copy::class) {
 	into(layout.buildDirectory.dir("resources/main/static"))
 }
 
-tasks.named("processResources") {
+tasks.named<Copy>("processResources") {
 	dependsOn(copyFrontend)
+	// 把 backend/config/application-{prod,lab}.yaml 拷進 image classpath，讓 Cloud Run
+	// 跑 SPRING_PROFILES_ACTIVE=gcp,prod 或 gcp,lab 時能載入。
+	// dev profile 與 secrets properties 維持本地專用，不拷。
+	from(projectDir.resolve("config")) {
+		include("application-prod.yaml", "application-lab.yaml")
+	}
 }
 
 tasks.withType<Test> {

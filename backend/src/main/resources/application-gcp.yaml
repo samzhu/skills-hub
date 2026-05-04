@@ -1,20 +1,30 @@
 # =============================================================================
-# GCP 基礎設施配置 — Cloud SQL Auth Proxy sidecar 模式（S014 修訂）
+# GCP 基礎設施配置 — Cloud Run multi-container + Cloud SQL Auth Proxy sidecar
 # =============================================================================
 # Profile: gcp
 # 用途:    部署至 GCP Cloud Run（multi-container：main app + cloud-sql-proxy sidecar）
-#          - main container：Skills Hub Spring Boot
-#          - sidecar container：gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
-#                              listen on localhost:5432，IAM auth 自動處理
+#          - main container: Skills Hub Spring Boot
+#          - sidecar:       gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.21.3
+#                           listen on localhost:5432
 #          - 兩 container 共享 Cloud Run instance 的 localhost network namespace
-#          GCS（StorageService）由 Workload Identity 自動提供憑證；
-#          embedding API key 由 env var SKILLSHUB_GENAI_API_KEY 注入。
-# 啟動:    SPRING_PROFILES_ACTIVE=gcp,prod
-# 部署:    `gcloud run services replace service.yaml`（CLI flag 對 sidecar 受限）
+#
+#          GCS（StorageService）由 Workload Identity 自動提供憑證（runtime SA）。
+#          機敏值（DB password / GenAI API key）走 spring-cloud-gcp-starter-secretmanager
+#          的 ${sm@<secret-id>} placeholder 在 startup 時從 Secret Manager 拉取。
+#
+# 啟動:    SPRING_PROFILES_ACTIVE=lab,gcp   （封測 / MVP，OAuth off）
+#          SPRING_PROFILES_ACTIVE=prod,gcp  （正式，OAuth on）
+#          順序：behavior 先、infra (gcp) 後（infra 補 GCP 專屬如 sm@ resolver）
+# 部署:    `gcloud run services replace scripts/gcp/service.rendered.yaml`
 #
 # JDBC URL 與本機 Docker Compose 同條 — dev/prod parity（ADR-001 §4.4）：
 #   jdbc:postgresql://localhost:5432/<db>
 # 應用端無 postgres-socket-factory dep；標準 JDBC client 即可。
+#
+# 命名慣例（與 service.yaml + .env 對齊）：
+#   - Cloud Run env name 走 dot.lower.case 對齊 Spring property name
+#     （K8s RelaxedEnvironmentVariableValidation 自 2025-06-28 GA 接受 dot 字元）
+#   - Secret Manager secret-id 仍走 hyphen-case（API 命名規範限制 [A-Za-z0-9_-]）
 # =============================================================================
 
 spring:
@@ -23,14 +33,21 @@ spring:
       # Cloud Run 無 Docker Compose，停用以避免啟動錯誤
       enabled: false
 
+  # ----- Spring Cloud GCP Secret Manager（啟用 ${sm@<secret-id>} placeholder） -----
+  # spring-cloud-gcp-starter-secretmanager 8.x 走 Spring Boot Config Data API：
+  # 設定 spring.config.import=sm@ 後，registers SecretManagerConfigDataLocationResolver，
+  # 任何 yaml 內 ${sm@<secret-id>} 都會被 resolve 成 Secret Manager 對應 secret 的最新版本值。
+  # Project-id 從 ADC（runtime SA credentials）自動推斷，無需顯式設定。
+  config:
+    import: sm@
+
   # ----- Cloud SQL Auth Proxy sidecar 連線 -----
-  # SKILLSHUB_DB_USER / SKILLSHUB_DB_PASSWORD 由 Secret Manager 注入（延續 S013 模式）
-  # SKILLSHUB_DB_NAME 預設 skillshub（可由 env var 覆蓋）
-  # 無 SKILLSHUB_DB_HOST — sidecar 固定 listen localhost:5432
+  # 環境變數對齊 Spring property 名稱（service.yaml env name 走 dot.lower.case）
+  # password 直接走 ${sm@...}：Spring 啟動時拉 Secret Manager skillshub-db-password 最新版本
   datasource:
-    url: jdbc:postgresql://localhost:5432/${SKILLSHUB_DB_NAME:skillshub}
-    username: ${SKILLSHUB_DB_USER}
-    password: ${SKILLSHUB_DB_PASSWORD}
+    url: jdbc:postgresql://localhost:5432/${skillshub.db.name:skillshub}
+    username: ${skillshub.db.user}
+    password: ${sm@skillshub-db-password}
     hikari:
       # db-f1-micro max_connections=25 - 5 reserved = 20 ÷ 5 (Cloud Run max instances) = 4 → 取 3 留 buffer
       maximum-pool-size: 3
@@ -45,37 +62,17 @@ spring:
     gcp:
       storage:
         enabled: true
-      # 無 firestore 設定（T7 將連 dep 一起移除）
+      # secretmanager 預設 enabled=true；project-id 從 ADC 推斷，無需顯式設定。
+      # 對應 IAM role：roles/secretmanager.secretAccessor（已由 01-bootstrap.sh 授權給 runtime SA）
 
-# GCP 部署啟用 LlmJudge（要求 SKILLSHUB_GENAI_API_KEY 同時提供，否則 bean 不建立）
+# GCP 部署 LlmJudge 啟用（要求 skillshub.genai.api-key 同時提供）
+# Google AI Studio Gemini API key（取得：https://aistudio.google.com/apikey）
+# 走 generativelanguage.googleapis.com 端點 + API key auth；**非** Vertex AI（無需 roles/aiplatform.user）
+# 從 Secret Manager 拉取 skillshub-genai-api-key
 skillshub:
+  genai:
+    api-key: ${sm@skillshub-genai-api-key}
   scanner:
     engines:
       llm:
         enabled: true
-
-# -----------------------------------------------------------------------------
-# Cloud Run multi-container service.yaml 部署範本（部署層使用，本檔不啟動）：
-# -----------------------------------------------------------------------------
-# apiVersion: serving.knative.dev/v1
-# kind: Service
-# metadata:
-#   name: skillshub
-# spec:
-#   template:
-#     spec:
-#       containers:
-#         - name: app
-#           image: gcr.io/$PROJECT_ID/skillshub:latest
-#           ports: [{ containerPort: 8080 }]
-#           env:
-#             - { name: SPRING_PROFILES_ACTIVE, value: gcp }
-#             - { name: SKILLSHUB_DB_NAME, value: skillshub }
-#             - { name: SKILLSHUB_DB_USER, valueFrom: { secretKeyRef: { name: db-user, key: latest } } }
-#             - { name: SKILLSHUB_DB_PASSWORD, valueFrom: { secretKeyRef: { name: db-password, key: latest } } }
-#         - name: cloud-sql-proxy
-#           image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
-#           args:
-#             - "--port=5432"
-#             - "--auto-iam-authn"
-#             - "$PROJECT_ID:$REGION:skillshub-db"

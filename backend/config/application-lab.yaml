@@ -1,0 +1,51 @@
+# =============================================================================
+# LAB 環境行為配置 — 封測 / MVP 內部測試
+# =============================================================================
+# Profile: lab
+# 用途: GCP Cloud Run 上跑 LAB / 封測 / MVP — OAuth 關閉、SecurityFilterChain 走
+#       LAB 分支（permitAll + LabSecurityFilter 注入 lab-user / ROLE_admin）；
+#       Springdoc 開啟方便 QA 測 API；actuator 完整暴露便於 ops 診斷。
+#
+# 啟動: SPRING_PROFILES_ACTIVE=lab,gcp（順序：behavior 先、infra 後）
+#
+# 注意:
+#   - lab × prod 互斥；不可同時帶（後者會覆蓋 OAuth 設定）。
+#   - 與 gcp profile 同用：infra (gcp) × behavior (lab) 雙層 profile 設計。
+#   - 此檔由 backend/build.gradle.kts 透過 processResources 自訂 from() 拷貝進
+#     image classpath，因此 Cloud Run 啟動時可載入（dev profile 與 secrets
+#     properties 維持本地專用，不拷）。
+# =============================================================================
+
+# ----- LAB 模式核心：關 OAuth → SecurityFilterChain 走 LAB 分支 -----
+# - JwtDecoder bean 不建立、anyRequest permitAll
+# - LabSecurityFilter 注入 lab user (principal=lab-user, authorities=[ROLE_admin])
+# - DelegatingPermissionEvaluator 對 ROLE_admin 短路 bypass，所有 @PreAuthorize 通過
+skillshub:
+  security:
+    oauth:
+      enabled: false
+    lab:
+      user-id: lab-user
+
+# ----- 完整 actuator 暴露（封測 QA 診斷需要） -----
+# 對齊 dev profile：health/info/metrics/env/configprops/beans/mappings/modulith
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env,configprops,beans,mappings,modulith
+
+# ----- 開啟 API 文件（QA 探索 API；對齊 dev 體驗） -----
+# `version: openapi_3_1` — SpringDoc 3.x 顯式產 OpenAPI 3.1.0 spec
+springdoc:
+  api-docs:
+    enabled: true
+    version: openapi_3_1
+  swagger-ui:
+    enabled: true
+
+# ----- 應用 DEBUG 便於 LAB 報錯重現；framework 維持 INFO 避免 log 量爆 -----
+logging:
+  level:
+    root: INFO
+    io.github.samzhu.skillshub: DEBUG
