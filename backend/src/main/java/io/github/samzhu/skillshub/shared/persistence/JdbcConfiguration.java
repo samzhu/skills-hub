@@ -4,11 +4,15 @@ import java.util.List;
 import java.util.Map;
 
 import org.postgresql.util.PGobject;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.convert.ReadingConverter;
 import org.springframework.data.convert.WritingConverter;
+import org.springframework.data.jdbc.core.dialect.JdbcDialect;
+import org.springframework.data.jdbc.core.dialect.JdbcPostgresDialect;
 import org.springframework.data.jdbc.repository.config.AbstractJdbcConfiguration;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -38,6 +42,19 @@ public class JdbcConfiguration extends AbstractJdbcConfiguration {
 
     public JdbcConfiguration(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+    }
+
+    /**
+     * Override 預設 dialect 偵測 — {@link AbstractJdbcConfiguration#jdbcDialect}
+     * 預設透過 {@link NamedParameterJdbcOperations} 跑 connection metadata query
+     * 自動偵測 dialect。S132 起改顯式回 {@link JdbcPostgresDialect#INSTANCE}：
+     * 我們 100% PostgreSQL（never MySQL/Oracle），不需 auto-detect；
+     * 同時解決 Spring Boot AOT processing 階段（無真實 DB 連線）這條 path 會炸的問題。
+     */
+    @Bean
+    @Override
+    public JdbcDialect jdbcDialect(NamedParameterJdbcOperations operations) {
+        return JdbcPostgresDialect.INSTANCE;
     }
 
     @Override

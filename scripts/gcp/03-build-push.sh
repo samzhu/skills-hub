@@ -21,6 +21,16 @@ TAG="${TAG:-$(git rev-parse --short HEAD)}"
 IMG_BASE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO_NAME}/${IMAGE_NAME}"
 IMG="${IMG_BASE}:${TAG}"
 
+echo "▸ Build frontend (npm ci + npm run build)"
+# S132：Gradle 不再 invoke npm；script 自己跑前端 build 後拷進 backend static，
+# 維持與 CI cloudbuild.yaml step 1+2 同行為（同一份 dist 餵進 bootBuildImage）。
+( cd frontend && npm ci && npm run build )
+
+echo "▸ Copy frontend/dist → backend/src/main/resources/static"
+rm -rf backend/src/main/resources/static
+mkdir -p backend/src/main/resources/static
+cp -r frontend/dist/. backend/src/main/resources/static/
+
 echo "▸ Configure docker auth for ${GCP_REGION}-docker.pkg.dev"
 gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
 

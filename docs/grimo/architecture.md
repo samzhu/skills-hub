@@ -414,15 +414,25 @@ frontend/
 
 ### Build Integration
 
-Gradle task `buildFrontend` 在 Spring Boot build 之前執行：
+Gradle 不 invoke npm（S132 起解耦）。前端 build 與後端 image build 在 CI 兩條 lane
+串接；本機 dev 兩端獨立啟動，避免前端 TS 錯誤擋住後端 `bootRun`。
 
 ```
-./gradlew build
-  → npm install (frontend/)
-  → npm run build (frontend/ → dist/)
-  → copy dist/* → backend/src/main/resources/static/
-  → Spring Boot jar build
-  → Docker image
+本機 dev（並行兩 terminal）
+─────────────────────────────────────────────
+  cd frontend && npm run dev          ← Vite hot reload @ 5173
+  cd backend  && ./gradlew bootRun    ← Spring Boot @ 8080（純後端）
+
+CI（Cloud Build trigger: push to main）— S132
+─────────────────────────────────────────────
+  Step 1  node:22                    npm ci && npm run build
+  Step 2  alpine                     cp -r frontend/dist/. backend/src/main/resources/static/
+  Step 3  eclipse-temurin:25-jdk     ./gradlew bootBuildImage --imageName=<AR>:$SHORT_SHA
+  images: <AR>:$SHORT_SHA            ← Cloud Build 自動 push 到 Artifact Registry
+
+本機 manual deploy（保留路徑；scripts/gcp/03-build-push.sh）
+─────────────────────────────────────────────
+  Script 自帶 npm ci + npm run build + cp 三步前置，後接 bootBuildImage + docker push（SHA + :latest 雙 tag）
 ```
 
 ---

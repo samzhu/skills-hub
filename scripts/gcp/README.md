@@ -67,6 +67,24 @@ source scripts/gcp/.env && \
 
 修 code → commit → 跑 `03-build-push.sh && 04-deploy.sh`。
 
+## Cloud Build 包版（手動 `gcloud builds submit`）
+
+S132 把 build 路徑搬到 GCP — 本機只跑 `gcloud builds submit`，frontend/backend image 都在 Cloud Build 跑、自動 push 到 Artifact Registry。沒裝 Java/Docker 的機器也能包版。
+
+完整指南見 [BUILD.md](./BUILD.md)（前置、一次性 setup、每次包版指令、tag 慣例、troubleshoot）。
+
+```bash
+# 簡版
+export GCP_PROJECT_ID=<your-project>
+export GCP_REGION=asia-east1
+gcloud builds submit \
+  --config=cloudbuild.yaml \
+  --project=$GCP_PROJECT_ID \
+  --substitutions=_REGION=$GCP_REGION,_TAG=$(date -u +%Y%m%d-%H%M%S)
+```
+
+兩條包版路徑（`03-build-push.sh` 本機 / `cloudbuild.yaml` 經 `gcloud builds submit`）寫到 AR 的 image path 一致；`04-deploy.sh` 對任一 tag 都能 deploy。
+
 ## 拆除
 
 ```bash
@@ -84,6 +102,7 @@ source scripts/gcp/.env && \
 | `04-deploy.sh` | envsubst 渲染 service.yaml + `gcloud run services replace` |
 | `99-teardown.sh` | 刪除所有 skillshub 資源（保留 project） |
 | `service.yaml` | Cloud Run multi-container 範本（含 sidecar、probes、resources） |
+| `BUILD.md` | Cloud Build 手動包版指南（`gcloud builds submit`） |
 | `DEPLOYMENT.md` | 完整部署指南 |
 
 ## 關鍵設計

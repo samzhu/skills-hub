@@ -1,0 +1,28 @@
+# =============================================================================
+# AOT 編譯 + Paketo Training Run 專用配置
+# =============================================================================
+# Profile: aot
+# 用途：
+#   - Spring Boot processAot Gradle task（build-time AOT artifacts）
+#   - Paketo BP_JVM_AOTCACHE_ENABLED=true 觸發的 training run（build-time class loading）
+#
+# **不要在 runtime 啟用此 profile**。Cloud Run 部署用 SPRING_PROFILES_ACTIVE=gcp,prod
+# 或 gcp,lab 蓋掉，aot profile 永不在 runtime active。
+#
+# 主要 stub 邏輯在 Java config（不放這裡是因 Spring Boot 4 AOT processing 不跑
+# @ConfigurationProperties binding，profile yaml override 不生效）：
+#   - DataSource bean → src/main/java/.../shared/aot/AotStubConfig.java（@Profile("aot")）
+#   - JdbcDialect → JdbcConfiguration.jdbcDialect() override（永久生效，避開 connection
+#                   metadata 偵測查詢；100% PostgreSQL 不需 auto-detect）
+#
+# 本 yaml 只放 Java config 解不掉的開關（plugin / auto-config 排除）。
+# =============================================================================
+
+spring:
+  # 跳過 Flyway migration（AOT/training run 階段沒真實 DB 連線）
+  flyway:
+    enabled: false
+  # 排除 GCP context auto-config — CI 沒 GCP metadata server 會炸
+  autoconfigure:
+    exclude:
+      - com.google.cloud.spring.autoconfigure.core.GcpContextAutoConfiguration

@@ -1,0 +1,97 @@
+# Cloud Build pipeline — build frontend + backend image, push to Artifact Registry.
+#
+# 範圍：build only。Deploy 到 Cloud Run 不在本 pipeline（手動跑 scripts/gcp/04-deploy.sh）。
+# Trigger setup：見 scripts/gcp/README.md「CI Cloud Build trigger」段。
+#
+# 對應 spec：docs/grimo/specs/2026-05-04-S132-ci-cloud-build.md §4.1
+
+substitutions:
+  # 包版要的兩個變數：region 與 image tag。Project 用 Cloud Build built-in $PROJECT_ID
+  # （submit 時 gcloud 自動帶當前 active project），不重複定義。
+  _REGION: asia-east1
+  # Image tag — 預設 latest；submit 時建議帶 timestamp 流水號（YYYYMMDD-HHMMSS）
+  # 或指定 release 版號 _TAG=v1.2.3。手動 submit 沒有 git context，$SHORT_SHA 會空字串，
+  # 故不用 built-in。
+  _TAG: latest
+  # 與 scripts/gcp/03-build-push.sh:14-15 同預設，CI 與本機 path 同 image
+  _AR_REPO: skillshub
+  _IMAGE_NAME: skillshub
+  _IMG_PATH: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_IMAGE_NAME}
+
+options:
+  # 把 substitutions 自動注入 step env，免得每 step 重複 env: 列表
+  automapSubstitutions: true
+  # 允許 substitution 互相引用（_IMG_PATH 內含 ${PROJECT_ID}）；
+  # trigger 觸發時自動為 true，gcloud builds submit 需顯式宣告
+  dynamicSubstitutions: true
+  # 8 vCPU / 8GB；npm + Paketo bootBuildImage 跑舒適。
+  # Paketo phases 主要 sequential（detect → restore → build → export），單模組 Gradle
+  # 升 32 vCPU 邊際效益小但價錢 4x，不值。
+  machineType: E2_HIGHCPU_8
+  # 不要求 GCS log bucket（runtime SA 不需要 storage role）
+  logging: CLOUD_LOGGING_ONLY
+  # diskSizeGb 預設 100GB（實際用量 ~2-4GB），明寫沒效果；觀察到 "no space left"
+  # 才升到 200GB 以上。
+
+# 25 分鐘 hard cap（npm ~2min + Paketo first-run ~6min；後續 cache hit 更短）
+timeout: 1500s
+
+steps:
+  # 1. Frontend build — npm clean install + vite production build
+  - id: frontend-build
+    name: node:22
+    dir: frontend
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        npm ci
+        npm run build
+
+  # 2. Copy frontend dist → backend static dir（清掉舊內容避免殘留）
+  - id: copy-static
+    name: alpine
+    waitFor: [frontend-build]
+    entrypoint: sh
+    args:
+      - -ceu
+      - |
+        rm -rf backend/src/main/resources/static
+        mkdir -p backend/src/main/resources/static
+        cp -r frontend/dist/. backend/src/main/resources/static/
+
+  # 3. Backend OCI image — Paketo bootBuildImage 寫進 local Docker daemon。
+  #    Spring Boot 的 docker-java client 直接走 Unix socket，無需 docker CLI。
+  #    Flags（CI 慣例）：
+  #      --no-daemon  CI ephemeral container，daemon 沒必要 keep-alive（Gradle 官方推薦）
+  #      -x test      跳測試（CI 應由獨立 step 跑 test 而非阻擋 image build）
+  #    NOT 加 clean — workspace ephemeral，沒東西可 clean，純加 cost。
+  #    NOT 設 GRADLE_USER_HOME — 只一個 Gradle step 無跨 step reuse，留預設即可；
+  #    將來加 test step 時再啟用 /workspace/.gradle 跨 step cache。
+  #    BP_JVM_CDS_ENABLED=false 在 backend/build.gradle.kts bootBuildImage task
+  #    block 設定（Spring Boot 4 + Java 25 + CDS 有 known issue
+  #    paketo-buildpacks/spring-boot#581）；JVM 版本由 Paketo 從 manifest auto-detect。
+  - id: boot-build-image
+    # BellSoft Liberica JDK 25 LTS — 對齊 Paketo Java buildpack 預設 runtime JVM
+    # （Paketo Java buildpack 對 Java 25 預設 distribution 為 Liberica），build-time
+    # 與 runtime JVM 同 vendor，行為一致 / debug 同 codebase。
+    # See: https://bell-sw.com/blog/liberica-jdk-25-lts-release-a-long-term-foundation-for-java-applications/
+    name: bellsoft/liberica-openjdk-debian:25
+    waitFor: [copy-static]
+    dir: backend
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        chmod +x gradlew
+        ./gradlew --no-daemon -x test bootBuildImage \
+          --imageName=${_IMG_PATH}:${_TAG}
+    env:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+
+# Cloud Build 在 build 結束時自動把以下 image 從 local daemon push 到 AR。
+# 不寫 step 4 自己跑 docker push — runtime SA 已預設帶 AR docker auth。
+images:
+  - ${_IMG_PATH}:${_TAG}
+
+tags: [skillshub, ci, build-push]

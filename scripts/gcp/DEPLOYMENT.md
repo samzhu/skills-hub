@@ -430,6 +430,8 @@ gcloud secrets versions access latest --secret=skillshub-db-password | head -c 2
 
 ## Step 9 — Build OCI image（本地 `./gradlew bootBuildImage`）
 
+> **Or 用 Cloud Build 包版（不需本機 Java/Docker）** — `gcloud builds submit --config=cloudbuild.yaml ...` 把 build 跑在 GCP，image 自動 push 到 AR；接 Step 11 帶 `TAG=<剛包好的 tag>` 跑 04-deploy.sh。詳 [BUILD.md](./BUILD.md)。
+
 ```bash
 # TAG 可自訂版本號；不指定走 git short SHA
 export TAG=$(git rev-parse --short HEAD)   # 或 export TAG=v1.2.3
@@ -456,7 +458,7 @@ docker images "${IMG_BASE}" --format "{{.Repository}}:{{.Tag}} {{.Size}}"
 
 **失敗時**：
 - `bootBuildImage` OOM → Docker Desktop Resources 調 ≥ 4GB
-- 卡在 frontend npm build → `cd frontend && npm install` 一次
+- 卡在 frontend npm build → `cd frontend && npm install` 一次（S132 起 03-build-push.sh 已自帶 `npm ci && npm run build`）
 
 ---
 

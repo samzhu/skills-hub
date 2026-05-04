@@ -2,6 +2,10 @@ plugins {
 	java
 	id("org.springframework.boot") version "4.0.6"
 	id("io.spring.dependency-management") version "1.1.7"
+	// S132：org.graalvm.buildtools.native 走官方標準 plugin。auto-apply boot.aot
+	// → processAot task 註冊 → Spring Boot AOT artifacts 烤進 jar。
+	// 我們目前不做 native binary（部署用 Paketo JVM image），但 plugin 留著
+	// 以便將來想試 native compile 時 0 line 改即可。
 	id("org.graalvm.buildtools.native") version "0.11.5"
 	id("org.cyclonedx.bom") version "3.2.4"
 	jacoco
@@ -20,7 +24,7 @@ repositories {
 	mavenCentral()
 }
 
-extra["springAiVersion"] = "2.0.0-M4"
+extra["springAiVersion"] = "2.0.0-M5"
 extra["springCloudGcpVersion"] = "8.0.2"
 extra["springCloudVersion"] = "2025.1.1"
 extra["springModulithVersion"] = "2.0.6"
@@ -100,40 +104,69 @@ dependencyManagement {
 	}
 }
 
-val frontendDir = file("${rootProject.projectDir}/../frontend")
-
-val npmInstall by tasks.registering(Exec::class) {
-	workingDir = frontendDir
-	commandLine("npm", "install")
-	inputs.file(frontendDir.resolve("package.json"))
-	outputs.dir(frontendDir.resolve("node_modules"))
-}
-
-val npmBuild by tasks.registering(Exec::class) {
-	dependsOn(npmInstall)
-	workingDir = frontendDir
-	commandLine("npm", "run", "build")
-	inputs.dir(frontendDir.resolve("src"))
-	inputs.file(frontendDir.resolve("package.json"))
-	inputs.file(frontendDir.resolve("vite.config.ts"))
-	inputs.file(frontendDir.resolve("tsconfig.json"))
-	outputs.dir(frontendDir.resolve("dist"))
-}
-
-val copyFrontend by tasks.registering(Copy::class) {
-	dependsOn(npmBuild)
-	from(frontendDir.resolve("dist"))
-	into(layout.buildDirectory.dir("resources/main/static"))
-}
-
 tasks.named<Copy>("processResources") {
-	dependsOn(copyFrontend)
 	// 把 backend/config/application-{prod,lab}.yaml 拷進 image classpath，讓 Cloud Run
 	// 跑 SPRING_PROFILES_ACTIVE=gcp,prod 或 gcp,lab 時能載入。
 	// dev profile 與 secrets properties 維持本地專用，不拷。
+	//
+	// S132：前端 dist 不再走 Gradle。由 CI cloudbuild.yaml step 2（或本機
+	// scripts/gcp/03-build-push.sh）拷進 src/main/resources/static/；本機 bootRun
+	// 純後端，frontend hot reload 改 `cd frontend && npm run dev`（避開 frontend
+	// TS 錯誤擋住後端啟動）。
 	from(projectDir.resolve("config")) {
 		include("application-prod.yaml", "application-lab.yaml")
 	}
+}
+
+// S132：processAot 階段啟用 `aot` profile —— 載入 application-aot.yaml + 觸發
+// AotStubConfig（@Profile("aot")）提供 stub DataSource bean。
+// args() 走 SimpleCommandLinePropertySource（最高優先級），覆蓋
+// application.yaml 的 spring.profiles.default。Per Spring Boot AOT how-to。
+// Ref: https://docs.spring.io/spring-boot/how-to/aot.html
+tasks.withType<org.springframework.boot.gradle.tasks.aot.ProcessAot>().configureEach {
+	args("--spring.profiles.active=aot")
+}
+
+// S132: bootBuildImage Paketo buildpack 環境變數
+//
+// 兩層 AOT 並存：
+//   1. Spring Boot AOT (build-time)        — graalvm plugin 觸發 processAot task，產
+//                                            ApplicationContextInitializer 烤進 jar
+//   2. JVM AOT Cache (Paketo training run) — BP_JVM_AOTCACHE_ENABLED=true 讓 buildpack
+//                                            在 build 跑一次 app capture class loading，
+//                                            存 .aot file 進 image，runtime JVM 載入
+//                                            (Java 25 JEP 514；docs.spring.io/spring-boot
+//                                            /how-to/aot-cache.html)
+//
+// 變數說明：
+//   BP_JVM_AOTCACHE_ENABLED=true              啟用 AOT Cache training run + 烤進 image
+//   BP_JVM_CDS_ENABLED=false                  暫關 CDS — Spring Boot 4 + Java 25 + CDS
+//                                             known bug (paketo-buildpacks/spring-boot#581)
+//   TRAINING_RUN_JAVA_TOOL_OPTIONS=...        Training run 階段 JVM args；阻止連 DB / GCP
+//                                             等 remote services（Paketo 官方 hook，per
+//                                             spring-projects/spring-lifecycle-smoke-tests/
+//                                             blob/main/README.adoc#training-run-configuration）
+//   BPE_APPEND_JAVA_TOOL_OPTIONS=             Runtime JVM 載入 Spring Boot AOT artifacts
+//     -Dspring.aot.enabled=true               （非必要，Paketo Spring Boot buildpack 偵測
+//                                             META-INF/native-image 後自動設；顯式寫保險）
+//   BPE_DELIM_JAVA_TOOL_OPTIONS=" "           多個 JAVA_TOOL_OPTIONS 用空白接
+//
+// BP_JVM_VERSION 不顯式設 — Paketo Java buildpack 從 jar 內 META-INF/MANIFEST.MF 的
+// `Build-Jdk-Spec` header auto-detect（由 Spring Boot Gradle plugin 從
+// java.toolchain.languageVersion line 14-16，目前 25 寫入）。
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootBuildImage>("bootBuildImage") {
+	// graalvm.buildtools.native plugin 貢獻 META-INF/native-image/ metadata 到 jar，
+	// Paketo native-image buildpack 偵測到後 auto-trigger 真實 native binary 編譯
+	// （15+ 分鐘）。我們只要 JVM AOT artifacts 給 runtime 用，不要 native compile。
+	environment.put("BP_NATIVE_IMAGE", "false")
+	environment.put("BP_JVM_AOTCACHE_ENABLED", "true")
+	environment.put("BP_JVM_CDS_ENABLED", "false")
+	// Training run 啟用 aot profile 載入 application-aot.yaml stub config（同 ProcessAot
+	// 一份來源，不重複維護）。Spring Boot 從 -D 系統屬性讀 spring.profiles.active；
+	// Paketo 把 TRAINING_RUN_JAVA_TOOL_OPTIONS 注進 training run JVM。
+	environment.put("TRAINING_RUN_JAVA_TOOL_OPTIONS", "-Dspring.profiles.active=aot")
+	environment.put("BPE_DELIM_JAVA_TOOL_OPTIONS", " ")
+	environment.put("BPE_APPEND_JAVA_TOOL_OPTIONS", "-Dspring.aot.enabled=true")
 }
 
 tasks.withType<Test> {
