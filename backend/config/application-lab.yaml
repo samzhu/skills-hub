@@ -1,42 +1,66 @@
 # =============================================================================
-# LAB 環境行為配置 — 封測 / MVP 內部測試
+# LAB 環境行為配置 — 封測 / MVP（搭配 GCP infra）
 # =============================================================================
 # Profile: lab
-# 用途: GCP Cloud Run 上跑 LAB / 封測 / MVP — OAuth 關閉、SecurityFilterChain 走
-#       LAB 分支（permitAll + LabSecurityFilter 注入 lab-user / ROLE_admin）；
-#       Springdoc 開啟方便 QA 測 API；actuator 完整暴露便於 ops 診斷。
+# 用途: GCP Cloud Run 上跑 LAB / 封測 / MVP；OAuth 走 real IdP；提供 lab 環境
+#       具體值（DB / bucket / IdP / secret 名稱 / pool 大小等）。
 #
-# 啟動: SPRING_PROFILES_ACTIVE=lab,gcp（順序：behavior 先、infra 後）
+# 啟動: spring.profiles.active=lab,gcp（順序：behavior 先、infra 後）
+#       Cloud Run env 名直接走 dot；shell 環境變數用 SPRING_PROFILES_ACTIVE 等價
 #
-# 注意:
-#   - lab × prod 互斥；不可同時帶（後者會覆蓋 OAuth 設定）。
-#   - 與 gcp profile 同用：infra (gcp) × behavior (lab) 雙層 profile 設計。
-#   - 此檔由 backend/build.gradle.kts 透過 processResources 自訂 from() 拷貝進
-#     image classpath，因此 Cloud Run 啟動時可載入（dev profile 與 secrets
-#     properties 維持本地專用，不拷）。
+# 部署註: 此檔由 backend/build.gradle.kts processResources 拷進 image classpath，
+#         Cloud Run 啟動可載入（dev / secrets properties 維持本地專用，不拷）。
 # =============================================================================
 
-# ----- LAB 模式核心：關 OAuth → SecurityFilterChain 走 LAB 分支 -----
-# - JwtDecoder bean 不建立、anyRequest permitAll
-# - LabSecurityFilter 注入 lab user (principal=lab-user, authorities=[ROLE_admin])
-# - DelegatingPermissionEvaluator 對 ROLE_admin 短路 bypass，所有 @PreAuthorize 通過
-skillshub:
+spring:
+  # ----- DataSource pool-size override（base 帶 url/user/password placeholder + 通用 timing） -----
+  # 其他 hikari 設定 (timeout/lifetime/keepalive/leak-detection) 在 base 已設好
+  datasource:
+    hikari:
+      # db-f1-micro: max_connections=25 - 5 reserved = 20 / 5 instance ≈ 4 → 取 3 留 buffer
+      maximum-pool-size: 3
+      minimum-idle: 1
+
+  # ----- OAuth2 Resource Server：lab IdP（real OAuth；繼承 Java default enabled=true）-----
+  # TODO 部署人員填入 lab IdP issuer URL（範例：https://accounts.google.com）
+  # 留 ${...:} 空 default：startup 不 fail，但首個 JWT 請求才探（Spring Security 7 lazy discovery）
   security:
-    oauth:
-      enabled: false
-    lab:
-      user-id: lab-user
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${skillshub.oauth.issuer-uri:}
+
+# ----- LAB env 應用屬性 -----
+skillshub:
+  # ----- DataSource 變數 — Cloud SQL via Auth Proxy sidecar -----
+  # url: 與 prod 相同 URL pattern（差異只在 db name 由 env var 覆蓋）
+  # user / password: 不在 yaml 寫死；由 Cloud Run env var 注入
+  #   skillshub.db.user      — service.yaml 注 literal 值（${DB_USER}）
+  #   skillshub.db.password  — service.yaml 注 ${sm@skillshub-db-password} URI
+  #                            Spring 啟動時遞迴 resolve 至 Secret Manager 實際值
+  db:
+    url: jdbc:postgresql://localhost:5432/${skillshub.db.name:skillshub}?ApplicationName=skillshub&currentSchema=public&reWriteBatchedInserts=true&socketTimeout=30
+
+  # GCS bucket — Cloud Run env var skillshub.storage.bucket 高優先（service.yaml 注入 ${GCS_BUCKET_NAME}）
+  # 此處 fallback 預設值；TODO 部署人員確認對應 lab bucket 名（每 env 應不同）
+  storage:
+    bucket: ${skillshub.storage.bucket:skillshub-packages-lab}
+
+  # Gemini API key 走統一注入：
+  #   - Cloud Run env var skillshub.genai.api-key=${sm@skillshub-genai-api-key} 遞迴 resolve
+  #   - 本機 application-secrets.properties skillshub.genai.api-key=AIzaSy... 直接注入
+  # 不重複寫 yaml — @ConfigurationProperties relaxed binding 自動完成
+
+  # LlmJudge engine 預設 enabled=true（Java @DefaultValue），不重複寫
 
 # ----- 完整 actuator 暴露（封測 QA 診斷需要） -----
-# 對齊 dev profile：health/info/metrics/env/configprops/beans/mappings/modulith
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,env,configprops,beans,mappings,modulith
 
-# ----- 開啟 API 文件（QA 探索 API；對齊 dev 體驗） -----
-# `version: openapi_3_1` — SpringDoc 3.x 顯式產 OpenAPI 3.1.0 spec
+# ----- 開啟 API 文件（QA 探索 API） -----
 springdoc:
   api-docs:
     enabled: true
@@ -44,8 +68,7 @@ springdoc:
   swagger-ui:
     enabled: true
 
-# ----- 應用 DEBUG 便於 LAB 報錯重現；framework 維持 INFO 避免 log 量爆 -----
+# ----- 應用 DEBUG 便於 LAB 報錯重現；framework 維持 INFO（root 預設）-----
 logging:
   level:
-    root: INFO
     io.github.samzhu.skillshub: DEBUG

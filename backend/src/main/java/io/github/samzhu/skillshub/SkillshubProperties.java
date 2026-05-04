@@ -41,14 +41,13 @@ public record SkillshubProperties(
     /**
      * 向量搜尋後端設定。
      *
-     * @param vectorStore 後端實作：{@code simple}（記憶體，本機開發）或
-     *                    {@code firestore}（持久化，GCP 部署）；
-     *                    可透過 env var {@code SKILLSHUB_SEARCH_VECTOR_STORE} 覆蓋
-     * @param collection  向量搜尋集合名稱；
-     *                    可透過 env var {@code SKILLSHUB_SEARCH_COLLECTION} 覆蓋
+     * <p>T8 起唯一後端為自寫 {@link io.github.samzhu.skillshub.search.SkillshubPgVectorStore}
+     * 子類（HNSW + cosine + 6-欄 INSERT），不再有切換選項。
+     *
+     * @param collection 向量搜尋集合名稱；
+     *                   可透過 env var {@code SKILLSHUB_SEARCH_COLLECTION} 覆蓋
      */
     public record Search(
-            @DefaultValue("simple") String vectorStore,
             @DefaultValue("skill_embeddings") String collection) {}
 
     /**
@@ -75,8 +74,10 @@ public record SkillshubProperties(
      * 多引擎安全掃描 Pipeline 設定（S010）。
      *
      * <p>每個引擎透過獨立的 {@code skillshub.scanner.engines.<name>.enabled} 屬性控制。
-     * 預設靜態引擎（pattern, secret, metadata, meta）開啟、LLM 引擎關閉
-     * （需 {@code skillshub.genai.api-key} 才能啟用）。GCP profile 將 LLM 引擎打開。
+     * 全部引擎（pattern / secret / metadata / llm / meta）預設 {@code enabled=true}（fail-on
+     * 姿態，貼近正式環境）。LLM 引擎雖預設啟用，但 bean 還由 {@code @ConditionalOnProperty}
+     * 對 {@code skillshub.genai.api-key} 把關 — 缺 api-key 時 bean 不建立，效果等同關閉，
+     * 不會產生額外 API 成本。
      *
      * @param engines 各引擎開關設定
      */
@@ -86,14 +87,14 @@ public record SkillshubProperties(
      * 5 引擎開關集合 — 每個欄位對應一個 {@link io.github.samzhu.skillshub.security.scan.SecurityAnalyzer}
      * 實作 bean 的 {@code @ConditionalOnProperty} 條件。
      *
-     * <p>所有 nested record 預設 {@code enabled=true}；LLM 引擎需要在 {@code application.yaml}
-     * 顯式設定 {@code skillshub.scanner.engines.llm.enabled=false}（base profile）以關閉，
-     * 並在 GCP profile 重新打開（要求 {@code skillshub.genai.api-key} 同時提供）。
+     * <p>所有 nested record 預設 {@code enabled=true}（per {@link Engine#enabled()} 的
+     * {@code @DefaultValue("true")}）；如某環境特殊需求要關閉個別引擎，於該 profile yaml
+     * 顯式設定 {@code skillshub.scanner.engines.<name>.enabled=false} 即可。
      *
      * @param pattern  PatternScanner（regex 危險指令 / 敏感路徑 / pipe-to-shell）
      * @param secret   SecretScanner（API key / token / private key 偵測 + 遮罩）
      * @param metadata MetadataValidator（agentskills.io frontmatter 規則驗證）
-     * @param llm      LlmJudge（Gemini 語意判斷；base profile 預設關閉）
+     * @param llm      LlmJudge（Gemini 語意判斷；缺 api-key 時 bean 不建立）
      * @param meta     MetaAnalyzer（跨引擎合併規則）
      */
     public record Engines(

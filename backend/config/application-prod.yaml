@@ -1,21 +1,52 @@
 # =============================================================================
-# 正式環境行為配置
+# 正式環境行為配置（搭配 GCP infra）
 # =============================================================================
 # Profile: prod
-# 用途: GCP Cloud Run 正式部署行為 — INFO 日誌、限縮 actuator endpoint。
-#       springdoc 已由 application.yaml 預設關閉，不需重複。
-# 啟動: SPRING_PROFILES_ACTIVE=prod,gcp（順序：behavior 先、infra 後）
+# 用途: GCP Cloud Run 正式部署；OAuth 走 real IdP；提供 prod 環境具體值。
+#
+# 啟動: spring.profiles.active=prod,gcp（順序：behavior 先、infra 後）
+#       Cloud Run env 名直接走 dot；shell 環境變數用 SPRING_PROFILES_ACTIVE 等價
+#
+# 部署註: 此檔由 backend/build.gradle.kts processResources 拷進 image classpath。
 # =============================================================================
 
-# 正式環境僅開放 health 與 info（避免洩漏內部資訊）
+spring:
+  # ----- DataSource pool-size override（其他 hikari 設定在 base） -----
+  datasource:
+    hikari:
+      # prod 預設仍配置 db-f1-micro 對應的 pool；upgrade tier 後同步調整
+      maximum-pool-size: 3
+      minimum-idle: 1
+
+  # ----- OAuth2 Resource Server：prod IdP（real OAuth；繼承 Java default enabled=true）-----
+  # TODO 部署人員填入 prod IdP issuer URL
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${skillshub.oauth.issuer-uri:}
+
+# ----- prod env 應用屬性 -----
+skillshub:
+  # ----- DataSource 變數 — Cloud SQL via Auth Proxy sidecar -----
+  # user / password 由 Cloud Run env var 注入（同 lab pattern，password 走 sm@ URI 遞迴 resolve）
+  db:
+    url: jdbc:postgresql://localhost:5432/${skillshub.db.name:skillshub}?ApplicationName=skillshub&currentSchema=public&reWriteBatchedInserts=true&socketTimeout=30
+
+  # GCS bucket — Cloud Run env var skillshub.storage.bucket 高優先
+  # 此處 fallback 預設值；TODO 部署人員確認對應 prod bucket 名
+  storage:
+    bucket: ${skillshub.storage.bucket:skillshub-packages-prod}
+
+  # Gemini API key 同 lab 走統一注入機制（Cloud Run env var 或 local secrets file）
+
+  # LlmJudge engine 預設 enabled=true（Java @DefaultValue），不重複寫
+
+# ----- 限縮 actuator endpoint（避免 prod 洩漏內部資訊） -----
 management:
   endpoints:
     web:
       exposure:
         include: health,info
 
-# 正式環境維持 INFO，減少 log 量與儲存成本
-logging:
-  level:
-    root: INFO
-    io.github.samzhu.skillshub: INFO
+# ----- 日誌：root 預設 INFO 即可，prod 不需 override（dev/lab 在各自 profile 內 DEBUG，不繼承到 prod）-----

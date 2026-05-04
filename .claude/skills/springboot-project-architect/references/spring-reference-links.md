@@ -121,56 +121,10 @@ https://springdoc.org/
 
 ## 雲端平台整合
 
-### GCP — Spring Cloud GCP
+雲端特定的 Secret Manager 與 secret 注入模式請參考對應的雲端文件：
 
-```
-# GitHub
-https://github.com/GoogleCloudPlatform/spring-cloud-gcp
-
-# 官方文件（8.0.2）
-https://googlecloudplatform.github.io/spring-cloud-gcp/8.0.2/reference/html/index.html
-
-# Secret Manager
-https://googlecloudplatform.github.io/spring-cloud-gcp/8.0.2/reference/html/index.html#secret-manager
-
-# Cloud Run — Secret Manager env var mount
-https://cloud.google.com/run/docs/configuring/services/secrets
-```
-
-詳細整合模式見 `references/cloud-gcp-secrets.md`。
-
-GCP 核心配置屬性：
-
-| 屬性 | 用途 | 備註 |
-|------|------|------|
-| `spring.cloud.gcp.project-id` | GCP 專案 ID | 通常由 ADC 自動偵測 |
-| `spring.cloud.gcp.credentials.location` | 憑證檔案路徑 | **不建議使用** — 用 ADC |
-| `spring.cloud.gcp.storage.enabled` | 啟用 GCS | 預設 true |
-| `spring.cloud.gcp.firestore.enabled` | 啟用 Firestore | 預設 true |
-
-GCP 認證最佳實務：
-1. **Cloud Run / GKE**: 使用 Workload Identity — 不需設定任何 credentials 屬性
-2. **本地開發**: `gcloud auth application-default login`
-3. **永遠不要**在設定檔中指定 `credentials.location` — 依賴 ADC
-
-### AWS — Spring Cloud AWS
-
-```
-# GitHub
-https://github.com/awspring/spring-cloud-aws
-
-# 官方文件
-https://awspring.io/
-```
-
-### Azure — Spring Cloud Azure
-
-```
-# Key Vault 整合
-https://learn.microsoft.com/en-us/azure/developer/java/spring-framework/configure-spring-boot-starter-java-app-with-azure-key-vault
-```
-
-雲端特定的 Secret Manager 整合模式請參考 `references/cloud-{provider}-secrets.md`（目前僅 GCP）。
+- **GCP**：`references/cloud-gcp-secrets.md` — Spring Cloud GCP `sm@` 語法、Cloud Run env var mount、遞迴 resolve、官方連結、認證實務
+- AWS / Azure：未來如需要，建立 `references/cloud-aws-secrets.md` / `references/cloud-azure-secrets.md`
 
 ---
 

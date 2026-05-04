@@ -17,10 +17,10 @@
 # Profile 順序慣例：behavior 先、infra 後（行為 profile 先把基礎設定就位，
 # infra profile 再覆蓋 GCP 專屬項，例如 sm@ 機制需 application-gcp.yaml 啟用）
 #
-# 啟動範例：
+# 啟動範例（Spring property 名 dot.lower.case；shell 環境變數 = SCREAMING_SNAKE 等價）：
 #   本機開發：./gradlew bootRun                       → 自動套用 local,dev
-#   GCP 封測：SPRING_PROFILES_ACTIVE=lab,gcp
-#   GCP 正式：SPRING_PROFILES_ACTIVE=prod,gcp
+#   GCP 封測：spring.profiles.active=lab,gcp          （Cloud Run env 名直接走 dot 形式）
+#   GCP 正式：spring.profiles.active=prod,gcp
 # =============================================================================
 
 spring:
@@ -33,29 +33,32 @@ spring:
     default: local,dev
 
   # ----- PostgreSQL（S014 起為唯一儲存層）-----
-  # local profile 由 Docker Compose 服務注入連線（service-connection label）；
-  # gcp profile 由 application-gcp.yaml 覆寫（Cloud SQL Auth Proxy sidecar — 同條 JDBC URL）。
+  # DataSource skeleton：3 個變數由 behavior profile (dev / lab / prod) 提供：
+  #   skillshub.db.url      — JDBC URL (含 db name + 連線參數)
+  #   skillshub.db.user     — DB user
+  #   skillshub.db.password — DB 密碼（local: application-secrets.properties；
+  #                                    GCP: Cloud Run env var 注 ${sm@<secret-id>} URI，
+  #                                    Spring PropertyResolver 啟動時遞迴 resolve）
+  #
+  # Hikari 跨 env 通用設定（timing / liveness）寫於此；maximum-pool-size 由各 env
+  # 依 DB tier 在 behavior profile override（dev=10 / lab,prod db-f1-micro=3）。
+  # Flyway 預設 enabled=true / locations=classpath:db/migration / baseline-on-migrate=false 不寫。
   datasource:
-    url: jdbc:postgresql://localhost:5432/mydatabase
-    username: myuser
-    password: secret
+    url: ${skillshub.db.url}
+    username: ${skillshub.db.user}
+    password: ${skillshub.db.password}
     hikari:
-      maximum-pool-size: 10
-  flyway:
-    enabled: true
-    baseline-on-migrate: false
-    locations: classpath:db/migration
-
-  # ----- Spring AI 向量儲存（T8）-----
-  # T8 改 spring-ai-pgvector-store core artifact + 自寫 SkillshubPgVectorStore 子類
-  # （per-request builder 模式；§4.14 / §2.1 決策 #2/#12 修訂），不走 starter auto-config
-  # → 完全無 spring.ai.vectorstore.pgvector.* 設定，所有 wiring 由子類 constructor 寫死
-  # （HNSW + cosine + 6-欄 INSERT；Flyway V1 schema 已建表）。
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      # HikariCP 4.0+ 主動偵測：對 idle in pool 的 connection 每 2 分鐘 isValid()
+      keepalive-time: 120000
+      leak-detection-threshold: 60000
 
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+      max-file-size: 10MB    # 預設 1MB；上傳 skill zip 包要放寬
+      # max-request-size 預設已是 10MB，不重複寫
 
   threads:
     virtual:
@@ -82,30 +85,21 @@ spring:
         processing: 30m
 
   # ----- OAuth2 Resource Server (S011) -----
-  # issuer-uri 為 base default，指向 backend/compose.yaml 啟動的 mock-oauth2-server。
-  # `application-gcp.yaml` 之後可覆寫為企業 IdP。Spring Security 7 採 lazy discovery，
-  # 即使 mock 容器尚未 ready，bootRun 仍可正常啟動（首個 JWT 請求才連線）。
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:9000/skills-hub-dev
+  # issuer-uri 由各 profile 自行宣告（不放 base 避免 localhost mock 變成預設）：
+  #   local — backend/compose.yaml mock-oauth2-server
+  #   lab   — application-lab.yaml（部署人員填）
+  #   prod  — application-prod.yaml（部署人員填）
+  # Spring Security 7 採 lazy discovery，issuer 未設定 / 不可達 仍能啟動，首個 JWT 請求才探。
 
   # ----- 錯誤回應安全（S045）-----
   # 未被 GlobalExceptionHandler 攔截的錯誤（如 415 / unknown path 404）會落 Spring
-  # 預設 BasicErrorController；其預設 body 含 12-14KB stack trace + filter chain
-  # 內部 class name（LabSecurityFilter / FilterChainProxy 等）— 屬資訊洩漏。
-  # 此處關閉 trace / exception class name / binding errors 暴露，保留 message。
-  #
-  # 注意：Spring Boot 4 將 `server.error.*` 重命名為 `spring.web.error.*`（per
-  # spring-boot-autoconfigure-4.0.6 spring-configuration-metadata.json）— 沿用舊
-  # property 名 yaml parse 不報錯但完全沒生效，必須用新前綴。
+  # 預設 BasicErrorController。Spring Boot 4 預設已關 trace / exception / binding-errors，
+  # 只剩 message 預設 never — 此處顯式打開 always 給前端轉譯。
+  # 注意：Spring Boot 4 將 `server.error.*` 重命名為 `spring.web.error.*`，沿用舊前綴
+  # yaml parse 不報錯但不生效。
   web:
     error:
-      include-stacktrace: never
-      include-exception: false
       include-message: always
-      include-binding-errors: never
 
 # ----- Actuator（基礎曝露，各環境 profile 可擴充） -----
 # S023：加入 modulith endpoint 暴露模組依賴關係 + event publication 統計（給 ops dashboard）
@@ -120,65 +114,28 @@ management:
       probes:
         enabled: true
 
-# ----- 日誌（根預設 INFO，dev profile 會對應用套用 DEBUG） -----
-logging:
-  level:
-    root: INFO
+# ----- 日誌：root 預設 INFO 即可（不重複寫）；dev / lab profile 對應用 package 套 DEBUG -----
 
-# ----- API 文件（正式預設關閉，config/application-dev.yaml 開啟） -----
+# ----- API 文件（正式預設關閉，dev / lab profile 開啟） -----
 springdoc:
   api-docs:
     enabled: false
   swagger-ui:
     enabled: false
 
-# ----- 應用程式自訂屬性（純值，不用 ${...} placeholder） -----
-# Relaxed binding 自動支援 env var 覆蓋：
-#   SKILLSHUB_STORAGE_BUCKET → skillshub.storage.bucket
-#   SKILLSHUB_GENAI_API_KEY → skillshub.genai.api-key
+# ----- 應用程式自訂屬性 -----
+# 預設值大多由 SkillshubProperties.java @DefaultValue 提供（base 不重複寫 yaml）：
+#   OAuth.enabled = true（fail-secure；dev profile override false）
+#   Storage.bucket = "skillshub-packages"（每 env 應顯式覆蓋）
+#   Lab.userId    = "lab-user"（only meaningful when oauth.enabled=false）
+#   Search.collection = "skill_embeddings"
+#   GenAI.model = "gemini-embedding-2" / GenAI.dimensions = 768 / GenAI.apiKey = null
+#   Scanner.Engines.{pattern,secret,metadata,llm,meta}.enabled = true（5 引擎全 default true）
+# 環境特定值由 behavior profile 提供（dev / lab / prod 各自覆蓋）。
 skillshub:
-  storage:
-    bucket: skillshub-packages
-  search:
-    # T8 後唯一 backend 為自寫 SkillshubPgVectorStore 子類；無 vector-store 切換屬性。
-    collection: skill_embeddings
-  genai:
-    model: gemini-embedding-2
-    dimensions: 768
-    # api-key 不在此設定 — 缺席即停用（NoOp fallback）
-    # 本機開發：config/application-secrets.properties 注入 skillshub.genai.api-key=AIzaSy...
-    # 雲端部署：env var SKILLSHUB_GENAI_API_KEY（relaxed binding 自動對應）
-
-  # ----- OAuth 開關 + LAB 模式 (S012) -----
-  # oauth.enabled=true（預設）走 S011 完整 OAuth Resource Server 鏈路。
-  # LAB 環境設 false（用 env var SKILLSHUB_SECURITY_OAUTH_ENABLED=false 最直接），
-  # SecurityFilterChain 走 LAB 分支：JwtDecoder bean 不建立、anyRequest permitAll、
-  # LabSecurityFilter 注入 lab user (principal=lab-user, authorities=[ROLE_admin])。
-  security:
-    oauth:
-      enabled: true
-    lab:
-      user-id: lab-user
-
   # ----- Scheduled retry / republish (S023) -----
   # IncompleteEventRepublishTask 用此設定 fixedDelay 與 olderThan threshold；
   # ShedLock 互斥於多 Cloud Run instance（per ADR-002 + S023 §4.5）
   scheduler:
     republish-delay: PT1M       # 每分鐘檢查一次
     republish-older-than: PT5M  # 只重投 5 分鐘前還沒完成的（避免追平正在處理的）
-
-  # ----- 多引擎安全掃描 Pipeline (S010) -----
-  # 每個引擎可獨立開關；關閉的引擎 bean 不建立、不出現在 SARIF runs[]、
-  # 也不參與 max-severity 彙整。Engine bean 透過 @ConditionalOnProperty 控制。
-  scanner:
-    engines:
-      pattern:
-        enabled: true     # PatternScanner — 靜態規則匹配（rm -rf、pipe-to-shell、敏感路徑）
-      secret:
-        enabled: true     # SecretScanner — API key / token / private key 偵測 + 遮罩
-      metadata:
-        enabled: true     # MetadataValidator — agentskills.io frontmatter 規則
-      llm:
-        enabled: false    # LlmJudge — base profile 預設關閉（避免本機 API call cost）；gcp profile 開啟
-      meta:
-        enabled: true     # MetaAnalyzer — 跨引擎合併規則（不調 LLM）

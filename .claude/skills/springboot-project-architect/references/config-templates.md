@@ -110,19 +110,21 @@ spring:
     virtual:
       enabled: true
 
-  # ----- 資料庫（依實際 DB 調整）-----
-  # --- PostgreSQL ---
+  # ----- DataSource skeleton（適用 base 共用結構；具體值由 behavior profile 提供）-----
+  # 將 url / user / password 抽成 {app}.db.* 變數，base 維持結構穩定，
+  # 各環境只負責填變數值 — 詳見「DataSource skeleton 模式」段。
+  # 不需 datasource 的專案（如 MongoDB / Firestore）這段拿掉，自行依框架 property 配置。
   # datasource:
-  #   url: jdbc:postgresql://localhost:5432/{app}
-  #   username: {app}
-  #   password: secret
-
-  # --- MongoDB / Firestore Enterprise ---
-  # data:
-  #   mongodb:
-  #     uri: mongodb://localhost:27017/{app}
-  #     database: {app}
-  #     auto-index-creation: false  # Firestore 不支援 createIndex
+  #   url:      ${% raw %}${{app}.db.url}{% endraw %}
+  #   username: ${% raw %}${{app}.db.user}{% endraw %}
+  #   password: ${% raw %}${{app}.db.password}{% endraw %}
+  #   hikari:
+  #     # 跨 env 通用 timing 寫 base；maximum-pool-size 由 behavior profile 依 DB tier 覆蓋
+  #     connection-timeout: 30000
+  #     idle-timeout: 600000
+  #     max-lifetime: 1800000
+  #     keepalive-time: 120000
+  #     leak-detection-threshold: 60000
 
 # ----- Actuator（最小必要）-----
 management:
@@ -375,6 +377,48 @@ logging:
 config/application-secrets.properties
 !config/application-secrets.properties.example
 ```
+
+---
+
+## DataSource skeleton 模式（base + 各 behavior profile）
+
+當 dev / lab / prod 的 datasource 結構相同、只值不同時，採此模式：base 寫 placeholder skeleton，behavior profile 填值。
+
+### base：`application.yaml`（datasource skeleton）
+
+見上方 application.yaml 模板 datasource 註解區塊；解註後即可使用。
+
+### behavior profile：`config/application-dev.yaml`
+
+```yaml
+{app}:
+  db:
+    url: jdbc:postgresql://localhost:5432/{app}_dev?ApplicationName={app}&currentSchema=public&reWriteBatchedInserts=true&socketTimeout=30
+    user: {app}_dev
+    password: secret    # 預設值；application-secrets.properties 可覆蓋
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 10    # local 寬鬆
+```
+
+### behavior profile：`config/application-lab.yaml` / `application-prod.yaml`
+
+```yaml
+{app}:
+  db:
+    url: jdbc:postgresql://localhost:5432/{app}?ApplicationName={app}&currentSchema=public&reWriteBatchedInserts=true&socketTimeout=30
+    # user / password 不在 yaml 寫死；由 Cloud Run env var 注入：
+    #   - {app}.db.user      = literal 值（service.yaml envsubst）
+    #   - {app}.db.password  = ${% raw %}${sm@{app}-db-password}{% endraw %} ← Spring 啟動遞迴 resolve
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 3     # db-f1-micro
+      minimum-idle: 1
+```
+
+> Cloud Run 端 env var 注入機敏值用 sm@ URI 字串、Spring 遞迴 resolve 細節見 `cloud-gcp-secrets.md`。
 
 ---
 

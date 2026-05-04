@@ -1,75 +1,40 @@
 # =============================================================================
-# 本地開發基礎設施配置
+# 本地基礎設施配置 — Docker Compose（pgvector + mock-oauth2-server）
 # =============================================================================
 # Profile: local
-# 用途: 本機開發環境，使用 Docker Compose 啟動 pgvector/pgvector:pg16 與 mock-oauth2-server。
-#       StorageService 實作：FileSystemStorageService（./storage-local/）
-#       無需 GCP Application Default Credentials。
-#       JDBC URL 與 GCP sidecar profile 同條（dev/prod parity；ADR-001 §4.4）：
-#         jdbc:postgresql://localhost:5432/<db>
+# 用途: 本機開發 infra 層 — 只管「在本機跑哪些服務 / 哪些 GCP autoconfig 要關」。
+#       env-specific 值（DB url/帳密、bucket、issuer-uri 等）一律由 behavior
+#       profile 提供（dev profile 對應 local Compose 的具體值）。
+#
+# 建議組合: local,dev（./gradlew bootRun 預設）
+#          local,lab / local,prod 也可，須自備該行為對應的 IdP / DB 等實際值。
+#
+# 多 local 環境支援:
+#   不同本機環境若 DB 不同（port、container 名等），各自寫成不同 behavior profile
+#   即可（如 application-dev2.yaml），共用此 local infra 層。
 # =============================================================================
 
 spring:
-  docker:
-    compose:
-      enabled: true
-      # S093: start-only — bootRun start 時拉 compose；bootRun stop 不 down container。
-      # 配合 compose.yaml `pgvector-data` named volume 讓 dev DB 跨 session 持久。
-      # 預設 start-and-stop 在 bootRun 結束時自動 `docker compose down`，每次重啟等同 fresh DB
-      # （anonymous volume churn）。dev infra 偏好持久化以保留累積測試資料、validate 跨 session 行為。
-      # 手動清理：`docker compose -f backend/compose.yaml down -v` 一次清掉容器與 named volume。
-      lifecycle-management: start-only
+  # Spring Boot Docker Compose 整合預設行為：
+  #   - compose.yaml 存在於 working dir 時自動 enabled=true
+  #   - lifecycle-management 預設 start-and-stop：啟動 up、shutdown 跑 `docker compose down`
+  #     （不帶 -v，named volume 保留 — pgvector-data 跨 session 持久）
+  # 不寫任何 spring.docker.compose.* — 預設行為已符合 dev 需求；
+  # bare-metal local（不用 Compose）的 dev 透過 SPRING_DOCKER_COMPOSE_ENABLED=false 關閉
 
-  # ----- PostgreSQL 連線（與 gcp profile 同條 URL 結構）-----
-  # 本機 Docker Compose pgvector 容器暴露 localhost:5432；
-  # GCP Cloud Run 由 cloud-sql-proxy sidecar 也 listen localhost:5432。
-  # 預設值對齊 backend/compose.yaml 的 POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD。
-  # Placeholder 走 dot.lower.case 對齊 service.yaml / application-gcp.yaml 慣例；
-  # 本機 dev 仍可用 SKILLSHUB_DB_NAME 等大寫 env var 覆蓋（Spring relaxed binding 雙向匹配）。
-  datasource:
-    url: jdbc:postgresql://localhost:5432/${skillshub.db.name:mydatabase}
-    username: ${skillshub.db.user:myuser}
-    password: ${skillshub.db.password:secret}
-
+  # 本機無 GCP 憑證，排除 GcpContextAutoConfiguration 避免 startup 嘗試偵測 project ID 噴 warning
+  # 注：spring-ai-google-genai-embedding 是 core artifact（無 -starter-），classpath 上沒有
+  # GoogleGenAiEmbeddingConnectionAutoConfiguration 類，無需 exclude
   autoconfigure:
-    # Profile YAML 覆蓋（非合併）base 的 exclude list，因此必須重複 base 的排除項。
     exclude:
-      # base: Manual Configuration 取代 auto-config
-      - org.springframework.ai.model.google.genai.autoconfigure.embedding.GoogleGenAiEmbeddingConnectionAutoConfiguration
-      # local: 無 GCP 憑證，排除需要 GCP 憑證的 autoconfiguration
       - com.google.cloud.spring.autoconfigure.core.GcpContextAutoConfiguration
 
   cloud:
     gcp:
-      # 本機無 GCP 憑證，停用 GCP 服務。改由 gcp profile 啟用。
-      # T7 後 google-cloud-firestore dep 已移除，無需 firestore.enabled 設定。
+      # 本機無 GCP 憑證，停用 GCP 服務
       storage:
         enabled: false
-      # spring-cloud-gcp-starter-secretmanager 走 application-gcp.yaml 的 sm@ resolver；
-      # 本機 dev 無 GCP 憑證，明確 disable 避免 startup 嘗試連 SM API
+      # spring-cloud-gcp-starter-secretmanager 走 sm@ resolver；本機無 GCP 憑證明確 disable
+      # 避免 startup 嘗試連 SM API
       secretmanager:
         enabled: false
-
-# ----- S027: dev 模式 LAB security path -----
-# 本機開發跳過 OAuth Resource Server JWT 要求；SecurityConfig.filterChain 走 LAB 分支：
-#   - anyRequest permitAll
-#   - LabSecurityFilter 注入 lab-user with ROLE_admin authority
-# 配合 DelegatingPermissionEvaluator 對 ROLE_admin 的短路 bypass（per S027 §2.2），
-# 所有 @PreAuthorize ACL gate 在 dev 自動通過，無需手動 JWT。
-# Prod (gcp profile) 預設 oauth.enabled=true（base application.yaml line 137），不受影響。
-skillshub:
-  security:
-    oauth:
-      enabled: false
-
-# ----- S099a / S100：local 啟用 OpenAPI 3.1 spec + Swagger UI -----
-# Base application.yaml 預設 disabled (production 不該暴露 spec)。Local profile 啟用方便
-# 開發時 quick reference + RestApiPage docs 連結 /v3/api-docs 與 /swagger-ui.html。
-# `version: openapi_3_1` — SpringDoc 3.x（Swagger Core 2.2.22+）explicit 產 OpenAPI 3.1.0
-# spec（vs 預設 3.0.3）；JSON schema 對齊 latest standard。
-springdoc:
-  api-docs:
-    enabled: true
-    version: openapi_3_1
-  swagger-ui:
-    enabled: true

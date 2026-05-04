@@ -1,78 +1,36 @@
 # =============================================================================
-# GCP 基礎設施配置 — Cloud Run multi-container + Cloud SQL Auth Proxy sidecar
+# GCP 基礎設施配置 — Cloud Run + Cloud SQL Auth Proxy sidecar + Secret Manager
 # =============================================================================
 # Profile: gcp
-# 用途:    部署至 GCP Cloud Run（multi-container：main app + cloud-sql-proxy sidecar）
-#          - main container: Skills Hub Spring Boot
-#          - sidecar:       gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.21.3
-#                           listen on localhost:5432
-#          - 兩 container 共享 Cloud Run instance 的 localhost network namespace
+# 用途: GCP infra 層 — 只管「GCP autoconfig 開關 / 能力 register」。
+#       env-specific 值（DB url/帳密、bucket、issuer-uri、api-key、pool-size、
+#       llm.enabled 等）一律由 behavior profile (lab / prod) 提供。
 #
-#          GCS（StorageService）由 Workload Identity 自動提供憑證（runtime SA）。
-#          機敏值（DB password / GenAI API key）走 spring-cloud-gcp-starter-secretmanager
-#          的 ${sm@<secret-id>} placeholder 在 startup 時從 Secret Manager 拉取。
+# 建議組合（spring.profiles.active 值）：
+#   lab,gcp   — 封測 / MVP，OAuth on，real IdP
+#   prod,gcp  — 正式，OAuth on，real IdP，限縮 actuator
 #
-# 啟動:    SPRING_PROFILES_ACTIVE=lab,gcp   （封測 / MVP，OAuth off）
-#          SPRING_PROFILES_ACTIVE=prod,gcp  （正式，OAuth on）
-#          順序：behavior 先、infra (gcp) 後（infra 補 GCP 專屬如 sm@ resolver）
-# 部署:    `gcloud run services replace scripts/gcp/service.rendered.yaml`
-#
-# JDBC URL 與本機 Docker Compose 同條 — dev/prod parity（ADR-001 §4.4）：
-#   jdbc:postgresql://localhost:5432/<db>
-# 應用端無 postgres-socket-factory dep；標準 JDBC client 即可。
-#
-# 命名慣例（與 service.yaml + .env 對齊）：
-#   - Cloud Run env name 走 dot.lower.case 對齊 Spring property name
-#     （K8s RelaxedEnvironmentVariableValidation 自 2025-06-28 GA 接受 dot 字元）
-#   - Secret Manager secret-id 仍走 hyphen-case（API 命名規範限制 [A-Za-z0-9_-]）
+# 部署: scripts/gcp/04-deploy.sh + service.yaml — 詳見 scripts/gcp/DEPLOYMENT.md
+# JDBC URL 結構: behavior profile 走 jdbc:postgresql://localhost:5432/...
+#               （Cloud SQL Auth Proxy sidecar 在 localhost:5432 listen；ADR-001 §4.4 dev/prod parity）
 # =============================================================================
 
 spring:
   docker:
     compose:
-      # Cloud Run 無 Docker Compose，停用以避免啟動錯誤
+      # Cloud Run 無 Docker Compose，停用避免啟動錯誤
       enabled: false
-
-  # ----- Spring Cloud GCP Secret Manager（啟用 ${sm@<secret-id>} placeholder） -----
-  # spring-cloud-gcp-starter-secretmanager 8.x 走 Spring Boot Config Data API：
-  # 設定 spring.config.import=sm@ 後，registers SecretManagerConfigDataLocationResolver，
-  # 任何 yaml 內 ${sm@<secret-id>} 都會被 resolve 成 Secret Manager 對應 secret 的最新版本值。
-  # Project-id 從 ADC（runtime SA credentials）自動推斷，無需顯式設定。
-  config:
-    import: sm@
-
-  # ----- Cloud SQL Auth Proxy sidecar 連線 -----
-  # 環境變數對齊 Spring property 名稱（service.yaml env name 走 dot.lower.case）
-  # password 直接走 ${sm@...}：Spring 啟動時拉 Secret Manager skillshub-db-password 最新版本
-  datasource:
-    url: jdbc:postgresql://localhost:5432/${skillshub.db.name:skillshub}
-    username: ${skillshub.db.user}
-    password: ${sm@skillshub-db-password}
-    hikari:
-      # db-f1-micro max_connections=25 - 5 reserved = 20 ÷ 5 (Cloud Run max instances) = 4 → 取 3 留 buffer
-      maximum-pool-size: 3
-      minimum-idle: 1
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-      # f1-micro 連線少，洩漏要早抓
-      leak-detection-threshold: 60000
 
   cloud:
     gcp:
       storage:
         enabled: true
-      # secretmanager 預設 enabled=true；project-id 從 ADC 推斷，無需顯式設定。
-      # 對應 IAM role：roles/secretmanager.secretAccessor（已由 01-bootstrap.sh 授權給 runtime SA）
+      # secretmanager 預設 enabled=true；project-id 從 ADC 自動推斷（runtime SA credentials），
+      # 無需顯式設定。對應 IAM role：roles/secretmanager.secretAccessor（01-bootstrap.sh 已授權）
 
-# GCP 部署 LlmJudge 啟用（要求 skillshub.genai.api-key 同時提供）
-# Google AI Studio Gemini API key（取得：https://aistudio.google.com/apikey）
-# 走 generativelanguage.googleapis.com 端點 + API key auth；**非** Vertex AI（無需 roles/aiplatform.user）
-# 從 Secret Manager 拉取 skillshub-genai-api-key
-skillshub:
-  genai:
-    api-key: ${sm@skillshub-genai-api-key}
-  scanner:
-    engines:
-      llm:
-        enabled: true
+  # ----- spring-cloud-gcp-starter-secretmanager 啟用 sm@ resolver -----
+  # 註冊 SecretManagerConfigDataLocationResolver；任何 yaml 內 ${sm@<secret-id>}
+  # placeholder 在 startup 時自動拉 Secret Manager 對應 secret 最新版本值。
+  # behavior profile (lab/prod) 即可在 datasource.password / genai.api-key 等位置使用。
+  config:
+    import: sm@

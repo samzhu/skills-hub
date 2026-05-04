@@ -99,6 +99,19 @@ if ! gcloud sql users describe "${DB_USER}" --instance="${CLOUDSQL_INSTANCE_NAME
     --password="${DB_PASSWORD}" \
     --quiet
   echo "  user created"
+  echo ""
+  echo "  ⚠ MANUAL STEP REQUIRED — PG15+ public schema 權限"
+  echo "    新建 DB 預設 revoke public schema CREATE（PG15+ 規範），${DB_USER} 雖繼承"
+  echo "    cloudsqlsuperuser 仍須顯式 GRANT 才能讓 Flyway migration 建表。"
+  echo "    詳 DEPLOYMENT.md Step 5.5；速跑："
+  echo ""
+  echo "    1. gcloud sql users set-password postgres --instance=${CLOUDSQL_INSTANCE_NAME} --password='temp-pw'"
+  echo "    2. echo 'GRANT ALL ON SCHEMA public TO ${DB_USER};' | \\"
+  echo "       gcloud sql connect ${CLOUDSQL_INSTANCE_NAME} --user=postgres --database=${DB_NAME}"
+  echo ""
+  echo "    或走 Cloud Console SQL Studio（免裝 psql）："
+  echo "    https://console.cloud.google.com/sql/instances/${CLOUDSQL_INSTANCE_NAME}/studio"
+  echo ""
 else
   echo "  user exists; rotate via: gcloud sql users set-password ${DB_USER} --instance=${CLOUDSQL_INSTANCE_NAME} --password=NEW"
 fi

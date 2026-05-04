@@ -1,50 +1,76 @@
 # =============================================================================
-# 開發環境行為配置
+# 開發環境行為配置（搭配 local infra）
 # =============================================================================
 # Profile: dev
-# 用途: 本地開發行為 — DEBUG 日誌、完整 actuator endpoint、引入本地機敏值。
-# 注意: 此檔案位於 config/ 外部目錄（Spring Boot 自動掃描），
-#       不包進 Docker Image，確保開發設定不污染生產環境。
+# 用途: 本地 Docker Compose 開發行為 — DEBUG 日誌、完整 actuator、springdoc；
+#       提供 local Compose 對應 DB 帳密、mock IdP 等具體值。
+# 注意: 此檔位於 config/ 外部目錄（Spring Boot 自動掃描），不包進 Docker Image。
+# 啟動: ./gradlew bootRun（預設 local,dev）
 # =============================================================================
 
 spring:
   config:
-    # 引入本地機敏值（可選，檔案不存在時應用程式照常啟動）。
-    # 使用說明: cp config/application-secrets.properties.example config/application-secrets.properties
-    #           編輯填入實際值後重新啟動
+    # 引入本地機敏值（可選，檔案不存在時 app 照常啟動）
+    # 使用: cp config/application-secrets.properties.example config/application-secrets.properties
     import: "optional:file:./config/application-secrets.properties"
 
-# 開發環境開啟 API 文件（application.yaml 預設關閉）
-springdoc:
-  api-docs:
-    enabled: true
-  swagger-ui:
-    enabled: true
+  # ----- DataSource pool-size override（base 帶通用 timing；此處只調 pool 大小） -----
+  datasource:
+    hikari:
+      # local Compose 寬鬆 pool（無連線數限制壓力）
+      maximum-pool-size: 10
 
-# 開發環境開放完整 actuator endpoint，方便診斷
-# S023：加 modulith endpoint（spring-modulith-actuator runtime dep）
+  # ----- OAuth2 Resource Server: mock IdP via Docker Compose -----
+  # 預設 dev 走 LAB 分支（oauth.enabled=false），此 issuer-uri 不會被 JwtDecoder 用到；
+  # 若想本機測 real OAuth，跑 SPRING_PROFILES_ACTIVE=local 不帶 dev（改繼承 Java default true）
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9000/skills-hub-dev
+
+# ----- DataSource 變數 — local Docker Compose pgvector -----
+# 對齊 backend/compose.yaml 預設值；password 預設 secret，secrets.properties 可覆蓋
+# URL 參數: ApplicationName 識別 / currentSchema=public 顯式 / reWriteBatchedInserts 提速 /
+#           socketTimeout=30 防 runaway query（長 query 走 @Transactional(timeout=N) 個別放寬）
+skillshub:
+  db:
+    url: jdbc:postgresql://localhost:5432/mydatabase?ApplicationName=skillshub&currentSchema=public&reWriteBatchedInserts=true&socketTimeout=30
+    user: myuser
+    password: secret
+
+# ----- LAB security path：dev 模式跳過 OAuth Resource Server JWT 要求 -----
+# SecurityConfig.filterChain 走 LAB 分支：
+#   - anyRequest permitAll
+#   - LabSecurityFilter 注入 fixed user (principal=lab-user, ROLE_admin)
+# 配合 DelegatingPermissionEvaluator 對 ROLE_admin 短路 bypass，所有 @PreAuthorize 自動通過
+  security:
+    oauth:
+      enabled: false
+    lab:
+      user-id: lab-user
+
+  # LlmJudge engine 預設 enabled=true（Java @DefaultValue），不重複寫；
+  # 若 skillshub.genai.api-key 未設則 bean 不建立（@ConditionalOnProperty），
+  # 等同關閉，無多餘 API call cost。
+
+# ----- 完整 actuator endpoint，便於診斷 -----
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,env,configprops,beans,mappings,modulith
 
-# ----- 向量搜尋（S014 T7 後 dev 也走 PgVectorStore，與 production parity） -----
-# 本機 Docker Compose 已經啟動 pgvector container（service-connection 自動注入 datasource），
-# spring-ai-starter-vector-store-pgvector auto-config 直接接管 vector_store 表寫入。
-# 無 vector-store 設定 → 預設使用 PgVectorStoreAutoConfiguration 提供的 bean。
+# ----- API 文件（dev 開啟，prod 關閉） -----
+# `version: openapi_3_1` — SpringDoc 3.x 顯式產 OpenAPI 3.1.0 spec
+springdoc:
+  api-docs:
+    enabled: true
+    version: openapi_3_1
+  swagger-ui:
+    enabled: true
 
-# 應用程式套件使用 DEBUG，framework 維持 INFO 避免 log 過多
+# ----- 應用 DEBUG，framework 維持 INFO -----
 logging:
   level:
     io.github.samzhu.skillshub: DEBUG
-
-# ----- 啟用 LlmJudge engine（dev override；base profile 預設關閉節省成本） -----
-# 用途：dev 環境驗 LLM-generated explanation 品質與 Gemini API round-trip。
-# 每次 upload skill 會額外打 1 次 Gemini API（gemini-2.5-flash），cost 可控。
-# Production 走 application-gcp.yaml 已有同樣 override。
-skillshub:
-  scanner:
-    engines:
-      llm:
-        enabled: true

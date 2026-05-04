@@ -260,6 +260,50 @@ gcloud sql users list --instance=${CLOUDSQL_INSTANCE_NAME} \
 # 兩行皆有輸出
 ```
 
+### Step 5.5 — 授權 public schema 給應用 user（PG15+ 必要）
+
+> **這步漏掉 → Flyway migration 啟動就 fail**：`ERROR: permission denied for schema public`
+
+PostgreSQL 15+ 預設 revoke 了 `public` schema 的 `CREATE` 權限（從 PUBLIC role），即使新 user 繼承 `cloudsqlsuperuser` role 也沒用 — 必須顯式 GRANT。Cloud SQL `gcloud sql databases create` 用 template0，所以新 DB 一定吃到這個限制。詳 [Cloud SQL Known Issues](https://docs.cloud.google.com/sql/docs/postgres/known-issues)。
+
+**兩種執行方式擇一**：
+
+**A. Cloud Console SQL Studio（無需安裝 psql；推薦）**
+
+1. 開 <https://console.cloud.google.com/sql/instances/${CLOUDSQL_INSTANCE_NAME}/studio>
+2. 連線：database `${DB_NAME}`，user `postgres`（首次需設 postgres 密碼：`gcloud sql users set-password postgres --instance=${CLOUDSQL_INSTANCE_NAME} --password=...`）
+3. 跑下面 SQL：
+   ```sql
+   GRANT ALL ON SCHEMA public TO skillshub_app;
+   ```
+
+**B. `gcloud sql connect`（需本機裝 psql：`brew install postgresql`）**
+
+```bash
+# 一次性設 postgres 密碼（GRANT 完可不用記，正式用獨立 app user）
+gcloud sql users set-password postgres \
+  --instance=${CLOUDSQL_INSTANCE_NAME} \
+  --password='temp-postgres-pw-for-grant-only'
+
+# 連 + 跑 GRANT（會跳問密碼）
+gcloud sql connect ${CLOUDSQL_INSTANCE_NAME} \
+  --user=postgres --database=${DB_NAME} <<EOF
+GRANT ALL ON SCHEMA public TO ${DB_USER};
+EOF
+```
+
+**驗證**：應用 user 應能建表
+```bash
+gcloud sql connect ${CLOUDSQL_INSTANCE_NAME} \
+  --user=${DB_USER} --database=${DB_NAME} <<EOF
+CREATE TABLE _verify_grant (id int);
+DROP TABLE _verify_grant;
+EOF
+# 預期：無 permission denied 錯誤
+```
+
+> 此 GRANT 是 **per-database 持久** — 跑一次後永久生效，後續部署 / 改版都不需要再做。
+
 ---
 
 ## Step 6 — 建 GCS bucket

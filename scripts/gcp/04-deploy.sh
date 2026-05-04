@@ -55,7 +55,11 @@ TMPL="scripts/gcp/service.yaml"
 RENDERED="scripts/gcp/service.rendered.yaml"
 
 echo "▸ Render ${TMPL} → ${RENDERED}"
-envsubst < "${TMPL}" > "${RENDERED}"
+# Whitelist envsubst：只替換我們 own 的變數；service.yaml 內 ${sm@<secret-id>}
+# 等 spring-cloud-gcp 語法保留不被 envsubst 吃掉，交給 Spring runtime 遞迴 resolve。
+envsubst \
+  '$GCP_REGION $CLOUD_RUN_SERVICE_NAME $CLOUD_RUN_CPU $CLOUD_RUN_MEMORY $CLOUD_RUN_MAX_INSTANCES $SPRING_PROFILES_ACTIVE $IMG $SA_EMAIL $CLOUDSQL_INSTANCE_CONN $DB_NAME $DB_USER $GCS_BUCKET_NAME' \
+  < "${TMPL}" > "${RENDERED}"
 
 echo "▸ Deploy ${CLOUD_RUN_SERVICE_NAME} → ${IMG}"
 gcloud run services replace "${RENDERED}" \

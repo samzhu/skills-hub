@@ -106,10 +106,14 @@ spec:
             # DB user：非機敏值，直接 env var（envsubst 注入；改 user 重跑 04-deploy.sh）
             - name: skillshub.db.user
               value: ${DB_USER}
-            # 機敏值（DB password / GenAI API key）不在這裡注入 — 由 spring-cloud-gcp
-            # secretmanager 在 application-gcp.yaml 透過 ${sm@<secret-id>} placeholder
-            # 在 startup 時直接從 Secret Manager 拉取（runtime SA 已有 secretAccessor role）。
-            # 對應 secret：skillshub-db-password / skillshub-genai-api-key
+            # 機敏值：env var 注入 sm@ URI 字串；Spring PropertyResolver 啟動時遞迴 resolve
+            # 至 SecretManagerPropertySource 拉 Secret Manager 實際值。
+            # ⚠ envsubst 預設會把 ${sm@xxx} 當 shell var 吃掉；04-deploy.sh 用 whitelist 模式
+            #   只替換我們 own 的變數，sm@ 字串保留給 Spring runtime 處理。
+            - name: skillshub.db.password
+              value: ${sm@skillshub-db-password}
+            - name: skillshub.genai.api-key
+              value: ${sm@skillshub-genai-api-key}
           # Startup：HTTP 探 readiness（Spring Boot Actuator /actuator/health/readiness 含 db check）
           # — 確保 Flyway migration + Hikari pool + Modulith 都 ready 才放行 traffic
           startupProbe:

@@ -1,26 +1,19 @@
 ---
 name: springboot-project-architect
 description: >
-  Spring Boot project setup, configuration design, and architectural
-  optimization. Applies dual-layer profile design (infrastructure ×
-  behavior), @ConfigurationProperties with app name as prefix for type-safe
-  property binding, unified secrets management, Spring AI Manual
-  Configuration patterns, and design choices around framework integration:
-  starter vs core artifact selection (schema customization gate), bean
-  lifetime decisions (singleton vs per-request builder), and dev fallback
-  obsolescence checks. Use when the user says "set up Spring Boot",
+  Spring Boot 專案建置、設定檔設計、架構優化。應用雙層 profile 設計
+  (infrastructure × behavior)、profile 載入順序、預設值四層、base 自包含
+  placeholder skeleton、統一機敏值管理（含 sm@ 遞迴 resolve）、命名跨層
+  對齊、`@ConfigurationProperties` 型別安全綁定、Spring AI Manual
+  Configuration、starter vs core artifact 選擇、bean lifetime 決策、dev
+  fallback 過時檢查。Use when user says "set up Spring Boot",
   "optimize config", "organize profiles", "review Spring Boot config",
-  "@ConfigurationProperties", "starter vs library", "extend Spring AI",
-  "wrap a framework class", "should this be a Bean", "新建 Spring Boot
-  專案", "優化設定檔", "整理 profile", "設定檔太亂", "config 分層",
-  "環境配置", "GCP 部署設定", "Spring Boot 最佳實務", "包裝框架類別",
-  "starter 還是純 library", or asks about application.yaml design, profile
-  strategy, type-safe properties binding, secrets management, cloud
-  deployment configuration, or when to extend/wrap a Spring framework
-  primitive (VectorStore, Repository, Service SPI). Also triggers when
-  reviewing an existing Spring Boot project's configuration or
-  architectural health. Do NOT use for general Java coding, non-Spring
-  frameworks, or business logic implementation.
+  "@ConfigurationProperties", "starter vs library", "新建 Spring Boot
+  專案", "優化設定檔", "整理 profile", "config 分層", "環境配置",
+  "GCP 部署設定", "包裝框架類別", "starter 還是純 library", or asks
+  about application.yaml design, profile strategy, secrets management,
+  cloud deployment configuration. Do NOT use for general Java coding,
+  non-Spring frameworks, or business logic implementation.
 allowed-tools:
   - Read
   - Glob
@@ -32,198 +25,155 @@ allowed-tools:
   - WebSearch
 metadata:
   author: samzhu
-  version: 1.1.0
+  version: 2.0.0
   category: workflow-automation
   pattern: sequential-orchestration
 ---
 
-# Spring Boot Project Architect
+# Spring Boot 專案架構師
 
-## Role
+## 角色
 
-Systematic, convention-driven, evidence-based. Every configuration decision
-cites official documentation. Build on framework defaults, customize only
-what's necessary.
+系統化、慣例驅動、有實證根據。每個配置決策都引用官方文件。**建立在框架預設值之上，只客製必要部分**。
 
-## Contract
+## 合約
 
 ```
-Input:  Existing Spring Boot project OR new project requirements
-Output: Optimized configuration files + {App}Properties record following
-        dual-layer profile design and @ConfigurationProperties best practices
-Valid:  Application starts correctly with all profile combinations;
-        all existing tests pass; no secrets in version control
-Next:   (terminal — user decides next action)
+輸入: 既有 Spring Boot 專案 OR 新專案需求
+輸出: 優化後的設定檔 + {App}Properties record
+有效: 應用程式以所有 profile 組合都能正確啟動；既有測試全通過；
+      機敏值未進版本控制；framework property 路徑經官方文件查證
+下一步: (終端 — 由使用者決定後續)
 ```
+
+## 流程
+
+### 模式偵測
+
+- **模式 A：優化既有專案** — `src/main/resources/application.yaml` 已存在
+- **模式 B：新專案建置** — 找不到 Spring Boot 專案，或使用者明確要求新建
 
 ---
 
-## Process
+## 模式 A：優化既有專案
 
-### Mode Detection
+### Step 1：盤點與檢查
 
-- **Mode A: Optimize Existing Project** — `src/main/resources/application.yaml` exists
-- **Mode B: New Project Setup** — no Spring Boot project found, or user explicitly requests new setup
-
----
-
-## Mode A: Optimize Existing Project
-
-### Step 1: Scan & Inventory
-
-Find all configuration files and Java property references:
+找出所有設定檔與 Java 屬性引用：
 
 ```
-Glob: **/application*.yaml
-Glob: **/application*.yml
-Glob: **/application*.properties
-Glob: **/compose.yaml
-Glob: **/.env
-
-Grep: @Value\("\$\{          ← find @Value usage
+Glob: **/application*.yaml, **/application*.yml, **/application*.properties, **/compose.yaml, **/.env
+Grep: @Value\("\$\{          ← @Value 用法
 Grep: @ConfigurationProperties
 Grep: @ConditionalOnProperty
 ```
 
-Read build config (`build.gradle.kts` / `pom.xml`) for Spring Boot, Spring Cloud GCP, Spring AI versions.
+讀 build 設定（`build.gradle.kts` / `pom.xml`）取得 Spring Boot、Spring Cloud GCP、Spring AI 版本。
 
-Record per file: profile it belongs to, all property keys + values, placeholder patterns, hardcoded secrets, duplicates across files.
+每個檔案記錄：所屬 profile、所有屬性 key + 值、placeholder 模式、寫死的 secret、跨檔案重複項。
 
-**MANDATORY: Property Path Verification Gate**
+**強制：屬性路徑查證 Gate** — 偵測到框架版本後，**必須**對照偵測版本的官方 Application Properties 索引（https://docs.spring.io/spring-boot/appendix/application-properties/index.html）查證所有非 `{app}.*` 屬性路徑。框架主版本升級會 rename / deprecate / 搬 namespace。模板與記憶中路徑可能已過期。`{app}.*` 由 `@ConfigurationProperties` 控制，不受框架版本影響。
 
-After detecting framework versions, **must** verify all framework property paths (non-`{app}.*`) against the official Application Properties index for the detected version:
+### Step 2：設計健康度檢查
 
-```
-https://docs.spring.io/spring-boot/appendix/application-properties/index.html
-```
+對照 `references/config-design-principles.md` 評估：
 
-Framework property paths **change across major versions** — rename、deprecate、搬移 namespace 都有可能。模板和記憶中的路徑可能已過期。寫任何 YAML 之前，**必須**查證偵測到的版本對應的官方 Application Properties 索引，確認每條 `spring.*` / `management.*` / `springdoc.*` 屬性路徑仍然有效。
+| 檢查項 | 通過條件 |
+|-------|---------|
+| 雙層 profile 分離 | 基礎設施 profile 在 `src/main/resources/`；行為 profile 在 `config/` |
+| Profile 順序慣例 | 啟動文件示範 `behavior,infra`（`lab,gcp` / `prod,gcp`），不寫 `gcp,lab` |
+| infra ≠ behavior 嚴格分離 | infra profile 不放 env-specific 值；behavior profile 不放 autoconfig 開關 |
+| `application.yaml` 接近正式環境（fail-secure 姿態） | base 預設「最嚴」；`logging=INFO`、`springdoc disabled`、最小 actuator、`oauth.enabled=true` |
+| 預設值不重複 | 與 Spring Boot / Flyway / Java `@DefaultValue` 一致的值不寫入 yaml |
+| `{App}Properties` 存在 | record 含 `@ConfigurationProperties(prefix = "{app}")`；主類別含 `@ConfigurationPropertiesScan` |
+| 應用屬性不用 `@Value` | service constructor 內無 `@Value("${app.*}")` — 改注入 `{App}Properties` |
+| YAML 用純值或 placeholder skeleton | `{app}.*` 段為純值，或 base skeleton + behavior 提供值 |
+| Secrets 用 dot-notation | `application-secrets.properties.example` 用 `{app}.section.key=value` |
+| 機敏值不入 VCS | `.gitignore` 排除 `config/application-secrets.properties` |
+| 統一 secret 機制 | property 名跨 env 一致，僅注入來源不同（local file vs cloud env var/sm@） |
+| 命名跨層對齊 | Spring property = Cloud Run env name 走 dot.lower.case；Secret Manager hyphen-case |
+| 無重複設定 | 固定值（model、dimensions 等）不在多個 profile 重複 |
+| Profile default 已設 | `spring.profiles.default` 讓 zero-config dev 啟動 |
+| Framework 屬性路徑經查證 | 所有 `spring.*` / `management.*` 已對照目標版本官方索引 |
 
-### Step 2: Design Health Check
+### Step 3：報告與確認
 
-Evaluate against principles in `references/config-design-principles.md`:
+呈現給使用者：(1) 目前檔案結構樹狀圖、(2) 發現的問題（表格：問題、嚴重度、影響檔案）、(3) 建議的目標結構、(4) `@Value` → `{App}Properties` 遷移表。
 
-| Check | Pass Criteria |
-|-------|--------------|
-| Dual-layer separation | Infrastructure profiles in `src/main/resources/`; behavior profiles in `config/` |
-| `application.yaml` near-production | `logging=INFO`, `springdoc disabled`, minimal actuator by default |
-| `{App}Properties` present | Record with `@ConfigurationProperties(prefix = "{app}")` exists; `@ConfigurationPropertiesScan` on main class |
-| No `@Value` for app properties | No `@Value("${app.*}")` in service constructors — use `{App}Properties` injection |
-| YAML uses pure values | `{app}.*` section has plain values, not `${APP_VAR:default}` placeholder indirection |
-| Secrets use dot-notation | `application-secrets.properties.example` uses `{app}.section.key=value` |
-| No secrets in VCS | `.gitignore` excludes `config/application-secrets.properties` |
-| No duplicate config | Options (model, dimensions, etc.) not repeated across profile files |
-| Profile default set | `spring.profiles.default` enables zero-config dev start |
+**等使用者確認後才動手改。**
 
-### Step 3: Report & Confirm
+### Step 4：執行變更
 
-Present to user:
-1. Current file structure (tree diagram)
-2. Issues found (table: issue, severity, affected files)
-3. Proposed target structure
-4. `@Value` → `{App}Properties` migration table
+依此三階段套用，模板在 `references/config-templates.md`：
 
-**Wait for user confirmation before making any changes.**
+1. **Java 層**：建立 `{App}Properties.java`（`@ConfigurationProperties(prefix = "{app}")` record + nested record），主類別加 `@ConfigurationPropertiesScan`，把 service 內 `@Value("${app.*}")` 遷移為注入 `{App}Properties`，視需要建 Manual Configuration `@Bean`。
+2. **YAML 層**：更新 `application.yaml`（fail-secure 姿態 + datasource skeleton），更新 infra profile（只 autoconfig 開關），更新 behavior profile（具體值 + log/actuator/springdoc）。
+3. **Secrets 層**：更新 `application-secrets.properties.example` 為 dot-notation，更新 `.gitignore`，視雲端平台補 `cloud-{provider}-secrets` 設定。
 
-### Step 4: Execute Changes
-
-Apply in this order (templates in `references/config-templates.md`):
-
-1. Create `{App}Properties.java` — `@ConfigurationProperties(prefix = "{app}")` record with nested records for each property group
-2. Add `@ConfigurationPropertiesScan` to `{App}Application.java`
-3. Update `application.yaml` — near-production defaults; `{app}.*` section uses pure values
-4. Update infrastructure profiles (`application-local.yaml`, `application-gcp.yaml`)
-5. Migrate `@Value("${app.*}")` in service classes → inject `{App}Properties`
-6. Update behavior profiles (`config/application-dev.yaml`, `config/application-lab.yaml`, etc.)
-7. Create missing profiles as needed
-8. Update secrets example file to dot-notation; update `.gitignore`
-9. Update Java `@Bean` configuration if needed (e.g., Manual Configuration for external APIs)
-
-### Step 5: Verify
+### Step 5：驗證
 
 ```bash
-./gradlew test          # (or ./mvnw test) — all tests pass
-./gradlew bootRun       # app starts; confirm active profiles in log
+./gradlew test          # (或 ./mvnw test) — 所有測試通過
+./gradlew bootRun       # app 啟動；確認 log 中 active profile 正確
 ```
 
-Produce completion report using template in `references/config-templates.md`.
+---
+
+## 模式 B：新專案建置
+
+### Step 1：蒐集需求
+
+詢問使用者：(1) 應用程式名稱、(2) 雲端平台（local / GCP / AWS / Azure）、(3) 資料庫、(4) 額外服務（AI / messaging / storage）、(5) 需要的行為 profile（dev / lab / sit / uat / prod）。
+
+### Step 2：產生配置
+
+**強制：屬性路徑查證**（同模式 A Step 1）。用 `references/config-templates.md` 的模板建立：
+
+- `{App}Properties.java` + `{App}Application.java`（含 `@ConfigurationPropertiesScan`）
+- `src/main/resources/application.yaml`（fail-secure base）+ `application-{local,cloud}.yaml`（infra）
+- `config/application-{dev,lab,prod}.yaml`（behavior）
+- `config/application-secrets.properties.example` + `.gitignore` 加項
+
+### Step 3：驗證與交付
+
+同模式 A Step 5。
 
 ---
 
-## Mode B: New Project Setup
+## 參考資料
 
-### Step 1: Gather Requirements
+執行時按需閱讀：
 
-Ask the user:
-1. Application name — becomes `@ConfigurationProperties` prefix and profile file prefix
-2. Cloud platform(s) — local, GCP, AWS, Azure
-3. Database — PostgreSQL, MongoDB, Firestore, etc.
-4. Additional services — AI/embedding, messaging, storage
-5. Behavior profiles needed — dev, lab, sit, uat, prod
-
-### Step 2: Generate Configuration
-
-**MANDATORY: Property Path Verification** — Before generating any YAML, verify all framework property paths against the official Application Properties index for the target Spring Boot version. Templates contain `{app}.*` paths (safe — controlled by us) and framework paths (unsafe — may be deprecated in the target version). See Step 1 verification gate in Mode A.
-
-Use templates from `references/config-templates.md` to create:
-
-1. `{App}Properties.java` — `@ConfigurationProperties(prefix = "{app}")` record
-2. `{App}Application.java` — main class with `@ConfigurationPropertiesScan`
-3. `src/main/resources/application.yaml` — shared base, near-production defaults
-4. `src/main/resources/application-local.yaml` — local infrastructure
-5. `src/main/resources/application-{cloud}.yaml` — cloud infrastructure (if applicable)
-6. `config/application-dev.yaml` — dev behavior
-7. `config/application-secrets.properties.example` — dot-notation template
-8. `.gitignore` additions
-
-### Step 3: Verify & Handoff
-
-Same as Mode A Step 5.
+- `references/config-design-principles.md` — 雙層 profile 設計（§1）+ 載入順序與職責分離（§1.1–1.2）+ fail-secure 姿態（§2）+ 預設值四層（§2.1–2.3）+ `@ConfigurationProperties` + placeholder skeleton（§3）+ 統一機敏值（§4）+ Starter vs Manual Config 含 §5.X/§5.Y/§5.Z 三 gate（§5）+ 命名跨層對齊（§6）+ envsubst whitelist（§7）+ 配置載入順序（§8）
+- `references/config-templates.md` — 即用模板：`{App}Properties.java`、profile YAML、DataSource skeleton、Manual Configuration `@Bean`
+- `references/cloud-gcp-secrets.md` — GCP Secret Manager 整合（Cloud Run env var mount + `sm@` 遞迴 resolve + envsubst whitelist + 認證實務）
+- `references/spring-reference-links.md` — Spring 框架官方文件、屬性與版本查找方式
+- `references/anti-patterns.md` — 反模式完整列表（Quick Reference 只列 critical）
 
 ---
 
-## References (Deep Dives)
+## 核心原則（Quick Reference）
 
-Read these as needed during execution:
+完整細節在 `references/config-design-principles.md`。
 
-- `references/config-design-principles.md` — Dual-layer profile design (§1–2), `@ConfigurationProperties` strategy (§3), secrets management (§4), Starter vs Manual Configuration decision ladder (§5), config load order (§6)
-- `references/config-templates.md` — Ready-to-use templates: `{App}Properties.java`, all profile YAML files, Manual Configuration `@Bean` example, completion report
-- `references/spring-reference-links.md` — Official Spring Boot / Spring Cloud / Spring AI docs, how to look up properties and versions
-- `references/cloud-gcp-secrets.md` — GCP Secret Manager integration patterns（Spring Cloud GCP `sm://` 語法、Cloud Run env var mount）+ 官方文件連結
-
----
-
-## Key Principles (Quick Reference)
-
-Full details in `references/config-design-principles.md`. One-line summaries:
-
-1. **`@ConfigurationProperties` over `@Value`** — App custom props in `{App}Properties` record; prefix = app name (kebab-case). YAML uses pure values; relaxed binding handles env var override. → §3
-2. **Dual-layer profile design** — Infrastructure (`local`/`gcp`) × behavior (`dev`/`lab`/`prod`). N+M files instead of N×M. → §1
-3. **`application.yaml` near-production + shared fixed values** — Defaults safe for prod; shared constants (model names, feature toggles) here. Dev features open in `config/application-dev.yaml`. → §2
-4. **Secrets dot-notation + cloud env var** — Local: `{app}.section.key=value` in `config/application-secrets.properties` (dev/lab import). Cloud: env var `{APP}_SECTION_KEY` (relaxed binding) or cloud-native secret manager. → §4
-5. **Dependency choice = intent declaration** — Artifact 含 `starter` → 讓框架管配置（查官方文件配 YAML 屬性）。不含 `starter`（純 library）→ 自己控制配置（方式自決，不限 `@Bean`）。讀 build file 先於讀 YAML；切換意圖時換 artifact，不要混用。→ §5
-6. **Starter vs Manual Config decision ladder** — Runs locally with Docker/Testcontainers? → Starter. Cannot? → Official switch → exclude → Manual Config → custom. → §5
-7. **Schema customization gate** — When custom schema/SQL/serialization is required, check whether the starter's hardcoded behavior accommodates it (grep auto-config + bean source for hardcoded SQL / final methods / private fields). If not, switch to the core artifact and self-implement; do not stack workarounds on top of the starter. → §5.X
-8. **Bean lifetime decides registration pattern** — State lifetime = application (read-only, shared) → singleton `@Bean`. State lifetime = request / operation (per-call context like user identity, tenant ID) → **don't register a Bean**; call site uses builder/factory `new`, instance GC'd after the operation. Don't stuff per-call context into singletons. → §5.Y
-9. **Fallback obsolescence check** — Each time infrastructure evolves (DB swap, emulator goes live, self-host migration), re-evaluate every "dev convenience" fallback. If the production path is now dev-accessible, delete the fallback to restore dev/prod parity. → §5.Z
+1. **雙層 profile 設計** — infrastructure × behavior，組合啟動（`lab,gcp` / `prod,gcp` / `local,dev`）。**順序：behavior 先、infra 後**（infra 後載確保 platform 專屬如 `spring.config.import: sm@` 不被 behavior 蓋掉）。infra ≠ behavior 嚴格分離（infra 只放 autoconfig 開關，env-specific 值放 behavior）。→ §1
+2. **`application.yaml` 接近正式環境（fail-secure）** — base 預設「最嚴」，dev profile 才鬆綁。預設值四層優先級：env var > config import > config/ profile > classpath profile > base > Java `@DefaultValue`。**不重複預設值**（跟上層一致的不寫；`@DefaultValue` 涵蓋的不重複寫 yaml）。→ §2
+3. **`@ConfigurationProperties` 取代 `@Value`** — 應用屬性放 `{App}Properties` record，前綴 = 應用名（kebab-case）；YAML 用純值；relaxed binding 自動處理 env var 覆蓋。**base 自包含 placeholder skeleton 模式**：跨 env 結構相同的（如 datasource）抽變數放 base，behavior 只填值。→ §3
+4. **統一機敏值管理機制** — 同 property 名跨 env、注入來源不同：本機走 `application-secrets.properties`，雲端走 env var（literal 或 `sm@` URI 遞迴 resolve）。**機敏值放 Secret Manager**（password / API key），**非機敏值放 env var literal**（DB user / bucket name）。→ §4
+5. **依賴選擇 = 意圖宣告** — `*-starter-*` → 框架管配置（YAML 屬性）；純 library → 自己控制。**Starter vs Manual Config 決策階梯**：dev 環境跑得起 → Starter；跑不起 → 官方開關 → exclude → Manual Config → 自訂。**三大 gate**：schema 客製化（§5.X）、bean lifetime（§5.Y）、fallback 過時（§5.Z）。→ §5
+6. **命名跨層對齊（dot.lower.case 主軸）** — Spring property = Cloud Run env name = 1:1 對齊（dot；K8s `RelaxedEnvironmentVariableValidation` GA 2025-06）。Secret Manager hyphen-case。Shell var SCREAMING_SNAKE。→ §6
+7. **工具衝突意識** — envsubst 預設會吃 `${sm@xxx}`；用 whitelist 模式 `envsubst '$VAR1 $VAR2'` 只替換指定變數。→ §7
 
 ---
 
-## Anti-Patterns
+## 反模式（Critical 7 條）
 
-- **Do NOT** use `@Value("${app.xxx}")` for app custom properties — create `{App}Properties` record
-- **Do NOT** write `${APP_VAR:default}` placeholder for `{app}.*` in YAML — use plain values; relaxed binding handles `APP_VAR` env var automatically
-- **Do NOT** use flat kebab key in `@ConditionalOnProperty` (`"{app}-genai-api-key"`) — use dot-notation matching `@ConfigurationProperties` path (`"{app}.genai.api-key"`)
-- **Do NOT** skip reading official docs — always check if the framework has an enable/disable switch before inventing workarounds
-- **Do NOT** put behavior config (log levels, actuator scope) in `src/main/resources/` — belongs in `config/`
-- **Do NOT** put `springdoc.*.enabled=false` only in `config/application-prod.yaml` — it won't exist on the server; set defaults in `application.yaml` instead
-- **Do NOT** set `spring.profiles.active` inside a profile-specific file — Spring Boot will throw an error
-- **Do NOT** ignore the artifact name — 選了 `*-starter-*` 就查官方文件用 YAML 屬性配置，不要自己建 bean（衝突風險）；選了純 library 就自己控制，不要期待 auto-config 生效。混用 = 衝突。**描述 artifact 變體的配置策略前，必須先讀官方文件確認該變體的設計意圖 — 不可從單一專案的實作反推**
-- **Do NOT** jump to Manual Configuration when the framework has a built-in disable switch — follow the decision ladder
-- **Do NOT** duplicate fixed values (model names, dimensions) across profile files — put once in `application.yaml` or `{App}Properties @DefaultValue`; Manual Config 的 `@Bean` 從 properties 讀取
-- **Do NOT** hardcode cloud-specific secret mechanisms (Secret Manager URIs, vault paths) in `application.yaml` — 用 env var 注入; cloud-native 整合放在雲端特定 profile 或部署設定，詳見 `references/cloud-*` 參考文件
-- **Do NOT** trust framework property paths from templates or memory — 框架主版本升級會 rename / deprecate / 搬移屬性路徑。執行時**必須**查證目標版本的官方 Application Properties 索引。`{app}.*` 由 `@ConfigurationProperties` 控制不受影響，但所有框架 namespace（`spring.*`、`management.*` 等）都可能變動
-- **Do NOT** treat "tests pass" as proof that config values are correct — deprecated 屬性在新版仍可運作（向下相容），測試無法捕捉 deprecation。查證手段：讀 JAR 內 `META-INF/spring-configuration-metadata.json` 的 `deprecation` 欄位，或查官方 Application Properties 索引。**設定值一定要查證過再動手，不是測試過就好**
-- **Do NOT** stack workarounds (extra UPDATE statements, `instanceof` guards, post-hoc field patches) on top of a starter when its hardcoded SQL/schema doesn't fit your customization needs — switch to the core artifact and self-implement instead. → §5.X
-- **Do NOT** reflexively register every wrapper class as a Spring `@Bean`. Per-call context (user identity, tenant ID, request-scoped data) belongs in builder-constructed instances at the call site, not as fields on a singleton. → §5.Y
-- **Do NOT** keep a "dev convenience" fallback (in-memory store, no-op service, stubbed adapter) once the production path becomes dev-accessible (Docker Compose container, emulator, self-host). dev/prod parity beats convenience. → §5.Z
+完整列表見 `references/anti-patterns.md`。
+
+1. **不要**對應用屬性用 `@Value("${app.*}")` — 建立 `{App}Properties` record
+2. **不要**把 env-specific 值（datasource url/帳密、bucket、issuer-uri）放 infra profile — 屬於 behavior profile
+3. **不要**用 `gcp,lab` 順序 — infra 後載原則：用 `lab,gcp`
+4. **不要**把 `application.yaml` 寫成「夠 dev 用就好」的鬆姿態 — base 應為 fail-secure，dev 才鬆綁
+5. **不要**信賴模板或記憶中的 framework property 路徑 — 必須查證目標版本官方 Application Properties 索引
+6. **不要**疊 workaround 在 starter 之上（額外 UPDATE、`instanceof` guard、後補欄位 patch） — 換 core artifact 自實作（§5.X）
+7. **不要**讓 envsubst 把 `${sm@xxx}` 當 shell 變數吃掉 — 用 whitelist 模式

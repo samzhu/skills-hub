@@ -14,8 +14,8 @@ Spring Boot 的 profile 可同時啟用多個。將 profile 分成**兩個獨立
 
 | 維度 | 職責 | 回答的問題 | 範例 |
 |------|------|-----------|------|
-| **基礎設施層** | 連到哪裡（DB、雲端服務、訊息佇列） | 「用什麼基礎設施？」 | `local`, `gcp`, `aws` |
-| **環境行為層** | 怎麼跑（日誌等級、取樣率、端點開放範圍） | 「行為像哪個環境？」 | `dev`, `lab`, `sit`, `uat`, `prod` |
+| **基礎設施層** | 用哪種底層、開哪些 autoconfig | 「在哪種環境跑？」 | `local`, `gcp`, `aws` |
+| **環境行為層** | 這環境是什麼角色（值與行為） | 「這個環境是哪個角色？」 | `dev`, `lab`, `sit`, `uat`, `prod` |
 
 ### 組合矩陣
 
@@ -24,13 +24,41 @@ Spring Boot 的 profile 可同時啟用多個。將 profile 分成**兩個獨立
 ─────────────────────────────────────────────────────────────
 spring.profiles.active=local,dev      本機 Docker  DEBUG   日常開發
 spring.profiles.active=local,lab      本機 Docker  DEBUG   實驗驗證
-spring.profiles.active=gcp,lab        GCP 服務     DEBUG   雲端實驗
-spring.profiles.active=gcp,prod       GCP 服務     INFO    正式環境
+spring.profiles.active=lab,gcp        GCP 服務     DEBUG   雲端封測
+spring.profiles.active=prod,gcp       GCP 服務     INFO    正式環境
 ```
 
 ### 為什麼不用單一維度？
 
 傳統 `dev/staging/prod` 混合基礎設施與行為。新增基礎設施（如 AWS）就要複製所有行為 profile → N×M 爆炸。雙層設計只需 N + M 個 profile。
+
+### 1.1 Profile 載入順序：behavior 先、infra 後
+
+`spring.profiles.active=lab,gcp` 順序有意義 — 後者覆蓋前者衝突項。**behavior 先載讓基礎設定就位，infra 後載補平台專屬覆蓋**。
+
+```
+正確:  spring.profiles.active=lab,gcp     ← behavior 先、infra 後
+錯誤:  spring.profiles.active=gcp,lab     ← infra 先載；如果 lab 後來覆蓋掉
+                                            gcp 的關鍵 infra（如 sm@ resolver）會壞
+```
+
+**為什麼這個順序**：
+- behavior profile（dev/lab/prod）定義「這環境的角色行為」— 比較廣
+- infra profile（gcp）補「這個基礎設施特有的東西」（autoconfig 開關、`spring.config.import: sm@` 等）— 比較窄、需要 trump
+- infra 後載確保平台專屬設定不被環境角色蓋掉
+
+`local,dev` 也遵循此規則（dev 先、local 後；無衝突所以順序影響小，但維持慣例）。
+
+### 1.2 嚴格職責分離：infra ≠ behavior
+
+| Layer | 該放什麼 | 不該放什麼 |
+|---|---|---|
+| **infra profile**（`local` / `gcp`） | autoconfig 開關、平台能力註冊（`spring.docker.compose.*`、`spring.cloud.gcp.*.enabled`、`spring.config.import: sm@`） | 任何 env-specific 值（DB url、帳密、bucket、issuer-uri、pool-size） |
+| **behavior profile**（`dev` / `lab` / `prod`） | env-specific 值、log level、actuator scope、springdoc 開關 | 平台 infra 開關（除非明確只在某 behavior 啟用） |
+
+**反模式**：把 `skillshub.security.oauth.enabled=false` 寫進 `application-local.yaml`（infra 層）。
+- 如果有人跑 `local,prod`（在本機測 prod 行為），會誤套 OAuth off。
+- 修正：把 OAuth 開關移到 `application-dev.yaml`（behavior 層），語意才對。
 
 ## 2. 檔案分層架構
 
@@ -54,16 +82,81 @@ config/                                ← 外部配置，不打包進 Image
 - **`src/main/resources/`** — classpath，打包進 jar/Docker Image。放**所有環境共用**的基礎設定。
 - **`config/`** — Spring Boot 自動掃描的外部配置目錄，**不進** jar/Image。放**環境行為**和**機敏值**。
 
-### `application.yaml` 接近正式環境的原則
+### `application.yaml` 接近正式環境的原則（fail-secure 姿態）
 
-`application.yaml` 的預設值應該是正式環境可以直接使用的。開發者需要的功能（springdoc、DEBUG log、擴展 actuator）在 `config/application-dev.yaml` 開啟。
+`application.yaml` 的預設值應該是**正式環境直接可用且安全**的姿態。開發者需要的鬆綁功能（springdoc、DEBUG log、擴展 actuator、OAuth off）在 `config/application-dev.yaml` 開啟。
 
-**好處：** GCP 部署時不需要 `config/` 目錄也能正確運作。減少配置負擔。
+**核心精神：base 預設「最嚴」，dev 才往下鬆綁**。不要倒過來（base 鬆、prod 才補嚴）— 一旦漏掉一條 prod override，就有安全 / 行為漏洞。
 
-**實務：**
-- `logging.level.root: INFO`（正式預設）
-- `springdoc.api-docs.enabled: false`（正式不需要）
-- `management.endpoints.web.exposure.include: health,info,metrics`（最小必要）
+**實務範例（base 該寫的姿態）：**
+- `logging.level.root: INFO`（dev 才轉 DEBUG）
+- `springdoc.api-docs.enabled: false`（dev 才開）
+- `management.endpoints.web.exposure.include: health,info,metrics`（最小必要；dev 才擴）
+- `{app}.security.oauth.enabled: true`（fail-secure；dev 才關走 LAB 分支）
+- 功能性開關（如 LLM scanner）預設 **on**（功能完成正式環境通常會用），dev 想關才在 dev profile override
+
+### 2.1 預設值四層優先級（高 → 低）
+
+理解這個層級才能決定「該不該寫進 yaml」：
+
+```
+1. Cloud Run env var / OS env var       ← 最高（部署時注入）
+2. spring.config.import 引入的檔案      ← 例：application-secrets.properties
+3. config/application-{profile}.yaml    ← 行為 profile（覆蓋 base）
+4. classpath:/application-{profile}.yaml ← infra profile
+5. classpath:/application.yaml          ← base
+6. Java @DefaultValue                   ← 最底（@ConfigurationProperties record 預設）
+```
+
+完整順序見 §6。
+
+### 2.2 不重複預設值原則
+
+**跟上層預設一樣的值 — 不寫**。理由：
+- 雜訊干擾理解；讀者要分辨「這條是顯式覆蓋還是 redundant 重複」
+- 預設變動時你的 yaml 會跟不上（鎖在過時值）
+- yaml 越短越容易維護
+
+| 該寫 | 不該寫（redundant） |
+|---|---|
+| `spring.threads.virtual.enabled: true`（預設 false） | `spring.flyway.enabled: true`（Flyway artifact 在 classpath 即啟用） |
+| `spring.web.error.include-message: always`（預設 never） | `spring.flyway.locations: classpath:db/migration`（預設） |
+| `springdoc.api-docs.enabled: false`（預設 true） | `logging.level.root: INFO`（預設） |
+| `{app}.scanner.engines.llm.enabled: false`（Java default true） | `spring.servlet.multipart.max-request-size: 10MB`（預設） |
+
+**例外**：跟預設一樣但要顯式表達意圖（防止未來誤改）— 加註解說明，否則應刪。
+
+### 2.3 Java `@DefaultValue` 接手原則
+
+`{App}Properties` 的 record 用 `@DefaultValue("...")` 提供 Java 端預設值。**yaml 不要重複寫**：
+
+```java
+public record Storage(
+    @DefaultValue("{app}-packages") String bucket,         // ← Java default
+    @DefaultValue("./storage-local") String localPath
+) {}
+
+public record OAuth(@DefaultValue("true") boolean enabled) {}   // ← fail-secure default
+```
+
+```yaml
+# ❌ 不該寫（跟 Java @DefaultValue 重複）
+{app}:
+  storage:
+    bucket: {app}-packages
+  security:
+    oauth:
+      enabled: true
+
+# ✓ 該寫的場合：覆蓋 Java default 才寫
+# config/application-dev.yaml
+{app}:
+  security:
+    oauth:
+      enabled: false        # ← Java default true，dev 顯式覆蓋為 false
+```
+
+**好處**：base yaml 大幅瘦身，預設值集中在 Java（型別安全 + 文件自動產生 + IDE autocomplete）。
 
 ## 3. @ConfigurationProperties 策略（應用程式名稱當前綴）
 
@@ -186,6 +279,35 @@ Cloud Run / K8s / 任何環境直接設定 SCREAMING_SNAKE_CASE env var，relaxe
 詳見官方 Relaxed Binding 表格：
 https://docs.spring.io/spring-boot/reference/features/external-config.html#features.external-config.typesafe-configuration-properties.relaxed-binding
 
+### 3.X base 自包含：placeholder skeleton 模式
+
+當某個結構（如 datasource）跨 env 結構相同、只有具體值差異時，**base 寫 skeleton + placeholder，behavior profile 提供值**。
+
+```yaml
+# 概念：base placeholder skeleton
+spring:
+  datasource:
+    url:      ${% raw %}${{app}.db.url}{% endraw %}
+    username: ${% raw %}${{app}.db.user}{% endraw %}
+    password: ${% raw %}${{app}.db.password}{% endraw %}
+    hikari:
+      # 跨 env 通用 timing 寫在 base；maximum-pool-size 由各 env override
+```
+
+**完整模板**（base + 各 behavior profile 值）見 `references/config-templates.md`「DataSource skeleton 模式」段。
+
+**好處**：
+- base datasource 結構穩定（升級框架版本只改一處）
+- env profile 只負責「這環境的具體值」— 最小驚奇
+- 部署人員只需知道要設哪 3 個變數，不需懂 datasource 結構
+
+**何時用 placeholder skeleton vs 直接寫**：
+
+| 情境 | 建議 |
+|---|---|
+| 多 env 結構相同、只值不同（datasource、URL params 一致） | **抽變數放 base**（skeleton 模式） |
+| 只有單一 env 用、結構獨特（mock-oauth2-server 只在 local Compose 出現） | **直接寫在該 env profile**（不抽變數，避免過度抽象） |
+
 ### 3.6 Secrets 檔案使用 dot-notation
 
 ```properties
@@ -219,11 +341,52 @@ EmbeddingModel realEmbeddingModel(@Value("${{app}-genai-api-key}") String apiKey
 > 因此 `@ConditionalOnProperty` 無法感知 Java record 的預設值 — 兩者各自運作。
 > `@ConditionalOnProperty` 直接查詢 `Environment`，與 `@ConfigurationProperties` binding 無關。
 
-## 4. 機敏值管理
+## 4. 統一機敏值管理機制
 
-### 本地開發
+### 4.1 核心精神：同一 property 名跨 env，注入來源不同
 
-透過環境行為設定檔的 `spring.config.import` 引入：
+**property 名跨 env 統一**（如 `{app}.db.password`），不同環境只是改注入方式：
+
+```
+property: {app}.db.password （跨環境同名；應用碼跨 env 一致）
+
+  ┌─ 本機 dev ───────────────────────────────────────────────┐
+  │  config/application-secrets.properties                  │
+  │    {app}.db.password=secret                             │
+  │  (透過 spring.config.import 在 dev/lab profile 引入)    │
+  └─────────────────────────────────────────────────────────┘
+
+  ┌─ Cloud Run lab/prod ────────────────────────────────────────┐
+  │  service.yaml env var：                                    │
+  │    name:  {app}.db.password                                │
+  │    value: ${% raw %}${sm@{app}-db-password}{% endraw %}    │ ← 字面字串
+  │                                                            │
+  │  Spring 啟動時 PropertyResolver 遞迴 resolve：             │
+  │    ${% raw %}${{app}.db.password}{% endraw %}              │
+  │      ↓ env var 注入字串                                    │
+  │    "${% raw %}${sm@xxx}{% endraw %}"                       │
+  │      ↓ 遞迴偵測 ${...} 語法                                │
+  │    SecretManagerPropertySource 攔截 sm@ 前綴               │
+  │      ↓ Secret Manager API                                  │
+  │    actual secret value                                     │
+  └────────────────────────────────────────────────────────────┘
+```
+
+**好處**：
+- 應用碼跨 env 一致（`@ConfigurationProperties` / `@Value` 取值不變）
+- 切換 env 只是換注入來源，不改 yaml / 不改程式
+- 機敏值不進 yaml（不被 git 追蹤、不洩漏）
+
+### 4.2 機敏 vs 非機敏分流
+
+| 類別 | 範例 | 本機 | 雲端 |
+|---|---|---|---|
+| **機敏值** | DB password、API key、OAuth client secret | `application-secrets.properties`（gitignore） | Secret Manager + 對應雲端整合（如 sm@） |
+| **非機敏 env-specific** | DB user、bucket name、URL 字串 | profile yaml 直接寫 | Cloud Run env var 直接注入 literal |
+
+**反模式**：把非機敏值（如 DB user）塞進 Secret Manager — 增加管理成本（一個 secret 一份月費 + IAM 複雜度）但無安全好處。
+
+### 4.3 本地 secrets 引入
 
 ```yaml
 # config/application-dev.yaml
@@ -232,39 +395,35 @@ spring:
     import: "optional:file:./config/application-secrets.properties"
 ```
 
-- `optional:` — 檔案不存在不報錯，fallback 到 `application.yaml` 預設值
+- `optional:` — 檔案不存在不報錯，fallback 到上層預設值
 - 只在 `dev`/`lab` profile 引入 — `application.yaml` 不引用本機路徑
 - `.gitignore` 排除 `config/application-secrets.properties`
 - `.example` 檔案提供模板，新成員照抄即可
 
-### 雲端部署（通用原則）
+### 4.4 雲端注入：env var 直接 + 遞迴 resolve 兩種
 
-**env var 是最通用的 secret 注入機制。** SCREAMING_SNAKE_CASE env var + relaxed binding，不需修改任何 YAML：
+**A. 平台 env var mount（直接注入 literal）— 適用一般非機敏 env-specific 值**
 
 ```
-環境變數（SCREAMING_SNAKE_CASE）:
-  {APP}_STORAGE_BUCKET  = {app}-prod-packages   → {app}.storage.bucket
-  {APP}_GENAI_API_KEY   = <api-key>             → {app}.genai.api-key
-
-Spring framework 屬性（env var）:
-  SPRING_MONGODB_URI = mongodb+srv://...         → spring.mongodb.uri（路徑依版本查證）
+env var:  {app}.db.user = {app}_app                 ← literal 值
+property:    →     {app}.db.user = "{app}_app"
 ```
 
-Secret 的**來源**由部署平台決定（不是 Spring Boot 的職責）：
+K8s `RelaxedEnvironmentVariableValidation`（GA 2025-06-28）允許 env name 含 dot — Cloud Run env name 直接對齊 Spring property 名（命名 1:1）。
 
-| 注入方式 | 適用場景 | Spring Boot 設定 |
-|---------|---------|-----------------|
-| 平台 env var mount（Cloud Run / K8s） | 最簡單，推薦首選 | 無 — relaxed binding 直接生效 |
-| Spring Cloud Secret Manager 整合 | 需要 runtime refresh 或 `sm://` 語法 | 加 starter + `spring.config.import` |
+**B. Secret Manager 整合（遞迴 resolve）— 適用機敏值**
 
-**雲端平台特定的 Secret Manager 整合模式，請參考對應的雲端參考文件：**
+```
+env var:  {app}.db.password = ${% raw %}${sm@{app}-db-password}{% endraw %}    ← 字面字串
+property:    →     {app}.db.password = "${% raw %}${sm@xxx}{% endraw %}"
+PropertyResolver:    →     遞迴觸發 SecretManagerPropertySource    →     actual secret
+```
 
-- GCP: `references/cloud-gcp-secrets.md`（Spring Cloud GCP `sm://` + Cloud Run env var mount）
-- AWS: 未來如需要，建立 `references/cloud-aws-secrets.md`
-- Azure: 未來如需要，建立 `references/cloud-azure-secrets.md`
+平台特定整合模式見：
+- GCP: `references/cloud-gcp-secrets.md`（Spring Cloud GCP `sm@` 語法 + Cloud Run env var）
+- AWS / Azure: 未來如需要建立 `references/cloud-{provider}-secrets.md`
 
-> **原則：** 不要在 `application.yaml` 中硬編碼雲端特定的 secret 機制（`sm://`、vault path）。
-> 雲端 secret 注入放在雲端特定 profile（如 `application-gcp.yaml`）或部署設定中。
+> **原則**：不要在 `application.yaml` 直接寫 `sm@xxx` 這類雲端特定 URI（綁住 base 不可移植）。雲端整合放在雲端 profile（如 `application-gcp.yaml` 啟用 `spring.config.import: sm@` resolver），實際 sm@ URI 透過部署層 env var 注入。
 
 ## 5. Starter vs Manual Configuration 判斷原則
 
@@ -531,7 +690,53 @@ skillshub:
 
 **通則**：dev 端能跑 production path 了 → 刪 fallback、刪切換屬性、刪 `@ConditionalOnProperty(havingValue="...")`，讓 dev 與 prod 走同一條路徑（dev/prod parity）。
 
-## 6. Spring Boot 配置載入順序
+## 6. 命名規則跨層對齊（dot.lower.case 為主軸）
+
+不同層的命名規範不同，但**能對齊的就對齊**，省心智負擔。
+
+| 物件 | 允許字元 | 範例 | 限制來源 |
+|---|---|---|---|
+| **Spring property name** | `[a-z0-9.-]` | `{app}.db.password` | Spring 慣例 |
+| **Cloud Run env name** | dot / dash 等都可 | `{app}.db.password` | K8s `RelaxedEnvironmentVariableValidation` GA 2025-06-28 |
+| **Secret Manager secret-id** | `[A-Za-z0-9_-]`（**無 dot**） | `{app}-db-password` | GCP API 命名規範 |
+| **Shell var** | C-identifier `[A-Z_][A-Z0-9_]*` | `DB_PASSWORD` | POSIX |
+
+**1:1 對齊原則**：
+- Spring property = Cloud Run env name（**走 dot 完全對齊**）— 改一個就改另一個，無翻譯成本
+- Secret Manager secret-id 用 hyphen-case（規範限制）— 命名上跟 Spring property 對應但用 hyphen
+- Shell var 用 SCREAMING_SNAKE_CASE — 透過 Spring relaxed binding 自動對應到 dot.case
+
+**範例對照**：
+```
+Spring property:    {app}.db.password
+Cloud Run env:      {app}.db.password    ← 1:1 對齊（dot）
+Secret Manager:     {app}-db-password    ← hyphen-case
+Shell var:          DB_PASSWORD          ← 部署腳本 / .env 用
+```
+
+> Cloud Run env name 走 dot 形式是相對近期的能力（2025-06-28 GA）。早期 K8s 強制 C-identifier，env name 必須走 SCREAMING_SNAKE。**確認部署平台 K8s 版本支援 RelaxedEnvironmentVariableValidation 後再採用 dot 形式**；否則維持 SCREAMING_SNAKE + relaxed binding 路徑。
+
+## 7. 工具衝突：envsubst 與 Spring `${...}` 語法
+
+部署腳本常用 `envsubst` 渲染 Cloud Run yaml 模板。但 `envsubst` 預設**會把所有 `${...}` 當 shell 變數替換**，包含本應留給 Spring runtime 的 `${sm@xxx}` placeholder — 結果 `${sm@xxx}` 被替換為空字串，secret 拿不到。
+
+**解法：envsubst whitelist 模式** — 只替換指定變數，其他 `${...}` 保留：
+
+```bash
+# 部署腳本（如 04-deploy.sh）
+envsubst '$IMG $SA_EMAIL $CLOUDSQL_INSTANCE_CONN $DB_NAME $DB_USER $GCS_BUCKET_NAME' \
+  < scripts/gcp/service.yaml > scripts/gcp/service.rendered.yaml
+```
+
+**驗證**（部署前 dry run）：
+```bash
+grep -E 'sm@|value:' scripts/gcp/service.rendered.yaml
+# 預期：${sm@xxx} 字串原樣保留
+```
+
+**通則**：當部署層工具語法與 Spring property placeholder 衝突時，優先選擇 whitelist / escape 機制，**不要讓部署工具吃掉 Spring 要看的 `${...}`**。
+
+## 8. Spring Boot 配置載入順序
 
 ### Config data files 載入優先級（由低到高）
 
