@@ -72,7 +72,7 @@ Grep: @ConditionalOnProperty
 
 每個檔案記錄：所屬 profile、所有屬性 key + 值、placeholder 模式、寫死的 secret、跨檔案重複項。
 
-**強制：屬性路徑查證 Gate** — 偵測到框架版本後，**必須**對照偵測版本的官方 Application Properties 索引（https://docs.spring.io/spring-boot/appendix/application-properties/index.html）查證所有非 `{app}.*` 屬性路徑。框架主版本升級會 rename / deprecate / 搬 namespace。模板與記憶中路徑可能已過期。`{app}.*` 由 `@ConfigurationProperties` 控制，不受框架版本影響。
+**強制：屬性路徑查證 Gate** — 偵測到框架版本後，**必須**對照偵測版本的官方 [Application Properties 索引](https://docs.spring.io/spring-boot/appendix/application-properties/index.html) 查證所有非 `{app}.*` 屬性路徑。框架主版本升級會 rename / deprecate / 搬 namespace。模板與記憶中路徑可能已過期。`{app}.*` 由 `@ConfigurationProperties` 控制，不受框架版本影響。
 
 ### Step 2：設計健康度檢查
 
