@@ -34,20 +34,38 @@ import type { Skill } from '@/types/skill'
  * 任何 user 可改 URL 看別人的 dashboard（已知 MVP 限制 per Feature First）
  */
 export function MySkillsPage() {
-  const { data: me, isLoading: meLoading } = useMe()
+  const { data: me, isLoading: meLoading, isError: meError } = useMe()
   const author = me?.sub
+  // S132: page-level auth gate 在 useSkillList 之後 render 路徑早 return；query 仍會跑但 result
+  // 不被使用（page 顯 EmptyState 時 skillsPage 不參與 render）— 對齊 React Hook 順序固定原則
   const { data: skillsPage, isLoading: skillsLoading } = useSkillList({
     author,
-    size: 200, // dashboard 全顯，避免分頁干擾
+    size: 200,
   })
   // S112-T04: 待處理回報 — me 已 loaded 才查（避免 anonymous 拒接）；放早 return 前以對齊 Rules of Hooks
   const { data: flagsSummary } = useFlagsSummary(!!author)
   const [tab, setTab] = useState<'all' | 'PUBLISHED' | 'DRAFT' | 'SUSPENDED'>('all')
 
-  if (meLoading || skillsLoading) {
+  if (meLoading || (author && skillsLoading)) {
     return (
       <AppShell>
         <div className="flex items-center justify-center py-16 text-muted-foreground">載入中...</div>
+      </AppShell>
+    )
+  }
+
+  // S132 (Mode B Round 41 follow-up; S130 regression fix): 未登入 → 顯空狀態 + 登入提示
+  // S130 v3.10.9 ship 後 OAuth=true 模式下 /me require auth；anonymous 走 useMe 失敗 →
+  // me=undefined → author=undefined。修補前頁面誤顯「以 身份發布」(空白) + 全 PUBLIC skills 為
+  // 「你的 N 個技能」。修補：page-level auth gate 走 EmptyState invite tone (S094c reuse)。
+  if (!author || meError) {
+    return (
+      <AppShell>
+        <EmptyState
+          tone="invite"
+          headline="請先登入後查看自己發布的技能"
+          sub="此頁顯示你以發佈者身份建立的技能、下載統計與待處理回報。登入後將自動載入你的資料。"
+        />
       </AppShell>
     )
   }
