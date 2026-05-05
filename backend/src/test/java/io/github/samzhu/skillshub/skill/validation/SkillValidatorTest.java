@@ -2,6 +2,9 @@ package io.github.samzhu.skillshub.skill.validation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -194,6 +197,7 @@ class SkillValidatorTest {
 				  - Edit
 				  - Bash(git:*)
 				---
+				# Body content present.
 				""";
 
 		var result = validator.validate(content);
@@ -212,6 +216,7 @@ class SkillValidatorTest {
 				description: ok
 				allowed-tools: [Read, Edit, "Bash(npm:test)"]
 				---
+				# Body content present.
 				""";
 
 		var result = validator.validate(content);
@@ -238,6 +243,184 @@ class SkillValidatorTest {
 
 		assertThat(result.valid()).isFalse();
 		assertThat(result.errors()).anyMatch(e -> e.contains("allowed-tools") && e.contains("Bash(;"));
+	}
+
+	// =========== S135a AC-S135a-5: 6 hard error rules ===========
+
+	@Test
+	@DisplayName("AC-S135a-5: SKILL.md 超過 500 行 → skill_md_line_count error")
+	@Tag("AC-S135a-5")
+	void lineCountExceedsMax() {
+		var lines = "---\nname: ok\ndescription: ok\n---\n" + "line\n".repeat(498);
+		// 4 frontmatter + 498 body = 502 lines > 500
+		var result = validator.validate(lines);
+
+		assertThat(result.valid()).isFalse();
+		assertThat(result.errors()).anyMatch(e -> e.startsWith("skill_md_line_count:") && e.contains("max 500"));
+	}
+
+	@Test
+	@DisplayName("AC-S135a-5: name 有連續 hyphen → consecutive hyphens error")
+	@Tag("AC-S135a-5")
+	void nameConsecutiveHyphens() {
+		var content = """
+				---
+				name: my--skill
+				description: ok
+				---
+				# Body
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isFalse();
+		assertThat(result.errors()).contains("name: consecutive hyphens not allowed");
+	}
+
+	@Test
+	@DisplayName("AC-S135a-5: name 以 hyphen 開頭 → must not start or end with hyphen error")
+	@Tag("AC-S135a-5")
+	void nameLeadingHyphen() {
+		var content = """
+				---
+				name: -leading-hyphen
+				description: ok
+				---
+				# Body
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isFalse();
+		assertThat(result.errors()).contains("name: must not start or end with hyphen");
+	}
+
+	@Test
+	@DisplayName("AC-S135a-5: description 為空白字串 → description: must not be blank")
+	@Tag("AC-S135a-5")
+	void descriptionBlank() {
+		var content = "---\nname: ok-name\ndescription: \"  \"\n---\n# Body\n";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isFalse();
+		assertThat(result.errors()).contains("description: must not be blank");
+	}
+
+	@Test
+	@DisplayName("AC-S135a-5: compatibility 提供但為空字串 → compatibility: must not be blank if provided")
+	@Tag("AC-S135a-5")
+	void compatibilityBlankWhenProvided() {
+		var content = "---\nname: ok-name\ndescription: ok\ncompatibility: \"\"\n---\n# Body\n";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isFalse();
+		assertThat(result.errors()).contains("compatibility: must not be blank if provided");
+	}
+
+	@Test
+	@DisplayName("AC-S135a-5: metadata.foo = 123（int 非 string）→ metadata key value must be string")
+	@Tag("AC-S135a-5")
+	void metadataValueNonString() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				metadata:
+				  foo: 123
+				---
+				# Body
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isFalse();
+		assertThat(result.errors()).contains("metadata: key 'foo' value must be a string");
+	}
+
+	@Test
+	@DisplayName("AC-S135a-5: frontmatter 後無 body content → body_present error")
+	@Tag("AC-S135a-5")
+	void bodyAbsent() {
+		var content = "---\nname: ok-name\ndescription: ok\n---\n";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isFalse();
+		assertThat(result.errors()).contains("body_present: SKILL.md has no body content after frontmatter");
+	}
+
+	// =========== S135a AC-S135a-6: 3 soft warning rules ===========
+
+	@Test
+	@DisplayName("AC-S135a-6: body 無 example heading 或 code fence → body_examples warning（不擋 publish）")
+	@Tag("AC-S135a-6")
+	void bodyNoExamples() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				---
+				# My Skill
+				This skill does something.
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isTrue();
+		assertThat(result.warnings()).contains("body_examples: no example heading or code fence detected");
+	}
+
+	@Test
+	@DisplayName("AC-S135a-6: body 無 numbered list 也無 ## Steps → body_steps warning")
+	@Tag("AC-S135a-6")
+	void bodyNoSteps() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				---
+				# My Skill
+				This skill does something useful.
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isTrue();
+		assertThat(result.warnings()).contains("body_steps: no step-by-step structure detected");
+	}
+
+	@Test
+	@DisplayName("AC-S135a-6: body 無 output/format keyword 也無 code block → body_output_format warning")
+	@Tag("AC-S135a-6")
+	void bodyNoOutputFormat() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				---
+				# My Skill
+				This skill does something useful.
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isTrue();
+		assertThat(result.warnings()).contains("body_output_format: no output format guidance detected");
+	}
+
+	// =========== S135a AC-S135a-7: backward compat ===========
+
+	@Test
+	@DisplayName("AC-S135a-7: ValidationResult.of(3-arg) factory — warnings 預設 List.of()；SkillCommandService caller 零改動")
+	@Tag("AC-S135a-7")
+	void backwardCompatThreeArgFactory() {
+		var result = ValidationResult.of(true, Map.of("name", "ok"), List.of());
+
+		assertThat(result.valid()).isTrue();
+		assertThat(result.errors()).isEmpty();
+		assertThat(result.warnings()).isEmpty();
 	}
 
 }
