@@ -1,5 +1,27 @@
 # Changelog
 
+## [v3.12.0] — Real OAuth IdP local dev trial — Google OAuth（S134 完成；2026-05-05）
+
+> S134 Google OAuth integration trial。驗證 Spring Security OAuth2 Login + Resource Server hybrid 對真實 OIDC IdP（Google）的 end-to-end 流程，包含 PKCE S256、OIDC discovery、id_token claim shape 紀錄。
+
+### Added — Backend
+- `SecurityConfig.java`：三分支設計（LAB / RS-only / RS + OAuth2 Login hybrid）；`skillshub.security.oauth.login.enabled` toggle
+- `AuthDebugController.java`（`@Profile("real-oauth")`）：`/api/v1/dev/auth-debug` dump OidcUser claims + access_token info
+- `SkillshubProperties.OAuth.Login` sub-record：`login.enabled` 控制 OAuth2 Login chain
+
+### Added — Frontend
+- `AuthDebugPage.tsx`：`/auth-debug` 路由；fetch `/api/v1/dev/auth-debug` + pretty-print JSON
+
+### Added — Config
+- `backend/config/application-real-oauth.yaml.example`：Google OAuth template（accounts.google.com, openid/email/profile scopes）
+
+### Key findings
+- Google `access_token` 是 opaque（`ya29.*`），bearer path 不適用 Google — `JwtDecoder` decode 必然失敗
+- Google id_token claims：`sub/email/email_verified/name/picture/given_name/family_name/iss/aud/azp/at_hash/nonce`；無 `roles`
+- Spring Security OAuth2 Login 路徑自動注入 `OIDC_USER + SCOPE_*` authorities（非空，與 RS `JwtAuthenticationConverter` 行為不同）
+
+---
+
 ## [v3.10.9] — Personal endpoints auth gate（S130 完成；2026-05-04 — Bug BB fix；LAB session integrity）
 
 > S130 single-tick ship — Mode B Round 41 (Tick 17) Bug BB (HIGH LAB session integrity) 同 tick ship。**PATCH bump** — 純 SecurityConfig path matcher 擴充；無新 dep；無 schema 變動。修補 anonymous 透過 CurrentUserProvider lab-user fallback 共享 personal state 的 LAB session integrity 漏洞。
