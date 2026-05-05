@@ -24,10 +24,14 @@ options:
   # 允許 substitution 互相引用（_IMG_PATH 內含 ${PROJECT_ID}）；
   # trigger 觸發時自動為 true，gcloud builds submit 需顯式宣告
   dynamicSubstitutions: true
-  # 8 vCPU / 8GB；npm + Paketo bootBuildImage 跑舒適。
-  # Paketo phases 主要 sequential（detect → restore → build → export），單模組 Gradle
-  # 升 32 vCPU 邊際效益小但價錢 4x，不值。
-  machineType: E2_HIGHCPU_8
+  # 32 vCPU / 32GB — Paketo native-image buildpack 跑 GraalVM static analysis + native
+  # compile 需要 16+ GB heap（本 app size：Spring Boot 4 + Modulith + Spring AI + GCP
+  # starter 共 11 個 starter）。E2_HIGHCPU_8 (8GB) 在 native compile 階段直接 OOM
+  # (exit 137)，container 只拿到 6.30GB. 之前選 8 vCPU 的判斷只對 JVM image 成立
+  # （I/O bound），native image 是 CPU+memory bound，rebalance。
+  # Trade-off：機器費 4x（仍只在 build 期幾分鐘付）換 native runtime 0.5s startup +
+  # 75% memory 省（120MiB vs 500MiB）。
+  machineType: E2_HIGHCPU_32
   # 不要求 GCS log bucket（runtime SA 不需要 storage role）
   logging: CLOUD_LOGGING_ONLY
   # diskSizeGb 預設 100GB（實際用量 ~2-4GB），明寫沒效果；觀察到 "no space left"
