@@ -80,6 +80,16 @@ steps:
     # （Paketo Java buildpack 對 Java 25 預設 distribution 為 Liberica），build-time
     # 與 runtime JVM 同 vendor，行為一致 / debug 同 codebase。
     # See: https://bell-sw.com/blog/liberica-jdk-25-lts-release-a-long-term-foundation-for-java-applications/
+    #
+    # -Pspring.profiles.active=aot,local
+    #   Spring AOT processing 階段 active profile（key 對齊 Spring 標準名 — 同 yaml
+    #   屬性 / runtime env var SPRING_PROFILES_ACTIVE / args 旗標）。決定哪些 @Profile
+    #   bean 被 freeze 進 native binary。runtime SPRING_PROFILES_ACTIVE 只能「加」
+    #   profile 不能「移除」baked 的（per spring-boot Issue #41562/#48408）。
+    #   當前 baked aot,local 是因為 AotStubConfig + application-local.yaml modulith
+    #   excludes 都掛在 local profile；Cloud Run 部署時設 SPRING_PROFILES_ACTIVE=gcp,prod
+    #   (or gcp,lab) 加 GCP infra + 行為 profile，env vars 提供 DB/SM/bucket 等具體值。
+    #   未來想把 lab/prod baked 進 image 改：-Pspring.profiles.active=aot,gcp,lab (or prod)。
     name: bellsoft/liberica-openjdk-debian:25
     waitFor: [copy-static]
     dir: backend
@@ -89,7 +99,8 @@ steps:
       - |
         chmod +x gradlew
         ./gradlew --no-daemon -x test bootBuildImage \
-          --imageName=${_IMG_PATH}:${_TAG}
+          --imageName=${_IMG_PATH}:${_TAG} \
+          -Pspring.profiles.active=aot,local
     env:
       - DOCKER_HOST=unix:///var/run/docker.sock
 

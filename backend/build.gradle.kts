@@ -2,10 +2,11 @@ plugins {
 	java
 	id("org.springframework.boot") version "4.0.6"
 	id("io.spring.dependency-management") version "1.1.7"
-	// S132：org.graalvm.buildtools.native 走官方標準 plugin。auto-apply boot.aot
-	// → processAot task 註冊 → Spring Boot AOT artifacts 烤進 jar。
-	// 我們目前不做 native binary（部署用 Paketo JVM image），但 plugin 留著
-	// 以便將來想試 native compile 時 0 line 改即可。
+	// org.graalvm.buildtools.native 走官方標準 plugin。auto-apply boot.aot →
+	// processAot task 註冊 → Spring Boot AOT artifacts 烤進 jar。Paketo builder
+	// `noble-java-tiny` 第一個 order group 是 `java-native-image`（內含 required
+	// native-image buildpack），有 plugin 貢獻的 META-INF/native-image/ metadata
+	// 即觸發 native compile chain — bootBuildImage 直接產 native binary。
 	id("org.graalvm.buildtools.native") version "0.11.5"
 	id("org.cyclonedx.bom") version "3.2.4"
 	jacoco
@@ -103,76 +104,23 @@ dependencyManagement {
 	}
 }
 
-tasks.named<Copy>("processResources") {
-	// 把 backend/config/application-{prod,lab}.yaml 拷進 image classpath，讓 Cloud Run
-	// 跑 SPRING_PROFILES_ACTIVE=gcp,prod 或 gcp,lab 時能載入。
-	// dev profile 與 secrets properties 維持本地專用，不拷。
-	//
-	// S132：前端 dist 不再走 Gradle。由 CI cloudbuild.yaml step 2（或本機
-	// scripts/gcp/03-build-push.sh）拷進 src/main/resources/static/；本機 bootRun
-	// 純後端，frontend hot reload 改 `cd frontend && npm run dev`（避開 frontend
-	// TS 錯誤擋住後端啟動）。
-	from(projectDir.resolve("config")) {
-		include("application-prod.yaml", "application-lab.yaml")
-	}
-}
-
-// S132：processAot 階段啟用 `aot` profile —— 載入 application-aot.yaml + 觸發
-// AotStubConfig（@Profile("aot")）提供 stub DataSource bean。
-// args() 走 SimpleCommandLinePropertySource（最高優先級），覆蓋
-// application.yaml 的 spring.profiles.default。Per Spring Boot AOT how-to。
-// Ref: https://docs.spring.io/spring-boot/how-to/aot.html
+// processAot 階段啟用的 profile 組合 — Spring AOT freeze 該組合下的 @Profile bean
+// definitions 進 native binary。runtime SPRING_PROFILES_ACTIVE 不能再 dynamically
+// swap 出 baked profile（per spring-boot Issue #41562/#48408），所以 AOT 階段就要
+// 列齊 native runtime 想用的 profile。
+//
+// Property key 對齊 Spring 標準名 `spring.profiles.active`（同 yaml 屬性 / runtime
+// env var SPRING_PROFILES_ACTIVE / args 旗標），跨層命名一致零認知負擔。
+//
+// 預設 aot,local；不同環境用 -P 覆蓋：
+//   本機:    ./gradlew bootBuildImage                                      → aot,local
+//   CI lab:  ./gradlew bootBuildImage -Pspring.profiles.active=aot,gcp,lab
+//   CI prod: ./gradlew bootBuildImage -Pspring.profiles.active=aot,gcp,prod
+//
+// Per Spring Boot AOT how-to: https://docs.spring.io/spring-boot/how-to/aot.html
 tasks.withType<org.springframework.boot.gradle.tasks.aot.ProcessAot>().configureEach {
-	// S133：AOT processing 階段同時啟用 aot + local — Spring AOT 會 freeze 這個 profile
-	// 組合下的 @Profile bean definitions 進 native binary。runtime SPRING_PROFILES_ACTIVE
-	// 不能再 dynamically swap 進其他 @Profile 對應的 bean（不在 baked context 中），所以
-	// AOT 階段就要列齊 native runtime 想用的 profile。當前 native demo 用 local infra
-	// (FileSystemStorageService etc.)；prod native build 未來改 aot,prod。
-	args("--spring.profiles.active=aot,local")
-}
-
-// S132: bootBuildImage Paketo buildpack 環境變數
-//
-// 兩層 AOT 並存：
-//   1. Spring Boot AOT (build-time)        — graalvm plugin 觸發 processAot task，產
-//                                            ApplicationContextInitializer 烤進 jar
-//   2. JVM AOT Cache (Paketo training run) — BP_JVM_AOTCACHE_ENABLED=true 讓 buildpack
-//                                            在 build 跑一次 app capture class loading，
-//                                            存 .aot file 進 image，runtime JVM 載入
-//                                            (Java 25 JEP 514；docs.spring.io/spring-boot
-//                                            /how-to/aot-cache.html)
-//
-// 變數說明：
-//   BP_JVM_AOTCACHE_ENABLED=true              啟用 AOT Cache training run + 烤進 image
-//   BP_JVM_CDS_ENABLED=false                  暫關 CDS — Spring Boot 4 + Java 25 + CDS
-//                                             known bug (paketo-buildpacks/spring-boot#581)
-//   TRAINING_RUN_JAVA_TOOL_OPTIONS=...        Training run 階段 JVM args；阻止連 DB / GCP
-//                                             等 remote services（Paketo 官方 hook，per
-//                                             spring-projects/spring-lifecycle-smoke-tests/
-//                                             blob/main/README.adoc#training-run-configuration）
-//   BPE_APPEND_JAVA_TOOL_OPTIONS=             Runtime JVM 載入 Spring Boot AOT artifacts
-//     -Dspring.aot.enabled=true               （非必要，Paketo Spring Boot buildpack 偵測
-//                                             META-INF/native-image 後自動設；顯式寫保險）
-//   BPE_DELIM_JAVA_TOOL_OPTIONS=" "           多個 JAVA_TOOL_OPTIONS 用空白接
-//
-// BP_JVM_VERSION 不顯式設 — Paketo Java buildpack 從 jar 內 META-INF/MANIFEST.MF 的
-// `Build-Jdk-Spec` header auto-detect（由 Spring Boot Gradle plugin 從
-// java.toolchain.languageVersion line 14-16，目前 25 寫入）。
-tasks.named<org.springframework.boot.gradle.tasks.bundling.BootBuildImage>("bootBuildImage") {
-	// S133：BP_NATIVE_IMAGE=true 啟用 Paketo native-image buildpack 烤 native binary。
-	// graalvm.buildtools.native plugin 已貢獻 META-INF/native-image/ metadata。
-	// Paketo 的 java-native-image buildpack chain 不會跑 jvm-aot-cache / cds buildpack
-	// （這兩個是 BP_JVM_* 控制，僅 JVM image 模式生效），所以下方兩個 flag 在 native
-	// 模式下是 no-op；保留是為了 BP_NATIVE_IMAGE 切回 false 時 JVM image 行為一致。
-	environment.put("BP_NATIVE_IMAGE", "true")
-	environment.put("BP_JVM_AOTCACHE_ENABLED", "true")
-	environment.put("BP_JVM_CDS_ENABLED", "false")
-	// Training run 啟用 aot profile 載入 application-aot.yaml stub config（同 ProcessAot
-	// 一份來源，不重複維護）。Spring Boot 從 -D 系統屬性讀 spring.profiles.active；
-	// Paketo 把 TRAINING_RUN_JAVA_TOOL_OPTIONS 注進 training run JVM。
-	environment.put("TRAINING_RUN_JAVA_TOOL_OPTIONS", "-Dspring.profiles.active=aot,local")
-	environment.put("BPE_DELIM_JAVA_TOOL_OPTIONS", " ")
-	environment.put("BPE_APPEND_JAVA_TOOL_OPTIONS", "-Dspring.aot.enabled=true")
+	val profiles = (project.findProperty("spring.profiles.active") as? String) ?: "aot,local"
+	args("--spring.profiles.active=$profiles")
 }
 
 tasks.withType<Test> {
