@@ -9,11 +9,14 @@
 每階段問自己：**做了沒**？沒做就回頭做。
 
 ```
-[ ] Phase 0 — 症狀分類（10 秒）
+[ ] Phase 0 — 症狀分類 + project memory consult（30 秒）
     □ 讀錯誤訊息第一行 + 最後 Caused by
-    □ 分類：bean / network / type / permission / config / 其他
-    □ 哪個 phase：compile / test / build / deploy / runtime / startup
+    □ 分類：bean / network / type / permission / config / behavior 不對 / 其他
+    □ 哪個 phase：compile / test / build / deploy / runtime / startup / 線上
     □ references/ 有對應 case study 嗎
+    □ Search-Self-First：grep keyword 在 own config/yaml/build script
+    □ 同檔 comment / docstring — 「為什麼這樣設」
+    □ CLAUDE.md / handover note / git log <file> | head — project memory
 
 [ ] Phase 1 — 本機快速重現（規則：第 2 次遠端失敗就跑）
     □ 抽出失敗的 task / command
@@ -79,6 +82,10 @@
 | Stack trace 只看到最後一行 | Phase 2：從第一個 Caused by 往下讀 |
 | 沒查 GitHub issue 直接動手改 | Phase 3：派 research agent |
 | 直覺型 fix「我以為這樣就好了」連續多次 | 停。第一性原則：是什麼觸發了這條 path |
+| 想去研究 framework / upstream issue | 先 `grep keyword own/config` 排除自己（Search-Self-First）|
+| 同 session 第 2 次同類「形狀」的 bug | 寫 rule，第 3+ 次套（Pattern-Recognition-on-2nd）|
+| User 重啟同指令 ≥ 2 次但你以為 done | 直接問 user「your done = which scope?」(Read-User-Intent) |
+| Bisect 時間貴（≥ 5 min × 多 candidate）| 按 confidence 分組：high-confidence reasoning，low-confidence 必 bisect |
 
 ---
 
