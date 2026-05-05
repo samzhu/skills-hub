@@ -27,6 +27,7 @@ import { PublishFailedPage } from './pages/PublishFailedPage'
 import { PublishValidatePage } from './pages/PublishValidatePage'
 import { VersionDiffPage } from './pages/VersionDiffPage'
 import { FlagsQueuePage } from './pages/FlagsQueuePage'
+import { AuthDebugPage } from './pages/AuthDebugPage'
 
 function App() {
   return (
@@ -78,6 +79,8 @@ function App() {
       <Route path="/docs/semantic-search" element={<SemanticSearchPage />} />
       <Route path="/docs/rest-api" element={<RestApiPage />} />
       <Route path="/docs/event-payload" element={<EventPayloadPage />} />
+      {/* S134: dev-only「我的認證」頁 — 後端 real-oauth profile 啟用時才有真資料；否則顯示提示 */}
+      <Route path="/auth-debug" element={<AuthDebugPage />} />
       {/* unmatched URL 之前 render 空白 root，user 看不到 navbar 也沒 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

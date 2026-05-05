@@ -138,8 +138,23 @@ public record SkillshubProperties(
     /**
      * @param enabled OAuth2 Resource Server 是否啟用；預設 {@code true}（fail-secure）。
      *                LAB 環境須以 env var {@code SKILLSHUB_SECURITY_OAUTH_ENABLED=false} 顯式關閉。
+     * @param login   S134：OAuth2 Login（Client 端 authorization code flow）開關集合。
+     *                預設 {@code Login.enabled=false} — 既有 dev/lab/prod 路徑全 RS-only。
+     *                本機 real-IdP 整合試行才會 active（{@code real-oauth} profile 顯式 override）。
      */
-    public record OAuth(@DefaultValue("true") boolean enabled) {}
+    public record OAuth(
+            @DefaultValue("true") boolean enabled,
+            @DefaultValue Login login) {
+
+        /**
+         * S134：OAuth2 Login（Client 端 authorization code flow）開關。
+         * 預設 false — 既有 dev/lab/prod 路徑全部維持 Resource Server-only。
+         * {@code real-oauth} profile yaml 設 true 啟用 server-side login flow，
+         * 由 {@code spring-boot-starter-oauth2-client} 提供的 {@code oauth2Login()} chain
+         * 處理 redirect URI {@code /login/oauth2/code/{registrationId}}。
+         */
+        public record Login(@DefaultValue("false") boolean enabled) {}
+    }
 
     /**
      * @param userId LAB 模式下 {@code LabSecurityFilter} 注入的 principal 值與

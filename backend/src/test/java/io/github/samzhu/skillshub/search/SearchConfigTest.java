@@ -34,9 +34,11 @@ class SearchConfigTest {
     @Test
     @DisplayName("AC-3: googleGenAiEmbeddingModel() 當 skillshub.genai.api-key 設定時回傳 GoogleGenAiTextEmbeddingModel")
     void googleGenAiEmbeddingModelReturnsRealModel() {
+        // S134 collateral fix：對齊 SkillshubProperties record 當前簽章
+        // Search: 2-arg → 1-arg（per S014 簡化）；Security: 2-arg → 3-arg（per S128 加 Cors）。
         var props = new SkillshubProperties(
                 new SkillshubProperties.Storage("skillshub-packages", "./storage-local"),
-                new SkillshubProperties.Search("simple", "skill_embeddings"),
+                new SkillshubProperties.Search("skill_embeddings"),
                 new SkillshubProperties.GenAI("gemini-embedding-2", 768, "test-api-key"),
                 new SkillshubProperties.Scanner(new SkillshubProperties.Engines(
                         new SkillshubProperties.Engine(true),
@@ -45,8 +47,9 @@ class SearchConfigTest {
                         new SkillshubProperties.Engine(false),
                         new SkillshubProperties.Engine(true))),
                 new SkillshubProperties.Security(
-                        new SkillshubProperties.OAuth(true),
-                        new SkillshubProperties.Lab("lab-user")));
+                        new SkillshubProperties.OAuth(true, new SkillshubProperties.OAuth.Login(false)),
+                        new SkillshubProperties.Lab("lab-user"),
+                        new SkillshubProperties.Cors(java.util.List.of(), false)));
 
         var em = config.googleGenAiEmbeddingModel(props);
 

@@ -42,6 +42,9 @@ src/main/resources/static/
 ### Secrets (本地機敏值，不提交 Git) ###
 config/application-secrets.properties
 !config/application-secrets.properties.example
+# S134：real OAuth profile 含 client_secret，per-developer 配置不入版控
+config/application-real-oauth.yaml
+!config/application-real-oauth.yaml.example
 
 ### Local storage (本機檔案儲存，僅保留目錄結構) ###
 storage-local/*

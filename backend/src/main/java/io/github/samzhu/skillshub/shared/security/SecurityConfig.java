@@ -91,13 +91,27 @@ class SecurityConfig {
             // - /api/v1/me + /api/v1/me/** (含 /me/subscriptions)
             // - /api/v1/notifications + /api/v1/notifications/** (含 /unread-count / /{id}/read / /preferences)
             // - /api/v1/admin/** (既驗 S011)
+            // - /api/v1/dev/** (S134：real-oauth profile 唯一啟用的 dev debug endpoint)
             http.authorizeHttpRequests(auth -> auth
                     .requestMatchers("/api/v1/me", "/api/v1/me/**").authenticated()
                     .requestMatchers("/api/v1/notifications", "/api/v1/notifications/**").authenticated()
                     .requestMatchers("/api/v1/admin/**").authenticated()
+                    .requestMatchers("/api/v1/dev/**").authenticated()
                     .anyRequest().permitAll())
                 .oauth2ResourceServer(oauth2 -> oauth2
                     .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+
+            // S134：real-oauth profile path — 加上 OAuth2 Login (Client) chain。
+            // 由 skillshub.security.oauth.login.enabled toggle（預設 false）；real-oauth profile yaml
+            // 顯式設 true 才啟用。Login chain 負責 redirect URI `/login/oauth2/code/{registrationId}`
+            // 與 authorization initiation `/oauth2/authorization/{registrationId}`；session-based
+            // OAuth2AuthenticationToken 由 HttpSessionSecurityContextRepository 持久化。
+            // defaultSuccessUrl("/", true) — 登入成功後 land 首頁（搜尋頁），第二參數 true 強制
+            // override 任何 saved request（避免 IdP 預設 GET /oauth2/authorization/skillshub 被當成
+            // saved request 又 redirect 回去造成 loop）。
+            if (props.security().oauth().login().enabled()) {
+                http.oauth2Login(login -> login.defaultSuccessUrl("/", true));
+            }
         } else {
             // ── LAB 模式（S012）──
             // anyRequest permitAll：任何 endpoint 不需 JWT；@PreAuthorize 仍可運作
