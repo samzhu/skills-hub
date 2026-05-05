@@ -34,6 +34,7 @@
 | **search** | **Read-side projection** | 無 | 消費 skill events 建構搜尋索引（keyword + semantic） |
 | **analytics** | **Read-side projection** | 無 | 消費 download events 建構統計數據 |
 | **audit** | **Cross-cutting listener** | 無 | 訂閱所有 9 個 Skill domain events 寫入 `domain_events` audit log（async + idempotent；S024 引入） |
+| **score** | **Async LLM judge** | `SkillScore`（per-axis evaluation row） | S135a 引入；訂閱 `SkillVersionPublishedEvent` → 3-axis 品質評分（VALIDATION rule-based + IMPLEMENTATION/ACTIVATION Gemini 2.5 Flash LLM judge）→ 寫 `skill_scores` 表；獨立 `qualityExecutor` pool（corePool=1, queue=500）避免擠 `applicationTaskExecutor` |
 | **storage** | **Infrastructure service** | 無 | 傳統 service，GCS 操作 |
 
 ### Core Concepts

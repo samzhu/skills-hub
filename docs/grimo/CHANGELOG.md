@@ -1,5 +1,40 @@
 # Changelog
 
+## [v3.14.0] — Backend Quality Score — 3-axis LLM judge + GET /scores（S135a 完成；2026-05-06）
+
+> S135a 後端品質評分系統。publish skill 觸發 async LLM judge（Gemini 2.5 Flash），寫入 3 條 `skill_scores` rows（VALIDATION rule-based + IMPLEMENTATION + ACTIVATION LLM judge），提供 `GET /api/v1/skills/{id}/scores`。
+
+### Added — Backend
+
+- **Spring AI M5 BOM upgrade**：`spring-ai-bom 2.0.0-M5`（T01）
+- **SkillValidator 9 rules**：6 hard（lineCount/bodyPresent/nameFormat/descriptionConstraints/requiredFields/allowedTools）+ 3 warning（T02；25 tests PASS）
+- **`skill_scores` DB layer**：V15 migration + `SkillScore` aggregate（deterministic UUID PK + `Persistable<String>`）+ `SkillScoreRepository`（`findLatestBySkillId/VersionId`/`existsBySourceEventId`）（T03）
+- **QualityJudge**：Spring AI ChatClient wrapper + RubricPrompts（Implementation/Activation system prompts）+ StubQualityJudge（test profile）+ 10 regression fixtures（T04；GEMINI_API_KEY gated）
+- **QualityScoreService**：3-step evaluation — VALIDATION rule-based score / IMPLEMENTATION LLM judge / ACTIVATION LLM judge → `saveAll(3 rows)`；`@Transactional`；`alreadyScored()` idempotency check（T05）
+- **QualityScoreListener**：`@ApplicationModuleListener + @Async("qualityExecutor")`；sourceEventId early-return；re-throw on failure（T05）
+- **QualityExecutorConfig**：`qualityExecutor` bean（corePool=1, max=1, queue=500, prefix "quality-judge-"）+ `DelegatingSecurityContextAsyncTaskExecutor`（T05）
+- **QualityScoreController**：`GET /api/v1/skills/{skillId}/scores`；optional `?versionId`；`@PreAuthorize("hasPermission(#skillId, 'Skill', 'read')")`；404 → `QualityNotEvaluatedException`（T06）
+- **ScoreResponse DTO**：`from(List<SkillScore>)` 含 total = round(0.2V + 0.4I + 0.4A)（T06）
+- **`QualityNotEvaluatedException`**：`shared.api` package（避 score→skill→shared→score 循環）→ `GlobalExceptionHandler` 映射 404 QUALITY_NOT_EVALUATED（T06）
+- **E2EQualityScoreTest**：`@EnabledIfEnvironmentVariable(GEMINI_API_KEY)` gate，3 boundary scenarios（high/low/borderline）（T07 骨架；手動 evidence 待 user 執行）
+
+### Architecture
+
+- **score module** 加入 Modulith 模組圖；`qualityExecutor` 獨立 thread pool 避免擠 `applicationTaskExecutor`
+- **`skill::validation` named interface**：`@NamedInterface("validation")` 讓 score module 合法引用 SkillValidator
+- **`shared.api.QualityNotEvaluatedException`**：放 shared.api 而非 score 避免 cycle（Modulith verify PASS）
+
+### Test coverage
+
+- T02: `SkillValidatorTest` 25 PASS
+- T03: `SkillScoreRepositoryTest` 5 PASS
+- T04: `QualityJudgeFixtureTest` 4 SKIPPED（API key gated，符合設計）
+- T05: `QualityScoreListenerTest` 2 PASS，`QualityScoreServiceTest` 4 PASS
+- T06: `QualityScoreControllerTest` 5 PASS，`ModularityTests` PASS
+- Full suite: 469 tests / 0 failures（`-x processTestAot` workaround for pre-existing AOT bug）
+
+---
+
 ## [v3.13.0] — Test Debt Recovery — 18 pre-existing test failures fixed（S138 完成；2026-05-05）
 
 > S138 SB4+SS7 test path recovery。清除 6 個 cluster 共 18 個過往 spec ship 後積累的 test stale-ness，unblock S135a 後續 `./gradlew test` 驗證。Zero production code change。
