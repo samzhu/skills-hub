@@ -10,9 +10,9 @@
 #     gcp     — GCP 服務（Cloud Run 部署）
 #
 #   行為 profile（config/；prod / lab 由 build.gradle.kts processResources 拷進 image）：
-#     dev     — 開發行為（DEBUG log、完整 actuator、springdoc、引入 secrets；本地專用，不拷進 image）
+#     dev     — 開發行為（DEBUG log、完整 actuator、引入 secrets；本地專用，不拷進 image）
 #     prod    — 正式行為（INFO log、限縮 actuator；隨 image ship）
-#     lab     — 封測 / MVP 行為（OAuth off、完整 actuator、springdoc、DEBUG app log；隨 image ship）
+#     lab     — 封測 / MVP 行為（OAuth off、完整 actuator、DEBUG app log；隨 image ship）
 #
 # Profile 順序慣例：behavior 先、infra 後（行為 profile 先把基礎設定就位，
 # infra profile 再覆蓋 GCP 專屬項，例如 sm@ 機制需 application-gcp.yaml 啟用）
@@ -115,13 +115,6 @@ management:
         enabled: true
 
 # ----- 日誌：root 預設 INFO 即可（不重複寫）；dev / lab profile 對應用 package 套 DEBUG -----
-
-# ----- API 文件（正式預設關閉，dev / lab profile 開啟） -----
-springdoc:
-  api-docs:
-    enabled: false
-  swagger-ui:
-    enabled: false
 
 # ----- 應用程式自訂屬性 -----
 # 預設值大多由 SkillshubProperties.java @DefaultValue 提供（base 不重複寫 yaml）：

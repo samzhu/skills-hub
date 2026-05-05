@@ -25,9 +25,18 @@ spring:
   # 本機無 GCP 憑證，排除 GcpContextAutoConfiguration 避免 startup 嘗試偵測 project ID 噴 warning
   # 注：spring-ai-google-genai-embedding 是 core artifact（無 -starter-），classpath 上沒有
   # GoogleGenAiEmbeddingConnectionAutoConfiguration 類，無需 exclude
+  #
+  # S133：Spring 對 list 屬性的 profile 覆蓋是「後 profile 完全取代前 profile」（非 merge）。
+  # AOT processing 時 profile=aot,local，local 後置會 wipe application-aot.yaml 的 modulith
+  # excludes。所以 modulith native excludes 必須同步列在這裡（spring-modulith-actuator/
+  # observability autoconfig 觸發 ApplicationModulesRuntime → ArchUnit ClassFileImporter →
+  # native image ClassNotFoundException：ModuleImportPlugin。Issue #735/#1556 未修）。
   autoconfigure:
     exclude:
       - com.google.cloud.spring.autoconfigure.core.GcpContextAutoConfiguration
+      - org.springframework.modulith.actuator.autoconfigure.ApplicationModulesEndpointConfiguration
+      - org.springframework.modulith.observability.autoconfigure.ModuleObservabilityAutoConfiguration
+      - org.springframework.modulith.observability.autoconfigure.SpringDataRestModuleObservabilityAutoConfiguration
 
   cloud:
     gcp:

@@ -51,7 +51,6 @@ dependencies {
 	// BOM 已 manage 8.0.2；無需顯式版本。
 	implementation("com.google.cloud:spring-cloud-gcp-starter-secretmanager")
 	implementation("io.micrometer:micrometer-tracing-bridge-brave")
-	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
 	implementation("org.springframework.ai:spring-ai-markdown-document-reader")
 	implementation("org.springframework.ai:spring-ai-google-genai-embedding")
 	implementation("org.springframework.ai:spring-ai-google-genai")
@@ -124,7 +123,12 @@ tasks.named<Copy>("processResources") {
 // application.yaml 的 spring.profiles.default。Per Spring Boot AOT how-to。
 // Ref: https://docs.spring.io/spring-boot/how-to/aot.html
 tasks.withType<org.springframework.boot.gradle.tasks.aot.ProcessAot>().configureEach {
-	args("--spring.profiles.active=aot")
+	// S133：AOT processing 階段同時啟用 aot + local — Spring AOT 會 freeze 這個 profile
+	// 組合下的 @Profile bean definitions 進 native binary。runtime SPRING_PROFILES_ACTIVE
+	// 不能再 dynamically swap 進其他 @Profile 對應的 bean（不在 baked context 中），所以
+	// AOT 階段就要列齊 native runtime 想用的 profile。當前 native demo 用 local infra
+	// (FileSystemStorageService etc.)；prod native build 未來改 aot,prod。
+	args("--spring.profiles.active=aot,local")
 }
 
 // S132: bootBuildImage Paketo buildpack 環境變數
@@ -155,16 +159,18 @@ tasks.withType<org.springframework.boot.gradle.tasks.aot.ProcessAot>().configure
 // `Build-Jdk-Spec` header auto-detect（由 Spring Boot Gradle plugin 從
 // java.toolchain.languageVersion line 14-16，目前 25 寫入）。
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootBuildImage>("bootBuildImage") {
-	// graalvm.buildtools.native plugin 貢獻 META-INF/native-image/ metadata 到 jar，
-	// Paketo native-image buildpack 偵測到後 auto-trigger 真實 native binary 編譯
-	// （15+ 分鐘）。我們只要 JVM AOT artifacts 給 runtime 用，不要 native compile。
-	environment.put("BP_NATIVE_IMAGE", "false")
+	// S133：BP_NATIVE_IMAGE=true 啟用 Paketo native-image buildpack 烤 native binary。
+	// graalvm.buildtools.native plugin 已貢獻 META-INF/native-image/ metadata。
+	// Paketo 的 java-native-image buildpack chain 不會跑 jvm-aot-cache / cds buildpack
+	// （這兩個是 BP_JVM_* 控制，僅 JVM image 模式生效），所以下方兩個 flag 在 native
+	// 模式下是 no-op；保留是為了 BP_NATIVE_IMAGE 切回 false 時 JVM image 行為一致。
+	environment.put("BP_NATIVE_IMAGE", "true")
 	environment.put("BP_JVM_AOTCACHE_ENABLED", "true")
 	environment.put("BP_JVM_CDS_ENABLED", "false")
 	// Training run 啟用 aot profile 載入 application-aot.yaml stub config（同 ProcessAot
 	// 一份來源，不重複維護）。Spring Boot 從 -D 系統屬性讀 spring.profiles.active；
 	// Paketo 把 TRAINING_RUN_JAVA_TOOL_OPTIONS 注進 training run JVM。
-	environment.put("TRAINING_RUN_JAVA_TOOL_OPTIONS", "-Dspring.profiles.active=aot")
+	environment.put("TRAINING_RUN_JAVA_TOOL_OPTIONS", "-Dspring.profiles.active=aot,local")
 	environment.put("BPE_DELIM_JAVA_TOOL_OPTIONS", " ")
 	environment.put("BPE_APPEND_JAVA_TOOL_OPTIONS", "-Dspring.aot.enabled=true")
 }

@@ -19,9 +19,9 @@
 # =============================================================================
 
 spring:
-  # 跳過 Flyway migration（AOT/training run 階段沒真實 DB 連線）
-  flyway:
-    enabled: false
+  # S133：不再 disable Flyway autoconfig — 改用 FlywayMigrationStrategy bean 在 AOT 階段
+  # skip migrate (per AotStubConfig)。autoconfig disabled 會 leak 到 native runtime（baked
+  # context 沒 Flyway beans，env var SPRING_FLYWAY_ENABLED=true 也救不回）。
   # 排除 GCP context auto-config — CI 沒 GCP metadata server 會炸
   autoconfigure:
     exclude:
