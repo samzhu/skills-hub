@@ -14,10 +14,7 @@
 
 **需要使用者操作：**
 - [ ] S132 T02: GCP Console 建立 Cloud Build trigger + 首次 push smoke
-- [ ] S134 T02-T04: 填入 `client_secret` → 啟動 `real-oauth` profile → browser login smoke
-
-**需要設計確認：**
-- [ ] S101 META: Skill Quality/Impact Score System — 7 open questions（見 S101 spec）
+- [x] S134 T04: ✅ 完成 2026-05-05 — Google login PASS, claim shape in §7
 
 **設計已備妥，可直接 /planning-tasks：**
 - [ ] S099e1: Prompt-injection scanner（設計完成於 S099 META §6）
@@ -37,12 +34,15 @@
 | SpecID | 標題 | 點數 | 相依 | 狀態 |
 |--------|------|------|------|------|
 | S099 | META Trust Maturity & Implementation Audit | META | — | 📐 in-design |
-| S101 | META Skill Quality / Impact / Security Score System | META | S099 | 📐 awaiting confirm |
 | S114a | RBAC ACL — Owner + Viewer roles | M(12) | S116 ✅ | 📐 in-design |
 | S120 | E2E auth integration test | M(8-10) | S114a | 📐 in-design |
 | S132 | CI — Cloud Build pipeline | XS(7) | S013 ✅ | ⏳ T02 pending |
 | S133 | Skill Markdown export | XS(8) | S074 ✅ | ⏳ T01-T03 ready |
-| S134 | Real OAuth IdP local dev trial | S(9) | S011 ✅ | ⏳ T01 done, T02-T04 pending |
+| S134 | Real OAuth IdP local dev trial (Google OAuth) | S(9) | S011 ✅ | ✅ shipped (§7 filed 2026-05-05) |
+| S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | 📐 in-design |
+| S135a | Backend Quality Score (Validation + LLM judge + endpoint) | M(13-15) | S138 ⏸ S135 | ⏸ deferred (T01 done; T02-T07 blocked by S138 auth test debt) |
+| S135b | Frontend Quality Display (hero 兩條進度條 + Quality tab + SkillCard badge) | S(9-11) | S135a | ⏸ deferred (blocked by S135a) |
+| S138 | SB4 + SS7 OAuth2 RS test path recovery | S(7-9) | — | 📐 in-design (blocking S135a) |
 
 ---
 
@@ -59,7 +59,6 @@
 | v4.1.0 | S120 (E2E auth integration test) | 📋 depends S114a |
 | v4.x | S099e1, S099e3 (security scanners) | 📋 設計已備妥 |
 | v4.x | S099c (cross-marketplace validation) | 📋 sources 已驗證 |
-| v5.0.0 | S101 系列 (Quality/Impact Score) | 📋 awaiting confirm |
 
 ---
 
@@ -79,16 +78,11 @@
 | S099e2 | Resource DoS scanner (LLM04) | S(5) | S099 | 📋 planned |
 | S099e3 | Dependency vulnerability scanner (LLM05) | S(7) | S099 | 📋 planned |
 | S099e4 | Hardcoded creds detector enhancement (LLM06) | S(4) | S099 | 📋 planned |
-| S101a | Quality Score backend + LLM judge | M(10) | S101 | 📋 awaiting S101 |
-| S101b | Impact Score proxy metrics | M(8) | S101 | 📋 awaiting S101 |
-| S101c | Security Status simplified | S(6) | S101 | 📋 awaiting S101 |
-| S101d | Frontend SkillCard + Scores tab | S(8) | S101 | 📋 awaiting S101 |
-| S101e | Quality Score weekly re-evaluation cron | XS(3) | S101 | 📋 awaiting S101 |
-| S101f | Score audit log + admin recalculate UI | XS(3) | S101 | 📋 awaiting S101 |
 | S114b | ACL production scale — Slice + Caffeine | M(10) | S114a | 📋 planned |
 | S114c | ACL infra — read replica + PgBouncer | M(8) | S114b | 📋 planned |
 | S129 | Server compression | XS(1) | — | 📋 planned |
 | S131 | Error code naming convention alignment | XS(2-3) | — | 📋 planned |
+| S136 | Skill Evaluation Scenarios — task-based eval | TBD | S135 | 📋 待討論（per [`research/2026-05-05-tessl-skill-platform-study.md`](../research/2026-05-05-tessl-skill-platform-study.md) §4） |
 
 ---
 
@@ -98,6 +92,13 @@
 |--------|------|------|------|
 | S095 | Risk tier 4-level split | S(9) | ⛔ superseded by S096c |
 | S096e2 | Onboarding wizard | S(7) | ⛔ 取消 2026-05-05（MVP 不需要）|
+| S101 | META Skill Quality / Impact / Security Score System | META | ⛔ superseded 2026-05-05 — 由 Tessl 8-dim 研究 (S135 META) 取代 Quality 部分；Impact 部分移至 S136 Backlog |
+| S101a | Quality Score backend + LLM judge | M(10) | ⛔ superseded by S135（Tessl 8-dim 對齊版） |
+| S101b | Impact Score proxy metrics | M(8) | ⛔ superseded — 改走 S136 task-based eval（待討論）|
+| S101c | Security Status simplified | S(6) | ⛔ superseded — 既有 risk_level + S099e3 已足夠，不需獨立 spec |
+| S101d | Frontend SkillCard + Scores tab | S(8) | ⛔ superseded — 併入未來 UI rework spec（hero 三條進度條 + 4 tabs） |
+| S101e | Quality Score weekly re-evaluation cron | XS(3) | ⛔ superseded by S135 子 spec（待 scope 確認） |
+| S101f | Score audit log + admin recalculate UI | XS(3) | ⛔ superseded by S135 子 spec（待 scope 確認） |
 
 ---
 

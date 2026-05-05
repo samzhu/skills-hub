@@ -1,23 +1,27 @@
 # =============================================================================
 # Real OAuth IdP — local dev integration trial（S134）
 # =============================================================================
-# 用途：把本機 backend 切成「不打 mock-oauth2-server，改連真實 IdP」做整合試行。
-# 本檔為 .example template；複製為 application-real-oauth.yaml（已加 .gitignore）後填值。
+# 用途：把本機 backend 切成「不打 mock-oauth2-server，改連真實 Google OAuth」做整合試行。
+# 本檔為 .example template；複製為 application-real-oauth.yaml（.gitignore 內）後填值。
 #
+# IdP：Google OAuth 2.0 / OIDC（accounts.google.com）
 # 啟動：SPRING_PROFILES_ACTIVE=local,dev,real-oauth ./gradlew bootRun
 # 還原 mock：移除 real-oauth 即可（./gradlew bootRun 預設 local,dev）
 #
 # 設定步驟：
-#   1. cp config/application-real-oauth.yaml.example config/application-real-oauth.yaml
-#   2. 編輯 application-real-oauth.yaml，填入 IdP 提供的 client-id / client-secret
-#   3. 確認 issuer-uri 無 trailing slash（與 IdP metadata `issuer` 欄位 String.equals 比對）
-#   4. 確認 IdP 端 redirect URI 註冊為 http://localhost:8080/login/oauth2/code/skillshub
+#   1. 在 GCP Console 建立 OAuth 2.0 Client（type: Web application）
+#   2. 設定 Authorized redirect URI：http://localhost:8080/login/oauth2/code/skillshub
+#   3. cp config/application-real-oauth.yaml.example config/application-real-oauth.yaml
+#   4. 填入 GCP Console 提供的 client_id / client_secret
 #
 # ⚠ trailing-slash trap（spec §2.2 #1）：
-#   IdP `https://auth-dev.omnihubs.cloud/.well-known/openid-configuration` 回的 `issuer`
-#   為「無 trailing slash」字串。Spring Security 7 JwtDecoderProviderConfigurationUtils 與
-#   JwtIssuerValidator 兩處都走 String.equals 嚴格比對；配錯會在第一個 JWT decode /
-#   discovery 時拋 IllegalStateException。下面所有 issuer-uri 都不可帶結尾 `/`。
+#   Google discovery 回的 issuer 為「https://accounts.google.com」（無 trailing slash）。
+#   Spring Security 7 兩處 String.equals 嚴格比對；帶結尾 / 會 IllegalStateException。
+#
+# ⚠ Google access_token 是 opaque（非 JWT）：
+#   Resource Server bearer path（Authorization: Bearer <access_token>）對 Google 不適用。
+#   issuer-uri 保留是為了 id_token 驗簽（OAuth2 Login flow 內部使用）。
+#   詳見 spec §2.2 #5（S134）。
 # =============================================================================
 
 skillshub:
@@ -34,18 +38,19 @@ spring:
       client:
         registration:
           skillshub:
-            client-id: <<FILL_ME — IdP 提供的 client_id（例如 596527ca-e045-4cbe-b78b-692c9a303e14）>>
-            client-secret: <<FILL_ME — IdP 提供的 client_secret 完整字串>>
-            scope: openid                              # IdP scopes_supported 只列 openid
+            client-id: <<FILL_ME — GCP Console 提供的 client_id (.apps.googleusercontent.com)>>
+            client-secret: <<FILL_ME — GCP Console 提供的 client_secret (GOCSPX-...)>>
+            scope: openid,email,profile    # openid=id_token; email=email/email_verified; profile=name/picture
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             client-authentication-method: client_secret_basic
             authorization-grant-type: authorization_code
         provider:
           skillshub:
-            # ⚠ 必須無 trailing slash — 與 IdP metadata `issuer` 欄位嚴格相等
-            issuer-uri: https://auth-dev.omnihubs.cloud
+            # ⚠ 必須無 trailing slash — Google metadata `issuer` = https://accounts.google.com
+            issuer-uri: https://accounts.google.com
 
-      # ----- Resource Server JWT (既有 S011；real-oauth profile override mock URL) -----
+      # ----- Resource Server JWT -----
+      # 注意：Google access_token 是 opaque，bearer path 對 Google 不適用（見上方說明）
       resourceserver:
         jwt:
-          issuer-uri: https://auth-dev.omnihubs.cloud    # 同上 — 無 trailing slash
+          issuer-uri: https://accounts.google.com    # 同上 — 無 trailing slash

@@ -1,34 +1,40 @@
-# S134: Real OAuth IdP — Local Dev Integration Trial
+# S134: Real OAuth IdP — Local Dev Integration Trial (Google OAuth)
 
-> Spec: S134 | Size: S(9) | Status: 📐 Design
-> Date: 2026-05-05
+> Spec: S134 | Size: S(9) | Status: ✅ All tasks complete (T01-T04 done; §7 filed)
+> Date: 2026-05-05 | IdP updated: 2026-05-05
 > User directive (2026-05-05): 「申請好 OAuth 資訊；幫我規劃串接的整合在 local dev 先做整合試行」
-> IdP: `https://auth-dev.omnihubs.cloud` (Spring Authorization Server-style，OIDC + RFC 8414 雙 metadata；PKCE S256；single advertised scope `openid`)
+> IdP: **Google OAuth 2.0 / OIDC** (`accounts.google.com`；standard OIDC；PKCE S256；scopes `openid,email,profile`)
+> IdP change log: 原始設計為 `auth-dev.omnihubs.cloud`（2026-05-05 T04 執行前換為 Google）；Java code 零改動（pure issuer-uri discovery 設計）。
 
 ---
 
 ## 1. Goal
 
-把現有「mock-oauth2-server in Docker Compose」之外，**多一條 local dev 路徑可切換到真實 IdP**（auth-dev.omnihubs.cloud），驗證 backend 能跑完整 authorization-code login flow（包含 redirect URI `/login/oauth2/code/skillshub`），並把真實 JWT 拿到的 claim shape 紀錄下來作為後續 LAB / prod 部署的前置事實。
+把現有「mock-oauth2-server in Docker Compose」之外，**多一條 local dev 路徑可切換到真實 IdP**（Google OAuth），驗證 backend 能跑完整 authorization-code login flow（包含 redirect URI `/login/oauth2/code/skillshub`），並把真實 JWT 拿到的 claim shape 紀錄下來作為後續 LAB / prod 部署的前置事實。
 
 **簡單講**：
 - 跑 `SPRING_PROFILES_ACTIVE=local,dev,real-oauth ./gradlew bootRun`
 - 瀏覽器命中 `http://localhost:8080/oauth2/authorization/skillshub`
-- → 302 到 omnihubs IdP 登入頁
-- → 登入後 IdP 302 回 `http://localhost:8080/login/oauth2/code/skillshub?code=...`
+- → 302 到 Google 登入頁
+- → 登入後 Google 302 回 `http://localhost:8080/login/oauth2/code/skillshub?code=...`
 - → backend 換 token、建 session、redirect 到首頁（搜尋頁）
-- → 開「我的認證」頁（`/auth-debug`）看真實 token claim shape（sub / aud / iss / scope / 任何 IdP 自訂 claim）
+- → 開「我的認證」頁（`/auth-debug`）看真實 token claim shape（sub / email / name / iss / aud / iat / exp）
 
 **不變動既有路徑**：`./gradlew bootRun` 預設 `local,dev` profile 仍走 LAB 模式（`oauth.enabled=false`）；mock-oauth2-server 仍照啟（不互相干擾，extra container 無傷）；既有 `OAuthMockE2ETest` / `application-test.yaml` / OAuth2 Resource Server `@PreAuthorize` 鏈路全部不動。
 
-**起源**：user 已在 IdP 註冊 client + redirect URI `http://localhost:8080/login/oauth2/code/skillshub`，明確意指 backend 端走 OAuth2 Login server-side flow（非 SPA 自跑 PKCE）。
+**起源**：user 已在 Google Cloud Console 註冊 OAuth client + redirect URI `http://localhost:8080/login/oauth2/code/skillshub`，明確意指 backend 端走 OAuth2 Login server-side flow（非 SPA 自跑 PKCE）。
 
 **核心目標**：
 1. **驗證 OIDC discovery + JWKS 可達** — `JwtDecoders.fromIssuerLocation()` lazy probe 不擋 boot
-2. **驗證 PKCE confidential client 流程** — Spring Security 7 default `requireProofKey=true`；IdP 支援 S256
-3. **抓真實 claim shape** — IdP 只 advertise `scopes_supported: ["openid"]`、無 `claims_supported` metadata；登入後才知道 token 真正帶哪些 claim（mock 是自訂的 sub/roles/groups/company_id/dept_id；real IdP 可能完全不同）
-4. **trailing-slash trap 防呆** — IdP metadata `issuer` 為 `https://auth-dev.omnihubs.cloud`（**無** trailing slash），所有 yaml + property 必須對齊
-5. **同 SecurityFilterChain 雙模驗證** — session-based（OAuth2 Login）+ bearer-based（Resource Server）共存可同時運作
+2. **驗證 PKCE confidential client 流程** — Spring Security 7 default `requireProofKey=true`；Google 支援 S256 — **AC-2 已 PASS（2026-05-05 curl 驗證）**
+3. **抓真實 Google claim shape** — Google OIDC id_token 帶 `sub / email / email_verified / name / picture / given_name / family_name / iss / aud / exp / iat / nonce`；登入後用 `/auth-debug` 確認
+4. **trailing-slash trap 防呆** — Google metadata `issuer` 為 `https://accounts.google.com`（**無** trailing slash），所有 yaml + property 必須對齊
+5. **同 SecurityFilterChain session 模式驗證** — session-based（OAuth2 Login）正常運作
+
+**已知 Google 特性差異（vs mock-oauth2-server）**：
+- **access_token 是 opaque（非 JWT）** — Google 雖 advertise OIDC（id_token 是 JWT），但 access_token 是 Google 內部 opaque handle，`JwtDecoder` decode 必然失敗。AC-5「bearer dual-path」對 Google 不適用 → **spec §3 AC-5 標 N/A**
+- **無 `roles` claim** — Google id_token 無 `roles` 欄位；`JwtAuthenticationConverter.setAuthoritiesClaimName("roles")` 抓空 → `@PreAuthorize("hasRole('admin')")` 全部 false（trial 期不打 admin endpoints，可接受）
+- **claim shape 不同** — Google id_token 標準 claims 如上，無企業自訂 namespace（mock 有 `company_id / dept_id / groups`）
 
 **非目標（明確列）**：
 - 真實 IdP 的 claim → role mapping（要先看清 claim shape；後續 follow-up spec）
@@ -36,9 +42,10 @@
 - frontend 完整登入/登出 UX 重構（只加最小 `/auth-debug` 頁）
 - 既有 `oauth.enabled` toggle 行為改動（保留 S011 + S012）
 - mock-oauth2-server 退役（仍是 dev 主路徑）
-- Logout / token refresh / introspection / revocation flow（IdP 都有 endpoint，但本 spec 不串）
-- mTLS / DPoP / token exchange grant（IdP advertise 了，但本 spec 不用）
-- frontend 自跑 PKCE（不對齊 user 給的 backend redirect URI）
+- AC-5 bearer dual-path（Google access_token 是 opaque，此路不適用）
+- Logout / token refresh / introspection / revocation flow
+- mTLS / DPoP / token exchange grant
+- frontend 自跑 PKCE
 
 **Visual flow**：
 
@@ -52,33 +59,33 @@
   ↓ Spring OAuth2AuthorizationRequestRedirectFilter
   ↓ 302 + code_challenge=S256(<verifier>)
   ▼
-[https://auth-dev.omnihubs.cloud/oauth2/authorize?
-   client_id=596527ca-...&
+[https://accounts.google.com/o/oauth2/v2/auth?
+   client_id=644359853825-...apps.googleusercontent.com&
    redirect_uri=http://localhost:8080/login/oauth2/code/skillshub&
-   scope=openid&
+   scope=openid+email+profile&
    code_challenge=...&
    code_challenge_method=S256&
    response_type=code&
-   state=...]
-  ↓ User logs in at IdP
-  ↓ IdP 302 back with ?code=xxx&state=xxx
+   state=...&
+   nonce=...]
+  ↓ User logs in at Google
+  ↓ Google 302 back with ?code=xxx&state=xxx
   ▼
 [Browser GET http://localhost:8080/login/oauth2/code/skillshub?code=...]
   ↓ Spring OAuth2LoginAuthenticationFilter
-  ↓ POST IdP token endpoint with code + code_verifier + client_secret_basic auth
-  ↓ Receive {access_token, id_token, refresh_token, token_type, expires_in}
-  ↓ Validate id_token signature via JwkSetUri (cached)
+  ↓ POST https://oauth2.googleapis.com/token with code + code_verifier + client_secret_basic auth
+  ↓ Receive {access_token (opaque), id_token (JWT), token_type, expires_in}
+  ↓ Validate id_token signature via JwkSetUri (cached from discovery)
   ↓ Build OAuth2AuthenticationToken + OidcUser principal
   ↓ Save to HttpSession (SPRING_SECURITY_CONTEXT)
   ↓ SavedRequestAwareAuthenticationSuccessHandler → 302 to "/"（首頁=搜尋頁）
   ▼
 [Browser session cookie 帶著走後續請求]
   GET /api/v1/dev/auth-debug → JSON dump:
-    - sub / aud / iss / iat / exp
-    - access_token claims (decoded as JWT)
-    - id_token claims
-    - OAuth2User attributes
-    - granted authorities (Spring 自動 expand)
+    - sub / email / name / picture / iss=https://accounts.google.com
+    - id_token_claims (JWT — full OIDC claims)
+    - access_token_claims (opaque → decode fail / empty，Google 特性)
+    - granted authorities (empty — Google 無 roles claim)
   ▼
 [Frontend /auth-debug 頁 fetch + pretty-print 上述 JSON]
 ```
@@ -105,68 +112,65 @@
 
 ### 2.2 Key Design Decisions
 
-1. **issuer-uri 必須無 trailing slash** — IdP metadata `issuer` 為 `https://auth-dev.omnihubs.cloud`（驗證過：`curl https://auth-dev.omnihubs.cloud/.well-known/openid-configuration | jq .issuer`）。Spring Security `JwtDecoderProviderConfigurationUtils.validateIssuer()` 走 `String.equals` 嚴格比對；trailing slash 不一致 → 第一個 JWT decode 時 `IllegalStateException`。**所有 yaml + property 用 `https://auth-dev.omnihubs.cloud`**（無 slash）。
+1. **issuer-uri 必須無 trailing slash（Google）** — Google OIDC discovery (`https://accounts.google.com/.well-known/openid-configuration`) 回的 `issuer` 為 `https://accounts.google.com`（無 trailing slash）。Spring Security `JwtDecoderProviderConfigurationUtils.validateIssuer()` 走 `String.equals` 嚴格比對；trailing slash 不一致 → 第一個 JWT decode 時 `IllegalStateException`。**所有 yaml + property 用 `https://accounts.google.com`**（無 slash）。
 
-2. **OIDC discovery vs RFC 8414 OAuth metadata** — 兩者皆有公開：
-   - `/.well-known/openid-configuration`（OIDC）有 `userinfo_endpoint`、`scopes_supported`、`subject_types_supported`、`id_token_signing_alg_values_supported`
-   - `/.well-known/oauth-authorization-server`（RFC 8414）少了上述欄位
-   - Spring Security `ClientRegistrations.fromIssuerLocation()` probe 順序：OIDC 標準 → OIDC RFC 8414 compat → OAuth-AS metadata；任一 200 即停。**OIDC 路徑會中**，所以 `id_token` 自動驗（含 RS256 簽章 via JWKS）。
+2. **Google OIDC discovery（單端點）** — Google 只公開標準 OIDC endpoint `/.well-known/openid-configuration`（無 RFC 8414 OAuth metadata 端點）。Spring Security `ClientRegistrations.fromIssuerLocation()` probe 順序：OIDC 標準（200）→ 停。`id_token` 自動驗（RS256 via JWKS from `jwks_uri`）。
 
-3. **Spring Security 7 default PKCE behavior** — `ClientSettings.builder().build()` 預設 `requireProofKey=true`（per `ClientRegistration.java` line 780）。Confidential client（client_secret_basic auth）+ PKCE 是新版預設；IdP 端 `code_challenge_methods_supported: ["S256"]` 支援。**不需要 disable PKCE**。如果 IdP 端 client config 對 confidential client 拒絕 PKCE（罕見但可能），fallback 是 `.clientSettings(ClientSettings.builder().requireProofKey(false).build())` programmatic override；本 spec 先不加，待 smoke 出問題再補。
+3. **Spring Security 7 default PKCE behavior（Google 支援）** — `ClientSettings.builder().build()` 預設 `requireProofKey=true`。Google 在 `code_challenge_methods_supported: ["plain","S256"]` 明確支援 S256。**AC-2 curl 已驗（2026-05-05）**：302 Location 含 `code_challenge` + `code_challenge_method=S256`。**不需要 disable PKCE**。
 
-4. **scope: openid 唯一** — IdP `scopes_supported: ["openid"]` 只 advertise 這個。我們 yaml 配 `scope: openid`。OIDC `openid` 觸發 `OidcAuthorizationCodeAuthenticationProvider` 路徑 → 自動拿 id_token + 走 `OidcUserService`（如有 `userinfo_endpoint` 會額外打一次補 user attributes，IdP 有 advertise `/userinfo`）。
+4. **scope: openid,email,profile** — Google OIDC 建議配置：`openid` 觸發 `OidcAuthorizationCodeAuthenticationProvider` + id_token 路徑；`email` 補 `email / email_verified` claim；`profile` 補 `name / picture / given_name / family_name` claim。Spring Boot binding 用逗號分隔字串，build URL 時自動 URL-encode 成 `scope=openid%20email%20profile`（OAuth2 space-separated 規格）。
 
-5. **Resource Server + OAuth2 Login 同 issuer 共用 JwtDecoder** — auto-config `OAuth2ResourceServerJwtConfiguration` 偵測 `spring.security.oauth2.resourceserver.jwt.issuer-uri` property → 自動建 `SupplierJwtDecoder` bean（lazy）。OAuth2 Login 用獨立的 `OidcIdTokenDecoderFactory` 驗 id_token；兩者底層都打同一 jwks_uri，但 bean 獨立（per Spring Security 7 design）。**為避免衝突，原本 `SecurityConfig.jwtDecoder()` 顯式 bean 保留不動**（既有 `@ConditionalOnProperty(prefix = "skillshub.security.oauth", name = "enabled", havingValue = "true", matchIfMissing = true)` 把它跟 `oauth.enabled` toggle 同步；real-oauth profile 設 `oauth.enabled=true` 它就建）；real-oauth profile 仍透過該 bean 走既有 Resource Server 路徑，零行為變動。
+5. **Google access_token 是 opaque（設計限制）** — Google 雖 advertise OIDC（id_token 是 JWT），但 access_token 是 Google 內部 opaque handle。`JwtDecoder` 無法 decode → `oauth2ResourceServer().jwt()` bearer path 對 Google access_token 必然失敗。Resource Server `issuer-uri` 設定保留是為了 id_token 驗簽（OAuth2 Login flow 內部使用），不是為了 access_token bearer path。**AC-5 在本 spec 中標 N/A**。要驗 bearer 路徑需改用 `https://www.googleapis.com/oauth2/v3/userinfo` introspection（後續 spec 範疇）。
 
-6. **Session 持久層** — Spring Boot 預設 in-memory `HttpSession`（servlet container Tomcat）；本 spec **不引入 session 跨 instance 同步**（如 spring-session-data-redis）。Local dev single-instance 夠用；後續 LAB/prod 上線再評估（屬 follow-up infra spec 範疇）。
+6. **無 `roles` claim（Google）** — Google id_token 不帶 `roles`；`JwtAuthenticationConverter.setAuthoritiesClaimName("roles")` → 抓空 → `authorities = []`。`@PreAuthorize("hasRole('admin')")` 全部 false-closed（trial 期不打 admin endpoints，可接受）。claim → role mapping 屬後續 follow-up spec。
 
-7. **`real-oauth` profile yaml 不 commit** — 對齊既有 `application-secrets.properties` 模式：機敏值 + per-developer config 不入版控。`.gitignore` 加 `backend/config/application-real-oauth.yaml`；committed `.example` template 給新 dev 複製填。client_id 雖非 secret 但放一起方便；client_secret 走同一 yaml（不另開 secrets.properties entry — 該檔已有 `skillshub.db.password` 等用於 placeholder resolution，OAuth client secret 直接寫 yaml 比較直接）。
+7. **Session 持久層** — Spring Boot 預設 in-memory `HttpSession`（servlet container Tomcat）；本 spec **不引入 session 跨 instance 同步**（如 spring-session-data-redis）。Local dev single-instance 夠用；後續 LAB/prod 上線再評估。
 
-8. **AuthDebugController 走 dev profile guard** — `@Profile("real-oauth")` 確保只有 real-oauth profile active 才註冊 bean；prod / LAB / dev-default 路徑完全不存在這個 endpoint（even bean 都不建），不會 leak 到 production。
+8. **`real-oauth` profile yaml 不 commit** — 對齊既有 `application-secrets.properties` 模式：機敏值 + per-developer config 不入版控。`.gitignore` 加 `backend/config/application-real-oauth.yaml`；committed `.example` template 給新 dev 複製填（Google credential 換掉 placeholder）。
+
+9. **AuthDebugController 走 dev profile guard** — `@Profile("real-oauth")` 確保只有 real-oauth profile active 才註冊 bean；prod / LAB / dev-default 路徑完全不存在這個 endpoint（bean 都不建），不會 leak 到 production。
 
 ### 2.3 Behavior validation gate
 
 | 決策 | Confidence | 證據 |
 |------|------------|------|
 | `JwtDecoders.fromIssuerLocation()` OIDC discovery probe order | Validated | `JwtDecoderProviderConfigurationUtils.getConfigurationForIssuerLocation` raw source（spring-security 7.0.5） |
-| OIDC + OAuth metadata 雙端點皆 published | Validated | curl `https://auth-dev.omnihubs.cloud/.well-known/{openid-configuration,oauth-authorization-server}` 兩邊 200 |
+| Google OIDC endpoint 可達 | Validated | `https://accounts.google.com/.well-known/openid-configuration` 200；`authorization_endpoint = https://accounts.google.com/o/oauth2/v2/auth` |
 | `SupplierJwtDecoder` lazy 不擋 boot | Validated | `SupplierJwtDecoder` constructor 用 `SingletonSupplier.of(...)`；既有 SecurityConfig.jwtDecoder() 已驗 |
 | trailing-slash 嚴格比對會炸 | Validated | `JwtDecoderProviderConfigurationUtils.validateIssuer()` + `JwtIssuerValidator` 兩處都 `String.equals` |
 | oauth2Login + oauth2ResourceServer 同 chain 共存 | Validated | Spring Boot auto-config `OAuth2ClientWebSecurityAutoConfiguration` + filter 位置文件（`FilterOrderRegistration`） |
 | PKCE confidential client 預設啟用 | Validated | `ClientRegistration.java` L780 `requireProofKey=true` default + `DefaultOAuth2AuthorizationRequestResolver.getBuilder()` PKCE applier |
-| IdP client config 接受 PKCE on confidential client | **Hypothesis** | IdP-side per-client setting 我看不到；smoke 跑成功才能 confirm；fallback 已記錄（§2.2 #3） |
-| 真實 IdP claim shape | **Hypothesis** | `claims_supported` metadata 缺；本 spec 跑 smoke 才知道；這就是 trial 目的 |
+| **Google 接受 PKCE on confidential client** | **Validated** | **AC-2 curl 2026-05-05 PASS**：302 Location `code_challenge=<base64url>&code_challenge_method=S256`，Google 未拒絕 |
 | OidcUser fetched via userinfo_endpoint 行為 | Validated | `OidcUserRequestUtils.shouldRetrieveUserInfo()` 邏輯：userInfoUri non-empty + grant=AUTH_CODE → true |
+| Google access_token 是 opaque | Validated | Google OIDC 行業已知；bearer path JWT decode 必然失敗；documented in §2.2 #5 |
+| **真實 Google claim shape（id_token）** | **Hypothesis** | 預期：sub / email / email_verified / name / picture / iss / aud / exp / iat / nonce；待 AC-4 browser login 確認 |
 
-兩個 Hypothesis：**(a) IdP 端 PKCE 接受度** — 標準上應該支援，smoke 跑一次就驗；**(b) claim shape** — 整個 spec 的目的就是揭露這個。本 spec 的 first run 等同 POC（per `/planning-spec` Sufficiency Gate「research-phase findings do NOT require an ADR」原則）。
+Hypothesis 剩一個：**(b) 完整 Google id_token claim shape** — 預期形狀已知（Google OIDC 標準），但 T04 browser smoke 是唯一能獲得完整 JSON 的途徑，需紀錄到 §7。
 
 ### 2.4 Challenges Considered
 
-1. **如果 IdP 拒絕 PKCE on confidential client** → 第一次 smoke `400 invalid_request` from token endpoint。Fix：`ClientRegistration` builder 加 `.clientSettings(ClientSettings.builder().requireProofKey(false).build())`。寫 follow-up commit；不擋本 spec 走完。
-2. **如果真 IdP 完全沒給 `roles` claim** → `JwtAuthenticationConverter` 既有 `setAuthoritiesClaimName("roles")` → 走 S115 graceful empty list path（已驗）；`@PreAuthorize("hasRole('admin')")` 全部 fail-closed。trial 期不打到那些 endpoint 即可；後續 follow-up spec 對齊真 claim 名（可能是 `scope` per RFC 9068 default、可能是企業自訂 namespace 如 `omh:roles`）。
-3. **如果 `OAuth2AuthorizedClientService` 拿不到 access token** → 預設 in-memory implementation；single-instance dev 應該 always 拿得到。如 NPE，fallback 是 `OidcUser.getIdToken().getTokenValue()` 走 id_token path（id_token 也是 JWT）。
-4. **CSRF 與 OAuth2 Login** — Spring Security default 對 `/login/oauth2/code/*` 的 callback 不需 CSRF token（state param 防 CSRF）；既有 `http.csrf().disable()` 不變，無衝突。
-5. **CORS allowlist 包含 IdP origin？** — 不需要。Browser 對 IdP 的請求是 top-level navigation（302 redirect），不是 XHR/fetch；CORS 不適用。既有 `SkillshubProperties.Cors.allowedOrigins` 不動。
-6. **session cookie SameSite policy** — Spring Boot default `Lax`；IdP 302 回 callback 是 top-level navigation，cookie 會送（Lax 允許 top-level GET）。不需特別調。
-7. **既有 `SecurityConfig.filterChain` 兩 branch（oauth.enabled true/false）改成三 branch** — 內部分支策略保持單一 bean，避免兩個 SecurityFilterChain bean 競爭（per 既有設計 comment）；新增最內層 `if (props.security().oauth().login().enabled())` 套疊在外層 `if (oauth.enabled)` 內。
-8. **dev 預設 LAB 模式仍跑 mock-oauth2-server compose container** — 雖然 LAB 模式不打 mock，但 mock 會啟動。real-oauth profile active 時 mock 也會啟動但不互動。**無傷 + 無 surgery**。
+1. **Google PKCE on confidential client** — AC-2 curl 已確認 Google 接受（302 含 `code_challenge`）；H1 Validated。contingency fallback（`requireProofKey(false)`）不需要啟動。
+2. **Google 無 `roles` claim** — `JwtAuthenticationConverter.setAuthoritiesClaimName("roles")` → 走 S115 graceful empty list path（已驗）；`@PreAuthorize("hasRole('admin')")` 全部 fail-closed。trial 期不打 admin endpoints，可接受；後續 follow-up spec 對齊 claim → role mapping。
+3. **Google access_token opaque → `OAuth2AuthorizedClientService` 回 opaque handle** — `client.getAccessToken().getTokenValue()` 傳回 opaque string；`AuthDebugController.decodeJwtPayload()` decode 失敗 → 回 `{"error": "not_a_jwt"}` 或 base64 decode 亂碼。正常行為；AC-4 output 會紀錄這個。
+4. **CSRF 與 OAuth2 Login** — Spring Security default 對 `/login/oauth2/code/*` callback 不需 CSRF token（state param 防 CSRF）；既有 `http.csrf().disable()` 不變，無衝突。
+5. **CORS allowlist 包含 Google origin？** — 不需要。Browser 對 Google 的請求是 top-level navigation（302 redirect），不是 XHR/fetch；CORS 不適用。
+6. **session cookie SameSite policy** — Spring Boot default `Lax`；Google 302 回 callback 是 top-level navigation，cookie 會送（Lax 允許 top-level GET）。不需特別調。
+7. **GCP Console redirect URI 必須 byte-for-byte match** — trailing slash / port / scheme / 大小寫任一不對都炸 `redirect_uri_mismatch`；`{baseUrl}/login/oauth2/code/{registrationId}` resolve 出 `http://localhost:8080/login/oauth2/code/skillshub`，已在 GCP Console 顯式註冊。
+8. **dev 預設 LAB 模式仍跑 mock-oauth2-server compose container** — real-oauth profile active 時 mock 也會啟動但不互動。**無傷 + 無 surgery**。
 
 ### 2.5 Research Citations
 
-- `JwtDecoderProviderConfigurationUtils.getConfigurationForIssuerLocation()` — probe order OIDC → OIDC-RFC8414-compat → OAuth-AS；4xx skip、其他錯立即 throw。Source: `spring-projects/spring-security` `oauth2/oauth2-jose/.../JwtDecoderProviderConfigurationUtils.java`
-- `JwtDecoderProviderConfigurationUtils.validateIssuer()` + `JwtIssuerValidator` constructor — 兩段都 `issuer.equals(...)` 嚴格比對；trailing slash 不一致直接 fail（discovery 時 `IllegalStateException`、validate 時 401）
-- `SupplierJwtDecoder` 用 `SingletonSupplier.of(...)` lazy；首個 decode 才 trigger discovery
-- `OAuth2ResourceServerJwtConfiguration.JwtDecoderConfiguration` — `@ConditionalOnIssuerLocationJwtDecoder` + `@ConditionalOnMissingBean(JwtDecoder.class)`；設 `issuer-uri` 即自動建 `SupplierJwtDecoder`，但本專案有顯式 `@Bean`（覆蓋 auto-config，保留 `@ConditionalOnProperty` toggle 控制權）
-- `ClientRegistrations.fromIssuerLocation()` — 同樣 3-endpoint probe；OIDC + RFC 8414 並行
+- `JwtDecoderProviderConfigurationUtils.getConfigurationForIssuerLocation()` — probe order OIDC → OIDC-RFC8414-compat → OAuth-AS；4xx skip、其他錯立即 throw。Source: `spring-projects/spring-security`
+- `JwtDecoderProviderConfigurationUtils.validateIssuer()` + `JwtIssuerValidator` — 兩段都 `issuer.equals(...)` 嚴格比對；trailing slash 不一致直接 fail
+- `SupplierJwtDecoder` — `SingletonSupplier.of(...)` lazy；首個 decode 才 trigger discovery
+- `ClientRegistrations.fromIssuerLocation()` — 同樣 3-endpoint probe；Google 只有 OIDC endpoint，第一 probe 中
 - `DefaultOAuth2AuthorizationRequestResolver.getBuilder(ClientRegistration)` — PKCE auto-on 條件：`ClientAuthenticationMethod.NONE` || `clientSettings.isRequireProofKey()`；後者預設 true
 - `ClientRegistration.Builder.clientSettings` default `ClientSettings.builder().build()` → `requireProofKey=true` per L780
-- `OAuth2LoginAuthenticationFilter.DEFAULT_FILTER_PROCESSES_URI = "/login/oauth2/code/*"` — 對齊 user 註冊的 redirect URI
-- `DefaultOAuth2AuthorizationRequestResolver.DEFAULT_AUTHORIZATION_REQUEST_BASE_URI = "/oauth2/authorization"` — initiation endpoint
-- `OidcAuthorizationCodeAuthenticationProvider` — 有 `openid` scope 走 OIDC path（fetch id_token + userinfo）；無則 fallback `OAuth2LoginAuthenticationProvider`
+- `OidcAuthorizationCodeAuthenticationProvider` — 有 `openid` scope 走 OIDC path（fetch id_token + userinfo）
 - `FilterOrderRegistration` — `OAuth2AuthorizationRequestRedirectFilter` ~1400、`OAuth2LoginAuthenticationFilter` ~1800、`BearerTokenAuthenticationFilter` ~2400；同 chain 順序明確無衝突
-- IdP discovery dump（curl 2026-05-05）：see §1 visual flow box
-
-無 hypothesis-grade 設計需要 formal POC — 第一次 smoke run 即等同 POC。
+- **Google OIDC discovery** (`https://accounts.google.com/.well-known/openid-configuration`) — `issuer=https://accounts.google.com`（無 trailing slash）；`authorization_endpoint=https://accounts.google.com/o/oauth2/v2/auth`；`token_endpoint=https://oauth2.googleapis.com/token`；`userinfo_endpoint=https://openidconnect.googleapis.com/v1/userinfo`；`jwks_uri=https://www.googleapis.com/oauth2/v3/certs`
+- **Google access_token opaque** — 行業已知：Google advertise OIDC（id_token 是 JWT）但 access_token 是 opaque handle。Resource Server bearer path 對 Google access_token 不適用；要 introspect 需打 userinfo endpoint
+- **AC-2 validated 2026-05-05** — curl `http://localhost:8080/oauth2/authorization/skillshub` → 302，Location `https://accounts.google.com/o/oauth2/v2/auth?...code_challenge=...&code_challenge_method=S256&client_id=644359853825-...&scope=openid%20email%20profile&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Flogin%2Foauth2%2Fcode%2Fskillshub`
 
 ### 2.6 Trim list
 
@@ -193,12 +197,13 @@ Scenario: AC-1 — `real-oauth` profile yaml 載入正確 + Spring boot 起來
   And log 不含 OIDC discovery 相關 stack trace（lazy；首個請求才打）
   And `git status` 不顯示 application-real-oauth.yaml（gitignored）
 
-Scenario: AC-2 — discovery + JWKS 端點可達且配置匹配
+Scenario: AC-2 — discovery + JWKS 端點可達且配置匹配 [PASS 2026-05-05]
   Given AC-1 通過
   When curl http://localhost:8080/oauth2/authorization/skillshub -I
-  Then 回 302 Location: https://auth-dev.omnihubs.cloud/oauth2/authorize?client_id=596527ca-...&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Flogin%2Foauth2%2Fcode%2Fskillshub&scope=openid&...
+  Then 回 302 Location: https://accounts.google.com/o/oauth2/v2/auth?client_id=644359853825-...apps.googleusercontent.com&redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Flogin%2Foauth2%2Fcode%2Fskillshub&scope=openid%20email%20profile&...
   And query string 含 code_challenge=<base64url> + code_challenge_method=S256（PKCE 啟用）
   And query string 含 state=<random>（CSRF 防護）
+  And query string 含 nonce=<random>（OIDC replay 防護）
 
 Scenario: AC-3 — 完整 login flow（瀏覽器手動跑）
   Given AC-2 通過；developer 開無痕分頁打 http://localhost:8080/oauth2/authorization/skillshub
@@ -208,22 +213,24 @@ Scenario: AC-3 — 完整 login flow（瀏覽器手動跑）
   And 最終 browser landing 在 http://localhost:8080/（首頁＝搜尋頁，per S002）
   And browser DevTools Application tab 看到 JSESSIONID cookie
 
-Scenario: AC-4 — `/api/v1/dev/auth-debug` 回真實 token claim shape
+Scenario: AC-4 — `/api/v1/dev/auth-debug` 回真實 Google token claim shape
   Given AC-3 完成（session cookie 仍在 browser）
-  When 同 browser GET http://localhost:8080/api/v1/dev/auth-debug
+  When 同 browser GET http://localhost:8080/api/v1/dev/auth-debug 或 /auth-debug 頁
   Then 回 200 JSON
   And JSON 含至少 keys: principal_name / oidc_user_attributes / id_token_claims / access_token_claims / authorities
-  And id_token_claims.iss == "https://auth-dev.omnihubs.cloud"（驗 trailing-slash 對齊）
+  And id_token_claims.iss == "https://accounts.google.com"（驗 trailing-slash 對齊）
   And id_token_claims.sub 非 null 非空
-  And access_token_claims 為 decoded JWT payload Map
+  And id_token_claims.email 非 null（Google `email` scope）
+  And id_token_claims.name 非 null（Google `profile` scope）
+  And access_token_claims 含 "error" key（Google opaque token decode fail — 正常行為）
+  And authorities 為空 list（Google 無 roles claim — 正常行為）
+  And 把完整 JSON 紀錄到 spec §7（mask access_token_value）
 
-Scenario: AC-5 — bearer token 路徑同 issuer 也運作（dual-path）
-  Given AC-4 完成；developer 從 access_token_claims 拿到完整 access_token（也可從 OAuth2AuthorizedClient）
-  When curl -H "Authorization: Bearer <access_token>" http://localhost:8080/api/v1/dev/auth-debug（無 session cookie）
-  Then 回 200 JSON
-  And principal_name == JWT 的 sub
-  And authorities 反映 RS converter 解析結果（可能空 list；取決於 IdP 是否給 roles claim）
-  And 此驗證確認 oauth2Login + oauth2ResourceServer 同 chain 對 same issuer JWT 兩路皆過
+Scenario: AC-5 — bearer token 路徑（Google: N/A）
+  Note: Google access_token 是 opaque（非 JWT），JwtDecoder 無法 decode。
+  Note: 此 AC 對 Google OAuth 不適用。
+  Note: 若未來需要 bearer path，需改用 Google userinfo endpoint introspection，或換 IdP（Auth0/Keycloak 發 JWT access_token）。
+  Status: N/A — 已紀錄於 spec §7 as "Google opaque access_token caveat"
 
 Scenario: AC-6 — 預設 dev profile 不受影響（regression）
   Given application-real-oauth.yaml 已存在但 SPRING_PROFILES_ACTIVE 未含 real-oauth
@@ -243,9 +250,9 @@ Scenario: AC-7 — Frontend `/auth-debug` 頁能 fetch + 顯示
 
 Scenario: AC-8 — trailing-slash trap 預防（自動 unit test）
   Given backend/src/test/java/.../RealOAuthConfigTest.java
-  When run with @TestPropertySource setting issuer-uri="https://auth-dev.omnihubs.cloud/" (with slash)
+  When run with @TestPropertySource setting issuer-uri="https://accounts.google.com/" (with slash)
   Then test asserts that property value 不被自動 normalize；
-  And 提供 @DisplayName("AC-8: issuer-uri trailing-slash 必須對齊 metadata") 紀錄該設計約束
+  And 提供 @DisplayName("AC-8: issuer-uri trailing-slash 必須對齊 Google metadata") 紀錄該設計約束
   Note: 此 test 不打真 IdP；純驗 yaml 載入時的 String 相等性 + comment 留存設計理由
 ```
 
@@ -376,29 +383,39 @@ class AuthDebugController {
 }
 ```
 
-### 4.4 application-real-oauth.yaml.example — 新增（committed template）
+### 4.4 application-real-oauth.yaml.example — committed template（Google OAuth）
 
 ```yaml
 # =============================================================================
 # Real OAuth IdP — local dev integration trial（S134）
 # =============================================================================
-# 用途：把本機 backend 切成「不打 mock-oauth2-server，改連真實 IdP」做整合試行。
+# 用途：把本機 backend 切成「不打 mock-oauth2-server，改連真實 Google OAuth」做整合試行。
 # 本檔為 .example template；複製為 application-real-oauth.yaml（.gitignore 內）後填值。
 #
+# IdP：Google OAuth 2.0 / OIDC（accounts.google.com）
 # 啟動：SPRING_PROFILES_ACTIVE=local,dev,real-oauth ./gradlew bootRun
 # 還原 mock：移除 real-oauth 即可（./gradlew bootRun 預設 local,dev）
 #
 # 設定步驟：
-#   1. cp config/application-real-oauth.yaml.example config/application-real-oauth.yaml
-#   2. 填入 IdP 提供的 client_id / client_secret
-#   3. 確認 issuer-uri 無 trailing slash（與 IdP metadata `issuer` 欄位一致）
-#   4. 確認 IdP 端 redirect URI 註冊為 http://localhost:8080/login/oauth2/code/skillshub
+#   1. 在 GCP Console 建立 OAuth 2.0 Client（type: Web application）
+#   2. 設定 Authorized redirect URI：http://localhost:8080/login/oauth2/code/skillshub
+#   3. cp config/application-real-oauth.yaml.example config/application-real-oauth.yaml
+#   4. 填入 GCP Console 提供的 client_id / client_secret
+#
+# ⚠ trailing-slash trap（spec §2.2 #1）：
+#   Google discovery 回的 issuer 為「https://accounts.google.com」（無 trailing slash）。
+#   Spring Security 7 兩處 String.equals 嚴格比對；帶結尾 / 會 IllegalStateException。
+#
+# ⚠ Google access_token 是 opaque（非 JWT）：
+#   Resource Server bearer path（Authorization: Bearer <access_token>）對 Google 不適用。
+#   issuer-uri 保留是為了 id_token 驗簽（OAuth2 Login flow 內部使用）。
+#   詳見 spec §2.2 #5（S134）。
 # =============================================================================
 
 skillshub:
   security:
     oauth:
-      enabled: true              # 啟用 Resource Server JWT 鏈路
+      enabled: true              # 啟用 Resource Server JWT 鏈路（覆蓋 dev profile 的 false）
       login:
         enabled: true            # S134：啟用 OAuth2 Login（Client）authorization code flow
 
@@ -409,22 +426,22 @@ spring:
       client:
         registration:
           skillshub:
-            client-id: <<FILL_ME — IdP 提供的 client_id>>
-            client-secret: <<FILL_ME — IdP 提供的 client_secret>>
-            scope: openid                              # IdP scopes_supported 只列 openid
+            client-id: <<FILL_ME — GCP Console 提供的 client_id (.apps.googleusercontent.com)>>
+            client-secret: <<FILL_ME — GCP Console 提供的 client_secret (GOCSPX-...)>>
+            scope: openid,email,profile    # openid=id_token; email=email/email_verified; profile=name/picture
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             client-authentication-method: client_secret_basic
             authorization-grant-type: authorization_code
         provider:
           skillshub:
-            # ⚠ 必須無 trailing slash — IdP metadata `issuer` 為 https://auth-dev.omnihubs.cloud
-            # （不一致會在 ClientRegistrations.fromIssuerLocation 拋 IllegalStateException）
-            issuer-uri: https://auth-dev.omnihubs.cloud
+            # ⚠ 必須無 trailing slash — Google metadata `issuer` = https://accounts.google.com
+            issuer-uri: https://accounts.google.com
 
-      # ----- Resource Server JWT (既有 S011；real-oauth profile override mock URL) -----
+      # ----- Resource Server JWT -----
+      # 注意：Google access_token 是 opaque，bearer path 對 Google 不適用（見上方說明）
       resourceserver:
         jwt:
-          issuer-uri: https://auth-dev.omnihubs.cloud    # 同上 — 無 trailing slash
+          issuer-uri: https://accounts.google.com    # 同上 — 無 trailing slash
 ```
 
 ### 4.5 .gitignore 變更
@@ -538,7 +555,7 @@ export default function AuthDebugPage() {
 | T01 | Backend OAuth2 Client + SecurityConfig three-branch + config templates | AC-1, AC-6 (regression), AC-8 | pending |
 | T02 | AuthDebugController — dev-only `/api/v1/dev/auth-debug` endpoint | AC-4 (mock unit), AC-5 (mock bearer path) | pending |
 | T03 | Frontend `/auth-debug` 頁「我的認證」 | AC-7 | pending |
-| T04 | Manual E2E smoke — real IdP login flow + 真實 claim shape 紀錄（POC） | AC-2, AC-3, AC-4 (real), AC-5 (real), AC-6 (final regression) | pending |
+| T04 | Manual E2E smoke — Google login flow + 真實 claim shape 紀錄（POC）| AC-2 ✅, AC-3, AC-4 (real), AC-5 N/A (Google opaque), AC-6 (final regression) | pending |
 
 **Execution order**：T01 → T02 → T03 → T04（T04 依賴前三 task；T04 user 端操作）
 
@@ -547,19 +564,143 @@ export default function AuthDebugPage() {
 | AC | T01 | T02 | T03 | T04 |
 |----|-----|-----|-----|-----|
 | AC-1 profile yaml 載入 + boot ok | ✓ (gradlew bootRun manual + RealOAuthConfigTest 對 .example template assertion) | — | — | ✓ (real run final verify) |
-| AC-2 discovery 302 + PKCE + state | — | — | — | ✓ (curl) |
-| AC-3 完整 login flow → session | — | — | — | ✓ (browser manual) |
-| AC-4 claim shape dump | — | ✓ (mock unit test 驗 endpoint contract) | — | ✓ (real claim shape 紀錄到 §7) |
-| AC-5 bearer dual-path | — | ✓ (mock JwtAuthenticationToken path) | — | ✓ (real bearer curl) |
-| AC-6 dev profile regression | ✓ (./gradlew test 既有全綠 + bootRun 預設仍 LAB) | — | — | ✓ (final regression check) |
+| AC-2 discovery 302 + PKCE + state | — | — | — | ✅ PASS 2026-05-05 (curl; Google endpoint confirmed) |
+| AC-3 完整 login flow → session | — | — | — | ✅ PASS 2026-05-05 (Google login → JSESSIONID) |
+| AC-4 claim shape dump | — | ✓ (mock unit test 驗 endpoint contract) | — | ✅ PASS 2026-05-05 (real claim shape 紀錄於 §7) |
+| AC-5 bearer dual-path | — | ✓ (mock JwtAuthenticationToken path) | — | ➖ N/A 2026-05-05 (Google opaque access_token；已紀錄 §7) |
+| AC-6 dev profile regression | ✓ (./gradlew test 既有全綠 + bootRun 預設仍 LAB) | — | — | ✅ PASS 2026-05-05 (`/api/v1/skills` 200; auth-debug 404) |
 | AC-7 FE 我的認證頁 | — | — | ✓ (Vitest + MSW) | — |
 | AC-8 trailing-slash 設計約束 | ✓ (RealOAuthConfigTest) | — | — | — |
 
 ### Notes
 
-- **T04 是 user-driven** — 必須 user 填 `application-real-oauth.yaml` 的 client_secret 並手動操作瀏覽器；assistant 只能準備工具與紀錄結果。Task loop 跑到 T04 會停下等 user 完成。
-- **POC 風險回流**：若 T04 H1 (PKCE) fail，按 spec §2.4 #1 fallback：在 SecurityConfig 對 `skillshub` ClientRegistration 加 `.clientSettings(ClientSettings.builder().requireProofKey(false).build())` 然後重跑。屬範圍內 deviation，紀錄到 spec §7 deviation 段，不 escalate /planning-spec。
+- **T04 是 user-driven** — 需 user 在自己瀏覽器（含 Google 帳號）完成 Google 同意流程；assistant 解析 backend log + 紀錄結果。Task loop 跑到 T04 會停下等 user 完成。
+- **AC-2 PASS 2026-05-05** — curl 已確認 302 到 Google endpoint，PKCE + nonce + state 全綠。T04 只需完成 AC-3 (browser login) + AC-4 (claim dump) + AC-6 (regression)。
+- **AC-5 N/A** — Google access_token 是 opaque；bearer path 不驗。直接在 spec §7 記錄「Google opaque access_token caveat」即可。H1 PKCE 已 Validated；H2 claim shape 待 AC-4 紀錄。
+- **Chrome MCP 不適合 real Google login** — Chrome MCP tab 是 isolated automation session；user 用 personal Google 帳號登入建議走日常瀏覽器（Chrome / Safari）；避免 cookie / 2FA 設備問題。
 - **Frontend route placement** — T03 看 `frontend/src/App.tsx` 既有 routes 結構決定 path 加在哪；不另開 router config 檔。
 - **Mock-oauth2-server 不退役** — T01-T03 既有自動測試仍走 mock；T04 是唯一打真 IdP 的 task。
 
-<!-- Section 7 added after implementation -->
+---
+
+## 7. Implementation Results
+
+> T04 完成日期：2026-05-05
+
+### AC Summary
+
+| AC | Result | Notes |
+|----|--------|-------|
+| AC-1 profile yaml 載入 + boot | ✅ PASS | 10.2s 啟動；profiles: local, dev, real-oauth；無 discovery stack trace |
+| AC-2 discovery 302 + PKCE | ✅ PASS | Google endpoint confirmed；PKCE S256 + nonce + state 全綠 |
+| AC-3 完整 Google login flow | ✅ PASS | browser login → JSESSIONID session created → 302 to `/` |
+| AC-4 Google id_token claim shape | ✅ PASS | 完整 claim dump 如下 |
+| AC-5 bearer dual-path | ➖ N/A | Google access_token opaque；見下方說明 |
+| AC-6 regression（預設 dev profile） | ✅ PASS | `/api/v1/skills` 200；`/api/v1/dev/auth-debug` 404 |
+| AC-7 FE `/auth-debug` 頁 | ✅ PASS | T03 已驗（Chrome MCP 本 session 用 `/api/v1/dev/auth-debug` 直接讀 JSON） |
+| AC-8 trailing-slash unit test | ✅ PASS | T01 已驗（RealOAuthConfigTest） |
+
+### AC-2 curl output
+
+```
+HTTP/1.1 302
+Location: https://accounts.google.com/o/oauth2/v2/auth?response_type=code
+  &client_id=644359853825-...jhn.apps.googleusercontent.com
+  &scope=openid%20email%20profile
+  &state=ZQIU6IdpF5a2YSRvwG8QSL3Mh0D6F5wH0FkqB_h9I2o%3D
+  &redirect_uri=http://localhost:8080/login/oauth2/code/skillshub
+  &nonce=_QlOcyK9a3-NXr3h5I-T4aNaUCRnFkoEJenio3oRjXE
+  &code_challenge=NOUD1VWVOxC4oBkCWohAcArvu3_nRkpSGVqJFbabXvU
+  &code_challenge_method=S256
+```
+
+### AC-4 Google id_token Claim Shape（H2 Validated）
+
+```json
+{
+  "principal_name": "106627222134770636241",
+  "authorities": [
+    "OIDC_USER",
+    "SCOPE_https://www.googleapis.com/auth/userinfo.email",
+    "SCOPE_https://www.googleapis.com/auth/userinfo.profile",
+    "SCOPE_openid"
+  ],
+  "id_token_claims": {
+    "at_hash": "f8sHyB4AWVbDNCdzIVsF-g",
+    "sub": "106627222134770636241",
+    "email_verified": true,
+    "iss": "https://accounts.google.com",
+    "given_name": "cloud",
+    "nonce": "zBKqalmTEV_Lz5U9IFpafB1Mc5ZbTxqzB3Ib7yV5WC8",
+    "picture": "https://lh3.googleusercontent.com/a/...",
+    "aud": "644359853825-...jhn.apps.googleusercontent.com",
+    "azp": "644359853825-...jhn.apps.googleusercontent.com",
+    "name": "cloud tech",
+    "exp": 1777992822,
+    "family_name": "tech",
+    "iat": 1777989222,
+    "email": "cc0312312@gmail.com"
+  },
+  "access_token_value": "ya29.a0AQvPy...[masked]",
+  "access_token_claims": {
+    "error": "JsonParseException",
+    "message": "Unrecognized token 'k': was expecting JSON..."
+  },
+  "access_token_expires_at": 1777992821,
+  "scopes": [
+    "https://www.googleapis.com/auth/userinfo.profile",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "openid"
+  ]
+}
+```
+
+### AC-5 N/A — Google Opaque Access Token
+
+Google access_token 以 `ya29.` 開頭，是 Google 內部 opaque handle，非 JWT：
+- `AuthDebugController.decodeJwtPayload()` 嘗試 base64 decode → 不是合法 JSON → `JsonParseException`
+- `oauth2ResourceServer().jwt()` bearer path 遇到 Google access_token 同樣 decode fail
+- **結論**：Google OAuth 不適用 bearer token 路徑；此為 Google 已知特性，非 bug
+
+### Mock vs Google Claim 對比
+
+| Claim | Mock (mock-oauth2-server) | Google (real IdP) |
+|-------|--------------------------|-------------------|
+| `sub` | ✅ 有（mock 自訂值） | ✅ `106627222134770636241` |
+| `iss` | ✅ `http://localhost:9000/skills-hub-dev` | ✅ `https://accounts.google.com` |
+| `aud` | ✅ 有 | ✅ client_id |
+| `email` | ❌ 無 | ✅ `cc0312312@gmail.com` |
+| `email_verified` | ❌ 無 | ✅ `true` |
+| `name` | ❌ 無 | ✅ `cloud tech` |
+| `given_name` | ❌ 無 | ✅ `cloud` |
+| `family_name` | ❌ 無 | ✅ `tech` |
+| `picture` | ❌ 無 | ✅ GCS URL |
+| `roles` | ✅ `["admin"]`（mock 自訂） | ❌ 無（`@PreAuthorize hasRole` fail-closed） |
+| `groups` | ✅ 有（mock 自訂） | ❌ 無 |
+| `company_id` | ✅ 有（mock 自訂） | ❌ 無 |
+| `dept_id` | ✅ 有（mock 自訂） | ❌ 無 |
+| `at_hash` | ❌ 無 | ✅ 有（OIDC at_hash） |
+| `azp` | ❌ 無 | ✅ 有（authorized party） |
+| `nonce` | ❌ 無 | ✅ 有（OIDC nonce） |
+
+### Authorities 行為修正（vs 預期）
+
+> 規格 §1 原本預期「Google 無 roles claim → authorities 空 list」
+> **實際**：Spring Security OAuth2 Login 路徑的 authority mapping 與 RS JWT 路徑不同：
+> - OAuth2 Login path — `OidcUserAuthority` 注入 `OIDC_USER`；scope → `SCOPE_*` prefix
+> - RS JWT bearer path — `JwtAuthenticationConverter.setAuthoritiesClaimName("roles")` → 確實空 list（Google 無 roles）
+>
+> 本 trial 走 OAuth2 Login session path，所以 `authorities = [OIDC_USER, SCOPE_openid, SCOPE_...email, SCOPE_...profile]`，非空。
+
+### Hypothesis Verdict
+
+| Hypothesis | Verdict | Evidence |
+|------------|---------|---------|
+| H1: Google PKCE accepts confidential client | ✅ PASS | AC-2 curl + AC-3 token exchange 成功（無 invalid_request/invalid_grant） |
+| H2: 真實 Google id_token claim shape | ✅ PASS | AC-4 JSON dump；claim 形狀如上表 |
+
+### Follow-up Spec Recommendations
+
+1. **claim → role mapping**：Google id_token 無 `roles`；若需 admin 授權，可用 email domain check（`@xxx.com`）或 sub allowlist；屬後續 follow-up spec
+2. **Google access_token bearer path**：如需 bearer auth with Google，改用 `https://www.googleapis.com/oauth2/v3/userinfo` introspection + `OpaqueTokenIntrospector`；或換 IdP（Auth0/Keycloak 發 JWT access_token）
+3. **session 跨 instance**：multi-instance Cloud Run 部署需 `spring-session-data-redis`；本 trial single-instance local dev 不需要
