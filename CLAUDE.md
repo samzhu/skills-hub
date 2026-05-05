@@ -12,7 +12,7 @@ IMPORTANT: Follow these in every session.
 
 - **Feature First, Security Later**: MVP 階段以功能開發為主，Spring Security 設為 permit all。安全性（認證、授權、CSRF）在功能完成後再補。不要在開發階段加入擋住功能的安全設定。
 - **First Principles Thinking**: Address root causes, not surface symptoms
-- **Design-Intent Comments**: After understanding the requirement, document *why* the design was chosen
+- **Spec-Linked Rationale**: 設計決策 / framework 機制 / trade-off / research alternatives 詳細說明寫進 spec / ADR；source code 註解只留「spec ID + 簡短敘述 + override 提示」（≤ 3 行）。但**業務邏輯 invariant 的 inline comment 跟 log message 仍要在 source 簡明寫**（runtime 行為跟 spec 無關）。判斷：comment ≥ 5 行多半該移到 spec 留 reference；comment 是「這行業務邏輯為何這樣」→ 留 source。
 - **Web-Verify First**: Searching official docs is faster than trial-and-error — cite sources
 - **Log-Driven Debugging**: When logs are insufficient to identify the root cause, add more logs and retest before planning a fix
 - **No Deprecated APIs**: Check `architecture.md` for exact versions and import paths — do NOT guess

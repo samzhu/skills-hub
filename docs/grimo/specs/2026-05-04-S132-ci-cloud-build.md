@@ -347,3 +347,73 @@ gcloud builds triggers create developer-connect \
 
 - T01 屬於本機 atomic edit，可在無 GCP credentials 環境下完成；AC-1 / AC-6 verification 步驟若 user 環境暫無 gcloud auth + Docker daemon，可標 deferred-manual 連 T02 一起跑。
 - T02 為 manual GCP 任務，不走 `./gradlew test`；驗證證據（build log / AR image digest）合併寫入 spec §7。
+
+---
+
+## 8. ProcessAot baked profile 機制（2026-05-05 補述）
+
+> Native image enablement 工作（commit `3b48bc2` `b82eeb3` `a0d90e6` `e91dc91`）的核心 design rationale。`build.gradle.kts` ProcessAot block 跟 `cloudbuild.yaml` `-Pspring.profiles.active` flag 都引用本節。
+
+### 8.1 為什麼 AOT 階段就要列齊 profile
+
+Spring Boot 4 AOT processor 透過 `ApplicationContextInitializer` hardcode `addActiveProfile(...)` 把 build-time profile **baked 進 native binary**（per spring-boot Issue [#41562](https://github.com/spring-projects/spring-boot/issues/41562) / [#48408](https://github.com/spring-projects/spring-boot/issues/48408)）。Native runtime `SPRING_PROFILES_ACTIVE` 只能「**加**」profile 不能「**移除**」baked 的 — runtime 設定無法 swap 出 build-time 已 freeze 的 `@Profile` bean definitions。
+
+**含意**：AOT processing 階段就要列齊 native runtime 想用的 profile。沒列到的 profile 在 native runtime 不存在對應的 bean definitions（即使 runtime 設了 SPRING_PROFILES_ACTIVE 也救不回）。
+
+### 8.2 為什麼用 Gradle property 而非 hardcode
+
+ProcessAot task 預設沒設 active profile → `AotStubConfig`（`@Profile("aot")`）不啟用 → DataSource autoconfig 試 eager init 但 AOT 跳過 `@ConfigurationProperties` binding → 無 driver class 炸掉。
+
+ProcessAot block 必須 inject `--spring.profiles.active=...` args 給 forked JVM。三個方案 trade-off：
+
+| 方案 | 優 | 劣 |
+|---|---|---|
+| Hardcode `args("--spring.profiles.active=aot,local")` | 最簡單 | 不彈性，CI 不同環境（lab/prod）要改 build.gradle.kts |
+| Env var `SPRING_PROFILES_ACTIVE=...` ./gradlew | build.gradle.kts 全乾淨 | 不算「gradle 參數」，跟 runtime env var 同名易混 |
+| **`-Pspring.profiles.active=...` Gradle property（採用）** | gradle 風格 + 跨層命名一致 + 預設值寫在 build.gradle.kts | 須 build.gradle.kts 留 minimal 2-line block 讀 property |
+
+### 8.3 為什麼命名對齊 `spring.profiles.active`
+
+跨層命名一致 = 零認知負擔：
+
+| 層 | Key |
+|---|---|
+| Spring yaml | `spring.profiles.active` |
+| Runtime env var | `SPRING_PROFILES_ACTIVE` |
+| Spring CLI args | `--spring.profiles.active=...` |
+| Gradle property | `-Pspring.profiles.active=...` |
+
+不管在哪一層看到都是同個名字。Gradle property name 支援 dotted form（`-Pspring.profiles.active=...`）— 直接複用 Spring 標準名，避免自創 `aotProfiles` 這類 key 造成跨層斷裂。
+
+### 8.4 為什麼 bootBuildImage 一定跑 native
+
+Paketo builder `noble-java-tiny`（Spring Boot 4 預設）的第一個 `[[order]]` group 是 `paketo-buildpacks/java-native-image` meta-buildpack，內含 `paketo-buildpacks/native-image` buildpack（**non-optional / required**，per [builder.toml](https://github.com/paketo-buildpacks/builder-noble-java-tiny/blob/main/builder.toml)）。
+
+CNB lifecycle detect phase 依序試 order group，第一個 pass 的就被選中。Spring AOT 產生 `META-INF/native-image/` metadata（由 `org.graalvm.buildtools.native` plugin 貢獻）→ `spring-boot` buildpack 寫 plan entry `native-image: true` → `java-native-image` chain 整條 pass → `native-image` buildpack 執行。
+
+**含意**：`BP_NATIVE_IMAGE=true` env var **無需顯式設**。`BP_NATIVE_IMAGE` 預設無值（per [native-image detect.go](https://github.com/paketo-buildpacks/native-image/blob/main/native/detect.go)），但保留 graalvm plugin = 強制 native build。要切回 JVM image 模式需顯式設 `BP_NATIVE_IMAGE=false` 或換 builder。
+
+### 8.5 為什麼 AotStubConfig 用 System.getenv 而非 Spring Environment
+
+Spring Boot 4 AOT processor 對 eager bean 跳過 `@ConfigurationProperties` binding（連續 4 次 build 驗證 yaml/system property/CLI args 都失效）。`AotStubConfig.dataSource()` 必須用純 JVM API `System.getenv(...)` 直連 process env vars，繞開 framework phase 限制。
+
+副效益：AOT processing 階段（build time）env vars 沒設 → 用 stub URL（HikariCP lazy connect 不真連 DB）；native runtime 階段 BeanInstanceSupplier 重新 invoke 同方法 → env vars 有值 → 用真實連線資訊。同個 bean 跨 build/runtime 共用，runtime 由 env vars 切換真實值。
+
+### 8.6 baked profile vs runtime profile 範例
+
+當前 setup（`-Pspring.profiles.active=aot,local`）：
+- **Build time**：baked `aot,local` → `AotStubConfig` + `application-local.yaml` modulith excludes 都 freeze 進 native binary
+- **Cloud Run runtime**：設 `SPRING_PROFILES_ACTIVE=gcp,prod` → 總 active = `aot, local, gcp, prod`
+  - `aot` profile 觸發 `AotStubConfig` 但 `dataSource()` 從 env var 讀真實 DB url（非 stub）
+  - `gcp` profile 啟用 GCP autoconfig (secretmanager 等)
+  - `prod` profile 提供行為（INFO log / 限縮 actuator）
+
+未來想為 lab/prod 分別 baked 不同 native binary：CI 改 `-Pspring.profiles.active=aot,gcp,lab` 或 `aot,gcp,prod`，build 出兩種 image 分別 deploy 對應環境。
+
+### 8.7 References
+
+- Spring Boot AOT how-to: <https://docs.spring.io/spring-boot/how-to/aot.html>
+- spring-boot Issue #41562 — AOT addActiveProfile baked into binary
+- spring-boot Issue #48408 — runtime SPRING_PROFILES_ACTIVE cannot remove baked
+- Paketo builder-noble-java-tiny: <https://github.com/paketo-buildpacks/builder-noble-java-tiny>
+- Paketo native-image buildpack: <https://github.com/paketo-buildpacks/native-image>
