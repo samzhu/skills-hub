@@ -1,6 +1,6 @@
 # S096 META — UI v2 Full Redesign (dark theme + new pages + route schema)
 
-> **Status**: in-design (📐)
+> **Status**: shipped ✅ (closed 2026-05-05)
 > **Type**: META (8 sub-specs sequential ship; this file = planning doc only)
 > **Estimate total**: ~80-100 pts (XL — mandatory split per estimation-scale.md ≥17)
 > **Source**: `docs/grimo/ui/prototype/Skills Hub *.html` (16 dark-theme mockups) + Engineering Handoff (user-supplied, embedded §1-§10) + replaces old snake_case prototypes that S085-S088 + S094 used as reference
@@ -239,7 +239,19 @@ Per `qa-strategy.md` 標準 pipeline；每 sub-spec 自己 §3 AC verify command
 
 ## §7 Result
 
-待 8 sub-specs ship 完成後填。
+**Closed 2026-05-05.** 核心目標全部達成：
+
+- AC-META-2 ✅ DESIGN.md v2 dark token system（S096b）
+- AC-META-3 ✅ 全部既有頁面 dark theme（S096b + d1/d2/d3/d4a/d5a）
+- AC-META-4 ✅ 5/6 新頁面上線（/browse / /collections / /skills/:id/diff / /requests / /notifications）；`/onboarding` 主動取消（見下）
+- AC-META-5 ✅ `/skills/:id` alias + `/skills/:author/:name` canonical 並行（S096c）
+- AC-META-6 ✅ Risk tier 4-level NONE/LOW/MEDIUM/HIGH（S096c + RiskBadge）
+- AC-META-7 ✅ PRD P7/P8/P9 + glossary（S096a）
+- AC-META-8 ✅ ADR-003 ratified（S096a）
+
+**S096e2 Onboarding — 主動取消（2026-05-05）：** prototype HTML 缺失（16 mockups 未含 Onboarding），MVP 階段不補做；個人化首頁功能暫不需要。若未來有需求以新 spec 啟動。
+
+**S096f3 Collections risk filter** 仍在 roadmap 為 📋 planned（polish level；不影響 META 關閉）。
 
 ---
 

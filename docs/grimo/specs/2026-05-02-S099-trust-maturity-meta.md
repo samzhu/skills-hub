@@ -55,25 +55,32 @@ PublishPage `FileDropZone` 接受 `.zip` 或 `.md`；backend `POST /api/v1/skill
 
 ## §4 Gap B — Cross-Marketplace Risk Validation
 
-### Idea
+### Sources（已驗證 2026-05-05）
 
-抓公開 skill marketplace（候選：Cisco AskMe / awesome-claude-code-skills GitHub repo / agentskills.io 上市 skills / 其他 LLM agent 框架的 skill 庫）的 skills，逐一 upload 到 Skills Hub，比對：
+`awesome-claude-code-skills` 此精確名稱的 repo 不存在。實際可用的 public sources：
 
-- Skills Hub 我們判定的 risk_level (NONE/LOW/MEDIUM/HIGH)
-- 來源平台的 risk label / community rating（若有）
-- 預期 outcome：高 agreement rate（≥80%）證明我們 classifier 有公信力
+| Source | Skill 數量 | 格式相容 | URL |
+|--------|-----------|---------|-----|
+| `anthropics/skills`（Anthropic 官方）| 17 個 | ✅ 完全相容 | github.com/anthropics/skills |
+| `huggingface/skills`（HuggingFace 官方）| 13 個 | ✅ 完全相容 | github.com/huggingface/skills |
+| `agentregistry-dev/skills` | ~13 個 | ✅ 相容 | github.com/agentregistry-dev/skills |
+
+合計 **43 個** skills（≥10，有統計意義）；全部 public，無需認證，可直接 `git clone`。
+
+**格式注意**：agentskills.io 規範中 `version` 是 `metadata.version`（非 top-level），官方 repo 的 SKILL.md 實際只含 `name` + `description` + `license`。cross-validation 邏輯需對應調整。
 
 ### Scope
 
 | Step | Description |
 |------|-------------|
-| Source selection | 挑 1-2 個 high-quality public marketplace（先 awesome-claude-code-skills 因 GitHub 公開易抓） |
-| Scraper | Python script clone repo + 解析 `skills/*/SKILL.md` |
-| Bulk upload | Loop 呼叫 `POST /skills/upload` 上傳 |
-| Comparison report | Markdown table：來源 / 我們 risk / 來源 risk（若有）/ agreement (Y/N) / 不同點 root cause |
-| Audit log | 結果存 `docs/grimo/cross-validation-report.md` 作為 trust signal |
+| Source clone | `git clone` 以上 2-3 個 repo |
+| Skill extraction | Python/bash script：遍歷 `skills/*/SKILL.md`，打包成最小 zip（只含 SKILL.md，無 scripts/）|
+| Bulk upload | Loop 呼叫 `POST /api/v1/skills/upload` 上傳到本地 dev instance |
+| Result collection | 輪詢 `GET /api/v1/skills/{id}` 等待 risk_level 確定 |
+| Comparison report | Markdown table：skill name / source / 我們的 risk_level / 預期 risk（人工標注）/ agreement / 備註 |
+| Audit log | 結果存 `docs/grimo/cross-validation-report.md` |
 
-### Sub-spec: **S099c** (M=10) — Cross-marketplace risk validation script + report
+### Sub-spec: **S099c** (S=7，縮估自 M=10) — Cross-marketplace risk validation script + report
 
 ## §5 Gap C — LLM Description Quality Audit
 
@@ -109,9 +116,70 @@ User feedback：「LLM 寫的說明要簡單易懂」— 暗示我們的 descrip
 實作分割：
 - **S099e1** (M=8) — Prompt-injection pattern detector (LLM01)
 - **S099e2** (S=5) — Resource DoS scanner (LLM04)
-- **S099e3** (M=8) — SBOM + dependency scanning (LLM05)
+- **S099e3** (S=7，縮估自 M=8) — Dependency vulnerability scanner (LLM05)
 - **S099e4** (S=4) — Hardcoded creds detector enhancement (LLM06)
-- **S099e5** (S=3) — Docs page: 「Risk Scanner 涵蓋與限制」說明 LLM01-10 對應
+- **S099e5** (S=3) — Docs page: 「Risk Scanner 涵蓋與限制」說明 LLM01-10 對應 ✅ shipped v3.3.1
+
+---
+
+### S099e1 設計（已研究 2026-05-05）
+
+**新增 `PromptInjectionScanner implements SecurityAnalyzer`**（獨立 class，Phase.STATIC，OWASP tag: AST01）
+
+掃描對象：優先掃 `context.frontmatter().get("instructions")` 欄位值，同時也掃 SKILL.md 全文。
+
+**HIGH severity patterns（8 條）：**
+
+| ruleId | Regex（Java）| 說明 |
+|--------|-------------|------|
+| `PI_OVERRIDE_IGNORE` | `(?i)ignore\s+(all\s+)?(previous\|prior\|above\|earlier)\s+(instructions?\|prompts?\|context\|directives?)` | 直接 override 起手式 |
+| `PI_OVERRIDE_FORGET` | `(?i)forget\s+(all\|everything\|what\|the)\s+(above\|previous\|you\s+know\|was\s+said)` | 語意同上，forget 動詞 |
+| `PI_SYSTEM_PROMPT_LEAK` | `(?i)(repeat\|output\|print\|reveal\|show\|display\|tell\s+me)\s+(all\|your\|the)?\s*(system\s*prompt\|initial\s+instructions?\|original\s+prompt\|context\s+window)` | 要求輸出 system prompt |
+| `PI_ROLE_JAILBREAK` | `(?i)(?:you\s+are\s+now\s+(?:an?\s+)?(?:AI\|DAN\|evil\|unrestricted\|jailbroken)\|act\s+as\s+(?:DAN\|an?\s+unrestricted\|an?\s+AI\s+without\s+restrictions?))` | 角色劫持 / DAN |
+| `PI_HIDDEN_UNICODE_RLO` | `[‮‭]` | Right-to-Left Override（幾乎無合法用途）|
+| `PI_EXFIL_AFTER_TASK` | `(?i)(?:after\s+(?:completing?\|finishing?\|the\s+task)\|then\s+also\|additionally\s+(?:send\|transmit\|forward))\s+.{0,50}https?://` | 完成後外傳資料 |
+| `PI_CREDENTIAL_RELAY` | `(?i)(?:send\|forward\|transmit\|relay\|include)\s+(?:all\s+)?(?:api\s*keys?\|tokens?\|passwords?\|credentials?\|secrets?)\s+(?:to\|in\|via)\s` | 要求 agent 傳遞憑證 |
+| `PI_FAKE_SYSTEM_HEADER` | `(?i)\[\s*(?:SYSTEM\|ANTHROPIC\|OPENAI\|ADMIN\|DEVELOPER\|ROOT\|OPERATOR)\s*\]\s*:?\s*(?:new\s+)?(?:directive\|instruction\|override\|command\|message)` | 偽造 system-level header |
+
+**MEDIUM severity patterns（6 條）：**
+
+| ruleId | 說明 |
+|--------|------|
+| `PI_HYPOTHETICAL_BYPASS` | 「in this hypothetical/roleplay... no restrictions」虛構框架繞限制 |
+| `PI_CONTEXT_WINDOW_PROBE` | 「what is in your context window」context 偵察 |
+| `PI_SECRET_NO_DISCLOSE` | 「don't tell the user about...」hidden agenda |
+| `PI_OVERRIDE_NEW_TASK` | 「new task: / disregard your prior role」中度 override |
+| `PI_HIDDEN_UNICODE_ZWSP` | `[​‌‍⁠﻿]` Zero-width chars（BOM 可能合法，標 MEDIUM）|
+| `PI_EXFIL_URL_IN_INSTRUCTIONS` | instructions 欄位含「send to https://...」非白名單域名 |
+
+**靜態掃描不覆蓋（由 LlmJudge 負責）：** 語義多態、跨欄位組合注入、非英文 injection、conditional sleeper、indirect injection（runtime fetch）。
+
+---
+
+### S099e3 設計（已研究 2026-05-05）
+
+**新增 `DependencyVulnScanner implements SecurityAnalyzer`**（Phase.STATIC，與 PatternScanner 並行）
+
+**Scope（選項 B — 輕量）：**
+- 解析 `requirements.txt`（只取 pinned `==` 版本）和 `package.json`（`dependencies` + `devDependencies`）
+- `pyproject.toml` defer 至 S099e3-2
+- 不產生 SBOM artifact（defer）；只輸出 `SecurityFinding` list
+
+**依賴解析：**
+```
+requirements.txt regex: ^([A-Za-z0-9_.-]+)(?:\[.*?\])?==([A-Za-z0-9._-]+)
+package.json: Jackson 解析 dependencies map，semver ^ / ~ 前綴去掉取版本號
+```
+
+**Vulnerability 查詢：OSV.dev `/v1/querybatch`**
+- 完全免費、無需 API key、Google 維護、P90 ≤ 4s
+- PURL 格式：`pkg:pypi/{name}@{version}` / `pkg:npm/{name}@{version}`
+- Batch 一次查所有解析出的依賴
+
+**Finding 映射：**
+- 有漏洞的套件 → `SecurityFinding`；severity 從 OSV `severity[].score` 映射（CVSS ≥ 7 → HIGH，4-7 → MEDIUM，< 4 → LOW）
+- ruleId: `DEP_VULN_{ECOSYSTEM}_{CVE_ID}`
+- `safeAnalyze` 包覆：OSV.dev 網路不通時 → skip（不阻斷 scan pipeline）
 
 ## §7 Other Gaps from Audit
 

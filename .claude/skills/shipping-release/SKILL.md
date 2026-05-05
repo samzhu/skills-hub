@@ -95,45 +95,48 @@ New capability shipped = documents must reflect new reality.
 
 Only update docs where reality diverged. Skip docs still accurate.
 
-### Archive completed spec
+### Archive + Cleanup (mandatory)
 
-Move the ONE finished spec file to `specs/archive/`:
+Run all three steps — no skipping.
 
+**1. Archive the spec file:**
 ```bash
 mkdir -p docs/grimo/specs/archive
 mv docs/grimo/specs/YYYY-MM-DD-<spec-id>-*.md docs/grimo/specs/archive/
 ```
 
-`specs/` only keeps `spec-roadmap.md` + in-progress specs.
-`specs/archive/` holds completed specs for reference.
+`specs/` must only contain `spec-roadmap.md` + in-progress spec files after this step.
 
-**Note**: Task files in `docs/grimo/tasks/` and POC directories in
-`poc/<spec-id>/` should already be cleaned up by `/planning-tasks`
-Phase 3. If any remain, delete them now.
+**2. Delete task files:**
+```bash
+rm -f docs/grimo/tasks/*-<spec-id>-*.md
+```
+
+If `/planning-tasks` Phase 3 already deleted them, this is a no-op — run it anyway to confirm clean state.
+
+**3. Delete POC directories (if any):**
+```bash
+rm -rf poc/<spec-id>/
+```
+
+**Verify clean state** — after the three steps, `git status` must show no untracked files under `docs/grimo/tasks/` or `poc/` for this spec.
 
 ### Update spec-roadmap.md
 
-When all specs in a milestone are `✅`, collapse the milestone:
+The roadmap is a lean index — SpecID / 標題 / 點數 / 相依 / 狀態 columns only.
+Detail lives in the spec file (now archived); never put notes back into the roadmap.
 
-**Before (in progress):**
+1. Remove the spec row from the `## 🚧 Active` table.
+2. Append a row to the appropriate phase section in `## ✅ Shipped`:
+
 ```markdown
-## Milestone 1: Docker Sandbox（Phase 0a）
-**Goal**: Run Claude Code inside Docker container
-**Done when**: S001-S003 all done
-**Tag**: `v0.1.0`
-
-| # | Spec | Points | Status |
-|---|------|--------|--------|
-| S001 | Docker basic ops | XS(8) | ✅ |
-| S002 | grimo-sandbox Image | XS(8) | ✅ |
-| S003 | Container auth | S(10) | ✅ |
+| S002 | grimo-sandbox Docker image | XS(8) | v0.1.0 |
 ```
 
-**After (collapsed):**
-```markdown
-## Milestone 1: Docker Sandbox ✅ `v0.1.0` (2026-04-15)
-3/3 specs complete. Details → `specs/archive/2026-04-*-s00[1-3]-*`
-```
+3. If the spec was in the `## 📝 待辦清單`, remove that checkbox entry.
+4. If the spec was in the `## 🏁 Milestones` table, update that row's 狀態 to `✅` (or remove the row if the milestone version is now fully shipped).
+
+**Fields:** SpecID · short title (≤ 40 chars) · 點數 · 版本 (from the git tag you just created, or `—` for patch-level sub-specs)
 
 ### CHANGELOG
 

@@ -1,6 +1,6 @@
 # S098 META — v2 Prototype Completeness Audit
 
-> **Status**: in-design (planning artefact only; sub-specs do actual ship)
+> **Status**: shipped ✅ (closed 2026-05-05)
 > **Type**: META gap audit + sub-spec backlog refresh
 > **Estimate**: M-L total across 8+ gap sub-specs (~50-60 pts to full coverage)
 > **Source**: docs/grimo/ui/prototype/ (16 HTML mockups) cross-ref shipped spec archive
@@ -135,10 +135,20 @@ Add 3-4 docs pages (Overview / SKILL.md spec / Frontmatter fields / Bundle struc
 
 ## §7 Result
 
-待 sub-specs ship 累積後填。
+**Closed 2026-05-05.** 原始 11 個 sub-spec（8 個 S098 + S096f2/g2/h2）全部 shipped：
 
-**Plan summary**:
-- 8 new sub-specs (S098a–h) + 3 existing (S096f2/g2/h2) = 11 sub-specs
-- Estimated ~85 pts total
-- ⏸ 2 deferred (Admin Review post-MVP / Onboarding blocked)
-- P0 mid-tick adds: S098g (i18n) + S098h (配色對比) per 連續 user directives
+- P0 ✅ S098a/a3/a3-2（Publish Validate page + bundle info）
+- P0 ✅ S098b/b2/b3（Publish Failed page 三態）
+- P0 ✅ S098c（Version Diff frontend-only）
+- P0 ✅ S098g/g+（i18n 繁中化 pass 1+2）
+- P0 ✅ S098h/h2（YourFirstSkill 配色 + EmptyState dark migration）
+- P1 ✅ S096f2 / S096g2 / S096h2（Collections / Request Board / Notifications full feature）
+- P2 ✅ S098d/d2（Homepage 3-col grid + risk filter sidebar）
+- P2 ✅ S098e/e2/e3（Skill Detail 5-tab + Reviews + Flags write flow）
+- P2 ✅ S098f/f2/f3（Docs IA 全 11 頁）
+
+**Deferred polish items（仍在 roadmap，不影響 META 關閉）：**
+- S098a2 — SSE 事件串流，⏸ post-MVP
+- S098b3-2 — backend 結構化 findings payload，📋 planned
+- S098c2/c3 — backend diff endpoint + file-level diff，📋 planned
+- Admin Review（S094e）— PRD B6 backlog，⏸ post-MVP（needs admin role）

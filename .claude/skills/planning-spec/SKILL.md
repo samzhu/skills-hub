@@ -277,7 +277,7 @@ Read `references/estimation-scale.md` for the full six-dimension rubric (tech ri
 
 Read the template from `references/spec-template.md`. The template has 7 sections. `/planning-spec` fills sections 1-5. Sections 6-7 are added later by `/planning-tasks`.
 
-Update the spec roadmap status to in-design.
+Roadmap update: add spec row to the Active table with `📐 in-design` status. Write ALL design content (research findings, approach rationale, interface designs, AC details) to the spec file §1-5 — never to the roadmap. The roadmap is a lean index: SpecID / 標題 / 點數 / 相依 / 狀態 columns only.
 
 **Glossary**: Before naming new types or protocols, check the project glossary. If introducing new domain concepts, add entries in the same commit.
 
