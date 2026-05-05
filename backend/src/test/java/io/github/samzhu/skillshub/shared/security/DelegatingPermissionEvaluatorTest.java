@@ -79,7 +79,7 @@ class DelegatingPermissionEvaluatorTest {
     }
 
     @Test
-    @DisplayName("AC-6: AnonymousAuthenticationToken → 直接 false 不 dispatch")
+    @DisplayName("AC-6: AnonymousAuthenticationToken + non-read permission → 直接 false 不 dispatch")
     @Tag("AC-6")
     void hasPermission_anonymous_shortCircuits() {
         var skillStub = new StubStrategy("Skill", true);
@@ -90,22 +90,25 @@ class DelegatingPermissionEvaluatorTest {
                 "key", "anonymous",
                 List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS")));
 
-        var allowed = evaluator.hasPermission(anon, "abc-1", "Skill", "read");
+        // S122: anonymous + "read" 改走 *:read strategy fallback（不再短路 false）；
+        // write 仍走 fail-secure 短路，用 write 驗 anonymous 短路行為。
+        var allowed = evaluator.hasPermission(anon, "abc-1", "Skill", "write");
 
         assertThat(allowed).isFalse();
         assertThat(skillStub.lastInvokedTarget)
-                .as("anonymous 應於 dispatcher 短路；strategy 不應收到請求")
+                .as("anonymous 非 read permission 應於 dispatcher 短路；strategy 不應收到請求")
                 .isNull();
     }
 
     @Test
-    @DisplayName("AC-6: null Authentication → 直接 false（fail-secure）")
+    @DisplayName("AC-6: null Authentication + non-read permission → 直接 false（fail-secure）")
     @Tag("AC-6")
     void hasPermission_nullAuthentication_returnsFalse() {
         var skillStub = new StubStrategy("Skill", true);
         var evaluator = new DelegatingPermissionEvaluator(List.of(skillStub));
 
-        var allowed = evaluator.hasPermission(null, "abc-1", "Skill", "read");
+        // S122: null auth + "write" 仍走 fail-secure 短路（read 改走 *:read strategy）
+        var allowed = evaluator.hasPermission(null, "abc-1", "Skill", "write");
 
         assertThat(allowed).isFalse();
     }

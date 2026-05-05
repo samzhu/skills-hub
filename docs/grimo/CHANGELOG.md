@@ -1,5 +1,19 @@
 # Changelog
 
+## [v3.13.0] — Test Debt Recovery — 18 pre-existing test failures fixed（S138 完成；2026-05-05）
+
+> S138 SB4+SS7 test path recovery。清除 6 個 cluster 共 18 個過往 spec ship 後積累的 test stale-ness，unblock S135a 後續 `./gradlew test` 驗證。Zero production code change。
+
+### Fixed — Backend Tests Only
+- **C1**: `NotificationControllerTest` × 10 — 加 `.with(jwt())` 對齊 S130 `/api/v1/notifications/**` `.authenticated()` 規則
+- **C2**: `DelegatingPermissionEvaluatorTest` × 2 — anonymous 短路 test 改用 `"write"` permission（S122 改 read 走 `*:read` strategy fallback；write 仍 fail-secure）
+- **C3a**: `SkillsApiAnonymousTest` 加 `@MockitoBean BundleInfoQueryService`；`SkillQueryControllerApiContractTest` 補 UUID-format skillId（S126 validator 修正）
+- **C3b**: `SkillVersionQueryTest` 加 `@MockitoBean CurrentUserProvider + AclPrincipalExpander`（SkillQueryService ctor 兩個 slice-invisible dep）
+- **C4**: `ScanOrchestratorTest` + `RiskAssessmentIntegrationTest` — 0-finding risk level `"LOW"` → `"NONE"`（per S096c 4-tier）
+- **C5**: `S016EndToEndSmokeTest` — bob GET ACL 改 expect `isOk()`（S026 `*:read` 使所有 authenticated user 可 read public skill ACL）
+
+---
+
 ## [v3.11.0] — Skill Markdown Export — Agent-Friendly Copy/Open（S133 完成；2026-05-05）
 
 > S133 Skill Markdown Export。每個 skill 詳情頁加「Markdown ▾」dropdown，提供「複製為 Markdown」（Safari-safe ClipboardItem）與「開啟 Markdown」（new tab）。後端加 `/api/v1/skills/{id}/skill.md` alias endpoint，agent/curl 友善。

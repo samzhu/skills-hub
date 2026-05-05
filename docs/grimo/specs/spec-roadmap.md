@@ -38,9 +38,8 @@
 | S120 | E2E auth integration test | M(8-10) | S114a | 📐 in-design |
 | S132 | CI — Cloud Build pipeline | XS(7) | S013 ✅ | ⏳ T02 pending |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | 📐 in-design |
-| S135a | Backend Quality Score (Validation + LLM judge + endpoint) | M(13-15) | S138 ⏸ S135 | ⏸ deferred (T01 done; T02-T07 blocked by S138 auth test debt) |
+| S135a | Backend Quality Score (Validation + LLM judge + endpoint) | M(13-15) | S135 | 📋 planned (T01 done; T02-T07 unblocked after S138 ✅) |
 | S135b | Frontend Quality Display (hero 兩條進度條 + Quality tab + SkillCard badge) | S(9-11) | S135a | ⏸ deferred (blocked by S135a) |
-| S138 | SB4 + SS7 OAuth2 RS test path recovery | S(7-9) | — | 📐 in-design (blocking S135a) |
 
 ---
 
@@ -52,7 +51,8 @@
 |------|-----------|------|
 | v3.11.0 | S133 (Markdown export) | ✅ shipped 2026-05-05 |
 | v3.12.0 | S134 (Real OAuth trial — Google OAuth) | ✅ shipped 2026-05-05 |
-| v3.13.0 | S132 T02 (CI Cloud Build first push) | ⏳ 待用戶 GCP setup |
+| v3.13.0 | S138 (test debt recovery — 18 failures → 0) | ✅ shipped 2026-05-05 |
+| v3.14.0 | S132 T02 (CI Cloud Build first push) | ⏳ 待用戶 GCP setup |
 | v4.0.0 | S114a (RBAC ACL Owner+Viewer) | 📋 spec 已設計 |
 | v4.1.0 | S120 (E2E auth integration test) | 📋 depends S114a |
 | v4.x | S099e1, S099e3 (security scanners) | 📋 設計已備妥 |
@@ -306,3 +306,4 @@
 | S130 | Personal endpoints auth gate | XS(1) | v3.10.9 |
 | S133 | Skill Markdown export (agent-friendly copy/open) | XS(8) | v3.11.0 |
 | S134 | Real OAuth IdP local dev trial (Google OAuth) | S(9) | v3.12.0 |
+| S138 | SB4+SS7 test debt recovery — 18 failures → 0 | S(7) | v3.13.0 |

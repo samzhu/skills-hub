@@ -16,6 +16,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.skill.domain.Skill;
+import io.github.samzhu.skillshub.skill.query.BundleInfoQueryService;
 import io.github.samzhu.skillshub.skill.query.SkillQueryController;
 import io.github.samzhu.skillshub.skill.query.SkillQueryService;
 
@@ -37,6 +38,10 @@ class SkillsApiAnonymousTest extends WebMvcSliceTestBase {
 
     @MockitoBean
     private SkillQueryService skillQueryService;
+
+    // S098a3-2 ship 後 SkillQueryController ctor 多了 BundleInfoQueryService dep；slice 不掃 @Service 須顯式宣告
+    @MockitoBean
+    private BundleInfoQueryService bundleInfoQueryService;
 
     @Test
     @Tag("AC-8")

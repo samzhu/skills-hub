@@ -71,7 +71,8 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
     @DisplayName("AC-11: GET /api/v1/skills/{id} JSON 含 v1.5.0 fields，無 internal version 欄位")
     @Tag("AC-11")
     void apiContractRegression_findById() throws Exception {
-        var skillId = "contract-" + uniqueSuffix();
+        // S126: @PathVariable UUID id — 需用合法 UUID 格式避免 MethodArgumentTypeMismatchException 400
+        var skillId = UUID.randomUUID().toString();
         var fixture = Skill.fromRow(skillId, "contract-test", "fixture", "alice", "DevOps",
                 null, null, "DRAFT", 0L, Instant.now(), Instant.now(),
                 List.of("user:alice:read", "user:alice:write", "user:alice:delete"), null);

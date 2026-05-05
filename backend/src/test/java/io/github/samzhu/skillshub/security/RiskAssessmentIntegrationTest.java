@@ -81,7 +81,7 @@ class RiskAssessmentIntegrationTest {
 	private DomainEventRepository eventStore;
 
 	@Test
-	@DisplayName("AC-1: 純 markdown skill → risk level LOW")
+	@DisplayName("AC-1: 純 markdown skill → risk level NONE（per S096c 4-tier，0 findings = NONE）")
 	@Tag("AC-1")
 	void safeSkillGetsLowRisk(Scenario scenario) throws IOException {
 		var zip = createZip(Map.of("SKILL.md", "---\nname: safe-skill\ndescription: No scripts\n---\n# Safe"));
@@ -94,7 +94,7 @@ class RiskAssessmentIntegrationTest {
 				.andWaitForStateChange(() -> riskAssessedAuditRowOrNull(skillIdRef.get()))
 				.andVerify(row -> {
 					var skill = skillRepo.findById(skillIdRef.get()).orElseThrow();
-					assertThat(skill.getRiskLevel()).isEqualTo("LOW");
+					assertThat(skill.getRiskLevel()).isEqualTo("NONE");
 				});
 	}
 

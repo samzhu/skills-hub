@@ -161,10 +161,10 @@ class S016EndToEndSmokeTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.type=='group' && @.principal=='engineering' && @.permission=='read')]").exists());
 
-        // (4) bob 無權 → 403
+        // (4) bob 有 *:read public access → 200（S026 *:read 預設公開；S125b expandPrincipals 含 *:read）
         mockMvc.perform(get("/api/v1/skills/" + skillId + "/acl")
                 .with(jwtFor("bob", List.of())))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
 
         // (5) alice revoke — Scenario 等 async listener 移除
         scenario.stimulate(() -> {

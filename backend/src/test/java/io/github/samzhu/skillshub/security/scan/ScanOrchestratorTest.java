@@ -149,7 +149,7 @@ class ScanOrchestratorTest {
 	}
 
 	@Test
-	@DisplayName("AC-1.1: 無 finding → finalLevel LOW")
+	@DisplayName("AC-1.1: 無 finding → finalLevel NONE（per S096c 4-tier RiskLevel）")
 	@Tag("AC-1")
 	void noFindingsLow() throws IOException {
 		var pattern = fakeAnalyzer("pattern", Phase.STATIC, AnalysisOutput.empty());
@@ -158,7 +158,7 @@ class ScanOrchestratorTest {
 		var orch = buildOrchestrator(List.of(pattern), m);
 		orch.on(EVT);
 
-		verify(m.skillRepo, atLeastOnce()).updateRiskLevel(eq("agg-1"), eq("LOW"), any(Instant.class));
+		verify(m.skillRepo, atLeastOnce()).updateRiskLevel(eq("agg-1"), eq("NONE"), any(Instant.class));
 	}
 
 	@Test

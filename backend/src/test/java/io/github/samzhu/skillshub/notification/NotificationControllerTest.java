@@ -1,5 +1,6 @@
 package io.github.samzhu.skillshub.notification;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -50,7 +51,8 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
                         ArgumentMatchers.eq(20)))
                 .thenReturn(new NotificationQueryService.Page(List.of(n), false));
 
-        mockMvc.perform(get("/api/v1/notifications"))
+        mockMvc.perform(get("/api/v1/notifications")
+                        .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].category").value("flags"))
                 .andExpect(jsonPath("$.items[0].title").value("你的 skill X 被回報"))
@@ -69,7 +71,8 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
         mockMvc.perform(get("/api/v1/notifications")
                         .param("category", "flags")
                         .param("cursor", "cursor-x")
-                        .param("limit", "5"))
+                        .param("limit", "5")
+                        .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.hasNext").value(true));
     }
@@ -79,7 +82,8 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
     void unreadCount_returnsCount() throws Exception {
         Mockito.when(queryService.unreadCount()).thenReturn(7L);
 
-        mockMvc.perform(get("/api/v1/notifications/unread-count"))
+        mockMvc.perform(get("/api/v1/notifications/unread-count")
+                        .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.count").value(7));
     }
@@ -88,7 +92,8 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
     @Tag("AC-6")
     @DisplayName("AC-6: POST /{id}/read happy → 204")
     void markRead_returns204() throws Exception {
-        mockMvc.perform(post("/api/v1/notifications/n1/read"))
+        mockMvc.perform(post("/api/v1/notifications/n1/read")
+                        .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isNoContent());
         Mockito.verify(service).markRead("n1");
     }
@@ -99,7 +104,8 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
     void markRead_forbidden_returns403() throws Exception {
         Mockito.doThrow(new NotNotificationRecipientException()).when(service).markRead("n1");
 
-        mockMvc.perform(post("/api/v1/notifications/n1/read"))
+        mockMvc.perform(post("/api/v1/notifications/n1/read")
+                        .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("not_notification_recipient"));
     }
@@ -110,7 +116,8 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
     void markRead_notFound_returns404() throws Exception {
         Mockito.doThrow(new NotificationNotFoundException("n1")).when(service).markRead("n1");
 
-        mockMvc.perform(post("/api/v1/notifications/n1/read"))
+        mockMvc.perform(post("/api/v1/notifications/n1/read")
+                        .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("notification_not_found"));
     }
@@ -121,7 +128,8 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
     void markAllRead_returns204() throws Exception {
         Mockito.when(service.markAllRead()).thenReturn(5);
 
-        mockMvc.perform(post("/api/v1/notifications/read-all"))
+        mockMvc.perform(post("/api/v1/notifications/read-all")
+                        .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isNoContent());
     }
 
@@ -129,7 +137,8 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
     @Tag("AC-8")
     @DisplayName("AC-8: DELETE /{id} happy → 204")
     void delete_returns204() throws Exception {
-        mockMvc.perform(delete("/api/v1/notifications/n1"))
+        mockMvc.perform(delete("/api/v1/notifications/n1")
+                        .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isNoContent());
         Mockito.verify(service).delete("n1");
     }
@@ -142,7 +151,8 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
         pref.update(false, true, true, true);
         Mockito.when(service.getPreferences()).thenReturn(pref);
 
-        mockMvc.perform(get("/api/v1/notifications/preferences"))
+        mockMvc.perform(get("/api/v1/notifications/preferences")
+                        .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.flags").value(false))
                 .andExpect(jsonPath("$.reviews").value(true))
@@ -164,7 +174,8 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"flags":false}
-                                """))
+                                """)
+                        .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.flags").value(false))
                 .andExpect(jsonPath("$.reviews").value(true));

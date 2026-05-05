@@ -8,8 +8,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
+import io.github.samzhu.skillshub.shared.security.AclPrincipalExpander;
+import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
 import io.github.samzhu.skillshub.skill.command.PublishVersionCommand;
 import io.github.samzhu.skillshub.skill.command.SkillCommandService;
@@ -35,6 +38,13 @@ class SkillVersionQueryTest extends RepositorySliceTestBase {
 
     @Autowired
     private SkillCommandService commandService;
+
+    // SkillQueryService ctor param 6+7 — S025b 後加入，slice 不掃 @Component 須顯式 mock
+    @MockitoBean
+    private CurrentUserProvider currentUserProvider;
+
+    @MockitoBean
+    private AclPrincipalExpander aclPrincipalExpander;
 
     @Test
     @DisplayName("AC-5: 取得版本歷史 — findVersionsBySkillId returns sorted by publishedAt DESC")
