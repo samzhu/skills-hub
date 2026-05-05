@@ -37,3 +37,9 @@ spring:
       # 對齊既有 core/storage 模式 disable 之。
       secretmanager:
         enabled: false
+
+skillshub:
+  quality:
+    judge:
+      # S135a: disable real QualityJudge in test; StubQualityJudge (test classpath) fills the slot.
+      enabled: false

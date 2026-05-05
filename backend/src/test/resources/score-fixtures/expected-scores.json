@@ -1,0 +1,14 @@
+{
+  "_note": "Expected score ranges calibrated from initial LLM runs. Update after prompt changes (bump evaluatorVersion).",
+  "_tolerance": 5,
+  "high-quality-1.md": { "implementation": 85, "activation": 90 },
+  "high-quality-2.md": { "implementation": 85, "activation": 88 },
+  "high-quality-3.md": { "implementation": 87, "activation": 85 },
+  "medium-quality-1.md": { "implementation": 55, "activation": 40 },
+  "medium-quality-2.md": { "implementation": 60, "activation": 65 },
+  "medium-quality-3.md": { "implementation": 60, "activation": 60 },
+  "low-quality-1.md": { "implementation": 20, "activation": 10 },
+  "low-quality-2.md": { "implementation": 20, "activation": 15 },
+  "low-quality-3.md": { "implementation": 15, "activation": 10 },
+  "borderline-1.md": { "implementation": 50, "activation": 55 }
+}

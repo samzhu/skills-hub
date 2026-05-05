@@ -132,3 +132,8 @@ skillshub:
   scheduler:
     republish-delay: PT1M       # 每分鐘檢查一次
     republish-older-than: PT5M  # 只重投 5 分鐘前還沒完成的（避免追平正在處理的）
+
+  quality:
+    judge:
+      # S135a: set to false + api-key absent → no real QualityJudge bean (uses stub in test).
+      enabled: true
