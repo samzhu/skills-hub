@@ -86,6 +86,10 @@
 | 同 session 第 2 次同類「形狀」的 bug | 寫 rule，第 3+ 次套（Pattern-Recognition-on-2nd）|
 | User 重啟同指令 ≥ 2 次但你以為 done | 直接問 user「your done = which scope?」(Read-User-Intent) |
 | Bisect 時間貴（≥ 5 min × 多 candidate）| 按 confidence 分組：high-confidence reasoning，low-confidence 必 bisect |
+| 即將說「X 自動觸發 / Y 預設 / framework 偵測」沒查源碼 ⭐ v1.2 | 停。WebFetch source / docs 確認；不確定派 Agent research（Ground in Official Docs）|
+| 即將自創 config / property name | 停。grep 上下游有無同義標準名 → 直接複用（Ground in Official Docs）|
+| User 質疑「真的是這樣嗎」/「做一下功課」/「參考一下官網」 | 立刻派 research，這是強烈的 grounding 缺失信號 |
+| Fix + bisect 完直接 commit，沒 grep 同主題舊 file | grep 該 feature keyword 找 dead config / 失效 class（Phase 6 延伸 Dead-Config-Audit）|
 
 ---
 
