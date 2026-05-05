@@ -20,7 +20,7 @@
 - [ ] S099e1: Prompt-injection scanner（設計完成於 S099 META §6）
 - [ ] S099e3: Dependency vulnerability scanner（設計完成於 S099 META §6）
 - [ ] S099c: Cross-marketplace risk validation（sources 已驗證）
-- [ ] S114a: RBAC ACL Owner+Viewer（spec 已寫成）
+- [x] S114a: RBAC ACL Owner+Viewer（⏳ Plan — task files 已建立 2026-05-06）
 
 **Deferred polish（低優先）：**
 - [ ] S098a2: SSE 事件串流（條件：scan 平均 > 5s 且 user 抱怨等待）
@@ -34,7 +34,7 @@
 | SpecID | 標題 | 點數 | 相依 | 狀態 |
 |--------|------|------|------|------|
 | S099 | META Trust Maturity & Implementation Audit | META | — | 📐 in-design |
-| S114a | RBAC ACL — Owner + Viewer roles | M(12) | S116 ✅ | 📐 in-design |
+| S114a | RBAC ACL — Owner + Viewer roles | M(12) | S116 ✅ | ⏳ Plan |
 | S120 | E2E auth integration test | M(8-10) | S114a | 📐 in-design |
 | S132 | CI — Cloud Build pipeline | XS(7) | S013 ✅ | ⏳ T02 pending |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | 📐 in-design |

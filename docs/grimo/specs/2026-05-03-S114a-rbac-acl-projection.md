@@ -1,6 +1,6 @@
 # S114a: RBAC ACL with Materialized Projection (Owner + Viewer roles)
 
-> Spec: S114a | Size: M(12) | Status: ⏳ Design
+> Spec: S114a | Size: M(12) | Status: ⏳ Plan
 > Date: 2026-05-03
 
 ---
@@ -568,4 +568,28 @@ export function revokeGrant(skillId: string, grantId: string): Promise<void> { .
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+> POC: not required — spec §2.6 全部 Validated（唯一 Hypothesis 為 migration parser，implementer 試一輪即可確認；per spec §2.6 末段）。
+
+| Task | 主題 | AC 涵蓋 | 依賴 | 狀態 |
+|------|------|---------|------|------|
+| T01 | ACL 格式遷移 + DB Schema (V16/V17) | AC-8 | — | pending |
+| T02 | Domain Model (Role / SkillGrant / Events / Repository / Skill.ownerId) | 基礎建設 | T01 | pending |
+| T03 | SkillGrantService + SkillGrantController + Exception classes | AC-1/2/4/5 | T02 | pending |
+| T04 | SkillAclProjectionListener + AclPrincipalExpander company expansion | AC-2/3/4/9/10/12 | T03 | pending |
+| T05 | Frontend ShareModal + SkillDetailPage 分享按鈕 | AC-11 | T03 | pending |
+
+**AC 涵蓋 summary**：
+- AC-1 (自動 OWNER grant) → T04 listener + T03 service
+- AC-2/3/4 (grant/revoke async) → T03 write + T04 projection
+- AC-5 (single owner) → T03 service
+- AC-6 (list ACL filter) → 既有 S121 已實作；T01 確保格式一致
+- AC-7 (single GET ACL) → 既有 S122 已實作；T01 確保格式一致
+- AC-8 (migration backfill) → T01
+- AC-9 (company expansion) → T04
+- AC-10 (idempotency) → T04
+- AC-11 (frontend) → T05
+- AC-12 (Modulith boundaries) → T04
+
+<!-- Section 7 added after implementation -->
