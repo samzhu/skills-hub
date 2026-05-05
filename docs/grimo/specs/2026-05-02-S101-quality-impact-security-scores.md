@@ -1,6 +1,20 @@
 # S101 META — Skill Quality / Impact / Security Score System
 
-> **Status**: in-design — **awaiting human confirmation** (per user directive「先開 spec 給人類確認」)
+> ## ⛔ SUPERSEDED 2026-05-05
+>
+> 本 spec 由 **S135 META Skill Quality Score System (Tessl-aligned)** 取代 Quality 部分；Impact 部分移至 **S136 Backlog 待討論**（task-based eval）。
+>
+> **Trigger**: 2026-05-05 user 完成更深度 Tessl 研究（含 Quality / Evals / Security 四 tab 細節 + 8-dim breakdown），既有 §3a 4-dim 設計 + §3b proxy metrics 設計被新研究取代。
+>
+> **新研究存於**：[`docs/grimo/research/2026-05-05-tessl-skill-platform-study.md`](../research/2026-05-05-tessl-skill-platform-study.md)
+>
+> **保留本檔的理由**：歷史 decision context + §7 七個 open questions（部分已被新方向回答；S135 設計時參考）。
+>
+> **下方原始內容保留不修改**（archive 目的）。
+>
+> ---
+>
+> **Original Status**: in-design — awaiting human confirmation (per user directive「先開 spec 給人類確認」)
 > **Type**: META + competitive research-driven feature spec
 > **Estimate**: M-L total ≈ 25-35 pts across sub-specs
 > **Triggered by**: 2026-05-02 user directive — 「研究 tessl.io skill-optimizer 怎麼量測 Quality / Impact / Security 給人類參考」

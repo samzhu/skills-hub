@@ -118,7 +118,7 @@ skills-hub/
 - **Database:** PostgreSQL 16 + pgvector（Spring Data JDBC for CRUD + event store；自訂 `SkillshubPgVectorStore` extends Spring AI `AbstractObservationVectorStore` for vector search）— 詳 ADR-001
 - **DB connectivity（GCP）:** Cloud SQL Auth Proxy sidecar（Cloud Run multi-container）— 應用透過 `localhost:5432` 連線
 - **Storage:** Google Cloud Storage (skill zip packages)
-- **AI:** Spring AI 2.0.0-M4 + Gemini (via Vertex AI) for semantic search embeddings
+- **AI:** Spring AI 2.0.0-M5 + Gemini (via Google GenAI direct, `spring-ai-google-genai`) for semantic search embeddings + LLM judge (S135a)
 - **Auth:** Spring Security OAuth2 Resource Server (MVP: mock)
 - **Observability:** OpenTelemetry + Grafana LGTM
 - **API docs:** SpringDoc OpenAPI 3.0.2

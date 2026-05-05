@@ -31,3 +31,9 @@ spring:
         enabled: false
       storage:
         enabled: false
+      # T01 (S135a) discovered drift: spring-cloud-gcp-starter-secretmanager 在 commit 2155a3f
+      # (Cloud Run deploy) 引入但 test profile 漏 disable，造成所有 @SpringBootTest context load
+      # 失敗 (NoSuchBeanDefinitionException: CredentialsProvider in GcpSecretManagerAutoConfiguration)。
+      # 對齊既有 core/storage 模式 disable 之。
+      secretmanager:
+        enabled: false

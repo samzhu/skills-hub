@@ -188,7 +188,7 @@ public class AuditEventListener {
          ┌──────────────┼──────────────┐
          │              │              │
    ┌─────▼──────┐ ┌─────▼─────┐ ┌─────▼─────┐
-   │ PostgreSQL  │ │   GCS     │ │ Vertex AI │
+   │ PostgreSQL  │ │   GCS     │ │ Google AI │
    │ 16 +        │ │ (skill    │ │ (Gemini   │
    │ pgvector    │ │  packages)│ │  via      │
    │             │ │ - zip/tar │ │  Spring   │
@@ -377,7 +377,7 @@ download_events (PK: id; FK → skills)
 
 ### Vector Store
 
-`vector_store` 由自寫 `SkillshubPgVectorStore extends AbstractObservationVectorStore`（Spring AI 2.0.0-M4 core artifact）控制；6 欄 atomic INSERT — `id` / `content` / `metadata` JSONB / `embedding` vector(768) / `owner` / `skill_id`；`owner` 為 S016 row-level ACL 鋪路；`ON CONFLICT (id) DO UPDATE` 冪等；HNSW 索引 + cosine distance（`embedding <=> query` operator）。
+`vector_store` 由自寫 `SkillshubPgVectorStore extends AbstractObservationVectorStore`（Spring AI 2.0.0-M5 core artifact）控制；6 欄 atomic INSERT — `id` / `content` / `metadata` JSONB / `embedding` vector(768) / `owner` / `skill_id`；`owner` 為 S016 row-level ACL 鋪路；`ON CONFLICT (id) DO UPDATE` 冪等；HNSW 索引 + cosine distance（`embedding <=> query` operator）。
 
 詳 S014 archived spec §4 + §2.1 決策 #2 / #12（再修訂 — 採 core artifact + 自寫子類，不用官方 starter 因其 4-欄 INSERT 不支援 owner 自訂欄位）。
 
@@ -479,7 +479,7 @@ CI（Cloud Build trigger: push to main）— S132
 | `org.springframework.boot:spring-boot-starter-webmvc` | BOM | `org.springframework.web.bind.annotation.*` | yes (template) |
 | `org.springframework.boot:spring-boot-starter-data-jdbc` | BOM | `org.springframework.data.jdbc.*` | yes (S014) |
 | `org.springframework.boot:spring-boot-starter-jdbc` | BOM | `org.springframework.jdbc.core.*` | yes (S014) |
-| `org.springframework.ai:spring-ai-pgvector-store` | 2.0.0-M4 BOM | `org.springframework.ai.vectorstore.pgvector.*`（core artifact；自寫 `SkillshubPgVectorStore` 子類）| yes (S014) |
+| `org.springframework.ai:spring-ai-pgvector-store` | 2.0.0-M5 BOM | `org.springframework.ai.vectorstore.pgvector.*`（core artifact；自寫 `SkillshubPgVectorStore` 子類）| yes (S014) |
 | `org.springframework.boot:spring-boot-flyway` | BOM | — | yes (S014) |
 | `org.flywaydb:flyway-core` | BOM-managed | `org.flywaydb.core.*` | yes (S014) |
 | `org.flywaydb:flyway-database-postgresql` | runtime | — | yes (S014) |
@@ -487,7 +487,8 @@ CI（Cloud Build trigger: push to main）— S132
 | `com.google.cloud:spring-cloud-gcp-starter` | 8.0.2 BOM | `com.google.cloud.spring.*` | yes (template) |
 | `com.google.cloud:spring-cloud-gcp-starter-storage` | 8.0.2 BOM | `com.google.cloud.storage.*` | yes (template) |
 | `com.google.cloud:google-cloud-vertexai` | 1.24.0 | `com.google.cloud.vertexai.*` | yes (Maven Central) |
-| `org.springframework.ai:spring-ai-*` | 2.0.0-M4 BOM | `org.springframework.ai.*` | yes (template) |
+| `org.springframework.ai:spring-ai-*` | 2.0.0-M5 BOM | `org.springframework.ai.*` | yes (template) |
+| `org.springframework.ai:spring-ai-google-genai` | 2.0.0-M5 BOM | `org.springframework.ai.google.genai.*` (Gemini Chat + Embedding via Google AI Studio direct API; **not** Vertex AI) | yes (S007 / S010 / S135a) |
 | `org.springframework.modulith:spring-modulith-*` | 2.0.6 BOM | `org.springframework.modulith.*` | yes (template) |
 | `org.springframework.boot:spring-boot-starter-security-oauth2-resource-server` | BOM | `org.springframework.security.*` | yes (template) |
 | `org.springdoc:springdoc-openapi-starter-webmvc-ui` | 3.0.2 | `org.springdoc.*` | yes (template) |
