@@ -1,5 +1,25 @@
 # Changelog
 
+## [v3.11.0] — Skill Markdown Export — Agent-Friendly Copy/Open（S133 完成；2026-05-05）
+
+> S133 Skill Markdown Export。每個 skill 詳情頁加「Markdown ▾」dropdown，提供「複製為 Markdown」（Safari-safe ClipboardItem）與「開啟 Markdown」（new tab）。後端加 `/api/v1/skills/{id}/skill.md` alias endpoint，agent/curl 友善。
+
+### Added — Backend
+- `SkillMarkdownController.java`：`GET /api/v1/skills/{id}/skill.md` → `FileBrowserService.readFile(id, "SKILL.md")`；`Cache-Control: public, max-age=60`；`@PreAuthorize("hasPermission(#id, 'Skill', 'read')")`
+- `SkillMarkdownControllerTest.java`：`@WebMvcTest` slice 4 scenarios — 200/401/403/404
+
+### Added — Frontend
+- `components/ui/dropdown-menu.tsx`：shadcn DropdownMenu local wrapper（via `npx shadcn@latest add`）
+- `hooks/useCopySkillMarkdown.ts`：Safari-safe clipboard hook — `navigator.clipboard.write([new ClipboardItem({'text/plain': fetchPromise})])` 同步交 Promise；prefetch on dropdown open
+- `components/MarkdownActionMenu.tsx`：Markdown dropdown UI（複製為 Markdown + 開啟 Markdown）
+- `SkillDetailPage.tsx`：SkillHero button cluster 插入 `<MarkdownActionMenu>`（PUBLISHED only）
+
+### Key notes
+- **Safari clipboard**: 必須把 `Promise<Blob>` 同步交給 `ClipboardItem` constructor — 不能 `await fetch` 後再呼叫 `writeText`（Safari transient activation 限制）
+- **shadcn CLI path bug**: `npx shadcn@latest add dropdown-menu` 在此 monorepo 寫到 `frontend/@/components/ui/` 而非 `src/components/ui/`；手動修正
+
+---
+
 ## [v3.12.0] — Real OAuth IdP local dev trial — Google OAuth（S134 完成；2026-05-05）
 
 > S134 Google OAuth integration trial。驗證 Spring Security OAuth2 Login + Resource Server hybrid 對真實 OIDC IdP（Google）的 end-to-end 流程，包含 PKCE S256、OIDC discovery、id_token claim shape 紀錄。

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { Bell } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 import { fetchUnreadCount } from '@/api/notifications'
 
 /**
@@ -78,6 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
+      <Toaster />
     </div>
   )
 }

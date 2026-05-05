@@ -4,6 +4,11 @@ import { MemoryRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SkillDetailPage } from './SkillDetailPage'
 
+vi.mock('sonner', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('sonner')>()
+  return { ...actual, toast: { success: vi.fn(), error: vi.fn() } }
+})
+
 /**
  * SkillDetailPage error path tests — 對齊 docs/grimo/test-cases.md Round 1.4
  * negative case + S039 區分 404 not-found 與其他 server / network error。
@@ -64,6 +69,65 @@ describe('SkillDetailPage — error paths (ledger Round 1.4)', () => {
     await waitFor(() => {
       const link = screen.getByText('返回列表')
       expect(link.closest('a')).toHaveAttribute('href', '/browse')
+    })
+  })
+})
+
+const skillFixture = (status: string, id = 'skill-test-1') => ({
+  id,
+  name: 'Test Skill',
+  description: 'desc',
+  author: 'alice',
+  category: 'Testing',
+  status,
+  latestVersion: status === 'PUBLISHED' ? '1.0.0' : null,
+  downloadCount: 0,
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-01T00:00:00Z',
+  aclEntries: [],
+  riskLevel: null,
+  iconEmoji: null,
+  bundleCount: 0,
+})
+
+/** Route-aware fetch mock: skill endpoint returns fixture; other APIs return safe defaults */
+function mockFetchForSkill(skill: ReturnType<typeof skillFixture>) {
+  global.fetch = vi.fn().mockImplementation((url: string) => {
+    const u = typeof url === 'string' ? url : String(url)
+    if (u.includes(`/skills/${skill.id}`) && !u.includes('/versions') && !u.includes('/stats') && !u.includes('/bundles')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(skill) } as Response)
+    }
+    if (u.includes('/versions')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [] }) } as Response)
+    }
+    if (u.includes('/stats')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(null) } as Response)
+    }
+    if (u.includes('/subscriptions')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response)
+    }
+    // Default: 404
+    return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) } as Response)
+  })
+}
+
+describe('SkillDetailPage — S133 MarkdownActionMenu visibility', () => {
+  it('AC-5: PUBLISHED skill with latestVersion shows Markdown trigger', async () => {
+    const skill = skillFixture('PUBLISHED', 'skill-pub-1')
+    mockFetchForSkill(skill)
+    renderPage('skill-pub-1')
+    await waitFor(() => {
+      expect(screen.getByLabelText('Markdown 操作')).toBeInTheDocument()
+    })
+  })
+
+  it('AC-6: DRAFT skill does not show Markdown trigger', async () => {
+    const skill = skillFixture('DRAFT', 'skill-draft-1')
+    mockFetchForSkill(skill)
+    renderPage('skill-draft-1')
+    await waitFor(() => {
+      // skill data loads successfully but no Markdown trigger because status != PUBLISHED
+      expect(screen.queryByLabelText('Markdown 操作')).not.toBeInTheDocument()
     })
   })
 })

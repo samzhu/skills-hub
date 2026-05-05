@@ -37,7 +37,6 @@
 | S114a | RBAC ACL — Owner + Viewer roles | M(12) | S116 ✅ | 📐 in-design |
 | S120 | E2E auth integration test | M(8-10) | S114a | 📐 in-design |
 | S132 | CI — Cloud Build pipeline | XS(7) | S013 ✅ | ⏳ T02 pending |
-| S133 | Skill Markdown export | XS(8) | S074 ✅ | ⏳ T01-T03 ready |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | 📐 in-design |
 | S135a | Backend Quality Score (Validation + LLM judge + endpoint) | M(13-15) | S138 ⏸ S135 | ⏸ deferred (T01 done; T02-T07 blocked by S138 auth test debt) |
 | S135b | Frontend Quality Display (hero 兩條進度條 + Quality tab + SkillCard badge) | S(9-11) | S135a | ⏸ deferred (blocked by S135a) |
@@ -51,7 +50,7 @@
 
 | 版本 | 包含 Specs | 狀態 |
 |------|-----------|------|
-| v3.11.0 | S133 (Markdown export) | ⏳ tasks ready |
+| v3.11.0 | S133 (Markdown export) | ✅ shipped 2026-05-05 |
 | v3.12.0 | S134 (Real OAuth trial — Google OAuth) | ✅ shipped 2026-05-05 |
 | v3.13.0 | S132 T02 (CI Cloud Build first push) | ⏳ 待用戶 GCP setup |
 | v4.0.0 | S114a (RBAC ACL Owner+Viewer) | 📋 spec 已設計 |
@@ -305,4 +304,5 @@
 | S127 | NoResourceFoundException ErrorResponse | XS(1) | v3.10.6 |
 | S128 | CORS configuration | XS(2-3) | v3.10.8 |
 | S130 | Personal endpoints auth gate | XS(1) | v3.10.9 |
+| S133 | Skill Markdown export (agent-friendly copy/open) | XS(8) | v3.11.0 |
 | S134 | Real OAuth IdP local dev trial (Google OAuth) | S(9) | v3.12.0 |

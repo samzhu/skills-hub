@@ -23,6 +23,7 @@ import { ApiError } from '@/api/client'
 import { localizeApiError } from '@/lib/api-error-messages'
 import { FlagsList } from '@/components/FlagsList'
 import { ReviewsPanel } from '@/components/ReviewsPanel'
+import { MarkdownActionMenu } from '@/components/MarkdownActionMenu'
 import type { RiskLevel, SkillStatus } from '@/types/skill'
 
 /**
@@ -272,6 +273,7 @@ function SkillHero({ skill }: { skill: import('@/types/skill').Skill }) {
       {skill.latestVersion && skill.status === 'PUBLISHED' && (
         <div className="flex shrink-0 items-center gap-2">
           <SubscribeButton skill={skill} />
+          <MarkdownActionMenu skillId={skill.id} />
           <a
             href={`/api/v1/skills/${skill.id}/download`}
             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-foreground"
