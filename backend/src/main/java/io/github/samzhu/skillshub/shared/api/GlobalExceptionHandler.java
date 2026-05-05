@@ -180,6 +180,14 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse("not_notification_recipient", ex.getMessage(), Instant.now()));
 	}
 
+	/** S135a AC-S135a-4 — 品質評分尚未計算 → 404 QUALITY_NOT_EVALUATED。 */
+	@ExceptionHandler(QualityNotEvaluatedException.class)
+	ResponseEntity<ErrorResponse> handleNotEvaluated(QualityNotEvaluatedException ex) {
+		log.atWarn().addKeyValue("errorCode", "QUALITY_NOT_EVALUATED").log("Quality score not yet available");
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse("QUALITY_NOT_EVALUATED", ex.getMessage(), Instant.now()));
+	}
+
 	/** S098a3-2 AC-3 — skill 存在但無 published version → 404 bundle_not_published（區分於 skill_not_found）。 */
 	@ExceptionHandler(BundleNotPublishedException.class)
 	ResponseEntity<ErrorResponse> handleBundleNotPublished(BundleNotPublishedException ex) {
