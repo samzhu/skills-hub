@@ -93,7 +93,7 @@ steps:
         chmod +x gradlew
         ./gradlew --no-daemon -x test bootBuildImage \
           --imageName=${_IMG_PATH}:${_TAG} \
-          -Pspring.profiles.active=gcp,aot
+          -Pspring.profiles.active=gcp,aot,lab
     env:
       - DOCKER_HOST=unix:///var/run/docker.sock
 

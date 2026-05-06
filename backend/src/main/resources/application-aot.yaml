@@ -48,3 +48,26 @@ spring:
         enabled: true
       secretmanager:
         enabled: false
+
+  # ----- S139 OAuth2 Client AOT stub -----
+  # cloudbuild.yaml 用 -Pspring.profiles.active=gcp,aot,lab 跑 AOT，lab.yaml 提供
+  # registration scope/redirect-uri/provider 等結構欄位，但 client-id/client-secret
+  # 不寫死 yaml（runtime 由 Cloud Run env var 從 Secret Manager 注入）。
+  #
+  # OAuth2ClientProperties.validate() 在 AOT binding 階段強制檢查 client-id 非空，
+  # 缺值會 IllegalStateException → AOT processAot 失敗；也不會建
+  # ClientRegistrationRepository bean → runtime SecurityConfig oauth2Login() chain
+  # 找不到 dependency 而 fail-fast（per S139 deployment 觀察到的 startup 失敗）。
+  #
+  # 這裡塞 stub 字串：AOT 階段 OAuth2ClientAutoConfiguration 把 ClientRegistration-
+  # Repository factory bake 進 baked context；runtime 載入後 Cloud Run env var
+  # （優先順序高於 yaml）覆蓋 stub 為真實值，bean factory 重新建構時拿到真值。
+  # aot profile leak 到 runtime（per AotStubConfig.addActiveProfile("aot")），但
+  # env var 一定會覆蓋，stub 不會成為實際使用的值。
+  security:
+    oauth2:
+      client:
+        registration:
+          skillshub:
+            client-id: aot-stub-client-id
+            client-secret: aot-stub-client-secret

@@ -483,6 +483,24 @@ SecurityConfig 用 `skillshub.security.oauth.login.enabled` 切 oauth2Login chai
 
 `AuthRedirectTest` 涵蓋 8 個 case 含 leading-whitespace（`  /publish`） — JUnit5 `@CsvSource` 會 trim leading/trailing whitespace，所以 leading-space test 移到獨立 `@Test` 配 string literal 才能正確覆蓋。
 
+#### F-8: AOT profile 不含 `lab` → `ClientRegistrationRepository` bean 缺失（runtime startup fail）
+首次 LAB redeploy 起 revision 失敗，log：
+```
+Parameter 0 of method setFilterChains in WebSecurityConfiguration required a bean
+of type 'ClientRegistrationRepository' that could not be found.
+```
+
+**根因**：cloudbuild.yaml 的 AOT step 用 `-Pspring.profiles.active=gcp,aot`（**沒含 `lab`**）。Spring Boot AOT 在 build image 時跑 context refresh，只看 `gcp + aot` profile 的 yaml → lab.yaml 的 `spring.security.oauth2.client.registration.skillshub.*` block 在 AOT 階段不存在 → `OAuth2ClientAutoConfiguration` 的 `@ConditionalOnProperty(prefix="spring.security.oauth2.client.registration")` 評估為 false → `ClientRegistrationRepository` bean factory 沒被 bake 進 AOT-generated context。
+
+Runtime profile 雖然是 `gcp,aot,lab`，但 AOT mode 下 conditions 已在 build 階段 frozen，不會 re-evaluate → bean 永遠不存在。`SecurityConfig` 看 `oauth.login.enabled=true` 啟用 `oauth2Login()` chain → 找 `ClientRegistrationRepository` → fail。
+
+**Fix**：
+1. `cloudbuild.yaml`：`-Pspring.profiles.active=gcp,aot,lab` → AOT 看得到 lab.yaml 的 registration 結構
+2. `application-aot.yaml`：補 dummy `client-id` / `client-secret`（`OAuth2ClientProperties.validate()` 強制 client-id 非空，AOT 階段 lab.yaml 沒這 2 值會直接 IllegalStateException）
+3. Runtime：Cloud Run env var（從 Secret Manager 注入）優先序高於 yaml，覆蓋 dummy 為真實值
+
+**Trade-off**：image 變得「LAB-specific」（profile 寫進 image build）。後續 prod 部署需獨立 build with `gcp,aot,prod`，跟 S132 的「per-environment image」原則一致。
+
 #### F-7: Pre-existing P1 — `processTestAot` `PermissionEvaluator` bean missing
 S139 開發中發現 spec 之外的 P1：`./gradlew processTestAot` fail with `AopConfigException → No qualifying bean of type 'PermissionEvaluator'`。Root cause: spring-projects/spring-framework#32925 — `@MockitoBean` runtime-only，AOT processing 不認。Fix：`WebMvcSliceTestBase` 加內部 `@Configuration AotStubBeans`，提供 `@Bean PermissionEvaluator` stub（純 Java anonymous，無 Mockito）。已 commit `4278a49`，跟 S139 主線分開。
 
