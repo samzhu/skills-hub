@@ -80,7 +80,7 @@
 | S099e2 | Resource DoS scanner (LLM04) | S(5) | S099 | ✅ shipped v4.5.0 — 3 HIGH + 3 MEDIUM patterns (fork bomb, dev/zero, infinite loop), 11 tests |
 | S099e3 | Dependency vulnerability scanner (LLM05) | S(7) | S099 | ✅ shipped v4.3.0 — OSV.dev querybatch, requirements.txt+package.json, 13 tests |
 | S099e4 | Hardcoded creds detector enhancement (LLM06) | S(4) | S099 | ✅ shipped v4.4.0 — 6 new SecretScanner patterns, 6 tests |
-| S114b | ACL production scale — Slice + Caffeine | M(10) | S114a | 📋 planned |
+| S114b | ACL production scale — Slice + Caffeine | M(10) | S114a | 📐 2026-05-07-S114b-acl-caffeine-cache.md |
 | S114c | ACL infra — read replica + PgBouncer | M(8) | S114b | 📋 planned |
 | S129 | Server compression | XS(1) | — | ✅ v4.9.0 — application.yaml server.compression gzip |
 | S131 | Error code naming convention alignment | XS(2-3) | — | ✅ v4.10.0 — GlobalExceptionHandler 13 碼 SCREAMING_SNAKE_CASE 對齊 |
