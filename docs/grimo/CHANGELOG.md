@@ -1,5 +1,22 @@
 # Changelog
 
+## [v4.4.0] — OWASP LLM06 硬編碼憑證偵測強化（S099e4 完成；2026-05-07）
+
+> S099e4 在 SecretScanner 加入 6 條新 pattern，補完 LLM06 Sensitive Information Disclosure gap：Anthropic API key、Stripe key、HuggingFace token、npm token、DB 連線字串含密碼、通用硬編碼 password 賦值。與既有 10 條規則合計 16 條，全部 HIGH severity + evidence 遮罩。
+
+### Changed — Backend
+
+- **`SecretScanner`**：新增 6 條 S099e4 規則：
+  - `ANTHROPIC_API_KEY`：`sk-ant-` prefix（Claude API key 格式）
+  - `STRIPE_API_KEY`：`sk_live_` / `sk_test_` 24+ chars
+  - `HF_ACCESS_TOKEN`：`hf_` + 30+ chars（HuggingFace access token）
+  - `NPM_TOKEN`：`npm_` + 36 chars base62
+  - `DB_CONN_WITH_PASSWORD`：`postgresql/mysql/mongodb/redis://user:pass@host` 格式
+  - `GENERIC_HARDCODED_PASSWORD`：`password="…"` / `api_key="…"` 賦值模式
+- **`SecretScannerTest`**：新增 6 個 AC-S099e4 test cases，全 PASS
+
+---
+
 ## [v4.3.0] — OWASP LLM05 依賴漏洞掃描（S099e3 完成；2026-05-07）
 
 > S099e3 新增 `DependencyVulnScanner`，解析 `requirements.txt`（pinned `==`）與 `package.json`（dependencies + devDependencies）依賴，批次查詢 OSV.dev `/v1/querybatch`（免費、無 API key）；網路不通時 safeAnalyze 不阻斷 scan pipeline；OWASP tag: AST05。

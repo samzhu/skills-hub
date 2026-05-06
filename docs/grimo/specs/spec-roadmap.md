@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（Tick 4 loop — S099e3 ship）
+> 最後更新：2026-05-07（Tick 5 loop — S099e4 ship）
 
 ## 使用說明
 
@@ -57,6 +57,7 @@
 | v4.2.0 | S120 (E2E auth integration test) | 📋 depends S114a |
 | v4.2.0 | S099e1 (PromptInjectionScanner — OWASP LLM01) | ✅ shipped 2026-05-07 |
 | v4.3.0 | S099e3 (DependencyVulnScanner — OWASP LLM05) | ✅ shipped 2026-05-07 |
+| v4.4.0 | S099e4 (SecretScanner +6 patterns — OWASP LLM06) | ✅ shipped 2026-05-07 |
 | v4.x | S099c (cross-marketplace validation) | 📋 sources 已驗證 |
 
 ---
@@ -76,7 +77,7 @@
 | S099e1 | Prompt-injection pattern detector (LLM01) | M(8) | S099 | ✅ shipped v4.2.0 — 8 HIGH + 6 MEDIUM patterns, 17 tests |
 | S099e2 | Resource DoS scanner (LLM04) | S(5) | S099 | 📋 planned |
 | S099e3 | Dependency vulnerability scanner (LLM05) | S(7) | S099 | ✅ shipped v4.3.0 — OSV.dev querybatch, requirements.txt+package.json, 13 tests |
-| S099e4 | Hardcoded creds detector enhancement (LLM06) | S(4) | S099 | 📋 planned |
+| S099e4 | Hardcoded creds detector enhancement (LLM06) | S(4) | S099 | ✅ shipped v4.4.0 — 6 new SecretScanner patterns, 6 tests |
 | S114b | ACL production scale — Slice + Caffeine | M(10) | S114a | 📋 planned |
 | S114c | ACL infra — read replica + PgBouncer | M(8) | S114b | 📋 planned |
 | S129 | Server compression | XS(1) | — | 📋 planned |

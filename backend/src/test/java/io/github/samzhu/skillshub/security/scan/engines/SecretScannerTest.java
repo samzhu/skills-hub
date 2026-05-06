@@ -158,6 +158,72 @@ class SecretScannerTest {
 				.run(ctx -> assertThat(ctx).doesNotHaveBean("secret"));
 	}
 
+	// ─────────────────────────────────────────────────────────────────────────
+	// S099e4 — 新增 pattern 驗證
+	// ─────────────────────────────────────────────────────────────────────────
+
+	@Test
+	@DisplayName("AC-S099e4-1: Anthropic API key sk-ant- 觸發 ANTHROPIC_API_KEY finding")
+	@Tag("AC-S099e4")
+	void detectsAnthropicApiKey() {
+		var key = "sk-ant-api03-" + "A".repeat(40);
+		var output = scanner.analyze(ctx("ANTHROPIC_API_KEY=" + key + "\n", Map.of()));
+		assertThat(output.findings())
+				.anyMatch(f -> "ANTHROPIC_API_KEY".equals(f.ruleId())
+						&& f.severity() == Severity.HIGH
+						&& f.evidence() != null && f.evidence().contains("…"));
+	}
+
+	@Test
+	@DisplayName("AC-S099e4-2: Stripe live key sk_live_ 觸發 STRIPE_API_KEY finding")
+	@Tag("AC-S099e4")
+	void detectsStripeLiveKey() {
+		var key = "sk_live_" + "a".repeat(24);
+		var output = scanner.analyze(ctx("", Map.of("scripts/charge.sh", "STRIPE_KEY=" + key)));
+		assertThat(output.findings())
+				.anyMatch(f -> "STRIPE_API_KEY".equals(f.ruleId()) && f.severity() == Severity.HIGH);
+	}
+
+	@Test
+	@DisplayName("AC-S099e4-3: HuggingFace token hf_ 觸發 HF_ACCESS_TOKEN finding")
+	@Tag("AC-S099e4")
+	void detectsHuggingFaceToken() {
+		var token = "hf_" + "a".repeat(34);
+		var output = scanner.analyze(ctx("HF_TOKEN=" + token + "\n", Map.of()));
+		assertThat(output.findings())
+				.anyMatch(f -> "HF_ACCESS_TOKEN".equals(f.ruleId()) && f.severity() == Severity.HIGH);
+	}
+
+	@Test
+	@DisplayName("AC-S099e4-4: npm token npm_ 觸發 NPM_TOKEN finding")
+	@Tag("AC-S099e4")
+	void detectsNpmToken() {
+		var token = "npm_" + "a".repeat(36);
+		var output = scanner.analyze(ctx("", Map.of("scripts/publish.sh", "NPM_AUTH=" + token)));
+		assertThat(output.findings())
+				.anyMatch(f -> "NPM_TOKEN".equals(f.ruleId()) && f.severity() == Severity.HIGH);
+	}
+
+	@Test
+	@DisplayName("AC-S099e4-5: DB connection string with password 觸發 DB_CONN_WITH_PASSWORD finding")
+	@Tag("AC-S099e4")
+	void detectsDbConnWithPassword() {
+		var url = "postgresql://app_user:s3cr3tPass@db.internal:5432/mydb";
+		var output = scanner.analyze(ctx("", Map.of("scripts/migrate.sh", "DATABASE_URL=" + url)));
+		assertThat(output.findings())
+				.anyMatch(f -> "DB_CONN_WITH_PASSWORD".equals(f.ruleId()) && f.severity() == Severity.HIGH);
+	}
+
+	@Test
+	@DisplayName("AC-S099e4-6: 硬編碼 password 賦值 password=\"...\" 觸發 GENERIC_HARDCODED_PASSWORD")
+	@Tag("AC-S099e4")
+	void detectsGenericHardcodedPassword() {
+		var line = "api_key=\"abc12345_secret_token\"";
+		var output = scanner.analyze(ctx("", Map.of("scripts/config.sh", line)));
+		assertThat(output.findings())
+				.anyMatch(f -> "GENERIC_HARDCODED_PASSWORD".equals(f.ruleId()) && f.severity() == Severity.HIGH);
+	}
+
 	@Configuration
 	static class SecretReg {
 		@Bean("secret")

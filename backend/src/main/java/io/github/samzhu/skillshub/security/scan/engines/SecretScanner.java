@@ -86,7 +86,27 @@ public class SecretScanner implements SecurityAnalyzer {
 					Pattern.compile("https://hooks\\.slack\\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[A-Za-z0-9]+")),
 			// 廣譜 Bearer / Authorization header — 至少 20 chars 避免 FP
 			new Rule("GENERIC_BEARER",
-					Pattern.compile("(?i)bearer\\s+[A-Za-z0-9._~+/-]{20,}"))
+					Pattern.compile("(?i)bearer\\s+[A-Za-z0-9._~+/-]{20,}")),
+
+			// ── S099e4 LLM06 新增規則（2026-05-07）────────────────────────────────
+			// Anthropic Claude API key — sk-ant-api{N}- + base64url payload
+			new Rule("ANTHROPIC_API_KEY",
+					Pattern.compile("\\bsk-ant-[A-Za-z0-9_-]{20,}\\b")),
+			// Stripe live / test secret key — sk_{live|test}_ + 24+ chars
+			new Rule("STRIPE_API_KEY",
+					Pattern.compile("\\bsk_(?:live|test)_[A-Za-z0-9]{24,}\\b")),
+			// HuggingFace access token — hf_ + 30+ alphanumeric chars
+			new Rule("HF_ACCESS_TOKEN",
+					Pattern.compile("\\bhf_[A-Za-z0-9]{30,}\\b")),
+			// npm token — npm_ + 36 chars base62
+			new Rule("NPM_TOKEN",
+					Pattern.compile("\\bnpm_[A-Za-z0-9]{36}\\b")),
+			// 資料庫連線字串含密碼 — postgresql/mysql/mongodb/redis://user:pass@host
+			new Rule("DB_CONN_WITH_PASSWORD",
+					Pattern.compile("(?i)(?:postgresql|mysql|mongodb|redis)(?:\\+[a-z]+)?://[^:@\\s]+:[^@\\s]{6,}@")),
+			// 硬編碼密碼 / API key 賦值 — password="abc12345" / api_key: "abc12345"
+			new Rule("GENERIC_HARDCODED_PASSWORD",
+					Pattern.compile("(?i)(?:password|passwd|api_?key|secret_?key|access_?key)\\s*[=:]\\s*[\"'][^\"'\\s]{8,}[\"']"))
 	);
 
 	@Override
