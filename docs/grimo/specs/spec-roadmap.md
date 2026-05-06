@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（Tick 6 loop — S099e2 ship；S099e 系列全部完成）
+> 最後更新：2026-05-07（Tick 7 loop — S099c spec doc 完成，📐 in-design）
 
 ## 使用說明
 
@@ -19,7 +19,7 @@
 **設計已備妥，可直接 /planning-tasks：**
 - [ ] S099e1: Prompt-injection scanner（設計完成於 S099 META §6）
 - [ ] S099e3: Dependency vulnerability scanner（設計完成於 S099 META §6）
-- [ ] S099c: Cross-marketplace risk validation（sources 已驗證）
+- [x] S099c: spec doc 完成 2026-05-07 — tools/cross-validate.py + report
 - [x] S114a: RBAC ACL Owner+Viewer（✅ shipped 2026-05-06 — v4.0.0）
 
 **Deferred polish（低優先）：**
@@ -59,7 +59,7 @@
 | v4.3.0 | S099e3 (DependencyVulnScanner — OWASP LLM05) | ✅ shipped 2026-05-07 |
 | v4.4.0 | S099e4 (SecretScanner +6 patterns — OWASP LLM06) | ✅ shipped 2026-05-07 |
 | v4.5.0 | S099e2 (ResourceDoSScanner — OWASP LLM04) | ✅ shipped 2026-05-07 |
-| v4.x | S099c (cross-marketplace validation) | 📋 sources 已驗證 |
+| v4.x | S099c (cross-marketplace validation) | 📐 spec doc ready — tools/cross-validate.py |
 
 ---
 
@@ -73,7 +73,7 @@
 | S098b3-2 | Backend 結構化 findings payload | M(6) | S098b3 ✅ | 📋 planned |
 | S098c2 | Backend /diff endpoint | M(8) | S098c ✅ | 📋 planned |
 | S098c3 | File content line-level diff | L(12) | S098c2 | 📋 planned |
-| S099c | Cross-marketplace risk validation | S(7) | S099 | 📋 planned |
+| S099c | Cross-marketplace risk validation | S(7) | S099 | 📐 in-design — spec doc 2026-05-07 |
 | S099d | LLM description quality audit | M(12) | S099 | 📋 planned |
 | S099e1 | Prompt-injection pattern detector (LLM01) | M(8) | S099 | ✅ shipped v4.2.0 — 8 HIGH + 6 MEDIUM patterns, 17 tests |
 | S099e2 | Resource DoS scanner (LLM04) | S(5) | S099 | ✅ shipped v4.5.0 — 3 HIGH + 3 MEDIUM patterns (fork bomb, dev/zero, infinite loop), 11 tests |
