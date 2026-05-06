@@ -1,6 +1,6 @@
 # S132: CI — Cloud Build pipeline (build + push image)
 
-> Spec: S132 | Size: XS(7) | Status: ⏳ Design
+> Spec: S132 | Size: XS(7) | Status: ⏸ BLOCKED（T01 ✅ shipped commit 002a111；T02 waiting user GCP Console action）
 > Date: 2026-05-04
 > Depends: S013 (✅ shipped — `scripts/gcp/03-build-push.sh` 是 CI step 的單機對照路徑；image / tag / repo 規則沿用)
 > Research: Cloud Build 2025/2026 best practices（cloudbuild.yaml schema、Developer Connect GitHub trigger、bootBuildImage in CI、`gcr.io/google.com/cloudsdktool/cloud-sdk` builder、declarative `images:` push）
@@ -327,8 +327,8 @@ gcloud builds triggers create developer-connect \
 
 | # | Task | AC | Status |
 |---|------|----|--------|
-| T01 | Local atomic edit — cloudbuild.yaml + Gradle 解耦 + 03-build-push.sh 自帶 frontend build + 三份 docs sync | AC-1, AC-2, AC-6 | pending |
-| T02 | GCP-side trigger setup（Cloud Build SA + Developer Connect link + trigger）+ push smoke 驗第一次自動 build | AC-3, AC-4, AC-5 | pending |
+| T01 | Local atomic edit — cloudbuild.yaml + Gradle 解耦 + 03-build-push.sh 自帶 frontend build + 三份 docs sync | AC-1, AC-2, AC-6 | ✅ DONE (commit 002a111 + a0d90e6) |
+| T02 | GCP-side trigger setup（Cloud Build SA + Developer Connect link + trigger）+ push smoke 驗第一次自動 build | AC-3, AC-4, AC-5 | ⏸ BLOCKED — 等 user 執行 §4.4 GCP Console SA + Developer Connect + trigger 建立步驟 |
 
 **Execution order:** T01 → T02（T02 depends on T01 — cloudbuild.yaml 須先 commit 進 repo，trigger 才有 build-config 可讀）
 

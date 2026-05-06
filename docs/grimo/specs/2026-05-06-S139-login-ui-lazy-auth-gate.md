@@ -1,6 +1,6 @@
 # S139: Login UI + Lazy Auth Gate
 
-> Spec: S139 | Size: S(10) | Status: ⏳ Dev（code complete；AC-8 evidence pending manual deploy）
+> Spec: S139 | Size: S(10) | Status: ⏸ BLOCKED（code 全 PASS；AC-8 waiting user LAB deploy + smoke test per DEPLOY-LAB-PRIVATE-IP.md Step 14）
 > Date: 2026-05-06
 
 ---
