@@ -51,6 +51,10 @@ public class SkillAclProjectionListener {
     /**
      * Auto-seed OWNER grant for the skill author on creation, then rebuild ACL.
      *
+     * <p>For PUBLIC visibility skills (initial {@code acl_entries} contains
+     * {@code "public:*:read"}), also seeds a public VIEWER grant so {@link #rebuildAcl}
+     * preserves public read access after overwriting the aggregate-managed column.
+     *
      * <p>If author is null (e.g. test fixtures without an owner), skip seeding —
      * the skill starts with an empty ACL and an explicit grant must be made later.
      */
@@ -69,6 +73,20 @@ public class SkillAclProjectionListener {
             grantRepo.save(SkillGrant.create(skillId, "user", author, Role.OWNER, author));
             log.atInfo().addKeyValue("skillId", skillId).addKeyValue("author", author)
                     .log("OWNER grant auto-seeded from SkillCreatedEvent");
+        }
+        // S116: preserve PUBLIC visibility — Skill.create() adds "public:*:read" to acl_entries for
+        // PUBLIC skills; rebuildAcl() rebuilds from skill_grants, so a public VIEWER grant must also
+        // be seeded here. Read is_public (GENERATED column) BEFORE rebuildAcl() to capture the intent.
+        var isPublic = Boolean.TRUE.equals(
+                jdbc.queryForObject("SELECT is_public FROM skills WHERE id = :id",
+                        Map.of("id", skillId), Boolean.class));
+        if (isPublic) {
+            var publicExists = grantRepo.findBySkillIdAndPrincipalTypeAndPrincipalId(skillId, "public", "*");
+            if (publicExists.isEmpty()) {
+                grantRepo.save(SkillGrant.create(skillId, "public", "*", Role.VIEWER, author));
+                log.atInfo().addKeyValue("skillId", skillId)
+                        .log("Public VIEWER grant auto-seeded for PUBLIC skill");
+            }
         }
         rebuildAcl(skillId);
     }

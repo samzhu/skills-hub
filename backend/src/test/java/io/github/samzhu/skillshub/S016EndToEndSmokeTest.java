@@ -135,14 +135,20 @@ class S016EndToEndSmokeTest {
                 .contains("user:alice:write")
                 .contains("user:alice:delete");
 
-        // (2) alice grant ACL group:engineering:read — Scenario 等 async listener append
+        // (2) alice grant group:engineering VIEWER via new S114a /grants endpoint —
+        // SkillGrantedEvent → onGranted() fires async → rebuildAcl() writes group:engineering:read
+        var grantIdRef = new AtomicReference<String>();
         scenario.stimulate(() -> {
                     try {
-                        mockMvc.perform(post("/api/v1/skills/" + skillId + "/acl")
+                        var grantResp = mockMvc.perform(post("/api/v1/skills/" + skillId + "/grants")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"type\":\"group\",\"principal\":\"engineering\",\"permission\":\"read\"}")
+                                .content("{\"principalType\":\"group\",\"principalId\":\"engineering\",\"role\":\"VIEWER\"}")
                                 .with(jwtFor("alice", List.of())))
-                                .andExpect(status().isCreated());
+                                .andExpect(status().isAccepted())
+                                .andReturn();
+                        var respBody = new tools.jackson.databind.json.JsonMapper()
+                                .readValue(grantResp.getResponse().getContentAsString(), Map.class);
+                        grantIdRef.set((String) respBody.get("grantId"));
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
@@ -166,15 +172,13 @@ class S016EndToEndSmokeTest {
                 .with(jwtFor("bob", List.of())))
                 .andExpect(status().isOk());
 
-        // (5) alice revoke — Scenario 等 async listener 移除
+        // (5) alice revoke via new S114a /grants/{grantId} endpoint —
+        // SkillRevokedEvent → onRevoked() → rebuildAcl() removes group:engineering:read
         scenario.stimulate(() -> {
                     try {
-                        mockMvc.perform(delete("/api/v1/skills/" + skillId + "/acl")
-                                .param("type", "group")
-                                .param("principal", "engineering")
-                                .param("permission", "read")
+                        mockMvc.perform(delete("/api/v1/skills/" + skillId + "/grants/" + grantIdRef.get())
                                 .with(jwtFor("alice", List.of())))
-                                .andExpect(status().isNoContent());
+                                .andExpect(status().isAccepted());
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
@@ -193,16 +197,15 @@ class S016EndToEndSmokeTest {
                         .contains("user:alice:write")
                         .contains("user:alice:delete"));
 
-        // (6) verify 4 個 event_type 至少各一筆（async；sequence 順序不嚴格）
+        // (6) verify SkillCreated + SkillVersionPublished in domain_events audit trail
+        // (SkillGranted/Revoked go via ApplicationEventPublisher, not recorded by AuditEventListener)
         scenario.stimulate(() -> {})
                 .andWaitAtMost(ASYNC_LISTENER_TIMEOUT)
                 .andWaitForStateChange(() -> {
                     var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
                     var types = events.stream().map(e -> e.eventType()).toList();
                     return types.contains("SkillCreated")
-                            && types.contains("SkillVersionPublished")
-                            && types.contains("SkillAclGranted")
-                            && types.contains("SkillAclRevoked") ? events : null;
+                            && types.contains("SkillVersionPublished") ? events : null;
                 });
     }
 
@@ -461,7 +464,8 @@ class S016EndToEndSmokeTest {
     /**
      * 為 Scenario stimulate 中的 async upload 同步等候完成 — 等
      * {@code AuditEventListener} async 寫 {@code domain_events}（SkillCreated +
-     * SkillVersionPublished）。
+     * SkillVersionPublished）且 {@code SkillAclProjectionListener.onSkillCreated} 已完成
+     * 將 acl_entries 材料化（S114a：防止新 listener 與步驟 2 的 old grantAcl 競爭）。
      *
      * <p>注意：不檢查 {@code vector_store.acl_entries} — {@code SearchProjection.onVersionPublished}
      * 在 async listener 內 {@code CurrentUserProvider.userId()} 因無 SecurityContext 走
@@ -476,7 +480,16 @@ class S016EndToEndSmokeTest {
         var events = eventStore.findByAggregateIdOrderBySequenceAsc(skillId);
         var hasCreated = events.stream().anyMatch(e -> "SkillCreated".equals(e.eventType()));
         var hasPublished = events.stream().anyMatch(e -> "SkillVersionPublished".equals(e.eventType()));
-        return hasCreated && hasPublished ? events : null;
+        if (!hasCreated || !hasPublished) {
+            return null;
+        }
+        // S114a: gate on onSkillCreated() completing — it seeds OWNER + public VIEWER (for PUBLIC skills).
+        // Counting 2 rows (OWNER + public:* VIEWER) ensures both inserts are done before rebuildAcl().
+        // This prevents step 2's grantAcl from racing with a late rebuildAcl() that would overwrite it.
+        var grantCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM skill_grants WHERE skill_id = ?",
+                Integer.class, skillId);
+        return (grantCount != null && grantCount >= 2) ? events : null;
     }
 
     /**
