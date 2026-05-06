@@ -180,6 +180,38 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse("not_notification_recipient", ex.getMessage(), Instant.now()));
 	}
 
+	/** S114a — actor 非 skill owner → 403 not_skill_owner。 */
+	@ExceptionHandler(NotSkillOwnerException.class)
+	ResponseEntity<ErrorResponse> handleNotSkillOwner(NotSkillOwnerException ex) {
+		log.atWarn().addKeyValue("errorCode", "not_skill_owner").log("Grant/revoke denied: not skill owner");
+		return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				.body(new ErrorResponse("not_skill_owner", ex.getMessage(), Instant.now()));
+	}
+
+	/** S114a — skill 已有 OWNER grant → 409 owner_already_exists。 */
+	@ExceptionHandler(OwnerAlreadyExistsException.class)
+	ResponseEntity<ErrorResponse> handleOwnerAlreadyExists(OwnerAlreadyExistsException ex) {
+		log.atWarn().addKeyValue("errorCode", "owner_already_exists").log("Grant denied: OWNER already exists");
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(new ErrorResponse("owner_already_exists", ex.getMessage(), Instant.now()));
+	}
+
+	/** S114a — grant row 不存在 → 404 grant_not_found。 */
+	@ExceptionHandler(GrantNotFoundException.class)
+	ResponseEntity<ErrorResponse> handleGrantNotFound(GrantNotFoundException ex) {
+		log.atWarn().addKeyValue("errorCode", "grant_not_found").log("Grant not found");
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse("grant_not_found", ex.getMessage(), Instant.now()));
+	}
+
+	/** S114a — owner 試圖撤銷自己的 OWNER grant → 403 cannot_revoke_own_owner。 */
+	@ExceptionHandler(CannotRevokeOwnOwnerException.class)
+	ResponseEntity<ErrorResponse> handleCannotRevokeOwnOwner(CannotRevokeOwnOwnerException ex) {
+		log.atWarn().addKeyValue("errorCode", "cannot_revoke_own_owner").log("Revoke denied: cannot revoke own owner grant");
+		return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				.body(new ErrorResponse("cannot_revoke_own_owner", ex.getMessage(), Instant.now()));
+	}
+
 	/** S135a AC-S135a-4 — 品質評分尚未計算 → 404 QUALITY_NOT_EVALUATED。 */
 	@ExceptionHandler(QualityNotEvaluatedException.class)
 	ResponseEntity<ErrorResponse> handleNotEvaluated(QualityNotEvaluatedException ex) {
