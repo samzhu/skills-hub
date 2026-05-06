@@ -41,8 +41,8 @@ skillshub:
   db:
     url: jdbc:postgresql://localhost:5432/${skillshub.db.name:skillshub}?ApplicationName=skillshub&currentSchema=public&reWriteBatchedInserts=true&socketTimeout=30
 
-  # GCS bucket — Cloud Run env var skillshub.storage.bucket 高優先（service.yaml 注入 ${GCS_BUCKET_NAME}）
-  # 此處 fallback 預設值；TODO 部署人員確認對應 lab bucket 名（每 env 應不同）
+  # GCS bucket — 部署時由 service.yaml 內 skillshub.storage.bucket env var 注入實際 bucket 名
+  # （bucket 名跟 GCP project 綁定，不在 yaml hardcode；fallback 預設值僅給 dev 啟動 sanity check）
   storage:
     bucket: ${skillshub.storage.bucket:skillshub-packages-lab}
 

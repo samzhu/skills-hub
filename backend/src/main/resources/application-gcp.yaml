@@ -25,12 +25,20 @@ spring:
     gcp:
       storage:
         enabled: true
-      # secretmanager 預設 enabled=true；project-id 從 ADC 自動推斷（runtime SA credentials），
-      # 無需顯式設定。對應 IAM role：roles/secretmanager.secretAccessor（01-bootstrap.sh 已授權）
+      # secretmanager 預設 enabled=true，但 application-aot.yaml 明確設 false 給 AOT 用。
+      # 因 aot profile leak 到 runtime（per AotStubConfig），這裡必須顯式 enable
+      # 蓋掉 aot.yaml 的 false（runtime profile order: aot, lab, gcp — gcp 後載入 wins）。
+      # 對應 IAM role：roles/secretmanager.secretAccessor（01-bootstrap.sh 已授權）
+      secretmanager:
+        enabled: true
 
   # ----- spring-cloud-gcp-starter-secretmanager 啟用 sm@ resolver -----
   # 註冊 SecretManagerConfigDataLocationResolver；任何 yaml 內 ${sm@<secret-id>}
   # placeholder 在 startup 時自動拉 Secret Manager 對應 secret 最新版本值。
   # behavior profile (lab/prod) 即可在 datasource.password / genai.api-key 等位置使用。
+  #
+  # optional: 前綴 — AOT 處理階段（CI 沒 GCP creds）允許 SM client 初始化失敗 silently，
+  # 不阻擋 build；runtime 有 ADC 時正常 resolve。Trade-off：runtime 若 creds 異常會
+  # silent fallback，${sm@...} 留 literal 字串 → 下游使用該屬性時 fail-fast（延遲，不靜默）。
   config:
-    import: sm@
+    import: optional:sm@

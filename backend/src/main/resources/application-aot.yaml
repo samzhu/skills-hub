@@ -22,7 +22,29 @@ spring:
   # S133：不再 disable Flyway autoconfig — 改用 FlywayMigrationStrategy bean 在 AOT 階段
   # skip migrate (per AotStubConfig)。autoconfig disabled 會 leak 到 native runtime（baked
   # context 沒 Flyway beans，env var SPRING_FLYWAY_ENABLED=true 也救不回）。
-  # 排除 GCP context auto-config — CI 沒 GCP metadata server 會炸
+  #
+  # 不再 exclude GcpContextAutoConfiguration — Cloud Build 環境有 metadata server
+  # （Cloud Build SA），原本假設「CI 沒 metadata server」是錯的。移除後 GcpProjectIdProvider
+  # 能在 AOT 階段被 bake，下游 GcpStorageAutoConfiguration / Storage bean 才能滿足依賴。
+  #
+  # Modulith native excludes — spring-modulith-actuator/observability autoconfig 觸發
+  # ApplicationModulesRuntime → ArchUnit ClassFileImporter → native image
+  # ClassNotFoundException：ModuleImportPlugin (Issue #735/#1556 未修)。
   autoconfigure:
     exclude:
-      - com.google.cloud.spring.autoconfigure.core.GcpContextAutoConfiguration
+      - org.springframework.modulith.actuator.autoconfigure.ApplicationModulesEndpointConfiguration
+      - org.springframework.modulith.observability.autoconfigure.ModuleObservabilityAutoConfiguration
+      - org.springframework.modulith.observability.autoconfigure.SpringDataRestModuleObservabilityAutoConfiguration
+
+  # ----- GCP autoconfig 在 AOT 階段的取捨（per gate/application-aot.yaml pattern）-----
+  # 啟用 storage 讓 GcsStorageService 的 Storage 依賴 bean factory 在 AOT 階段被 bake；
+  # secretmanager 在 AOT 階段不需要（沒 creds 也不該試呼 API），明確 disable。
+  # ⚠ aot profile 會 leak 到 runtime（per AotStubConfig __ApplicationContextInitializer
+  # .addActiveProfile("aot")），故 application-gcp.yaml 必須在 runtime 顯式 enable
+  # secretmanager 才能 override 本檔。
+  cloud:
+    gcp:
+      storage:
+        enabled: true
+      secretmanager:
+        enabled: false
