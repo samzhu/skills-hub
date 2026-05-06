@@ -4,6 +4,8 @@ import { Bell } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { fetchUnreadCount } from '@/api/notifications'
+import { useAuth } from '@/hooks/useAuth'
+import { AuthArea } from './AuthArea'
 
 /**
  * 導覽連結定義。
@@ -33,12 +35,17 @@ const navLinks = [
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
+  // S139: bell + unread poll 改 conditional on authenticated — anonymous user 不
+  // 該 hit /notifications/unread-count（會吃 401 噪訊）；登入後才啟用 polling。
+  const auth = useAuth()
+  const isAuthenticated = auth.status === 'authenticated'
   // S096h1: bell badge polls unread count every 30s (per Engineering Handoff §2.17)
   const { data: unread } = useQuery({
     queryKey: ['notifications-unread'],
     queryFn: fetchUnreadCount,
     refetchInterval: 30 * 1000,
     staleTime: 25 * 1000,
+    enabled: isAuthenticated,
   })
   const unreadCount = unread?.count ?? 0
 
@@ -60,22 +67,26 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             ))}
           </nav>
-          {/* S096h1: bell icon + unread badge — polls /notifications/unread-count every 30s */}
-          <Link
-            to="/notifications"
-            aria-label="Notifications"
-            className="relative flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <Bell className="h-4 w-4" />
-            {unreadCount > 0 && (
-              <span
-                className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-mono text-[10px] font-medium text-white"
-                style={{ backgroundColor: '#E24B4A' }}
-              >
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </Link>
+          {/* S096h1 + S139: bell 只在登入後渲染 — anonymous 看不到 unread badge / 鈴鐺 */}
+          {isAuthenticated && (
+            <Link
+              to="/notifications"
+              aria-label="Notifications"
+              className="relative flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Bell className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span
+                  className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-mono text-[10px] font-medium text-white"
+                  style={{ backgroundColor: '#E24B4A' }}
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </Link>
+          )}
+          {/* S139: AuthArea — 未登入：登入按鈕；登入：avatar dropdown */}
+          <AuthArea />
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
