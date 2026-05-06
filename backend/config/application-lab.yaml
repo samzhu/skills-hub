@@ -21,17 +21,44 @@ spring:
       maximum-pool-size: 3
       minimum-idle: 1
 
-  # ----- OAuth2 Resource Server：lab IdP（real OAuth；繼承 Java default enabled=true）-----
-  # TODO 部署人員填入 lab IdP issuer URL（範例：https://accounts.google.com）
-  # 留 ${...:} 空 default：startup 不 fail，但首個 JWT 請求才探（Spring Security 7 lazy discovery）
+  # ----- OAuth2 Resource Server + Client：Google OIDC（per S139 §4.6）-----
+  # Resource Server JWT：驗 id_token 用（OAuth2 Login flow 內部）。
+  # ⚠ Caveat：Google access_token 是 opaque（非 JWT），打到 Resource Server 的 bearer
+  # 會 decode fail；MVP 僅靠 session cookie 認證（OAuth2 Login flow 建立的）。
   security:
     oauth2:
       resourceserver:
         jwt:
           issuer-uri: ${skillshub.oauth.issuer-uri:}
+      # ----- OAuth2 Client (S139 — server-side login on LAB) -----
+      # client-id / client-secret 由 service.yaml 從 Secret Manager 注入：
+      #   spring.security.oauth2.client.registration.skillshub.client-id     ← sm@skillshub-oauth-client-id
+      #   spring.security.oauth2.client.registration.skillshub.client-secret ← sm@skillshub-oauth-client-secret
+      # 不在 yaml 寫死避免 secret leak（同 db.password 模式）
+      client:
+        registration:
+          skillshub:
+            scope: openid,email,profile                   # Google OIDC：openid 取 id_token、email/profile 取 claim
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: authorization_code
+        provider:
+          skillshub:
+            issuer-uri: https://accounts.google.com       # Google OIDC discovery（無 trailing slash）
 
 # ----- LAB env 應用屬性 -----
 skillshub:
+  # ----- OAuth: 啟用 OAuth2 Login chain；issuer-uri 對齊 Resource Server 引用 -----
+  # security.oauth.enabled 沿用 Java default true（Resource Server JWT chain）；
+  # security.oauth.login.enabled 顯式 true → SecurityConfig 加掛 oauth2Login() chain +
+  # AuthRedirectConfig 處理 returnTo state（per S139 T01）。
+  oauth:
+    issuer-uri: https://accounts.google.com
+  security:
+    oauth:
+      login:
+        enabled: true
+
   # ----- DataSource 變數 — Cloud SQL via Auth Proxy sidecar -----
   # url: 與 prod 相同 URL pattern（差異只在 db name 由 env var 覆蓋）
   # user / password: 不在 yaml 寫死；由 Cloud Run env var 注入
