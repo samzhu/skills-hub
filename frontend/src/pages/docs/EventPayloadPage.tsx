@@ -68,7 +68,7 @@ export function EventPayloadPage() {
 
       <Callout>
         <strong className="text-[#EEECEA]">Webhook 訂閱：</strong> 目前 read-only via API；webhook delivery
-        endpoint 規劃中（依 PRD §B6 Backlog）— 屆時 publisher 可註冊 URL 收 push notification。
+        endpoint 規劃中 — 屆時 publisher 可註冊 URL 收 push notification。
       </Callout>
 
       <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[16px]">

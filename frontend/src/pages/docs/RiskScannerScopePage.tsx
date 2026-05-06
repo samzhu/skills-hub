@@ -33,8 +33,8 @@ export function RiskScannerScopePage() {
         id="llm01"
         title="LLM01 — Prompt Injection"
         threat="惡意輸入操控 LLM 導致未授權存取或決策被劫持。"
-        coverage="partial"
-        details="Risk scanner 偵測明顯 RCE patterns（curl | bash 等）。SKILL.md instructions 內隱藏的 jailbreak / instruction-override pattern 偵測為 S099e1 規劃中。"
+        coverage="covered"
+        details="Risk scanner 偵測明顯 RCE patterns（curl | bash 等）。SKILL.md instructions 內隱藏的 jailbreak / instruction-override patterns（ignore previous instructions 等 8 HIGH + 6 MEDIUM 模式）已整合至掃描器。"
       />
 
       <Item
@@ -57,8 +57,8 @@ export function RiskScannerScopePage() {
         id="llm04"
         title="LLM04 — Model Denial of Service"
         threat="資源耗盡攻擊使 LLM 服務中斷。"
-        coverage="gap"
-        details="目前未掃描 scripts 中 infinite loops / large memory allocation。S099e2 規劃補 resource-hint scanner。"
+        coverage="partial"
+        details="已整合 resource-hint scanner：fork bomb、/dev/zero、infinite loop 等 3 HIGH + 3 MEDIUM 模式。複雜的 memory allocation 分析（如 mmap 參數計算）尚未涵蓋。"
       />
 
       <Item
@@ -66,7 +66,7 @@ export function RiskScannerScopePage() {
         title="LLM05 — Supply Chain Vulnerabilities"
         threat="依賴 compromised components 致系統失守。"
         coverage="partial"
-        details="Risk scanner 偵測 curl 來源未驗證；尚未做 SBOM 產生 + dependency vuln scanning（如 npm audit / pip-audit）。S099e3 規劃補 SBOM。"
+        details="Risk scanner 偵測 curl 來源未驗證；已整合依賴漏洞掃描（requirements.txt / package.json 對 OSV.dev querybatch）。SBOM 產生尚未涵蓋。"
       />
 
       <Item
@@ -74,7 +74,7 @@ export function RiskScannerScopePage() {
         title="LLM06 — Sensitive Information Disclosure"
         threat="LLM 輸出意外洩漏敏感資訊。"
         coverage="covered"
-        details="偵測 ~/.ssh、~/.aws 等敏感路徑存取 → 直接判 HIGH。S099e4 規劃補 hardcoded creds detector（API key / OAuth token / passwords in scripts）。"
+        details="偵測 ~/.ssh、~/.aws 等敏感路徑存取 → 直接判 HIGH。已整合 hardcoded credentials 偵測（API key / OAuth token / password 等 6 類模式掃描 scripts）。"
       />
 
       <Item
@@ -111,9 +111,9 @@ export function RiskScannerScopePage() {
 
       <H2>覆蓋率總覽</H2>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <SummaryCard label="✅ Covered" count={2} note="LLM06 / LLM08" />
-        <SummaryCard label="🟡 Partial" count={3} note="LLM01 / LLM05 / LLM07" />
-        <SummaryCard label="❌ Gap" count={1} note="LLM04（規劃中）" />
+        <SummaryCard label="✅ Covered" count={3} note="LLM01 / LLM06 / LLM08" />
+        <SummaryCard label="🟡 Partial" count={3} note="LLM04 / LLM05 / LLM07" />
+        <SummaryCard label="❌ Gap" count={0} note="—" />
         <SummaryCard label="◯ Out of Scope" count={4} note="LLM02 / LLM03 / LLM09 / LLM10" />
       </div>
 
