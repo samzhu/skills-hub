@@ -101,6 +101,13 @@ spring:
     error:
       include-message: always
 
+# ----- HTTP 壓縮（S129） -----
+server:
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml
+    min-response-size: 2048
+
 # ----- Actuator（基礎曝露，各環境 profile 可擴充） -----
 # S023：加入 modulith endpoint 暴露模組依賴關係 + event publication 統計（給 ops dashboard）
 management:

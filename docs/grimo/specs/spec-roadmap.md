@@ -82,7 +82,7 @@
 | S099e4 | Hardcoded creds detector enhancement (LLM06) | S(4) | S099 | ✅ shipped v4.4.0 — 6 new SecretScanner patterns, 6 tests |
 | S114b | ACL production scale — Slice + Caffeine | M(10) | S114a | 📋 planned |
 | S114c | ACL infra — read replica + PgBouncer | M(8) | S114b | 📋 planned |
-| S129 | Server compression | XS(1) | — | 📐 2026-05-07-S129-server-compression.md |
+| S129 | Server compression | XS(1) | — | ✅ v4.9.0 — application.yaml server.compression gzip |
 | S131 | Error code naming convention alignment | XS(2-3) | — | 📋 planned |
 | S136 | Skill Evaluation Scenarios — task-based eval | TBD | S135 | 📋 待討論（per [`research/2026-05-05-tessl-skill-platform-study.md`](../research/2026-05-05-tessl-skill-platform-study.md) §4） |
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## [v4.9.0] — Server Compression（S129 完成；2026-05-07）
+
+> 為所有 REST API 回應啟用 HTTP Gzip 壓縮。純 YAML 配置，零 Java code 異動。
+
+### Added — Infrastructure
+
+- **HTTP Gzip 壓縮**：`application.yaml` 加 `server.compression` block — `enabled: true`，`min-response-size: 2048`（小於 2 KB 不壓），涵蓋 `application/json`、`text/html`、`application/javascript` 等主要 MIME type；Tomcat 內建 GzipOutputInterceptor 處理，無需額外 filter bean
+
+---
+
 ## [v4.8.0] — E2E Auth Integration Test Ship（S120 完成；2026-05-07）
 
 > S120 E2E 整合測試全 14 ACs 通過。Root cause 修復：`WebMvcSliceTestBase.AotStubBeans` 改 `@TestConfiguration`（阻止 `@SpringBootTest` component scan 載入 stub PermissionEvaluator），使真實 `DelegatingPermissionEvaluator` 正確路由到 `SkillPermissionStrategy` SQL ACL 評估，anonymous GET public skill 回 200。
