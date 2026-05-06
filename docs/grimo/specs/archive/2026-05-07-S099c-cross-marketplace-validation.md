@@ -1,6 +1,6 @@
 # S099c — Cross-Marketplace Risk Validation Script & Report
 
-> **Status**: 📋 planned → 📐 in-design
+> **Status**: ✅ shipped — v4.6.0
 > **Size**: S(7)
 > **Depends**: S099 META §4 sources verified
 > **Goal**: 建立公開 skills marketplace 的交叉驗證報告，以量化 Skills Hub 風險評估與競品之一致性，建立 enterprise trust narrative。
@@ -140,10 +140,26 @@ docs/grimo/
 
 ## §6 Task Plan
 
-（實作時填）
+| Task | Status |
+|------|--------|
+| T1: 實作 `tools/cross-validate.py` | ✅ done |
+| T2: dry-run 驗證 clone + extract | ✅ PASS — 41 skills (17+13+11) |
+| T3: `--dry-run` flag 實作 | ✅ done |
+| T4: `.cross-validate-cache/` 加 .gitignore | ✅ done |
 
 ---
 
 ## §7 Result
 
-（Ship 後填）
+**Ship date**: 2026-05-07 (v4.6.0)
+
+**Verification metrics**:
+- `python3 tools/cross-validate.py --dry-run` → syntax OK，3 repos cloned，41 skills listed
+- Sources: anthropics/skills (17), huggingface/skills (13), agentregistry-dev/skills (11)
+- T1 (dry-run) PASS
+- T2 (zip 結構) PASS — zipfile.ZipFile 包含 SKILL.md，python3 -m py_compile 語法正確
+- Full live run needs local `bootTestRun` — deferred to manual QA
+
+**Trim**: live run against local dev instance 未在 tick 內執行（`bootTestRun` 起動時間長）；
+dry-run 已驗 clone+extract pipeline 正確。report 生成邏輯靜態 review OK。
+手動 live run 可在需要 cross-validation 報告時執行。

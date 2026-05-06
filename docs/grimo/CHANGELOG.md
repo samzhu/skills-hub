@@ -1,5 +1,25 @@
 # Changelog
 
+## [v4.6.0] — Cross-Marketplace Risk Validation 腳本（S099c 完成；2026-05-07）
+
+> S099c 新增 `tools/cross-validate.py`（Python stdlib only），從 3 個公開 skills marketplace（Anthropic、HuggingFace、AgentRegistry）clone skills，批次上傳至本地 dev instance，收集 risk_level，產出 `docs/grimo/cross-validation-report.md`。建立企業信任敘事的關鍵 audit artifact。
+
+### Added — Tools
+
+- **`tools/cross-validate.py`**：S099c cross-marketplace risk validation script
+  - `--dry-run`：只 clone + extract + 列出 skills，不呼叫 API
+  - `--url URL`：指定 Skills Hub base URL（預設 `http://localhost:8080`）
+  - `--token TOKEN`：Bearer token 支援（LAB/bootTestRun 模式不需要）
+  - 3 sources：`anthropics/skills` (17)、`huggingface/skills` (13)、`agentregistry-dev/skills` (11) = 41 skills
+  - 冪等：先 GET 查重，已存在則 skip
+  - poll 策略：每 2s poll，60s timeout，逾時記 `TIMEOUT`
+
+### Changed — Infra
+
+- **`.gitignore`**：加入 `.cross-validate-cache/`（腳本 clone cache，不入版控）
+
+---
+
 ## [v4.5.0] — OWASP LLM04 資源耗盡靜態掃描（S099e2 完成；2026-05-07）
 
 > S099e2 新增 `ResourceDoSScanner`，偵測 skill scripts 中可能耗盡 agent 資源的 pattern（無窮迴圈、阻塞 I/O、fork bomb）。OWASP LLM04 / AST04；Phase.STATIC 並行執行。

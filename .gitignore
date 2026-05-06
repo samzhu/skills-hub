@@ -11,3 +11,7 @@ scheduled_tasks.lock
 node_modules/
 .claude/handovers/HANDOVER.md
 temp/
+.DS_Store
+
+# S099c: cross-validate script clone cache
+.cross-validate-cache/
