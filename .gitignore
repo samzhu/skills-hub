@@ -15,3 +15,6 @@ temp/
 
 # S099c: cross-validate script clone cache
 .cross-validate-cache/
+
+# S099d: quality audit report (commit snapshot manually)
+docs/grimo/quality-audit-report.md

@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.7.0] — LLM Description Quality Audit 腳本（S099d 完成；2026-05-07）
+
+> S099d 新增 `tools/quality-audit.py`，以 Claude claude-haiku-4-5-20251001 對所有 skills 的 description 進行 5 維度品質評分（0-100），找出 < 60 分的改寫候選，輸出 `quality-audit-report.md`。回應 user feedback「LLM 寫的說明要簡單易懂」。S099 META 最後一個 sub-spec 完成。
+
+### Added — Tools
+
+- **`tools/quality-audit.py`**：S099d description quality audit script
+  - `--dry-run`：只列出 skills + description 前 80 字，不呼叫 Claude
+  - `--url URL`：指定 Skills Hub base URL（預設 localhost:8080）
+  - `--top N`：低分 section 最多顯示 N 筆（預設 10）
+  - 5 維度 rubric：action_clarity / domain_specificity / non_marketing / length_fit / language_clarity（各 0-20）
+  - 自動 rate-limit 保護（0.5s sleep + 429 retry）
+  - score < 60 列入「需要改寫」section
+  - Model: `claude-haiku-4-5-20251001`（stdout + markdown table 輸出）
+
+### Changed — Infra
+
+- **`.gitignore`**：加入 `docs/grimo/quality-audit-report.md`（手動 commit snapshot）
+
+---
+
 ## [v4.6.0] — Cross-Marketplace Risk Validation 腳本（S099c 完成；2026-05-07）
 
 > S099c 新增 `tools/cross-validate.py`（Python stdlib only），從 3 個公開 skills marketplace（Anthropic、HuggingFace、AgentRegistry）clone skills，批次上傳至本地 dev instance，收集 risk_level，產出 `docs/grimo/cross-validation-report.md`。建立企業信任敘事的關鍵 audit artifact。

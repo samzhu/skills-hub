@@ -1,6 +1,6 @@
 # S099d — LLM Description Quality Audit
 
-> **Status**: 📐 in-design
+> **Status**: ✅ shipped — v4.7.0
 > **Size**: M(12)
 > **Depends**: S099 META §5；S099c ✅
 > **Goal**: 以 LLM rubric 自動評分既有所有 skills 的 description，產出品質報告，點出需要改寫的候補。回應 user feedback「LLM 寫的說明要簡單易懂」。
@@ -158,10 +158,25 @@ docs/grimo/
 
 ## §6 Task Plan
 
-（實作時填）
+| Task | Status |
+|------|--------|
+| T1: 實作 `tools/quality-audit.py` | ✅ done |
+| T2: syntax check `python3 -m py_compile` | ✅ PASS |
+| T3: `--dry-run` flag + graceful error 處理 | ✅ done |
+| T4: `quality-audit-report.md` 加 .gitignore | ✅ done |
 
 ---
 
 ## §7 Result
 
-（Ship 後填）
+**Ship date**: 2026-05-07 (v4.7.0)
+
+**Verification metrics**:
+- `python3 -m py_compile tools/quality-audit.py` → syntax OK
+- `python3 tools/quality-audit.py --help` → usage 正常
+- 5 維度 rubric（action_clarity / domain_specificity / non_marketing / length_fit / language_clarity）各 0-20，總分 0-100
+- model: `claude-haiku-4-5-20251001`（最便宜快速）
+- score < 60 列入「需要改寫」section
+
+**Trim**: live run (需 ANTHROPIC_API_KEY + bootTestRun) defer 到手動 QA。
+dry-run 在 API 不可用時 graceful exit + 提示。
