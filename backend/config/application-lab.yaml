@@ -35,6 +35,11 @@ spring:
       #   spring.security.oauth2.client.registration.skillshub.client-id     ← sm@skillshub-oauth-client-id
       #   spring.security.oauth2.client.registration.skillshub.client-secret ← sm@skillshub-oauth-client-secret
       # 不在 yaml 寫死避免 secret leak（同 db.password 模式）
+      #
+      # redirect-uri：portable 預設用 {baseUrl} URI template（Spring Security 從 request
+      # URL 解析）；但 Cloud Run 把 https termination 在 proxy 端，容器看到的 request 是
+      # http://localhost:8080 → {baseUrl} 解析錯誤。LAB 部署改由 service.yaml env var
+      # 寫死外部 URL 覆蓋此預設（含 project number 屬部署敏感資訊，故不寫進 git）。
       client:
         registration:
           skillshub:
