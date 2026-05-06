@@ -4,9 +4,13 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,6 +40,8 @@ import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 @RestController
 @RequestMapping("/api/v1/skills")
 public class SkillCommandController {
+
+	private static final Logger log = LoggerFactory.getLogger(SkillCommandController.class);
 
 	private final SkillCommandService commandService;
 	private final CurrentUserProvider currentUserProvider;
@@ -78,6 +84,20 @@ public class SkillCommandController {
 			@RequestParam("category") String category,
 			@RequestParam(name = "visibility", required = false, defaultValue = "PUBLIC")
 					io.github.samzhu.skillshub.skill.domain.Visibility visibility) throws IOException {
+		// S139 diagnostic — entry log：若 SecurityFilterChain 攔下 403，這行不會出現；
+		// 出現代表 request 已穿過 filter 鏈到 controller，用來判斷 403 來自 filter 還是
+		// 後續業務（GCS upload / DB write 等）。確認原因後可移除（保留無害）。
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		log.atInfo()
+				.addKeyValue("event", "upload_entry")
+				.addKeyValue("authClass", auth == null ? "null" : auth.getClass().getSimpleName())
+				.addKeyValue("authenticated", auth != null && auth.isAuthenticated())
+				.addKeyValue("principal", auth == null ? "null" : auth.getName())
+				.addKeyValue("fileSize", file.getSize())
+				.addKeyValue("version", version)
+				.addKeyValue("category", category)
+				.addKeyValue("visibility", visibility)
+				.log("uploadSkill entered");
 		// S116: visibility 缺省 PUBLIC 對齊 v3.x 既有行為；前端 PublishPage 顯式透傳
 		// PRIVATE 走私人 skill 路徑（acl_entries 不含 *:read，由既有 GIN ?| filter
 		// 自動 fail-closed against anonymous / non-grant user）。

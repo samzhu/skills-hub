@@ -1,5 +1,7 @@
 package io.github.samzhu.skillshub.shared.security;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,6 +15,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
@@ -20,6 +24,7 @@ import org.springframework.security.oauth2.jwt.SupplierJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -29,6 +34,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import io.github.samzhu.skillshub.SkillshubProperties;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Spring Security 7 SecurityFilterChain 設定 — 「顯式 permitAll + 局部收緊」策略，
@@ -68,10 +74,44 @@ import java.util.List;
 @EnableMethodSecurity
 class SecurityConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
+
     private final SkillshubProperties props;
 
     SecurityConfig(SkillshubProperties props) {
         this.props = props;
+    }
+
+    /**
+     * S139 LAB upload 403 diagnostic — 攔 AccessDeniedException 把當下 Authentication
+     * 細節寫進 WARN log（class / authenticated / principal / authorities / 路徑 / 方法）。
+     * 配合 {@code logging.level.org.springframework.security=DEBUG}（service.yaml env）
+     * 一起看 filter chain decision，定位是路徑網關 / CSRF / RequestRejected 哪一關。
+     *
+     * <p>Production 行為不變（仍回 403），純加 server-side 觀察點。
+     */
+    private AccessDeniedHandler diagnosticAccessDeniedHandler() {
+        return (request, response, ex) -> {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String authClass = auth == null ? "null" : auth.getClass().getSimpleName();
+            String principal = auth == null ? "null" : String.valueOf(auth.getName());
+            boolean authenticated = auth != null && auth.isAuthenticated();
+            String authorities = auth == null ? "null"
+                    : auth.getAuthorities().stream()
+                            .map(Object::toString)
+                            .collect(Collectors.joining(","));
+            log.atWarn()
+                    .addKeyValue("event", "access_denied")
+                    .addKeyValue("path", request.getRequestURI())
+                    .addKeyValue("method", request.getMethod())
+                    .addKeyValue("authClass", authClass)
+                    .addKeyValue("authenticated", authenticated)
+                    .addKeyValue("principal", principal)
+                    .addKeyValue("authorities", authorities)
+                    .addKeyValue("reason", ex.getMessage())
+                    .log("Access denied");
+            response.sendError(403, ex.getMessage());
+        };
     }
 
     /**
@@ -154,6 +194,10 @@ class SecurityConfig {
                     UsernamePasswordAuthenticationFilter.class);
         }
         http.csrf(AbstractHttpConfigurer::disable);
+        // S139 diagnostic — 接上 custom AccessDeniedHandler 紀錄 403 時的 Authentication
+        // 細節（class / authenticated / principal / authorities）。確認 root cause 後可
+        // 移除此行，回到 Spring Security 預設 handler 行為（同樣 403，只是無細節 log）。
+        http.exceptionHandling(eh -> eh.accessDeniedHandler(diagnosticAccessDeniedHandler()));
         return http.build();
     }
 
