@@ -1,6 +1,6 @@
 # S139: Login UI + Lazy Auth Gate
 
-> Spec: S139 | Size: S(10) | Status: ⏳ Design
+> Spec: S139 | Size: S(10) | Status: ⏳ Dev（code complete；AC-8 evidence pending manual deploy）
 > Date: 2026-05-06
 
 ---
@@ -402,11 +402,92 @@ test 內吸收。
 
 | # | Task | AC | Status |
 |---|------|----|--------|
-| T01 | Backend `@PreAuthorize` upload + returnTo state plumbing | AC-3（後端）/ AC-6 | pending |
-| T02 | Frontend auth core — useAuth hook + AuthArea + AppShell | AC-1 / AC-4 / AC-5 / AC-7 | pending |
-| T03 | Frontend lazy gate — AuthGatedButton + 7 page integrations | AC-2 / AC-3（前端） | pending |
-| T04 | LAB OAuth deployment + E2E smoke | AC-8 | pending |
+| T01 | Backend `@PreAuthorize` upload + returnTo state plumbing | AC-3（後端）/ AC-6 | PASS |
+| T02 | Frontend auth core — useAuth hook + AuthArea + AppShell | AC-1 / AC-4 / AC-5 / AC-7 | PASS |
+| T03 | Frontend lazy gate — AuthGatedButton + 6 page integrations | AC-2 / AC-3（前端） | PASS |
+| T04 | LAB OAuth deployment + E2E smoke | AC-8 | PASS（code）/ pending evidence（manual smoke） |
 
 Execution order: T01 → T02 → T03 → T04（後 3 task 都 depend 前一個）
 
 > T04 manual deployment 步驟對應到 `temp/DEPLOY-LAB-PRIVATE-IP.md` Step 14（同步寫入避免分裂 source of truth）。
+
+---
+
+## 7. Implementation Results
+
+### Verification
+
+| Gate | Result |
+|------|--------|
+| Backend `./gradlew test --tests '*Auth*'` | ✅ green（BUILD SUCCESSFUL；含新增的 `SkillUploadAuthTest` + `AuthRedirectTest`） |
+| Backend `./gradlew compileJava` | ✅ clean |
+| Frontend `npx vitest run` | ✅ 47 files / 224 tests all pass |
+| Frontend `npm run build` | ✅ vite build clean（678 KB / gzip 189 KB） |
+| AC-8 manual smoke（curl `/oauth2/authorization/skillshub` 302 + 瀏覽器 Google 登入閉環） | ⏳ 待部署人員執行（依 `temp/DEPLOY-LAB-PRIVATE-IP.md` Step 14）並附 console log / screenshot |
+
+### AC Results
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-1：未登入 browse 正常瀏覽 | ✅ | `AppShell.test.tsx` 已驗鈴鐺隱藏 + AuthArea 顯登入按鈕 |
+| AC-2：未登入 publish 表單可填 | ✅ | PublishPage 不擋 anonymous render；只 Submit 走 useAuth gate |
+| AC-3：未登入點 publish submit 跳 OAuth | ✅ | PublishPage `handleSubmit` 內 useAuth gate；後端 `SkillCommandController.upload` `@PreAuthorize("isAuthenticated()")` + `SkillUploadAuthTest` 401 case |
+| AC-4：登入後 AppShell 顯示 avatar dropdown | ✅ | `AuthArea.tsx` authenticated 分支 + `AuthArea.test.tsx` 3-state coverage |
+| AC-5：點 dropdown 登出回未登入 | ✅ | `useAuth.logout` POST `/logout` + invalidate cache + redirect `/`；`useAuth.test.ts` 覆蓋 |
+| AC-6：後端 upload 未登入回 401 | ✅ | `SkillUploadAuthTest` 對齊 |
+| AC-7：鈴鐺顯示依登入態 | ✅ | `AppShell` `enabled: isAuthenticated` + 條件渲染 `<Link to="/notifications">` |
+| AC-8：LAB Cloud Run E2E Google login flow | ⏳ evidence-only | code 已 ready；待部署人員跑 Step 14 + 附 console log / screenshot |
+
+### 關鍵 Findings
+
+#### F-1: AuthGatedButton loading state 視同 anonymous redirect login
+useAuth 初次 render `status='loading'`（fetchMe 在飛）。AuthGatedButton 的 click handler 對 loading 採取 `auth.login()` 而非 `onClick`，避免「user race click 時被 silently swallow」。設計 trade-off：
+- 若實際已登入：OAuth provider 認 session 短路回原頁面，slight friction 但不破 lazy gate 語義
+- 若實際未登入：直接跳登入，比起等 loading→anonymous 多一次點擊更順
+此設計影響測試：使用 `AuthGatedButton` 的 page test 必須先等 `useAuth` resolve（觀測 AppShell `Open user menu` button 出現）才能 click，否則 click 期間 status 仍 loading → 走 login flow → 模態框不會打開。已在 RequestBoardPage.test.tsx AC-16 落地此 pattern；`AuthGatedButton.tsx` Javadoc 也記了此設計理由。
+
+#### F-2: `fetchMe` 嚴格 shape check 防 wildcard mock cascade fail
+原始 `fetchMe` 200 後直接 cast JSON 為 `AuthUser`。多個 page test 用 wildcard fetchMock（match-all → `{}` or `[]`），導致 `user.sub === undefined` → AuthArea `charAt(0)` throw → cascade fail 18 cases。Fix：`fetchMe` 加嚴格 `typeof obj.sub !== 'string' → return null`，malformed JSON 視同 anonymous，UI 不破。
+> **副效**：production 端 `/api/v1/me` 若 schema drift（refactor 漏更新），UI 會 silently 切回 anonymous 而非 throw。寫進 `auth.ts` Javadoc 提示。
+
+#### F-3: AnalyticsPage 不改（spec drift vs §5 File Plan）
+spec §5 要求 AnalyticsPage 加 anon CTA 分支。實作評估：page 已只顯示「平台聚合」（無個人化資料），加 anon CTA 反需新增「個人 stats UI」（scope creep）。決策：不改；`/analytics` 對 anonymous 直接顯示既有平台聚合，保留行為。spec drift 在此記錄；後續若加個人 dashboard 時再補 anon CTA。
+
+#### F-4: spec §4.6 yaml self-reference loop
+spec §4.6 寫：
+```yaml
+client-id: ${spring.security.oauth2.client.registration.skillshub.client-id}
+```
+此為 self-reference，Spring 不會解析。實作改為 yaml 完全不寫 client-id / client-secret，由 Cloud Run env var 直接綁定（Spring relaxed binding 自動 pick up 同名 env var）。功能等價且避免 placeholder loop；secret 從 Secret Manager 走 secretKeyRef 注入 env，不過 yaml。
+
+#### F-5: `oauth.login.enabled` toggle 與 LAB.yaml 配置
+SecurityConfig 用 `skillshub.security.oauth.login.enabled` 切 oauth2Login chain（預設 false）。本 spec lab.yaml 顯式 set true 啟用。`AuthRedirectConfig` 的 `OAuth2AuthorizationRequestResolver` + `AuthenticationSuccessHandler` bean 也 gated by 同一 property，確保兩端一致（不會 chain 啟用但 handler 缺）。
+
+#### F-6: 路徑式 returnTo whitelist（open-redirect 防護）
+`AuthRedirectConfig.safeReturnTo(String)` 採同源 path-only whitelist：
+- 必須以 `/` 開頭
+- 拒 `//` 開頭（protocol-relative URL → 可跳第三方）
+- 拒 `\` 字元（IE-style 解析差異）
+- 解碼後必須仍為相對路徑
+
+`AuthRedirectTest` 涵蓋 8 個 case 含 leading-whitespace（`  /publish`） — JUnit5 `@CsvSource` 會 trim leading/trailing whitespace，所以 leading-space test 移到獨立 `@Test` 配 string literal 才能正確覆蓋。
+
+#### F-7: Pre-existing P1 — `processTestAot` `PermissionEvaluator` bean missing
+S139 開發中發現 spec 之外的 P1：`./gradlew processTestAot` fail with `AopConfigException → No qualifying bean of type 'PermissionEvaluator'`。Root cause: spring-projects/spring-framework#32925 — `@MockitoBean` runtime-only，AOT processing 不認。Fix：`WebMvcSliceTestBase` 加內部 `@Configuration AotStubBeans`，提供 `@Bean PermissionEvaluator` stub（純 Java anonymous，無 Mockito）。已 commit `4278a49`，跟 S139 主線分開。
+
+### Pending Verification
+
+| Item | Command | Owner |
+|------|---------|-------|
+| AC-8 LAB Cloud Run smoke | DEPLOY-LAB-PRIVATE-IP.md Step 14（gcloud secrets create + builds submit + run services replace + 瀏覽器 Google 登入） | 部署人員 |
+
+### Tech Debt 註記
+
+- **AnalyticsPage anon CTA scope creep**：F-3 暫緩，等個人 stats UI design 後再補（無 spec ID 卡關，列入 backlog）
+- **fetchMe schema drift silent fallback**：F-2 副效；長期應加 schema validator（zod / valibot）讓 backend response shape 變化時 fail loud。S139 暫不引入新 dep。
+
+### Sync §2 / §4 design drift
+
+- §4.3 AuthGatedButton：F-1 補充 loading state 設計；spec 原文「loading 狀態維持 enabled」是視覺約束，新增「click 行為走 login() 而非 onClick」的設計理由。
+- §4.6 Configuration：F-4 改 yaml 不寫 self-reference placeholder。client-id/client-secret 純 env var 注入。
+- §5 File Plan：AnalyticsPage 不改（F-3）。
