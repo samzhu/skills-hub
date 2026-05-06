@@ -47,6 +47,14 @@
 - **不要**留 dead exclude（artifact 不存在的 auto-config 類別）— 例如用 `spring-ai-google-genai-embedding`（core）卻 exclude `GoogleGenAiEmbeddingConnectionAutoConfiguration`（屬於 starter 變體，純 library 沒帶）
 - **不要**留過時的設定 placeholder（如已 deprecated 的 fallback property、不再用的 vector store 切換屬性）— 每次 infra 演進掃一次
 
+## AOT processing（詳見 `aot-deployment-pitfalls.md`）
+
+- **不要**讓 AOT build profile 跟 runtime profile 不對齊（如 build 用 `gcp,aot` 但 runtime 跑 `gcp,aot,lab`）— AOT mode conditions 在 build 階段被 freeze，runtime 不重評；漏 profile = 該 bean 永遠不存在 → startup fail。Build 命令必須含所有 runtime behavior profile：`-Pspring.profiles.active=gcp,aot,lab`
+- **不要**寫 `${same.key:default}` 自我引用 placeholder — runtime 因 env var 先 resolve 不會炸，AOT 階段沒 env var → placeholder 解析自己 → `CircularPlaceholderException`。改寫純值預設；env > yaml 優先序自動處理覆蓋
+- **不要**把真實 OAuth client-id / DataSource url 等「強制驗證 non-empty」的值留給 runtime env var，卻不在 AOT 階段提供 stub — `OAuth2ClientProperties.validate()` / `DataSourceAutoConfiguration` 在 AOT binding 就會 fail。在 `application-aot.yaml` 補 stub 值，runtime env var 自動覆蓋
+- **不要**把「runtime 也想要的設定」放 `application-aot.yaml` — `aot` profile 會 leak 到 runtime（per `__ApplicationContextInitializer.addActiveProfile("aot")`），但載入順序不一定能保證後續 profile 覆蓋；應該放對應 behavior / infra profile
+- **不要**拿本機 `./gradlew processAot` 失敗（多半是缺 GCP ADC）當 Spring 配置錯 — Cloud Build 環境有 metadata server 可正常跑，配置對錯要看 Cloud Build log
+
 ---
 
 > § 標號對應 `references/config-design-principles.md` 的章節編號。

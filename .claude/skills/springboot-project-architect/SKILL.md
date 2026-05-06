@@ -147,6 +147,7 @@ Grep: @ConditionalOnProperty
 - `references/config-design-principles.md` — 雙層 profile 設計（§1）+ 載入順序與職責分離（§1.1–1.2）+ fail-secure 姿態（§2）+ 預設值四層（§2.1–2.3）+ `@ConfigurationProperties` + placeholder skeleton（§3）+ 統一機敏值（§4）+ Starter vs Manual Config 含 §5.X/§5.Y/§5.Z 三 gate（§5）+ 命名跨層對齊（§6）+ envsubst whitelist（§7）+ 配置載入順序（§8）
 - `references/config-templates.md` — 即用模板：`{App}Properties.java`、profile YAML、DataSource skeleton、Manual Configuration `@Bean`
 - `references/cloud-gcp-secrets.md` — GCP Secret Manager 整合（Cloud Run env var mount + `sm@` 遞迴 resolve + envsubst whitelist + 認證實務）
+- `references/aot-deployment-pitfalls.md` — AOT processing 部署陷阱（profile 對齊、self-reference placeholder、OAuth client stub、aot profile leak、cascade build 避免心得 + diagnostic table）
 - `references/spring-reference-links.md` — Spring 框架官方文件、屬性與版本查找方式
 - `references/anti-patterns.md` — 反模式完整列表（Quick Reference 只列 critical）
 
