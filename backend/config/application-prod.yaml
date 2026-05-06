@@ -17,6 +17,8 @@ spring:
       # prod 預設仍配置 db-f1-micro 對應的 pool；upgrade tier 後同步調整
       maximum-pool-size: 3
       minimum-idle: 1
+      # S114c: Cloud SQL Auth Proxy 暖機最多 ~30s；60s 避免 cold-start 假死
+      initialization-fail-timeout: 60000
 
   # ----- OAuth2 Resource Server：prod IdP（real OAuth；繼承 Java default enabled=true）-----
   # TODO 部署人員填入 prod IdP issuer URL

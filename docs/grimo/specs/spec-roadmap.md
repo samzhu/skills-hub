@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（S114c spec §1-§5 完成 — ACL infra connection pool 調校）
+> 最後更新：2026-05-07（S114c ship v4.15.0 — initialization-fail-timeout + minimum-idle 補文件）
 
 ## 使用說明
 
@@ -81,7 +81,7 @@
 | S099e3 | Dependency vulnerability scanner (LLM05) | S(7) | S099 | ✅ shipped v4.3.0 — OSV.dev querybatch, requirements.txt+package.json, 13 tests |
 | S099e4 | Hardcoded creds detector enhancement (LLM06) | S(4) | S099 | ✅ shipped v4.4.0 — 6 new SecretScanner patterns, 6 tests |
 | S114b | ACL production scale — Slice + Caffeine | M(10) | S114a | ✅ v4.11.0 — Caffeine cache `skill-acl`；programmatic CacheManager；@CacheEvict on grant/revoke |
-| S114c | ACL infra — connection pool 調校（read replica defer） | S(4) | S114b | 📐 2026-05-07-S114c-acl-infra-connection-tuning.md |
+| S114c | ACL infra — connection pool 調校（read replica defer） | S(4) | S114b | ✅ v4.15.0 — initialization-fail-timeout=60000；read replica + PgBouncer defer |
 | S129 | Server compression | XS(1) | — | ✅ v4.9.0 — application.yaml server.compression gzip |
 | S131 | Error code naming convention alignment | XS(2-3) | — | ✅ v4.10.0 — GlobalExceptionHandler 13 碼 SCREAMING_SNAKE_CASE 對齊 |
 | S136 | Skill Evaluation Scenarios — task-based eval | TBD | S135 | 📋 待討論（per [`research/2026-05-05-tessl-skill-platform-study.md`](../research/2026-05-05-tessl-skill-platform-study.md) §4） |

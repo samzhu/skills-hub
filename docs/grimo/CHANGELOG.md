@@ -1,5 +1,16 @@
 # Changelog
 
+## [v4.15.0] — HikariCP Cold-start 調校（S114c 完成；2026-05-07）
+
+> Cloud Run cold-start 場景下，Cloud SQL Auth Proxy 暖機最多 ~30s；加 `initialization-fail-timeout=60000` 避免 Spring Boot DataSource 在 proxy ready 前假死 fail。`minimum-idle=1` 已預存在 profile（不再每 scale-up 全借 maximum-pool-size 條連線）。
+
+### Changed — Config
+
+- **`application-lab.yaml`**：加 `spring.datasource.hikari.initialization-fail-timeout: 60000`
+- **`application-prod.yaml`**：同上
+
+---
+
 ## [v4.14.0] — Version Diff Backend Endpoint（S098c2 完成；2026-05-07）
 
 > `GET /api/v1/skills/{id}/diff?from=&to=` 回傳欄位級結構化差異（name / description / riskLevel / allowedTools / fileSize / fileCount）；`VersionDiffPage` 升格為真正 diff view。

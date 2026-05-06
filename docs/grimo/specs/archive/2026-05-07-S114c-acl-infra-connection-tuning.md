@@ -1,6 +1,6 @@
 # S114c — ACL Infra: Connection Pool 調校 + 讀取副本設計
 
-**Status:** 📋 planned
+**Status:** ✅ Ship v4.15.0
 **Size:** S(4)（trim from M(8)；read replica + PgBouncer defer to prod-scale）
 **Depends on:** S114b ✅（Caffeine cache — ACL DB 熱點路徑已緩解）
 **Target version:** v4.15.0
@@ -105,3 +105,28 @@ Then:  Spring Context 啟動成功；no DataSource initialization exception
 - **AC-1/AC-2（config check）**：grep yaml 確認值存在
 - **AC-3（smoke）**：`./gradlew bootRun` 啟動成功（local profile）；`./gradlew compileJava` 無錯
 - **Regression**：`npm test`（frontend 不受影響）
+
+---
+
+## §6 Verification
+
+- `./gradlew compileJava` → BUILD SUCCESSFUL（UP-TO-DATE，無 Java 變更）
+- **AC-1 pre-satisfied**：spec 寫作時誤判 `minimum-idle` 未設，實際兩個 profile 已有 `minimum-idle: 1`（先前某 spec 已加入）
+- **AC-2 實作**：`initialization-fail-timeout: 60000` 加入 application-lab.yaml + application-prod.yaml
+- **AC-3**：compileJava OK；local bootRun 路徑（local+dev profile）不走 lab/prod yaml，不受影響
+- frontend 239 tests 未跑（yaml-only 變更，不影響前端）
+
+---
+
+## §7 Result
+
+**Shipped v4.15.0**
+
+| Metric | Value |
+|--------|-------|
+| Files changed | 2（application-lab.yaml + application-prod.yaml）|
+| Java/TS 變更 | 0 |
+| Build | compileJava OK |
+| Trim | minimum-idle 已預存在；only gap was initialization-fail-timeout |
+
+**設計偏差**：§2.1 說 `minimum-idle` 未設，但 profile 已有此設定（先前某次已加入但未記錄於 spec）。本 spec 補上 `initialization-fail-timeout=60000`，解決 Cloud SQL Auth Proxy 暖機期間 Spring Boot fail-fast 假死問題。

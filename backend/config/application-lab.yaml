@@ -20,6 +20,8 @@ spring:
       # db-f1-micro: max_connections=25 - 5 reserved = 20 / 5 instance ≈ 4 → 取 3 留 buffer
       maximum-pool-size: 3
       minimum-idle: 1
+      # S114c: Cloud SQL Auth Proxy 暖機最多 ~30s；60s 避免 cold-start 假死
+      initialization-fail-timeout: 60000
 
   # ----- OAuth2 Resource Server + Client：Google OIDC（per S139 §4.6）-----
   # Resource Server JWT：驗 id_token 用（OAuth2 Login flow 內部）。
