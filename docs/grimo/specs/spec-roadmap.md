@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（S098c2 spec §1-§5 完成 — Backend /diff endpoint）
+> 最後更新：2026-05-07（S098c2 ship v4.14.0 — Backend /diff endpoint + VersionDiffPage 升格）
 
 ## 使用說明
 
@@ -72,7 +72,7 @@
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |
 | S098a2 | SSE 事件串流 + per-step 動畫 | M(8) | S098a ✅ | ⏸ deferred |
 | S098b3-2 | Backend 結構化 findings payload | S(6) | S098b3 ✅ | ✅ v4.13.0 — ValidationFinding + SkillValidationException + PublishFailedPage 多 row |
-| S098c2 | Backend /diff endpoint | M(8) | S098c ✅ | 📐 2026-05-07-S098c2-backend-diff-endpoint.md |
+| S098c2 | Backend /diff endpoint | M(8) | S098c ✅ | ✅ v4.14.0 — VersionDiffResponse + SkillDiffQueryService + DiffFieldsPanel |
 | S098c3 | File content line-level diff | L(12) | S098c2 | 📋 planned |
 | S099c | Cross-marketplace risk validation | S(7) | S099 | ✅ shipped v4.6.0 — tools/cross-validate.py 41 skills dry-run PASS |
 | S099d | LLM description quality audit | M(12) | S099 | ✅ shipped v4.7.0 — tools/quality-audit.py 5-dim rubric claude-haiku |

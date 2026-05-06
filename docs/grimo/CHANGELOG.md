@@ -1,5 +1,28 @@
 # Changelog
 
+## [v4.14.0] — Version Diff Backend Endpoint（S098c2 完成；2026-05-07）
+
+> `GET /api/v1/skills/{id}/diff?from=&to=` 回傳欄位級結構化差異（name / description / riskLevel / allowedTools / fileSize / fileCount）；`VersionDiffPage` 升格為真正 diff view。
+
+### Added — Backend
+
+- **`VersionDiffResponse`**（`skill/query/`）：`VersionSnapshot` + `DiffField`（field/fromValue/toValue/changeType）inner records
+- **`SkillDiffQueryService`**（`skill/query/`）：`diff()` 載入兩 SkillVersion + `compareFields()` 只回傳有差異欄位
+- **`SkillQueryController`**：新增 `GET /skills/{id}/diff?from=&to=`，@PreAuthorize read gate
+
+### Added — Frontend
+
+- **`useVersionDiff` hook**：`useQuery` for `/skills/{id}/diff`，from === to 時停用
+- **`VersionDiffResult / VersionSnapshot / DiffField` interfaces**（`api/skills.ts`）
+- **`fetchVersionDiff`**（`api/skills.ts`）
+
+### Changed — Frontend
+
+- **`VersionDiffPage`**：加「欄位差異」panel，`DiffFieldsPanel` 渲染 changed/added/removed 三態；移除舊版「S098c2 將加入」預告文字
+- **`VersionDiffPage.test.tsx`**：新增 AC-4（mock `/diff` → DiffField rows 正確渲染）
+
+---
+
 ## [v4.13.0] — 結構化 Findings Payload（S098b3-2 完成；2026-05-07）
 
 > SKILL.md 驗證失敗時，backend 改回傳結構化 `findings` 陣列（ValidationFinding: section / severity / title / hint），前端 `PublishFailedPage` 逐項渲染多個 ErrRow；舊 `?msg=` URL fallback 保持 backward compat。

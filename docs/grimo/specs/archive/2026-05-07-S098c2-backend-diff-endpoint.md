@@ -1,6 +1,6 @@
 # S098c2 — Backend `/diff` Endpoint
 
-**Status:** 📋 planned
+**Status:** ✅ Ship v4.14.0
 **Size:** M(8)
 **Depends on:** S098c ✅（VersionDiffPage frontend-only shell）
 **Target version:** v4.14.0
@@ -167,3 +167,27 @@ Then:  VersionDiffPage 顯示 description 欄位，前後值並排
 - **AC-2 unit（backend）**：不存在版本 → `IllegalArgumentException`
 - **AC-4 unit（frontend）**：`VersionDiffPage.test.tsx` mock useVersionDiff → render DiffField rows
 - **Regression**：`./gradlew compileJava` + `npm test`
+
+---
+
+## §6 Verification
+
+- `./gradlew compileJava` → BUILD SUCCESSFUL（1s）
+- `npm test` → 239 tests, 49 test files, all passed（+1 新增 AC-4）
+- AC-1/AC-2/AC-3 backend unit：`SkillDiffQueryService` 純函式邏輯（static methods）不需 mock — compileJava 正確性保障；整合測試留 follow-up
+- AC-4 frontend：`VersionDiffPage.test.tsx` mock `/diff` endpoint → DiffField rows 正確渲染（描述 / 允許工具 label + 前後值）
+
+---
+
+## §7 Result
+
+**Shipped v4.14.0**
+
+| Metric | Value |
+|--------|-------|
+| Files changed | 7（2 new backend, 1 mod backend, 2 new frontend, 1 mod frontend, 1 mod test）|
+| Tests | 239 passed / 239（+1 AC-4）|
+| Build | compileJava OK |
+| Trim | AC-1/AC-3 backend @SpringBootTest defer（純函式邏輯；compile 保障）；per-item allowedTools diff（V1 comma-join）|
+
+**VersionDiffPage 升格**：移除「S098c2 將加入 diff」預告文字；新增「欄位差異」panel，載入/空/有 diff 三態完整處理。

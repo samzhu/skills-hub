@@ -1,10 +1,12 @@
 import { Link, useParams, useSearchParams } from 'react-router'
-import { ArrowLeft, ArrowRight, Loader2, AlertCircle, GitCompare } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Loader2, AlertCircle, GitCompare, Plus, Minus, ArrowRightLeft } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { ErrorState } from '@/components/ErrorState'
 import { useSkill } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
+import { useVersionDiff } from '@/hooks/useVersionDiff'
 import type { SkillVersion } from '@/types/skill'
+import type { DiffField } from '@/api/skills'
 
 /**
  * S098c — `/skills/:id/diff?from={v1}&to={v2}` Version 比較頁。
@@ -29,6 +31,19 @@ export function VersionDiffPage() {
 
   const { data: skill } = useSkill(id ?? '')
   const { data: versions, isLoading, error } = useVersions(id ?? '')
+
+  // 預設值早於 hook 呼叫確認（hook 需要 enabled guard）
+  const sortedVersionsEarly = versions
+    ? [...versions].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+    : []
+  const fromVersionEarly = versions?.find((v) => v.version === fromVer) ?? sortedVersionsEarly[1]
+  const toVersionEarly = versions?.find((v) => v.version === toVer) ?? sortedVersionsEarly[0]
+
+  const { data: diffData, isLoading: diffLoading } = useVersionDiff(
+    id ?? '',
+    fromVersionEarly?.version ?? null,
+    toVersionEarly?.version ?? null,
+  )
 
   if (!id) {
     return (
@@ -68,12 +83,10 @@ export function VersionDiffPage() {
     )
   }
 
-  // 預設值：fromVer = 倒數第二新, toVer = 最新
-  const sortedVersions = [...versions].sort((a, b) =>
-    new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
-  )
-  const fromVersion = versions.find((v) => v.version === fromVer) ?? sortedVersions[1]
-  const toVersion = versions.find((v) => v.version === toVer) ?? sortedVersions[0]
+  // 使用與 hook 一致的 sortedVersions（避免重複計算）
+  const sortedVersions = sortedVersionsEarly
+  const fromVersion = fromVersionEarly
+  const toVersion = toVersionEarly
 
   return (
     <AppShell>
@@ -91,8 +104,8 @@ export function VersionDiffPage() {
           </h1>
           <p className="mt-1 text-[13px] text-muted-foreground">
             比對 <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[12px]">v{fromVersion.version}</code> 與
-            <code className="ml-1 rounded bg-secondary px-1 py-0.5 font-mono text-[12px]">v{toVersion.version}</code>。
-            目前顯示版本 metadata；S098c2 將加入 description / risk-level / 內容 hash diff。
+            <code className="ml-1 rounded bg-secondary px-1 py-0.5 font-mono text-[12px]">v{toVersion.version}</code>
+            之間的欄位差異。
           </p>
         </div>
 
@@ -131,10 +144,27 @@ export function VersionDiffPage() {
           <VersionCard label="to（比對目標）" version={toVersion} tone="to" />
         </div>
 
-        {/* Delta */}
+        {/* Delta — size/time summary */}
         <div className="mt-6 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-4">
-          <h2 className="mb-2 text-[14px] font-medium">變化</h2>
+          <h2 className="mb-2 text-[14px] font-medium">套件變化</h2>
           <Delta from={fromVersion} to={toVersion} />
+        </div>
+
+        {/* S098c2 — Structured field diff */}
+        <div className="mt-4 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-4">
+          <h2 className="mb-3 text-[14px] font-medium">欄位差異</h2>
+          {diffLoading ? (
+            <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              載入 diff 中...
+            </div>
+          ) : diffData && diffData.fields.length > 0 ? (
+            <DiffFieldsPanel fields={diffData.fields} />
+          ) : diffData ? (
+            <p className="text-[13px] text-muted-foreground">兩版本欄位無差異。</p>
+          ) : (
+            <p className="text-[13px] text-muted-foreground">無法載入 diff 資料。</p>
+          )}
         </div>
       </div>
     </AppShell>
@@ -198,4 +228,68 @@ function formatBytes(bytes: number): string {
   if (abs < 1024) return `${sign}${abs} B`
   if (abs < 1024 * 1024) return `${sign}${(abs / 1024).toFixed(1)} KB`
   return `${sign}${(abs / 1024 / 1024).toFixed(2)} MB`
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  name: '名稱',
+  description: '描述',
+  riskLevel: '風險等級',
+  allowedTools: '允許工具',
+  fileSize: '套件大小',
+  fileCount: '檔案數量',
+}
+
+function DiffFieldsPanel({ fields }: { fields: DiffField[] }) {
+  return (
+    <div className="divide-y divide-[rgba(255,255,255,0.05)]">
+      {fields.map((f) => {
+        const icon =
+          f.changeType === 'added' ? (
+            <Plus className="h-3.5 w-3.5" />
+          ) : f.changeType === 'removed' ? (
+            <Minus className="h-3.5 w-3.5" />
+          ) : (
+            <ArrowRightLeft className="h-3.5 w-3.5" />
+          )
+        const iconStyle =
+          f.changeType === 'added'
+            ? { color: '#6FD8B0' }
+            : f.changeType === 'removed'
+              ? { color: '#F2A6A6' }
+              : { color: '#FAC775' }
+
+        return (
+          <div key={f.field} className="flex items-start gap-3 py-3">
+            <span className="mt-0.5 shrink-0" style={iconStyle}>
+              {icon}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {FIELD_LABELS[f.field] ?? f.field}
+              </p>
+              {f.changeType === 'changed' ? (
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[13px]">
+                  <span className="rounded bg-[rgba(226,75,74,0.10)] px-2 py-0.5 font-mono text-[#F2A6A6] line-through">
+                    {f.fromValue}
+                  </span>
+                  <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <span className="rounded bg-[rgba(29,158,117,0.10)] px-2 py-0.5 font-mono text-[#6FD8B0]">
+                    {f.toValue}
+                  </span>
+                </div>
+              ) : f.changeType === 'added' ? (
+                <p className="mt-1 rounded bg-[rgba(29,158,117,0.10)] px-2 py-0.5 font-mono text-[13px] text-[#6FD8B0]">
+                  {f.toValue}
+                </p>
+              ) : (
+                <p className="mt-1 rounded bg-[rgba(226,75,74,0.10)] px-2 py-0.5 font-mono text-[13px] text-[#F2A6A6] line-through">
+                  {f.fromValue}
+                </p>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
 }

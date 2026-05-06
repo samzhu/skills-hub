@@ -57,10 +57,13 @@ public class SkillQueryController {
 	 */
 	private final SkillQueryService queryService;
 	private final BundleInfoQueryService bundleInfoService;
+	private final SkillDiffQueryService diffQueryService;
 
-	public SkillQueryController(SkillQueryService queryService, BundleInfoQueryService bundleInfoService) {
+	public SkillQueryController(SkillQueryService queryService, BundleInfoQueryService bundleInfoService,
+			SkillDiffQueryService diffQueryService) {
 		this.queryService = queryService;
 		this.bundleInfoService = bundleInfoService;
+		this.diffQueryService = diffQueryService;
 	}
 
 	/**
@@ -188,6 +191,16 @@ public class SkillQueryController {
 	@GetMapping("/categories")
 	List<CategoryCount> categories() {
 		return queryService.getCategoryCounts();
+	}
+
+	/** S098c2 — 計算兩版本之間的欄位級差異；from/to 不存在時回 400。 */
+	@GetMapping("/skills/{id}/diff")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
+	VersionDiffResponse diff(
+			@PathVariable UUID id,
+			@RequestParam String from,
+			@RequestParam String to) {
+		return diffQueryService.diff(id.toString(), from, to);
 	}
 
 }

@@ -384,6 +384,30 @@ export function fetchVersions(skillId: string): Promise<SkillVersion[]> {
   return apiFetch(`/skills/${skillId}/versions`)
 }
 
+/** S098c2 — 結構化 version diff response（對齊 backend VersionDiffResponse）。 */
+export interface VersionDiffResult {
+  skillId: string
+  from: VersionSnapshot
+  to: VersionSnapshot
+  fields: DiffField[]
+}
+export interface VersionSnapshot {
+  version: string
+  publishedAt: string
+  fileSize: number
+  fileCount: number
+}
+export interface DiffField {
+  field: string
+  fromValue: string | null
+  toValue: string | null
+  changeType: 'added' | 'removed' | 'changed'
+}
+
+export function fetchVersionDiff(skillId: string, from: string, to: string): Promise<VersionDiffResult> {
+  return apiFetch(`/skills/${skillId}/diff?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
+}
+
 /**
  * S082：skill zip 內單一 entry metadata（對齊 S074 `FileEntryResponse` record）。
  *

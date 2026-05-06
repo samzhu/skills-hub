@@ -44,8 +44,25 @@ const renderPage = (search = '') => {
   )
 }
 
+const diffJson = {
+  skillId: 'skill-1',
+  from: { version: '1.1.0', publishedAt: '2026-04-08T00:00:00Z', fileSize: 10000, fileCount: 5 },
+  to: { version: '1.2.0', publishedAt: '2026-04-15T00:00:00Z', fileSize: 12000, fileCount: 6 },
+  fields: [
+    { field: 'description', fromValue: '舊描述', toValue: '新描述', changeType: 'changed' },
+    { field: 'allowedTools', fromValue: null, toValue: 'bash:read_file', changeType: 'added' },
+  ],
+}
+
 beforeEach(() => {
   global.fetch = vi.fn().mockImplementation((url: string) => {
+    if (url.includes('/diff')) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(diffJson),
+      } as Response)
+    }
     if (url.endsWith('/versions')) {
       return Promise.resolve({
         ok: true,
@@ -82,6 +99,21 @@ describe('VersionDiffPage — S098c', () => {
     // 應顯 v1.0.0 + v1.2.0 為比對對；v1.1.0 也在 selector chips 但不是 from/to
     expect(screen.getAllByText(/v1\.0\.0/).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/v1\.2\.0/).length).toBeGreaterThan(0)
+  })
+
+  it('AC-4: S098c2 diff fields rendered from /diff API response', async () => {
+    renderPage('?from=1.1.0&to=1.2.0')
+    await waitFor(() => {
+      expect(screen.getByText('date-formatter')).toBeInTheDocument()
+    })
+    // DiffFieldsPanel shows structured diff rows
+    await waitFor(() => {
+      expect(screen.getByText('描述')).toBeInTheDocument()   // FIELD_LABELS['description']
+      expect(screen.getByText('舊描述')).toBeInTheDocument()
+      expect(screen.getByText('新描述')).toBeInTheDocument()
+      expect(screen.getByText('允許工具')).toBeInTheDocument() // FIELD_LABELS['allowedTools']
+      expect(screen.getByText('bash:read_file')).toBeInTheDocument()
+    })
   })
 
   it('AC-3: insufficient versions (<2) shows fallback message', async () => {
