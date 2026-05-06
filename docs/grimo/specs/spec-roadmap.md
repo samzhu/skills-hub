@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-06
+> 最後更新：2026-05-06（Tick 1 loop）
 
 ## 使用說明
 
@@ -37,8 +37,8 @@
 | S120 | E2E auth integration test | M(8-10) | S114a | 📐 in-design |
 | S132 | CI — Cloud Build pipeline | XS(7) | S013 ✅ | ⏳ T02 pending |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | 📐 in-design |
-| S135b | Frontend Quality Display (hero 兩條進度條 + Quality tab + SkillCard badge) | S(9-11) | S135a | 📋 planned (S135a ✅ shipped) |
-| S139 | Login UI + Lazy Auth Gate（AppShell avatar + button-level OAuth gate + LAB Google OAuth 串接） | S(10) | S114a ✅ S134 ✅ | ⏳ Dev (T01 ✅ / T02-T04 pending) |
+| S135b | Frontend Quality Display (hero 兩條進度條 + Quality tab + SkillCard badge) | S(9-11) | S135a ✅ | 📐 in-design (spec 2026-05-06) |
+| S139 | Login UI + Lazy Auth Gate（AppShell avatar + button-level OAuth gate + LAB Google OAuth 串接） | S(10) | S114a ✅ S134 ✅ | ⏳ code-complete；AC-8 pending 部署人員手動 smoke |
 
 ---
 
