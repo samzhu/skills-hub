@@ -1,5 +1,18 @@
 # Changelog
 
+## [v4.5.0] — OWASP LLM04 資源耗盡靜態掃描（S099e2 完成；2026-05-07）
+
+> S099e2 新增 `ResourceDoSScanner`，偵測 skill scripts 中可能耗盡 agent 資源的 pattern（無窮迴圈、阻塞 I/O、fork bomb）。OWASP LLM04 / AST04；Phase.STATIC 並行執行。
+
+### Added — Backend
+
+- **`ResourceDoSScanner`**（`security.scan.engines`）：`SecurityAnalyzer` SPI 實作，`@Component("resource-dos")`
+- **3 HIGH patterns**：FORK_BOMB（fork bomb `:(){ :|:& };:`）、DEV_ZERO_READ（`cat /dev/zero|random|urandom`）、DD_ZERO_FLOOD（`dd if=/dev/zero`）
+- **3 MEDIUM patterns**：SLEEP_OVERFLOW（`sleep infinity` / 1M+ seconds）、TAIL_FOLLOW_FOREVER（`tail -f`）、INFINITE_WHILE_SHELL（`while true|:|1;`）
+- **`ResourceDoSScannerTest`**：11 tests — 每條 pattern 驗證 + clean + contract
+
+---
+
 ## [v4.4.0] — OWASP LLM06 硬編碼憑證偵測強化（S099e4 完成；2026-05-07）
 
 > S099e4 在 SecretScanner 加入 6 條新 pattern，補完 LLM06 Sensitive Information Disclosure gap：Anthropic API key、Stripe key、HuggingFace token、npm token、DB 連線字串含密碼、通用硬編碼 password 賦值。與既有 10 條規則合計 16 條，全部 HIGH severity + evidence 遮罩。
