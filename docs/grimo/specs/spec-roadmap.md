@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（S098c3 spec §1-§5 完成 — file-list diff endpoint 設計）
+> 最後更新：2026-05-07（S098c3 ✅ shipped v4.16.0 — file-list diff endpoint + FileListDiffPanel）
 
 ## 使用說明
 
@@ -61,6 +61,7 @@
 | v4.5.0 | S099e2 (ResourceDoSScanner — OWASP LLM04) | ✅ shipped 2026-05-07 |
 | v4.6.0 | S099c (cross-marketplace validation) | ✅ shipped — tools/cross-validate.py 41 skills |
 | v4.7.0 | S099d (LLM description quality audit) | ✅ shipped — tools/quality-audit.py 5-dim rubric |
+| v4.16.0 | S098c3 (file-list diff) | ✅ shipped — GET /file-list-diff + FileListDiffPanel |
 
 ---
 
@@ -73,7 +74,7 @@
 | S098a2 | SSE 事件串流 + per-step 動畫 | M(8) | S098a ✅ | ⏸ deferred |
 | S098b3-2 | Backend 結構化 findings payload | S(6) | S098b3 ✅ | ✅ v4.13.0 — ValidationFinding + SkillValidationException + PublishFailedPage 多 row |
 | S098c2 | Backend /diff endpoint | M(8) | S098c ✅ | ✅ v4.14.0 — VersionDiffResponse + SkillDiffQueryService + DiffFieldsPanel |
-| S098c3 | File content diff（file-list diff V1；行級 diff defer） | M(6) | S098c2 ✅ | 📐 2026-05-07-S098c3-file-content-diff.md |
+| S098c3 | File content diff（file-list diff V1；行級 diff defer） | M(6) | S098c2 ✅ | ✅ v4.16.0 — GET /file-list-diff + FileListDiffPanel（+/-/~ counts + path+size）|
 | S099c | Cross-marketplace risk validation | S(7) | S099 | ✅ shipped v4.6.0 — tools/cross-validate.py 41 skills dry-run PASS |
 | S099d | LLM description quality audit | M(12) | S099 | ✅ shipped v4.7.0 — tools/quality-audit.py 5-dim rubric claude-haiku |
 | S099e1 | Prompt-injection pattern detector (LLM01) | M(8) | S099 | ✅ shipped v4.2.0 — 8 HIGH + 6 MEDIUM patterns, 17 tests |

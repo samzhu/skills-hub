@@ -58,12 +58,14 @@ public class SkillQueryController {
 	private final SkillQueryService queryService;
 	private final BundleInfoQueryService bundleInfoService;
 	private final SkillDiffQueryService diffQueryService;
+	private final SkillFileDiffService fileDiffService;
 
 	public SkillQueryController(SkillQueryService queryService, BundleInfoQueryService bundleInfoService,
-			SkillDiffQueryService diffQueryService) {
+			SkillDiffQueryService diffQueryService, SkillFileDiffService fileDiffService) {
 		this.queryService = queryService;
 		this.bundleInfoService = bundleInfoService;
 		this.diffQueryService = diffQueryService;
+		this.fileDiffService = fileDiffService;
 	}
 
 	/**
@@ -201,6 +203,16 @@ public class SkillQueryController {
 			@RequestParam String from,
 			@RequestParam String to) {
 		return diffQueryService.diff(id.toString(), from, to);
+	}
+
+	/** S098c3 — 兩版本 zip 包的檔案列表差異；from/to 不存在時回 400。 */
+	@GetMapping("/skills/{id}/file-list-diff")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
+	FileListDiffResponse fileListDiff(
+			@PathVariable UUID id,
+			@RequestParam String from,
+			@RequestParam String to) {
+		return fileDiffService.listDiff(id.toString(), from, to);
 	}
 
 }

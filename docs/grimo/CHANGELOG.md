@@ -1,5 +1,28 @@
 # Changelog
 
+## [v4.16.0] — File List Diff（S098c3 完成；2026-05-07）
+
+> `GET /api/v1/skills/{id}/file-list-diff?from=&to=` 回傳兩版本 zip 包的檔案列表差異（added/removed/modified/unchanged 計數 + entries 列表）；`VersionDiffPage` 新增「檔案變化」panel，以綠 +、紅 -、橘 ~ 符號呈現每個 entry 的 path + size。使用 size 作 modified 判斷（false negative 可接受）；per-file 行級 diff defer → S098c3b。
+
+### Added — Backend
+
+- **`FileListDiffResponse`**（`skill/query/`）：`FileDiffEntry` inner record（path / changeType / fromSize / toSize）
+- **`SkillFileDiffService`**（`skill/query/`）：`listEntries(byte[]) → Map<String,Long>` ZipInputStream + `listDiff()` 四類比較邏輯
+- **`SkillQueryController`**：新增 `GET /skills/{id}/file-list-diff?from=&to=`，@PreAuthorize read gate；constructor injection `SkillFileDiffService`
+
+### Added — Frontend
+
+- **`useFileListDiff` hook**（`hooks/`）：`useQuery` for `/skills/{id}/file-list-diff`，from === to 時停用
+- **`FileListDiffResult / FileDiffEntry` interfaces**（`api/skills.ts`）
+- **`fetchFileListDiff`**（`api/skills.ts`）
+
+### Changed — Frontend
+
+- **`VersionDiffPage`**：加「檔案變化（+N / -N / ~N）」panel，`FileListDiffPanel` 顯示 added/removed/modified entries + path + size label
+- **`VersionDiffPage.test.tsx`**：新增 AC-3-S098c3（mock `/file-list-diff` → heading counts + path 正確渲染）
+
+---
+
 ## [v4.15.0] — HikariCP Cold-start 調校（S114c 完成；2026-05-07）
 
 > Cloud Run cold-start 場景下，Cloud SQL Auth Proxy 暖機最多 ~30s；加 `initialization-fail-timeout=60000` 避免 Spring Boot DataSource 在 proxy ready 前假死 fail。`minimum-idle=1` 已預存在 profile（不再每 scale-up 全借 maximum-pool-size 條連線）。

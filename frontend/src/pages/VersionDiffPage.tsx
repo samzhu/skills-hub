@@ -5,8 +5,9 @@ import { ErrorState } from '@/components/ErrorState'
 import { useSkill } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
 import { useVersionDiff } from '@/hooks/useVersionDiff'
+import { useFileListDiff } from '@/hooks/useFileListDiff'
 import type { SkillVersion } from '@/types/skill'
-import type { DiffField } from '@/api/skills'
+import type { DiffField, FileDiffEntry } from '@/api/skills'
 
 /**
  * S098c — `/skills/:id/diff?from={v1}&to={v2}` Version 比較頁。
@@ -40,6 +41,12 @@ export function VersionDiffPage() {
   const toVersionEarly = versions?.find((v) => v.version === toVer) ?? sortedVersionsEarly[0]
 
   const { data: diffData, isLoading: diffLoading } = useVersionDiff(
+    id ?? '',
+    fromVersionEarly?.version ?? null,
+    toVersionEarly?.version ?? null,
+  )
+
+  const { data: fileListDiff, isLoading: fileListLoading } = useFileListDiff(
     id ?? '',
     fromVersionEarly?.version ?? null,
     toVersionEarly?.version ?? null,
@@ -166,6 +173,31 @@ export function VersionDiffPage() {
             <p className="text-[13px] text-muted-foreground">無法載入 diff 資料。</p>
           )}
         </div>
+
+        {/* S098c3 — File list diff */}
+        <div className="mt-4 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-4">
+          {fileListDiff ? (
+            <h2 className="mb-3 text-[14px] font-medium">
+              檔案變化（+{fileListDiff.addedCount} / -{fileListDiff.removedCount} / ~{fileListDiff.modifiedCount}）
+            </h2>
+          ) : (
+            <h2 className="mb-3 text-[14px] font-medium">檔案變化</h2>
+          )}
+          {fileListLoading ? (
+            <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              載入檔案 diff 中...
+            </div>
+          ) : fileListDiff ? (
+            fileListDiff.entries.length > 0 ? (
+              <FileListDiffPanel entries={fileListDiff.entries} />
+            ) : (
+              <p className="text-[13px] text-muted-foreground">兩版本檔案無差異。</p>
+            )
+          ) : (
+            <p className="text-[13px] text-muted-foreground">無法載入檔案 diff 資料。</p>
+          )}
+        </div>
       </div>
     </AppShell>
   )
@@ -237,6 +269,37 @@ const FIELD_LABELS: Record<string, string> = {
   allowedTools: '允許工具',
   fileSize: '套件大小',
   fileCount: '檔案數量',
+}
+
+function FileListDiffPanel({ entries }: { entries: FileDiffEntry[] }) {
+  return (
+    <div className="divide-y divide-[rgba(255,255,255,0.05)]">
+      {entries.map((e) => {
+        const isAdded = e.changeType === 'added'
+        const isRemoved = e.changeType === 'removed'
+        const color = isAdded ? '#6FD8B0' : isRemoved ? '#F2A6A6' : '#FAC775'
+        const symbol = isAdded ? '+' : isRemoved ? '-' : '~'
+        const sizeDelta =
+          e.toSize !== null && e.fromSize !== null
+            ? ` (${e.toSize > e.fromSize ? '+' : ''}${formatBytes(e.toSize - e.fromSize)})`
+            : ''
+        const sizeLabel = isAdded
+          ? formatBytes(e.toSize ?? 0)
+          : isRemoved
+            ? formatBytes(e.fromSize ?? 0)
+            : `${formatBytes(e.fromSize ?? 0)} → ${formatBytes(e.toSize ?? 0)}${sizeDelta}`
+        return (
+          <div key={e.path} className="flex items-center gap-3 py-2.5">
+            <span className="shrink-0 font-mono text-[13px] font-bold" style={{ color }}>
+              {symbol}
+            </span>
+            <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground">{e.path}</span>
+            <span className="shrink-0 text-[11px] text-muted-foreground">{sizeLabel}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 function DiffFieldsPanel({ fields }: { fields: DiffField[] }) {

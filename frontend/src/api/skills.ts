@@ -408,6 +408,28 @@ export function fetchVersionDiff(skillId: string, from: string, to: string): Pro
   return apiFetch(`/skills/${skillId}/diff?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
 }
 
+/** S098c3 — 兩版本 zip 包檔案列表差異（對齊 backend FileListDiffResponse）。 */
+export interface FileListDiffResult {
+  skillId: string
+  fromVersion: string
+  toVersion: string
+  addedCount: number
+  removedCount: number
+  modifiedCount: number
+  unchangedCount: number
+  entries: FileDiffEntry[]
+}
+export interface FileDiffEntry {
+  path: string
+  changeType: 'added' | 'removed' | 'modified'
+  fromSize: number | null
+  toSize: number | null
+}
+
+export function fetchFileListDiff(skillId: string, from: string, to: string): Promise<FileListDiffResult> {
+  return apiFetch(`/skills/${skillId}/file-list-diff?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
+}
+
 /**
  * S082：skill zip 內單一 entry metadata（對齊 S074 `FileEntryResponse` record）。
  *

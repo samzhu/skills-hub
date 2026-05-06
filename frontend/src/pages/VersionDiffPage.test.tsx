@@ -54,8 +54,28 @@ const diffJson = {
   ],
 }
 
+const fileListDiffJson = {
+  skillId: 'skill-1',
+  fromVersion: '1.1.0',
+  toVersion: '1.2.0',
+  addedCount: 1,
+  removedCount: 0,
+  modifiedCount: 0,
+  unchangedCount: 1,
+  entries: [
+    { path: 'scripts/run.sh', changeType: 'added', fromSize: null, toSize: 1024 },
+  ],
+}
+
 beforeEach(() => {
   global.fetch = vi.fn().mockImplementation((url: string) => {
+    if (url.includes('/file-list-diff')) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(fileListDiffJson),
+      } as Response)
+    }
     if (url.includes('/diff')) {
       return Promise.resolve({
         ok: true,
@@ -116,7 +136,20 @@ describe('VersionDiffPage — S098c', () => {
     })
   })
 
-  it('AC-3: insufficient versions (<2) shows fallback message', async () => {
+  it('AC-3-S098c3: FileListDiffPanel renders added file from /file-list-diff response', async () => {
+    renderPage('?from=1.1.0&to=1.2.0')
+    await waitFor(() => {
+      expect(screen.getByText('date-formatter')).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      // summary heading contains the counts
+      expect(screen.getByText(/\+1 \/ -0 \/ ~0/)).toBeInTheDocument()
+      // added file path visible
+      expect(screen.getByText('scripts/run.sh')).toBeInTheDocument()
+    })
+  })
+
+  it('AC-3-legacy: insufficient versions shows fallback message', async () => {
     global.fetch = vi.fn().mockImplementation((url: string) => {
       if (url.endsWith('/versions')) {
         return Promise.resolve({
