@@ -73,10 +73,13 @@ skillshub:
   db:
     url: jdbc:postgresql://localhost:5432/${skillshub.db.name:skillshub}?ApplicationName=skillshub&currentSchema=public&reWriteBatchedInserts=true&socketTimeout=30
 
-  # GCS bucket — 部署時由 service.yaml 內 skillshub.storage.bucket env var 注入實際 bucket 名
-  # （bucket 名跟 GCP project 綁定，不在 yaml hardcode；fallback 預設值僅給 dev 啟動 sanity check）
+  # GCS bucket — 部署時由 service.yaml 內 skillshub.storage.bucket env var 覆蓋實際 bucket 名
+  # （Cloud Run env var > yaml，runtime 一定吃 env 值；yaml 寫的是 fallback default 給
+  # AOT build 階段 + dev sanity check 用）。
+  # 不寫成 ${skillshub.storage.bucket:default} self-reference — AOT 階段沒 env var 會
+  # circular placeholder fail；env override 不需靠 placeholder，Spring 屬性優先序自動處理。
   storage:
-    bucket: ${skillshub.storage.bucket:skillshub-packages-lab}
+    bucket: skillshub-packages-lab
 
   # Gemini API key 走統一注入：
   #   - Cloud Run env var skillshub.genai.api-key=${sm@skillshub-genai-api-key} 遞迴 resolve
