@@ -76,7 +76,7 @@ class CollectionControllerTest extends WebMvcSliceTestBase {
 
     @Test
     @Tag("AC-3")
-    @DisplayName("AC-3: skillIds 含 SUSPENDED → SkillNotPublishableException → 400 skill_not_publishable")
+    @DisplayName("AC-3: skillIds 含 SUSPENDED → SkillNotPublishableException → 400 SKILL_NOT_PUBLISHABLE")
     void create_invalidSkill_returns400() throws Exception {
         Mockito.when(service.create(ArgumentMatchers.any(), ArgumentMatchers.any(),
                         ArgumentMatchers.any(), ArgumentMatchers.any()))
@@ -88,7 +88,7 @@ class CollectionControllerTest extends WebMvcSliceTestBase {
                                 {"name":"X","description":null,"category":"X","skillIds":["sk-bogus"]}
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("skill_not_publishable"))
+                .andExpect(jsonPath("$.error").value("SKILL_NOT_PUBLISHABLE"))
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("sk-bogus")));
     }
 
@@ -138,26 +138,26 @@ class CollectionControllerTest extends WebMvcSliceTestBase {
 
     @Test
     @Tag("AC-8")
-    @DisplayName("AC-8: POST install on non-existent → 404 collection_not_found")
+    @DisplayName("AC-8: POST install on non-existent → 404 COLLECTION_NOT_FOUND")
     void install_notFound_returns404() throws Exception {
         Mockito.when(service.install("c-bogus"))
                 .thenThrow(new CollectionNotFoundException("c-bogus"));
 
         mockMvc.perform(post("/api/v1/collections/c-bogus/install"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("collection_not_found"));
+                .andExpect(jsonPath("$.error").value("COLLECTION_NOT_FOUND"));
     }
 
     @Test
     @Tag("AC-8")
-    @DisplayName("AC-8: GET /collections/{id} on non-existent → 404 collection_not_found")
+    @DisplayName("AC-8: GET /collections/{id} on non-existent → 404 COLLECTION_NOT_FOUND")
     void get_notFound_returns404() throws Exception {
         Mockito.when(service.get("c-bogus"))
                 .thenThrow(new CollectionNotFoundException("c-bogus"));
 
         mockMvc.perform(get("/api/v1/collections/c-bogus"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("collection_not_found"));
+                .andExpect(jsonPath("$.error").value("COLLECTION_NOT_FOUND"));
     }
 
     /**

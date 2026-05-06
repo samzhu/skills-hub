@@ -107,7 +107,7 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
         mockMvc.perform(post("/api/v1/notifications/n1/read")
                         .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("not_notification_recipient"));
+                .andExpect(jsonPath("$.error").value("NOT_NOTIFICATION_RECIPIENT"));
     }
 
     @Test
@@ -119,7 +119,7 @@ class NotificationControllerTest extends WebMvcSliceTestBase {
         mockMvc.perform(post("/api/v1/notifications/n1/read")
                         .with(jwt().jwt(j -> j.subject("alice"))))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("notification_not_found"));
+                .andExpect(jsonPath("$.error").value("NOTIFICATION_NOT_FOUND"));
     }
 
     @Test

@@ -83,7 +83,7 @@
 | S114b | ACL production scale — Slice + Caffeine | M(10) | S114a | 📋 planned |
 | S114c | ACL infra — read replica + PgBouncer | M(8) | S114b | 📋 planned |
 | S129 | Server compression | XS(1) | — | ✅ v4.9.0 — application.yaml server.compression gzip |
-| S131 | Error code naming convention alignment | XS(2-3) | — | 📐 2026-05-07-S131-error-code-naming.md |
+| S131 | Error code naming convention alignment | XS(2-3) | — | ✅ v4.10.0 — GlobalExceptionHandler 13 碼 SCREAMING_SNAKE_CASE 對齊 |
 | S136 | Skill Evaluation Scenarios — task-based eval | TBD | S135 | 📋 待討論（per [`research/2026-05-05-tessl-skill-platform-study.md`](../research/2026-05-05-tessl-skill-platform-study.md) §4） |
 
 ---

@@ -107,11 +107,11 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(InvalidStatusTransitionException.class)
 	ResponseEntity<ErrorResponse> handleInvalidStatusTransition(InvalidStatusTransitionException ex) {
 		log.atWarn()
-				.addKeyValue("errorCode", "invalid_status_transition")
+				.addKeyValue("errorCode", "INVALID_STATUS_TRANSITION")
 				.addKeyValue("message", ex.getMessage())
 				.log("Invalid flag status transition");
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-				.body(new ErrorResponse("invalid_status_transition", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("INVALID_STATUS_TRANSITION", ex.getMessage(), Instant.now()));
 	}
 
 	/**
@@ -120,34 +120,34 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(FlagNotFoundException.class)
 	ResponseEntity<ErrorResponse> handleFlagNotFound(FlagNotFoundException ex) {
 		log.atWarn()
-				.addKeyValue("errorCode", "flag_not_found")
+				.addKeyValue("errorCode", "FLAG_NOT_FOUND")
 				.log("Flag not found");
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ErrorResponse("flag_not_found", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("FLAG_NOT_FOUND", ex.getMessage(), Instant.now()));
 	}
 
 	/** S096g2 — Request id 不存在 → 404 request_not_found。 */
 	@ExceptionHandler(RequestNotFoundException.class)
 	ResponseEntity<ErrorResponse> handleRequestNotFound(RequestNotFoundException ex) {
-		log.atWarn().addKeyValue("errorCode", "request_not_found").log("Request not found");
+		log.atWarn().addKeyValue("errorCode", "REQUEST_NOT_FOUND").log("Request not found");
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ErrorResponse("request_not_found", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("REQUEST_NOT_FOUND", ex.getMessage(), Instant.now()));
 	}
 
 	/** S096g2 AC-9/AC-11 — release/fulfill requester 非 claimer → 403 not_request_claimer。 */
 	@ExceptionHandler(NotRequestClaimerException.class)
 	ResponseEntity<ErrorResponse> handleNotClaimer(NotRequestClaimerException ex) {
-		log.atWarn().addKeyValue("errorCode", "not_request_claimer").log("Request operation forbidden");
+		log.atWarn().addKeyValue("errorCode", "NOT_REQUEST_CLAIMER").log("Request operation forbidden");
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
-				.body(new ErrorResponse("not_request_claimer", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("NOT_REQUEST_CLAIMER", ex.getMessage(), Instant.now()));
 	}
 
 	/** S096f2-T02 AC-8 — Collection id 不存在 → 404 collection_not_found。 */
 	@ExceptionHandler(CollectionNotFoundException.class)
 	ResponseEntity<ErrorResponse> handleCollectionNotFound(CollectionNotFoundException ex) {
-		log.atWarn().addKeyValue("errorCode", "collection_not_found").log("Collection not found");
+		log.atWarn().addKeyValue("errorCode", "COLLECTION_NOT_FOUND").log("Collection not found");
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ErrorResponse("collection_not_found", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("COLLECTION_NOT_FOUND", ex.getMessage(), Instant.now()));
 	}
 
 	/**
@@ -157,59 +157,59 @@ public class GlobalExceptionHandler {
 	 */
 	@ExceptionHandler(SkillNotPublishableException.class)
 	ResponseEntity<ErrorResponse> handleSkillNotPublishable(SkillNotPublishableException ex) {
-		log.atWarn().addKeyValue("errorCode", "skill_not_publishable")
+		log.atWarn().addKeyValue("errorCode", "SKILL_NOT_PUBLISHABLE")
 				.addKeyValue("invalidSkillIds", ex.getInvalidSkillIds())
 				.log("Skill not publishable");
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-				.body(new ErrorResponse("skill_not_publishable", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("SKILL_NOT_PUBLISHABLE", ex.getMessage(), Instant.now()));
 	}
 
 	/** S096h2-T03 AC-6/AC-8 — Notification id 不存在 → 404 notification_not_found。 */
 	@ExceptionHandler(NotificationNotFoundException.class)
 	ResponseEntity<ErrorResponse> handleNotificationNotFound(NotificationNotFoundException ex) {
-		log.atWarn().addKeyValue("errorCode", "notification_not_found").log("Notification not found");
+		log.atWarn().addKeyValue("errorCode", "NOTIFICATION_NOT_FOUND").log("Notification not found");
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ErrorResponse("notification_not_found", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("NOTIFICATION_NOT_FOUND", ex.getMessage(), Instant.now()));
 	}
 
 	/** S096h2-T03 AC-6/AC-8 — Notification mark-read/delete actor 非 recipient → 403。 */
 	@ExceptionHandler(NotNotificationRecipientException.class)
 	ResponseEntity<ErrorResponse> handleNotNotificationRecipient(NotNotificationRecipientException ex) {
-		log.atWarn().addKeyValue("errorCode", "not_notification_recipient").log("Notification operation forbidden");
+		log.atWarn().addKeyValue("errorCode", "NOT_NOTIFICATION_RECIPIENT").log("Notification operation forbidden");
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
-				.body(new ErrorResponse("not_notification_recipient", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("NOT_NOTIFICATION_RECIPIENT", ex.getMessage(), Instant.now()));
 	}
 
 	/** S114a — actor 非 skill owner → 403 not_skill_owner。 */
 	@ExceptionHandler(NotSkillOwnerException.class)
 	ResponseEntity<ErrorResponse> handleNotSkillOwner(NotSkillOwnerException ex) {
-		log.atWarn().addKeyValue("errorCode", "not_skill_owner").log("Grant/revoke denied: not skill owner");
+		log.atWarn().addKeyValue("errorCode", "NOT_SKILL_OWNER").log("Grant/revoke denied: not skill owner");
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
-				.body(new ErrorResponse("not_skill_owner", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("NOT_SKILL_OWNER", ex.getMessage(), Instant.now()));
 	}
 
 	/** S114a — skill 已有 OWNER grant → 409 owner_already_exists。 */
 	@ExceptionHandler(OwnerAlreadyExistsException.class)
 	ResponseEntity<ErrorResponse> handleOwnerAlreadyExists(OwnerAlreadyExistsException ex) {
-		log.atWarn().addKeyValue("errorCode", "owner_already_exists").log("Grant denied: OWNER already exists");
+		log.atWarn().addKeyValue("errorCode", "OWNER_ALREADY_EXISTS").log("Grant denied: OWNER already exists");
 		return ResponseEntity.status(HttpStatus.CONFLICT)
-				.body(new ErrorResponse("owner_already_exists", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("OWNER_ALREADY_EXISTS", ex.getMessage(), Instant.now()));
 	}
 
 	/** S114a — grant row 不存在 → 404 grant_not_found。 */
 	@ExceptionHandler(GrantNotFoundException.class)
 	ResponseEntity<ErrorResponse> handleGrantNotFound(GrantNotFoundException ex) {
-		log.atWarn().addKeyValue("errorCode", "grant_not_found").log("Grant not found");
+		log.atWarn().addKeyValue("errorCode", "GRANT_NOT_FOUND").log("Grant not found");
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ErrorResponse("grant_not_found", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("GRANT_NOT_FOUND", ex.getMessage(), Instant.now()));
 	}
 
 	/** S114a — owner 試圖撤銷自己的 OWNER grant → 403 cannot_revoke_own_owner。 */
 	@ExceptionHandler(CannotRevokeOwnOwnerException.class)
 	ResponseEntity<ErrorResponse> handleCannotRevokeOwnOwner(CannotRevokeOwnOwnerException ex) {
-		log.atWarn().addKeyValue("errorCode", "cannot_revoke_own_owner").log("Revoke denied: cannot revoke own owner grant");
+		log.atWarn().addKeyValue("errorCode", "CANNOT_REVOKE_OWN_OWNER").log("Revoke denied: cannot revoke own owner grant");
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
-				.body(new ErrorResponse("cannot_revoke_own_owner", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("CANNOT_REVOKE_OWN_OWNER", ex.getMessage(), Instant.now()));
 	}
 
 	/** S135a AC-S135a-4 — 品質評分尚未計算 → 404 QUALITY_NOT_EVALUATED。 */
@@ -223,9 +223,9 @@ public class GlobalExceptionHandler {
 	/** S098a3-2 AC-3 — skill 存在但無 published version → 404 bundle_not_published（區分於 skill_not_found）。 */
 	@ExceptionHandler(BundleNotPublishedException.class)
 	ResponseEntity<ErrorResponse> handleBundleNotPublished(BundleNotPublishedException ex) {
-		log.atWarn().addKeyValue("errorCode", "bundle_not_published").log("Bundle metadata unavailable: skill has no published version");
+		log.atWarn().addKeyValue("errorCode", "BUNDLE_NOT_PUBLISHED").log("Bundle metadata unavailable: skill has no published version");
 		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(new ErrorResponse("bundle_not_published", ex.getMessage(), Instant.now()));
+				.body(new ErrorResponse("BUNDLE_NOT_PUBLISHED", ex.getMessage(), Instant.now()));
 	}
 
 	/**

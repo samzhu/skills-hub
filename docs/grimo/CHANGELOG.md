@@ -1,5 +1,16 @@
 # Changelog
 
+## [v4.10.0] — Error Code 命名慣例對齊（S131 完成；2026-05-07）
+
+> `GlobalExceptionHandler` 全 13 個 snake_case 錯誤碼統一改為 SCREAMING_SNAKE_CASE，對齊前端 `ERROR_MESSAGE_BUILDER` key pattern 與既有早期碼（`VALIDATION_ERROR`、`NOT_FOUND`…）。
+
+### Fixed — API Error Codes
+
+- **GlobalExceptionHandler**：`invalid_status_transition` → `INVALID_STATUS_TRANSITION`、`flag_not_found` → `FLAG_NOT_FOUND`、`collection_not_found` → `COLLECTION_NOT_FOUND`、`skill_not_publishable` → `SKILL_NOT_PUBLISHABLE`、`notification_not_found` → `NOTIFICATION_NOT_FOUND`、`not_notification_recipient` → `NOT_NOTIFICATION_RECIPIENT`、`not_skill_owner` → `NOT_SKILL_OWNER`、`owner_already_exists` → `OWNER_ALREADY_EXISTS`、`grant_not_found` → `GRANT_NOT_FOUND`、`cannot_revoke_own_owner` → `CANNOT_REVOKE_OWN_OWNER`、`bundle_not_published` → `BUNDLE_NOT_PUBLISHED`、`request_not_found` → `REQUEST_NOT_FOUND`、`not_request_claimer` → `NOT_REQUEST_CLAIMER`
+- `invalid_token`（RFC 6750 Bearer error）刻意保留 snake_case
+
+---
+
 ## [v4.9.0] — Server Compression（S129 完成；2026-05-07）
 
 > 為所有 REST API 回應啟用 HTTP Gzip 壓縮。純 YAML 配置，零 Java code 異動。
