@@ -1,0 +1,1186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Skills Hub · docker-compose-helper</title>
+<meta name="viewport" content="width=1280" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+/* ── Design Tokens ─────────────────────────────────────────────────────── */
+:root {
+  --bg:#08080A; --bg-2:#0F0F12; --bg-3:#171719; --bg-4:#1E1E22;
+  --ink:#EEECEA; --ink-2:#A8A49C; --ink-3:#5E5B55;
+  --line:rgba(255,255,255,0.06); --line-2:rgba(255,255,255,0.10);
+  --accent:#7F77DD; --accent-soft:rgba(127,119,221,0.12); --accent-text:#C9C5F2;
+  --green:#1D9E75; --green-soft:rgba(29,158,117,0.14); --green-text:#6FD8B0;
+  --amber:#EF9F27; --amber-soft:rgba(239,159,39,0.14); --amber-text:#FAC775;
+  --red:#E24B4A; --red-soft:rgba(226,75,74,0.14); --red-text:#F2A6A6;
+  --blue:#378ADD; --blue-soft:rgba(55,138,221,0.14); --blue-text:#B0D5F2;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sans:'Inter',system-ui,sans-serif;
+  --r-sm:4px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-pill:999px;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
+html,body { background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:14px; line-height:1.5; height:100%; overflow:hidden }
+.shell { display:flex; flex-direction:column; height:100vh }
+
+/* ── Nav ───────────────────────────────────────────────────────────────── */
+.nav { display:flex; align-items:center; justify-content:space-between; padding:0 22px; height:52px; border-bottom:0.5px solid var(--line); flex-shrink:0; background:rgba(8,8,10,0.95) }
+.brand { display:flex; align-items:center; gap:10px }
+.logo { width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:#08080A }
+.brand-name { font-size:15px; font-weight:500 }
+.crumbs { font-size:13px; color:var(--ink-3); display:flex; align-items:center; gap:6px }
+.crumbs .sep { opacity:.4 }
+.crumbs .cur { color:var(--ink-2) }
+.nav-right { display:flex; align-items:center; gap:10px }
+.avatar { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,rgba(127,119,221,.6),rgba(29,158,117,.5)); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:500 }
+
+/* ── BorderBeam (Download CTA only) ────────────────────────────────────── */
+.beam-wrap { position:relative; padding:1.5px; border-radius:var(--r-md); background:#1A1A1E; overflow:hidden; isolation:isolate; display:inline-block }
+.beam-wrap::before,.beam-wrap::after { content:''; position:absolute; inset:-120%; background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,.95) 230deg,rgba(217,56,138,.95) 268deg,rgba(239,159,39,.95) 300deg,rgba(29,158,117,.95) 332deg,rgba(55,138,221,.95) 360deg,transparent 360deg); animation:spin 1.96s linear infinite; pointer-events:none; z-index:0 }
+.beam-wrap::after { filter:blur(10px); opacity:.5 }
+@keyframes spin { to { transform:rotate(360deg) } }
+.beam-btn { position:relative; z-index:1; display:inline-flex; align-items:center; gap:7px; background:#EEECEA; color:#08080A; font-size:13px; font-weight:500; padding:8px 16px; border-radius:calc(var(--r-md) - 1.5px); border:none; cursor:pointer; white-space:nowrap }
+
+/* ── Scroll container ──────────────────────────────────────────────────── */
+.scroll { overflow-y:auto; flex:1 }
+.scroll::-webkit-scrollbar { width:4px }
+.scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,.08); border-radius:2px }
+
+/* ── Page header ───────────────────────────────────────────────────────── */
+.page-head { padding:22px 26px 0; border-bottom:0.5px solid var(--line); background:radial-gradient(ellipse 600px 220px at 60% 0%,rgba(127,119,221,.09),transparent 70%) }
+.head-row { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:16px }
+.head-left { display:flex; gap:14px; min-width:0; flex:1 }
+.skill-icon { width:52px; height:52px; border-radius:12px; background:rgba(127,119,221,.18); color:#C9C5F2; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:500; font-family:var(--mono); flex-shrink:0 }
+.name-row { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; margin-bottom:5px; overflow:hidden }
+.skill-name { font-size:22px; font-weight:500; letter-spacing:-.005em }
+.ver-badge { font-family:var(--mono); font-size:11px; padding:2px 8px; border-radius:var(--r-sm); background:var(--bg-3); border:.5px solid var(--line-2); color:var(--ink-2) }
+.risk-pill { font-size:10px; font-weight:500; padding:2px 9px; border-radius:var(--r-pill); white-space:nowrap }
+.risk-pill.low { background:var(--green-soft); color:var(--green-text) }
+.risk-pill.med { background:var(--amber-soft); color:var(--amber-text) }
+.risk-pill.high { background:var(--red-soft); color:var(--red-text) }
+.verified-pill { font-size:10px; font-weight:500; padding:2px 9px; border-radius:var(--r-pill); background:var(--blue-soft); color:var(--blue-text); display:inline-flex; align-items:center; gap:4px }
+.skill-desc { font-size:14px; color:var(--ink-2); line-height:1.55; margin-bottom:8px }
+.meta-row { display:flex; align-items:center; gap:12px; font-size:12px; color:var(--ink-3) }
+.meta-row .dot { width:2px; height:2px; border-radius:50%; background:var(--ink-3) }
+.head-actions { display:flex; gap:8px; flex-shrink:0; align-items:flex-start }
+.sec-btn { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:500; padding:7px 13px; border-radius:var(--r-md); border:.5px solid var(--line-2); background:rgba(255,255,255,.03); color:var(--ink-2); cursor:pointer }
+.sec-btn:hover { background:rgba(255,255,255,.07); color:var(--ink) }
+
+/* ── Hero metrics row ──────────────────────────────────────────────────── */
+.hero-metrics { display:grid; grid-template-columns:160px 1fr 1fr; gap:10px; padding:14px 0 0 }
+
+/* ── Skill Score badge card ─────────────────────────────────────────────── */
+.score-badge-card {
+  background:var(--bg-2);
+  border:.5px solid rgba(127,119,221,0.25);
+  border-radius:var(--r-xl);
+  padding:14px 12px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  position:relative;
+  overflow:hidden;
+}
+.score-badge-card::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  background:radial-gradient(ellipse 120px 80px at 50% 0%, rgba(127,119,221,0.10), transparent 70%);
+  pointer-events:none;
+}
+.score-ring-wrap { position:relative; width:120px; height:120px; flex-shrink:0; isolation:isolate }
+.score-ring-wrap svg { display:block; width:120px; height:120px; position:relative; z-index:1 }
+.score-ring-label {
+  position:absolute; top:0; left:0; right:0; bottom:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:1px; pointer-events:none; z-index:2;
+}
+.score-ring-num { font-size:26px; font-weight:600; letter-spacing:-.04em; color:var(--ink); line-height:1 }
+.score-ring-denom { font-size:9px; color:var(--ink-3); font-weight:400; margin-top:2px }
+.score-badge-title { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); text-align:center }
+.score-badge-sub { font-size:10px; color:var(--ink-3); text-align:center; line-height:1.4 }
+
+/* ── Quality/Security metric cards ─────────────────────────────────────── */
+.hm-card {
+  background:var(--bg-2);
+  border:.5px solid var(--line);
+  border-radius:var(--r-xl);
+  padding:14px 16px;
+  cursor:pointer;
+  transition:border-color .15s, background .15s;
+  position:relative;
+}
+.hm-card:hover { border-color:var(--line-2); background:var(--bg-3) }
+.hm-card.active { border-color:rgba(127,119,221,.45) }
+
+.hm-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:6px }
+.hm-label { font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-3) }
+.hm-value { font-size:22px; font-weight:500; letter-spacing:-.02em; color:var(--ink) }
+.hm-value.pass { color:var(--green-text) }
+.hm-value.warn { color:var(--amber-text) }
+.hm-sub { font-size:11px; color:var(--ink-3); margin-bottom:10px; line-height:1.4 }
+
+/* Quality progress bar */
+.hm-bar-track { height:3px; background:rgba(255,255,255,.06); border-radius:2px; overflow:hidden; margin-bottom:8px }
+.hm-bar-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,#7F77DD,#D9388A 60%,#EF9F27); transition:width .4s ease }
+
+/* Security segmented bar */
+.hm-seg-row { display:flex; gap:3px; margin-bottom:8px }
+.hm-seg { flex:1; height:3px; border-radius:2px; transition:background .3s }
+.hm-seg.pass { background:var(--green) }
+.hm-seg.warn { background:var(--amber) }
+.hm-seg.fail { background:var(--red) }
+.hm-seg.inert { background:rgba(255,255,255,.06) }
+
+.hm-breakdown { font-size:11px; color:var(--ink-3); display:flex; gap:10px; flex-wrap:wrap }
+.hm-breakdown span { white-space:nowrap }
+.hm-breakdown .dot-sep { opacity:.3 }
+
+/* ── Stat strip ────────────────────────────────────────────────────────── */
+.stat-strip { display:grid; grid-template-columns:repeat(4,1fr) }
+.stat-cell { padding:12px 18px; border-right:.5px solid var(--line); border-top:.5px solid var(--line) }
+.stat-cell:last-child { border-right:none }
+.stat-label { font-size:10px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.05em; margin-bottom:3px }
+.stat-val { font-size:16px; font-weight:500; letter-spacing:-.01em; margin-bottom:2px }
+.stat-sub { font-size:11px; color:var(--ink-3) }
+.stat-sub .up { color:var(--green-text) }
+.stat-sub .dn { color:var(--red-text) }
+
+/* ── Tabs ──────────────────────────────────────────────────────────────── */
+.tabs { display:flex; gap:0; border-bottom:.5px solid var(--line); padding:0 26px }
+.tab { font-size:13px; color:var(--ink-2); padding:11px 15px; border-bottom:1.5px solid transparent; margin-bottom:-.5px; cursor:pointer; display:flex; align-items:center; gap:6px; transition:color .1s }
+.tab:hover { color:var(--ink) }
+.tab.on { color:var(--ink); font-weight:500; border-bottom-color:var(--ink) }
+.tab .badge { font-size:10px; padding:1px 6px; border-radius:var(--r-pill); background:rgba(255,255,255,.07); color:var(--ink-3) }
+
+/* ── Body layout ───────────────────────────────────────────────────────── */
+.body { display:grid; grid-template-columns:1fr 232px; gap:0; padding:22px 26px; max-width:1200px }
+
+/* ── Main content column ───────────────────────────────────────────────── */
+.main-col { min-width:0; padding-right:24px }
+
+/* ── Tab panels ────────────────────────────────────────────────────────── */
+.tab-panel { display:none }
+.tab-panel.on { display:block }
+
+/* ── SKILL.md tab ──────────────────────────────────────────────────────── */
+.prose { max-width:720px }
+.fm-block { background:var(--bg-2); border:.5px solid var(--line); border-radius:var(--r-lg); padding:12px 14px; margin-bottom:24px; font-family:var(--mono); font-size:11.5px; line-height:1.75; color:var(--ink-2); white-space:pre; overflow-x:auto }
+.fm-block .k { color:var(--ink-3) }
+.fm-block .v { color:var(--ink-2) }
+.fm-block .s { color:var(--accent-text) }
+.fm-block .hr { color:var(--ink-3); opacity:.5 }
+
+.prose h1 { font-size:48px; font-weight:500; letter-spacing:-.03em; line-height:1.1; margin-bottom:20px; color:var(--ink) }
+.prose h2 { font-size:22px; font-weight:500; letter-spacing:-.005em; margin-top:32px; margin-bottom:12px; color:var(--ink) }
+.prose h3 { font-size:18px; font-weight:500; letter-spacing:-.005em; margin-top:22px; margin-bottom:8px; color:var(--ink) }
+.prose p { font-size:15px; color:var(--ink-2); line-height:1.65; margin-bottom:14px }
+.prose ul { font-size:15px; color:var(--ink-2); line-height:1.7; padding-left:20px; margin-bottom:14px }
+.prose ul li { margin-bottom:4px }
+.prose ul li::marker { color:var(--ink-3) }
+.prose code { font-family:var(--mono); font-size:12px; background:var(--bg-3); padding:1px 5px; border-radius:3px; color:var(--ink) }
+.prose pre { background:var(--bg-2); border:.5px solid var(--line); border-radius:var(--r-lg); padding:14px 16px; font-family:var(--mono); font-size:12px; line-height:1.7; color:var(--ink); white-space:pre; overflow-x:auto; margin-bottom:16px }
+.prose pre .cmd { color:var(--accent) }
+.prose pre .ok { color:var(--green-text) }
+.prose pre .path { color:var(--amber-text) }
+.prose .divider { height:.5px; background:var(--line); margin:24px 0 }
+
+/* ── Quality tab ───────────────────────────────────────────────────────── */
+.q-section { margin-bottom:40px }
+.q-section-head {
+  display:flex; align-items:baseline; justify-content:space-between;
+  padding-bottom:12px; border-bottom:.5px solid var(--line);
+  margin-bottom:16px;
+}
+.q-section-title { font-size:22px; font-weight:500; letter-spacing:-.005em }
+.q-score-badge {
+  display:flex; align-items:center; gap:8px;
+  font-size:13px; color:var(--ink-2);
+}
+.q-score-num { font-size:22px; font-weight:500; color:var(--accent-text) }
+.q-score-pass { font-size:13px; color:var(--accent-text); font-weight:500 }
+.q-score-sub { font-size:11px; color:var(--ink-3) }
+
+.q-prog-track { height:2px; background:rgba(255,255,255,.06); border-radius:1px; margin-bottom:16px; overflow:hidden }
+.q-prog-fill { height:100%; border-radius:1px; background:linear-gradient(90deg,#7F77DD,#D9388A 60%,#EF9F27) }
+
+/* Dim table */
+.q-table { width:100%; border-collapse:collapse }
+.q-table thead th {
+  font-size:10px; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--ink-3); font-weight:500;
+  text-align:left; padding:6px 10px 8px;
+  border-bottom:.5px solid var(--line);
+}
+.q-table thead th:last-child { text-align:right }
+.q-table tbody tr { border-bottom:.5px solid var(--line); cursor:default }
+.q-table tbody tr:last-child { border-bottom:none }
+.q-table tbody tr:hover { background:rgba(255,255,255,.02) }
+.q-table td { padding:10px 10px; vertical-align:top; font-size:13px }
+.q-dim-name { color:var(--ink); font-weight:500; white-space:nowrap }
+.q-dim-reasoning { color:var(--ink-2); line-height:1.5 }
+.q-reasoning-text {
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  transition:all .2s;
+}
+.q-reasoning-text.expanded { -webkit-line-clamp:unset; display:block }
+.q-expand-btn {
+  font-size:11px; color:var(--accent); cursor:pointer; display:inline-block;
+  margin-top:3px; background:none; border:none; padding:0; font-family:var(--sans);
+}
+.q-expand-btn:hover { color:var(--accent-text) }
+.q-score-cell { text-align:right; white-space:nowrap }
+.q-score-inline { font-size:13px; font-weight:500; color:var(--ink); display:inline-flex; align-items:center; gap:6px }
+.q-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0 }
+.q-dot.full { background:var(--accent) }
+.q-dot.mid { background:var(--amber) }
+.q-dot.low { background:var(--red) }
+
+/* ── Security tab ──────────────────────────────────────────────────────── */
+.sec-hero {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:40px 24px 32px;
+  border:.5px solid var(--line); border-radius:var(--r-xl);
+  margin-bottom:24px;
+  text-align:center;
+  transition:border-color .2s;
+}
+.sec-hero.pass { border-color:rgba(29,158,117,.25) }
+.sec-hero.warn { border-color:rgba(239,159,39,.25) }
+.sec-hero.fail { border-color:rgba(226,75,74,.25) }
+
+.shield-icon { margin-bottom:16px }
+.shield-icon svg { display:block }
+
+.sec-hero-title { font-size:22px; font-weight:500; margin-bottom:6px }
+.sec-hero-title.pass { color:var(--green-text) }
+.sec-hero-title.warn { color:var(--amber-text) }
+.sec-hero-title.fail { color:var(--red-text) }
+.sec-hero-sub { font-size:12px; color:var(--ink-3) }
+
+/* Security 4-quad grid */
+.sec-quad { display:grid; grid-template-columns:1fr 1fr; gap:10px }
+.sec-quad-card {
+  background:var(--bg-2); border:.5px solid var(--line);
+  border-radius:var(--r-lg); padding:14px;
+  transition:border-color .15s;
+}
+.sec-quad-card.pass { border-color:rgba(29,158,117,.2) }
+.sec-quad-card.warn { border-color:rgba(239,159,39,.3); background:rgba(239,159,39,.03) }
+.sec-quad-card.fail { border-color:rgba(226,75,74,.3); background:rgba(226,75,74,.03) }
+.sec-quad-head { display:flex; align-items:center; gap:8px; margin-bottom:8px }
+.sec-quad-seg { width:32px; height:4px; border-radius:2px }
+.sec-quad-seg.pass { background:var(--green) }
+.sec-quad-seg.warn { background:var(--amber) }
+.sec-quad-seg.fail { background:var(--red) }
+.sec-quad-name { font-size:13px; font-weight:500; color:var(--ink) }
+.sec-quad-badge { margin-left:auto; font-size:10px; font-weight:500; padding:2px 8px; border-radius:var(--r-pill) }
+.sec-quad-badge.pass { background:var(--green-soft); color:var(--green-text) }
+.sec-quad-badge.warn { background:var(--amber-soft); color:var(--amber-text) }
+.sec-quad-badge.fail { background:var(--red-soft); color:var(--red-text) }
+.sec-quad-desc { font-size:12px; color:var(--ink-3); line-height:1.5 }
+.sec-quad-detail { font-size:11px; color:var(--amber-text); margin-top:6px; font-family:var(--mono); line-height:1.45 }
+
+/* State toggle */
+.state-toggle-wrap { display:flex; align-items:center; gap:8px; margin-bottom:16px; font-size:12px; color:var(--ink-3) }
+.state-toggle { display:flex; gap:4px }
+.state-btn { font-size:11px; font-weight:500; padding:4px 10px; border-radius:var(--r-pill); border:.5px solid var(--line-2); background:transparent; color:var(--ink-3); cursor:pointer; transition:all .12s }
+.state-btn.on { background:var(--bg-3); color:var(--ink); border-color:var(--line-2) }
+.state-btn:hover:not(.on) { color:var(--ink-2) }
+
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
+.sidebar { display:flex; flex-direction:column; gap:14px; border-left:.5px solid var(--line); padding-left:22px }
+.sb-card { background:var(--bg-2); border:.5px solid var(--line); border-radius:var(--r-lg); padding:14px; overflow:hidden }
+.sb-label { font-size:10px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px }
+.sb-meta-row { display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:5px 0; border-bottom:.5px solid var(--line) }
+.sb-meta-row:last-child { border-bottom:none }
+.sb-meta-row .k { color:var(--ink-3) }
+.sb-meta-row .v { color:var(--ink); font-weight:500 }
+.sb-meta-row .v.green { color:var(--green-text) }
+.sb-meta-row .v.amber { color:var(--amber-text) }
+.sb-meta-row .v.mono { font-family:var(--mono); font-size:11px }
+.chip-wrap { display:flex; flex-wrap:wrap; gap:5px }
+.chip { font-size:11px; padding:3px 8px; border-radius:var(--r-sm); background:var(--bg-3); border:.5px solid var(--line-2); color:var(--ink-2) }
+.sparkline-nums { display:flex; justify-content:space-between; font-size:11px; color:var(--ink-3); margin-top:6px }
+.ver-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:.5px solid var(--line) }
+.ver-row:last-child { border-bottom:none }
+.ver-num { font-family:var(--mono); font-size:12px; font-weight:500; color:var(--ink) }
+.ver-date { font-size:11px; color:var(--ink-3); margin-top:1px }
+.latest-badge { font-size:9px; font-weight:500; padding:1px 6px; border-radius:var(--r-pill); background:var(--green-soft); color:var(--green-text); margin-left:6px }
+.dl-icon { color:var(--ink-3); cursor:pointer }
+.dl-icon:hover { color:var(--ink) }
+
+/* Install card */
+.install-card-inner { }
+.install-header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px }
+.install-dropdown {
+  display:flex; align-items:center; gap:5px;
+  font-size:11px; font-weight:500; color:var(--ink-2);
+  background:var(--bg-3); border:.5px solid var(--line-2);
+  border-radius:var(--r-sm); padding:3px 8px; cursor:pointer;
+}
+.install-cmd-row {
+  display:flex; align-items:center;
+  background:var(--bg-3); border:.5px solid var(--line-2);
+  border-radius:var(--r-md); overflow:hidden;
+  margin-bottom:10px;
+}
+.install-cmd-text { font-family:var(--mono); font-size:11px; color:var(--ink-2); padding:8px 10px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.copy-btn {
+  flex-shrink:0; width:30px; height:100%; display:flex; align-items:center; justify-content:center;
+  border:none; background:rgba(255,255,255,.04); border-left:.5px solid var(--line-2);
+  cursor:pointer; color:var(--ink-3); transition:all .15s; padding:8px 8px;
+}
+.copy-btn:hover { background:rgba(255,255,255,.08); color:var(--ink) }
+.copy-btn.copied { color:var(--green-text) }
+.install-link { font-size:11px; color:var(--ink-3); display:flex; align-items:center; gap:4px }
+.install-link:hover { color:var(--ink-2) }
+.install-link svg { flex-shrink:0 }
+
+/* Contextual sidebar cards (show/hide by tab) */
+.sb-ctx { display:none }
+.sb-ctx.on { display:flex; flex-direction:column; gap:14px }
+
+/* Table of contents card */
+.toc-item {
+  font-size:12px; color:var(--ink-3); padding:5px 0;
+  border-bottom:.5px solid var(--line);
+  cursor:pointer; display:flex; align-items:center; gap:6px;
+  transition:color .1s;
+}
+.toc-item:last-child { border-bottom:none }
+.toc-item:hover { color:var(--ink-2) }
+.toc-item .toc-num { font-family:var(--mono); font-size:10px; color:var(--ink-3); flex-shrink:0 }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Nav -->
+  <nav class="nav">
+    <div class="brand">
+      <div class="logo">S</div>
+      <span class="brand-name">Skills Hub</span>
+    </div>
+    <div class="crumbs">
+      <span>Browse</span><span class="sep">/</span>
+      <span>DevOps</span><span class="sep">/</span>
+      <span class="cur">docker-compose-helper</span>
+    </div>
+    <div class="nav-right">
+      <div class="avatar">MK</div>
+    </div>
+  </nav>
+
+  <div class="scroll">
+    <!-- Page header (always visible) -->
+    <div class="page-head">
+      <div class="head-row">
+        <div class="head-left">
+          <div class="skill-icon">DC</div>
+          <div style="min-width:0">
+            <div class="name-row">
+              <span class="skill-name">docker-compose-helper</span>
+              <span class="ver-badge">v2.1.0</span>
+              <span class="risk-pill low">Low risk</span>
+              <span class="verified-pill">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 2L17.5 3l1 3.2 3 1.1-.9 3.2L23 13l-2.4 2 1 3.2-3 1.1-1 3.1L14.4 22 12 24l-2.4-2-3.1 1.4-1-3.1-3-1.1 1-3.2L1 13l2.4-2.5-1-3.2 3-1.1 1-3.2L9.6 4z"/></svg>
+                Verified
+              </span>
+            </div>
+            <p class="skill-desc">Generate, validate, and troubleshoot docker-compose files with multi-service awareness, healthcheck suggestions, and rootless defaults.</p>
+            <div class="meta-row">
+              <span>by <strong style="color:var(--ink-2);font-weight:500">platform-team</strong></span>
+              <span class="dot"></span>
+              <span>MIT license</span>
+              <span class="dot"></span>
+              <span>Updated 3 days ago</span>
+              <span class="dot"></span>
+              <span>DevOps</span>
+            </div>
+          </div>
+        </div>
+        <div class="head-actions">
+          <button class="sec-btn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7z"/></svg>
+            Star
+          </button>
+          <div class="beam-wrap">
+            <button class="beam-btn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download v2.1.0
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero metrics row -->
+      <div class="hero-metrics">
+
+        <!-- ── Skill Score badge ── -->
+        <div class="score-badge-card">
+          <div class="score-ring-wrap">
+            <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="score-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#7F77DD"/>
+                  <stop offset="55%" stop-color="#D9388A"/>
+                  <stop offset="100%" stop-color="#EF9F27"/>
+                </linearGradient>
+              </defs>
+              <!-- Track arc 270° — r=50, circ=314.2 -->
+              <circle cx="60" cy="60" r="50"
+                stroke="rgba(127,119,221,0.12)" stroke-width="7"
+                stroke-dasharray="314.2" stroke-dashoffset="0"
+                fill="none" transform="rotate(135 60 60)"/>
+              <!-- Fill arc: 89/100 × 314.2 = 279.6, gap=34.6 -->
+              <circle cx="60" cy="60" r="50"
+                stroke="url(#score-grad)" stroke-width="7" stroke-linecap="round"
+                stroke-dasharray="314.2" stroke-dashoffset="34.6"
+                fill="none" transform="rotate(135 60 60)"/>
+              <!-- Inner glow -->
+              <circle cx="60" cy="60" r="42" fill="rgba(127,119,221,0.06)"/>
+              <!-- SKILL SCORE label (top) -->
+              <text x="60" y="42" text-anchor="middle"
+                font-family="Inter,system-ui,sans-serif" font-size="8" font-weight="600"
+                letter-spacing="1.5" fill="rgba(127,119,221,0.9)"
+                style="text-transform:uppercase">SKILL SCORE</text>
+              <!-- Score number -->
+              <text x="60" y="70" text-anchor="middle"
+                font-family="Inter,system-ui,sans-serif" font-size="30" font-weight="600"
+                letter-spacing="-1" fill="#EEECEA">89</text>
+              <!-- /100 -->
+              <text x="60" y="84" text-anchor="middle"
+                font-family="Inter,system-ui,sans-serif" font-size="10" font-weight="400"
+                fill="rgba(238,236,234,0.35)">/100</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Quality card -->
+        <div class="hm-card" id="hm-quality" onclick="switchTab('quality')" title="View Quality details">
+          <div class="hm-top">
+            <span class="hm-label">Quality</span>
+            <span class="hm-value">92%</span>
+          </div>
+          <div class="hm-sub">Does it follow best practices?</div>
+          <div class="hm-bar-track"><div class="hm-bar-fill" style="width:92%"></div></div>
+          <div class="hm-breakdown">
+            <span>Validation <strong style="color:var(--ink-2)">100</strong></span>
+            <span class="dot-sep">·</span>
+            <span>Implementation <strong style="color:var(--ink-2)">85</strong></span>
+            <span class="dot-sep">·</span>
+            <span>Discovery <strong style="color:var(--ink-2)">92</strong></span>
+          </div>
+        </div>
+
+        <!-- Security card -->
+        <!-- Security card -->
+        <div class="hm-card" id="hm-security" onclick="switchTab('security')" title="View Security details">
+          <div class="hm-top">
+            <span class="hm-label">Security</span>
+            <span class="hm-value" id="sec-hm-val" style="color:var(--green-text)">Passed</span>
+          </div>
+          <div class="hm-sub" id="sec-hm-sub">No known issues</div>
+          <div class="hm-seg-row">
+            <div class="hm-seg" style="background:#1D9E75"></div>
+            <div class="hm-seg" style="background:#2DB88B"></div>
+            <div class="hm-seg" style="background:#4AC9A0"></div>
+            <div class="hm-seg" style="background:#6FD8B0"></div>
+          </div>
+          <div class="hm-breakdown">
+            <span>Shell</span>
+            <span class="dot-sep">·</span>
+            <span>Paths</span>
+            <span class="dot-sep">·</span>
+            <span>Secrets</span>
+            <span class="dot-sep">·</span>
+            <span>Deps</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stat strip -->
+      <div class="stat-strip">
+        <div class="stat-cell">
+          <div class="stat-label">Downloads</div>
+          <div class="stat-val">1,284</div>
+          <div class="stat-sub"><span class="up">↑ 18%</span> vs last week</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-label">Rating</div>
+          <div class="stat-val">4.8 <span style="font-size:12px;color:var(--ink-3);font-weight:400">/ 5</span></div>
+          <div class="stat-sub">42 reviews</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-label">Versions</div>
+          <div class="stat-val">7</div>
+          <div class="stat-sub">Latest 3 days ago</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-label">Open flags</div>
+          <div class="stat-val">0</div>
+          <div class="stat-sub">No active reports</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab on" data-tab="skillmd">SKILL.md</div>
+      <div class="tab" data-tab="quality">Quality</div>
+      <div class="tab" data-tab="versions">Versions <span class="badge">7</span></div>
+      <div class="tab" data-tab="reviews">Reviews <span class="badge">42</span></div>
+      <div class="tab" data-tab="security">Security</div>
+      <div class="tab" data-tab="flags">Flags</div>
+    </div>
+
+    <!-- Body grid -->
+    <div class="body">
+      <div class="main-col">
+
+        <!-- ── SKILL.md tab ── -->
+        <div class="tab-panel on" id="panel-skillmd">
+          <div class="prose">
+            <pre class="fm-block"><span class="hr">---</span>
+<span class="k">name:</span>          <span class="v">docker-compose-helper</span>
+<span class="k">description:</span>   <span class="s">Generate, validate, and troubleshoot docker-compose files.</span>
+<span class="k">version:</span>       <span class="v">2.1.0</span>
+<span class="k">author:</span>        <span class="v">platform-team</span>
+<span class="k">license:</span>       <span class="v">MIT</span>
+<span class="k">compatibility:</span> <span class="v">[claude-code, cursor, gemini-cli]</span>
+<span class="hr">---</span></pre>
+
+            <h1>docker-compose-helper</h1>
+
+            <h2>When to use this skill</h2>
+            <p>Invoke when working with <code>docker-compose.yml</code> files — authoring a new stack, adding services, debugging why containers fail to start, or hardening an existing compose file for production.</p>
+            <ul>
+              <li>Scaffolding new multi-service stacks with sensible defaults</li>
+              <li>Adding healthchecks, <code>depends_on</code> conditions, and restart policies</li>
+              <li>Converting ad-hoc <code>docker run</code> commands into compose services</li>
+              <li>Reviewing compose files for rootless, resource-limit, and secret-handling issues</li>
+            </ul>
+
+            <h2>What it does</h2>
+            <p>This skill instructs the agent to think about Docker Compose topology holistically — not just generating syntactically valid YAML, but reasoning about service dependencies, network isolation, volume mounts, and startup ordering. It brings awareness of common production pitfalls like missing healthchecks, world-writable mounts, and leaked environment secrets.</p>
+
+            <h2>Quick install</h2>
+            <pre><span class="cmd">$</span> skills-hub install platform-team/docker-compose-helper
+<span class="ok">✔</span> Verified signature (platform-team)
+<span class="ok">✔</span> Risk level: LOW — no scripts/ directory
+→ Installed to <span class="path">~/.claude/skills/docker-compose-helper/</span></pre>
+
+            <div class="divider"></div>
+
+            <h2>Examples</h2>
+            <h3>Generate a new stack</h3>
+            <p>Ask the agent: <em style="color:var(--ink)">"Create a docker-compose for a Next.js app with Postgres and Redis, with healthchecks and a non-root user."</em></p>
+
+            <h3>Debug startup failures</h3>
+            <p>Paste your compose file and describe the error. The skill guides the agent to inspect <code>depends_on</code> conditions, <code>healthcheck</code> probes, and port conflicts systematically.</p>
+
+            <h3>Harden for production</h3>
+            <p>Ask for a security review of any compose file. The skill will flag world-writable volumes, missing <code>read_only</code> flags, containers running as root, and exposed ports that don't need to be public.</p>
+          </div>
+        </div>
+
+        <!-- ── Quality tab ── -->
+        <div class="tab-panel" id="panel-quality">
+
+          <!-- Section: Validation -->
+          <div class="q-section" id="q-validation">
+            <div class="q-section-head">
+              <h2 class="q-section-title">Validation</h2>
+              <div class="q-score-badge">
+                <span class="q-score-sub">Rule-based structural checks</span>
+                <span class="q-score-num">100%</span>
+                <span class="q-score-pass">✓ 12/12 passed</span>
+              </div>
+            </div>
+            <div class="q-prog-track"><div class="q-prog-fill" style="width:100%"></div></div>
+            <table class="q-table">
+              <thead>
+                <tr>
+                  <th style="width:22%">Check</th>
+                  <th>Result</th>
+                  <th style="width:10%">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="q-dim-name">Frontmatter present</td>
+                  <td class="q-dim-reasoning"><span class="q-reasoning-text">YAML frontmatter block found and parseable. All required keys present: name, description, version, author, license, compatibility.</span></td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot full"></span>Pass</span></td>
+                </tr>
+                <tr>
+                  <td class="q-dim-name">Description length</td>
+                  <td class="q-dim-reasoning"><span class="q-reasoning-text">Description is 87 characters. Within the recommended 50–200 character range for search snippet display.</span></td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot full"></span>Pass</span></td>
+                </tr>
+                <tr>
+                  <td class="q-dim-name">Section headings</td>
+                  <td class="q-dim-reasoning"><span class="q-reasoning-text">Detected 4 H2 sections: When to use, What it does, Quick install, Examples. Minimum recommended count is 2.</span></td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot full"></span>Pass</span></td>
+                </tr>
+                <tr>
+                  <td class="q-dim-name">Code examples</td>
+                  <td class="q-dim-reasoning"><span class="q-reasoning-text">At least one fenced code block found. Install command example present.</span></td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot full"></span>Pass</span></td>
+                </tr>
+                <tr>
+                  <td class="q-dim-name">Compatibility field</td>
+                  <td class="q-dim-reasoning"><span class="q-reasoning-text">Lists 3 compatible runtimes: claude-code, cursor, gemini-cli.</span></td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot full"></span>Pass</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Section: Implementation -->
+          <div class="q-section" id="q-implementation">
+            <div class="q-section-head">
+              <h2 class="q-section-title">Implementation</h2>
+              <div class="q-score-badge">
+                <span class="q-score-sub">LLM judge · SKILL.md body quality</span>
+                <span class="q-score-num">85%</span>
+              </div>
+            </div>
+            <div class="q-prog-track"><div class="q-prog-fill" style="width:85%"></div></div>
+            <table class="q-table">
+              <thead>
+                <tr>
+                  <th style="width:22%">Dimension</th>
+                  <th>Reasoning</th>
+                  <th style="width:12%">Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="q-dim-name">Specificity</td>
+                  <td class="q-dim-reasoning">
+                    <div class="q-reasoning-text" id="rt-spec">Lists multiple concrete actions the agent should take: generating healthchecks, enforcing non-root users, flagging world-writable mounts. Actions are unambiguous and actionable rather than generic advice.</div>
+                    <button class="q-expand-btn" onclick="toggleReasoning('rt-spec', this)">Show less</button>
+                  </td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot full"></span>3 / 3</span></td>
+                </tr>
+                <tr>
+                  <td class="q-dim-name">Completeness</td>
+                  <td class="q-dim-reasoning">
+                    <div class="q-reasoning-text" id="rt-comp">Clearly answers both "what the skill does" and "when to invoke it." Use-case section is well-delineated with four distinct bullet points covering authoring, debugging, and hardening scenarios.</div>
+                    <button class="q-expand-btn" onclick="toggleReasoning('rt-comp', this)">Show less</button>
+                  </td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot full"></span>3 / 3</span></td>
+                </tr>
+                <tr>
+                  <td class="q-dim-name">Tone consistency</td>
+                  <td class="q-dim-reasoning">
+                    <div class="q-reasoning-text" id="rt-tone">Tone is consistently technical and instructional. No marketing language detected. Minor: the "Harden for production" example is somewhat more casual than adjacent sections — not a significant issue.</div>
+                    <button class="q-expand-btn" onclick="toggleReasoning('rt-tone', this)">Show less</button>
+                  </td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot full"></span>3 / 3</span></td>
+                </tr>
+                <tr>
+                  <td class="q-dim-name">Boundary clarity</td>
+                  <td class="q-dim-reasoning">
+                    <div class="q-reasoning-text" id="rt-bound">Skill does not explicitly state what it will NOT do (e.g., it doesn't handle Kubernetes manifests, Docker Swarm mode, or container runtime config). Adding a brief exclusion section would improve precision and prevent agent scope creep.</div>
+                    <button class="q-expand-btn" onclick="toggleReasoning('rt-bound', this)">Show less</button>
+                  </td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot mid"></span>2 / 3</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Section: Discovery -->
+          <div class="q-section" id="q-discovery">
+            <div class="q-section-head">
+              <h2 class="q-section-title">Discovery</h2>
+              <div class="q-score-badge">
+                <span class="q-score-sub">LLM judge · will agents invoke at the right time?</span>
+                <span class="q-score-num">92%</span>
+              </div>
+            </div>
+            <div class="q-prog-track"><div class="q-prog-fill" style="width:92%"></div></div>
+            <table class="q-table">
+              <thead>
+                <tr>
+                  <th style="width:22%">Dimension</th>
+                  <th>Reasoning</th>
+                  <th style="width:12%">Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="q-dim-name">Specificity</td>
+                  <td class="q-dim-reasoning">
+                    <div class="q-reasoning-text" id="rt-dspec">Description lists multiple concrete actions — generates, validates, and troubleshoots. Phrases like "multi-service awareness" and "rootless defaults" are specific enough for embedding-based retrieval to surface this skill correctly.</div>
+                    <button class="q-expand-btn" onclick="toggleReasoning('rt-dspec', this)">Show less</button>
+                  </td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot full"></span>3 / 3</span></td>
+                </tr>
+                <tr>
+                  <td class="q-dim-name">Completeness</td>
+                  <td class="q-dim-reasoning">
+                    <div class="q-reasoning-text" id="rt-dcomp">Clearly answers both what the skill does and what it produces. However, description does not mention the file type explicitly (<code style="font-size:11px;background:var(--bg-3);padding:1px 4px;border-radius:3px;color:var(--ink)">docker-compose.yml</code>) — adding it would improve keyword recall.</div>
+                    <button class="q-expand-btn" onclick="toggleReasoning('rt-dcomp', this)">Show less</button>
+                  </td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot full"></span>3 / 3</span></td>
+                </tr>
+                <tr>
+                  <td class="q-dim-name">Trigger term quality</td>
+                  <td class="q-dim-reasoning">
+                    <div class="q-reasoning-text" id="rt-trigger">Includes strong natural-language trigger phrases: "docker-compose files", "healthcheck suggestions", "rootless defaults". These closely match the kinds of queries users and agents would issue when needing this skill.</div>
+                    <button class="q-expand-btn" onclick="toggleReasoning('rt-trigger', this)">Show less</button>
+                  </td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot full"></span>3 / 3</span></td>
+                </tr>
+                <tr>
+                  <td class="q-dim-name">Distinctiveness</td>
+                  <td class="q-dim-reasoning">
+                    <div class="q-reasoning-text" id="rt-distinct">Clear niche with explicit boundaries around docker-compose. Distinct from generic Docker skills or Kubernetes skills. Could be made more distinctive by explicitly calling out "not Swarm, not k8s" to prevent retrieval overlap with adjacent tools.</div>
+                    <button class="q-expand-btn" onclick="toggleReasoning('rt-distinct', this)">Show less</button>
+                  </td>
+                  <td class="q-score-cell"><span class="q-score-inline"><span class="q-dot mid"></span>2 / 3</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── Versions tab ── -->
+        <div class="tab-panel" id="panel-versions">
+          <div style="max-width:720px">
+            <div style="margin-bottom:20px">
+              <h2 style="font-size:18px;font-weight:500;margin-bottom:14px">Version history</h2>
+              <div style="display:flex;flex-direction:column;gap:1px">
+                <div style="background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:14px 16px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <span style="font-family:var(--mono);font-size:13px;font-weight:500">v2.1.0</span>
+                      <span class="latest-badge">latest</span>
+                    </div>
+                    <span style="font-size:11px;color:var(--ink-3)">3 days ago</span>
+                  </div>
+                  <p style="font-size:13px;color:var(--ink-2);line-height:1.5;margin:0">Added rootless container enforcement and improved healthcheck template for TCP services. Fixes #48: depends_on condition not respected in certain edge cases.</p>
+                </div>
+                <div style="background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:14px 16px;margin-top:6px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                    <span style="font-family:var(--mono);font-size:13px;font-weight:500">v2.0.1</span>
+                    <span style="font-size:11px;color:var(--ink-3)">2 weeks ago</span>
+                  </div>
+                  <p style="font-size:13px;color:var(--ink-2);line-height:1.5;margin:0">Patch: corrected description field length to pass Quality validation checks. Minor wording improvements to "When to use" section.</p>
+                </div>
+                <div style="background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:14px 16px;margin-top:6px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                    <span style="font-family:var(--mono);font-size:13px;font-weight:500">v2.0.0</span>
+                    <span style="font-size:11px;color:var(--ink-3)">1 month ago</span>
+                  </div>
+                  <p style="font-size:13px;color:var(--ink-2);line-height:1.5;margin:0">Major rewrite. Expanded scope to include production hardening and secret handling guidance. Restructured SKILL.md with Examples section.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Reviews tab ── -->
+        <div class="tab-panel" id="panel-reviews">
+          <div style="max-width:720px">
+            <div style="display:flex;align-items:baseline;gap:16px;margin-bottom:20px">
+              <span style="font-size:40px;font-weight:500;letter-spacing:-.03em">4.8</span>
+              <span style="font-size:13px;color:var(--ink-3)">/ 5 · 42 reviews</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <div style="background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:14px 16px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <span style="font-size:13px;font-weight:500">Great for production hardening</span>
+                  <span style="font-size:11px;color:var(--ink-3)">2 days ago</span>
+                </div>
+                <p style="font-size:13px;color:var(--ink-2);line-height:1.55;margin:0">Saved me 30 minutes figuring out why my healthcheck probe wasn't firing. The skill suggested TCP mode instead of HTTP for the Redis container immediately.</p>
+                <div style="margin-top:8px;font-size:11px;color:var(--ink-3)">by infra-ops-li ·
+                  <span style="color:var(--amber-text)">★★★★★</span>
+                </div>
+              </div>
+              <div style="background:var(--bg-2);border:.5px solid var(--line);border-radius:var(--r-lg);padding:14px 16px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <span style="font-size:13px;font-weight:500">Does what it says, no more</span>
+                  <span style="font-size:11px;color:var(--ink-3)">1 week ago</span>
+                </div>
+                <p style="font-size:13px;color:var(--ink-2);line-height:1.55;margin:0">Solid for compose specifically. Doesn't drift into Kubernetes territory which I appreciate. Would like a "Docker Swarm mode" companion skill though.</p>
+                <div style="margin-top:8px;font-size:11px;color:var(--ink-3)">by dev-tools-team ·
+                  <span style="color:var(--amber-text)">★★★★</span><span style="color:var(--ink-3)">★</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Security tab ── -->
+        <div class="tab-panel" id="panel-security">
+          <!-- State toggle (prototype only) -->
+          <div class="state-toggle-wrap">
+            <span>Preview state:</span>
+            <div class="state-toggle">
+              <button class="state-btn on" onclick="setSecState('pass',this)">Passed</button>
+              <button class="state-btn" onclick="setSecState('warn',this)">Warning</button>
+            </div>
+          </div>
+
+          <!-- Security hero -->
+          <div class="sec-hero pass" id="sec-hero">
+            <div class="shield-icon" id="shield-icon">
+              <!-- Shield SVG — green pass state -->
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M40 8L14 20v20c0 16.6 11.1 32.1 26 36 14.9-3.9 26-19.4 26-36V20L40 8z" fill="rgba(29,158,117,0.15)" stroke="#1D9E75" stroke-width="1.5"/>
+                <path d="M28 40l8 8 16-16" stroke="#6FD8B0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="sec-hero-title" id="sec-hero-title" style="color:var(--green-text)">No security issues found</div>
+            <div class="sec-hero-sub" id="sec-hero-sub">Scanned 3 days ago · engine v1.4 · rule set 2026-04</div>
+          </div>
+
+          <!-- 4-quad checks -->
+          <div class="sec-quad" id="sec-quad">
+            <div class="sec-quad-card pass">
+              <div class="sec-quad-head">
+                <div class="sec-quad-seg pass"></div>
+                <span class="sec-quad-name">Shell commands</span>
+                <span class="sec-quad-badge pass">✓ Passed</span>
+              </div>
+              <div class="sec-quad-desc">No <code style="font-size:11px;background:var(--bg-3);padding:1px 4px;border-radius:3px">rm -rf</code>, <code style="font-size:11px;background:var(--bg-3);padding:1px 4px;border-radius:3px">chmod 777</code>, <code style="font-size:11px;background:var(--bg-3);padding:1px 4px;border-radius:3px">curl | bash</code>, or <code style="font-size:11px;background:var(--bg-3);padding:1px 4px;border-radius:3px">eval</code> patterns detected in SKILL.md or any scripts.</div>
+            </div>
+            <div class="sec-quad-card pass" id="sec-card-paths">
+              <div class="sec-quad-head">
+                <div class="sec-quad-seg pass" id="sec-seg-paths"></div>
+                <span class="sec-quad-name">Sensitive paths</span>
+                <span class="sec-quad-badge pass" id="sec-badge-paths">✓ Passed</span>
+              </div>
+              <div class="sec-quad-desc" id="sec-desc-paths">No reads of <code style="font-size:11px;background:var(--bg-3);padding:1px 4px;border-radius:3px">~/.ssh</code>, <code style="font-size:11px;background:var(--bg-3);padding:1px 4px;border-radius:3px">~/.aws</code>, <code style="font-size:11px;background:var(--bg-3);padding:1px 4px;border-radius:3px">/etc/shadow</code>, or credential stores detected.</div>
+              <div class="sec-quad-detail" id="sec-detail-paths" style="display:none"></div>
+            </div>
+            <div class="sec-quad-card pass">
+              <div class="sec-quad-head">
+                <div class="sec-quad-seg pass"></div>
+                <span class="sec-quad-name">Secret patterns</span>
+                <span class="sec-quad-badge pass">✓ Passed</span>
+              </div>
+              <div class="sec-quad-desc">No hardcoded API keys, tokens, passwords, or secret patterns found in SKILL.md or script files.</div>
+            </div>
+            <div class="sec-quad-card pass">
+              <div class="sec-quad-head">
+                <div class="sec-quad-seg pass"></div>
+                <span class="sec-quad-name">Dependencies</span>
+                <span class="sec-quad-badge pass">✓ Passed</span>
+              </div>
+              <div class="sec-quad-desc">2 listed: <code style="font-size:11px;background:var(--bg-3);padding:1px 4px;border-radius:3px">docs.docker.com</code>, <code style="font-size:11px;background:var(--bg-3);padding:1px 4px;border-radius:3px">hub.docker.com</code> — both trusted domains, no execution.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Flags tab ── -->
+        <div class="tab-panel" id="panel-flags">
+          <div style="max-width:720px">
+            <div style="display:flex;align-items:center;gap:10px;padding:32px 0;color:var(--ink-3)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+              <span style="font-size:13px">No active flags for this skill.</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /main-col -->
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+
+        <!-- Install card (always visible) -->
+        <div class="sb-card">
+          <div class="install-card-inner">
+            <div class="install-header-row">
+              <div class="sb-label" style="margin-bottom:0">Install</div>
+              <div class="install-dropdown">
+                CLI
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </div>
+            <div style="margin-top:10px">
+              <div class="install-cmd-row">
+                <span class="install-cmd-text">skills-hub install platform-team/docker-compose-helper</span>
+                <button class="copy-btn" id="copy-btn" onclick="copyInstall()">
+                  <svg id="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="install-link">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+              What are skills?
+            </div>
+          </div>
+        </div>
+
+        <!-- Sparkline -->
+        <div class="sb-card">
+          <div class="sb-label">Download trend · 30d</div>
+          <svg viewBox="0 0 180 56" width="100%" height="56" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gr" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#7F77DD" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="#7F77DD" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <polygon fill="url(#gr)" points="0,48 12,45 24,47 36,40 48,42 60,36 72,38 84,30 96,33 108,25 120,22 132,20 144,15 156,12 168,8 180,6 180,56 0,56"/>
+            <polyline fill="none" stroke="#7F77DD" stroke-width="1.5" points="0,48 12,45 24,47 36,40 48,42 60,36 72,38 84,30 96,33 108,25 120,22 132,20 144,15 156,12 168,8 180,6"/>
+          </svg>
+          <div class="sparkline-nums">
+            <span>7d: 284</span>
+            <span>30d: 1,102</span>
+          </div>
+        </div>
+
+        <!-- Details -->
+        <div class="sb-card">
+          <div class="sb-label">Details</div>
+          <div class="sb-meta-row"><span class="k">Published</span><span class="v">Jan 12, 2026</span></div>
+          <div class="sb-meta-row"><span class="k">License</span><span class="v">MIT</span></div>
+          <div class="sb-meta-row"><span class="k">Size</span><span class="v">84 KB</span></div>
+          <div class="sb-meta-row"><span class="k">Files</span><span class="v">12</span></div>
+          <div class="sb-meta-row"><span class="k">Scripts</span><span class="v green">None</span></div>
+        </div>
+
+        <!-- Compatibility -->
+        <div class="sb-card">
+          <div class="sb-label">Compatibility</div>
+          <div class="chip-wrap">
+            <span class="chip">Claude Code</span>
+            <span class="chip">Cursor</span>
+            <span class="chip">Gemini CLI</span>
+            <span class="chip">Copilot</span>
+          </div>
+        </div>
+
+        <!-- Version history -->
+        <div class="sb-card">
+          <div class="sb-label">Version history</div>
+          <div class="ver-row">
+            <div>
+              <span class="ver-num">v2.1.0</span><span class="latest-badge">latest</span>
+              <div class="ver-date">3 days ago</div>
+            </div>
+            <svg class="dl-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <div class="ver-row">
+            <div><span class="ver-num">v2.0.1</span><div class="ver-date">2 weeks ago</div></div>
+            <svg class="dl-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <div class="ver-row">
+            <div><span class="ver-num">v2.0.0</span><div class="ver-date">1 month ago</div></div>
+            <svg class="dl-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <div class="ver-row">
+            <div><span class="ver-num">v1.4.2</span><div class="ver-date">2 months ago</div></div>
+            <svg class="dl-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+        </div>
+
+        <!-- Quality contextual cards -->
+        <div class="sb-ctx" id="ctx-quality">
+          <div class="sb-card">
+            <div class="sb-label">Table of contents</div>
+            <div class="toc-item" onclick="scrollToSection('q-validation')"><span class="toc-num">01</span> Validation</div>
+            <div class="toc-item" onclick="scrollToSection('q-implementation')"><span class="toc-num">02</span> Implementation</div>
+            <div class="toc-item" onclick="scrollToSection('q-discovery')"><span class="toc-num">03</span> Discovery</div>
+          </div>
+          <div class="sb-card">
+            <div class="sb-label">Reproducibility</div>
+            <div class="sb-meta-row"><span class="k">Evaluated</span><span class="v">2 days ago</span></div>
+            <div class="sb-meta-row"><span class="k">Evaluator</span><span class="v mono">gemini-2.5-flash</span></div>
+            <div class="sb-meta-row"><span class="k">Prompt ver.</span><span class="v mono">v1</span></div>
+            <div class="sb-meta-row"><span class="k">Skill ver.</span><span class="v mono">v2.1.0</span></div>
+          </div>
+        </div>
+
+        <!-- Security contextual cards -->
+        <div class="sb-ctx" id="ctx-security">
+          <div class="sb-card">
+            <div class="sb-label">Audit metadata</div>
+            <div class="sb-meta-row"><span class="k">Last scanned</span><span class="v">3 days ago</span></div>
+            <div class="sb-meta-row"><span class="k">Engine</span><span class="v mono">risk-scanner v1.4</span></div>
+            <div class="sb-meta-row"><span class="k">Rule set</span><span class="v mono">2026-04</span></div>
+            <div class="sb-meta-row"><span class="k">Dep scan</span><span class="v" style="color:var(--ink-3);font-size:11px">not yet enabled</span></div>
+          </div>
+        </div>
+
+      </aside>
+    </div><!-- /body -->
+  </div><!-- /scroll -->
+</div><!-- /shell -->
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────────────────
+const TAB_IDS = ['skillmd','quality','versions','reviews','security','flags'];
+
+function switchTab(id) {
+  // Update tab buttons
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('on', t.dataset.tab === id);
+  });
+
+  // Update panels
+  TAB_IDS.forEach(tid => {
+    const panel = document.getElementById('panel-' + tid);
+    if (panel) panel.classList.toggle('on', tid === id);
+  });
+
+  // Update hero card active state
+  document.getElementById('hm-quality').classList.toggle('active', id === 'quality');
+  document.getElementById('hm-security').classList.toggle('active', id === 'security');
+
+  // Show/hide contextual sidebar cards
+  document.getElementById('ctx-quality').classList.toggle('on', id === 'quality');
+  document.getElementById('ctx-security').classList.toggle('on', id === 'security');
+
+  // Scroll main col to top
+  const scroll = document.querySelector('.scroll');
+  if (scroll) scroll.scrollTop = 0;
+}
+
+// Wire tab buttons
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => switchTab(t.dataset.tab));
+});
+
+// ── Quality: reasoning expand/collapse ────────────────────────────────────
+function toggleReasoning(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const expanded = el.classList.toggle('expanded');
+  btn.textContent = expanded ? 'Show less' : 'Show more';
+}
+
+// On load, collapse all reasoning texts (set clamped, show "Show more")
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.q-reasoning-text').forEach(el => {
+    // Start expanded (spec shows them open), let button say "Show less"
+  });
+});
+
+// ── Security state toggle (prototype demo) ────────────────────────────────
+function setSecState(state, btn) {
+  document.querySelectorAll('.state-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+
+  const hero = document.getElementById('sec-hero');
+  const heroTitle = document.getElementById('sec-hero-title');
+  const heroSub = document.getElementById('sec-hero-sub');
+  const shieldIcon = document.getElementById('shield-icon');
+  const secHmVal = document.getElementById('sec-hm-val');
+  const secHmSub = document.getElementById('sec-hm-sub');
+  const hmCard = document.getElementById('hm-security');
+  const segs = document.querySelectorAll('.hm-seg');
+
+  // Reset card class
+  hmCard.querySelector('.hm-seg-row').querySelectorAll('.hm-seg').forEach(s => {
+    s.className = 'hm-seg';
+  });
+
+  if (state === 'pass') {
+    // Hero
+    hero.className = 'sec-hero pass';
+    heroTitle.className = 'sec-hero-title'; heroTitle.style.color = 'var(--accent-text)';
+    heroTitle.textContent = 'No security issues found';
+    heroSub.textContent = 'Scanned 3 days ago · engine v1.4 · rule set 2026-04';
+
+    // Shield
+    shieldIcon.innerHTML = `<svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+      <path d="M40 8L14 20v20c0 16.6 11.1 32.1 26 36 14.9-3.9 26-19.4 26-36V20L40 8z" fill="rgba(127,119,221,0.15)" stroke="#7F77DD" stroke-width="1.5"/>
+      <path d="M28 40l8 8 16-16" stroke="#6FD8B0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
+    // Hero metric card
+    secHmVal.textContent = 'Passed';
+    secHmVal.className = 'hm-value'; secHmVal.style.color = 'var(--green-text)';
+    secHmSub.textContent = 'No known issues';
+    hmCard.querySelectorAll('.hm-seg').forEach(s => { s.className = 'hm-seg pass'; });
+    hmCard.style.borderColor = '';
+
+    // Paths card reset
+    const pathCard = document.getElementById('sec-card-paths');
+    pathCard.className = 'sec-quad-card pass';
+    document.getElementById('sec-seg-paths').className = 'sec-quad-seg pass';
+    document.getElementById('sec-badge-paths').className = 'sec-quad-badge pass';
+    document.getElementById('sec-badge-paths').textContent = '✓ Passed';
+    document.getElementById('sec-card-paths').className = 'sec-quad-card pass';
+    document.getElementById('sec-desc-paths').textContent = 'No reads of ~/.ssh, ~/.aws, /etc/shadow, or credential stores detected.';
+    document.getElementById('sec-detail-paths').style.display = 'none';
+
+  } else {
+    // Warning state
+    hero.className = 'sec-hero warn';
+    heroTitle.className = 'sec-hero-title warn';
+    heroTitle.textContent = '1 issue requires review';
+    heroSub.textContent = 'Scanned 3 days ago · engine v1.4 · rule set 2026-04';
+
+    // Shield (amber)
+    shieldIcon.innerHTML = `<svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+      <path d="M40 8L14 20v20c0 16.6 11.1 32.1 26 36 14.9-3.9 26-19.4 26-36V20L40 8z" fill="rgba(239,159,39,0.12)" stroke="#EF9F27" stroke-width="1.5"/>
+      <path d="M40 30v12M40 46h.01" stroke="#FAC775" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
+    // Hero metric card
+    secHmVal.textContent = '1 Issue';
+    secHmVal.className = 'hm-value warn';
+    secHmSub.textContent = 'Sensitive path access detected';
+    const segsInCard = hmCard.querySelectorAll('.hm-seg');
+    segsInCard[0].className = 'hm-seg pass';
+    segsInCard[1].className = 'hm-seg warn';
+    segsInCard[2].className = 'hm-seg pass';
+    segsInCard[3].className = 'hm-seg pass';
+    hmCard.style.borderColor = 'rgba(239,159,39,.3)';
+
+    // Paths card warning
+    const pathCard = document.getElementById('sec-card-paths');
+    pathCard.className = 'sec-quad-card warn';
+    document.getElementById('sec-seg-paths').className = 'sec-quad-seg warn';
+    document.getElementById('sec-badge-paths').className = 'sec-quad-badge warn';
+    document.getElementById('sec-badge-paths').textContent = '! Review';
+    document.getElementById('sec-desc-paths').textContent = 'Potential read of sensitive path detected in scripts/validate.sh.';
+    const detail = document.getElementById('sec-detail-paths');
+    detail.style.display = 'block';
+    detail.textContent = 'rule:sensitive.path.ssh · line 14\ncat ~/.ssh/known_hosts';
+  }
+}
+
+// ── Install copy ──────────────────────────────────────────────────────────
+function copyInstall() {
+  const cmd = 'skills-hub install platform-team/docker-compose-helper';
+  navigator.clipboard.writeText(cmd).catch(() => {});
+  const btn = document.getElementById('copy-btn');
+  const icon = document.getElementById('copy-icon');
+  btn.classList.add('copied');
+  icon.outerHTML = `<svg id="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  setTimeout(() => {
+    btn.classList.remove('copied');
+    document.getElementById('copy-icon').outerHTML = `<svg id="copy-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+  }, 1500);
+}
+
+// ── TOC scroll ────────────────────────────────────────────────────────────
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const scrollEl = document.querySelector('.scroll');
+  const panelTop = document.getElementById('panel-quality').getBoundingClientRect().top;
+  const elTop = el.getBoundingClientRect().top;
+  scrollEl.scrollTop += (elTop - panelTop) - 80;
+}
+</script>
+</body>
+</html>
