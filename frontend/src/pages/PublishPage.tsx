@@ -10,6 +10,7 @@ import { uploadSkill, type Visibility } from '@/api/skills'
 import { useMe } from '@/hooks/useMe'
 import { useAuth } from '@/hooks/useAuth'
 import { localizeApiError } from '@/lib/api-error-messages'
+import { ApiError } from '@/api/client'
 import { MiniMarkdown } from '@/lib/mini-markdown'
 
 /**
@@ -107,7 +108,8 @@ export function PublishPage() {
     onError: (err) => {
       console.error('[PublishPage] 發佈技能失敗', err)
       const msg = encodeURIComponent(localizeApiError(err))
-      navigate(`/publish/failed?state=A&msg=${msg}`)
+      const findings = ApiError.is(err) ? err.findings : undefined
+      navigate(`/publish/failed?state=A&msg=${msg}`, { state: { findings, msg: localizeApiError(err) } })
     },
   })
 

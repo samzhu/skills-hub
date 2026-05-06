@@ -1,6 +1,7 @@
-import { Link, useSearchParams } from 'react-router'
+import { Link, useSearchParams, useLocation } from 'react-router'
 import { AlertOctagon, RefreshCw, ArrowLeft, X, AlertTriangle } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
+import type { ValidationFinding } from '@/types/skill'
 
 /**
  * S098b — `/publish/failed?id=&state=&msg=` dedicated failure page.
@@ -21,10 +22,14 @@ type FailedState = 'A' | 'B'
 
 export function PublishFailedPage() {
   const [params] = useSearchParams()
+  const location = useLocation()
   const stateRaw = params.get('state')
   const state: FailedState = stateRaw === 'B' ? 'B' : 'A' // default A
   const id = params.get('id')
-  const msg = params.get('msg')
+  // S098b3-2: findings from router state (structured); fallback to ?msg= URL param (backward compat)
+  const routerState = location.state as { findings?: ValidationFinding[]; msg?: string } | null
+  const findings = routerState?.findings
+  const msg = routerState?.msg ?? params.get('msg')
 
   return (
     <AppShell>
@@ -40,7 +45,7 @@ export function PublishFailedPage() {
           </p>
         </div>
 
-        {state === 'A' ? <StateAFrontmatterError msg={msg} /> : <StateBHighRiskReview id={id} />}
+        {state === 'A' ? <StateAFrontmatterError msg={msg} findings={findings} /> : <StateBHighRiskReview id={id} />}
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -75,10 +80,11 @@ type ErrRow = {
   hint?: string
 }
 
-function StateAFrontmatterError({ msg }: { msg: string | null }) {
-  // S098b3: parse msg → structured findings shell。目前 fallback：整段 msg = 1 個 error row。
-  // 未來 msg 為 JSON e.g. `[{severity:"error",title:"...",hint:"..."}]` 可解析多 row。
-  const findings: ErrRow[] = msg ? [{ severity: 'error', title: msg }] : []
+function StateAFrontmatterError({ msg, findings: structuredFindings }: { msg: string | null; findings?: ValidationFinding[] }) {
+  // S098b3-2: prefer structured findings from router state; fallback to flat msg as single error row
+  const findings: ErrRow[] = structuredFindings && structuredFindings.length > 0
+    ? structuredFindings.map((f) => ({ severity: f.severity, title: f.title, hint: f.hint ?? undefined }))
+    : msg ? [{ severity: 'error', title: msg }] : []
 
   return (
     <div className="space-y-4">

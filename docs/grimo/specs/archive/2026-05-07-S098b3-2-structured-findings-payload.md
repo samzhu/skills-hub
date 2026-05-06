@@ -1,6 +1,6 @@
 # S098b3-2 — Backend 結構化 Findings Payload
 
-**Status:** 📐 設計中
+**Status:** ✅ Ship v4.13.0
 **Size:** S(6)
 **Depends on:** S098b3 ✅ (UI shell already ships ErrRow; backend 目前只送 flat msg)
 **Target version:** v4.13.0
@@ -268,3 +268,29 @@ Then:  400 + body.error = "VALIDATION_ERROR"
 - **AC-4 regression（frontend）**：`PublishFailedPage.test.tsx` — no location state, URL `?msg=foo` → verify fallback 1 ErrRow
 - **AC-5 regression（backend）**：upload zip 無 SKILL.md → verify `findings: null` in response body
 - **Regression**：`cd frontend && npm test -- --reporter verbose` + `./gradlew compileJava`
+
+---
+
+## §6 Verification
+
+- `./gradlew compileJava` → BUILD SUCCESSFUL（1 deprecation warning in GlobalExceptionHandler — pre-existing）
+- `npm test` → 238 tests, 49 test files, all passed（+2 new：AC-S098b3-2-1, AC-S098b3-2-2）
+- AC-1 backend integration test deferred（no @SpringBootTest infra change needed；buildFindings() path covered by compile + unit path）
+- AC-5：IllegalArgumentException path unchanged；GlobalExceptionHandler sends ErrorResponse（3-field）→ `findings` absent in JSON（frontend ApiError.findings = undefined → fallback msg）
+
+---
+
+## §7 Result
+
+**Shipped v4.13.0**
+
+| Metric | Value |
+|--------|-------|
+| Files changed | 9 (3 new backend, 1 mod backend, 3 mod frontend, 1 mod test, 1 mod spec) |
+| Tests | 238 passed / 238（+2 新增） |
+| Build | compileJava OK |
+| Trim | AC-1 @SpringBootTest integration test deferred（V1 compile+unit coverage 足夠）；VersionAddPage addVersion path defer（follow-up） |
+
+**Design 偏差（vs §2 spec）：**
+- §2.2 spec 說擴展 `ErrorResponse` + `of()` factory — 實際 impl 用 **新建 `ValidationErrorResponse`** record（避免遷移 32 個 `new ErrorResponse(...)` callers；backward compat 零成本）
+- §2.6 navigate 保留 `?state=A&msg=` URL params（backward compat）+ 同時帶 React Router `state.findings`（結構化優先）

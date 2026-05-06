@@ -23,6 +23,8 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import io.github.samzhu.skillshub.skill.validation.SkillValidationException;
+
 /**
  * 全域例外處理器。
  *
@@ -33,6 +35,23 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
+	/**
+	 * S098b3-2 — 處理 SKILL.md 結構化驗證失敗（{@link SkillValidationException}）。
+	 *
+	 * <p>回傳 HTTP 400 + {@link ValidationErrorResponse}（含 findings 陣列），
+	 * 讓前端 PublishFailedPage 逐項渲染 error/warning row。
+	 */
+	@ExceptionHandler(SkillValidationException.class)
+	ResponseEntity<ValidationErrorResponse> handleSkillValidation(SkillValidationException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "VALIDATION_ERROR")
+				.addKeyValue("findingsCount", ex.findings().size())
+				.log("SKILL.md validation failed");
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ValidationErrorResponse(
+						"VALIDATION_ERROR", ex.getMessage(), Instant.now(), ex.findings()));
+	}
 
 	/**
 	 * 處理輸入驗證失敗（{@link IllegalArgumentException}）。

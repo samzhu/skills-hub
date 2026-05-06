@@ -16,6 +16,14 @@ export type SkillStatus = 'DRAFT' | 'PUBLISHED' | 'SUSPENDED'
  */
 export type RiskLevel = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH'
 
+/** S098b3-2 — 一個結構化驗證 finding，對應 PublishFailedPage ErrRow UI。 */
+export interface ValidationFinding {
+  section: string
+  severity: 'error' | 'warning'
+  title: string
+  hint: string | null
+}
+
 /**
  * 技能讀取模型，對應後端 SkillReadModel 的 JSON 序列化結果。
  */

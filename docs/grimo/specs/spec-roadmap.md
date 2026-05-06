@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（S098b3-2 spec 設計完成 — Backend 結構化 findings payload）
+> 最後更新：2026-05-07（S098b3-2 ship v4.13.0 — Backend 結構化 findings payload）
 
 ## 使用說明
 
@@ -71,7 +71,7 @@
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |
 | S098a2 | SSE 事件串流 + per-step 動畫 | M(8) | S098a ✅ | ⏸ deferred |
-| S098b3-2 | Backend 結構化 findings payload | S(6) | S098b3 ✅ | 📐 2026-05-07-S098b3-2-structured-findings-payload.md |
+| S098b3-2 | Backend 結構化 findings payload | S(6) | S098b3 ✅ | ✅ v4.13.0 — ValidationFinding + SkillValidationException + PublishFailedPage 多 row |
 | S098c2 | Backend /diff endpoint | M(8) | S098c ✅ | 📋 planned |
 | S098c3 | File content line-level diff | L(12) | S098c2 | 📋 planned |
 | S099c | Cross-marketplace risk validation | S(7) | S099 | ✅ shipped v4.6.0 — tools/cross-validate.py 41 skills dry-run PASS |

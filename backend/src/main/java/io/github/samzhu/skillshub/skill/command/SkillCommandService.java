@@ -8,11 +8,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersion;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
+import io.github.samzhu.skillshub.skill.validation.SkillValidationException;
 import io.github.samzhu.skillshub.skill.validation.SkillValidator;
+import io.github.samzhu.skillshub.skill.validation.ValidationFinding;
+import io.github.samzhu.skillshub.skill.validation.ValidationResult;
 import io.github.samzhu.skillshub.storage.PackageService;
 import io.github.samzhu.skillshub.storage.StorageService;
 
@@ -92,11 +98,12 @@ public class SkillCommandService {
 
 		var validation = skillValidator.validate(skillMdContent);
 		if (!validation.valid()) {
+			var findings = buildFindings(validation);
 			log.atWarn()
 					.addKeyValue("author", author)
-					.addKeyValue("errors", validation.errors())
+					.addKeyValue("findingsCount", findings.size())
 					.log("SKILL.md 驗證失敗");
-			throw new IllegalArgumentException("SKILL.md validation failed: " + String.join("; ", validation.errors()));
+			throw new SkillValidationException("SKILL.md validation failed", findings);
 		}
 
 		var name = (String) validation.metadata().get("name");
@@ -146,11 +153,12 @@ public class SkillCommandService {
 		}
 		var validation = skillValidator.validate(skillMdContent);
 		if (!validation.valid()) {
+			var findings = buildFindings(validation);
 			log.atWarn()
 					.addKeyValue("skillId", skillId)
-					.addKeyValue("errors", validation.errors())
+					.addKeyValue("findingsCount", findings.size())
 					.log("SKILL.md 驗證失敗");
-			throw new IllegalArgumentException("SKILL.md validation failed: " + String.join("; ", validation.errors()));
+			throw new SkillValidationException("SKILL.md validation failed", findings);
 		}
 
 		// S032: 防 download zip metadata 與平台 listing name 不一致 — 早於 version 重複檢查上移 findById
@@ -254,5 +262,16 @@ public class SkillCommandService {
 				.addKeyValue("skillId", cmd.skillId())
 				.addKeyValue("reason", cmd.reason())
 				.log("Skill 重啟完成");
+	}
+
+	private List<ValidationFinding> buildFindings(ValidationResult r) {
+		var list = new ArrayList<ValidationFinding>();
+		for (var err : r.errors()) {
+			list.add(new ValidationFinding("skill_md", "error", err, null));
+		}
+		for (var warn : r.warnings()) {
+			list.add(new ValidationFinding("skill_md", "warning", warn, null));
+		}
+		return list;
 	}
 }

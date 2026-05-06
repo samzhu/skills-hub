@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PublishFailedPage } from './PublishFailedPage'
+import type { ValidationFinding } from '@/types/skill'
 
 /**
  * S098b — PublishFailedPage tone-aware tests。
@@ -14,11 +15,11 @@ import { PublishFailedPage } from './PublishFailedPage'
  * AppShell 內含 useQuery for unread badge → 需 QueryClientProvider。
  */
 
-const renderWith = (search: string) => {
+const renderWith = (search: string, routerState?: unknown) => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[`/publish/failed${search}`]}>
+      <MemoryRouter initialEntries={[{ pathname: '/publish/failed', search, state: routerState }]}>
         <Routes>
           <Route path="/publish/failed" element={<PublishFailedPage />} />
         </Routes>
@@ -55,5 +56,25 @@ describe('PublishFailedPage — S098b', () => {
     expect(retry).toHaveAttribute('href', '/publish')
     const back = screen.getByText('返回瀏覽').closest('a')
     expect(back).toHaveAttribute('href', '/browse')
+  })
+})
+
+describe('PublishFailedPage — S098b3-2 structured findings', () => {
+  it('AC-S098b3-2-1: structured findings from router state render as individual ErrRows', () => {
+    const findings: ValidationFinding[] = [
+      { section: 'skill_md', severity: 'error', title: 'Missing required field: name', hint: null },
+      { section: 'skill_md', severity: 'warning', title: 'description 建議超過 20 字', hint: '目前 12 字' },
+    ]
+    renderWith('?state=A&msg=fallback', { findings, msg: 'fallback' })
+    expect(screen.getByText('Missing required field: name')).toBeInTheDocument()
+    expect(screen.getByText('description 建議超過 20 字')).toBeInTheDocument()
+    expect(screen.getByText('目前 12 字')).toBeInTheDocument()
+    // flat msg fallback NOT shown when structured findings present
+    expect(screen.queryByText('fallback')).not.toBeInTheDocument()
+  })
+
+  it('AC-S098b3-2-2: no router state → fallback to ?msg= URL param as single error row', () => {
+    renderWith('?state=A&msg=Missing%20required%20field%3A%20name')
+    expect(screen.getByText('Missing required field: name')).toBeInTheDocument()
   })
 })

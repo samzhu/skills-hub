@@ -1,22 +1,27 @@
 /** 所有 API 請求的 base path，對應後端 REST prefix */
 const BASE = '/api/v1'
 
+import type { ValidationFinding } from '../types/skill'
+
 /**
  * S039：自訂 API 錯誤類別 — 攜 HTTP status 與 backend ErrorResponse `error` code，
  * 讓 caller 可做精細 UX 區分（例如 404 顯示「找不到」vs 5xx 顯示「載入失敗請重試」）。
  *
  * backend `ErrorResponse` shape：`{error, message, timestamp}`（per `GlobalExceptionHandler`）
  * 對應到 `code`（error 欄位）與 super 的 `message`。
+ * S098b3-2：`findings` 攜帶結構化驗證 findings（`ValidationErrorResponse` shape）。
  */
 export class ApiError extends Error {
   readonly status: number
   readonly code?: string
+  readonly findings?: ValidationFinding[]
 
-  constructor(status: number, message: string, code?: string) {
+  constructor(status: number, message: string, code?: string, findings?: ValidationFinding[]) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
+    this.findings = findings
   }
 
   /**
@@ -46,9 +51,9 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     // 嘗試解析後端回傳的錯誤 body；若 body 不是合法 JSON（如網路中斷、閘道錯誤），
     // 則 fallback 為空物件以避免額外的 UnhandledRejection。
     const body = await res.json().catch(() => ({}))
-    const b = body as { message?: string; error?: string }
+    const b = body as { message?: string; error?: string; findings?: ValidationFinding[] }
     const message = b.message ?? `API error ${res.status}`
-    throw new ApiError(res.status, message, b.error)
+    throw new ApiError(res.status, message, b.error, b.findings)
   }
   return res.json() as Promise<T>
 }

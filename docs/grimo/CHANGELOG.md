@@ -1,5 +1,33 @@
 # Changelog
 
+## [v4.13.0] — 結構化 Findings Payload（S098b3-2 完成；2026-05-07）
+
+> SKILL.md 驗證失敗時，backend 改回傳結構化 `findings` 陣列（ValidationFinding: section / severity / title / hint），前端 `PublishFailedPage` 逐項渲染多個 ErrRow；舊 `?msg=` URL fallback 保持 backward compat。
+
+### Added — Backend
+
+- **`ValidationFinding` record**（`skill/validation/`）：SKILL.md 驗證結果的一條結構化 finding
+- **`SkillValidationException`**（`skill/validation/`）：取代 `IllegalArgumentException`，攜帶 `List<ValidationFinding>`
+- **`ValidationErrorResponse` record**（`shared/api/`）：4 欄位（error / message / timestamp / findings），不影響既有 `ErrorResponse`（32 callsites 無需遷移）
+- **`GlobalExceptionHandler`**：新增 `handleSkillValidation(SkillValidationException)` handler（BEFORE IllegalArgumentException handler）
+
+### Changed — Backend
+
+- **`SkillCommandService`**：`uploadSkill` + `addVersion` validation fail → throw `SkillValidationException`；加 `buildFindings(ValidationResult)` private method（errors → error rows, warnings → warning rows）
+
+### Added — Frontend
+
+- **`ValidationFinding` interface**（`types/skill.ts`）：對齊 backend ValidationFinding record
+- **`ApiError.findings?`**（`api/client.ts`）：4th constructor arg；`apiFetch` parse `body.findings`
+
+### Changed — Frontend
+
+- **`PublishPage`**：`onError` navigate 改帶 React Router state `{ findings, msg }`（保留 `?msg=` URL param backward compat）
+- **`PublishFailedPage`**：優先讀 `location.state.findings`（結構化多 row）；fallback 讀 `?msg=` URL param（單一 error row）
+- **`PublishFailedPage.test.tsx`**：新增 AC-S098b3-2-1（結構化 2-row render）+ AC-S098b3-2-2（fallback msg）
+
+---
+
 ## [v4.12.0] — Collections Risk Filter（S096f3 完成；2026-05-07）
 
 > `CollectionsPage` 加左側風險等級篩選 sidebar，對齊 PRD §P7 SBE Scenario 3「分類篩選」。backend batch SQL 計算每集合 maxRiskLevel（避免 N+1）；frontend client-side filter；`RiskFilterSidebar` 泛化支援 Collections 與 Skills 兩頁。
