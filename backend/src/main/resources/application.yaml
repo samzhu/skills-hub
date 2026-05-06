@@ -113,6 +113,14 @@ management:
       show-details: always
       probes:
         enabled: true
+  # /actuator/info — Spring Boot 4 預設 build / git contributor enabled=true，
+  # 但 git.mode 預設 simple（只 commit-id + time）。改 full 顯示 branch / commit
+  # message / build user / dirty flag 等完整欄位給 LAB 偵錯用。
+  # build-info.properties 由 Gradle Spring Boot plugin springBoot{ buildInfo() } 生；
+  # git.properties 由 com.gorylenko.gradle-git-properties plugin 從 .git/ 抽。
+  info:
+    git:
+      mode: full
 
 # ----- 日誌：root 預設 INFO 即可（不重複寫）；dev / lab profile 對應用 package 套 DEBUG -----
 

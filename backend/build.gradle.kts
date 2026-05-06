@@ -8,6 +8,10 @@ plugins {
 	// 直接產 native binary。
 	id("org.graalvm.buildtools.native") version "0.11.5"
 	id("org.cyclonedx.bom") version "3.2.4"
+	// /actuator/info git 區塊 — 從 .git/ 抽 commit hash / branch / message 寫進
+	// META-INF/git.properties，Spring Boot GitInfoContributor 自動 expose。
+	// build 階段需要 .git/ 可訪問（Cloud Build 預設 source upload 含 .git，未排除）。
+	id("com.gorylenko.gradle-git-properties") version "2.5.2"
 	jacoco
 }
 
@@ -100,6 +104,19 @@ dependencyManagement {
 		mavenBom("org.springframework.ai:spring-ai-bom:${property("springAiVersion")}")
 		mavenBom("org.springframework.cloud:spring-cloud-dependencies:${property("springCloudVersion")}")
 	}
+}
+
+// /actuator/info build 區塊 — Spring Boot Gradle plugin 內建 buildInfo task，
+// 寫 build-info.properties (group/artifact/name/version/time) 到 META-INF/，
+// BuildInfoContributor 啟動時自動讀取 expose。
+springBoot {
+	buildInfo()
+}
+
+// /actuator/info git 區塊 — Gradle 在 backend/ subdir 跑，預設找 backend/.git/ 不存在，
+// 必須顯式指 monorepo root 的 .git 目錄。
+gitProperties {
+	dotGitDirectory = file("${rootDir}/../.git")
 }
 
 // S132 §8: ProcessAot baked profile 機制 — AOT 階段就要列齊 native runtime 想用的
