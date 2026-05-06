@@ -115,8 +115,12 @@ springBoot {
 
 // /actuator/info git 區塊 — Gradle 在 backend/ subdir 跑，預設找 backend/.git/ 不存在，
 // 必須顯式指 monorepo root 的 .git 目錄。
+// failOnNoGitDirectory=false：Cloud Build 環境 `gcloud builds submit` 上傳的 source
+// 不含 .git/（除非 .gcloudignore 顯式 keep）；本機 build 有 .git/ 正常產 git.properties，
+// CI build 沒 .git/ 則 silently skip — /actuator/info 不顯示 git 區塊但不 break build。
 gitProperties {
 	dotGitDirectory = file("${rootDir}/../.git")
+	failOnNoGitDirectory = false
 }
 
 // S132 §8: ProcessAot baked profile 機制 — AOT 階段就要列齊 native runtime 想用的
