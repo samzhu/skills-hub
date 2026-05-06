@@ -148,6 +148,7 @@ Grep: @ConditionalOnProperty
 - `references/config-templates.md` — 即用模板：`{App}Properties.java`、profile YAML、DataSource skeleton、Manual Configuration `@Bean`
 - `references/cloud-gcp-secrets.md` — GCP Secret Manager 整合（Cloud Run env var mount + `sm@` 遞迴 resolve + envsubst whitelist + 認證實務）
 - `references/aot-deployment-pitfalls.md` — AOT processing 部署陷阱（profile 對齊、self-reference placeholder、OAuth client stub、aot profile leak、cascade build 避免心得 + diagnostic table）
+- `references/cloud-run-spring-pitfalls.md` — Cloud Run + Spring Boot/Security 非 AOT 部署陷阱（reverse proxy `{baseUrl}` 解析、CORS 同源 POST 403、SPA fallback、LAB OAuth 多步部署序列、`/actuator/info` build/git 設定 + diagnostic 分流表 + AccessDeniedHandler 加料 pattern）
 - `references/spring-reference-links.md` — Spring 框架官方文件、屬性與版本查找方式
 - `references/anti-patterns.md` — 反模式完整列表（Quick Reference 只列 critical）
 

@@ -47,6 +47,14 @@
 - **不要**留 dead exclude（artifact 不存在的 auto-config 類別）— 例如用 `spring-ai-google-genai-embedding`（core）卻 exclude `GoogleGenAiEmbeddingConnectionAutoConfiguration`（屬於 starter 變體，純 library 沒帶）
 - **不要**留過時的設定 placeholder（如已 deprecated 的 fallback property、不再用的 vector store 切換屬性）— 每次 infra 演進掃一次
 
+## Cloud Run + Spring Boot/Security 部署（詳見 `cloud-run-spring-pitfalls.md`）
+
+- **不要**讓 OAuth `redirect-uri: "{baseUrl}/..."` 上 Cloud Run 沒處理 forward header — Cloud Run 把 https 終結在 proxy，容器看到 `http://localhost:8080`，`{baseUrl}` 解析錯 → `redirect_uri_mismatch`。修：`server.forward-headers-strategy: framework`（portable）或 service.yaml env 寫死外部 URL（綁部署）
+- **不要**以為「同源 request 不會 hit CORS」— Spring CorsFilter 不分同源跨源；瀏覽器同源 POST（含 multipart）會送 Origin header，allowedOrigins 只列 localhost dev 預設值就上 production → 同源 POST 被 `DefaultCorsProcessor.rejectRequest()` silent 403（filter chain 提早斷，AccessDeniedHandler 摸不到）。修：把部署的外部 origin 加進 allowedOrigins（env 注入）
+- **不要**用 `@RequestMapping("/**")` 或 ErrorController 改寫 404 當 SPA fallback — 會誤攔不存在的 `/api/...` 端點回 HTML SPA shell。改 explicit list `@GetMapping({"/browse", "/publish/**", ...})` forward `/index.html`，新加 React Route 同步進 controller
+- **不要**期待 cloud build 自動有 `.git/` — `gcloud builds submit` 預設 ignore，gradle-git-properties plugin 預設 fail-on-missing 直接掛 build。設 `failOnNoGitDirectory=false` graceful skip；要帶 git info 進 image 才另建 `.gcloudignore` 顯式 keep
+- **不要**先看 `gcloud run services replace` 的回應、不確認當前 serving image 就重複 debug — Cloud Run revision immutable，secret / yaml 改了不重 replace 不會生效。`gcloud run services describe ... --format='value(spec.template.spec.containers[0].image)'` 是除錯第一動
+
 ## AOT processing（詳見 `aot-deployment-pitfalls.md`）
 
 - **不要**讓 AOT build profile 跟 runtime profile 不對齊（如 build 用 `gcp,aot` 但 runtime 跑 `gcp,aot,lab`）— AOT mode conditions 在 build 階段被 freeze，runtime 不重評；漏 profile = 該 bean 永遠不存在 → startup fail。Build 命令必須含所有 runtime behavior profile：`-Pspring.profiles.active=gcp,aot,lab`
