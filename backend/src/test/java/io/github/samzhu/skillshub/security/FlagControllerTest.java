@@ -47,7 +47,7 @@ class FlagControllerTest extends WebMvcSliceTestBase {
         // S098e3：FlagController 注入 CurrentUserProvider 抽 reporter；mock 預設 anonymous
         Mockito.when(currentUserProvider.current())
                 .thenReturn(new io.github.samzhu.skillshub.shared.security.CurrentUser(
-                        "anonymous", java.util.List.of(), java.util.List.of()));
+                        "anonymous", java.util.List.of(), java.util.List.of(), null));
     }
 
     @Test

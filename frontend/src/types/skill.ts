@@ -42,6 +42,8 @@ export interface Skill {
   averageRating: number
   /** S098e2-T02：review 總數（尚無 review 時為 0） */
   reviewCount: number
+  /** S114a — 技能擁有者的 userId（對應 ACL owner grant principal）。 */
+  ownerId?: string
   /** 建立時間（ISO 8601 UTC） */
   createdAt: string
   /** 最後更新時間（ISO 8601 UTC） */

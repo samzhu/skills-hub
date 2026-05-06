@@ -53,7 +53,7 @@ class LabModeMeControllerTest extends WebMvcSliceTestBase {
         // LAB filter chain 注入 UsernamePasswordAuthenticationToken，MeController fallback 路徑
         // 走 CurrentUserProvider；mock 回 lab-user 對齊 LabSecurityFilter 預設行為
         Mockito.when(currentUserProvider.current())
-                .thenReturn(new CurrentUser("lab-user", List.of("admin"), List.of()));
+                .thenReturn(new CurrentUser("lab-user", List.of("admin"), List.of(), null));
 
         mockMvc.perform(get("/api/v1/me"))
             .andExpect(status().isOk())

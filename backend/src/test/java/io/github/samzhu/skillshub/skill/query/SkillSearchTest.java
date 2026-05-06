@@ -62,7 +62,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
         // 預設 stub：admin user + AclPrincipalExpander.expand 回傳含 *:read 的 patterns。
         // 既有 6 ACs fixture 走 PUBLIC 語意（acl_entries 含 *:read），通過 ?| 比對。
         when(currentUserProvider.current())
-                .thenReturn(new CurrentUser("test-admin", List.of("admin"), List.of()));
+                .thenReturn(new CurrentUser("test-admin", List.of("admin"), List.of(), null));
         when(aclExpander.expand(any(CurrentUser.class), eq("read")))
                 .thenReturn(List.of("user:test-admin:read", "role:admin:read", "public:*:read"));
         var now = Instant.now();
@@ -184,7 +184,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
         // user=bob 不是 alice / 非 admin / 對 private-secret-skill 沒 grant：expand 出
         // [user:bob:read, *:read] — 無一命中該 skill 的 acl_entries
         when(currentUserProvider.current())
-                .thenReturn(new CurrentUser("bob", List.of("viewer"), List.of()));
+                .thenReturn(new CurrentUser("bob", List.of("viewer"), List.of(), null));
         when(aclExpander.expand(any(CurrentUser.class), eq("read")))
                 .thenReturn(List.of("user:bob:read", "role:viewer:read", "public:*:read"));
 
@@ -204,7 +204,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
                 List.of("user:alice:read", "user:alice:write", "user:bob:read"), null));
         // user=bob expand 後含 user:bob:read — 命中該 skill acl_entries
         when(currentUserProvider.current())
-                .thenReturn(new CurrentUser("bob", List.of("viewer"), List.of()));
+                .thenReturn(new CurrentUser("bob", List.of("viewer"), List.of(), null));
         when(aclExpander.expand(any(CurrentUser.class), eq("read")))
                 .thenReturn(List.of("user:bob:read", "role:viewer:read", "public:*:read"));
 

@@ -75,7 +75,9 @@ public class CurrentUserProvider {
             }
             var roles = parseStringListClaim(token, "roles");
             var groups = parseStringListClaim(token, "groups");
-            return new CurrentUser(sub, roles, groups);
+            // S114a: company_id optional claim — null when absent (graceful degradation)
+            var companyId = token.getClaimAsString("company_id");
+            return new CurrentUser(sub, roles, groups, companyId);
         }
 
         // (2) LAB / 其他認證模式：principal 非 anonymous 且已認證
@@ -87,12 +89,12 @@ public class CurrentUserProvider {
             var roles = auth.getAuthorities().stream()
                     .map(a -> a.getAuthority().replaceFirst("^ROLE_", ""))
                     .toList();
-            // S016: LAB / non-JWT 認證無 OIDC claim 來源，groups 預設空 list
-            return new CurrentUser(auth.getName(), roles, List.of());
+            // S016: LAB / non-JWT 認證無 OIDC claim 來源，groups + companyId 預設 null
+            return new CurrentUser(auth.getName(), roles, List.of(), null);
         }
 
         // (3) 安全 fallback：無 SecurityContext（背景執行緒、test 未注入）— 不丟 NPE
-        return new CurrentUser(labUserId, List.of("admin"), List.of());
+        return new CurrentUser(labUserId, List.of("admin"), List.of(), null);
     }
 
     /** Audit 欄位常用 shortcut — 等同 {@code current().userId()}。 */

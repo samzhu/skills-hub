@@ -131,3 +131,65 @@ describe('SkillDetailPage — S133 MarkdownActionMenu visibility', () => {
     })
   })
 })
+
+/**
+ * S114a AC-11 — 分享按鈕 owner-only visibility。
+ *
+ * `me` 回應的 `sub` 欄位與 `skill.ownerId` 比對；只有 owner 顯示「分享」按鈕。
+ */
+describe('SkillDetailPage — S114a AC-11 share button visibility', () => {
+  function mockFetchWithOwnerAndMe(
+    skill: ReturnType<typeof skillFixture>,
+    meSub: string,
+  ) {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      const u = typeof url === 'string' ? url : String(url)
+      if (u.endsWith('/me')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ sub: meSub, roles: [], groups: [], companyId: null, deptId: null, scope: '' }),
+        } as Response)
+      }
+      if (
+        u.includes(`/skills/${skill.id}`) &&
+        !u.includes('/versions') &&
+        !u.includes('/stats') &&
+        !u.includes('/bundles') &&
+        !u.includes('/grants')
+      ) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(skill) } as Response)
+      }
+      if (u.includes('/versions')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [] }) } as Response)
+      }
+      if (u.includes('/stats')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(null) } as Response)
+      }
+      if (u.includes('/subscriptions')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response)
+      }
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) } as Response)
+    })
+  }
+
+  it('AC-11: owner sees 分享 button', async () => {
+    const skill = { ...skillFixture('PUBLISHED', 'skill-share-1'), ownerId: 'alice' }
+    mockFetchWithOwnerAndMe(skill, 'alice')
+    renderPage('skill-share-1')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '分享' })).toBeInTheDocument()
+    })
+  })
+
+  it('AC-11: non-owner does not see 分享 button', async () => {
+    const skill = { ...skillFixture('PUBLISHED', 'skill-share-2'), ownerId: 'alice' }
+    mockFetchWithOwnerAndMe(skill, 'bob')
+    renderPage('skill-share-2')
+    await waitFor(() => {
+      // wait for skill to load (Download button present means load succeeded)
+      expect(screen.getByText('下載')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: '分享' })).not.toBeInTheDocument()
+  })
+})

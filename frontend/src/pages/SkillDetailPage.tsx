@@ -24,6 +24,7 @@ import { localizeApiError } from '@/lib/api-error-messages'
 import { FlagsList } from '@/components/FlagsList'
 import { ReviewsPanel } from '@/components/ReviewsPanel'
 import { MarkdownActionMenu } from '@/components/MarkdownActionMenu'
+import { ShareModal } from '@/components/ShareModal'
 import type { RiskLevel, SkillStatus } from '@/types/skill'
 
 /**
@@ -79,6 +80,8 @@ export function SkillDetailPage() {
   // 後續 hook (useVersions / mutations) 仍需 skill UUID — 從 fetched skill aggregate 取
   const id = skill?.id ?? params.id ?? ''
   const { data: versions } = useVersions(id ?? '')
+  const [shareOpen, setShareOpen] = useState(false)
+  const isOwner = !!skill && !!me && skill.ownerId === me.sub
 
   if (isLoading) {
     return (
@@ -119,7 +122,8 @@ export function SkillDetailPage() {
       </Link>
 
       {/* S087 → S098e: hero row — IconTile xl + name 22px + author + sparkline 30d 下載趨勢 + 版本/風險/狀態 pills + 下載 CTA */}
-      <SkillHero skill={skill} />
+      <SkillHero skill={skill} isOwner={isOwner} onShareClick={() => setShareOpen(true)} />
+      {shareOpen && <ShareModal skillId={skill.id} onClose={() => setShareOpen(false)} />}
 
       {/* S087: SUSPENDED callout per DESIGN.md card-callout-danger pattern */}
       {skill.status === 'SUSPENDED' && (
@@ -232,7 +236,15 @@ export function SkillDetailPage() {
  * S098e — Hero row with download sparkline (reuses S096d3 Sparkline + /skills/{id}/stats endpoint).
  * 把 hero 的展示密度提升 — 30d 趨勢迷你圖讓 user 立刻看到「該技能還活著嗎？」
  */
-function SkillHero({ skill }: { skill: import('@/types/skill').Skill }) {
+function SkillHero({
+  skill,
+  isOwner,
+  onShareClick,
+}: {
+  skill: import('@/types/skill').Skill
+  isOwner: boolean
+  onShareClick: () => void
+}) {
   // S098e: sparkline 30d trend — query 失敗或 0 data 時 EmptyState（"—"）由 Sparkline 處理
   const { data: trend30d } = useQuery({
     queryKey: ['skill-stats', skill.id, '30d'],
@@ -270,19 +282,32 @@ function SkillHero({ skill }: { skill: import('@/types/skill').Skill }) {
           <Sparkline data={trend30d ?? []} width={120} height={32} color="#7F77DD" />
         </div>
       )}
-      {skill.latestVersion && skill.status === 'PUBLISHED' && (
-        <div className="flex shrink-0 items-center gap-2">
-          <SubscribeButton skill={skill} />
-          <MarkdownActionMenu skillId={skill.id} />
-          <a
-            href={`/api/v1/skills/${skill.id}/download`}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-foreground"
+      <div className="flex shrink-0 items-center gap-2">
+        {/* S114a: 分享按鈕僅 owner 可見 */}
+        {isOwner && (
+          <button
+            type="button"
+            onClick={onShareClick}
+            aria-label="分享"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[13px] hover:bg-muted"
           >
-            <Download className="h-4 w-4" />
-            下載
-          </a>
-        </div>
-      )}
+            分享
+          </button>
+        )}
+        {skill.latestVersion && skill.status === 'PUBLISHED' && (
+          <>
+            <SubscribeButton skill={skill} />
+            <MarkdownActionMenu skillId={skill.id} />
+            <a
+              href={`/api/v1/skills/${skill.id}/download`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-2 text-[13px] font-medium text-primary-foreground hover:bg-foreground"
+            >
+              <Download className="h-4 w-4" />
+              下載
+            </a>
+          </>
+        )}
+      </div>
     </div>
   )
 }

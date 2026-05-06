@@ -38,6 +38,10 @@ public class AclPrincipalExpander {
         for (var group : user.groups()) {
             patterns.add("group:" + group + ":" + permission);
         }
+        // S114a: company_id claim — lets company-scoped skills grant access to all users in the same company
+        if (user.companyId() != null && !user.companyId().isBlank()) {
+            patterns.add("company:" + user.companyId() + ":" + permission);
+        }
         // S026: read permission 一律附 "public:*:read" public pseudo-principal — 與 Skill aggregate /
         // vector_store.acl_entries 的 "public:*:read" `??|` 命中；達成「skill 預設對所有使用者開放
         // 讀取」。write/delete/suspend/reactivate 不附 — mutation 仍 owner/role/group ACL 守。
