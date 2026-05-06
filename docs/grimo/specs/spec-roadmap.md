@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-05
+> 最後更新：2026-05-06
 
 ## 使用說明
 
@@ -20,7 +20,7 @@
 - [ ] S099e1: Prompt-injection scanner（設計完成於 S099 META §6）
 - [ ] S099e3: Dependency vulnerability scanner（設計完成於 S099 META §6）
 - [ ] S099c: Cross-marketplace risk validation（sources 已驗證）
-- [x] S114a: RBAC ACL Owner+Viewer（⏳ Plan — task files 已建立 2026-05-06）
+- [x] S114a: RBAC ACL Owner+Viewer（✅ shipped 2026-05-06 — v4.0.0）
 
 **Deferred polish（低優先）：**
 - [ ] S098a2: SSE 事件串流（條件：scan 平均 > 5s 且 user 抱怨等待）
@@ -34,7 +34,6 @@
 | SpecID | 標題 | 點數 | 相依 | 狀態 |
 |--------|------|------|------|------|
 | S099 | META Trust Maturity & Implementation Audit | META | — | 📐 in-design |
-| S114a | RBAC ACL — Owner + Viewer roles | M(12) | S116 ✅ | ⏳ Plan |
 | S120 | E2E auth integration test | M(8-10) | S114a | 📐 in-design |
 | S132 | CI — Cloud Build pipeline | XS(7) | S013 ✅ | ⏳ T02 pending |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | 📐 in-design |
@@ -53,7 +52,7 @@
 | v3.13.0 | S138 (test debt recovery — 18 failures → 0) | ✅ shipped 2026-05-05 |
 | v3.14.0 | S135a (Backend Quality Score) | ✅ shipped 2026-05-06 |
 | v3.15.0 | S132 T02 (CI Cloud Build first push) | ⏳ 待用戶 GCP setup |
-| v4.0.0 | S114a (RBAC ACL Owner+Viewer) | 📋 spec 已設計 |
+| v4.0.0 | S114a (RBAC ACL Owner+Viewer) | ✅ shipped 2026-05-06 |
 | v4.1.0 | S120 (E2E auth integration test) | 📋 depends S114a |
 | v4.x | S099e1, S099e3 (security scanners) | 📋 設計已備妥 |
 | v4.x | S099c (cross-marketplace validation) | 📋 sources 已驗證 |
@@ -308,3 +307,4 @@
 | S134 | Real OAuth IdP local dev trial (Google OAuth) | S(9) | v3.12.0 |
 | S138 | SB4+SS7 test debt recovery — 18 failures → 0 | S(7) | v3.13.0 |
 | S135a | Backend Quality Score (Validation + LLM judge + GET /scores) | M(14) | v3.14.0 |
+| S114a | RBAC ACL — Owner + Viewer roles + async projection | M(12) | v4.0.0 |

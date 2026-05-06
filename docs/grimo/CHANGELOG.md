@@ -1,5 +1,38 @@
 # Changelog
 
+## [v4.0.0] — RBAC ACL Owner+Viewer + 技能分享 Modal（S114a 完成；2026-05-06）
+
+> S114a RBAC ACL 物化投影系統。`skill_grants` 表作為 source-of-truth，async listener 維護 `skills.acl_entries` JSONB 投影；新增 Owner + Viewer 兩個 role，前端 ShareModal 提供完整 grant/revoke UX。
+
+### Added — Backend
+
+- **V16 schema**：`skills.owner_id NOT NULL`、`is_public GENERATED ALWAYS AS (acl_entries @> '["public:*:read"]')` partial index、`skill_grants` 新表（含 GIN index）
+- **V17 backfill**：舊 `acl_entries` JSONB 解析推回 `skill_grants`（OWNER / public VIEWER）
+- **Role enum**：`OWNER`（read/write/delete）+ `VIEWER`（read）`permissions()` 映射
+- **SkillGrant entity**：`@Table("skill_grants")` + `create()` factory + `Persistable<String>` isNew
+- **SkillGrantService**：`grant()` / `revoke()` / `listGrants()`；409 single-owner 約束；`@Transactional`
+- **SkillGrantController**：`POST /api/v1/skills/{id}/grants`（202）、`DELETE /{grantId}`（202）、`GET`（200）；`@PreAuthorize` owner guard
+- **SkillAclProjectionListener**：3 個 `@ApplicationModuleListener`；`onSkillCreated` 自動 seed OWNER + public VIEWER（PUBLIC skills）；`rebuildAcl()` 用 `pg_advisory_xact_lock` 防 race
+- **AclPrincipalExpander**：加 `company:<companyId>:<perm>` expansion；`*:read` → `public:*:read` 3-segment 一致化
+- **CurrentUser**：加第 4 欄位 `@Nullable String companyId`
+
+### Added — Frontend
+
+- `src/api/grants.ts`：`fetchGrants` / `createGrant` / `revokeGrant`
+- `src/hooks/useGrants.ts`：TanStack Query hooks（useGrants / useCreateGrant / useRevokeGrant）
+- `src/components/ShareModal.tsx`：grants list + 4-radio + principal input + revoke buttons
+
+### Changed — Frontend
+
+- `src/types/skill.ts`：加 `ownerId?: string`
+- `src/pages/SkillDetailPage.tsx`：hero 加「分享」按鈕（owner-only）+ ShareModal trigger
+
+### Fixed
+
+- PUBLIC skill 建立後 `public:*:read` 被 `rebuildAcl()` 覆蓋導致匿名讀取失敗 — `onSkillCreated()` 先讀 `is_public` 再 seed public VIEWER grant
+
+---
+
 ## [v3.14.0] — Backend Quality Score — 3-axis LLM judge + GET /scores（S135a 完成；2026-05-06）
 
 > S135a 後端品質評分系統。publish skill 觸發 async LLM judge（Gemini 2.5 Flash），寫入 3 條 `skill_scores` rows（VALIDATION rule-based + IMPLEMENTATION + ACTIVATION LLM judge），提供 `GET /api/v1/skills/{id}/scores`。
