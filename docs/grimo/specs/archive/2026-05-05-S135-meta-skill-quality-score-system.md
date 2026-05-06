@@ -1,6 +1,6 @@
 # S135 META — Skill Quality Score System (Tessl 8-dim aligned)
 
-> **Status**: 📐 in-design
+> **Status**: ✅ shipped — S135a (v3.14.0) + S135b (v4.1.0) both shipped 2026-05-06
 > **Type**: META + research-driven feature spec
 > **Estimate**: L total ≈ 22-26 pts split into S135a (M 13-15) + S135b (S 9-11)
 > **Triggered by**: 2026-05-05 user directive — 完成 Tessl Registry 8-dim Quality 研究後，要求合併取代既有 S101 META 的粗粒度設計

@@ -1,5 +1,23 @@
 # Changelog
 
+## [v4.2.0] — OWASP LLM01 Prompt Injection 靜態偵測（S099e1 完成；2026-05-07）
+
+> S099e1 新增 `PromptInjectionScanner`，實作 OWASP LLM Top 10 LLM01 Prompt Injection 對應 control。掃描 SKILL.md 全文 + frontmatter instructions 欄位 + scripts/，偵測 8 個 HIGH + 6 個 MEDIUM pattern；與 PatternScanner / SecretScanner 並行執行於 Phase.STATIC，OWASP tag: AST01。
+> 同步關閉 S135 META（S135a + S135b 皆已 ship）。
+
+### Added — Backend
+
+- **`PromptInjectionScanner`**（`security.scan.engines`）：`SecurityAnalyzer` SPI 實作，`@Component("prompt-injection")`，`@ConditionalOnProperty` 可關閉
+- **8 HIGH patterns**：PI_OVERRIDE_IGNORE / PI_OVERRIDE_FORGET / PI_SYSTEM_PROMPT_LEAK / PI_ROLE_JAILBREAK / PI_HIDDEN_UNICODE_RLO / PI_EXFIL_AFTER_TASK / PI_CREDENTIAL_RELAY / PI_FAKE_SYSTEM_HEADER
+- **6 MEDIUM patterns**：PI_HYPOTHETICAL_BYPASS / PI_CONTEXT_WINDOW_PROBE / PI_SECRET_NO_DISCLOSE / PI_OVERRIDE_NEW_TASK / PI_HIDDEN_UNICODE_ZWSP / PI_EXFIL_URL_IN_INSTRUCTIONS
+- **`PromptInjectionScannerTest`**：17 tests — 每條 pattern 獨立 case + clean text no-findings + contract checks
+
+### Closed
+
+- S135 META (Skill Quality Score System) — 兩個 sub-specs 皆已 ship；META spec 移至 archive
+
+---
+
 ## [v4.1.0] — Frontend 品質展示（S135b 完成；2026-05-06）
 
 > S135b 前端品質評分展示。消費 S135a 已 ship 的 `GET /api/v1/skills/{id}/scores`，在 SkillDetailPage 加入「品質分數」進度條 + 安全等級信號區塊（hero 下方），並新增「品質」tab 顯示 3-axis dimension 明細 + LLM reasoning。

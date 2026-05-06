@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-06（Tick 1 loop）
+> 最後更新：2026-05-07（Tick 3 loop — S099e1 ship，S135 META closed）
 
 ## 使用說明
 
@@ -36,7 +36,7 @@
 | S099 | META Trust Maturity & Implementation Audit | META | — | 📐 in-design |
 | S120 | E2E auth integration test | M(8-10) | S114a | 📐 in-design |
 | S132 | CI — Cloud Build pipeline | XS(7) | S013 ✅ | ⏳ T02 pending |
-| S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | 📐 in-design |
+| S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | ✅ shipped — S135a (v3.14.0) + S135b (v4.1.0) |
 | S139 | Login UI + Lazy Auth Gate（AppShell avatar + button-level OAuth gate + LAB Google OAuth 串接） | S(10) | S114a ✅ S134 ✅ | ⏳ code-complete；AC-8 pending 部署人員手動 smoke |
 
 ---
@@ -55,7 +55,8 @@
 | v4.0.0 | S114a (RBAC ACL Owner+Viewer) | ✅ shipped 2026-05-06 |
 | v4.1.0 | S135b (Frontend Quality Display) | ✅ shipped 2026-05-06 |
 | v4.2.0 | S120 (E2E auth integration test) | 📋 depends S114a |
-| v4.x | S099e1, S099e3 (security scanners) | 📋 設計已備妥 |
+| v4.2.0 | S099e1 (PromptInjectionScanner — OWASP LLM01) | ✅ shipped 2026-05-07 |
+| v4.x | S099e3 (security scanners) | 📋 設計已備妥 |
 | v4.x | S099c (cross-marketplace validation) | 📋 sources 已驗證 |
 
 ---
@@ -72,7 +73,7 @@
 | S098c3 | File content line-level diff | L(12) | S098c2 | 📋 planned |
 | S099c | Cross-marketplace risk validation | S(7) | S099 | 📋 planned |
 | S099d | LLM description quality audit | M(12) | S099 | 📋 planned |
-| S099e1 | Prompt-injection pattern detector (LLM01) | M(8) | S099 | 📋 planned |
+| S099e1 | Prompt-injection pattern detector (LLM01) | M(8) | S099 | ✅ shipped v4.2.0 — 8 HIGH + 6 MEDIUM patterns, 17 tests |
 | S099e2 | Resource DoS scanner (LLM04) | S(5) | S099 | 📋 planned |
 | S099e3 | Dependency vulnerability scanner (LLM05) | S(7) | S099 | 📋 planned |
 | S099e4 | Hardcoded creds detector enhancement (LLM06) | S(4) | S099 | 📋 planned |
