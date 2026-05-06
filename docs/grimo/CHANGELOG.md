@@ -1,5 +1,28 @@
 # Changelog
 
+## [v4.3.0] — OWASP LLM05 依賴漏洞掃描（S099e3 完成；2026-05-07）
+
+> S099e3 新增 `DependencyVulnScanner`，解析 `requirements.txt`（pinned `==`）與 `package.json`（dependencies + devDependencies）依賴，批次查詢 OSV.dev `/v1/querybatch`（免費、無 API key）；網路不通時 safeAnalyze 不阻斷 scan pipeline；OWASP tag: AST05。
+
+### Added — Backend
+
+- **`OsvClient`**：Spring `RestClient` 封裝，POST OSV.dev `/v1/querybatch`；index 對齊回傳漏洞列表
+- **`DependencyVulnScanner`**（`security.scan.engines`）：`SecurityAnalyzer` SPI 實作，`@Component("dep-vuln")`，`@ConditionalOnProperty` 可關閉
+  - requirements.txt：regex `^([A-Za-z0-9_.-]+)(?:\[.*?\])?==...` 解析 pinned 版本，PURL `pkg:pypi/{name}@{version}`
+  - package.json：Jackson 解析，strip `^~>=<` 前綴，PURL `pkg:npm/{name}@{version}`
+  - CVSS heuristic：C:H / I:H / A:H → HIGH；C:L / I:L / A:L → MEDIUM；無資訊 → MEDIUM
+  - ruleId：`DEP_VULN_{PYPI|NPM}_{VULN_ID}`
+- **`DependencyVulnScannerTest`**：13 tests — vuln HIGH/MEDIUM/clean/noManifest/networkFail/version-parsing/scoped-skip
+
+### Deferred (to S099e3-2)
+
+- CVSS numeric score formula（目前用 CIA component 啟發式）
+- pyproject.toml 解析
+- SBOM artifact 生成
+- Scoped npm packages (`@scope/name`)
+
+---
+
 ## [v4.2.0] — OWASP LLM01 Prompt Injection 靜態偵測（S099e1 完成；2026-05-07）
 
 > S099e1 新增 `PromptInjectionScanner`，實作 OWASP LLM Top 10 LLM01 Prompt Injection 對應 control。掃描 SKILL.md 全文 + frontmatter instructions 欄位 + scripts/，偵測 8 個 HIGH + 6 個 MEDIUM pattern；與 PatternScanner / SecretScanner 並行執行於 Phase.STATIC，OWASP tag: AST01。
