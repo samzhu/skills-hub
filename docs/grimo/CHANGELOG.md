@@ -1,5 +1,21 @@
 # Changelog
 
+## [v4.12.0] — Collections Risk Filter（S096f3 完成；2026-05-07）
+
+> `CollectionsPage` 加左側風險等級篩選 sidebar，對齊 PRD §P7 SBE Scenario 3「分類篩選」。backend batch SQL 計算每集合 maxRiskLevel（避免 N+1）；frontend client-side filter；`RiskFilterSidebar` 泛化支援 Collections 與 Skills 兩頁。
+
+### Added — Feature
+
+- **`CollectionQueryController`**：`CollectionSummary` 加 `maxRiskLevel: String | null`；`list()` 注入 `NamedParameterJdbcTemplate` 批次 CASE/MAX SQL 計算集合內最高 risk level
+- **`SkillCollection`**（`skills.ts`）：加 `maxRiskLevel: RiskLevel | null`
+- **`CollectionsPage`**：加 desktop aside + `RiskFilterSidebar` + `useState<Set<RiskLevel>>`；null maxRiskLevel filter active 時 exclude（保守；尚未掃描 = 不確定）
+
+### Changed — Component
+
+- **`RiskFilterSidebar`**：prop `skills: Skill[]` 泛化為 `items: Array<{ riskLevel: RiskLevel | null }>`；`HomePage` caller 同步更新為 `items={}`
+
+---
+
 ## [v4.11.0] — ACL Caffeine Cache（S114b 完成；2026-05-07）
 
 > `SkillPermissionStrategy.hasPermission()` 加 Caffeine JVM in-memory cache（`skill-acl`，TTL 300s，max 1000 entries），吸收同 user 同 skill 的重複 ACL SQL 查詢。Grant/revoke 後 `SkillAclProjectionListener` 透過 `@CacheEvict(allEntries=true)` 自動清空。

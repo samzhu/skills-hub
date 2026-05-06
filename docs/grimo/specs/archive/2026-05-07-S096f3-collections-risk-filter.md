@@ -1,6 +1,6 @@
 # S096f3 — Collections Risk Filter Polish
 
-**Status:** 📐 設計中
+**Status:** ✅ v4.12.0
 **Size:** XS(3-4 pt)
 **Depends on:** S096f2 ✅
 **Target version:** v4.12.0
@@ -142,3 +142,24 @@ Then:  risk filter 功能與 S096f3 前完全一致；不 regression
 - **AC-2/3 unit（frontend）**：`CollectionsPage.test.tsx` — mock collections with/without maxRiskLevel；filter state → render count
 - **AC-4 regression**：`RiskFilterSidebar.test.tsx` — 改 `items` prop 後現有測試 pass；`HomePage.test.tsx` compile + pass
 - **Regression**：`cd frontend && npm test -- --testPathPattern="Collections|RiskFilter|Home"`
+
+---
+
+## §6 Verification
+
+- `./gradlew compileJava` → BUILD SUCCESSFUL
+- `npm test` → 49 files, 236 tests, 0 failures
+- AC-2/AC-3 frontend unit tests 新增並 pass（`CollectionsPage.test.tsx`）
+- AC-4 regression: `RiskFilterSidebar.test.tsx` 5 tests pass；`HomePage.test.tsx` 5 tests pass
+
+---
+
+## §7 Result
+
+**2026-05-07 v4.12.0 shipped.**
+
+- Backend `CollectionSummary` 加 `maxRiskLevel: String | null`，`list()` 注入 `NamedParameterJdbcTemplate` 批次 CASE/MAX SQL 計算，無 N+1
+- Frontend `SkillCollection` interface 加 `maxRiskLevel: RiskLevel | null`
+- `RiskFilterSidebar` prop `skills: Skill[]` → `items: Array<{ riskLevel: RiskLevel | null }>`，向下相容 Skill struct
+- `CollectionsPage` 加 aside + `RiskFilterSidebar` + `useState<Set<RiskLevel>>`；null maxRiskLevel filter active 時 exclude（保守策略）
+- 全 frontend suite 236 tests green；backend 編譯通過

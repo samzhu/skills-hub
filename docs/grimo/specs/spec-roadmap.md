@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（S096f3 spec 設計完成 — Collections risk filter polish）
+> 最後更新：2026-05-07（S096f3 ship v4.12.0 — Collections risk filter polish）
 
 ## 使用說明
 
@@ -69,7 +69,7 @@
 | SpecID | 標題 | 點數 | 相依 | 狀態 |
 |--------|------|------|------|------|
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
-| S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | 📐 2026-05-07-S096f3-collections-risk-filter.md |
+| S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |
 | S098a2 | SSE 事件串流 + per-step 動畫 | M(8) | S098a ✅ | ⏸ deferred |
 | S098b3-2 | Backend 結構化 findings payload | M(6) | S098b3 ✅ | 📋 planned |
 | S098c2 | Backend /diff endpoint | M(8) | S098c ✅ | 📋 planned |

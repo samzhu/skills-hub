@@ -1,19 +1,19 @@
 import { cn } from '@/lib/utils'
-import type { RiskLevel, Skill } from '@/types/skill'
+import type { RiskLevel } from '@/types/skill'
 
 /**
  * S098d2 — Homepage risk filter sidebar (client-side aggregation)。
+ * S096f3 — 泛化 `skills` → `items`，支援 Skill 與 SkillCollection（maxRiskLevel → riskLevel）。
  *
- * 4 tier checkbox toggles + count breakdown 來自當前 `skillsPage.content`。
- * 不打 backend 額外 endpoint — pageSize=20 下計數是「當前頁面看到的數量」，
- * 跨頁不累計（trade-off：避免新 endpoint；user 翻頁會看到不同 count）。
+ * 4 tier checkbox toggles + count breakdown 來自當前頁 items。
+ * 不打 backend 額外 endpoint — client-side count；翻頁會看到不同 count（trade-off）。
  *
  * 視覺：CategorySidebar 上方獨立 group；同樣 selected/total 樣式。
  */
 
 interface RiskFilterSidebarProps {
-  /** 當前頁的所有 skill — 用於計算每 tier 的 count */
-  skills: Skill[]
+  /** 當前頁的 items — 用於計算每 tier 的 count；只需 riskLevel 欄位 */
+  items: Array<{ riskLevel: RiskLevel | null }>
   /** 目前選中的 risk levels；空 Set = 「不篩選 = 全顯」(初始即如此) */
   selected: Set<RiskLevel>
   onToggle: (level: RiskLevel) => void
@@ -36,13 +36,13 @@ const TIER_DOT: Record<RiskLevel, string> = {
   HIGH: 'bg-[#F2A6A6]',
 }
 
-export function RiskFilterSidebar({ skills, selected, onToggle, onClear }: RiskFilterSidebarProps) {
-  // S098d2: client-side count — Skill.riskLevel 為可能為 null（尚未掃描完）
+export function RiskFilterSidebar({ items, selected, onToggle, onClear }: RiskFilterSidebarProps) {
+  // client-side count — riskLevel 可能為 null（尚未掃描）
   const counts: Record<RiskLevel, number> = { NONE: 0, LOW: 0, MEDIUM: 0, HIGH: 0 }
-  for (const s of skills) {
+  for (const s of items) {
     if (s.riskLevel) counts[s.riskLevel]++
   }
-  const total = skills.length
+  const total = items.length
   const hasFilter = selected.size > 0
 
   return (

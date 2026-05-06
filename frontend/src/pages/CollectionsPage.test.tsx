@@ -18,12 +18,22 @@ import { CollectionsPage } from './CollectionsPage'
 const sampleCollections = [
   {
     // S118: rename installs → installCount 對齊 backend CollectionSummary
+    // S096f3: maxRiskLevel HIGH（含 HIGH risk skill）
     id: 'c1', name: 'DevOps Starter', description: 'k8s + terraform tooling',
     skillCount: 3, installCount: 12, category: 'DevOps', createdAt: '2026-04-30T10:00:00Z',
+    maxRiskLevel: 'HIGH',
   },
   {
+    // S096f3: maxRiskLevel LOW
     id: 'c2', name: 'Frontend Quality', description: 'a11y + lint + i18n suite',
     skillCount: 5, installCount: 8, category: 'Frontend', createdAt: '2026-04-29T10:00:00Z',
+    maxRiskLevel: 'LOW',
+  },
+  {
+    // S096f3: maxRiskLevel null（尚未掃描）
+    id: 'c3', name: 'Unscanned Pack', description: 'skills not yet scanned',
+    skillCount: 2, installCount: 0, category: 'Misc', createdAt: '2026-04-28T10:00:00Z',
+    maxRiskLevel: null,
   },
 ]
 
@@ -176,5 +186,42 @@ describe('CollectionsPage — AC-10 CTA enable + AC-11 create + AC-12 install', 
     await waitFor(() => screen.getByText('DevOps Starter'))
     expect(screen.queryByText(/S096f2/)).not.toBeInTheDocument()
     expect(screen.queryByText(/即將開放/)).not.toBeInTheDocument() // S096f1 stub copy 已退場
+  })
+})
+
+/**
+ * S096f3 — Risk filter AC-2 / AC-3 tests。
+ * 對齊 spec §3 AC-2「篩選後只顯示對應集合」+ AC-3「null maxRiskLevel filter 時不顯示」。
+ */
+describe('CollectionsPage — S096f3 Risk Filter', () => {
+  it('AC-2(S096f3): 選 LOW filter → 只顯示 maxRiskLevel=LOW 的集合', async () => {
+    renderPage()
+    // wait for all 3 collections to appear
+    await waitFor(() => screen.getByText('DevOps Starter'))
+    expect(screen.getByText('Frontend Quality')).toBeInTheDocument()
+    expect(screen.getByText('Unscanned Pack')).toBeInTheDocument()
+
+    // click 「低風險」filter button
+    fireEvent.click(screen.getByText('低風險'))
+
+    // only Frontend Quality (LOW) visible; DevOps Starter (HIGH) + Unscanned Pack (null) excluded
+    expect(screen.getByText('Frontend Quality')).toBeInTheDocument()
+    expect(screen.queryByText('DevOps Starter')).not.toBeInTheDocument()
+    expect(screen.queryByText('Unscanned Pack')).not.toBeInTheDocument()
+  })
+
+  it('AC-3(S096f3): null maxRiskLevel 集合 — 選任一 filter 時不顯示', async () => {
+    renderPage()
+    await waitFor(() => screen.getByText('Unscanned Pack'))
+
+    // activate any filter
+    fireEvent.click(screen.getByText('高風險'))
+
+    // Unscanned Pack (maxRiskLevel=null) must be excluded
+    expect(screen.queryByText('Unscanned Pack')).not.toBeInTheDocument()
+
+    // clear filter → Unscanned Pack re-appears
+    fireEvent.click(screen.getByText('全部'))
+    expect(screen.getByText('Unscanned Pack')).toBeInTheDocument()
   })
 })

@@ -35,7 +35,7 @@ describe('RiskFilterSidebar — S098d2', () => {
       skill('HIGH', '5'),
       skill(null, '6'), // null 不計入任何 tier
     ]
-    render(<RiskFilterSidebar skills={skills} selected={new Set()} onToggle={vi.fn()} onClear={vi.fn()} />)
+    render(<RiskFilterSidebar items={skills} selected={new Set()} onToggle={vi.fn()} onClear={vi.fn()} />)
     // 「全部」count = total skills.length
     const allBtn = screen.getByText('全部').closest('button')
     expect(allBtn?.textContent).toContain('6')
@@ -51,7 +51,7 @@ describe('RiskFilterSidebar — S098d2', () => {
   })
 
   it('AC-2: empty Set 顯「全部」為 active state', () => {
-    render(<RiskFilterSidebar skills={[]} selected={new Set()} onToggle={vi.fn()} onClear={vi.fn()} />)
+    render(<RiskFilterSidebar items={[]} selected={new Set()} onToggle={vi.fn()} onClear={vi.fn()} />)
     // 「全部」按鈕在 hasFilter=false 時帶 bg-accent class —— 用 className 含 'bg-accent' 驗
     const allBtn = screen.getByText('全部').closest('button')
     expect(allBtn?.className).toContain('bg-accent')
@@ -59,21 +59,21 @@ describe('RiskFilterSidebar — S098d2', () => {
 
   it('AC-3: click on tier button calls onToggle with that tier', () => {
     const onToggle = vi.fn()
-    render(<RiskFilterSidebar skills={[]} selected={new Set()} onToggle={onToggle} onClear={vi.fn()} />)
+    render(<RiskFilterSidebar items={[]} selected={new Set()} onToggle={onToggle} onClear={vi.fn()} />)
     fireEvent.click(screen.getByText('低風險'))
     expect(onToggle).toHaveBeenCalledWith('LOW')
   })
 
   it('AC-4: click on 全部 calls onClear', () => {
     const onClear = vi.fn()
-    render(<RiskFilterSidebar skills={[]} selected={new Set(['LOW' as RiskLevel])} onToggle={vi.fn()} onClear={onClear} />)
+    render(<RiskFilterSidebar items={[]} selected={new Set(['LOW' as RiskLevel])} onToggle={vi.fn()} onClear={onClear} />)
     fireEvent.click(screen.getByText('全部'))
     expect(onClear).toHaveBeenCalledTimes(1)
   })
 
   it('AC-5: selected tier 顯 active state', () => {
     const selected = new Set<RiskLevel>(['HIGH'])
-    render(<RiskFilterSidebar skills={[]} selected={selected} onToggle={vi.fn()} onClear={vi.fn()} />)
+    render(<RiskFilterSidebar items={[]} selected={selected} onToggle={vi.fn()} onClear={vi.fn()} />)
     const highBtn = screen.getByText('高風險').closest('button')
     expect(highBtn?.className).toContain('bg-accent')
     expect(highBtn?.className).toContain('font-medium')

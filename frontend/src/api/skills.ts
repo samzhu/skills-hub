@@ -223,6 +223,8 @@ export interface SkillCollection {
   installCount: number
   category: string
   createdAt: string
+  /** S096f3: 集合內所有 skill 的最高風險等級；null = 尚未掃描或空集合 */
+  maxRiskLevel: import('../types/skill').RiskLevel | null
 }
 
 /** S096f2 — single collection detail（GET /collections/{id}）含 skills summary。 */

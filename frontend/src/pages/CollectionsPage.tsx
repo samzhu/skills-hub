@@ -5,8 +5,10 @@ import { EmptyState } from '@/components/EmptyState'
 import { CreateCollectionModal } from '@/components/CreateCollectionModal'
 import { InstallButton } from '@/components/InstallButton'
 import { AuthGatedButton } from '@/components/AuthGatedButton'
+import { RiskFilterSidebar } from '@/components/RiskFilterSidebar'
 import { useCollections } from '@/hooks/useCollections'
 import type { SkillCollection } from '@/api/skills'
+import type { RiskLevel } from '@/types/skill'
 
 /**
  * S096f2-T04 — Collections full feature at `/collections`.
@@ -14,12 +16,21 @@ import type { SkillCollection } from '@/api/skills'
  * 取代 S096f1 read-only stub：CTA 啟用 + 真資料 list + CreateCollectionModal +
  * 一鍵 install (InstallButton 走 spec §1 Approach C frontend orchestration)。
  *
- * Risk filter (PRD §P7 SBE Scenario 3) defer 至 S096f3 polish；fancy multi-select
- * skill picker / Collection detail page / edit/delete defer per spec §2.6 trim list。
+ * S096f3: 加左側 RiskFilterSidebar（desktop aside）；client-side filter by maxRiskLevel。
+ * null maxRiskLevel（尚未掃描）filter active 時 exclude（保守）。
  */
 export function CollectionsPage() {
   const { data: collections, isLoading } = useCollections()
   const [showModal, setShowModal] = useState(false)
+  const [riskFilter, setRiskFilter] = useState<Set<RiskLevel>>(new Set())
+
+  // S096f3: map maxRiskLevel → riskLevel for RiskFilterSidebar compatibility
+  const sidebarItems = (collections ?? []).map((c) => ({ riskLevel: c.maxRiskLevel }))
+
+  const filtered =
+    riskFilter.size === 0
+      ? (collections ?? [])
+      : (collections ?? []).filter((c) => c.maxRiskLevel != null && riskFilter.has(c.maxRiskLevel as RiskLevel))
 
   return (
     <AppShell>
@@ -42,22 +53,48 @@ export function CollectionsPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">載入中...</div>
-      ) : !collections || collections.length === 0 ? (
-        <EmptyState
-          tone="invite"
-          headline="目前還沒人建立集合。"
-          sub="集合（Collection）讓你把多個技能一次安裝。點上方「建立集合」開始打包你的工作流。"
-          secondaryAction={{ label: '回去瀏覽單一技能', href: '/browse' }}
-        />
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {collections.map((c) => (
-            <CollectionCard key={c.id} collection={c} />
-          ))}
+      <div className="flex gap-6">
+        {/* S096f3: risk filter sidebar — desktop only，對齊 HomePage 佈局 */}
+        <aside className="hidden w-56 shrink-0 md:block">
+          <RiskFilterSidebar
+            items={sidebarItems}
+            selected={riskFilter}
+            onToggle={(level) =>
+              setRiskFilter((prev) => {
+                const next = new Set(prev)
+                next.has(level) ? next.delete(level) : next.add(level)
+                return next
+              })
+            }
+            onClear={() => setRiskFilter(new Set())}
+          />
+        </aside>
+
+        <div className="flex-1">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground">載入中...</div>
+          ) : !collections || collections.length === 0 ? (
+            <EmptyState
+              tone="invite"
+              headline="目前還沒人建立集合。"
+              sub="集合（Collection）讓你把多個技能一次安裝。點上方「建立集合」開始打包你的工作流。"
+              secondaryAction={{ label: '回去瀏覽單一技能', href: '/browse' }}
+            />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              tone="redirect"
+              headline="沒有符合此風險等級的集合。"
+              sub="試著選擇其他風險等級，或點「全部」顯示所有集合。"
+            />
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((c) => (
+                <CollectionCard key={c.id} collection={c} />
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {showModal && <CreateCollectionModal onClose={() => setShowModal(false)} />}
     </AppShell>

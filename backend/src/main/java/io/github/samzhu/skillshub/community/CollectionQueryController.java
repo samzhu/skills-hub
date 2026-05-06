@@ -2,7 +2,10 @@ package io.github.samzhu.skillshub.community;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,16 +30,53 @@ import io.github.samzhu.skillshub.skill.domain.Skill;
 @RequestMapping("/api/v1/collections")
 class CollectionQueryController {
 
-    private final CollectionService service;
+    // S096f3: batch SQL — 每個 collection 的最高 risk level（NONE/LOW/MEDIUM/HIGH 排序；避免 N+1）
+    private static final String MAX_RISK_SQL = """
+            SELECT cs.collection_id,
+                   CASE MAX(CASE s.risk_level
+                           WHEN 'HIGH'   THEN 4
+                           WHEN 'MEDIUM' THEN 3
+                           WHEN 'LOW'    THEN 2
+                           WHEN 'NONE'   THEN 1
+                           ELSE 0 END)
+                        WHEN 4 THEN 'HIGH'
+                        WHEN 3 THEN 'MEDIUM'
+                        WHEN 2 THEN 'LOW'
+                        WHEN 1 THEN 'NONE'
+                        ELSE NULL END AS max_risk_level
+            FROM collection_skills cs
+            JOIN skills s ON s.id = cs.skill_id
+            WHERE cs.collection_id IN (:ids)
+            GROUP BY cs.collection_id
+            """;
 
-    CollectionQueryController(CollectionService service) {
+    private final CollectionService service;
+    private final NamedParameterJdbcTemplate jdbc;
+
+    CollectionQueryController(CollectionService service, NamedParameterJdbcTemplate jdbc) {
         this.service = service;
+        this.jdbc = jdbc;
     }
 
-    /** AC-5 — 全 collection 列表；optional category filter。 */
+    /** AC-5 — 全 collection 列表；optional category filter。S096f3: 批次加 maxRiskLevel。 */
     @GetMapping
     List<CollectionSummary> list(@RequestParam(required = false) String category) {
-        return service.list(category).stream().map(CollectionSummary::from).toList();
+        var collections = service.list(category);
+        if (collections.isEmpty()) return List.of();
+
+        var ids = collections.stream().map(Collection::getId).toList();
+        var params = new MapSqlParameterSource("ids", ids);
+        Map<String, String> maxRiskLevels = jdbc.query(MAX_RISK_SQL, params, rs -> {
+            var map = new java.util.HashMap<String, String>();
+            while (rs.next()) {
+                map.put(rs.getString("collection_id"), rs.getString("max_risk_level"));
+            }
+            return map;
+        });
+
+        return collections.stream()
+                .map(c -> CollectionSummary.from(c, maxRiskLevels != null ? maxRiskLevels.get(c.getId()) : null))
+                .toList();
     }
 
     /** AC-6 — single + skills detail（對應 collection 順序保留）。 */
@@ -56,6 +96,7 @@ class CollectionQueryController {
      * <p>S118 (2026-05-04): rename `installs` → `installCount` 對齊 {@link CollectionDetail}
      * 既驗欄位命名（per Mode B Round 36 finding Bug AQ — 同 entity 跨 endpoint field name
      * 一致性）。S096f2 ship 時 oversight；本 fix breaking change 但 chain 收尾可一次完整 ship。
+     * <p>S096f3: 加 maxRiskLevel — 集合內所有 skill 最高風險等級（batch SQL 計算；null = 尚未掃描或空集合）。
      */
     record CollectionSummary(
             String id,
@@ -64,10 +105,11 @@ class CollectionQueryController {
             String category,
             int skillCount,
             int installCount,
+            String maxRiskLevel,
             Instant createdAt) {
-        static CollectionSummary from(Collection c) {
+        static CollectionSummary from(Collection c, String maxRiskLevel) {
             return new CollectionSummary(c.getId(), c.getName(), c.getDescription(),
-                    c.getCategory(), c.getSkills().size(), c.getInstallCount(), c.getCreatedAt());
+                    c.getCategory(), c.getSkills().size(), c.getInstallCount(), maxRiskLevel, c.getCreatedAt());
         }
     }
 

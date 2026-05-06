@@ -144,7 +144,7 @@ export function HomePage() {
           <aside className="hidden w-56 shrink-0 md:block space-y-6">
             {/* S098d2: risk filter — client-side counts 來自當前頁 skillsPage.content */}
             <RiskFilterSidebar
-              skills={skillsPage?.content ?? []}
+              items={skillsPage?.content ?? []}
               selected={riskFilter}
               onToggle={toggleRisk}
               onClear={() => setRiskFilter(new Set())}
