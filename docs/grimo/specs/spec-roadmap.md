@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（Tick 8 loop — S099c ship v4.6.0；tools/cross-validate.py 41 skills dry-run PASS）
+> 最後更新：2026-05-07（Tick 9 loop — S099d spec doc 完成，📐 in-design）
 
 ## 使用說明
 
@@ -60,6 +60,7 @@
 | v4.4.0 | S099e4 (SecretScanner +6 patterns — OWASP LLM06) | ✅ shipped 2026-05-07 |
 | v4.5.0 | S099e2 (ResourceDoSScanner — OWASP LLM04) | ✅ shipped 2026-05-07 |
 | v4.6.0 | S099c (cross-marketplace validation) | ✅ shipped — tools/cross-validate.py 41 skills |
+| v4.x | S099d (LLM description quality audit) | 📐 spec doc ready — tools/quality-audit.py + Claude haiku |
 
 ---
 
@@ -74,7 +75,7 @@
 | S098c2 | Backend /diff endpoint | M(8) | S098c ✅ | 📋 planned |
 | S098c3 | File content line-level diff | L(12) | S098c2 | 📋 planned |
 | S099c | Cross-marketplace risk validation | S(7) | S099 | ✅ shipped v4.6.0 — tools/cross-validate.py 41 skills dry-run PASS |
-| S099d | LLM description quality audit | M(12) | S099 | 📋 planned |
+| S099d | LLM description quality audit | M(12) | S099 | 📐 in-design — spec doc 2026-05-07 |
 | S099e1 | Prompt-injection pattern detector (LLM01) | M(8) | S099 | ✅ shipped v4.2.0 — 8 HIGH + 6 MEDIUM patterns, 17 tests |
 | S099e2 | Resource DoS scanner (LLM04) | S(5) | S099 | ✅ shipped v4.5.0 — 3 HIGH + 3 MEDIUM patterns (fork bomb, dev/zero, infinite loop), 11 tests |
 | S099e3 | Dependency vulnerability scanner (LLM05) | S(7) | S099 | ✅ shipped v4.3.0 — OSV.dev querybatch, requirements.txt+package.json, 13 tests |
