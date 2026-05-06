@@ -25,6 +25,9 @@ import { FlagsList } from '@/components/FlagsList'
 import { ReviewsPanel } from '@/components/ReviewsPanel'
 import { MarkdownActionMenu } from '@/components/MarkdownActionMenu'
 import { ShareModal } from '@/components/ShareModal'
+import { QualitySection } from '@/components/QualitySection'
+import { QualityTab } from '@/components/QualityTab'
+import { useSkillScores } from '@/hooks/useSkillScores'
 import type { RiskLevel, SkillStatus } from '@/types/skill'
 
 /**
@@ -80,6 +83,7 @@ export function SkillDetailPage() {
   // 後續 hook (useVersions / mutations) 仍需 skill UUID — 從 fetched skill aggregate 取
   const id = skill?.id ?? params.id ?? ''
   const { data: versions } = useVersions(id ?? '')
+  const { data: scores } = useSkillScores(id || undefined)
   const [shareOpen, setShareOpen] = useState(false)
   const isOwner = !!skill && !!me && skill.ownerId === me.sub
 
@@ -160,6 +164,9 @@ export function SkillDetailPage() {
         />
       </div>
 
+      {/* S135b — 品質分數 + 安全等級信號區塊（hero 下方） */}
+      <QualitySection scores={scores} riskLevel={skill.riskLevel} />
+
       <Separator className="mb-6" />
 
       <Tabs defaultValue="overview">
@@ -168,12 +175,17 @@ export function SkillDetailPage() {
             S098e2/e3 接 aggregates。 */}
         <TabsList>
           <TabsTrigger value="overview">概要</TabsTrigger>
+          <TabsTrigger value="quality">品質</TabsTrigger>
           <TabsTrigger value="risk">風險評估</TabsTrigger>
           <TabsTrigger value="versions">版本歷史</TabsTrigger>
           <TabsTrigger value="reviews">評論</TabsTrigger>
           <TabsTrigger value="flags">回報</TabsTrigger>
           <TabsTrigger value="files">檔案</TabsTrigger>
         </TabsList>
+        {/* S135b — 品質 tab：3-axis dimension 明細 + reasoning */}
+        <TabsContent value="quality" className="mt-4">
+          <QualityTab scores={scores} />
+        </TabsContent>
         <TabsContent value="overview" className="mt-4">
           <div className="prose max-w-none">
             <h3 className="text-lg font-semibold">描述</h3>

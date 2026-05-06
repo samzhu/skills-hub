@@ -1,0 +1,40 @@
+import { apiFetch, ApiError } from './client'
+
+/** S135b — 品質評分單一維度的分數與解說。 */
+export interface DimensionScore {
+  score: number      // 0-3
+  reasoning: string
+}
+
+/** 某一評估軸（VALIDATION / IMPLEMENTATION / ACTIVATION）的結果。 */
+export interface AxisScore {
+  totalScore: number // 0-100
+  dimensions: Record<string, DimensionScore>
+}
+
+/** GET /api/v1/skills/{id}/scores 的回應 shape（S135a shipped）。 */
+export interface SkillScores {
+  skillId: string
+  skillVersionId: string
+  skillVersion: string
+  evaluatedAt: string
+  evaluatorVersion: string
+  validation: AxisScore
+  implementation: AxisScore
+  activation: AxisScore
+  total: number      // 0-100，weighted: 0.2V + 0.4I + 0.4A
+}
+
+/**
+ * S135b — 取得技能品質評分。
+ * 404 QUALITY_NOT_EVALUATED → return null（尚未評分，屬正常狀態）。
+ * 其他錯誤 → rethrow 讓 React Query 處理重試。
+ */
+export async function fetchSkillScores(skillId: string): Promise<SkillScores | null> {
+  try {
+    return await apiFetch<SkillScores>(`/skills/${skillId}/scores`)
+  } catch (err) {
+    if (ApiError.is(err) && err.status === 404) return null
+    throw err
+  }
+}

@@ -37,7 +37,6 @@
 | S120 | E2E auth integration test | M(8-10) | S114a | 📐 in-design |
 | S132 | CI — Cloud Build pipeline | XS(7) | S013 ✅ | ⏳ T02 pending |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | 📐 in-design |
-| S135b | Frontend Quality Display (hero 兩條進度條 + Quality tab + SkillCard badge) | S(9-11) | S135a ✅ | 📐 in-design (spec 2026-05-06) |
 | S139 | Login UI + Lazy Auth Gate（AppShell avatar + button-level OAuth gate + LAB Google OAuth 串接） | S(10) | S114a ✅ S134 ✅ | ⏳ code-complete；AC-8 pending 部署人員手動 smoke |
 
 ---
@@ -54,7 +53,8 @@
 | v3.14.0 | S135a (Backend Quality Score) | ✅ shipped 2026-05-06 |
 | v3.15.0 | S132 T02 (CI Cloud Build first push) | ⏳ 待用戶 GCP setup |
 | v4.0.0 | S114a (RBAC ACL Owner+Viewer) | ✅ shipped 2026-05-06 |
-| v4.1.0 | S120 (E2E auth integration test) | 📋 depends S114a |
+| v4.1.0 | S135b (Frontend Quality Display) | ✅ shipped 2026-05-06 |
+| v4.2.0 | S120 (E2E auth integration test) | 📋 depends S114a |
 | v4.x | S099e1, S099e3 (security scanners) | 📋 設計已備妥 |
 | v4.x | S099c (cross-marketplace validation) | 📋 sources 已驗證 |
 
@@ -309,3 +309,4 @@
 | S138 | SB4+SS7 test debt recovery — 18 failures → 0 | S(7) | v3.13.0 |
 | S135a | Backend Quality Score (Validation + LLM judge + GET /scores) | M(14) | v3.14.0 |
 | S114a | RBAC ACL — Owner + Viewer roles + async projection | M(12) | v4.0.0 |
+| S135b | Frontend Quality Display（hero bar + 品質 tab）| S(9-11) | v4.1.0 |

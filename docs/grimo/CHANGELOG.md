@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.1.0] — Frontend 品質展示（S135b 完成；2026-05-06）
+
+> S135b 前端品質評分展示。消費 S135a 已 ship 的 `GET /api/v1/skills/{id}/scores`，在 SkillDetailPage 加入「品質分數」進度條 + 安全等級信號區塊（hero 下方），並新增「品質」tab 顯示 3-axis dimension 明細 + LLM reasoning。
+
+### Added — Frontend
+
+- `src/api/scores.ts`：`fetchSkillScores()`，404 → null（尚未評分）
+- `src/hooks/useSkillScores.ts`：React Query hook，staleTime 60s
+- `src/components/QualitySection.tsx`：hero 下方品質進度條 + 安全等級（3 狀態：loading / null / data）
+- `src/components/QualityTab.tsx`：3-axis dimension 明細表，含 reasoning
+
+### Changed — Frontend
+
+- `src/pages/SkillDetailPage.tsx`：加 `<QualitySection>` + 「品質」tab
+
+### Deferred
+
+- SkillCard QualityScorePill（AC-4）：N-card N-API call，defer 至後續 polish spec
+
+---
+
 ## [v4.0.0] — RBAC ACL Owner+Viewer + 技能分享 Modal（S114a 完成；2026-05-06）
 
 > S114a RBAC ACL 物化投影系統。`skill_grants` 表作為 source-of-truth，async listener 維護 `skills.acl_entries` JSONB 投影；新增 Owner + Viewer 兩個 role，前端 ShareModal 提供完整 grant/revoke UX。
