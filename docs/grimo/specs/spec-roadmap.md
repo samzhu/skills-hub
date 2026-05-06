@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（S114c ship v4.15.0 — initialization-fail-timeout + minimum-idle 補文件）
+> 最後更新：2026-05-07（S098c3 spec §1-§5 完成 — file-list diff endpoint 設計）
 
 ## 使用說明
 
@@ -73,7 +73,7 @@
 | S098a2 | SSE 事件串流 + per-step 動畫 | M(8) | S098a ✅ | ⏸ deferred |
 | S098b3-2 | Backend 結構化 findings payload | S(6) | S098b3 ✅ | ✅ v4.13.0 — ValidationFinding + SkillValidationException + PublishFailedPage 多 row |
 | S098c2 | Backend /diff endpoint | M(8) | S098c ✅ | ✅ v4.14.0 — VersionDiffResponse + SkillDiffQueryService + DiffFieldsPanel |
-| S098c3 | File content line-level diff | L(12) | S098c2 | 📋 planned |
+| S098c3 | File content diff（file-list diff V1；行級 diff defer） | M(6) | S098c2 ✅ | 📐 2026-05-07-S098c3-file-content-diff.md |
 | S099c | Cross-marketplace risk validation | S(7) | S099 | ✅ shipped v4.6.0 — tools/cross-validate.py 41 skills dry-run PASS |
 | S099d | LLM description quality audit | M(12) | S099 | ✅ shipped v4.7.0 — tools/quality-audit.py 5-dim rubric claude-haiku |
 | S099e1 | Prompt-injection pattern detector (LLM01) | M(8) | S099 | ✅ shipped v4.2.0 — 8 HIGH + 6 MEDIUM patterns, 17 tests |
