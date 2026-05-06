@@ -1,9 +1,14 @@
 package io.github.samzhu.skillshub.shared.security;
 
+import java.io.Serializable;
+
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.access.PermissionEvaluator;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -73,7 +78,7 @@ import io.github.samzhu.skillshub.SkillshubProperties;
  * @see LabModeTestBase S025a base class precedent
  */
 @ImportAutoConfiguration
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, WebMvcSliceTestBase.AotStubBeans.class})
 @EnableConfigurationProperties(SkillshubProperties.class)
 @TestPropertySource(properties = "management.tracing.enabled=false")
 public abstract class WebMvcSliceTestBase {
@@ -83,4 +88,36 @@ public abstract class WebMvcSliceTestBase {
 
     @MockitoBean
     protected PermissionEvaluator permissionEvaluator;
+
+    /**
+     * AOT bean-graph stub — workaround for [spring-projects/spring-framework#32925]:
+     * {@code @MockitoBean} fields are runtime-only override mechanism；processTestAot 階段
+     * Spring AOT processor 走 bean factory graph resolution，看不到 {@code @MockitoBean} 提供的
+     * mock，導致 {@link SecurityConfig#methodSecurityExpressionHandler} static @Bean factory
+     * 在 AOT 階段找不到 {@link PermissionEvaluator} → AopConfigException advisor sorting fail。
+     *
+     * <p>提供 stub bean 讓 AOT 階段 graph 可解；runtime 由 {@link #permissionEvaluator}
+     * {@code @MockitoBean} 的 BeanOverrideContextCustomizer 接管，覆蓋成 Mockito mock。
+     * 雙保險：AOT 階段有 stub，runtime 階段有 mock。
+     *
+     * <p>不使用 Mockito.mock() 直接 return — Mockito mock 在 AOT 階段 invoke 工廠方法時
+     * 須完整 Mockito 環境就緒，可能引入額外 AOT 處理風險。改 inline anonymous PermissionEvaluator
+     * 純 Java、無 framework 依賴。
+     */
+    @Configuration
+    static class AotStubBeans {
+        @Bean
+        PermissionEvaluator permissionEvaluator() {
+            return new PermissionEvaluator() {
+                @Override
+                public boolean hasPermission(Authentication a, Object t, Object p) {
+                    return false;
+                }
+                @Override
+                public boolean hasPermission(Authentication a, Serializable id, String type, Object p) {
+                    return false;
+                }
+            };
+        }
+    }
 }
