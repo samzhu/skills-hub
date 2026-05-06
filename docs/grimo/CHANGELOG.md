@@ -1,5 +1,22 @@
 # Changelog
 
+## [v4.8.0] — E2E Auth Integration Test Ship（S120 完成；2026-05-07）
+
+> S120 E2E 整合測試全 14 ACs 通過。Root cause 修復：`WebMvcSliceTestBase.AotStubBeans` 改 `@TestConfiguration`（阻止 `@SpringBootTest` component scan 載入 stub PermissionEvaluator），使真實 `DelegatingPermissionEvaluator` 正確路由到 `SkillPermissionStrategy` SQL ACL 評估，anonymous GET public skill 回 200。
+
+### Fixed — Test Infrastructure
+
+- **`WebMvcSliceTestBase.AotStubBeans`**：`@Configuration` → `@TestConfiguration`，防止 stub `PermissionEvaluator`（永遠 return false）被 `@SpringBootTest` component scan 覆蓋 `DelegatingPermissionEvaluator`；`@WebMvcTest` 透過 `@Import` 明確引入路徑不受影響
+- **`SkillsHubAuthE2ETest.queryDownloadCount`**：`id = ?::uuid` → `id::text = ?`，修復 pgJDBC 不支援 parameter 後接 `::` cast syntax 導致的 BadSqlGrammarException
+
+### Verified — S120 AC Results
+
+- AC-1 ~ AC-14：全通過（含 AC-5 anonymous GET public → 200，AC-4 list 只看 public）
+- AC-6/7/10 gap documented（anonymous/B GET private 無 grant 當前仍 200，待 S122/S123 補 @PreAuthorize）
+- AC-15 revoke defer per spec §2.6
+
+---
+
 ## [v4.7.0] — LLM Description Quality Audit 腳本（S099d 完成；2026-05-07）
 
 > S099d 新增 `tools/quality-audit.py`，以 Claude claude-haiku-4-5-20251001 對所有 skills 的 description 進行 5 維度品質評分（0-100），找出 < 60 分的改寫候選，輸出 `quality-audit-report.md`。回應 user feedback「LLM 寫的說明要簡單易懂」。S099 META 最後一個 sub-spec 完成。

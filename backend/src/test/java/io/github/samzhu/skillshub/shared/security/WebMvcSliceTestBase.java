@@ -4,8 +4,8 @@ import java.io.Serializable;
 
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.core.Authentication;
@@ -104,7 +104,7 @@ public abstract class WebMvcSliceTestBase {
      * 須完整 Mockito 環境就緒，可能引入額外 AOT 處理風險。改 inline anonymous PermissionEvaluator
      * 純 Java、無 framework 依賴。
      */
-    @Configuration
+    @TestConfiguration
     static class AotStubBeans {
         @Bean
         PermissionEvaluator permissionEvaluator() {

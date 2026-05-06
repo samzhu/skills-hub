@@ -121,16 +121,6 @@ public class SkillPermissionStrategy implements PermissionStrategy {
                 // 對 Iterable<?> 的 IN-list 自動展開（會把 String[] 拆成 ?,?,? 破壞 ?| 語意）
                 .addValue("patterns", new SqlParameterValue(Types.ARRAY, patternsArray));
 
-        var allowed = Boolean.TRUE.equals(jdbc.queryForObject(SQL, params, Boolean.class));
-
-        if (log.isDebugEnabled()) {
-            log.atDebug()
-                    .addKeyValue("skillId", skillId)
-                    .addKeyValue("permission", permission)
-                    .addKeyValue("patternCount", fullPatterns.size())
-                    .addKeyValue("allowed", allowed)
-                    .log("ACL check evaluated");
-        }
-        return allowed;
+        return Boolean.TRUE.equals(jdbc.queryForObject(SQL, params, Boolean.class));
     }
 }

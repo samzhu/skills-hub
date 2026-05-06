@@ -1,11 +1,14 @@
 package io.github.samzhu.skillshub.shared.security;
 
 import java.io.Serializable;
+import java.lang.invoke.MethodHandles;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -44,6 +47,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class DelegatingPermissionEvaluator implements PermissionEvaluator {
+
+    private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     /** S122: anonymous read fallback — 對齊 S026 + S114a「{@code public:*:read} read 預設公開」設計。 */
     private static final Set<String> ANONYMOUS_READ_PRINCIPALS = Set.of("public:*:read");

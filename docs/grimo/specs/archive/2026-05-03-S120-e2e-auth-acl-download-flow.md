@@ -388,4 +388,58 @@ class SkillsHubAuthE2ETest {
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Verification
+
+驗證指令：
+```bash
+./gradlew test --tests "io.github.samzhu.skillshub.e2e.SkillsHubAuthE2ETest"
+```
+
+### 6.1 AC 覆蓋
+
+| AC | 覆蓋狀態 |
+|----|----------|
+| AC-1: Spring context boot | ✅ 通過 |
+| AC-2: A 上傳 public skill | ✅ 通過 |
+| AC-3: A 上傳 private skill | ✅ 通過 |
+| AC-4: anonymous list 只看 public | ✅ 通過 |
+| AC-5: anonymous GET public → 200 | ✅ 通過（本 spec 主修目標） |
+| AC-6 (GAP): anonymous GET private → 200 (leak documented) | ✅ 文件化 |
+| AC-7 (GAP): anonymous download private → 200 (leak documented) | ✅ 文件化 |
+| AC-8: B authenticated list 只看 public | ✅ 通過 |
+| AC-9: B download public → count +1 | ✅ 通過 |
+| AC-10 (GAP): B GET private 無 grant → leak documented | ✅ 文件化 |
+| AC-11: A grant viewer-007:read on private | ✅ 通過 |
+| AC-12: B list grant 後看到 public + private | ✅ 通過 |
+| AC-13: B download private (granted) → count +1 | ✅ 通過 |
+| AC-14: cross-user counter invariant | ✅ 通過 |
+| AC-15 (defer): revoke flow | ⏸ defer per §2.6 |
+
+### 6.2 Root cause 修復紀錄（調查過程）
+
+**問題**：AC-5 anonymous GET public skill → 401（預期 200）
+
+**Root cause 1（主因）**：`WebMvcSliceTestBase.AotStubBeans` 標記為 `@Configuration` 導致 `@SpringBootTest` 的 component scan 在測試 classpath 上找到並載入此 stub。Stub 提供了一個 anonymous `PermissionEvaluator`（永遠 return false），名稱為 `permissionEvaluator`，與 `methodSecurityExpressionHandler` static @Bean 方法的 parameter 名稱相同 → Spring 名稱匹配注入 stub 而非 `DelegatingPermissionEvaluator`。
+
+**修復**：`@Configuration` → `@TestConfiguration`（`WebMvcSliceTestBase.AotStubBeans`），讓 `@TestConfiguration` 的 "excluded from component scanning" 語意阻止其在 `@SpringBootTest` context 中被掃到，而 `@Import` 明確引入的 `@WebMvcTest` 路徑不受影響。
+
+**Root cause 2（次因）**：`queryDownloadCount()` 用 `?::uuid` PostgreSQL cast syntax — pgJDBC 未正確處理 JDBC parameter 後接 `::` operator；改為 `id::text = ?`（column side cast）繞開 parameter type mismatch。
+
+## 7. Result
+
+**Ship 日期**：2026-05-07
+
+**測試結果**：
+- 測試數：1 (scenario-style 含 14 ACs)
+- 結果：1 passed, 0 failed
+- 執行時間：~14s (Spring context cached) / ~1m49s (full cold start)
+
+**主要發現**：
+1. `@TestConfiguration` vs `@Configuration` 在測試 classpath 上的 component scan 行為差異是關鍵 — `@TestConfiguration` 需要明確 `@Import`，不會被 `@SpringBootTest` 自動掃到
+2. pgJDBC 不支援 `?::uuid` 語法（parameter 後接 `::` cast）；使用 `id::text = ?` 或 `CAST(? AS uuid)` 需注意 Spring JdbcTemplate 預設把 UUID 傳為 character varying
+
+**Gap backlog（per AC-6/7/10）**：
+- S122/S123: 補 `@PreAuthorize("hasPermission(#id, 'Skill', 'read')")` on `SkillQueryController.getById` + download，讓 anonymous GET private skill → 401/403
+- Tracked: S122 已 ship（本 spec 實作期間已完成，AC-5 修復即為 S122 核心）
+
+**Trim 說明**：AC-15 revoke flow defer per §2.6（`grantAcl` 既驗；revoke 對稱路徑留 follow-up）。

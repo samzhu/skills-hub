@@ -34,7 +34,7 @@
 | SpecID | 標題 | 點數 | 相依 | 狀態 |
 |--------|------|------|------|------|
 | S099 | META Trust Maturity & Implementation Audit | META | — | ✅ sub-specs all shipped (S099c v4.6.0 + S099d v4.7.0 + S099e1-e4) |
-| S120 | E2E auth integration test | M(8-10) | S114a | 📐 in-design |
+| S120 | E2E auth integration test | M(8-10) | S114a | ✅ v4.8.0 — anonymous GET public → 200；root cause: @TestConfiguration on AotStubBeans |
 | S132 | CI — Cloud Build pipeline | XS(7) | S013 ✅ | ⏳ T02 pending |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | ✅ shipped — S135a (v3.14.0) + S135b (v4.1.0) |
 | S139 | Login UI + Lazy Auth Gate（AppShell avatar + button-level OAuth gate + LAB Google OAuth 串接） | S(10) | S114a ✅ S134 ✅ | ⏳ code-complete；AC-8 pending 部署人員手動 smoke |
@@ -54,7 +54,7 @@
 | v3.15.0 | S132 T02 (CI Cloud Build first push) | ⏳ 待用戶 GCP setup |
 | v4.0.0 | S114a (RBAC ACL Owner+Viewer) | ✅ shipped 2026-05-06 |
 | v4.1.0 | S135b (Frontend Quality Display) | ✅ shipped 2026-05-06 |
-| v4.2.0 | S120 (E2E auth integration test) | 📋 depends S114a |
+| v4.2.0 | S120 (E2E auth integration test) | ✅ shipped v4.8.0 |
 | v4.2.0 | S099e1 (PromptInjectionScanner — OWASP LLM01) | ✅ shipped 2026-05-07 |
 | v4.3.0 | S099e3 (DependencyVulnScanner — OWASP LLM05) | ✅ shipped 2026-05-07 |
 | v4.4.0 | S099e4 (SecretScanner +6 patterns — OWASP LLM06) | ✅ shipped 2026-05-07 |
