@@ -390,3 +390,23 @@ env:
 ---
 
 <!-- Sections 6-7 added by /planning-tasks after implementation -->
+
+## 6. Task Plan
+
+POC: not required — S134 已驗證 Spring Security 7 OAuth2 Login + Google
+OIDC + session-based auth；S114a 提供 RBAC ACL 基礎；前端 React Query +
+shadcn DropdownMenu 已在用。returnTo state 機制走標準 Spring Security
+擴充點（custom `OAuth2AuthorizationRequestResolver` + custom
+`AuthenticationSuccessHandler`），Phase 0 評估風險低，可在 T01 backend
+test 內吸收。
+
+| # | Task | AC | Status |
+|---|------|----|--------|
+| T01 | Backend `@PreAuthorize` upload + returnTo state plumbing | AC-3（後端）/ AC-6 | pending |
+| T02 | Frontend auth core — useAuth hook + AuthArea + AppShell | AC-1 / AC-4 / AC-5 / AC-7 | pending |
+| T03 | Frontend lazy gate — AuthGatedButton + 7 page integrations | AC-2 / AC-3（前端） | pending |
+| T04 | LAB OAuth deployment + E2E smoke | AC-8 | pending |
+
+Execution order: T01 → T02 → T03 → T04（後 3 task 都 depend 前一個）
+
+> T04 manual deployment 步驟對應到 `temp/DEPLOY-LAB-PRIVATE-IP.md` Step 14（同步寫入避免分裂 source of truth）。

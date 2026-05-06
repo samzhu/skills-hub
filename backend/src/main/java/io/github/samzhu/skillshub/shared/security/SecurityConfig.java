@@ -1,9 +1,11 @@
 package io.github.samzhu.skillshub.shared.security;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
@@ -11,12 +13,14 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
 import org.springframework.security.oauth2.jwt.SupplierJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -80,7 +84,11 @@ class SecurityConfig {
      * LAB 模式雖無 JWT，但同樣為 stateless API（curl/前端），不啟用 CSRF。
      */
     @Bean
-    SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+    SecurityFilterChain filterChain(
+            HttpSecurity http,
+            CorsConfigurationSource corsConfigurationSource,
+            ObjectProvider<OAuth2AuthorizationRequestResolver> authResolverProvider,
+            ObjectProvider<AuthenticationSuccessHandler> oauthSuccessHandlerProvider) throws Exception {
         // S128：啟用 CORS（per Mode B Round 40 Bug AZ fix）— allowlist 由 SkillshubProperties.Cors 管理
         http.cors(cors -> cors.configurationSource(corsConfigurationSource));
 
@@ -92,25 +100,49 @@ class SecurityConfig {
             // - /api/v1/notifications + /api/v1/notifications/** (含 /unread-count / /{id}/read / /preferences)
             // - /api/v1/admin/** (既驗 S011)
             // - /api/v1/dev/** (S134：real-oauth profile 唯一啟用的 dev debug endpoint)
+            // S139：POST /api/v1/skills + /skills/upload 加 authenticated（lazy-gate UX：頁面公開、
+            //       提交時才要登入）；對齊既有路徑式 matcher pattern（不用 method-level @PreAuthorize，
+            //       維持 SecurityFilterChain 為 single source of truth + OAuth2 RS entry point 預設
+            //       回 401 給 anonymous）。
             http.authorizeHttpRequests(auth -> auth
                     .requestMatchers("/api/v1/me", "/api/v1/me/**").authenticated()
                     .requestMatchers("/api/v1/notifications", "/api/v1/notifications/**").authenticated()
                     .requestMatchers("/api/v1/admin/**").authenticated()
                     .requestMatchers("/api/v1/dev/**").authenticated()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/skills", "/api/v1/skills/upload").authenticated()
                     .anyRequest().permitAll())
                 .oauth2ResourceServer(oauth2 -> oauth2
                     .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 
             // S134：real-oauth profile path — 加上 OAuth2 Login (Client) chain。
-            // 由 skillshub.security.oauth.login.enabled toggle（預設 false）；real-oauth profile yaml
-            // 顯式設 true 才啟用。Login chain 負責 redirect URI `/login/oauth2/code/{registrationId}`
-            // 與 authorization initiation `/oauth2/authorization/{registrationId}`；session-based
-            // OAuth2AuthenticationToken 由 HttpSessionSecurityContextRepository 持久化。
-            // defaultSuccessUrl("/", true) — 登入成功後 land 首頁（搜尋頁），第二參數 true 強制
-            // override 任何 saved request（避免 IdP 預設 GET /oauth2/authorization/skillshub 被當成
-            // saved request 又 redirect 回去造成 loop）。
+            // 由 skillshub.security.oauth.login.enabled toggle（預設 false）；real-oauth / LAB
+            // profile yaml 顯式設 true 才啟用。Login chain 負責 redirect URI
+            // `/login/oauth2/code/{registrationId}` 與 authorization initiation
+            // `/oauth2/authorization/{registrationId}`；session-based OAuth2AuthenticationToken 由
+            // HttpSessionSecurityContextRepository 持久化。
+            //
+            // S139：原 defaultSuccessUrl("/", true) 強制忽略 saved request 跳首頁；改注入
+            // AuthRedirectConfig 提供的兩個 bean：
+            //   1. authorizationRequestResolver — 攔 ?returnTo 寫進 session
+            //   2. oauthSuccessHandler — 從 session 讀 returnTo，white-list 校驗後 sendRedirect
+            // bean 用 ObjectProvider 取，當 oauth.login.enabled=false 時 AuthRedirectConfig
+            // bean 不存在，getIfAvailable 回 null，oauth2Login chain 也不啟用（外層 if 守住）。
             if (props.security().oauth().login().enabled()) {
-                http.oauth2Login(login -> login.defaultSuccessUrl("/", true));
+                var authResolver = authResolverProvider.getIfAvailable();
+                var successHandler = oauthSuccessHandlerProvider.getIfAvailable();
+                http.oauth2Login(login -> {
+                    if (authResolver != null) {
+                        login.authorizationEndpoint(endpoint ->
+                                endpoint.authorizationRequestResolver(authResolver));
+                    }
+                    if (successHandler != null) {
+                        login.successHandler(successHandler);
+                    } else {
+                        // 防呆：login 開啟但 AuthRedirectConfig bean 不在（不該發生），
+                        // fallback 到 S134 原行為避免 chain 全 fail
+                        login.defaultSuccessUrl("/", true);
+                    }
+                });
             }
         } else {
             // ── LAB 模式（S012）──
