@@ -38,7 +38,8 @@ extra["shedlockVersion"] = "7.7.0"
 dependencies {
 	// implementation("org.springframework.boot:spring-boot-micrometer-tracing-brave")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
-	// implementation("org.springframework.boot:spring-boot-starter-cache")
+	implementation("org.springframework.boot:spring-boot-starter-cache")
+	implementation("com.github.ben-manes.caffeine:caffeine")
 	implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
 	implementation("org.springframework.boot:spring-boot-starter-jdbc")
 	// core artifact（非 starter）— 自寫 SkillshubPgVectorStore 子類控制 6-欄 INSERT

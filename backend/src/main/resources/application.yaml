@@ -101,6 +101,12 @@ spring:
     error:
       include-message: always
 
+  # ----- Caffeine Cache（S114b） -----
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=300s
+
 # ----- HTTP 壓縮（S129） -----
 server:
   compression:

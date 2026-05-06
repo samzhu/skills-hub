@@ -50,11 +50,13 @@ public class DependencyVulnScanner implements SecurityAnalyzer {
 
 	private static final String OWASP_AST05 = "AST05";
 
-	private final ObjectMapper objectMapper;
+	// ObjectMapper is not a Spring-managed bean in all contexts (Spring Boot 4 MVC slice);
+	// instantiate directly — ObjectMapper is thread-safe for reading.
+	private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
 	private final OsvClient osvClient;
 
-	DependencyVulnScanner(ObjectMapper objectMapper, OsvClient osvClient) {
-		this.objectMapper = objectMapper;
+	DependencyVulnScanner(OsvClient osvClient) {
 		this.osvClient = osvClient;
 	}
 
@@ -129,7 +131,7 @@ public class DependencyVulnScanner implements SecurityAnalyzer {
 	private void parsePackageJson(String content, String filePath,
 			Map<String, String> sink) {
 		try {
-			Map<String, Object> pkg = objectMapper.readValue(content, new TypeReference<>() {});
+			Map<String, Object> pkg = OBJECT_MAPPER.readValue(content, new TypeReference<>() {});
 			for (var mapKey : List.of("dependencies", "devDependencies")) {
 				Object depsObj = pkg.get(mapKey);
 				if (!(depsObj instanceof Map<?, ?> depsMap)) continue;

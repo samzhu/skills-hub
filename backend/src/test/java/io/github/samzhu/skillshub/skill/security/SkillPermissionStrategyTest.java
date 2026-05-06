@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -47,9 +49,31 @@ class SkillPermissionStrategyTest {
     @Autowired
     private SkillRepository skillRepo;
 
+    @Autowired
+    private CacheManager cacheManager;
+
     @AfterEach
     void clearContext() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    @DisplayName("AC-1(S114b): 同 user 同 skill 連續 2 次 hasPermission — cache 命中（第 2 次不打 SQL）")
+    @Tag("AC-1")
+    void cacheHit_secondCallReturnsCachedResult() {
+        var skillId = seedSkill(java.util.List.of("user:alice:read"));
+        setJwtAuth("alice", java.util.List.of("user"), java.util.List.of());
+
+        var result1 = strategy.hasPermission(Set.of("user:alice:read", "role:user:read"), skillId, "read");
+        var result2 = strategy.hasPermission(Set.of("user:alice:read", "role:user:read"), skillId, "read");
+
+        assertThat(result1).isTrue();
+        assertThat(result2).isTrue();
+
+        // 驗證 cache 有 entry（第 1 次 put 進去，第 2 次從 cache 取）
+        var cache = (CaffeineCache) cacheManager.getCache(SkillPermissionStrategy.CACHE_NAME);
+        assertThat(cache).isNotNull();
+        assertThat(cache.getNativeCache().estimatedSize()).isGreaterThan(0);
     }
 
     @Test

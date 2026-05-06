@@ -1,6 +1,6 @@
 # S114b — ACL Production Scale：Caffeine Cache
 
-**Status:** 📐 設計中
+**Status:** ✅ 已 ship（v4.11.0）
 **Size:** M(10 pt)
 **Depends on:** S114a ✅
 **Target version:** v4.11.0
@@ -117,3 +117,24 @@ Then:  重新打 SQL（TTL evict）；結果與 DB 實際狀態一致
 - **Integration test（AC-2）**：Testcontainers PostgreSQL；grant → evict → 再查 → return true。
 - **TTL test（AC-4）**：可用 `Ticker` stub 操控時間；或 skip（配置正確 TTL 由 Caffeine 保證；不值得 mock time）。
 - **Regression**：`./gradlew test --tests "*.SkillPermissionStrategyTest"` + `./gradlew compileJava`。
+
+---
+
+## §6 Verification
+
+- `./gradlew test --tests "*.SkillPermissionStrategyTest"` — 11/11 PASS（含 AC-1 新增 cache hit test）
+- `./gradlew compileJava compileTestJava` — BUILD SUCCESSFUL
+- 附加 bugfix：`DependencyVulnScanner` 從 Spring 注入 `ObjectMapper` → 改 `static final OBJECT_MAPPER = new ObjectMapper()` 消除 S099e3 引入的 `@SpringBootTest` context 載入失敗（pre-existing regression）
+
+---
+
+## §7 Result
+
+| Metric | 值 |
+|--------|-----|
+| 測試通過 | 11/11（SkillPermissionStrategyTest） |
+| 新增 AC-1 cache 測試 | `cacheHit_secondCallReturnsCachedResult` — 呼叫 2 次 → `estimatedSize() > 0` 確認 Caffeine 有 entry |
+| Cache 設定 | `maximumSize=1000, expireAfterWrite=300s` |
+| Cache key | `skillId + ":" + TreeSet(fullPatterns) + ":" + permission`（group 展開後，排序一致） |
+| Evict | `@CacheEvict(allEntries=true)` on `SkillAclProjectionListener.onGranted/onRevoked` |
+| 修復 | `DependencyVulnScanner` 去除 Spring `ObjectMapper` 注入依賴 |

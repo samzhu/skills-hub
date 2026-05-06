@@ -1,5 +1,22 @@
 # Changelog
 
+## [v4.11.0] — ACL Caffeine Cache（S114b 完成；2026-05-07）
+
+> `SkillPermissionStrategy.hasPermission()` 加 Caffeine JVM in-memory cache（`skill-acl`，TTL 300s，max 1000 entries），吸收同 user 同 skill 的重複 ACL SQL 查詢。Grant/revoke 後 `SkillAclProjectionListener` 透過 `@CacheEvict(allEntries=true)` 自動清空。
+
+### Added — Performance
+
+- **`SkillPermissionStrategy`**：programmatic `CacheManager` 注入；cache key = `skillId + ":" + TreeSet(fullPatterns) + ":" + permission`（group 展開後排序，確保相同 principal set = 相同 key）；cache miss → SQL → put；cache hit → 直接回
+- **`application.yaml`**：`spring.cache.type=caffeine`，`caffeine.spec=maximumSize=1000,expireAfterWrite=300s`
+- **`SkillshubApplication`**：`@EnableCaching`
+- **`SkillAclProjectionListener`**：`@CacheEvict(value="skill-acl", allEntries=true)` 掛在 `onGranted` / `onRevoked`，確保 grant/revoke 後舊 cache entry 失效
+
+### Fixed — Test Infrastructure
+
+- **`DependencyVulnScanner`**：移除對 Spring `ObjectMapper` bean 的注入依賴，改用 `static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()`；消除 S099e3 引入的 `@SpringBootTest` context 載入失敗（pre-existing regression）
+
+---
+
 ## [v4.10.0] — Error Code 命名慣例對齊（S131 完成；2026-05-07）
 
 > `GlobalExceptionHandler` 全 13 個 snake_case 錯誤碼統一改為 SCREAMING_SNAKE_CASE，對齊前端 `ERROR_MESSAGE_BUILDER` key pattern 與既有早期碼（`VALIDATION_ERROR`、`NOT_FOUND`…）。

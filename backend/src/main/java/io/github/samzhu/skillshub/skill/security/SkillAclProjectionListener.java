@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -91,13 +92,15 @@ public class SkillAclProjectionListener {
         rebuildAcl(skillId);
     }
 
-    /** Rebuild ACL projection after a grant is added. */
+    /** Rebuild ACL projection after a grant is added; evict stale cache entries. */
+    @CacheEvict(value = "skill-acl", allEntries = true)
     @ApplicationModuleListener
     public void onGranted(SkillGrantedEvent event) {
         rebuildAcl(event.skillId());
     }
 
-    /** Rebuild ACL projection after a grant is revoked. */
+    /** Rebuild ACL projection after a grant is revoked; evict stale cache entries. */
+    @CacheEvict(value = "skill-acl", allEntries = true)
     @ApplicationModuleListener
     public void onRevoked(SkillRevokedEvent event) {
         rebuildAcl(event.skillId());

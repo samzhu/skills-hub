@@ -16,8 +16,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.github.samzhu.skillshub.security.scan.Phase;
 import io.github.samzhu.skillshub.security.scan.ScanContext;
 import io.github.samzhu.skillshub.security.scan.Severity;
@@ -30,7 +28,7 @@ class DependencyVulnScannerTest {
 	@BeforeEach
 	void setUp() {
 		mockOsvClient = mock(OsvClient.class);
-		scanner = new DependencyVulnScanner(new ObjectMapper(), mockOsvClient);
+		scanner = new DependencyVulnScanner(mockOsvClient);
 	}
 
 	private static ScanContext ctxWithScript(String path, String content) {
