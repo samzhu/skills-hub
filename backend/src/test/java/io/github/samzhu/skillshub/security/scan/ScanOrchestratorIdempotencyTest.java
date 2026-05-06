@@ -59,8 +59,8 @@ class ScanOrchestratorIdempotencyTest {
 		// 1. seed skills row
 		jdbc.update("""
 				INSERT INTO skills (id, name, description, author, category, status,
-				                    download_count, created_at, updated_at, acl_entries)
-				VALUES (?, ?, 'desc', 'tester', 'cat', 'PUBLISHED', 0, ?, ?, '[]'::jsonb)
+				                    download_count, created_at, updated_at, acl_entries, owner_id)
+				VALUES (?, ?, 'desc', 'tester', 'cat', 'PUBLISHED', 0, ?, ?, '[]'::jsonb, 'tester')
 				""", skillId, "scan-idem-test-" + skillId.substring(0, 8), ts, ts);
 
 		// 2. seed skill_versions row with risk_assessment 已含 sourceEventId

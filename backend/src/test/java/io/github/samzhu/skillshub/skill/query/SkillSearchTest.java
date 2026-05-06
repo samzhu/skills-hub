@@ -35,7 +35,7 @@ import io.github.samzhu.skillshub.skill.domain.SkillRepository;
  * <p>S121: SkillQueryService 加 {@link CurrentUserProvider} + {@link AclPrincipalExpander}
  * 兩個 dep 後，slice test 透過 {@code @MockitoBean} 提供 stub — 預設 stub 回傳含
  * {@code *:read} pattern（對應 PUBLIC skill 預設可見），讓既有 6 個 AC 不變動 (fixtures
- * acl_entries 同步改 {@code List.of("*:read")} 表達 PUBLIC 語意)；專屬 ACL 行為驗證走
+ * acl_entries 同步改 {@code List.of("public:*:read")} 表達 PUBLIC 語意)；專屬 ACL 行為驗證走
  * S121 新 AC（owner-only / granted-user / non-grantee 三場景）。
  */
 @Import(SkillQueryService.class)
@@ -64,19 +64,19 @@ class SkillSearchTest extends RepositorySliceTestBase {
         when(currentUserProvider.current())
                 .thenReturn(new CurrentUser("test-admin", List.of("admin"), List.of()));
         when(aclExpander.expand(any(CurrentUser.class), eq("read")))
-                .thenReturn(List.of("user:test-admin:read", "role:admin:read", "*:read"));
+                .thenReturn(List.of("user:test-admin:read", "role:admin:read", "public:*:read"));
         var now = Instant.now();
         // S031: search/categories 過濾 status=PUBLISHED；fixture 改 PUBLISHED 對齊公開查詢預期
         // S121: acl_entries 加 *:read（PUBLIC 語意）— ACL filter 啟用後須含此 pseudo-principal 才對 anonymous/admin 可見
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "docker-helper", "Docker compose helper",
-                "sam", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("*:read"), null));
+                "sam", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "k8s-deploy", "Kubernetes deployment skill",
-                "jane", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("*:read"), null));
+                "jane", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "test-runner", "Run unit tests automatically",
-                "bob", "Testing", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("*:read"), null));
+                "bob", "Testing", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
     }
 
     @Test
@@ -163,10 +163,10 @@ class SkillSearchTest extends RepositorySliceTestBase {
         // 此 AC 驗 author-mode 不過濾 status，acl_entries 維持 PUBLIC 語意確保 list 命中
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "sam-draft-skill", "draft for sam",
-                "sam", "DevOps", null, null, "DRAFT", 0L, now, now, List.of("*:read"), null));
+                "sam", "DevOps", null, null, "DRAFT", 0L, now, now, List.of("public:*:read"), null));
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "sam-suspended-skill", "suspended for sam",
-                "sam", "DevOps", "1.0.0", null, "SUSPENDED", 0L, now, now, List.of("*:read"), null));
+                "sam", "DevOps", "1.0.0", null, "SUSPENDED", 0L, now, now, List.of("public:*:read"), null));
 
         var page = queryService.search(null, null, "sam", PageRequest.of(0, 20));
         // 1 PUBLISHED + 1 DRAFT + 1 SUSPENDED = 3 (S094a 跳過 PUBLISHED filter for author view)
@@ -186,7 +186,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
         when(currentUserProvider.current())
                 .thenReturn(new CurrentUser("bob", List.of("viewer"), List.of()));
         when(aclExpander.expand(any(CurrentUser.class), eq("read")))
-                .thenReturn(List.of("user:bob:read", "role:viewer:read", "*:read"));
+                .thenReturn(List.of("user:bob:read", "role:viewer:read", "public:*:read"));
 
         var page = queryService.search(null, null, null, PageRequest.of(0, 20));
         assertThat(page.getContent()).extracting(Skill::getName)
@@ -206,7 +206,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
         when(currentUserProvider.current())
                 .thenReturn(new CurrentUser("bob", List.of("viewer"), List.of()));
         when(aclExpander.expand(any(CurrentUser.class), eq("read")))
-                .thenReturn(List.of("user:bob:read", "role:viewer:read", "*:read"));
+                .thenReturn(List.of("user:bob:read", "role:viewer:read", "public:*:read"));
 
         var page = queryService.search(null, null, null, PageRequest.of(0, 20));
         assertThat(page.getContent()).extracting(Skill::getName)
@@ -221,7 +221,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
         skillRepo.save(Skill.fromRow(
                 skillId, "rated-skill-x", "rated 4.5 from 2 reviews",
                 "alice", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now,
-                List.of("*:read"), null));
+                List.of("public:*:read"), null));
         // average_rating / review_count 為 @ReadOnlyProperty — 走 raw SQL UPDATE 模擬
         // SkillRatingService.refresh projection 寫入路徑（per S098e2 既驗）
         jdbcTemplate.update(

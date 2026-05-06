@@ -91,6 +91,9 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     private long reviewCount;
     @Column("acl_entries")
     private List<String> aclEntries;
+    /** S114a — owner_id maps to V16 schema column; derived from author at create time. */
+    @Column("owner_id")
+    private String ownerId;
     @Column("created_at")
     private Instant createdAt;
     @Column("updated_at")
@@ -159,10 +162,11 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         skill.riskLevel = null;
         skill.downloadCount = 0;
         // S016 自動 seed owner ACL（owner 為 author；無 author 時仍 seed public read）
-        // S026: 加 "*:read" public-read pseudo-principal — skill 預設對所有使用者開放讀取
+        // S026: 加 "public:*:read" public-read pseudo-principal — skill 預設對所有使用者開放讀取
         // （write/delete/suspend/reactivate 仍 owner-only）。
-        // S116: 走 cmd.visibility() 條件分支 — PUBLIC 加 *:read（v3.x 既有行為）；
-        // PRIVATE 不加 *:read（fail-closed by 既有 GIN ?| filter）。author=null + PRIVATE
+        // S114a: 統一改用 3-segment "public:*:read"（與 V17 backfill + is_public generated column 對齊）。
+        // S116: 走 cmd.visibility() 條件分支 — PUBLIC 加 public:*:read（v3.x 既有行為）；
+        // PRIVATE 不加（fail-closed by 既有 GIN ?| filter）。author=null + PRIVATE
         // 不允許（無 owner 即無人可讀；早於 ACL seed reject）。
         var visibility = cmd.visibility() == null ? Visibility.PUBLIC : cmd.visibility();
         if (visibility == Visibility.PRIVATE && author == null) {
@@ -176,9 +180,11 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
             entries.add("user:" + author + ":delete");
         }
         if (visibility == Visibility.PUBLIC) {
-            entries.add("*:read");
+            entries.add("public:*:read");
         }
         skill.aclEntries = entries;
+        // S114a: owner_id NOT NULL in V16 schema — derive from author; fall back to "unknown" for null-author test fixtures
+        skill.ownerId = author != null ? author : "unknown";
         skill.createdAt = Instant.now();
         skill.updatedAt = skill.createdAt;
         // version=null → Persistable.isNew()=true → INSERT path；Spring Data prepareVersionForInsert
@@ -264,6 +270,8 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         skill.updatedAt = updatedAt;
         // mutable ArrayList — 物化後不應再 mutate（query path 唯讀），但保持與 create() 行為一致避免後續混淆
         skill.aclEntries = aclEntries == null ? new ArrayList<>() : new ArrayList<>(aclEntries);
+        // S114a: owner_id derives from author for query-side factory (read-model path)
+        skill.ownerId = author != null ? author : "unknown";
         skill.version = version;
         skill.averageRating = averageRating;
         skill.reviewCount = reviewCount;
@@ -399,6 +407,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     public List<String> getAclEntries() {
         return aclEntries == null ? List.of() : List.copyOf(aclEntries);
     }
+    public String getOwnerId() { return ownerId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 

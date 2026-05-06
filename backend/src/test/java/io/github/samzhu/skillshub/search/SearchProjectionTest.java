@@ -75,11 +75,12 @@ class SearchProjectionTest {
     private void seedSkillRow(String id, String name, String description,
                               String author, String category) {
         var ts = Timestamp.from(Instant.now());
+        // S114a: owner_id NOT NULL (V16 schema) — derive from author
         jdbc.update("""
                 INSERT INTO skills (id, name, description, author, category, status, download_count,
-                                    created_at, updated_at, acl_entries)
-                VALUES (?, ?, ?, ?, ?, 'DRAFT', 0, ?, ?, '[]'::jsonb)
-                """, id, name, description, author, category, ts, ts);
+                                    created_at, updated_at, acl_entries, owner_id)
+                VALUES (?, ?, ?, ?, ?, 'DRAFT', 0, ?, ?, '[]'::jsonb, ?)
+                """, id, name, description, author, category, ts, ts, author);
     }
 
     @Test
@@ -205,7 +206,7 @@ class SearchProjectionTest {
                     var aclJson = jdbc.queryForObject(
                             "SELECT acl_entries::text FROM vector_store WHERE id = ?::uuid",
                             String.class, skillId);
-                    assertThat(aclJson).contains("*:read");
+                    assertThat(aclJson).contains("public:*:read");
                 });
     }
 

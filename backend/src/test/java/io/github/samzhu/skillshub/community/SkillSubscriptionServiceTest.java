@@ -57,7 +57,7 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
         skillRepo.save(Skill.fromRow(
                 skillId, "demo-skill", "demo for subscription test",
                 "alice", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now,
-                List.of("user:alice:read", "user:alice:write", "user:alice:delete", "*:read"),
+                List.of("user:alice:read", "user:alice:write", "user:alice:delete", "public:*:read"),
                 null));
     }
 
@@ -139,7 +139,7 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
         var now = Instant.now();
         skillRepo.save(Skill.fromRow(
                 skill2, "another-skill", "second skill", "alice", "DevOps", "1.0.0",
-                null, "PUBLISHED", 0L, now, now, List.of("*:read"), null));
+                null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
 
         asUser("bob");
         service.subscribe(skillId);

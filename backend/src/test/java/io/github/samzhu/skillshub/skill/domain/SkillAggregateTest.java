@@ -59,9 +59,9 @@ class SkillAggregateTest {
         assertThat(skill.isNew()).isTrue();
 
         // S016 自動 seed author 為 owner — 與 legacy SkillProjection.on(SkillCreatedEvent) 同邏輯
-        // S026: 加 "*:read" public-read pseudo-principal — skill 預設對所有使用者開放讀取
+        // S026 + S114a: 加 "public:*:read" public-read entry — skill 預設對所有使用者開放讀取
         assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
-                "user:alice:read", "user:alice:write", "user:alice:delete", "*:read");
+                "user:alice:read", "user:alice:write", "user:alice:delete", "public:*:read");
 
         Collection<Object> events = retrieveDomainEvents(skill);
         assertThat(events).hasSize(1);
@@ -201,14 +201,14 @@ class SkillAggregateTest {
     @DisplayName("AC-8: recordAclGranted append entry to aclEntries + register SkillAclGrantedEvent")
     void recordAclGrantedAppendsAndRegistersEvent() {
         // 用 null author 避免 S016 自動 seed user-namespace ACL 干擾本 test
-        // S026: null author 仍 seed "*:read" public-read pseudo-principal
+        // S026 + S114a: null author 仍 seed "public:*:read" public-read entry
         var skill = Skill.create(new CreateSkillCommand("acl-grant-test", "desc", null, "DevOps"));
-        assertThat(skill.getAclEntries()).containsExactly("*:read");
+        assertThat(skill.getAclEntries()).containsExactly("public:*:read");
         clearDomainEvents(skill);
 
         skill.grantAcl(new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin"));
 
-        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder("*:read", "user:alice:read");
+        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder("public:*:read", "user:alice:read");
         var events = retrieveDomainEvents(skill);
         assertThat(events).hasSize(1);
         assertThat(events.iterator().next()).isInstanceOf(SkillAclGrantedEvent.class);
@@ -227,8 +227,8 @@ class SkillAggregateTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("already exists");
 
-        // aclEntries 不變（S026: null author 預設含 "*:read"）
-        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder("*:read", "user:alice:read");
+        // aclEntries 不變（S026 + S114a: null author 預設含 "public:*:read"）
+        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder("public:*:read", "user:alice:read");
         assertThat(retrieveDomainEvents(skill)).isEmpty();
     }
 
@@ -242,8 +242,8 @@ class SkillAggregateTest {
 
         skill.revokeAcl(new RevokeAclCommand(skill.getId(), "user", "alice", "read", "admin"));
 
-        // S026: null author 預設 seed "*:read"；alice grant 後 revoke 只移 user:alice:read，"*:read" 保留
-        assertThat(skill.getAclEntries()).containsExactly("*:read");
+        // S026 + S114a: null author 預設 seed "public:*:read"；alice grant 後 revoke 只移 user:alice:read
+        assertThat(skill.getAclEntries()).containsExactly("public:*:read");
         var events = retrieveDomainEvents(skill);
         assertThat(events).hasSize(1);
         assertThat(events.iterator().next()).isInstanceOf(SkillAclRevokedEvent.class);
@@ -261,8 +261,8 @@ class SkillAggregateTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("not found");
 
-        // S026: null author 預設 seed "*:read"；revoke 失敗後狀態維持
-        assertThat(skill.getAclEntries()).containsExactly("*:read");
+        // S026 + S114a: null author 預設 seed "public:*:read"；revoke 失敗後狀態維持
+        assertThat(skill.getAclEntries()).containsExactly("public:*:read");
         assertThat(retrieveDomainEvents(skill)).isEmpty();
     }
 
@@ -379,12 +379,12 @@ class SkillAggregateTest {
 
     @Test
     @Tag("AC-S041")
-    @DisplayName("AC-S041: author null（caller 顯式不傳）→ 允許，ACL 只 seed *:read（測試 fixture 用）")
+    @DisplayName("AC-S041: author null（caller 顯式不傳）→ 允許，ACL 只 seed public:*:read（測試 fixture 用）")
     void create_nullAuthor_seedsPublicReadOnly() {
         var skill = Skill.create(new CreateSkillCommand("null-author-test", "desc", null, "DevOps"));
 
         assertThat(skill.getAuthor()).isNull();
-        assertThat(skill.getAclEntries()).containsExactly("*:read");
+        assertThat(skill.getAclEntries()).containsExactly("public:*:read");
     }
 
     @Test
@@ -447,18 +447,18 @@ class SkillAggregateTest {
 
     @Test
     @Tag("AC-S116-1")
-    @DisplayName("S116 AC-1: PUBLIC visibility (or 4-arg backward-compat) → acl_entries 含 *:read")
+    @DisplayName("S116 AC-1: PUBLIC visibility (or 4-arg backward-compat) → acl_entries 含 public:*:read")
     void s116_publicVisibility_includesPublicReadEntry() {
         // 4-arg backward-compat ctor delegates to 5-arg PUBLIC default
         var skill = Skill.create(new CreateSkillCommand("public-skill", "desc", "alice", "DevOps"));
 
         assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
-                "user:alice:read", "user:alice:write", "user:alice:delete", "*:read");
+                "user:alice:read", "user:alice:write", "user:alice:delete", "public:*:read");
     }
 
     @Test
     @Tag("AC-S116-2")
-    @DisplayName("S116 AC-2: PRIVATE visibility → acl_entries 不含 *:read")
+    @DisplayName("S116 AC-2: PRIVATE visibility → acl_entries 不含 public:*:read")
     void s116_privateVisibility_excludesPublicReadEntry() {
         var skill = Skill.create(new CreateSkillCommand(
                 "private-skill", "desc", "alice", "DevOps",
@@ -466,7 +466,7 @@ class SkillAggregateTest {
 
         assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
                 "user:alice:read", "user:alice:write", "user:alice:delete");
-        assertThat(skill.getAclEntries()).doesNotContain("*:read");
+        assertThat(skill.getAclEntries()).doesNotContain("public:*:read");
     }
 
     @Test
@@ -478,7 +478,7 @@ class SkillAggregateTest {
                 io.github.samzhu.skillshub.skill.domain.Visibility.PUBLIC));
 
         assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
-                "user:alice:read", "user:alice:write", "user:alice:delete", "*:read");
+                "user:alice:read", "user:alice:write", "user:alice:delete", "public:*:read");
     }
 
     @Test
@@ -494,12 +494,12 @@ class SkillAggregateTest {
 
     @Test
     @Tag("AC-S116-1")
-    @DisplayName("S116 AC-1 corner: PUBLIC + author=null → 仍含 *:read（無 owner ACL 但公開讀取）")
+    @DisplayName("S116 AC-1 corner: PUBLIC + author=null → 仍含 public:*:read（無 owner ACL 但公開讀取）")
     void s116_publicWithoutAuthor_seedsOnlyPublicRead() {
         var skill = Skill.create(new CreateSkillCommand(
                 "no-author", "desc", null, "DevOps",
                 io.github.samzhu.skillshub.skill.domain.Visibility.PUBLIC));
 
-        assertThat(skill.getAclEntries()).containsExactly("*:read");
+        assertThat(skill.getAclEntries()).containsExactly("public:*:read");
     }
 }

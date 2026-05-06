@@ -45,8 +45,8 @@ class DownloadEventRepositoryIdempotencyTest extends RepositorySliceTestBase {
 		var ts = Timestamp.from(now);
 		jdbc.update("""
 				INSERT INTO skills (id, name, description, author, category, status, download_count,
-				                    created_at, updated_at, acl_entries)
-				VALUES (?, ?, 'desc', 'test', 'cat', 'PUBLISHED', 0, ?, ?, '[]'::jsonb)
+				                    created_at, updated_at, acl_entries, owner_id)
+				VALUES (?, ?, 'desc', 'test', 'cat', 'PUBLISHED', 0, ?, ?, '[]'::jsonb, 'test')
 				""", skillId, "idem-test-" + skillId.substring(0, 8), ts, ts);
 
 		var firstAttempt = repo.saveIdempotent(
@@ -73,8 +73,8 @@ class DownloadEventRepositoryIdempotencyTest extends RepositorySliceTestBase {
 		var ts = Timestamp.from(now);
 		jdbc.update("""
 				INSERT INTO skills (id, name, description, author, category, status, download_count,
-				                    created_at, updated_at, acl_entries)
-				VALUES (?, ?, 'desc', 'test', 'cat', 'PUBLISHED', 0, ?, ?, '[]'::jsonb)
+				                    created_at, updated_at, acl_entries, owner_id)
+				VALUES (?, ?, 'desc', 'test', 'cat', 'PUBLISHED', 0, ?, ?, '[]'::jsonb, 'test')
 				""", skillId, "diff-evid-test-" + skillId.substring(0, 8), ts, ts);
 
 		var rowsA = repo.saveIdempotent(UUID.randomUUID().toString(),

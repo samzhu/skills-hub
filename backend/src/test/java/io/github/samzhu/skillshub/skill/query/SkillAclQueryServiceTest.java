@@ -84,12 +84,12 @@ class SkillAclQueryServiceTest extends RepositorySliceTestBase {
     }
 
     @Test
-    @DisplayName("AC-S038: \"*:read\" 識別為 synthetic public-read entry（非畸形 skip）")
+    @DisplayName("AC-S038: \"public:*:read\" 3-segment public-read entry 正確解析（S114a 標準格式）")
     @Tag("AC-S038")
-    void listEntries_publicReadPseudoPrincipal_recognized() {
+    void listEntries_publicReadEntry_recognized() {
         var skillId = seedSkill(List.of(
                 "user:alice:read",
-                "*:read",                       // S026 公開讀取 pseudo-principal
+                "public:*:read",               // S026 + S114a 3-segment 公開讀取 entry
                 "group:engineering:read"));
 
         var entries = queryService.listEntries(skillId);

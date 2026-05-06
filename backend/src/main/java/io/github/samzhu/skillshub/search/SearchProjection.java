@@ -88,11 +88,11 @@ class SearchProjection {
                 null    // riskLevel — 尚未完成評估
         );
         // S016：vector_store.acl_entries 從 author 衍生（同 V2 backfill 邏輯，per spec §4.16）；
-        // S026: 加 "*:read" public-read pseudo-principal — vector_store 對所有使用者開放讀取
+        // S026: 加 "public:*:read" public-read pseudo-principal — vector_store 對所有使用者開放讀取
         // （與 Skill aggregate 預設 ACL 一致；anonymous lab-user fallback 走 search 也命中）。
         var initialAcl = event.author() == null
-                ? List.of("*:read")
-                : List.of("user:" + event.author() + ":read", "*:read");
+                ? List.of("public:*:read")
+                : List.of("user:" + event.author() + ":read", "public:*:read");
 
         // S034: owner 從 event.author() 取（async listener 無 SecurityContext，不能依賴 currentUserProvider —
         // S025b §7 architecture tech debt）；event 已在 publisher TX 內 captured event.author，
@@ -122,10 +122,10 @@ class SearchProjection {
         // （S032 enforces SKILL.md name 一致性，但 author 沒驗；以 aggregate 為準避免 frontmatter quirk 污染）。
         var skill = skillRepo.findById(event.aggregateId()).orElse(null);
         var owner = skill != null ? skill.getAuthor() : null;
-        // S026: 加 "*:read" public-read pseudo-principal — version 重建時保持公開
+        // S026: 加 "public:*:read" public-read pseudo-principal — version 重建時保持公開
         var initialAcl = owner == null
-                ? List.of("*:read")
-                : List.of("user:" + owner + ":read", "*:read");
+                ? List.of("public:*:read")
+                : List.of("user:" + owner + ":read", "public:*:read");
 
         // delete + re-add 用同一個 instance（owner/skillId/aclEntries context 共享）
         var vectorStore = SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
@@ -204,7 +204,7 @@ class SearchProjection {
      * 沒 version 的情況防禦性早 return（理論上 reactivate 只能從 SUSPENDED 過來，
      * SUSPENDED 必先 PUBLISHED 必有 version；防禦 race / 異常清理）。
      *
-     * <p>ACL：對齊 S026 加 {@code "*:read"} 公開 pseudo-principal；owner 從 aggregate.author
+     * <p>ACL：對齊 S026 加 {@code "public:*:read"} 公開 pseudo-principal；owner 從 aggregate.author
      * 取得（非 currentUserProvider — async listener 無 SecurityContext，per S025b §7 tech debt）。
      */
     @ApplicationModuleListener
@@ -223,10 +223,10 @@ class SearchProjection {
             return;
         }
 
-        // S026: 加 "*:read" public-read pseudo-principal — vector_store 對所有使用者開放讀取
+        // S026: 加 "public:*:read" public-read pseudo-principal — vector_store 對所有使用者開放讀取
         var initialAcl = skill.getAuthor() == null
-                ? List.of("*:read")
-                : List.of("user:" + skill.getAuthor() + ":read", "*:read");
+                ? List.of("public:*:read")
+                : List.of("user:" + skill.getAuthor() + ":read", "public:*:read");
 
         var doc = buildDocument(skill.getId(), skill.getName(), skill.getDescription(),
                 skill.getAuthor(), skill.getCategory(),

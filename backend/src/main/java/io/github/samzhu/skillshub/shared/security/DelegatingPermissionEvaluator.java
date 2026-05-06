@@ -45,8 +45,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class DelegatingPermissionEvaluator implements PermissionEvaluator {
 
-    /** S122: anonymous read fallback — 對齊 S026 「{@code *:read} read 預設公開」設計。 */
-    private static final Set<String> ANONYMOUS_READ_PRINCIPALS = Set.of("*:read");
+    /** S122: anonymous read fallback — 對齊 S026 + S114a「{@code public:*:read} read 預設公開」設計。 */
+    private static final Set<String> ANONYMOUS_READ_PRINCIPALS = Set.of("public:*:read");
 
     private final List<PermissionStrategy> strategies;
 
@@ -151,9 +151,9 @@ public class DelegatingPermissionEvaluator implements PermissionEvaluator {
             var role = a.getAuthority().replaceFirst("^ROLE_", "");
             p.add("role:" + role + ":" + permission);
         });
-        // S125b Bug AW fix: read permission 額外加 *:read（per S026 + AclPrincipalExpander.expand line 41）
+        // S125b Bug AW fix: read permission 額外加 public:*:read（per S026 + S114a + AclPrincipalExpander.expand）
         if ("read".equals(permission)) {
-            p.add("*:read");
+            p.add("public:*:read");
         }
         return p;
     }

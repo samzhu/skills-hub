@@ -61,9 +61,9 @@ class SearchProjectionAclWriteTest {
         var ts = Timestamp.from(Instant.now());
         jdbc.update("""
                 INSERT INTO skills (id, name, description, author, category, status, download_count,
-                                    created_at, updated_at, acl_entries)
+                                    created_at, updated_at, acl_entries, owner_id)
                 VALUES (?, ?, 'search projection ACL write fixture', 'alice', 'Testing',
-                        'DRAFT', 0, ?, ?, '[]'::jsonb)
+                        'DRAFT', 0, ?, ?, '[]'::jsonb, 'alice')
                 """, skillId, name, ts, ts);
 
         scenario.publish(new SkillCreatedEvent(skillId, name,

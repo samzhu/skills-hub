@@ -117,8 +117,8 @@ class V2MigrationTest {
         // 再手動 run 同一段 backfill SQL 觀察轉換。
         jdbc.update("""
                 INSERT INTO skills
-                  (id, name, description, author, category, status, download_count, created_at, updated_at, acl_entries)
-                VALUES (:id, :name, :desc, :author, :cat, 'DRAFT', 0, :ts, :ts, '[]'::jsonb)
+                  (id, name, description, author, category, status, download_count, created_at, updated_at, acl_entries, owner_id)
+                VALUES (:id, :name, :desc, :author, :cat, 'DRAFT', 0, :ts, :ts, '[]'::jsonb, :author)
                 """, new MapSqlParameterSource()
                 .addValue("id", skillId)
                 .addValue("name", "acl-backfill-skill-" + skillId.substring(0, 8))
