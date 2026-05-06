@@ -59,6 +59,11 @@ const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
   const u = String(url)
   const method = init?.method ?? 'GET'
 
+  // S139: 既有 AC-12/AC-14 cases 假設 authenticated（page 不應 早 return CTA）
+  if (u.includes('/api/v1/me')) {
+    return { ok: true, status: 200, json: async () => ({ sub: 'alice', email: 'alice@example.com' }) } as Response
+  }
+
   if (u.includes('/notifications/unread-count')) {
     const count = state.notifs.filter((n) => n.readAt === null).length
     return { ok: true, status: 200, json: async () => ({ count }) } as Response

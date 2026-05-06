@@ -9,6 +9,7 @@ import { BeamFrame } from '@/components/BeamFrame'
 import { EmptyState } from '@/components/EmptyState'
 import { Sparkline } from '@/components/Sparkline'
 import { useMe } from '@/hooks/useMe'
+import { useAuth } from '@/hooks/useAuth'
 import { useSkillList } from '@/hooks/useSkillList'
 import { useSkillStats } from '@/hooks/useSkillStats'
 import { useFlagsSummary } from '@/hooks/useFlagsSummary'
@@ -35,6 +36,7 @@ import type { Skill } from '@/types/skill'
  */
 export function MySkillsPage() {
   const { data: me, isLoading: meLoading, isError: meError } = useMe()
+  const auth = useAuth()
   const author = me?.sub
   // S132: page-level auth gate 在 useSkillList 之後 render 路徑早 return；query 仍會跑但 result
   // 不被使用（page 顯 EmptyState 時 skillsPage 不參與 render）— 對齊 React Hook 順序固定原則
@@ -59,6 +61,7 @@ export function MySkillsPage() {
   // me=undefined → author=undefined。修補前頁面誤顯「以 身份發布」(空白) + 全 PUBLIC skills 為
   // 「你的 N 個技能」。修補：page-level auth gate 走 EmptyState invite tone (S094c reuse)。
   if (!author || meError) {
+    // S139：anonymous CTA — 既有 EmptyState invite tone 補一顆登入按鈕（lazy gate per AC-1 公開瀏覽）
     return (
       <AppShell>
         <EmptyState
@@ -66,6 +69,15 @@ export function MySkillsPage() {
           headline="請先登入後查看自己發布的技能"
           sub="此頁顯示你以發佈者身份建立的技能、下載統計與待處理回報。登入後將自動載入你的資料。"
         />
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => auth.login()}
+            className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            登入
+          </button>
+        </div>
       </AppShell>
     )
   }

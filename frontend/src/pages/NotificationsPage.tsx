@@ -9,6 +9,7 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from '@/hooks/useNotifications'
+import { useAuth } from '@/hooks/useAuth'
 import type { Notification } from '@/api/notifications'
 
 /**
@@ -32,6 +33,10 @@ const CATEGORY_FILTERS: ReadonlyArray<{ key: CategoryFilter; label: string }> = 
 ] as const
 
 export function NotificationsPage() {
+  // S139：anonymous 早 return CTA card；authenticated 才 mount 既有 list / mutations
+  // （hooks 順序固定：useAuth 必須在所有 hooks 之前；anonymous 早 return 前不能用其他
+  // useQuery/useMutation，避免「hook 數不一致」）
+  const auth = useAuth()
   const [filter, setFilter] = useState<CategoryFilter>('all')
   const [showPreferences, setShowPreferences] = useState(false)
   const { data: notifications, isLoading } = useNotifications(
@@ -42,6 +47,34 @@ export function NotificationsPage() {
   const deleteNotif = useDeleteNotification()
 
   const hasItems = !!notifications && notifications.length > 0
+
+  // S139：anonymous CTA — useNotifications 已跑完（hooks 順序鎖定），但 result
+  // 對 anonymous 必為 401 → notifications=undefined → hasItems=false。直接渲染
+  // CTA card 替代既有 EmptyState，含登入按鈕。
+  if (auth.status === 'anonymous') {
+    return (
+      <AppShell>
+        <div className="mb-6">
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">即時更新</p>
+          <h1 className="mt-1 text-[22px] font-semibold tracking-tight">通知中心</h1>
+        </div>
+        <EmptyState
+          tone="invite"
+          headline="登入後查看通知"
+          sub="登入後可看到收藏技能的版本更新、被回報的 flag 進度、以及 review/收到的留言。"
+        />
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => auth.login()}
+            className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            登入
+          </button>
+        </div>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell>

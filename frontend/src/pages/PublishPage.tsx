@@ -8,6 +8,7 @@ import { ErrorState } from '@/components/ErrorState'
 import { Input } from '@/components/ui/input'
 import { uploadSkill, type Visibility } from '@/api/skills'
 import { useMe } from '@/hooks/useMe'
+import { useAuth } from '@/hooks/useAuth'
 import { localizeApiError } from '@/lib/api-error-messages'
 import { MiniMarkdown } from '@/lib/mini-markdown'
 
@@ -78,6 +79,7 @@ export function PublishPage() {
   const [version, setVersion] = useState('1.0.0')
   // S100c: author 自動 prefill 從 /me.sub；user 仍可改（如 team override / publish-on-behalf）
   const { data: me } = useMe()
+  const auth = useAuth()
   const [author, setAuthor] = useState('')
   const [authorTouched, setAuthorTouched] = useState(false)
   // /me 解析完成且 user 未手動改過 → 自動 fill。authorTouched 防 user 清空後又被覆蓋。
@@ -111,6 +113,13 @@ export function PublishPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    // S139 lazy gate：anonymous / loading 直接跳 OAuth（returnTo 用當前頁面），
+    // 完成登入後 SuccessHandler 帶回 /publish；表單欄位狀態保留與否屬 future work
+    // （per spec §1 非目標：表單狀態保留 — 留給後續 spec）
+    if (auth.status !== 'authenticated') {
+      auth.login()
+      return
+    }
     mutation.mutate()
   }
 

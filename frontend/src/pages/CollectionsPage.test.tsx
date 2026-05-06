@@ -44,6 +44,12 @@ const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     return { ok: true, status: 200, json: async () => ({ count: 0 }) } as Response
   }
 
+  // S139: AuthArea / AuthGatedButton 透過 useAuth → fetchMe 探 /api/v1/me；
+  // 預設 authenticated 維持既有 AC-10/11/12 點擊行為（lazy gate 通過）
+  if (u.includes('/api/v1/me')) {
+    return { ok: true, status: 200, json: async () => ({ sub: 'alice', email: 'alice@example.com' }) } as Response
+  }
+
   // POST /collections/{id}/install
   const installMatch = u.match(/\/collections\/([^/?]+)\/install$/)
   if (installMatch && method === 'POST') {

@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { CreateRequestModal } from '@/components/CreateRequestModal'
 import { VoteButton } from '@/components/VoteButton'
 import { RequestActionBar } from '@/components/RequestActionBar'
+import { AuthGatedButton } from '@/components/AuthGatedButton'
 import { useRequests } from '@/hooks/useRequests'
 import { useMe } from '@/hooks/useMe'
 import type { SkillRequest } from '@/api/skills'
@@ -31,13 +32,14 @@ export function RequestBoardPage() {
           沒找到需要的 skill？發起需求讓社群投票推升優先級，作者認領後實作上架。
         </p>
         <div className="mt-3 flex items-center gap-3">
-          <button
+          {/* S139 lazy gate */}
+          <AuthGatedButton
             type="button"
             onClick={() => setShowModal(true)}
             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
           >
             發起新需求
-          </button>
+          </AuthGatedButton>
         </div>
       </div>
 

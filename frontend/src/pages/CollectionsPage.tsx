@@ -4,6 +4,7 @@ import { AppShell } from '@/components/AppShell'
 import { EmptyState } from '@/components/EmptyState'
 import { CreateCollectionModal } from '@/components/CreateCollectionModal'
 import { InstallButton } from '@/components/InstallButton'
+import { AuthGatedButton } from '@/components/AuthGatedButton'
 import { useCollections } from '@/hooks/useCollections'
 import type { SkillCollection } from '@/api/skills'
 
@@ -29,14 +30,15 @@ export function CollectionsPage() {
           把多個相關技能打包成集合，一鍵安裝整組工作流。常用範例：DevOps Starter Pack / Frontend Quality Suite / Security Audit Kit。
         </p>
         <div className="mt-3 flex items-center gap-3">
-          <button
+          {/* S139 lazy gate：anonymous → useAuth.login() 跳 OAuth；authenticated → 開 modal */}
+          <AuthGatedButton
             type="button"
             onClick={() => setShowModal(true)}
             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Boxes className="h-3.5 w-3.5" />
             建立集合
-          </button>
+          </AuthGatedButton>
         </div>
       </div>
 

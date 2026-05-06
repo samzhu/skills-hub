@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppShell } from '@/components/AppShell'
 import { EmptyState } from '@/components/EmptyState'
+import { AuthGatedButton } from '@/components/AuthGatedButton'
 import { useFlagsQueue } from '@/hooks/useFlagsQueue'
 import { updateFlagStatus, type Flag } from '@/api/flags'
 import { FLAG_TYPE_LABEL } from '@/lib/flag-labels'
@@ -100,23 +101,24 @@ function FlagQueueRow({
             <span>{new Date(flag.createdAt).toLocaleDateString('zh-TW')}</span>
           </div>
         </div>
+        {/* S139 lazy gate — anonymous reviewer 點 Resolve/Dismiss 跳 OAuth */}
         <div className="flex shrink-0 items-center gap-2">
-          <button
+          <AuthGatedButton
             type="button"
             onClick={onResolve}
             disabled={isPending}
             className="rounded-md border border-border px-3 py-1.5 text-[12px] font-medium hover:bg-muted disabled:opacity-50"
           >
             Resolve
-          </button>
-          <button
+          </AuthGatedButton>
+          <AuthGatedButton
             type="button"
             onClick={onDismiss}
             disabled={isPending}
             className="rounded-md border border-border px-3 py-1.5 text-[12px] font-medium hover:bg-muted disabled:opacity-50"
           >
             Dismiss
-          </button>
+          </AuthGatedButton>
         </div>
       </div>
     </div>

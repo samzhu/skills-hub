@@ -76,6 +76,10 @@ describe('FlagsQueuePage (S098e3-T04)', () => {
   it('S098e3 AC-12: 點 Resolve 觸發 PATCH status=RESOLVED', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      // S139: 既有 AC-12 假設 authenticated（lazy gate 通過才能 PATCH）
+      if (url.includes('/api/v1/me')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ sub: 'alice' }) } as Response)
+      }
       if (init?.method === 'PATCH') {
         return Promise.resolve({ ok: true, status: 204, json: () => Promise.resolve(null) } as Response)
       }
