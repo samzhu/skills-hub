@@ -48,7 +48,11 @@ export function SecurityHeroCard({ report, active, onClick }: Props) {
   return (
     <div
       data-testid="security-hero-card"
+      role="button"
+      tabIndex={0}
+      aria-label="安全性掃描結果"
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
       style={{
         background: 'var(--bg-2, rgba(255,255,255,0.04))',
         border: cardBorder(report, active),

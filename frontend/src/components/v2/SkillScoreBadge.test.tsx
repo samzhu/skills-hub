@@ -11,7 +11,7 @@ describe('SkillScoreBadge', () => {
     expect(offset).toBeCloseTo(60.76, 1)
     expect(screen.getByText('89')).toBeTruthy()
     expect(screen.getByText('/100')).toBeTruthy()
-    expect(screen.getByText('SKILL SCORE')).toBeTruthy()
+    expect(screen.getByText('技能分數')).toBeTruthy()
   })
 
   it('AC-S142a-5: skillScore=null → center 顯「—」+ 下方「評分計算中」; no fill arc', () => {

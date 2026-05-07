@@ -25,7 +25,7 @@ export function SkillScoreBadge({ skillScore }: { skillScore: number | null }) {
         borderRadius: 16,
       }}
     >
-      <svg width="120" height="120" viewBox="0 0 120 120" aria-label="Skill score ring">
+      <svg width="120" height="120" viewBox="0 0 120 120" aria-label="技能分數環狀圖">
         <defs>
           <linearGradient id="score-grad" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#7F77DD" />
@@ -63,7 +63,7 @@ export function SkillScoreBadge({ skillScore }: { skillScore: number | null }) {
         {/* labels */}
         <text x="60" y="42" textAnchor="middle" fontSize="8" fontWeight="600"
           letterSpacing="1.5" fill="rgba(127,119,221,0.9)">
-          SKILL SCORE
+          技能分數
         </text>
         <text x="60" y="70" textAnchor="middle" fontSize="30" fontWeight="600"
           letterSpacing="-1" fill="#EEECEA">

@@ -16,7 +16,11 @@ export function QualityHeroCard({ scores, active, onClick }: Props) {
   return (
     <div
       data-testid="quality-hero-card"
+      role="button"
+      tabIndex={0}
+      aria-label="品質分析"
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
       style={{
         background: 'var(--bg-2, rgba(255,255,255,0.04))',
         border: active

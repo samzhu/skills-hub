@@ -810,3 +810,33 @@ SecurityTab empty state 英中混用、ShieldIcon aria-label 英文。
 
 ### Tick 90 Summary
 - Round 43: 11 checks / **1 bug cluster (AT)** — 全數 inline 修復
+
+---
+
+## Tick 91 — Round 44: Accessibility — aria-label / keyboard nav / role (2026-05-08)
+
+Cut axis: **Accessibility**（鍵盤導航 / aria-label / role / focus order）
+
+| # | 元件 | 檢查項目 | 結果 |
+|---|------|---------|------|
+| 1 | QualityHeroCard — 互動 div | 無 `role="button"` / `tabIndex` / `onKeyDown` → 鍵盤無法觸發 | ❌ **Bug AU** |
+| 2 | SecurityHeroCard — 互動 div | 無 `role="button"` / `tabIndex` / `onKeyDown` → 鍵盤無法觸發 | ❌ **Bug AU** |
+| 3 | SkillScoreBadge SVG | `aria-label="Skill score ring"` 英文；SVG 內文字 "SKILL SCORE" 英文 | ❌ **Bug AU** |
+| 4 | FileExplorerPanel tree node | 已使用 `<button>` | ✅ |
+| 5 | VersionHistoryMini "查看全部 →" | `<button>` ✓ | ✅ |
+| 6 | InstallCard copy button | `<button>` + `aria-label` zh-TW ✓ | ✅ |
+| 7 | PageHeader StarButton | `AuthGatedButton` → `<button>` ✓ | ✅ |
+| 8 | PageHeader 分享/下載 buttons | `<button type="button">` ✓ | ✅ |
+| 9 | QualityTabV2 expand toggle | `<button>` ✓ | ✅ |
+| 10 | AddVersionForm submit | `<button type="submit">` disabled 邏輯正確 ✓ | ✅ |
+
+**Bug AU (MEDIUM / accessibility)**：
+QualityHeroCard + SecurityHeroCard 用 `<div onClick>` 無 `role="button"` + `tabIndex={0}` + `onKeyDown`；
+鍵盤使用者無法以 Enter/Space 觸發品質/安全性分頁切換。
+SkillScoreBadge SVG `aria-label` 及內部文字均為英文。
+修復：加 `role="button"` + `tabIndex={0}` + `aria-label` + `onKeyDown` 至兩個 hero card；
+SVG `aria-label` → "技能分數環狀圖"；SVG 內文字 "SKILL SCORE" → "技能分數"。
+同步更新 SkillScoreBadge.test.tsx；318/318 Vitest PASS。
+
+### Tick 91 Summary
+- Round 44: 10 checks / **1 bug cluster (AU)** — 全數 inline 修復
