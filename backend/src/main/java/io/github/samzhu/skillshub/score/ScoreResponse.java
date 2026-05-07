@@ -13,6 +13,7 @@ import io.github.samzhu.skillshub.score.domain.SkillScore;
  * S135a §4.3 — GET /api/v1/skills/{id}/scores 回應 DTO。
  *
  * <p>total = round(0.2 × V + 0.4 × I + 0.4 × A)（AC-S135a-11）。
+ * <p>skillScore (S142b) = round(0.6 × total + 0.4 × securityScore)；null 表示尚未掃描。
  */
 public record ScoreResponse(
         String skillId,
@@ -23,11 +24,18 @@ public record ScoreResponse(
         AxisScore validation,
         AxisScore implementation,
         AxisScore activation,
-        int total) {
+        int total,
+        Integer skillScore) {
 
     public record AxisScore(int totalScore, Map<String, Object> dimensions) {}
 
+    /** Backward-compat overload — skillScore = null (security not scanned or not requested). */
     public static ScoreResponse from(List<SkillScore> rows) {
+        return from(rows, null);
+    }
+
+    /** S142b: composite with skillScore. */
+    public static ScoreResponse from(List<SkillScore> rows, Integer skillScore) {
         var v = find(rows, QualityAxis.VALIDATION);
         var i = find(rows, QualityAxis.IMPLEMENTATION);
         var a = find(rows, QualityAxis.ACTIVATION);
@@ -47,7 +55,8 @@ public record ScoreResponse(
                 toAxisScore(v),
                 toAxisScore(i),
                 toAxisScore(a),
-                total);
+                total,
+                skillScore);
     }
 
     private static SkillScore find(List<SkillScore> rows, QualityAxis axis) {

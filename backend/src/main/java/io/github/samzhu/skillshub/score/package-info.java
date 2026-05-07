@@ -7,7 +7,8 @@
     allowedDependencies = {
         "shared :: events", "shared :: api", "shared :: persistence", "shared :: security",
         "skill :: domain", "skill :: validation",
-        "storage"
+        "storage",
+        "security"   // S142b: SkillScoreCalculator uses SecurityCategoryMapper to compute securityScore
     }
 )
 package io.github.samzhu.skillshub.score;

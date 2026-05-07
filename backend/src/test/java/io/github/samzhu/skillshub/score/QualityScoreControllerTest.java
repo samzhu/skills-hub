@@ -42,6 +42,9 @@ class QualityScoreControllerTest extends WebMvcSliceTestBase {
     @MockitoBean
     private SkillScoreRepository scoreRepo;
 
+    @MockitoBean
+    private SkillScoreCalculator skillScoreCalculator;
+
     @Test
     @DisplayName("AC-S135a-3: GET /scores → 200 with 3-axis breakdown + total")
     @Tag("AC-S135a-3")
