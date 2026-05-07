@@ -1,5 +1,15 @@
 # Changelog
 
+## [v4.21.0] — MeController OIDC Claims Pass-through（S141 完成；2026-05-07）
+
+> 修 `/api/v1/me` 漏回 `email` / `name` / `picture` 三個 OIDC standard claims 的 bug。AppShell avatar dropdown + MySkillsPage 「以 X 身份發布」自此顯示 email/name 而非 Google numeric sub。
+
+### Bugfix — Security / MeController
+
+- `MeController.me()` OAuth 分支：加 `email` / `name` / `picture` JWT standard claim pass-through（插入 `sub` 後，輸出由 6 keys 擴展為 9 keys）
+- `MeController.me()` LAB 分支：加合成 defaults（`email = "<sub>@lab.skillshub.local"` / `name = "LAB User"` / `picture = null`）保持兩模式 response shape 一致
+- `MeControllerTest`：AC-S141-1（OAuth 9 keys 含 email/name/picture）+ AC-S141-2（LAB 合成 claims）— 3/3 PASS
+
 ## [v4.1.0] — SkillDetailPage v2 Backend Supplement（S142b 完成；2026-05-07）
 
 > GET /skills/{id} 新增 6 個衍生欄位（verified / latestVersionPublishedAt / license / compatibility / versionCount / openFlagCount）、GET /scores 加 skillScore composite（0.6×quality + 0.4×security）、新 GET /security-report 4-quad endpoint。S142a frontend 所需 API contract 全部就緒。

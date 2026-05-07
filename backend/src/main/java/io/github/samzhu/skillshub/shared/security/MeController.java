@@ -18,9 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
  * 一眼確認 mock-oauth2-server 簽發的 JWT 內容；LAB 模式（S012）下不帶 token 也能拿到
  * 預設 lab user 的識別資料，方便純功能測試。
  *
- * <p>輸出欄位（OAuth + LAB 兩模式皆回 6 個 keys，shape 一致）：
+ * <p>輸出欄位（OAuth + LAB 兩模式皆回 9 個 keys，shape 一致）：
  * <ul>
  *   <li>{@code sub}        — 主體 ID（OAuth: JWT subject；LAB: lab.user-id）</li>
+ *   <li>{@code email}      — OIDC {@code email} claim（S141；LAB: "{sub}@lab.skillshub.local"）</li>
+ *   <li>{@code name}       — OIDC {@code name} claim（S141；LAB: "LAB User"）</li>
+ *   <li>{@code picture}    — OIDC {@code picture} claim（S141；LAB: null）</li>
  *   <li>{@code roles}      — 角色陣列（OAuth: JWT claim；LAB: ["admin"]）</li>
  *   <li>{@code groups}     — 群組陣列（OAuth: JWT claim；LAB: 空陣列）</li>
  *   <li>{@code companyId}  — 公司 ID（OAuth: claim {@code company_id}；LAB: null）</li>
@@ -53,19 +56,24 @@ class MeController {
         var result = new LinkedHashMap<String, Object>();
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth instanceof JwtAuthenticationToken jwtAuth) {
-            // OAuth 模式：保留 S011 行為，6 個欄位都從 JWT claims 直接抽出
+            // OAuth 模式：S141 加 email/name/picture OIDC standard claims
             var jwt = jwtAuth.getToken();
             result.put("sub",       jwt.getSubject());
+            result.put("email",     jwt.getClaimAsString("email"));
+            result.put("name",      jwt.getClaimAsString("name"));
+            result.put("picture",   jwt.getClaimAsString("picture"));
             result.put("roles",     orEmpty(jwt.getClaimAsStringList("roles")));
             result.put("groups",    orEmpty(jwt.getClaimAsStringList("groups")));
             result.put("companyId", jwt.getClaimAsString("company_id"));
             result.put("deptId",    jwt.getClaimAsString("dept_id"));
             result.put("scope",     jwt.getClaimAsString("scope"));
         } else {
-            // LAB / fallback：sub + roles 從 CurrentUserProvider；其餘 4 欄填空值
-            // 維持 6-key shape 與 OAuth 模式一致，避免前端 schema 分歧
+            // LAB / fallback：S141 加合成 email/name/picture；sub + roles 從 CurrentUserProvider
             var u = users.current();
             result.put("sub",       u.userId());
+            result.put("email",     u.userId() + "@lab.skillshub.local");
+            result.put("name",      "LAB User");
+            result.put("picture",   null);
             result.put("roles",     u.roles());
             result.put("groups",    List.of());
             result.put("companyId", null);

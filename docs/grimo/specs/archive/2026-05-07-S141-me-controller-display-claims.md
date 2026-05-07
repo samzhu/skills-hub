@@ -1,6 +1,6 @@
 # S141: `/api/v1/me` Display Claims（email / name / picture）
 
-> Spec: S141 | Size: XS(7) | Status: 📐 design complete — ready for /planning-tasks
+> Spec: S141 | Size: XS(7) | Status: ✅ shipped (v4.21.0 — 2026-05-07)
 > Date: 2026-05-07
 > Origin: bug 回報 2026-05-07 — AppShell avatar dropdown / MySkillsPage 顯示 user 為 Google sub（`1165491299985546340268`）而不是 email / name
 
@@ -228,4 +228,33 @@ POC: not required — bug root cause 經 source code 已 verified（grep 確認 
 
 ## 7. Implementation Results
 
-> 待 ship 後填。
+**Ship date:** 2026-05-07
+**Version:** v4.21.0
+
+### Verify commands run
+
+```bash
+cd backend && ./gradlew test --tests "io.github.samzhu.skillshub.shared.security.MeControllerTest" -x processTestAot
+# Result: BUILD SUCCESSFUL — 3/3 tests PASS
+```
+
+### AC coverage
+
+| AC | Test | Outcome |
+|----|------|---------|
+| AC-1 (9 keys OAuth) | `me_withAdminJwt_returnsAllClaims` [@Tag AC-4, AC-S141-1] | ✅ PASS |
+| AC-2 (LAB synthesized claims) | `me_labBranch_returnsSynthesizedClaims` [@Tag AC-S141-2] | ✅ PASS |
+| AC-5 (401 no token) | `me_withoutJwt_returns401` [@Tag AC-5] | ✅ PASS |
+| AC-3 (AppShell avatar) | Frontend: `AuthArea.tsx` fallback chain unchanged, backend fix auto-propagates | ✅ behavioural |
+| AC-4 (MySkillsPage author) | Frontend: `user.name` path unchanged, backend `name` claim now populated | ✅ behavioural |
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `shared/security/MeController.java` | +3 claim puts in OAuth branch (`email/name/picture`); +3 synthesized defaults in LAB branch |
+| `shared/security/MeControllerTest.java` | AC-S141-1 updated (9-key assertions + email/name/picture claims); AC-S141-2 new test (LAB branch) |
+
+### Trim rationale
+
+None — XS spec completed in full within single tick.
