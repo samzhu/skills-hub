@@ -360,6 +360,32 @@ html,body { background:var(--bg); color:var(--ink); font-family:var(--sans); fon
 .toc-item:last-child { border-bottom:none }
 .toc-item:hover { color:var(--ink-2) }
 .toc-item .toc-num { font-family:var(--mono); font-size:10px; color:var(--ink-3); flex-shrink:0 }
+
+/* ── Files tab layout ──────────────────────────────────────────────────── */
+.files-tab-layout { display:grid; grid-template-columns:220px 1fr; height:calc(100vh - 300px); min-height:400px; border:.5px solid var(--line); border-radius:var(--r-lg); overflow:hidden }
+.ft-tree { border-right:.5px solid var(--line); overflow-y:auto; padding:8px 0; background:var(--bg-2) }
+.ft-tree::-webkit-scrollbar { width:3px }
+.ft-tree::-webkit-scrollbar-thumb { background:rgba(255,255,255,.08); border-radius:2px }
+.ft-item { display:flex; align-items:center; gap:6px; padding:5px 12px; font-size:12px; color:var(--ink-2); cursor:pointer; border-left:2px solid transparent; transition:background .1s, color .1s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.ft-item:hover { background:rgba(255,255,255,.04); color:var(--ink) }
+.ft-item.active { background:rgba(127,119,221,.1); color:var(--ink); border-left-color:var(--accent) }
+.ft-dir { color:var(--ink); font-weight:500 }
+.ft-scripts-dir { border-left-color:var(--amber) !important; background:rgba(239,159,39,.06); color:var(--amber-text) }
+.ft-in-scripts { border-left-color:rgba(239,159,39,.3); background:rgba(239,159,39,.03) }
+.ft-icon { flex-shrink:0; opacity:.6 }
+.ft-size { margin-left:auto; font-size:10px; color:var(--ink-3); flex-shrink:0; padding-left:6px }
+.ft-badge { font-size:9px; font-weight:600; padding:1px 5px; border-radius:var(--r-pill); background:var(--amber-soft); color:var(--amber-text); flex-shrink:0 }
+.ft-indent { padding-left:26px }
+.ft-preview { display:flex; flex-direction:column; overflow:hidden; background:var(--bg) }
+.ft-preview-header { display:flex; align-items:center; gap:8px; padding:9px 14px; border-bottom:.5px solid var(--line); flex-shrink:0; background:var(--bg-2) }
+.ft-preview-path { font-family:var(--mono); font-size:11px; color:var(--ink-3); flex:1 }
+.ft-path-cur { color:var(--ink-2) }
+.ft-lang-badge { font-size:10px; font-weight:500; padding:1px 7px; border-radius:var(--r-pill); background:var(--bg-3); border:.5px solid var(--line-2); color:var(--ink-3) }
+.ft-preview-body { flex:1; overflow-y:auto; padding:16px 18px; font-family:var(--mono); font-size:12px; line-height:1.75; color:var(--ink-2); white-space:pre; margin:0 }
+.ft-preview-body::-webkit-scrollbar { width:3px }
+.ft-preview-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,.08); border-radius:2px }
+.ft-security-banner { padding:9px 14px; background:rgba(239,159,39,.08); border-bottom:.5px solid rgba(239,159,39,.2); font-size:11px; color:var(--amber-text); display:flex; align-items:center; gap:7px; flex-shrink:0 }
+.ft-binary { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--ink-3) }
 </style>
 </head>
 <body>
@@ -542,6 +568,7 @@ html,body { background:var(--bg); color:var(--ink); font-family:var(--sans); fon
       <div class="tab" data-tab="reviews">Reviews <span class="badge">42</span></div>
       <div class="tab" data-tab="security">Security</div>
       <div class="tab" data-tab="flags">Flags</div>
+      <div class="tab" data-tab="files">Files <span class="badge">12</span></div>
     </div>
 
     <!-- Body grid -->
@@ -896,6 +923,101 @@ html,body { background:var(--bg); color:var(--ink); font-family:var(--sans); fon
           </div>
         </div>
 
+        <!-- ── Files tab ── -->
+        <div class="tab-panel" id="panel-files">
+          <div class="files-tab-layout">
+            <nav class="ft-tree" id="ft-tree">
+              <div class="ft-item active" onclick="ftSelect('skillmd')" data-fid="skillmd">
+                <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                SKILL.md <span class="ft-size">18 KB</span>
+              </div>
+              <div class="ft-item" onclick="ftSelect('readme')" data-fid="readme">
+                <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                README.md <span class="ft-size">4 KB</span>
+              </div>
+              <div class="ft-item ft-dir" onclick="ftToggle('ft-examples', this)">
+                <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                examples/ <span class="ft-size">3 files</span>
+              </div>
+              <div id="ft-examples">
+                <div class="ft-item ft-indent" onclick="ftSelect('ex-basic')" data-fid="ex-basic">
+                  <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  basic-webapp.yml <span class="ft-size">2 KB</span>
+                </div>
+                <div class="ft-item ft-indent" onclick="ftSelect('ex-postgres')" data-fid="ex-postgres">
+                  <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  postgres-redis-stack.yml <span class="ft-size">3 KB</span>
+                </div>
+                <div class="ft-item ft-indent" onclick="ftSelect('ex-prod')" data-fid="ex-prod">
+                  <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  production-hardened.yml <span class="ft-size">4 KB</span>
+                </div>
+              </div>
+              <div class="ft-item ft-dir" onclick="ftToggle('ft-tests', this)">
+                <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                tests/ <span class="ft-size">2 files</span>
+              </div>
+              <div id="ft-tests">
+                <div class="ft-item ft-indent" onclick="ftSelect('test-validate')" data-fid="test-validate">
+                  <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  validate.test.sh <span class="ft-size">6 KB</span>
+                </div>
+                <div class="ft-item ft-indent" onclick="ftSelect('test-smoke')" data-fid="test-smoke">
+                  <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  smoke.test.sh <span class="ft-size">3 KB</span>
+                </div>
+              </div>
+              <div class="ft-item ft-dir ft-scripts-dir" onclick="ftToggle('ft-scripts', this)">
+                <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                scripts/ <span class="ft-badge">security scan</span> <span class="ft-size">2 files</span>
+              </div>
+              <div id="ft-scripts">
+                <div class="ft-item ft-indent ft-in-scripts" onclick="ftSelect('sc-install')" data-fid="sc-install">
+                  <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  install.sh <span class="ft-size">2 KB</span>
+                </div>
+                <div class="ft-item ft-indent ft-in-scripts" onclick="ftSelect('sc-validate')" data-fid="sc-validate">
+                  <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  validate.sh <span class="ft-size">4 KB</span>
+                </div>
+              </div>
+              <div class="ft-item ft-dir" onclick="ftToggle('ft-assets', this)">
+                <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                assets/ <span class="ft-size">1 file</span>
+              </div>
+              <div id="ft-assets">
+                <div class="ft-item ft-indent" onclick="ftSelect('asset-logo')" data-fid="asset-logo">
+                  <svg class="ft-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  icon.png <span class="ft-size">8 KB</span>
+                </div>
+              </div>
+            </nav>
+            <div class="ft-preview" id="ft-preview">
+              <div class="ft-preview-header" id="ft-preview-header">
+                <span class="ft-preview-path"><span class="ft-path-cur">SKILL.md</span></span>
+                <span class="ft-lang-badge">Markdown</span>
+              </div>
+              <pre class="ft-preview-body" id="ft-preview-body"><span class="tok-key">name:</span>          docker-compose-helper
+<span class="tok-key">description:</span>   <span class="tok-str">Generate, validate, and troubleshoot docker-compose files.</span>
+<span class="tok-key">version:</span>       <span class="tok-num">2.1.0</span>
+<span class="tok-key">author:</span>        platform-team
+<span class="tok-key">license:</span>       MIT
+<span class="tok-key">compatibility:</span> [claude-code, cursor, gemini-cli]
+
+<span class="tok-kw"># docker-compose-helper</span>
+
+<span class="tok-kw">## When to use this skill</span>
+
+Invoke when working with `docker-compose.yml` files — authoring a new stack,
+adding services, debugging why containers fail to start, or hardening.
+
+<span class="tok-kw">## What it does</span>
+
+Instructs the agent to reason about Docker Compose topology holistically.</pre>
+            </div>
+          </div>
+        </div>
+
       </div><!-- /main-col -->
 
       <!-- Sidebar -->
@@ -1025,7 +1147,7 @@ html,body { background:var(--bg); color:var(--ink); font-family:var(--sans); fon
 
 <script>
 // ── Tab switching ──────────────────────────────────────────────────────────
-const TAB_IDS = ['skillmd','quality','versions','reviews','security','flags'];
+const TAB_IDS = ['skillmd','quality','versions','reviews','security','flags','files'];
 
 function switchTab(id) {
   // Update tab buttons
@@ -1181,6 +1303,603 @@ function scrollToSection(id) {
   const elTop = el.getBoundingClientRect().top;
   scrollEl.scrollTop += (elTop - panelTop) - 80;
 }
+
+// ── Files Tab ─────────────────────────────────────────────────────────────
+function ftToggle(id) {
+  const dir = document.getElementById(id);
+  if (!dir) return;
+  dir.style.display = dir.style.display === 'none' ? '' : 'none';
+}
+
+function ftSelect(id) {
+  document.querySelectorAll('[data-fid]').forEach(el => el.classList.remove('active'));
+  const item = document.querySelector('[data-fid="' + id + '"]');
+  if (item) item.classList.add('active');
+
+  const file = FILE_CONTENTS[id];
+  if (!file) return;
+
+  const preview = document.getElementById('ft-preview');
+  const header = document.getElementById('ft-preview-header');
+  const body = document.getElementById('ft-preview-body');
+
+  // Remove existing banner/binary
+  preview.querySelectorAll('.ft-security-banner, .ft-binary').forEach(el => el.remove());
+
+  // Path breadcrumb
+  const parts = file.path.split('/');
+  let pathHtml = parts.map((p, i) =>
+    i === parts.length - 1
+      ? '<span class="ft-path-cur">' + p + '</span>'
+      : p + '<span style="margin:0 3px;color:var(--ink-3)">/</span>'
+  ).join('');
+  header.innerHTML = '<span class="ft-preview-path">' + pathHtml + '</span><span class="ft-lang-badge">' + file.lang + '</span>';
+
+  if (file.isBinary) {
+    body.style.display = 'none';
+    const bin = document.createElement('div');
+    bin.className = 'ft-binary';
+    bin.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'
+      + '<div style="font-size:13px;color:var(--ink-3)">Binary file — preview not available</div>'
+      + '<div style="font-size:11px;color:var(--ink-3)">8 KB · PNG image</div>';
+    preview.appendChild(bin);
+    return;
+  }
+
+  body.style.display = 'block';
+  body.innerHTML = file.html;
+
+  if (file.isSecurityFocus) {
+    const banner = document.createElement('div');
+    banner.className = 'ft-security-banner';
+    banner.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+      + ' This file is in <strong style="margin:0 3px">scripts/</strong> — included in the automated security scan &nbsp;·&nbsp; '
+      + '<a href="#" onclick="switchTab(\'security\');return false;" style="color:var(--amber-text);text-decoration:underline;cursor:pointer">View Security report →</a>';
+    preview.insertBefore(banner, body);
+  }
+}
 </script>
+
+<!-- ── Files Modal ──────────────────────────────────────────────────────── -->
+<style>
+/* Backdrop */
+.files-modal-backdrop {
+  display:none;
+  position:fixed; inset:0; z-index:100;
+  background:rgba(0,0,0,0.72);
+  backdrop-filter:blur(4px);
+  align-items:center; justify-content:center;
+}
+.files-modal-backdrop.open { display:flex }
+
+/* Modal shell */
+.files-modal {
+  width:min(1080px,94vw); height:min(680px,86vh);
+  background:var(--bg-2);
+  border:.5px solid var(--line-2);
+  border-radius:var(--r-xl);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+  box-shadow:0 32px 80px rgba(0,0,0,0.6);
+}
+
+/* Modal header */
+.fm-header {
+  display:flex; align-items:center; gap:12px;
+  padding:14px 18px;
+  border-bottom:.5px solid var(--line);
+  flex-shrink:0;
+}
+.fm-header-title { font-size:14px; font-weight:500; color:var(--ink); flex:1 }
+.fm-header-meta { font-size:11px; color:var(--ink-3) }
+.fm-close {
+  width:28px; height:28px; border-radius:var(--r-md);
+  background:transparent; border:.5px solid var(--line-2);
+  color:var(--ink-3); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .12s;
+}
+.fm-close:hover { background:rgba(255,255,255,.07); color:var(--ink) }
+
+/* Body: tree + preview */
+.fm-body { display:flex; flex:1; overflow:hidden }
+
+/* File tree */
+.fm-tree {
+  width:240px; flex-shrink:0;
+  border-right:.5px solid var(--line);
+  overflow-y:auto; padding:8px 0;
+}
+.fm-tree::-webkit-scrollbar { width:3px }
+.fm-tree::-webkit-scrollbar-thumb { background:rgba(255,255,255,.08); border-radius:2px }
+
+.fm-tree-item {
+  display:flex; align-items:center; gap:6px;
+  padding:5px 14px;
+  font-size:12px; color:var(--ink-2);
+  cursor:pointer;
+  border-left:2px solid transparent;
+  transition:background .1s, color .1s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.fm-tree-item:hover { background:rgba(255,255,255,.04); color:var(--ink) }
+.fm-tree-item.active { background:rgba(127,119,221,.1); color:var(--ink); border-left-color:var(--accent) }
+.fm-tree-item.is-dir { color:var(--ink); font-weight:500 }
+.fm-tree-item.is-dir.scripts-dir {
+  border-left-color:var(--amber);
+  background:rgba(239,159,39,.06);
+  color:var(--amber-text);
+}
+.fm-tree-item.in-scripts {
+  border-left-color:rgba(239,159,39,.35);
+  background:rgba(239,159,39,.03);
+}
+.fm-tree-icon { flex-shrink:0; opacity:.7 }
+.fm-tree-size { margin-left:auto; font-size:10px; color:var(--ink-3); flex-shrink:0; padding-left:8px }
+.fm-tree-badge {
+  font-size:9px; font-weight:600; padding:1px 5px;
+  border-radius:var(--r-pill); background:var(--amber-soft);
+  color:var(--amber-text); flex-shrink:0; margin-left:2px;
+}
+
+/* Dir indent */
+.fm-indent-1 { padding-left:26px }
+.fm-indent-2 { padding-left:38px }
+
+/* Preview pane */
+.fm-preview {
+  flex:1; display:flex; flex-direction:column;
+  overflow:hidden; min-width:0;
+}
+.fm-preview-header {
+  display:flex; align-items:center; gap:8px;
+  padding:9px 16px; border-bottom:.5px solid var(--line);
+  flex-shrink:0;
+}
+.fm-preview-path { font-family:var(--mono); font-size:11px; color:var(--ink-3) }
+.fm-preview-path .path-seg { color:var(--ink-2) }
+.fm-preview-lang {
+  margin-left:auto; font-size:10px; font-weight:500;
+  padding:1px 7px; border-radius:var(--r-pill);
+  background:var(--bg-3); border:.5px solid var(--line-2);
+  color:var(--ink-3);
+}
+.fm-preview-body {
+  flex:1; overflow-y:auto; padding:16px 20px;
+  font-family:var(--mono); font-size:12px; line-height:1.75;
+  color:var(--ink-2); white-space:pre;
+}
+.fm-preview-body::-webkit-scrollbar { width:3px }
+.fm-preview-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,.08); border-radius:2px }
+
+/* Syntax tokens */
+.tok-key { color:var(--accent-text) }
+.tok-str { color:var(--green-text) }
+.tok-cmt { color:var(--ink-3) }
+.tok-kw  { color:#FAC775 }
+.tok-num { color:#B0D5F2 }
+
+/* Security warning banner in preview */
+.fm-security-banner {
+  margin:0; padding:10px 16px;
+  background:rgba(239,159,39,.08);
+  border-bottom:.5px solid rgba(239,159,39,.2);
+  font-size:11px; color:var(--amber-text);
+  display:flex; align-items:center; gap:8px;
+  flex-shrink:0;
+}
+
+/* Empty state */
+.fm-empty {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:10px; color:var(--ink-3); padding:40px;
+  text-align:center;
+}
+.fm-empty-icon { opacity:.3 }
+.fm-empty-title { font-size:14px; color:var(--ink-2) }
+.fm-empty-sub { font-size:12px; line-height:1.5 }
+
+/* Binary fallback */
+.fm-binary {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:8px; color:var(--ink-3);
+}
+</style>
+
+<div class="files-modal-backdrop" id="files-modal-backdrop" onclick="handleBackdropClick(event)">
+  <div class="files-modal" id="files-modal">
+
+    <!-- Header -->
+    <div class="fm-header">
+      <svg class="fm-tree-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <span class="fm-header-title">platform-team / docker-compose-helper</span>
+      <span class="fm-header-meta">v2.1.0 · 12 files · 84 KB</span>
+      <button class="fm-close" onclick="closeFilesModal()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="fm-body">
+
+      <!-- Tree -->
+      <nav class="fm-tree" id="fm-tree">
+        <!-- Root files -->
+        <div class="fm-tree-item" onclick="selectFile('skillmd')" data-id="skillmd">
+          <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          SKILL.md
+          <span class="fm-tree-size">18 KB</span>
+        </div>
+        <div class="fm-tree-item" onclick="selectFile('readme')" data-id="readme">
+          <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          README.md
+          <span class="fm-tree-size">4 KB</span>
+        </div>
+        <!-- examples/ dir -->
+        <div class="fm-tree-item is-dir" onclick="toggleDir('dir-examples', this)">
+          <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          examples/
+          <span class="fm-tree-size">3 files</span>
+        </div>
+        <div id="dir-examples">
+          <div class="fm-tree-item fm-indent-1" onclick="selectFile('ex-basic')" data-id="ex-basic">
+            <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            basic-webapp.yml
+            <span class="fm-tree-size">2 KB</span>
+          </div>
+          <div class="fm-tree-item fm-indent-1" onclick="selectFile('ex-postgres')" data-id="ex-postgres">
+            <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            postgres-redis-stack.yml
+            <span class="fm-tree-size">3 KB</span>
+          </div>
+          <div class="fm-tree-item fm-indent-1" onclick="selectFile('ex-prod')" data-id="ex-prod">
+            <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            production-hardened.yml
+            <span class="fm-tree-size">4 KB</span>
+          </div>
+        </div>
+        <!-- tests/ dir -->
+        <div class="fm-tree-item is-dir" onclick="toggleDir('dir-tests', this)">
+          <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          tests/
+          <span class="fm-tree-size">2 files</span>
+        </div>
+        <div id="dir-tests">
+          <div class="fm-tree-item fm-indent-1" onclick="selectFile('test-validate')" data-id="test-validate">
+            <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            validate.test.sh
+            <span class="fm-tree-size">6 KB</span>
+          </div>
+          <div class="fm-tree-item fm-indent-1" onclick="selectFile('test-smoke')" data-id="test-smoke">
+            <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            smoke.test.sh
+            <span class="fm-tree-size">3 KB</span>
+          </div>
+        </div>
+        <!-- scripts/ dir — amber highlight -->
+        <div class="fm-tree-item is-dir scripts-dir" onclick="toggleDir('dir-scripts', this)">
+          <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          scripts/
+          <span class="fm-tree-badge">security scan</span>
+          <span class="fm-tree-size">2 files</span>
+        </div>
+        <div id="dir-scripts">
+          <div class="fm-tree-item fm-indent-1 in-scripts" onclick="selectFile('sc-install')" data-id="sc-install">
+            <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            install.sh
+            <span class="fm-tree-size">2 KB</span>
+          </div>
+          <div class="fm-tree-item fm-indent-1 in-scripts" onclick="selectFile('sc-validate')" data-id="sc-validate">
+            <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            validate.sh
+            <span class="fm-tree-size">4 KB</span>
+          </div>
+        </div>
+        <!-- assets/ (binary) -->
+        <div class="fm-tree-item is-dir" onclick="toggleDir('dir-assets', this)">
+          <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          assets/
+          <span class="fm-tree-size">1 file</span>
+        </div>
+        <div id="dir-assets">
+          <div class="fm-tree-item fm-indent-1" onclick="selectFile('asset-logo')" data-id="asset-logo">
+            <svg class="fm-tree-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            icon.png
+            <span class="fm-tree-size">8 KB</span>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Preview pane -->
+      <div class="fm-preview" id="fm-preview">
+        <!-- Default: show SKILL.md -->
+        <div class="fm-preview-header" id="fm-preview-header">
+          <span class="fm-preview-path"><span class="path-seg">SKILL.md</span></span>
+          <span class="fm-preview-lang">Markdown</span>
+        </div>
+        <pre class="fm-preview-body" id="fm-preview-body"><span class="tok-cmt">---</span>
+<span class="tok-key">name:</span>          docker-compose-helper
+<span class="tok-key">description:</span>   <span class="tok-str">Generate, validate, and troubleshoot docker-compose files.</span>
+<span class="tok-key">version:</span>       <span class="tok-num">2.1.0</span>
+<span class="tok-key">author:</span>        platform-team
+<span class="tok-key">license:</span>       MIT
+<span class="tok-key">compatibility:</span> [claude-code, cursor, gemini-cli]
+<span class="tok-cmt">---</span>
+
+<span class="tok-kw"># docker-compose-helper</span>
+
+<span class="tok-kw">## When to use this skill</span>
+
+Invoke when working with `docker-compose.yml` files — authoring a new stack,
+adding services, debugging why containers fail to start, or hardening an
+existing compose file for production.
+
+- Scaffolding new multi-service stacks with sensible defaults
+- Adding healthchecks, `depends_on` conditions, and restart policies
+- Converting ad-hoc `docker run` commands into compose services
+- Reviewing compose files for rootless, resource-limit, and secret-handling
+
+<span class="tok-kw">## What it does</span>
+
+This skill instructs the agent to think about Docker Compose topology
+holistically — not just generating syntactically valid YAML, but reasoning
+about service dependencies, network isolation, volume mounts, and startup
+ordering.</pre>
+      </div>
+
+    </div><!-- /fm-body -->
+  </div><!-- /files-modal -->
+</div><!-- /backdrop -->
+
+<script>
+// ── Files Modal ────────────────────────────────────────────────────────────
+
+const FILE_CONTENTS = {
+  skillmd: {
+    path: 'SKILL.md', lang: 'Markdown', isScript: false,
+    html: `<span class="tok-cmt">---</span>
+<span class="tok-key">name:</span>          docker-compose-helper
+<span class="tok-key">description:</span>   <span class="tok-str">Generate, validate, and troubleshoot docker-compose files.</span>
+<span class="tok-key">version:</span>       <span class="tok-num">2.1.0</span>
+<span class="tok-key">author:</span>        platform-team
+<span class="tok-key">license:</span>       MIT
+<span class="tok-key">compatibility:</span> [claude-code, cursor, gemini-cli]
+<span class="tok-cmt">---</span>
+
+<span class="tok-kw"># docker-compose-helper</span>
+
+<span class="tok-kw">## When to use this skill</span>
+
+Invoke when working with \`docker-compose.yml\` files — authoring a new stack,
+adding services, debugging why containers fail to start, or hardening.
+
+<span class="tok-kw">## What it does</span>
+
+Instructs the agent to reason about Docker Compose topology holistically.`
+  },
+  readme: {
+    path: 'README.md', lang: 'Markdown', isScript: false,
+    html: `<span class="tok-kw"># docker-compose-helper</span>
+
+A Skills Hub skill for generating, validating, and troubleshooting
+docker-compose configurations.
+
+<span class="tok-kw">## Install</span>
+
+\`\`\`bash
+skills-hub install platform-team/docker-compose-helper
+\`\`\`
+
+<span class="tok-kw">## License</span>
+
+MIT © platform-team`
+  },
+  'ex-basic': {
+    path: 'examples/basic-webapp.yml', lang: 'YAML', isScript: false,
+    html: `<span class="tok-key">version:</span> <span class="tok-str">'3.9'</span>
+<span class="tok-key">services:</span>
+  <span class="tok-key">web:</span>
+    <span class="tok-key">image:</span> nginx:alpine
+    <span class="tok-key">ports:</span>
+      - <span class="tok-str">"8080:80"</span>
+    <span class="tok-key">healthcheck:</span>
+      <span class="tok-key">test:</span> [<span class="tok-str">"CMD"</span>, <span class="tok-str">"wget"</span>, <span class="tok-str">"-q"</span>, <span class="tok-str">"--spider"</span>, <span class="tok-str">"http://localhost"</span>]
+      <span class="tok-key">interval:</span> <span class="tok-num">30s</span>
+      <span class="tok-key">timeout:</span> <span class="tok-num">5s</span>
+      <span class="tok-key">retries:</span> <span class="tok-num">3</span>`
+  },
+  'ex-postgres': {
+    path: 'examples/postgres-redis-stack.yml', lang: 'YAML', isScript: false,
+    html: `<span class="tok-key">version:</span> <span class="tok-str">'3.9'</span>
+<span class="tok-key">services:</span>
+  <span class="tok-key">db:</span>
+    <span class="tok-key">image:</span> postgres:16-alpine
+    <span class="tok-key">environment:</span>
+      POSTGRES_PASSWORD: <span class="tok-str">"&#36;{DB_PASSWORD}"</span>
+    <span class="tok-key">healthcheck:</span>
+      <span class="tok-key">test:</span> [<span class="tok-str">"CMD-SHELL"</span>, <span class="tok-str">"pg_isready -U postgres"</span>]
+  <span class="tok-key">cache:</span>
+    <span class="tok-key">image:</span> redis:7-alpine
+    <span class="tok-key">healthcheck:</span>
+      <span class="tok-key">test:</span> [<span class="tok-str">"CMD"</span>, <span class="tok-str">"redis-cli"</span>, <span class="tok-str">"ping"</span>]`
+  },
+  'ex-prod': {
+    path: 'examples/production-hardened.yml', lang: 'YAML', isScript: false,
+    html: `<span class="tok-key">version:</span> <span class="tok-str">'3.9'</span>
+<span class="tok-key">services:</span>
+  <span class="tok-key">api:</span>
+    <span class="tok-key">image:</span> myapp:latest
+    <span class="tok-key">user:</span> <span class="tok-str">"1000:1000"</span>
+    <span class="tok-key">read_only:</span> <span class="tok-num">true</span>
+    <span class="tok-key">security_opt:</span>
+      - no-new-privileges:true
+    <span class="tok-key">cap_drop:</span>
+      - ALL
+    <span class="tok-key">deploy:</span>
+      <span class="tok-key">resources:</span>
+        <span class="tok-key">limits:</span>
+          <span class="tok-key">memory:</span> <span class="tok-str">512m</span>
+          <span class="tok-key">cpus:</span> <span class="tok-str">'0.5'</span>`
+  },
+  'test-validate': {
+    path: 'tests/validate.test.sh', lang: 'Shell', isScript: true,
+    html: `<span class="tok-cmt">#!/usr/bin/env bash</span>
+<span class="tok-cmt"># Validation tests for docker-compose-helper</span>
+
+<span class="tok-kw">set</span> -euo pipefail
+
+<span class="tok-kw">source</span> ./tests/helpers.sh
+
+<span class="tok-kw">test_valid_compose</span>() {
+  <span class="tok-kw">local</span> result
+  result=\$(compose_validate examples/basic-webapp.yml)
+  assert_success "\$result"
+}
+
+<span class="tok-kw">test_missing_healthcheck</span>() {
+  result=\$(compose_validate fixtures/no-healthcheck.yml)
+  assert_warning "&#36;result" <span class="tok-str">"missing healthcheck"</span>
+}
+
+run_tests`
+  },
+  'test-smoke': {
+    path: 'tests/smoke.test.sh', lang: 'Shell', isScript: true,
+    html: `<span class="tok-cmt">#!/usr/bin/env bash</span>
+<span class="tok-cmt"># Smoke tests — spin up and verify basic examples</span>
+
+<span class="tok-kw">set</span> -euo pipefail
+
+<span class="tok-kw">echo</span> <span class="tok-str">"Running smoke tests..."</span>
+docker compose -f examples/basic-webapp.yml up -d --wait
+docker compose -f examples/basic-webapp.yml ps
+docker compose -f examples/basic-webapp.yml down`
+  },
+  'sc-install': {
+    path: 'scripts/install.sh', lang: 'Shell', isScript: true, isSecurityFocus: true,
+    html: `<span class="tok-cmt">#!/usr/bin/env bash</span>
+<span class="tok-cmt"># Post-install hook — copies examples to user's skill directory</span>
+
+<span class="tok-kw">set</span> -euo pipefail
+
+SKILL_DIR=<span class="tok-str">"&#36;{SKILLS_HUB_DIR:-&#36;HOME/.claude/skills}"</span>
+TARGET=<span class="tok-str">"&#36;{SKILL_DIR}/docker-compose-helper"</span>
+
+<span class="tok-kw">mkdir</span> -p <span class="tok-str">"&#36;{TARGET}/examples"</span>
+<span class="tok-kw">cp</span> -r examples/ <span class="tok-str">"&#36;{TARGET}/examples/"</span>
+
+<span class="tok-kw">echo</span> <span class="tok-str">"✔ Examples copied to &#36;{TARGET}/examples/"</span>`
+  },
+  'sc-validate': {
+    path: 'scripts/validate.sh', lang: 'Shell', isScript: true, isSecurityFocus: true,
+    html: `<span class="tok-cmt">#!/usr/bin/env bash</span>
+<span class="tok-cmt"># Validates a docker-compose file path provided as argument</span>
+
+<span class="tok-kw">set</span> -euo pipefail
+
+FILE=<span class="tok-str">"&#36;{1:-}"</span>
+<span class="tok-kw">if</span> [[ -z <span class="tok-str">"&#36;{FILE}"</span> ]]; <span class="tok-kw">then</span>
+  <span class="tok-kw">echo</span> <span class="tok-str">"Usage: validate.sh &lt;path-to-compose.yml&gt;"</span> &gt;&amp;2
+  <span class="tok-kw">exit</span> 1
+<span class="tok-kw">fi</span>
+
+docker compose -f <span class="tok-str">"&#36;{FILE}"</span> config --quiet
+<span class="tok-kw">echo</span> <span class="tok-str">"✔ &#36;{FILE} is valid"</span>`
+  },
+  'asset-logo': {
+    path: 'assets/icon.png', lang: 'PNG', isScript: false, isBinary: true
+  }
+};
+
+function openFilesModal() {
+  document.getElementById('files-modal-backdrop').classList.add('open');
+  // Select SKILL.md by default
+  selectFile('skillmd');
+  document.getElementById('fm-tree').querySelector('[data-id="skillmd"]').classList.add('active');
+}
+
+function closeFilesModal() {
+  document.getElementById('files-modal-backdrop').classList.remove('open');
+}
+
+function handleBackdropClick(e) {
+  if (e.target === document.getElementById('files-modal-backdrop')) closeFilesModal();
+}
+
+function toggleDir(id, el) {
+  const dir = document.getElementById(id);
+  if (!dir) return;
+  const isHidden = dir.style.display === 'none';
+  dir.style.display = isHidden ? '' : 'none';
+}
+
+function selectFile(id) {
+  // Update tree active state
+  document.querySelectorAll('.fm-tree-item').forEach(el => el.classList.remove('active'));
+  const treeItem = document.querySelector('[data-id="' + id + '"]');
+  if (treeItem) treeItem.classList.add('active');
+
+  const file = FILE_CONTENTS[id];
+  if (!file) return;
+
+  const header = document.getElementById('fm-preview-header');
+  const body = document.getElementById('fm-preview-body');
+  const preview = document.getElementById('fm-preview');
+
+  // Remove existing security banner
+  const existingBanner = preview.querySelector('.fm-security-banner');
+  if (existingBanner) existingBanner.remove();
+
+  // Set header
+  const pathParts = file.path.split('/');
+  let pathHtml = '';
+  pathParts.forEach((p, i) => {
+    if (i > 0) pathHtml += '<span style="color:var(--ink-3);margin:0 3px">/</span>';
+    pathHtml += (i === pathParts.length - 1)
+      ? '<span class="path-seg">' + p + '</span>'
+      : p;
+  });
+  header.innerHTML = '<span class="fm-preview-path">' + pathHtml + '</span><span class="fm-preview-lang">' + file.lang + '</span>';
+
+  // Handle binary
+  if (file.isBinary) {
+    body.style.display = 'none';
+    let binDiv = preview.querySelector('.fm-binary');
+    if (!binDiv) {
+      binDiv = document.createElement('div');
+      binDiv.className = 'fm-binary';
+      preview.appendChild(binDiv);
+    }
+    binDiv.style.display = 'flex';
+    binDiv.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'
+      + '<div style="font-size:13px;color:var(--ink-3)">Binary file — preview not available</div>'
+      + '<div style="font-size:11px;color:var(--ink-3)">8 KB · PNG image</div>';
+    return;
+  }
+
+  // Show text content
+  const binDiv = preview.querySelector('.fm-binary');
+  if (binDiv) binDiv.style.display = 'none';
+  body.style.display = 'block';
+  body.innerHTML = file.html;
+
+  // Add security banner for scripts/
+  if (file.isSecurityFocus) {
+    const banner = document.createElement('div');
+    banner.className = 'fm-security-banner';
+    banner.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> This file is in <strong style="margin:0 3px">scripts/</strong> and was included in the automated security scan · <a href="#" onclick="switchTab(\'security\');closeFilesModal();return false;" style="color:var(--amber-text);text-decoration:underline;cursor:pointer">View Security report →</a>';
+    // Insert after header
+    preview.insertBefore(banner, body);
+  }
+}
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeFilesModal();
+});
+</script>
+
 </body>
 </html>

@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（+ S141 XS spec — bug 修 backend MeController 漏的 email/name/picture claim pass-through）
+> 最後更新：2026-05-07（+ S142a/S142b SkillDetailPage v2 完整實作；S136 cancelled — research absorbed into v2 prototype + S142）
 
 ## 使用說明
 
@@ -37,6 +37,8 @@
 | S120 | E2E auth integration test | M(8-10) | S114a | ✅ v4.8.0 — anonymous GET public → 200；root cause: @TestConfiguration on AotStubBeans |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | ✅ shipped — S135a (v3.14.0) + S135b (v4.1.0) |
 | S141 | `/api/v1/me` Display Claims（補 email/name/picture pass-through，修 user-visible 顯示成 Google sub bug） | XS(7) | S139 ✅（v4.18.0）| 📐 design complete — `/planning-tasks S141` next |
+| S142a | SkillDetailPage v2 frontend rework | M-L(13-15) | S142b API contract | ⏳ Plan — 6 tasks ready (`docs/grimo/tasks/*-S142a-T*.md`) |
+| S142b | SkillDetailPage v2 backend supplement (SkillScore composite + SecurityReport 4-quad + Skill aggregate field projection) | S-M(8-10) | S135a ✅ | ⏳ Plan — 5 tasks ready (`docs/grimo/tasks/*-S142b-T*.md`) |
 
 ---
 
@@ -86,7 +88,6 @@
 | S114c | ACL infra — connection pool 調校（read replica defer） | S(4) | S114b | ✅ v4.15.0 — initialization-fail-timeout=60000；read replica + PgBouncer defer |
 | S129 | Server compression | XS(1) | — | ✅ v4.9.0 — application.yaml server.compression gzip |
 | S131 | Error code naming convention alignment | XS(2-3) | — | ✅ v4.10.0 — GlobalExceptionHandler 13 碼 SCREAMING_SNAKE_CASE 對齊 |
-| S136 | Skill Evaluation Scenarios — task-based eval | TBD | S135 | 📋 待討論（per [`research/2026-05-05-tessl-skill-platform-study.md`](../research/2026-05-05-tessl-skill-platform-study.md) §4） |
 
 ---
 
@@ -95,6 +96,7 @@
 | SpecID | 標題 | 點數 | 狀態 |
 |--------|------|------|------|
 | S095 | Risk tier 4-level split | S(9) | ⛔ superseded by S096c |
+| S136 | Skill Evaluation Scenarios — task-based eval | TBD | ⛔ cancelled 2026-05-07 — research absorbed into v2 prototype + S142；no Evals tab in current product scope |
 | S096e2 | Onboarding wizard | S(7) | ⛔ 取消 2026-05-05（MVP 不需要）|
 | S101 | META Skill Quality / Impact / Security Score System | META | ⛔ superseded 2026-05-05 — 由 Tessl 8-dim 研究 (S135 META) 取代 Quality 部分；Impact 部分移至 S136 Backlog |
 | S101a | Quality Score backend + LLM judge | M(10) | ⛔ superseded by S135（Tessl 8-dim 對齊版） |
