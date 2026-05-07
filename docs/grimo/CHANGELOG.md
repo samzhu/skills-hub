@@ -1,5 +1,24 @@
 # Changelog
 
+## [v4.22.0] — SkillDetailPage v2 Frontend Rework（S142a 完成；2026-05-07）
+
+> 以全新 v2 component system 重寫 SkillDetailPage：PageHeader + Sidebar + 7-tab layout。所有子元件獨立開發、測試後在 T06 整合。
+
+### Feature — SkillDetailPage v2
+
+- **PageHeader**：Skill 名稱 / 作者 / VerifiedPill / StarButton / BeamFrame 下載 CTA / HeroMetricsRow（SkillScoreBadge + QualityHeroCard + SecurityHeroCard）/ StatStrip 14d stats
+- **Sidebar**（232px）：InstallCard copy-to-clipboard / SparklineCard 30d trend / DetailsCard (Published / License / Size / Files) / CompatibilityCard chips / VersionHistoryMini latest-4；Quality tab 顯 QualityTOCCard + ReproducibilityCard；Security tab 顯 SecurityAuditCard
+- **7-tab layout**（SKILL.md 預設）：SkillMdTab（frontmatter syntax highlight + markdown body）/ QualityTabV2（3-axis + ScoreDot + expand reasoning）/ VersionsTabV2（changelog cards）/ Reviews / SecurityTab（shield hero + 4-quad）/ Flags / FileExplorerPanel（220px tree + 1fr preview, scripts/ amber highlight）
+- **FileExplorerPanel**：scripts/ 目錄 amber styling / security-banner preview / binary fallback / LangBadge
+- **LangBadge**：副檔名 → 語言名稱映射（Markdown / YAML / TypeScript / Python / Bash 等）
+
+### Test Coverage
+
+- 318/318 Vitest PASS（+29 新測試：T04 FileExplorer×12 + T05 InstallCard×5 + Sidebar×12）
+- TypeScript：0 production errors
+
+---
+
 ## [v4.21.0] — MeController OIDC Claims Pass-through（S141 完成；2026-05-07）
 
 > 修 `/api/v1/me` 漏回 `email` / `name` / `picture` 三個 OIDC standard claims 的 bug。AppShell avatar dropdown + MySkillsPage 「以 X 身份發布」自此顯示 email/name 而非 Google numeric sub。
