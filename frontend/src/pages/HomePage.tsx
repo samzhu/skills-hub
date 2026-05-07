@@ -219,7 +219,7 @@ export function HomePage() {
                       <button
                         key={mode}
                         type="button"
-                        onClick={() => setSortMode(mode)}
+                        onClick={() => { setSortMode(mode); setPage(0) }}
                         className={
                           'rounded-full px-2.5 py-1 text-[12px] transition-colors ' +
                           (isOn

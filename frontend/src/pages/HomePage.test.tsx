@@ -106,6 +106,28 @@ describe('HomePage — S104 filter-active 0-hits UX', () => {
     expect(screen.getByText(/共 103 個技能/)).toBeInTheDocument()
   })
 
+  it('AC-S48: 切換排序模式時頁碼重置為第 1 頁', async () => {
+    renderPage()
+    await waitFor(() => {
+      expect(screen.getByText('sk1')).toBeInTheDocument()
+    })
+    // 先翻到第 2 頁
+    fireEvent.click(screen.getByRole('button', { name: '下一頁' }))
+    await waitFor(() => {
+      expect(screen.getByText(/第 2 \/ 6 頁/)).toBeInTheDocument()
+    })
+    // 切換排序 → 頁碼應重置為第 1 頁
+    fireEvent.click(screen.getByRole('button', { name: '最新' }))
+    await waitFor(() => {
+      expect(screen.getByText(/第 1 \/ 6 頁/)).toBeInTheDocument()
+    })
+    // 確認 fetch 用 page=0
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fetchMock = (globalThis as any).fetch as ReturnType<typeof vi.fn>
+    const lastCall = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/api/v1/skills')).at(-1)
+    expect(String(lastCall?.[0])).toContain('page=0')
+  })
+
   it('AC-4: filter-active + 0 hits 時 pagination 隱藏', async () => {
     renderPage()
     await waitFor(() => {
