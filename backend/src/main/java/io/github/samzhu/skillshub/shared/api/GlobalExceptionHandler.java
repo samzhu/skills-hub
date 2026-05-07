@@ -231,6 +231,14 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse("CANNOT_REVOKE_OWN_OWNER", ex.getMessage(), Instant.now()));
 	}
 
+	/** S142b AC-S142b-10 — 安全掃描尚未完成 → 404 SECURITY_NOT_SCANNED。 */
+	@ExceptionHandler(SecurityNotScannedException.class)
+	ResponseEntity<ErrorResponse> handleSecurityNotScanned(SecurityNotScannedException ex) {
+		log.atWarn().addKeyValue("errorCode", "SECURITY_NOT_SCANNED").log("Security report not yet available");
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse("SECURITY_NOT_SCANNED", ex.getMessage(), Instant.now()));
+	}
+
 	/** S135a AC-S135a-4 — 品質評分尚未計算 → 404 QUALITY_NOT_EVALUATED。 */
 	@ExceptionHandler(QualityNotEvaluatedException.class)
 	ResponseEntity<ErrorResponse> handleNotEvaluated(QualityNotEvaluatedException ex) {

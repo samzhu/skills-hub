@@ -119,5 +119,14 @@ public abstract class WebMvcSliceTestBase {
                 }
             };
         }
+
+        /**
+         * S114b @EnableCaching stub — CacheInterceptor.afterSingletonsInstantiated() 找 CacheManager
+         * bean；WebMvc slice 不載 CaffeineCacheManagerAutoConfiguration → 需補 stub 避免 context fail。
+         */
+        @Bean
+        org.springframework.cache.CacheManager cacheManager() {
+            return new org.springframework.cache.concurrent.ConcurrentMapCacheManager();
+        }
     }
 }
