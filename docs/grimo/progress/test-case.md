@@ -1379,3 +1379,38 @@ Cut axis: **Control-behavior alignment**（chip / button label 與 behavior 1:1 
 
 ### Tick 107 Summary
 - Round 60: 14 checks / **0 bugs — control-behavior alignment 全部 1:1**
+
+---
+
+## Tick 108 — Mode B Round 61
+
+Cut axis: **API projection field completeness**（同 entity 跨 endpoint 欄位 consistent）
+
+| # | Entity | Endpoints 比對 | 欄位 consistent？ | 備註 |
+|---|--------|--------------|-------------------|------|
+| 1 | `Skill` list vs detail | `GET /skills` vs `GET /skills/{id}` | ✅（設計分層一致） | Detail 額外 `@Transient` 6 欄（verified/latestVersionPublishedAt/license/compatibility/versionCount/openFlagCount）僅 detail endpoint 呼叫 `withDetail()` 填入；frontend 這 6 欄只在 v2 SkillDetailPage 用，list 用的 SkillCard 不存取這些欄位 |
+| 2 | `SemanticSearchResult` | `GET /search/semantic` (only) | ✅ | backend record 欄位 id/name/description/author/category/latestVersion/riskLevel/downloadCount/score 全對齊 |
+| 3 | `Flag` 跨 endpoint | `GET /skills/{id}/flags` vs `GET /flags?status=OPEN` | ✅ | 兩者皆回 `FlagReadModel`，shape 完全一致；frontend `Flag.description: string\|null` 對齊 backend nullable String |
+| 4 | `Review` | `GET /skills/{id}/reviews` (only list) | ✅ | `ReviewResponse` 7 欄 match frontend `Review` interface |
+| 5 | `Notification` | `GET /notifications` (cursor list) | ✅ | backend 回 `{items, hasNext}` wrapper；frontend `fetchNotifications` 已 extract `r.items`；欄位 8 個一致 |
+| 6 | `SkillCollection`（list） vs `CollectionDetail`（detail） | `GET /collections` vs `GET /collections/{id}` | ✅ | List 回 `CollectionSummary`（含 maxRiskLevel/skillCount）；detail 回 `CollectionDetail`（含 ownerId/skills）；兩型別 frontend 分別用 `SkillCollection` / `CollectionDetail` 對應 |
+| 7 | `CollectionSkillSummary` | embedded in `CollectionDetail` | ✅ | 5 欄 (id/name/category/riskLevel/latestVersion) 一致 |
+| 8 | `SkillRequest` list vs single | `GET /requests` vs `GET /requests/{id}` | ✅ | 兩者用同一 `RequestResponse` record；10 欄一致 |
+| 9 | `SkillGrant` | `GET /skills/{id}/grants` (only) | ✅ | backend `SkillGrant.getSkillId()` 有 `@JsonIgnore` → JSON 不含 skillId；frontend `SkillGrant` interface 也無此欄 |
+| 10 | `SkillVersion` | `GET /skills/{id}/versions` (only) | ✅ | backend 多回 frontmatter/riskAssessment/allowedTools（未 @JsonIgnore），frontend interface 只宣告使用的 6 欄；TypeScript 額外欄位 ignore 是安全的 |
+| 11 | `ScoreResponse`（quality scores） | `GET /skills/{id}/scores` (only) | ✅ | `dimensions` 後端 `Map<String, Object>` 序列化為 `{name: {score: int, reasoning: String}}`，對齊 frontend `Record<string, DimensionScore>` |
+| 12 | `SecurityReportResponse` | `GET /skills/{id}/security-report` (only) | ✅ | `checks: Map<String, CheckDetail>` 序列化 key 恰好是 shell/paths/secrets/deps；對齊 frontend typed `{shell, paths, secrets, deps}` |
+| 13 | `OverviewStats` + `TopSkill` | `GET /analytics/overview` (only) | ✅ | `author` 在 backend 永遠有值，frontend 宣告 `author?` 是 S100e 防禦性設計（stale runtime 風險），非 mismatch |
+| 14 | `PublicStats` | `GET /stats` (LandingPage) | ✅ | 4 欄 (totalSkills/downloads30d/activePublishers/autoPublishPct) 完全一致 |
+
+**0 bugs found。**
+
+所有 API entity 跨 endpoint 的回應欄位皆 consistent。
+唯一值得記錄的設計決策：`Skill` list endpoint 不回 `@Transient` detail 欄位（verified 等 6 欄），
+這是 N+1 避免的 intentional projection 分層，非 bug；frontend 使用這些欄位的元件
+全部在 SkillDetailPage（detail endpoint）context 下，不存在 list context 誤用。
+
+319/319 Vitest PASS。tsc clean。
+
+### Tick 108 Summary
+- Round 61: 14 checks / **0 bugs — API projection field completeness 全部一致**
