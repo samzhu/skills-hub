@@ -234,7 +234,7 @@ function SkillRow({ skill, isLast }: { skill: Skill; isLast: boolean }) {
         <span className="font-mono text-[12px] tabular-nums">
           {(skill.downloadCount ?? 0).toLocaleString()}
         </span>
-        <span className="text-[10px] text-muted-foreground">downloads</span>
+        <span className="text-[10px] text-muted-foreground">次下載</span>
       </div>
       <div className="shrink-0 text-right">
         <span className="rounded-sm bg-[#171719] px-2 py-0.5 font-mono text-[11px]">

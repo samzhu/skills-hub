@@ -956,3 +956,33 @@ Cut axis: **Interactive state consistency**（filter / pagination / count / empt
 
 ### Tick 95 Summary
 - Round 48: 12 checks / **1 bug (AX)** — 全數 inline 修復
+
+---
+
+## Tick 96 — Round 49: User-visible string compliance (2026-05-08)
+
+Cut axis: **User-visible string compliance**（全局 English strings scan — CLAUDE.md 繁體中文政策）
+
+| # | 元件 / 頁面 | 英文字串 | 結果 |
+|---|------------|---------|------|
+| 1 | MySkillsPage line 237 | `downloads` sub-label under download count number | ❌ **Bug AY** |
+| 2 | AnalyticsPage MetricCard subtitle | `subtitle="rolling 7-day"` | ❌ **Bug AY** |
+| 3 | AnalyticsPage MetricCard value | `` `Top ${stats.topSkills.length}` `` | ❌ **Bug AY** |
+| 4 | AnalyticsPage h2 heading | `熱門技能 Top 10` | ❌ **Bug AY** |
+| 5 | StatStrip.tsx labels | 下載次數 / 評分 / 版本數 / 待處理旗標 — 全 zh-TW ✓ | ✅ |
+| 6 | SkillCard.tsx visible text | 全 zh-TW（category/status/version pill）✓ | ✅ |
+| 7 | ReviewsPanel.tsx | 全 zh-TW ✓ | ✅ |
+| 8 | FlagsQueuePage.tsx | 全 zh-TW ✓ | ✅ |
+| 9 | docs/RestApiPage "Analytics" | API 文件 section 標題，技術文件可接受 ✓ | ✅（文件頁）|
+| 10 | docs/* Code component 包裹的代碼 | `<Code>name</Code>` 等為代碼片段，非 UI 標籤 ✓ | ✅ |
+| 11 | AnalyticsPage `{skill.downloads}` | 資料數值，非 UI 標籤 ✓ | ✅ |
+| 12 | docs/RiskScannerScopePage "OWASP LLM Top 10 v1.1" | 業界標準固有名詞，應保留英文 ✓ | ✅（固有名詞）|
+
+**Bug AY (LOW / i18n)**：
+`MySkillsPage` 下載數下方顯示 "downloads"；`AnalyticsPage` 含 "rolling 7-day"、"Top N"、"Top 10" 英文標籤，
+違反 CLAUDE.md 繁體中文政策（所有前端頁面皆使用繁體中文）。
+修復：`downloads` → `次下載`；`rolling 7-day` → `近 7 天`；`Top ${n}` → `前 ${n} 名`；`Top 10` → `前 10 名`。
+319/319 Vitest PASS。
+
+### Tick 96 Summary
+- Round 49: 12 checks / **1 bug cluster (AY)** — 全數 inline 修復

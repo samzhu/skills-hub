@@ -39,14 +39,14 @@ export function AnalyticsPage() {
           <div className="mb-[18px] grid grid-cols-2 gap-3 sm:grid-cols-4">
             <MetricCard label="總技能數" value={stats.totalSkills} />
             <MetricCard label="總下載次數" value={stats.totalDownloads} />
-            <MetricCard label="本週新增" value={stats.newSkillsThisWeek} subtitle="rolling 7-day" />
-            <MetricCard label="熱門排行" value={`Top ${stats.topSkills.length}`} />
+            <MetricCard label="本週新增" value={stats.newSkillsThisWeek} subtitle="近 7 天" />
+            <MetricCard label="熱門排行" value={`前 ${stats.topSkills.length} 名`} />
           </div>
 
           {/* top skills card */}
           <div className="rounded-lg border border-border bg-card p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="m-0 text-[15px] font-medium">熱門技能 Top 10</h2>
+              <h2 className="m-0 text-[15px] font-medium">熱門技能 前 10 名</h2>
               <span className="text-[11px] font-medium uppercase tracking-[0.05em] text-muted-foreground">
                 依下載次數
               </span>
