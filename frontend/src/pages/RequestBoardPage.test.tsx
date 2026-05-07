@@ -133,7 +133,7 @@ describe('RequestBoardPage (S096g2-T04)', () => {
     // S139：等 useAuth fetchMe resolve（AuthArea 從 skeleton 切到 avatar），AuthGatedButton
     // loading 期間 click 會走 login() redirect 而非 onClick → 必須等 authenticated 才點。
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Open user menu' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '開啟使用者選單' })).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: '發起新需求' }))
 

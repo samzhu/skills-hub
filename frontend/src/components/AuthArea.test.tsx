@@ -48,7 +48,7 @@ describe('AuthArea — S139 header right slot', () => {
 
     renderAuthArea()
     expect(screen.queryByRole('button', { name: '登入' })).toBeNull()
-    expect(screen.queryByRole('button', { name: /open user menu/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /開啟使用者選單/i })).toBeNull()
   })
 
   it('AC-4: status=authenticated → avatar trigger 渲染（含 picture + aria-haspopup）', () => {
@@ -65,7 +65,7 @@ describe('AuthArea — S139 header right slot', () => {
     } as ReturnType<typeof useAuthModule.useAuth>)
 
     renderAuthArea()
-    const trigger = screen.getByRole('button', { name: /open user menu/i })
+    const trigger = screen.getByRole('button', { name: /開啟使用者選單/i })
     expect(trigger).toBeInTheDocument()
     // Radix DropdownMenuTrigger 自動加 aria-haspopup="menu"
     expect(trigger.getAttribute('aria-haspopup')).toBe('menu')
@@ -91,7 +91,7 @@ describe('AuthArea — S139 header right slot', () => {
 
     renderAuthArea()
     // 沒 picture 時 avatar 顯示 'B'（email 首字母大寫）或 'b'（fallback）
-    const trigger = screen.getByRole('button', { name: /open user menu/i })
+    const trigger = screen.getByRole('button', { name: /開啟使用者選單/i })
     expect(trigger.textContent?.toUpperCase()).toContain('B')
   })
 })

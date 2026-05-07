@@ -95,7 +95,7 @@ describe('AppShell — S096h1 nav + bell badge', () => {
     renderWithCount(0)
     // S139: bell 在 authenticated 後才渲染，需 waitFor
     await waitFor(() => {
-      expect(screen.getByLabelText('Notifications')).toBeInTheDocument()
+      expect(screen.getByLabelText('通知')).toBeInTheDocument()
     })
     // 數字 badge 不應存在
     expect(screen.queryByText('1')).not.toBeInTheDocument()
@@ -127,13 +127,13 @@ describe('AppShell — S096h1 nav + bell badge', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '登入' })).toBeInTheDocument()
     })
-    expect(screen.queryByLabelText('Notifications')).toBeNull()
+    expect(screen.queryByLabelText('通知')).toBeNull()
   })
 
   it('S139 AC-4: authenticated → AuthArea 渲染 avatar trigger（aria-haspopup=menu）', async () => {
     renderWithCount(0)
     await waitFor(() => {
-      const avatarBtn = screen.getByRole('button', { name: /open user menu/i })
+      const avatarBtn = screen.getByRole('button', { name: /開啟使用者選單/i })
       expect(avatarBtn.getAttribute('aria-haspopup')).toBe('menu')
     })
   })
@@ -144,6 +144,6 @@ describe('AppShell — S096h1 nav + bell badge', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '登入' })).toBeInTheDocument()
     })
-    expect(screen.queryByLabelText('Notifications')).toBeNull()
+    expect(screen.queryByLabelText('通知')).toBeNull()
   })
 })

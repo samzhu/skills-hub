@@ -71,7 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {isAuthenticated && (
             <Link
               to="/notifications"
-              aria-label="Notifications"
+              aria-label="通知"
               className="relative flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <Bell className="h-4 w-4" />

@@ -1208,3 +1208,38 @@ Cut axis: **Negative deep-link**（`/skills/null` / 不存在 author / 超長 qu
 
 ### Tick 102 Summary
 - Round 55: 14 checks / **0 bugs** — Negative deep-link 全通過（2 個 polish notes 列 backlog）
+
+---
+
+## Tick 103 — Round 56: Accessibility (2026-05-08)
+
+Cut axis: **Accessibility**（keyboard / aria-label / focus order）
+
+| # | 元件 / 情境 | 檢查項目 | 結果 |
+|---|-----------|---------|------|
+| 1 | `AppShell` 通知 bell link | `aria-label="Notifications"` — 英文，違反 zh-TW UI 政策 | ❌ **Bug BD** |
+| 2 | `AuthArea` avatar trigger | `aria-label="Open user menu"` — 英文，違反 zh-TW UI 政策 | ❌ **Bug BD** |
+| 3 | `QualityHeroCard` (div role=button) | tabIndex=0 + onKeyDown Enter/Space + aria-label 已設 | ✅ |
+| 4 | `SecurityHeroCard` (div role=button) | tabIndex=0 + onKeyDown Enter/Space + aria-label 已設 | ✅ |
+| 5 | `RatingStars` (radiogroup) | role=radiogroup + 5 個 role=radio + aria-label="評分" | ✅ |
+| 6 | `ReviewsPanel` 對話框 | role="dialog" + aria-label="撰寫評論" | ✅ |
+| 7 | 所有 modal 對話框 | CreateRequestModal / CreateCollectionModal / PreferencesModal / FlagSubmitModal / ShareModal 皆 role=dialog + aria-label | ✅ |
+| 8 | `img` 元件 | 搜尋全庫無 `<img>` 缺 alt 屬性 | ✅ |
+| 9 | `SearchBar` input | type=search + placeholder 描述用途；單一搜尋 input 無 label 可接受（MVP）| ✅ |
+| 10 | `MarkdownActionMenu` | aria-label="Markdown 操作"（Markdown 為技術術語，可保留英文）| ✅ |
+| 11 | nav 元件 | 頁面僅一個 nav，不需 aria-label（ARIA 最佳實踐：單一 nav 不須 label）| ✅ |
+
+**Bug BD (LOW / a11y + i18n)**：
+AppShell 通知 bell 連結 `aria-label="Notifications"` 與 AuthArea avatar trigger `aria-label="Open user menu"` 皆為英文，
+違反 CLAUDE.md「所有前端頁面、按鈕、提示訊息皆使用繁體中文」政策。
+螢幕閱讀器（VoiceOver / NVDA）會報讀英文標籤給中文使用者。
+
+修復：
+- `AppShell.tsx:74` `"Notifications"` → `"通知"`
+- `AuthArea.tsx:53` `"Open user menu"` → `"開啟使用者選單"`
+- 同步更新 AppShell.test.tsx、AuthArea.test.tsx、RequestBoardPage.test.tsx（3 個檔案 4 處 query 用舊標籤）
+
+319/319 Vitest PASS。tsc clean。
+
+### Tick 103 Summary
+- Round 56: 11 checks / **1 bug (BD) — 2 個英文 aria-label 改為繁體中文**

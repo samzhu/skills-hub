@@ -50,7 +50,7 @@ export function AuthArea() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label="Open user menu"
+          aria-label="開啟使用者選單"
           className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border bg-muted text-sm font-medium hover:bg-accent"
         >
           {user.picture ? (
