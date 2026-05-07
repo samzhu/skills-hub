@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
+import { MemoryRouter } from 'react-router'
 import { InstallCard } from './InstallCard'
 import type { Skill } from '@/types/skill'
 
@@ -14,14 +15,14 @@ const baseSkill: Skill = {
 
 describe('InstallCard', () => {
   it('AC-S142a-16: renders install command with author/name', () => {
-    render(<InstallCard skill={baseSkill} />)
+    render(<MemoryRouter><InstallCard skill={baseSkill} /></MemoryRouter>)
     expect(screen.getByText('skills-hub install alice/my-skill')).toBeTruthy()
   })
 
   it('AC-S142a-16: copy button calls clipboard.writeText', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
-    render(<InstallCard skill={baseSkill} />)
+    render(<MemoryRouter><InstallCard skill={baseSkill} /></MemoryRouter>)
     fireEvent.click(screen.getByTestId('install-copy-btn'))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('skills-hub install alice/my-skill'))
   })
@@ -29,20 +30,20 @@ describe('InstallCard', () => {
   it('AC-S142a-16: after copy, button shows checkmark', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
-    render(<InstallCard skill={baseSkill} />)
+    render(<MemoryRouter><InstallCard skill={baseSkill} /></MemoryRouter>)
     fireEvent.click(screen.getByTestId('install-copy-btn'))
     await waitFor(() => expect(screen.getByTestId('install-copy-btn').textContent).toBe('✓'))
   })
 
   it('AC-S142a-16: "什麼是技能？" link present', () => {
-    render(<InstallCard skill={baseSkill} />)
+    render(<MemoryRouter><InstallCard skill={baseSkill} /></MemoryRouter>)
     const link = screen.getByText('什麼是技能？') as HTMLAnchorElement
     expect(link).toBeTruthy()
     expect(link.href).toContain('/docs/your-first-skill')
   })
 
   it('AC-S142a-16: CLI label visible', () => {
-    render(<InstallCard skill={baseSkill} />)
+    render(<MemoryRouter><InstallCard skill={baseSkill} /></MemoryRouter>)
     expect(screen.getByText('CLI ▼')).toBeTruthy()
   })
 })

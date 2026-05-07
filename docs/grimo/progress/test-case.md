@@ -868,3 +868,30 @@ Cut axis: **Anonymous vs authenticated flow 比對**（未登入/登入使用者
 
 ### Tick 92 Summary
 - Round 45: 10 checks / **1 bug cluster (AV)** — 全數 inline 修復
+
+---
+
+## Tick 93 — Round 46: Cross-cutting links — 內部 SPA 路由 callsite 一致性 (2026-05-08)
+
+Cut axis: **Cross-cutting links**（所有 Link/navigate callsite 對齊 router 定義）
+
+| # | 元件 | 路由/連結 | 結果 |
+|---|------|---------|------|
+| 1 | AppShell logo `<Link to="/">` | / → LandingPage ✓ | ✅ |
+| 2 | AppShell notifications `<Link to="/notifications">` | /notifications → NotificationsPage ✓ | ✅ |
+| 3 | AuthArea "我的技能" `<Link to="/my-skills">` | /my-skills → MySkillsPage ✓ | ✅ |
+| 4 | InstallCard `<a href="/docs/your-first-skill">` | 使用 `<a>` 而非 `<Link>`，SPA 內部路由全頁重載 | ❌ **Bug AW** |
+| 5 | PublishPage `<a href="/docs/skill-md-spec">` | 使用 `<a>` 而非 `<Link>`，SPA 內部路由全頁重載 | ❌ **Bug AW** |
+| 6 | docs 頁面間導航 Links (OverviewPage/FrontmatterPage/etc.) | 全部使用 `<Link to>` ✓ | ✅ |
+| 7 | navigate('/publish/validate') / navigate('/publish/review') / navigate('/publish/failed') | 路由全部定義 ✓ | ✅ |
+| 8 | navigate('/browse') (SearchResultsPage) | 路由已定義 ✓ | ✅ |
+| 9 | navigate('/search?q=...') | /search → SearchResultsPage ✓ | ✅ |
+| 10 | OverviewPage Swagger UI `<a href="/swagger-ui/index.html">` | 外部/伺服器路由（非 SPA）— `<a>` 正確 | ✅ |
+
+**Bug AW (LOW / SPA UX)**：
+`InstallCard` 和 `PublishPage` 各有一個 `<a href>` 連結指向 SPA 內部路由 `/docs/...`，
+導致點擊時全頁重載而非 React Router 客戶端導航，破壞 SPA 體驗。
+修復：改用 `<Link to>`；同步更新 InstallCard.test.tsx + Sidebar.test.tsx 加入 MemoryRouter wrapper；318/318 Vitest PASS。
+
+### Tick 93 Summary
+- Round 46: 10 checks / **1 bug cluster (AW)** — 全數 inline 修復

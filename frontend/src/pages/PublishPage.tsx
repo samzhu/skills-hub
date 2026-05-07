@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, Link } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
 import { FileText, Upload as UploadIcon, Check, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
@@ -198,7 +198,7 @@ export function PublishPage() {
                   )}
                 </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  含 YAML frontmatter（必填 <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">name</code> + <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">description</code>）+ markdown 內文。詳見 <a href="/docs/skill-md-spec" className="text-[#C9C5F2] hover:underline">SKILL.md 規範</a>。
+                  含 YAML frontmatter（必填 <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">name</code> + <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">description</code>）+ markdown 內文。詳見 <Link to="/docs/skill-md-spec" className="text-[#C9C5F2] hover:underline">SKILL.md 規範</Link>。
                 </p>
                 {/* S099b2: live validation feedback — 顯給作者 quick check */}
                 {skillMdText.trim().length > 0 && (

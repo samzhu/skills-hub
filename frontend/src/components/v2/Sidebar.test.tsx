@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
+import { MemoryRouter } from 'react-router'
 import { Sidebar } from './Sidebar'
 import type { Skill, SkillVersion } from '@/types/skill'
 import type { SkillScores } from '@/api/scores'
@@ -47,17 +48,19 @@ const baseReport: SecurityReport = {
 
 function renderSidebar(activeTab = 'overview', overrides: Partial<Parameters<typeof Sidebar>[0]> = {}) {
   return render(
-    <Sidebar
-      skill={baseSkill}
-      version={baseVersion}
-      stats={Array(30).fill(10)}
-      scores={baseScores}
-      report={baseReport}
-      versions={baseVersions}
-      activeTab={activeTab}
-      onTabChange={vi.fn()}
-      {...overrides}
-    />
+    <MemoryRouter>
+      <Sidebar
+        skill={baseSkill}
+        version={baseVersion}
+        stats={Array(30).fill(10)}
+        scores={baseScores}
+        report={baseReport}
+        versions={baseVersions}
+        activeTab={activeTab}
+        onTabChange={vi.fn()}
+        {...overrides}
+      />
+    </MemoryRouter>
   )
 }
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import type { Skill } from '@/types/skill'
 
 interface Props {
@@ -55,12 +56,12 @@ export function InstallCard({ skill }: Props) {
       </div>
       <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 10, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>CLI ▼</span>
-        <a
-          href="/docs/your-first-skill"
+        <Link
+          to="/docs/your-first-skill"
           style={{ fontSize: 10, color: 'var(--ink-3, rgba(238,236,234,0.4))', textDecoration: 'underline' }}
         >
           什麼是技能？
-        </a>
+        </Link>
       </div>
     </div>
   )
