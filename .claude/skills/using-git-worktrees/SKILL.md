@@ -1,221 +1,120 @@
 ---
 name: using-git-worktrees
-description: Use when starting feature work that needs isolation from current workspace or before executing implementation plans - ensures an isolated workspace exists via native tools or git worktree fallback
+description: Use when starting isolated work that risks disrupting the main checkout — POC for unfamiliar SDKs, multi-attempt root-cause debugging, hotfix interrupting an in-flight spec, or a sub-agent that edits code. Skip for normal spec implementation; this project's single-track workflow does not need a worktree per spec. Worktrees live at `.worktrees/<name>/` (NOT the platform default `.claude/worktrees/`).
 ---
 
 # Using Git Worktrees
 
-## Overview
+## When to open a worktree
 
-Ensure work happens in an isolated workspace. Prefer your platform's native worktree tools. Fall back to manual git worktrees only when no native tool is available.
+**Yes** — match any:
 
-**Core principle:** "Detect existing isolation first. Then use native tools. Then fall back to git. Never fight the harness."
+| Trigger | Why |
+|---|---|
+| POC for unfamiliar SDK / risky design hypothesis | failed POCs need a disposable restore point（`Clean Experiments` 原則）|
+| Multi-attempt debug expected (≥3 tries) | branch commits = restore points；確認 fix 後 cherry-pick 真正必要的 diff，丟掉中間 noise |
+| Hotfix mid-tick disrupting an in-flight spec | 唯一打破 `Finish-Current-First` 的合法理由 |
+| Sub-agent that edits code (research / QA writing fixes) | independent context、main 不受實驗污染 |
 
-**Announce at start:** "I'm using the using-git-worktrees skill to set up an isolated workspace."
+**No** — stay on `main`:
 
-## Step 0: Detect Existing Isolation
+- Normal spec implementation（single-track + commit per tick 已經夠）
+- Mode B E2E round（read-only investigation）
+- Trivial doc / config edit
 
-**Before creating anything, check if you are already in an isolated workspace.**
+## Path policy (project-specific)
+
+Worktrees live at **`.worktrees/<name>/`** at repo root（已加入 `.gitignore`）。
+
+**禁用 `.claude/worktrees/`**（platform default）。`.claude/` 是 live config namespace，cron-loop 半夜跑時對這個路徑下的 file ops 特別容易卡 permission / state。
+
+→ **不要用以下 native tool 進入點建新 worktree**，它們全部 fall back 到 `.claude/worktrees/`：
+
+| Tool | 為何不能用 |
+|---|---|
+| `EnterWorktree(name: ...)` | 平台內建邏輯寫死 `.claude/worktrees/`，無 path override |
+| `claude --worktree <name>` | 同上，CLI 起手就建 |
+| `Agent(isolation: "worktree")` | tool 參數無 path 欄位 |
+
+要用 native tool 切入 session，只能用 `EnterWorktree(path: <絕對路徑>)` 進入**已存在**的 worktree。
+
+## Step 0 — Already in a worktree?
+
+開工前先驗證，避免 nested worktree：
 
 ```bash
-GIT_DIR=$(cd "$(git rev-parse --git-dir)" 2>/dev/null && pwd -P)
-GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd -P)
-BRANCH=$(git branch --show-current)
-```
+GIT_DIR=$(git rev-parse --git-dir)
+GIT_COMMON=$(git rev-parse --git-common-dir)
+[ "$GIT_DIR" != "$GIT_COMMON" ] && echo "yes — work in place, skip Step 1"
 
-**Submodule guard:** `GIT_DIR != GIT_COMMON` is also true inside git submodules. Before concluding "already in a worktree," verify you are not in a submodule:
-
-```bash
-# If this returns a path, you're in a submodule, not a worktree — treat as normal repo
+# Submodule guard：上式在 submodule 也成立。額外驗證：
 git rev-parse --show-superproject-working-tree 2>/dev/null
+# 有輸出 → 你在 submodule，當作普通 repo 處理
 ```
 
-**If `GIT_DIR != GIT_COMMON` (and not a submodule):** You are already in a linked worktree. Skip to Step 3 (Project Setup). Do NOT create another worktree.
+## Step 1 — Create
 
-Report with branch state:
-- On a branch: "Already in isolated workspace at `<path>` on branch `<name>`."
-- Detached HEAD: "Already in isolated workspace at `<path>` (detached HEAD, externally managed). Branch creation needed at finish time."
-
-**If `GIT_DIR == GIT_COMMON` (or in a submodule):** You are in a normal repo checkout.
-
-Has the user already indicated their worktree preference in your instructions? If not, ask for consent before creating a worktree:
-
-> "Would you like me to set up an isolated worktree? It protects your current branch from changes."
-
-Honor any existing declared preference without asking. If the user declines consent, work in place and skip to Step 3.
-
-## Step 1: Create Isolated Workspace
-
-**You have two mechanisms. Try them in this order.**
-
-### 1a. Native Worktree Tools (preferred)
-
-The user has asked for an isolated workspace (Step 0 consent). Do you already have a way to create a worktree? It might be a tool with a name like `EnterWorktree`, `WorktreeCreate`, a `/worktree` command, or a `--worktree` flag. If you do, use it and skip to Step 3.
-
-Native tools handle directory placement, branch creation, and cleanup automatically. Using `git worktree add` when you have a native tool creates phantom state your harness can't see or manage.
-
-Only proceed to Step 1b if you have no native worktree tool available.
-
-### 1b. Git Worktree Fallback
-
-**Only use this if Step 1a does not apply** — you have no native worktree tool available. Create a worktree manually using git.
-
-#### Directory Selection
-
-Follow this priority order. Explicit user preference always beats observed filesystem state.
-
-1. **Check your instructions for a declared worktree directory preference.** If the user has already specified one, use it without asking.
-
-2. **Check for an existing project-local worktree directory:**
-   ```bash
-   ls -d .worktrees 2>/dev/null     # Preferred (hidden)
-   ls -d worktrees 2>/dev/null      # Alternative
-   ```
-   If found, use it. If both exist, `.worktrees` wins.
-
-3. **Check for an existing global directory:**
-   ```bash
-   project=$(basename "$(git rev-parse --show-toplevel)")
-   ls -d ~/.config/superpowers/worktrees/$project 2>/dev/null
-   ```
-   If found, use it (backward compatibility with legacy global path).
-
-4. **If there is no other guidance available**, default to `.worktrees/` at the project root.
-
-#### Safety Verification (project-local directories only)
-
-**MUST verify directory is ignored before creating worktree:**
+用 git CLI 直接建：
 
 ```bash
-git check-ignore -q .worktrees 2>/dev/null || git check-ignore -q worktrees 2>/dev/null
+NAME=<feature-slug>
+git worktree add .worktrees/$NAME -b feature/$NAME
+cd .worktrees/$NAME
 ```
 
-**If NOT ignored:** Add to .gitignore, commit the change, then proceed.
+需要把當前 Claude Code session 切進去（不重啟）：
 
-**Why critical:** Prevents accidentally committing worktree contents to repository.
+```
+EnterWorktree(path: "<absolute-path-to-.worktrees/$NAME>")
+```
 
-Global directories (`~/.config/superpowers/worktrees/`) need no verification.
+## Step 2 — Setup + clean baseline
 
-#### Create the Worktree
+Worktree 是 fresh checkout，untracked file（如 `.env`）不在裡面。視 module 補：
 
 ```bash
-project=$(basename "$(git rev-parse --show-toplevel)")
-
-# Determine path based on chosen location
-# For project-local: path="$LOCATION/$BRANCH_NAME"
-# For global: path="~/.config/superpowers/worktrees/$project/$BRANCH_NAME"
-
-git worktree add "$path" -b "$BRANCH_NAME"
-cd "$path"
+# Backend：Gradle 自己 resolve，無需 setup
+[ -d frontend ] && (cd frontend && npm install)
+[ -d e2e ] && (cd e2e && npm install)
 ```
 
-**Sandbox fallback:** If `git worktree add` fails with a permission error (sandbox denial), tell the user the sandbox blocked worktree creation and you're working in the current directory instead. Then run setup and baseline tests in place.
-
-## Step 3: Project Setup
-
-Auto-detect and run appropriate setup:
+**先驗 baseline 綠**，後續失敗才能歸因到你的改動：
 
 ```bash
-# Node.js
-if [ -f package.json ]; then npm install; fi
-
-# Rust
-if [ -f Cargo.toml ]; then cargo build; fi
-
-# Python
-if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-if [ -f pyproject.toml ]; then poetry install; fi
-
-# Go
-if [ -f go.mod ]; then go mod download; fi
+cd backend && ./gradlew test       # 或對應 ecosystem 的 targeted test
 ```
 
-## Step 4: Verify Clean Baseline
+## Step 3 — Finish (merge / cherry-pick / discard)
 
-Run tests to ensure workspace starts clean:
+| Outcome | Action |
+|---|---|
+| **Ship** — POC validated / hotfix done | `cd <main>; git merge --ff-only feature/$NAME; git worktree remove .worktrees/$NAME` |
+| **Cherry-pick clean** — debug 確認 fix，丟掉中間嘗試 | `cd <main>; git cherry-pick <fix-sha>; git worktree remove --force .worktrees/$NAME; git branch -D feature/$NAME` |
+| **Discard** — POC failed / 設計被推翻 | `git worktree remove --force .worktrees/$NAME; git branch -D feature/$NAME` |
 
-```bash
-# Use project-appropriate command
-npm test / cargo test / pytest / go test ./...
-```
+收尾後 `git worktree list` 應只剩你想保留的 entries。**不要累積孤兒 worktree**。
 
-**If tests fail:** Report failures, ask whether to proceed or investigate.
+## Sub-agent isolation 的妥協方案
 
-**If tests pass:** Report ready.
+若你需要真正 isolated subagent（e.g., `planning-tasks` Phase 4 QA reviewer 實際會寫程式）：
 
-### Report
+- **不要**用 `Agent(isolation: "worktree")` —— 會落到 `.claude/worktrees/`
+- **改用**：spawn 普通 subagent，prompt 中要它**自己跑 Step 1** 在 `.worktrees/` 建 workspace、結束時 Step 3 收尾。Skill 內容會被 subagent 一同讀到。
 
-```
-Worktree ready at <full-path>
-Tests passing (<N> tests, 0 failures)
-Ready to implement <feature-name>
-```
+## Anti-patterns
 
-## Quick Reference
+- ❌ 每個 spec 都開 worktree —— 跟 single-track workflow 衝突，純增加 friction
+- ❌ `EnterWorktree(name:)` / `claude --worktree` / `Agent(isolation:)` 建新 worktree —— 全部 fall back `.claude/worktrees/`
+- ❌ `git worktree add` 到 `.worktrees/` 以外的路徑 —— 破壞 `.gitignore` 覆蓋
+- ❌ `--force` 移除後忘記 `git branch -D` —— 留 dead branch 累積
+- ❌ 在 worktree 裡寫到 main 的 `.claude/skills/` —— skill loader 是 CWD-relative，會看到 worktree 的副本，但你要 commit 的是 main，path 會搞混
+
+## Quick reference
 
 | Situation | Action |
-|-----------|--------|
-| Already in linked worktree | Skip creation (Step 0) |
-| In a submodule | Treat as normal repo (Step 0 guard) |
-| Native worktree tool available | Use it (Step 1a) |
-| No native tool | Git worktree fallback (Step 1b) |
-| `.worktrees/` exists | Use it (verify ignored) |
-| `worktrees/` exists | Use it (verify ignored) |
-| Both exist | Use `.worktrees/` |
-| Neither exists | Check instruction file, then default `.worktrees/` |
-| Global path exists | Use it (backward compat) |
-| Directory not ignored | Add to .gitignore + commit |
-| Permission error on create | Sandbox fallback, work in place |
-| Tests fail during baseline | Report failures + ask |
-| No package.json/Cargo.toml | Skip dependency install |
-
-## Common Mistakes
-
-### Fighting the harness
-
-- **Problem:** Using `git worktree add` when the platform already provides isolation
-- **Fix:** Step 0 detects existing isolation. Step 1a defers to native tools.
-
-### Skipping detection
-
-- **Problem:** Creating a nested worktree inside an existing one
-- **Fix:** Always run Step 0 before creating anything
-
-### Skipping ignore verification
-
-- **Problem:** Worktree contents get tracked, pollute git status
-- **Fix:** Always use `git check-ignore` before creating project-local worktree
-
-### Assuming directory location
-
-- **Problem:** Creates inconsistency, violates project conventions
-- **Fix:** Follow priority: existing > global legacy > instruction file > default
-
-### Proceeding with failing tests
-
-- **Problem:** Can't distinguish new bugs from pre-existing issues
-- **Fix:** Report failures, get explicit permission to proceed
-
-## Red Flags
-
-**Never:**
-- Create a worktree when Step 0 detects existing isolation
-- Use `git worktree add` when you have a native worktree tool (e.g., `EnterWorktree`). This is the #1 mistake — if you have it, use it.
-- Skip Step 1a by jumping straight to Step 1b's git commands
-- Create worktree without verifying it's ignored (project-local)
-- Skip baseline test verification
-- Proceed with failing tests without asking
-
-**Always:**
-- Run Step 0 detection first
-- Prefer native tools over git fallback
-- Follow directory priority: existing > global legacy > instruction file > default
-- Verify directory is ignored for project-local
-- Auto-detect and run project setup
-- Verify clean test baseline
-
----
-
-## Source
-
-Adapted from [obra/superpowers](https://github.com/obra/superpowers/blob/main/skills/using-git-worktrees/SKILL.md).
+|---|---|
+| Already in worktree (Step 0 detect) | Skip create, work in place |
+| Trigger matches | Step 1 → Step 2 → Step 3 |
+| Trigger doesn't match | Stay on main |
+| 想要 native tool 體驗 | 只用 `EnterWorktree(path: ...)` 進已存在的 worktree |
+| Subagent 要 isolation | Subagent 自己跑 Step 1，不要用 `isolation: "worktree"` 參數 |
