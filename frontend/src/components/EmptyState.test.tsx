@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { EmptyState } from './EmptyState'
+
+const wrap = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>)
 
 describe('EmptyState — S094c 4 tones', () => {
   it('AC-1: seed tone renders eyebrow + headline + sub + ghost preview', () => {
-    render(
+    wrap(
       <EmptyState
         tone="seed"
         eyebrow="0 skills · 0 publishers"
@@ -72,7 +75,7 @@ describe('EmptyState — S094c 4 tones', () => {
   })
 
   it('AC-4: clear tone renders check icon + headline + stats + audit link', () => {
-    render(
+    wrap(
       <EmptyState
         tone="clear"
         headline="All clear — nothing pending."

@@ -1,5 +1,6 @@
 import { ArrowRight, Check, FileText, Upload } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router'
 import { BeamFrame } from './BeamFrame'
 
 /**
@@ -70,7 +71,7 @@ function PrimaryButton({ action }: { action: NonNullable<EmptyStateProps['primar
   return (
     <BeamFrame>
       {action.href ? (
-        <a href={action.href}>{inner}</a>
+        <Link to={action.href}>{inner}</Link>
       ) : (
         <button type="button" onClick={action.onClick}>{inner}</button>
       )}
@@ -81,7 +82,7 @@ function PrimaryButton({ action }: { action: NonNullable<EmptyStateProps['primar
 function SecondaryButton({ action }: { action: NonNullable<EmptyStateProps['secondaryAction']> }) {
   const cls = "inline-flex items-center gap-1.5 rounded-md border border-[rgba(255,255,255,0.10)] bg-[#171719] px-4 py-2 text-[13px] font-medium text-[#EEECEA] hover:bg-[#1F1F22]"
   return action.href ? (
-    <a href={action.href} className={cls}>{action.label}</a>
+    <Link to={action.href} className={cls}>{action.label}</Link>
   ) : (
     <button type="button" onClick={action.onClick} className={cls}>{action.label}</button>
   )
@@ -232,11 +233,11 @@ function ClearTone(props: EmptyStateProps) {
         </div>
       )}
       {props.auditLink && (
-        <a href={props.auditLink.href} className="mt-5 inline-flex items-center gap-1.5 text-[12px] text-[#A8A49C] hover:text-[#EEECEA]">
+        <Link to={props.auditLink.href} className="mt-5 inline-flex items-center gap-1.5 text-[12px] text-[#A8A49C] hover:text-[#EEECEA]">
           <FileText className="h-3 w-3" />
           {props.auditLink.label}
           <ArrowRight className="h-3 w-3" />
-        </a>
+        </Link>
       )}
     </Container>
   )

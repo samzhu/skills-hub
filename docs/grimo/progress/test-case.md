@@ -1018,3 +1018,60 @@ SearchResultsPage 兩個英文可見標籤：
 
 ### Tick 97 Summary
 - Round 50: 12 checks / **0 deep-link bugs; 1 bonus Bug AZ (i18n) 全數修復**
+
+---
+
+## Tick 98 — Round 51: Component-context alignment (2026-05-08)
+
+Cut axis: **Component-context alignment**（共用元件在多 context 的語意一致性）
+
+### EmptyState 4 tones 使用對齊
+
+| # | 元件 | Context / 使用位置 | tone | 語意 | 結果 |
+|---|------|------------------|------|------|------|
+| 1 | EmptyState | SkillCardGrid (0 skills, 無 query) | seed | 平台空殼，邀請第一筆 skill | ✅ |
+| 2 | EmptyState | SkillCardGrid (0 results, 有 query) | redirect | 搜尋 0 結果，導流 | ✅ |
+| 3 | EmptyState | HomePage (filter-active 0 hits) | redirect | 篩選 0 結果 + 清除篩選 CTA | ✅ |
+| 4 | EmptyState | HomePage (semantic search 0 results) | redirect | 語意搜尋 0 結果 + suggestions | ✅ |
+| 5 | EmptyState | SearchResultsPage (no query) | invite | 邀請輸入 query | ✅ |
+| 6 | EmptyState | SearchResultsPage (0 semantic results) | redirect | 語意搜尋 0 結果 | ✅ |
+| 7 | EmptyState | CollectionsPage (0 collections total) | invite | 邀請建立集合 | ✅ |
+| 8 | EmptyState | CollectionsPage (filter 0 results) | redirect | 篩選 0 結果 | ✅ |
+| 9 | EmptyState | MySkillsPage (not logged in) | invite | 邀請登入 | ✅ |
+| 10 | EmptyState | MySkillsPage (0 skills) | invite | 邀請發布第一個技能 | ✅ |
+| 11 | EmptyState | NotificationsPage (anonymous) | invite | 邀請登入 | ✅ |
+| 12 | EmptyState | NotificationsPage (0 notifications) | clear | 全部已讀 + celebratory stats | ✅ |
+| 13 | EmptyState | RequestBoardPage (0 requests) | invite | 邀請提出需求 | ✅ |
+| 14 | EmptyState | FlagsQueuePage (0 flags) | clear | 沒有待審回報 | ✅ |
+
+### MetricCard 跨 context 一致性
+
+| # | Context | labels | 語意 | 結果 |
+|---|---------|--------|------|------|
+| 15 | AnalyticsPage | 總技能數 / 總下載次數 / 本週新增 / 熱門排行 | platform-level aggregate metrics | ✅ |
+| 16 | MySkillsPage | 技能總數 / 下載總數 / 待處理回報 | author-level personal metrics | ✅ |
+
+### RiskBadge 跨 context 一致性
+
+| # | Context | 用途 | 結果 |
+|---|---------|------|------|
+| 17 | SkillCard | 瀏覽列表顯示 riskLevel badge | ✅ |
+| 18 | MySkillsPage SkillRow | 作者儀表板列表顯示 riskLevel | ✅ |
+| 19 | PublishReviewPage | 發布審核流程顯示 riskLevel | ✅ |
+
+### IconTile 跨 context size 適配
+
+| # | Context | size | 用途 | 結果 |
+|---|---------|------|------|------|
+| 20 | SkillCard | md | browse 卡片 | ✅ |
+| 21 | MySkillsPage SkillRow | sm | 作者儀表板 table row | ✅ |
+| 22 | v2/PageHeader | xl | 技能詳情頁 hero | ✅ |
+
+**Bug BA (MEDIUM / SPA routing)**：
+`EmptyState` 的 `PrimaryButton` / `SecondaryButton` / `ClearTone` auditLink 使用原生 `<a href>` 而非 React Router `<Link to>` — 點擊後觸發完整頁面 reload 而非 SPA client-side navigation。
+影響範圍：5 個 callsite（`/browse` × 3、`/publish` × 1、`/docs/...` × 1）。
+修復：`EmptyState.tsx` 改用 `<Link to>`；`EmptyState.test.tsx` AC-1 / AC-4 補 `MemoryRouter` wrapper。
+319/319 Vitest PASS。
+
+### Tick 98 Summary
+- Round 51: 22 checks / **1 bug (BA) — SPA routing regression 修復**
