@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（S140 → ⏳ Plan：9 tasks 拆好，POC PASS — Random(hashCode) 768-dim 確認 deterministic + separation 但非 semantic；AC-5 已 relax）
+> 最後更新：2026-05-07（+ S141 XS spec — bug 修 backend MeController 漏的 email/name/picture claim pass-through）
 
 ## 使用說明
 
@@ -37,6 +37,7 @@
 | S120 | E2E auth integration test | M(8-10) | S114a | ✅ v4.8.0 — anonymous GET public → 200；root cause: @TestConfiguration on AotStubBeans |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | ✅ shipped — S135a (v3.14.0) + S135b (v4.1.0) |
 | S140 | E2E Critical Path Backfill（PRD P1-P6 + Quality Score → 6 happy-path Playwright specs + TestDataController） | S(11) | playwright-expert ✅（commit 31727db）| ⏳ Plan — 9 tasks in `docs/grimo/tasks/`，POC PASS，ready for /implementing-task |
+| S141 | `/api/v1/me` Display Claims（補 email/name/picture pass-through，修 user-visible 顯示成 Google sub bug） | XS(7) | S139 ✅（v4.18.0）| 📐 design complete — `/planning-tasks S141` next |
 
 ---
 
