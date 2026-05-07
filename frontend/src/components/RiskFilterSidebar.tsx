@@ -28,10 +28,10 @@ const TIER_LABEL: Record<RiskLevel, string> = {
   MEDIUM: '中風險',
   HIGH: '高風險',
 }
-// dot color per tier (對齊 RiskBadge 的顏色：success / info / warning / danger)
+// dot color per tier — 對齊 RiskBadge fg 顏色 (success-text / info-text / warning-text / danger-text)
 const TIER_DOT: Record<RiskLevel, string> = {
-  NONE: 'bg-[#A8A49C]',
-  LOW: 'bg-[#6FD8B0]',
+  NONE: 'bg-[#6FD8B0]',
+  LOW: 'bg-[#B0D5F2]',
   MEDIUM: 'bg-[#FAC775]',
   HIGH: 'bg-[#F2A6A6]',
 }

@@ -1075,3 +1075,41 @@ Cut axis: **Component-context alignment**（共用元件在多 context 的語意
 
 ### Tick 98 Summary
 - Round 51: 22 checks / **1 bug (BA) — SPA routing regression 修復**
+
+---
+
+## Tick 99 — Round 52: Control-behavior alignment (2026-05-08)
+
+Cut axis: **Control-behavior alignment**（chip / button label 與 behavior 1:1 mapping）
+
+| # | 控制元件 | label | 實際行為 | 結果 |
+|---|---------|-------|---------|------|
+| 1 | HomePage sort chip「推薦」| recommended | `sort=downloadCount,desc` | ✅ |
+| 2 | HomePage sort chip「最新」| newest | `sort=createdAt,desc` | ✅ |
+| 3 | HomePage sort chip「風險低」| risk-low | `sort=riskLevel,asc` | ✅ |
+| 4 | HomePage sort chip「下載最多」| most-downloaded | `sort=downloadCount,desc`（同 recommended，S106 intentional）| ✅ |
+| 5 | RiskFilterSidebar「全部」| clear | `setRiskFilter(new Set())` — 清空全部篩選 | ✅ |
+| 6 | RiskFilterSidebar「無風險」| NONE tier | `toggleRisk('NONE')` — 加/移該 tier | ✅ |
+| 7 | RiskFilterSidebar「低風險」| LOW tier | `toggleRisk('LOW')` | ✅ |
+| 8 | RiskFilterSidebar「中風險」| MEDIUM tier | `toggleRisk('MEDIUM')` | ✅ |
+| 9 | RiskFilterSidebar「高風險」| HIGH tier | `toggleRisk('HIGH')` | ✅ |
+| 10 | RiskFilterSidebar TIER_DOT 顏色 | NONE=gray `#A8A49C`, LOW=green `#6FD8B0` | RiskBadge: NONE=green `#6FD8B0`, LOW=blue `#B0D5F2` | ❌ **Bug BB** |
+| 11 | MySkillsPage tab「全部」| all | `filteredSkills = allSkills`（no status filter）| ✅ |
+| 12 | MySkillsPage tab「已發布/草稿/已停用」| PUBLISHED/DRAFT/SUSPENDED | `filter(s.status === tab)` | ✅ |
+| 13 | NotificationsPage filter「全部/回報/評論/需求」| all/flags/reviews/requests | `useNotifications(filter)` | ✅ |
+| 14 | CategorySidebar 分類 button | category label | `handleCategorySelect(cat)` → API `category=` param | ✅ |
+| 15 | HomePage pagination「下一頁」| next page | `setPage(page + 1)` | ✅ |
+| 16 | HomePage pagination「上一頁」| prev page | `setPage(page - 1)` | ✅ |
+| 17 | SearchResultsPage form submit | search action | `navigate(/search?q=...)` | ✅ |
+
+**Bug BB (LOW / visual consistency)**：
+`RiskFilterSidebar` TIER_DOT 顏色與 `RiskBadge` 語意色彩不一致：
+側邊欄 NONE dot = gray `#A8A49C`（應為 success-green `#6FD8B0`）；
+LOW dot = green `#6FD8B0`（應為 info-blue `#B0D5F2`）。
+元件 comment 明確宣告「對齊 RiskBadge 的顏色」但值錯誤，造成使用者看到 sidebar dot 顏色與卡片 badge 不符。
+
+修復：`TIER_DOT.NONE = 'bg-[#6FD8B0]'`、`TIER_DOT.LOW = 'bg-[#B0D5F2]'`（與 RiskBadge fg 對齊）。
+319/319 Vitest PASS。
+
+### Tick 99 Summary
+- Round 52: 17 checks / **1 bug (BB) — 視覺語意色彩 dot 修復**
