@@ -12,7 +12,7 @@ export interface AxisScore {
   dimensions: Record<string, DimensionScore>
 }
 
-/** GET /api/v1/skills/{id}/scores 的回應 shape（S135a shipped）。 */
+/** GET /api/v1/skills/{id}/scores 的回應 shape（S135a shipped；S142b 加 skillScore）。 */
 export interface SkillScores {
   skillId: string
   skillVersionId: string
@@ -23,6 +23,8 @@ export interface SkillScores {
   implementation: AxisScore
   activation: AxisScore
   total: number      // 0-100，weighted: 0.2V + 0.4I + 0.4A
+  /** S142b — 複合分數 0.6×quality + 0.4×security；security 未掃描時為 null */
+  skillScore: number | null
 }
 
 /**

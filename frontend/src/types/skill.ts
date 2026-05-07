@@ -56,6 +56,18 @@ export interface Skill {
   createdAt: string
   /** 最後更新時間（ISO 8601 UTC） */
   updatedAt: string
+  /** S142b — 已驗證旗標：status=PUBLISHED && riskLevel != null（backend 計算） */
+  verified: boolean
+  /** S142b — 最新版本的發布時間（ISO 8601 UTC）；無版本時為 null */
+  latestVersionPublishedAt: string | null
+  /** S142b — 授權協定（from latest version frontmatter）；未填時為 null */
+  license: string | null
+  /** S142b — 相容性標籤列表（from latest version frontmatter）；未填時為空陣列 */
+  compatibility: string[]
+  /** S142b — 版本總數 */
+  versionCount: number
+  /** S142b — 目前開放的 flag 回報數 */
+  openFlagCount: number
 }
 
 /**
