@@ -1113,3 +1113,29 @@ LOW dot = green `#6FD8B0`（應為 info-blue `#B0D5F2`）。
 
 ### Tick 99 Summary
 - Round 52: 17 checks / **1 bug (BB) — 視覺語意色彩 dot 修復**
+
+---
+
+## Tick 100 — Round 53: API projection field completeness (2026-05-08)
+
+Cut axis: **API projection field completeness**（同 entity 跨 endpoint 欄位一致性）
+
+| # | Entity | 比較端點 | 欄位一致性 | 結果 |
+|---|--------|---------|----------|------|
+| 1 | Skill | GET /skills (list) | id/name/desc/author/category/latestVersion/riskLevel/status/downloadCount/averageRating/reviewCount/aclEntries/ownerId/createdAt/updatedAt ✓ | ✅ |
+| 2 | Skill | GET /skills/{id} (detail) | 同上 + 6 個 S142b fields（verified/latestVersionPublishedAt/license/compatibility/versionCount/openFlagCount）| ✅ by design |
+| 3 | Skill S142b gap | list vs detail | 6 個 S142b 欄位僅 detail endpoint 填充（enrichDetail()），list 返回預設值（false/null/0/[]）。前端 Skill type 宣告這些欄位但 list context 不使用 → by design（N+1 avoidance，避免 20 筆 × 額外查詢）| ✅ 設計決定 |
+| 4 | SemanticSearchResult | GET /search/semantic | Backend record 與 frontend type 完全對齊：id/name/desc/author/category/latestVersion/riskLevel/downloadCount/score | ✅ |
+| 5 | SkillCollection | GET /collections (list) | summary: id/name/desc/category/skillCount/installCount/maxRiskLevel/createdAt — 匹配 frontend SkillCollection interface | ✅ |
+| 6 | SkillCollection | GET /collections/{id} (detail) | detail: id/name/desc/category/ownerId/installCount/createdAt/skills — 匹配 frontend CollectionDetail | ✅ |
+| 7 | CollectionSkillSummary | collections detail.skills | backend record(id/name/category/riskLevel/latestVersion) ↔ frontend interface ✓ | ✅ |
+| 8 | SkillRequest | GET /requests (list) + GET /requests/{id} | 同一個 RequestResponse record(id/title/desc/requesterId/status/claimerId/fulfilledSkillId/voteCount/createdAt/updatedAt) | ✅ |
+| 9 | OverviewStats.TopSkill | GET /analytics/overview | backend record(name,author,downloads) ↔ frontend {name,author?,downloads} ✓（author optional per S100e guard）| ✅ |
+| 10 | SkillVersion | GET /skills/{id}/versions | frontend type(id/skillId/version/fileSize/fileCount/publishedAt) 是 backend 的子集（backend 多 storagePath/frontmatter 不暴露給 UI）| ✅ |
+| 11 | FlagsSummary | GET /me/flags-summary | backend: Map.of("openCount", count) ↔ frontend: {openCount: number} ✓ | ✅ |
+| 12 | Notification | GET /notifications | backend record(id/category/title/body/skillId/refEventId/readAt/createdAt) ↔ frontend interface ✓ | ✅ |
+
+**0 bugs — 全部欄位投影一致（或有設計文件說明差異）。**
+
+### Tick 100 Summary
+- Round 53: 12 checks / **0 bugs** — API projection field completeness 全通過
