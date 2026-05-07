@@ -74,7 +74,7 @@ export function SecurityHeroCard({ report, active, onClick }: Props) {
       </div>
       {/* 4-segment bar */}
       <div data-testid="security-seg-row" style={{ display: 'flex', gap: 3, height: 3, marginBottom: 8 }}>
-        {QUAD_ORDER.map((q, i) => (
+        {QUAD_ORDER.map((q, _i) => (
           <div
             key={q}
             data-testid={`seg-${q}`}

@@ -88,17 +88,32 @@ const skillFixture = (status: string, id = 'skill-test-1') => ({
   riskLevel: null,
   iconEmoji: null,
   bundleCount: 0,
+  // S142b fields
+  verified: false,
+  latestVersionPublishedAt: null,
+  license: null,
+  compatibility: [],
+  versionCount: 0,
+  openFlagCount: 0,
+  ownerId: 'alice',
+  averageRating: 0,
+  reviewCount: 0,
 })
+
+const SKILL_SUB_PATHS = ['/versions', '/stats', '/bundles', '/files', '/scores', '/security-report', '/grants', '/flags', '/reviews']
+function isSkillSubPath(u: string): boolean {
+  return SKILL_SUB_PATHS.some(p => u.includes(p))
+}
 
 /** Route-aware fetch mock: skill endpoint returns fixture; other APIs return safe defaults */
 function mockFetchForSkill(skill: ReturnType<typeof skillFixture>) {
   global.fetch = vi.fn().mockImplementation((url: string) => {
     const u = typeof url === 'string' ? url : String(url)
-    if (u.includes(`/skills/${skill.id}`) && !u.includes('/versions') && !u.includes('/stats') && !u.includes('/bundles')) {
+    if (u.includes(`/skills/${skill.id}`) && !isSkillSubPath(u)) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(skill) } as Response)
     }
     if (u.includes('/versions')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [] }) } as Response)
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response)
     }
     if (u.includes('/stats')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(null) } as Response)
@@ -106,7 +121,7 @@ function mockFetchForSkill(skill: ReturnType<typeof skillFixture>) {
     if (u.includes('/subscriptions')) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response)
     }
-    // Default: 404
+    // Default: 404 (handles /scores, /security-report, /files, /me, etc.)
     return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) } as Response)
   })
 }
@@ -151,17 +166,11 @@ describe('SkillDetailPage — S114a AC-11 share button visibility', () => {
             Promise.resolve({ sub: meSub, roles: [], groups: [], companyId: null, deptId: null, scope: '' }),
         } as Response)
       }
-      if (
-        u.includes(`/skills/${skill.id}`) &&
-        !u.includes('/versions') &&
-        !u.includes('/stats') &&
-        !u.includes('/bundles') &&
-        !u.includes('/grants')
-      ) {
+      if (u.includes(`/skills/${skill.id}`) && !isSkillSubPath(u)) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(skill) } as Response)
       }
       if (u.includes('/versions')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [] }) } as Response)
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response)
       }
       if (u.includes('/stats')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(null) } as Response)
@@ -187,8 +196,8 @@ describe('SkillDetailPage — S114a AC-11 share button visibility', () => {
     mockFetchWithOwnerAndMe(skill, 'bob')
     renderPage('skill-share-2')
     await waitFor(() => {
-      // wait for skill to load (Download button present means load succeeded)
-      expect(screen.getByText('下載')).toBeInTheDocument()
+      // wait for skill to load (download CTA present means load succeeded)
+      expect(screen.getByTestId('download-cta')).toBeInTheDocument()
     })
     expect(screen.queryByRole('button', { name: '分享' })).not.toBeInTheDocument()
   })

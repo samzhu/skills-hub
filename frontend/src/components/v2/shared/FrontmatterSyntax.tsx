@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react'
-
 /**
  * S142a — Lightweight YAML frontmatter tokenizer.
  * Produces spans with CSS classes:

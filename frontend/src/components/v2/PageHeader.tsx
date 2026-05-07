@@ -22,6 +22,7 @@ interface Props {
   report: SecurityReport | null | undefined
   stats: number[]
   onDownload?: () => void
+  onShareClick?: () => void
 }
 
 /** Star (subscribe) toggle button — lucide Star icon, uses subscription hooks. */
@@ -99,7 +100,7 @@ function relativeTime(iso: string): string {
  * Includes SkillInfo / Actions / HeroMetricsRow / StatStrip.
  * Tab-bar and body grid are rendered by the parent page.
  */
-export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, report, stats, onDownload }: Props) {
+export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, report, stats, onDownload, onShareClick }: Props) {
   const skillScore = scores?.skillScore ?? null
 
   return (
@@ -126,7 +127,7 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
                 </span>
               )}
               {skill.riskLevel && (
-                <RiskBadge riskLevel={skill.riskLevel} />
+                <RiskBadge level={skill.riskLevel} />
               )}
               {skill.verified && <VerifiedPill />}
             </div>
@@ -148,6 +149,16 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
 
         {/* Right: actions */}
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'flex-start' }}>
+          {isOwner && onShareClick && (
+            <button
+              type="button"
+              aria-label="分享"
+              onClick={onShareClick}
+              style={{ padding: '8px 14px', fontSize: 13, background: 'rgba(255,255,255,0.06)', border: '0.5px solid var(--line-2, rgba(255,255,255,0.12))', borderRadius: 8, cursor: 'pointer' }}
+            >
+              分享
+            </button>
+          )}
           <StarButton skillId={skill.id} isOwner={isOwner} />
           {skill.status === 'PUBLISHED' && (
             <BeamFrame>
