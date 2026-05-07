@@ -40,7 +40,7 @@ re-derived.
 
 ```
 Input:  Current conversation context
-Output: .claude/handovers/HANDOVER.md (single active file, always overwritten)
+Output: docs/grimo/handovers/HANDOVER.md (single active file, always overwritten)
 Valid:  Handover note written and confirmed
 Pair:   /takeover (reads this file and archives it)
 ```
@@ -112,7 +112,7 @@ Read the template at `${CLAUDE_SKILL_DIR}/template.md`.
 
 Fill in all fields using the template structure exactly.
 
-Write to: `.claude/handovers/HANDOVER.md`
+Write to: `docs/grimo/handovers/HANDOVER.md`
 
 Create the directory if it doesn't exist. If `HANDOVER.md` already exists,
 overwrite it (the previous one was not consumed — this is intentional).
@@ -122,7 +122,7 @@ overwrite it (the previous one was not consumed — this is intentional).
 Print:
 
 ```
-Handover saved: .claude/handovers/HANDOVER.md
+Handover saved: docs/grimo/handovers/HANDOVER.md
 
 To resume in a new session, run:  /takeover
 

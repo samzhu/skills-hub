@@ -124,7 +124,7 @@ Phase 0 加入「**project memory consultation**」(< 30 秒)：
 [ ] grep keyword 在 own config (Search-Self-First)
 [ ] Read 同檔 comment / docstring / class Javadoc — 「為什麼這樣設」
 [ ] Read CLAUDE.md / project README 看 architecture decisions
-[ ] Read .claude/handovers/archive/ 最新 1-2 個 handover note —
+[ ] Read docs/grimo/handovers/archive/ 最新 1-2 個 handover note —
     上次 session 結束時的 known issues / lessons
 [ ] git log -p <file> | head -100 看最近一次該檔的 commit message + diff
 ```

@@ -61,7 +61,7 @@ If the request is ambiguous, ask the user which mode applies before continuing.
 1. Copy `assets/skill-template.md` as the starting point.
 2. The body must contain, in order: capability summary, `## Procedures` (numbered steps in third-person imperative), `## Examples` (≥ 1 positive + 1 negative), `## Error Handling` (condition → cause → recovery).
 3. Keep total file ≤ 500 lines. If logic exceeds 500 lines, offload bulk content to `references/<topic>.md` and replace it with a one-line just-in-time read instruction such as "Read `references/<topic>.md` to identify <X>."
-4. Use forward slashes and relative paths only. Use one canonical term per concept — no synonym drift.
+4. Use forward slashes and relative paths only. Do NOT hardcode skill-generated outputs (handover notes, progress logs, audit reports, etc.) into Claude Code sensitive directories — `.git/`, `.claude/`, `.vscode/`, `.idea/`, `.husky/`. The skill author or user picks where outputs land; the only constraint is that the chosen path is NOT one of those five sensitive dirs. Override only when the user explicitly asks for a sensitive path. See `references/checklist.md` § 2 and `references/optimization-playbook.md` § Hardcoded path into Claude Code sensitive directory. Use one canonical term per concept — no synonym drift.
 5. Read `references/design-patterns.md` to confirm the chosen category and pattern fit the skill's actual workflow, and to verify content is placed at the correct progressive-disclosure level.
 6. If category is `mcp-enhancement` or any procedure invokes an MCP server, additionally read `references/mcp-integration.md` and ensure the required MCP failure modes are covered in `## Error Handling`.
 

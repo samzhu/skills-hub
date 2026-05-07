@@ -23,6 +23,7 @@ Run before declaring a skill complete (AUTHOR mode) or when assessing existing s
 - [ ] No `README.md`, `CHANGELOG.md`, `INSTALLATION.md`, `CONTRIBUTING.md`, or other human-targeted docs inside the folder.
 - [ ] No nested skill folders.
 - [ ] All paths inside SKILL.md are relative and use forward slashes.
+- [ ] Skill-generated outputs (notes, logs, reports) are NOT hardcoded into Claude Code sensitive directories `.git/`, `.claude/`, `.vscode/`, `.idea/`, `.husky/`. The skill author or user chooses any other path that fits their project layout. Sensitive directories trigger permission prompts even under `--dangerously-skip-permissions` / `skipDangerousModePermissionPrompt: true`, because they are an independent guard against prompt-injection attacks that mutate the agent's own hooks or settings. Override only on explicit user request.
 
 ## 3. Body
 

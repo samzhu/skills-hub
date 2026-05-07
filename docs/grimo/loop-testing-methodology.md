@@ -15,7 +15,7 @@
 /loop 10m <test prompt>
    │
    ├── 觸發 1：cron tick N 載入 prompt + 既有 progress 狀態
-   ├── 接續上輪未測 round（從 .claude/progress/ 讀）
+   ├── 接續上輪未測 round（從 docs/grimo/progress/ 讀）
    ├── 跑 round（正例 / 反例 / 邊緣 各 ≥1 case）
    │     │
    │     ├── 全 PASS → 記 progress，cron 自動下次再觸發
@@ -35,7 +35,7 @@
 
 兩個 markdown 檔案存放整個 loop 的 memory：
 
-### `.claude/progress/loop-e2e-test-coverage.md`
+### `docs/grimo/progress/loop-e2e-test-coverage.md`
 
 ```
 # Loop E2E Test Coverage Log
@@ -51,7 +51,7 @@
 
 每 tick 在最後一段 **append（不改舊紀錄）**，讓 coverage 隨時間累積。Tick log 同時當作 retrospective material。
 
-### `.claude/progress/test-case.md`
+### `docs/grimo/progress/test-case.md`
 
 ```
 ## Tick N — Round R: <topic> (<date>)
@@ -213,7 +213,7 @@ User mid-flight 提新需求時：
 ## §12 移植到其他專案
 
 最小安裝：
-1. 兩個檔案 `.claude/progress/loop-e2e-test-coverage.md` + `test-case.md` 起點為空
+1. 兩個檔案 `docs/grimo/progress/loop-e2e-test-coverage.md` + `test-case.md` 起點為空
 2. 一個 prompt template（內含「接續上輪未測 round / 三類覆蓋 / bug→spec→ship」instructions）
 3. `/loop 10m <prompt>` 啟動
 4. CLAUDE.md 記 Finish-Current-First principle
@@ -382,7 +382,7 @@ Next 3 specs in queue: SYYY, SZZZ, SAAA
 ## §23 整體 (Part A + Part B) 移植到其他專案
 
 最小安裝（A + B 共用）：
-1. `.claude/progress/loop-e2e-test-coverage.md` + `test-case.md` 起點為空（Part A）
+1. `docs/grimo/progress/loop-e2e-test-coverage.md` + `test-case.md` 起點為空（Part A）
 2. `docs/grimo/specs/spec-roadmap.md` table 列所有 specs + status icon（Part B）
 3. `docs/grimo/specs/archive/` 目錄存放 shipped specs（Part B）
 4. `CLAUDE.md` 記 Finish-Current-First principle

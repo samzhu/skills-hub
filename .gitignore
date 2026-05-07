@@ -9,7 +9,7 @@ scheduled_tasks.lock
 
 # vite cache 殘留（若不小心從 root cwd 跑 vite 會建空 .vite cache）
 node_modules/
-.claude/handovers/HANDOVER.md
+docs/grimo/handovers/HANDOVER.md
 temp/
 .DS_Store
 

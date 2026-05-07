@@ -28,7 +28,7 @@ YOU MUST 遵守：
 | `docs/grimo/PRD.md` | Feature SBE Scenarios + Decision Log |
 | `docs/grimo/adr/` | 架構決策紀錄 |
 | `docs/grimo/glossary.md` | 中英術語對照 |
-| `.claude/progress/` | Tick 累積紀錄 + bug ledger |
+| `docs/grimo/progress/` | Tick 累積紀錄 + bug ledger |
 | Test-case ledger | Round 目錄含 PASS/FAIL outcome |
 
 ---

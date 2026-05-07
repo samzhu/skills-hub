@@ -73,7 +73,7 @@ metadata:
 3. **Project memory consult**：
    - 同檔 / 同 module 的 comment / docstring — 「為什麼這樣設」
    - `CLAUDE.md` / project README — architecture decisions
-   - `.claude/handovers/archive/` 最新 1-2 個 — 上次 session known issues
+   - `docs/grimo/handovers/archive/` 最新 1-2 個 — 上次 session known issues
    - `git log -p <file> | head -100` — 最近一次該檔的 commit message + diff
 
 **為什麼花 30 秒**：90% 場景能直接終結 debug。沒做 = 把學費付給 framework rabbit hole。

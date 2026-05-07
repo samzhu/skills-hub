@@ -6,7 +6,7 @@ description: >
   Use when the user says "takeover", "接班", "pick up where we left off",
   "resume handover", "continue from last session", "read handover",
   "what was I working on", or at the beginning of a session when
-  .claude/handovers/HANDOVER.md exists.
+  docs/grimo/handovers/HANDOVER.md exists.
   Pair with /handover which creates the note.
 allowed-tools:
   - Read
@@ -29,7 +29,7 @@ the context, archive the note, and present a clear action plan.
 ## Contract
 
 ```
-Input:  .claude/handovers/HANDOVER.md
+Input:  docs/grimo/handovers/HANDOVER.md
 Output: Archived note + briefing to user + ready to work
 Valid:  User confirms readiness to continue
 Pair:   /handover (creates the note this skill reads)
@@ -39,11 +39,11 @@ Pair:   /handover (creates the note this skill reads)
 
 ## Step 1: Find the handover note
 
-Check if `.claude/handovers/HANDOVER.md` exists.
+Check if `docs/grimo/handovers/HANDOVER.md` exists.
 
 **If it exists** → continue to Step 2.
 
-**If it does NOT exist** → check `.claude/handovers/archive/` for any
+**If it does NOT exist** → check `docs/grimo/handovers/archive/` for any
 archived notes. If archives exist, list them:
 
 ```
@@ -62,7 +62,7 @@ Stop here.
 
 ## Step 2: Read and internalize
 
-Read `.claude/handovers/HANDOVER.md` in full.
+Read `docs/grimo/handovers/HANDOVER.md` in full.
 
 Parse both layers:
 - **Layer 1** (Portable Summary): topic, status, completed work, decisions,
@@ -75,7 +75,7 @@ Parse both layers:
 Move the consumed handover note to the archive:
 
 ```bash
-mkdir -p .claude/handovers/archive
+mkdir -p docs/grimo/handovers/archive
 ```
 
 Derive archive filename from the frontmatter: `{date}-{topic-slug}.md`
@@ -83,7 +83,7 @@ Derive archive filename from the frontmatter: `{date}-{topic-slug}.md`
 - Use `topic` from frontmatter, converted to lowercase-hyphen slug
 
 ```bash
-mv .claude/handovers/HANDOVER.md .claude/handovers/archive/{date}-{topic-slug}.md
+mv docs/grimo/handovers/HANDOVER.md docs/grimo/handovers/archive/{date}-{topic-slug}.md
 ```
 
 ## Step 4: Briefing

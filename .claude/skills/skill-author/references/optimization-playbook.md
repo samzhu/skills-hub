@@ -63,6 +63,11 @@ Each entry: validator code or symptom → severity → fix recipe.
 ### Missing `## Error Handling` section
 **Fix**: add `## Error Handling` enumerating each script's failure modes and the recovery the agent should attempt before asking the user. Format: condition → cause → recovery.
 
+### Hardcoded path into Claude Code sensitive directory
+**Symptom**: SKILL.md instructs the agent to write outputs to `.claude/<sub>/`, `.git/<sub>/`, `.vscode/<sub>/`, `.idea/<sub>/`, or `.husky/<sub>/` (e.g. `.claude/handovers/HANDOVER.md`, `.claude/progress/<log>.md`).
+**Why it matters**: Claude Code treats `.git/`, `.claude/`, `.vscode/`, `.idea/`, `.husky/` as hardcoded sensitive files. Writes into these directories prompt the user for permission **even when** `--dangerously-skip-permissions` (bypassPermissions) or `skipDangerousModePermissionPrompt: true` is set — this is an independent safety guard, separate from the normal allow / deny flow, designed to block prompt-injection attacks that try to mutate the agent's own hooks or settings to escape the sandbox. Skills that default outputs into these paths interrupt unattended workflows (cron loops, long sessions) and force users to maintain an ever-growing per-file allow list to suppress prompts.
+**Fix**: pick any path that is NOT one of the five sensitive directories. The skill author / user decides where outputs belong based on project layout — common choices include `docs/<area>/`, repo root, or any other non-dot directory, but no path is mandated. Document the chosen path in SKILL.md `## Procedures` and in the contract block (Output: ...). Only retain a sensitive path when the user explicitly requested it (e.g. they want the file gitignored under `.claude/`); record that override decision in SKILL.md so future audits know it was deliberate.
+
 ## MINOR findings (style)
 
 ### Synonym drift across SKILL.md

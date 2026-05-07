@@ -33,20 +33,20 @@
 
 ```
 <專案名稱> 完整 E2E 測試（dev permit-all、<其他全域前提>）：
-- 從 .claude/progress/loop-e2e-test-coverage.md 與 .claude/progress/test-case.md 接續上輪未測 round
+- 從 docs/grimo/progress/loop-e2e-test-coverage.md 與 docs/grimo/progress/test-case.md 接續上輪未測 round
 - 每個 round 涵蓋【正例 / 反例 / 邊緣案例】三類
 - 發現 bug → 自寫 spec → 研究修法 → 實作 → 測試 → 沒問題就 release（commit + CHANGELOG + roadmap）
 - 一邊記錄：
-  - 進度寫 .claude/progress/loop-e2e-test-coverage.md（tick 累積、bug ledger A-…、known tech debt）
-  - 案例寫 .claude/progress/test-case.md（按 round 分類，每筆標 PASS/FAIL、對應 ship 的 spec 編號）
+  - 進度寫 docs/grimo/progress/loop-e2e-test-coverage.md（tick 累積、bug ledger A-…、known tech debt）
+  - 案例寫 docs/grimo/progress/test-case.md（按 round 分類，每筆標 PASS/FAIL、對應 ship 的 spec 編號）
 ```
 
 ### 啟動前檢查清單
 
 ```
 1. 兩個進度檔案存在（可空）：
-   - .claude/progress/loop-e2e-test-coverage.md
-   - .claude/progress/test-case.md
+   - docs/grimo/progress/loop-e2e-test-coverage.md
+   - docs/grimo/progress/test-case.md
 2. CLAUDE.md 含 Finish-Current-First 原則
 3. backend / frontend 服務跑得起來
 4. spec-roadmap.md 存在且最後一個 spec ID 已知
@@ -58,7 +58,7 @@
 ```
 每 10 分鐘 cron 觸發 → Claude 接收 prompt + load context
    │
-   ├── 讀 .claude/progress/*.md 知道上輪測到哪
+   ├── 讀 docs/grimo/progress/*.md 知道上輪測到哪
    ├── 決定下一 round 的測試範圍（聚焦 untested surface）
    ├── 寫測試 script（curl / Python / Chrome JS）
    ├── 跑 → 觀察結果
@@ -196,7 +196,7 @@ User 在 marathon 中插話新需求時：
 | `docs/grimo/specs/spec-roadmap.md` | spec backlog + ship history | (write) | **(read primary)** |
 | `docs/grimo/specs/archive/` | shipped specs 永久存放 | (write) | (write) |
 | `docs/grimo/CHANGELOG.md` | 給 user 看的 release notes | (write) | (write) |
-| `.claude/progress/*.md` | tick 累積 + test cases | **(read+write primary)** | (touch only when bug found) |
+| `docs/grimo/progress/*.md` | tick 累積 + test cases | **(read+write primary)** | (touch only when bug found) |
 
 ---
 
@@ -215,8 +215,8 @@ User 在 marathon 中插話新需求時：
 - docs/grimo/specs/spec-roadmap.md — spec backlog + status icon (📋/📐/🚧/⏸/✅)
 - docs/grimo/specs/archive/ — 已 ship 的 spec doc 歸檔
 - docs/grimo/CHANGELOG.md — semver release notes
-- .claude/progress/loop-e2e-test-coverage.md — tick 累積 + bug ledger A-…
-- .claude/progress/test-case.md — 按 round 分類 case 表（PASS/FAIL + 對應 spec）
+- docs/grimo/progress/loop-e2e-test-coverage.md — tick 累積 + bug ledger A-…
+- docs/grimo/progress/test-case.md — 按 round 分類 case 表（PASS/FAIL + 對應 spec）
 
 ═══ Tick 演算法（每次觸發跑一次） ═══
 1. **Check active specs**: `grep -E "📋|📐|🚧|⏸" docs/grimo/specs/spec-roadmap.md`
@@ -237,7 +237,7 @@ User 在 marathon 中插話新需求時：
   Commit: feat: / fix: / polish: / chore: / docs:（Conventional + Co-Authored-By trailer）
 
 ═══ Mode B — E2E 測試 ═══
-從 .claude/progress/loop-e2e-test-coverage.md 與 test-case.md 接續上輪未測 round。
+從 docs/grimo/progress/loop-e2e-test-coverage.md 與 test-case.md 接續上輪未測 round。
 每個 round 涵蓋【正例 / 反例 / 邊緣案例】三類。
 - 發現 bug → 切 Mode A（自寫 spec → 研究修法 → 實作 → 測試 → ship）；下個 tick 再回 Mode B
 - 全 PASS → 記 progress（這 round 結束）→ 等下次 tick
@@ -276,19 +276,19 @@ User mid-flight 提新需求時：
 ```
 /loop 10m
 <產品名稱> 完整 E2E 測試（<前提>）：
-- 從 .claude/progress/loop-e2e-test-coverage.md 與 .claude/progress/test-case.md 接續上輪未測 round
+- 從 docs/grimo/progress/loop-e2e-test-coverage.md 與 docs/grimo/progress/test-case.md 接續上輪未測 round
 - 每個 round 涵蓋【正例 / 反例 / 邊緣案例】三類
 - 發現 bug → 自寫 spec → 研究修法 → 實作 → 測試 → 沒問題就 release（commit + CHANGELOG + roadmap）
 - 一邊記錄：
-  - 進度寫 .claude/progress/loop-e2e-test-coverage.md（tick 累積、bug ledger A-…、known tech debt）
-  - 案例寫 .claude/progress/test-case.md（按 round 分類，每筆標 PASS/FAIL、對應 ship 的 spec 編號）
+  - 進度寫 docs/grimo/progress/loop-e2e-test-coverage.md（tick 累積、bug ledger A-…、known tech debt）
+  - 案例寫 docs/grimo/progress/test-case.md（按 round 分類，每筆標 PASS/FAIL、對應 ship 的 spec 編號）
 ```
 
 ### A.2 — Polish round（saturation 後切換）
 
 ```
 連續 N ticks 0 bugs，testing surface 飽和。pivot 到 polish ship：
-讀 .claude/progress/loop-e2e-test-coverage.md 的 「Polish Candidates」 / 「Missing Features」 列表，
+讀 docs/grimo/progress/loop-e2e-test-coverage.md 的 「Polish Candidates」 / 「Missing Features」 列表，
 挑 ROI 最高的 1 個 ship（spec doc + impl + test + CHANGELOG + roadmap row + archive + commit）。
 不要硬找 bug；polish 完繼續 testing 直到下次 saturation。
 ```
