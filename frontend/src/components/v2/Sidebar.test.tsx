@@ -112,7 +112,7 @@ describe('Sidebar', () => {
 
   it('AC-S142a-17: VersionHistoryMini shows latest badge on first version', () => {
     renderSidebar()
-    expect(screen.getByText('latest')).toBeTruthy()
+    expect(screen.getByText('最新')).toBeTruthy()
   })
 
   it('AC-S142a-17: "查看全部 →" calls onTabChange with "versions"', () => {

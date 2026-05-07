@@ -781,3 +781,32 @@ Cut axis: **API projection field completeness**（同 entity 跨 endpoint 欄位
 
 ### Tick 89 Summary
 - Round 42: 5 checks / **0 bug** — `🔍 NO-BUGS-MODE-B`
+
+---
+
+## Tick 90 — Round 43: Control-behavior alignment — v2 SkillDetailPage interactive controls (2026-05-08)
+
+Cut axis: **Control-behavior alignment**（button/chip label 與實際行為 1:1 mapping）
+
+| # | 元件 | 檢查項目 | 結果 |
+|---|------|---------|------|
+| 1 | HeroMetricsRow → QualityHeroCard onClick | `onTabChange('quality')` → TabsTrigger value='quality' ✓ | ✅ |
+| 2 | HeroMetricsRow → SecurityHeroCard onClick | `onTabChange('security')` → TabsTrigger value='security' ✓ | ✅ |
+| 3 | VersionHistoryMini "查看全部 →" | `onTabChange('versions')` → TabsTrigger value='versions' ✓ | ✅ |
+| 4 | VersionHistoryMini latest badge text | 顯示 "latest"（英文）| ❌ **Bug AT** |
+| 5 | DetailsCard row labels (5 個) | 'Published'/'License'/'Size'/'Files'/'Scripts' + value 'None' 全英文 | ❌ **Bug AT** |
+| 6 | SecurityTab empty state | 'Security report 尚未掃描'（英中混用）| ❌ **Bug AT** |
+| 7 | SecurityTab ShieldIcon aria-label | `Security ${overall}` 英文 aria-label | ❌ **Bug AT** |
+| 8 | QualityTabV2 expand toggle | 展開=true 初始→按鈕 '顯示較少'，收合→'顯示更多'，行為一致 | ✅ |
+| 9 | InstallCard copy button | ⧉ → ✓ 複製後 1500ms reset，aria-label 正確 | ✅ |
+| 10 | StarButton subscribe toggle | subscribed/unsubscribed title='取消訂閱'/'訂閱'，行為一致 | ✅ |
+| 11 | AddVersionForm submit button | `mutation.isPending ? '上傳中...' : '新增'`，disabled 邏輯正確 | ✅ |
+
+**Bug AT (LOW / user-visible zh-TW violation)**：
+VersionHistoryMini 顯示 "latest"（英文）而非"最新"，與 VersionsTabV2 不一致。
+DetailsCard 5 個 row label 全為英文（Published/License/Size/Files/Scripts）及 value 'None'。
+SecurityTab empty state 英中混用、ShieldIcon aria-label 英文。
+全數改為繁體中文，同步更新 SecurityTab.test.tsx + Sidebar.test.tsx；318/318 Vitest PASS。
+
+### Tick 90 Summary
+- Round 43: 11 checks / **1 bug cluster (AT)** — 全數 inline 修復

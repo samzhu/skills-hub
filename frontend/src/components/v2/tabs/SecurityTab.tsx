@@ -24,7 +24,7 @@ function ShieldIcon({ overall }: { overall: string }) {
   const iconStroke = isPass ? '#6FD8B0' : isWarn ? '#FAC775' : '#F08080'
 
   return (
-    <svg width="56" height="64" viewBox="0 0 56 64" fill="none" aria-label={`Security ${overall}`}>
+    <svg width="56" height="64" viewBox="0 0 56 64" fill="none" aria-label="安全性掃描結果">
       <path d="M28 2 L52 12 L52 32 C52 48 28 62 28 62 C28 62 4 48 4 32 L4 12 Z"
         fill={fill} stroke={stroke} strokeWidth="1.5" />
       {isPass && (
@@ -118,7 +118,7 @@ export function SecurityTab({ report }: Props) {
     return (
       <div data-testid="security-tab-empty" style={{ padding: 24, textAlign: 'center', color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
         <div style={{ fontSize: 24, marginBottom: 8 }}>🔍</div>
-        <div>Security report 尚未掃描</div>
+        <div>尚未進行安全掃描</div>
       </div>
     )
   }

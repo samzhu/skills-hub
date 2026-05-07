@@ -26,7 +26,7 @@ export function VersionHistoryMini({ versions, onTabChange }: Props) {
             <span style={{ fontFamily: 'monospace', fontSize: 11, flex: 1 }}>{v.version}</span>
             {i === 0 && (
               <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(127,119,221,0.15)', color: '#C9C5F2' }}>
-                latest
+                最新
               </span>
             )}
             <span style={{ fontSize: 10, color: 'var(--ink-3, rgba(238,236,234,0.4))', flexShrink: 0 }}>

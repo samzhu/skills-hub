@@ -18,11 +18,11 @@ function formatDate(iso: string | null): string {
 
 export function DetailsCard({ skill, version }: Props) {
   const rows: Array<{ label: string; value: string }> = [
-    { label: 'Published', value: formatDate(skill.latestVersionPublishedAt ?? null) },
-    { label: 'License', value: skill.license ?? '—' },
-    { label: 'Size', value: version ? formatSize(version.fileSize) : '—' },
-    { label: 'Files', value: version ? String(version.fileCount) : '—' },
-    { label: 'Scripts', value: 'None' },
+    { label: '發布日期', value: formatDate(skill.latestVersionPublishedAt ?? null) },
+    { label: '授權', value: skill.license ?? '—' },
+    { label: '大小', value: version ? formatSize(version.fileSize) : '—' },
+    { label: '檔案數', value: version ? String(version.fileCount) : '—' },
+    { label: '腳本', value: '無' },
   ]
 
   return (
@@ -34,7 +34,7 @@ export function DetailsCard({ skill, version }: Props) {
         {rows.map(r => (
           <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 11, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>{r.label}</span>
-            <span style={{ fontSize: 11, fontFamily: r.label === 'Published' ? undefined : 'monospace' }}>{r.value}</span>
+            <span style={{ fontSize: 11, fontFamily: r.label === '發布日期' ? undefined : 'monospace' }}>{r.value}</span>
           </div>
         ))}
       </div>

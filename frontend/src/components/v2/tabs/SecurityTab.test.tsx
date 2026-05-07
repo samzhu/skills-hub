@@ -78,7 +78,7 @@ describe('SecurityTab', () => {
   it('report=null → 尚未掃描 fallback', () => {
     render(<SecurityTab report={null} />)
     expect(screen.getByTestId('security-tab-empty')).toBeTruthy()
-    expect(screen.getByText('Security report 尚未掃描')).toBeTruthy()
+    expect(screen.getByText('尚未進行安全掃描')).toBeTruthy()
   })
 
   it('quad detail text rendered', () => {
