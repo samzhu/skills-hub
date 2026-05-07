@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createCollection } from '@/api/skills'
+import { localizeApiError } from '@/lib/api-error-messages'
 
 /**
  * S096f2-T04 — 建立集合 modal。
@@ -118,7 +119,7 @@ export function CreateCollectionModal({ onClose }: { onClose: () => void }) {
 
         {mutation.isError && (
           <p className="mb-2 text-[12px] text-red-500">
-            提交失敗：{mutation.error.message}
+            提交失敗：{localizeApiError(mutation.error)}
           </p>
         )}
 

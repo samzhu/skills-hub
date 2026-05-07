@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFlag, type Flag } from '@/api/flags'
 import { FLAG_TYPE_LABEL } from '@/lib/flag-labels'
+import { localizeApiError } from '@/lib/api-error-messages'
 
 /**
  * S098e3-T03 — Flag 提交 modal。
@@ -80,7 +81,7 @@ export function FlagSubmitModal({ skillId, onClose }: { skillId: string; onClose
 
         {mutation.isError && (
           <p className="mb-2 text-[12px] text-red-500">
-            提交失敗：{mutation.error.message}
+            提交失敗：{localizeApiError(mutation.error)}
           </p>
         )}
 

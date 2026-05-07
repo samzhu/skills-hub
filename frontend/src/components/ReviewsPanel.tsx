@@ -7,6 +7,7 @@ import { RatingStars } from '@/components/RatingStars'
 import { useReviews } from '@/hooks/useReviews'
 import { createReview, deleteReview, type Review } from '@/api/reviews'
 import type { Skill } from '@/types/skill'
+import { localizeApiError } from '@/lib/api-error-messages'
 
 /**
  * S098e2-T04 — SkillDetail Reviews tab 主體 component。
@@ -205,7 +206,7 @@ function ReviewForm({
             placeholder="分享你的使用心得（最多 2000 字）"
           />
         </div>
-        {error && <p className="mb-2 text-[12px] text-red-500">提交失敗：{error.message}</p>}
+        {error && <p className="mb-2 text-[12px] text-red-500">提交失敗：{localizeApiError(error)}</p>}
         <div className="flex justify-end gap-2">
           <button
             type="button"

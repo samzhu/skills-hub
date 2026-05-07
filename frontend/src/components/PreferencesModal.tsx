@@ -4,6 +4,7 @@ import {
   useUpdateNotificationPreferences,
 } from '@/hooks/useNotificationPreferences'
 import type { NotificationPreferences } from '@/api/notifications'
+import { localizeApiError } from '@/lib/api-error-messages'
 
 /**
  * S096h2-T04 — 通知訂閱偏好 modal（4 個 toggle）。
@@ -86,7 +87,7 @@ export function PreferencesModal({ onClose }: { onClose: () => void }) {
         )}
 
         {mutation.isError && (
-          <p className="mt-3 text-[12px] text-red-500">儲存失敗：{mutation.error.message}</p>
+          <p className="mt-3 text-[12px] text-red-500">儲存失敗：{localizeApiError(mutation.error)}</p>
         )}
 
         <div className="mt-5 flex justify-end gap-2">

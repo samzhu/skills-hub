@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createRequest } from '@/api/skills'
+import { localizeApiError } from '@/lib/api-error-messages'
 
 /**
  * S096g2-T04 — 發起新需求 modal。
@@ -67,7 +68,7 @@ export function CreateRequestModal({ onClose }: { onClose: () => void }) {
 
         {mutation.isError && (
           <p className="mb-2 text-[12px] text-red-500">
-            提交失敗：{mutation.error.message}
+            提交失敗：{localizeApiError(mutation.error)}
           </p>
         )}
 

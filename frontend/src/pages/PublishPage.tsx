@@ -203,7 +203,7 @@ export function PublishPage() {
                 {/* S099b2: live validation feedback — 顯給作者 quick check */}
                 {skillMdText.trim().length > 0 && (
                   <div className="mt-2 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-2 text-[12px]">
-                    <ValidationCheck label="Frontmatter block (---)" passed={fmValidation.hasFrontmatter} />
+                    <ValidationCheck label="Frontmatter 區塊 (---)" passed={fmValidation.hasFrontmatter} />
                     <ValidationCheck label="必填欄位：name" passed={fmValidation.hasName} />
                     <ValidationCheck label="必填欄位：description" passed={fmValidation.hasDescription} />
                     {fmValidation.errors.length > 0 && (

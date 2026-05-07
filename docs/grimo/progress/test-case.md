@@ -1243,3 +1243,39 @@ AppShell 通知 bell 連結 `aria-label="Notifications"` 與 AuthArea avatar tri
 
 ### Tick 103 Summary
 - Round 56: 11 checks / **1 bug (BD) — 2 個英文 aria-label 改為繁體中文**
+
+---
+
+## Tick 104 — Mode B Round 57
+
+Cut axis: **User-visible string compliance**（i18n / spec ID leak / hardcoded English strings）
+
+| # | 元件 / 位置 | 檢查項目 | 結果 |
+|---|-----------|---------|------|
+| 1 | `AppShell.tsx` nav links | 所有 7 個 nav label 皆繁中 | ✅ |
+| 2 | `MySkillsPage.tsx` StatusPill | PUBLISHED/DRAFT/SUSPENDED → 已發布/草稿/已停用 | ✅ |
+| 3 | `RequestBoardPage.tsx` StatusPill | OPEN/IN_PROGRESS/FULFILLED → 開放中/實作中/已完成 | ✅ |
+| 4 | `SecurityTab.tsx` statusBadgeText | PASS/WARN/FAIL → ✓ 通過/! 需審查/✗ 失敗 | ✅ |
+| 5 | `IntentSummaryCard.tsx` | "已理解你的意圖"（正確 zh-TW） | ✅ |
+| 6 | `PageHeader.tsx` VerifiedPill | "已驗證"（正確 zh-TW，非 "Verified"） | ✅ |
+| 7 | Toast messages（6 處）| 標頭繁中；但 `err.message` 直接插入 → 可能顯示英文 API 錯誤 | ❌ **Bug BE** |
+| 8 | Modal error 行（5 處）| `CreateRequestModal` / `PreferencesModal` / `CreateCollectionModal` / `FlagSubmitModal` / `ReviewsPanel` 直接用 `mutation.error.message` | ❌ **Bug BE** |
+| 9 | `PublishPage.tsx:206` ValidationCheck | `label="Frontmatter block (---)"` — "block" 為英文 | ❌ **Bug BE** |
+| 10 | spec ID leak（全庫）| 生產碼無 S0xx 字串出現在 JSX render path | ✅ |
+| 11 | `PublishPage.tsx` placeholder="DevOps" | "DevOps" 為通用技術術語（en/zh 共用），可接受 | ✅ |
+| 12 | `PublishFailedPage.tsx` statusStyle labels | 失敗/通過/略過（正確 zh-TW） | ✅ |
+
+**Bug BE (LOW / i18n)**：
+9 處直接使用 `err.message` / `error.message` 展示給使用者，未走 `localizeApiError` 轉譯層；
+當 API 回傳未映射的錯誤時，使用者會看到英文錯誤訊息。
+另 `PublishPage.tsx:206` `"Frontmatter block (---)"` 中 "block" 為英文（應為 "Frontmatter 區塊 (---)"）。
+
+修復：
+- `PublishPage.tsx:206` `"Frontmatter block (---)"` → `"Frontmatter 區塊 (---)"` 
+- 6 個元件（CreateRequestModal / PreferencesModal / CreateCollectionModal / FlagSubmitModal / ShareModal / ReviewsPanel）：
+  加 `import { localizeApiError }` + 將 `err.message` / `mutation.error.message` 替換為 `localizeApiError(err)`
+
+319/319 Vitest PASS。tsc clean。
+
+### Tick 104 Summary
+- Round 57: 12 checks / **1 bug (BE) — 9 處 err.message 改走 localizeApiError + 1 個英文 "block" 翻譯**

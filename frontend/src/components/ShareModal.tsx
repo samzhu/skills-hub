@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useGrants, useCreateGrant, useRevokeGrant } from '@/hooks/useGrants'
 import type { SkillGrant } from '@/api/grants'
+import { localizeApiError } from '@/lib/api-error-messages'
 
 /**
  * S114a — ACL 分享管理 Modal。
@@ -31,7 +32,7 @@ export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () 
           setPrincipalId('')
           toast.success('分享已更新（生效中…）')
         },
-        onError: (err) => toast.error(`新增失敗：${err.message}`),
+        onError: (err) => toast.error(`新增失敗：${localizeApiError(err)}`),
       },
     )
   }
@@ -39,7 +40,7 @@ export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () 
   function handleRevoke(grantId: string) {
     revokeGrant.mutate(grantId, {
       onSuccess: () => toast.success('已移除分享'),
-      onError: (err) => toast.error(`移除失敗：${err.message}`),
+      onError: (err) => toast.error(`移除失敗：${localizeApiError(err)}`),
     })
   }
 
@@ -116,7 +117,7 @@ export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () 
 
         {createGrant.isError && (
           <p className="mb-2 text-[12px] text-red-500">
-            新增失敗：{createGrant.error.message}
+            新增失敗：{localizeApiError(createGrant.error)}
           </p>
         )}
 
