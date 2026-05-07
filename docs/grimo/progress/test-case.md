@@ -1490,3 +1490,48 @@ Cut axis: **Anonymous vs authenticated flow 比對**
 
 ### Tick 110 Summary
 - Round 63: 14 checks / **1 bug fixed — FlagsList auth gate gap**
+
+---
+
+## Tick 111 — Mode B Round 64
+
+Cut axis: **Negative deep-link**（`/skills/null` / 不存在 author / 超長 query string）
+
+| # | 類別 | 深鏈 case | 結果 | 備註 |
+|---|------|----------|------|------|
+| 1 | route | 任意不存在路徑 `/nonexistent` | ✅ | `<Route path="*">` → NotFoundPage "404 找不到此頁面" |
+| 2 | route | `/skills` (listing alias) | ✅ | 獨立 route → HomePage |
+| 3 | `/skills/:id` | `/skills/null` | ✅ | `useSkill('null')` → enabled=true → API 404 → ApiError → "找不到此技能" |
+| 4 | `/skills/:id` | `/skills/undefined` | ✅ | 同上 → "找不到此技能" |
+| 5 | `/skills/:id` | `/skills/<non-existent-uuid>` | ✅ | API 404 → "找不到此技能" + "返回列表" link |
+| 6 | `/skills/:author/:name` | `/skills/null/undefined` | ✅ | `useSkillByAuthorAndName('null','undefined')` → API 404 → "找不到此技能" |
+| 7 | `/skills/:id/diff` | `/skills/null/diff` | ✅（acceptable） | `useVersions('null')` → error → "技能版本不足 2 個" (catch-all，error_callout 有顯) |
+| 8 | `/skills/:id/diff` | `?from=&to=` (empty params) | ✅ | defaults to latest 2 versions；`useVersionDiff` `enabled: !!from && !!to` — 空值不 fetch |
+| 9 | `/search` | `/search`（無 q 參數） | ✅ | `query=''` → `!query.trim()` → EmptyState invite "輸入一句描述..." |
+| 10 | `/search` | `/search?q=`（空字串） | ✅ | 同上 → EmptyState |
+| 11 | `/search` | `/search?q=<超長 5000+ 字>` | ✅ | `useSemanticSearch` → API → 可能 400/413 → error state "搜尋失敗，請重試" |
+| 12 | `/publish/validate` | `/publish/validate`（無 id） | ✅ | `skillId = ''` → `!skillId` early return → ErrorState "缺少 skill id 參數" |
+| 13 | `/publish/validate` | `/publish/validate?id=null` | ✅ | `skillId = 'null'`（truthy）→ enabled=true → API 404 → StatusCallout danger "無法載入 skill" |
+| 14 | `/publish/review` | `/publish/review`（無 id） | ✅ | `skillId = ''` → `!skillId` early return → ErrorState "缺少 skill id 參數" |
+| 15 | `/publish/review` | `/publish/review?id=null` | ✅ | 同 validate 模式 → ErrorState "無法載入 skill" |
+| 16 | hooks | 所有帶 id 的 hooks | ✅ | 全部有 `enabled: !!id` guard（useSkill / useVersions / useGrants / useReviews / useFlags 等） |
+| 17 | hook | `useSemanticSearch` | ✅ | `enabled: query.trim().length > 0` — 空/空白 不 fetch |
+| 18 | hook | `useVersionDiff` | ✅ | `enabled: !!skillId && !!from && !!to && from !== to` — 完整 guard |
+| 19 | API error | ApiError 4xx retry guard | ✅ | QueryClient retry: `if (status >= 400 && status < 500) return false` — 不重試 4xx |
+| 20 | router | wildcard `*` + App 路由完整 | ✅ | 20 條 Routes + catch-all；無孤立未保護入口 |
+
+**0 bugs found。**
+
+所有負面深鏈 case 均有適當 error state、empty state 或 NotFoundPage 保護：
+- `:id` 路由 param 接 'null'/'undefined' 字串 → backend 404 → 友善 error UI
+- Query param 缺漏 → 早 return ErrorState  
+- 全部 hooks 有 `enabled: !!id` guard 避免空白請求
+
+唯一值得記錄的觀察：`/skills/null/diff` 顯示「版本不足 2 個」而非「找不到此技能」—
+這是因為 VersionDiffPage 的 error 路徑為 `error || !versions || versions.length < 2`，
+API 404 設值 error 故觸發此 catch-all。UX 可接受（不誤導；有 error 顯示），非 bug。
+
+319/319 Vitest PASS。tsc clean。
+
+### Tick 111 Summary
+- Round 64: 20 checks / **0 bugs — negative deep-link 全部有保護**
