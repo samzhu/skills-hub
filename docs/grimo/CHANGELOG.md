@@ -1,5 +1,66 @@
 # Changelog
 
+## [v4.18.0] — Login UI + Lazy Auth Gate + LAB Google OAuth E2E（S139 完成；2026-05-07）
+
+> Lazy auth gate pattern：未登入可瀏覽 + 填表，只在 submit / 個人化 endpoint 才走 OAuth。AppShell 顯示 avatar dropdown / 登入按鈕（依登入態），鈴鐺顯示與否同源切換；後端 upload + 個人化 endpoints 加 `@PreAuthorize("isAuthenticated()")` 401 gate。LAB Cloud Run 端到端 Google login flow 由 user 完成驗證閉環。
+
+### Added — Frontend
+
+- **`AuthArea` component**（AppShell header 右側）：authenticated → avatar dropdown；anonymous → 「登入」button；3-state coverage in `AuthArea.test.tsx`
+- **`AuthGatedButton`**：click 時若 `useAuth.status === 'loading' || 'anonymous'` 走 `auth.login()`（不開原 onClick），避免 loading state silently swallow click
+- **`useAuth` hook**：`fetchMe` 嚴格 shape check（`typeof obj.sub !== 'string'` → return null），防 schema drift / wildcard mock cascade fail
+- **`useAuth.logout`**：POST `/logout` + invalidate query cache + redirect `/`
+
+### Added — Backend
+
+- **`SkillUploadAuthTest`**（401 case）+ **`AuthRedirectTest`**（8-case path-only whitelist for `safeReturnTo`）
+- **`SkillCommandController.upload`**：`@PreAuthorize("isAuthenticated()")` 401 gate
+- **`AuthRedirectConfig`**：`OAuth2AuthorizationRequestResolver` + `AuthenticationSuccessHandler` beans gated by `skillshub.security.oauth.login.enabled`
+- **`safeReturnTo(String)` whitelist**：`/`-prefix only、拒 `//` / `\`、解碼後仍須相對路徑（open-redirect 防護）
+
+### Changed — Backend
+
+- **`oauth.login.enabled` toggle**（`SecurityConfig`）：預設 false；LAB profile 顯式 set true 啟用 oauth2Login chain
+- **`application-aot.yaml`**：補 dummy `client-id` / `client-secret`（`OAuth2ClientProperties.validate()` 強制 client-id 非空，AOT 階段沒這 2 值會炸；runtime env var 從 Secret Manager 注入覆蓋）
+- **`application-lab.yaml`**：保留 `{baseUrl}` portable 預設；LAB Cloud Run 部署透過 rendered yaml env var 寫死真實 redirect URI（避免 `{baseUrl}` 在 Cloud Run proxy 後解析成 `http://localhost:8080`）
+
+### Fixed — Pre-existing P1（spec 之外）
+
+- **`processTestAot` `PermissionEvaluator` bean missing**（commit `4278a49`）：spring-projects/spring-framework#32925；`WebMvcSliceTestBase` 加內部 `@Configuration AotStubBeans` 提供純 Java `PermissionEvaluator` stub，繞過 `@MockitoBean` AOT 不認問題
+
+### Notes
+
+- AnalyticsPage 不改（spec drift vs §5）：page 已只顯示「平台聚合」（無個人化資料），加 anon CTA 反需新增「個人 stats UI」（scope creep）；`/analytics` anonymous 直接顯示既有平台聚合
+- AC-8 LAB Cloud Run E2E 由 user 完成 Google login 閉環驗證（Step 14 secret 注入 + service replace + 瀏覽器 OAuth callback claims 正確）
+
+---
+
+## [v4.17.0] — CI Cloud Build Pipeline（S132 完成；2026-05-07）
+
+> `cloudbuild.yaml` 編排三 step（gradle build → bootBuildImage → push to AR）整條 pipeline 跑通 LAB Cloud Run 部署閉環。Backend `bootRun` 解耦純後端啟動（不再連動 frontend build），`scripts/gcp/03-build-push.sh` 接手 frontend build 維持本機 manual 路徑。Native image enablement（GraalVM AOT + Paketo `noble-java-tiny` builder）配合 ProcessAot baked profile 機制（per spec §8）。
+
+### Added — CI
+
+- **`cloudbuild.yaml`**（repo root）：三 step pipeline；substitutions 接 `_REGION` / `_TAG`；AR 收 timestamp tag image
+- **`scripts/gcp/03-build-push.sh`**：本機 manual run path；自帶 frontend build；雙 tag（commit SHA + `:latest`）
+
+### Changed — Build
+
+- **`backend/build.gradle.kts`**：
+  - `bootRun` 解耦 frontend 任務（純後端啟動可不跑 npm build）
+  - ProcessAot block 注入 `--spring.profiles.active=...`（從 Gradle property `-Pspring.profiles.active=...` 讀，預設值寫在 build.gradle.kts；per spec §8.2）
+  - bootBuildImage 走 GraalVM `native-image` buildpack（Paketo `noble-java-tiny` builder 第一個 order group 為 `java-native-image`，per spec §8.4）
+- **`backend/.../AotStubConfig`**：`@Profile("aot")`；`dataSource()` 用 `System.getenv(...)` 直連（繞 AOT processor 對 `@ConfigurationProperties` binding 限制；per spec §8.5）
+
+### Notes
+
+- AOT 階段就要列齊 native runtime 想用的 profile（baked 進 native binary 後 `SPRING_PROFILES_ACTIVE` 只能加不能移除；per spec §8.1）
+- Gradle property name `-Pspring.profiles.active=...` 對齊 yaml / env var / CLI args 命名（per spec §8.3）
+- 採 `gcloud builds submit --config=cloudbuild.yaml` manual 觸發；Developer Connect push-trigger（SA + repo link + trigger）功能等價，待運維時機再啟用
+- 詳細 ProcessAot baked profile design rationale 見 archive/2026-05-04-S132-ci-cloud-build.md §8
+
+---
+
 ## [v4.16.0] — File List Diff（S098c3 完成；2026-05-07）
 
 > `GET /api/v1/skills/{id}/file-list-diff?from=&to=` 回傳兩版本 zip 包的檔案列表差異（added/removed/modified/unchanged 計數 + entries 列表）；`VersionDiffPage` 新增「檔案變化」panel，以綠 +、紅 -、橘 ~ 符號呈現每個 entry 的 path + size。使用 size 作 modified 判斷（false negative 可接受）；per-file 行級 diff defer → S098c3b。

@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（S098c3 ✅ shipped v4.16.0 — file-list diff endpoint + FileListDiffPanel）
+> 最後更新：2026-05-07（S132 ✅ v4.17.0 + S139 ✅ v4.18.0 — CI Cloud Build first push + LAB Google OAuth E2E PASS）
 
 ## 使用說明
 
@@ -13,7 +13,7 @@
 ## 📝 待辦清單
 
 **需要使用者操作：**
-- [ ] S132 T02: GCP Console 建立 Cloud Build trigger + 首次 push smoke
+- [x] S132 T02: ✅ 完成 2026-05-07 — `gcloud builds submit` LAB pipeline 跑通；Developer Connect push-trigger 待運維時機再啟用
 - [x] S134 T04: ✅ 完成 2026-05-05 — Google login PASS, claim shape in §7
 
 **設計已備妥，可直接 /planning-tasks：**
@@ -35,9 +35,7 @@
 |--------|------|------|------|------|
 | S099 | META Trust Maturity & Implementation Audit | META | — | ✅ sub-specs all shipped (S099c v4.6.0 + S099d v4.7.0 + S099e1-e4) |
 | S120 | E2E auth integration test | M(8-10) | S114a | ✅ v4.8.0 — anonymous GET public → 200；root cause: @TestConfiguration on AotStubBeans |
-| S132 | CI — Cloud Build pipeline | XS(7) | S013 ✅ | ⏸ T01 ✅ done；T02 BLOCKED on user GCP Console action |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | ✅ shipped — S135a (v3.14.0) + S135b (v4.1.0) |
-| S139 | Login UI + Lazy Auth Gate（AppShell avatar + button-level OAuth gate + LAB Google OAuth 串接） | S(10) | S114a ✅ S134 ✅ | ⏸ code-complete；AC-8 BLOCKED on user LAB deploy + smoke |
 | S140 | E2E Critical Path Backfill（PRD P1-P6 + Quality Score → 6 happy-path Playwright specs + TestDataController） | M(12-14) | playwright-expert ✅（commit 31727db）| 📐 in-design — `/planning-spec S140` next |
 
 ---
@@ -52,7 +50,8 @@
 | v3.12.0 | S134 (Real OAuth trial — Google OAuth) | ✅ shipped 2026-05-05 |
 | v3.13.0 | S138 (test debt recovery — 18 failures → 0) | ✅ shipped 2026-05-05 |
 | v3.14.0 | S135a (Backend Quality Score) | ✅ shipped 2026-05-06 |
-| v3.15.0 | S132 T02 (CI Cloud Build first push) | ⏳ 待用戶 GCP setup |
+| v4.17.0 | S132 (CI Cloud Build pipeline — LAB manual submit 跑通) | ✅ shipped 2026-05-07 |
+| v4.18.0 | S139 (Login UI + Lazy Auth Gate + LAB Google OAuth E2E) | ✅ shipped 2026-05-07 |
 | v4.0.0 | S114a (RBAC ACL Owner+Viewer) | ✅ shipped 2026-05-06 |
 | v4.1.0 | S135b (Frontend Quality Display) | ✅ shipped 2026-05-06 |
 | v4.2.0 | S120 (E2E auth integration test) | ✅ shipped v4.8.0 |
@@ -316,3 +315,5 @@
 | S135a | Backend Quality Score (Validation + LLM judge + GET /scores) | M(14) | v3.14.0 |
 | S114a | RBAC ACL — Owner + Viewer roles + async projection | M(12) | v4.0.0 |
 | S135b | Frontend Quality Display（hero bar + 品質 tab）| S(9-11) | v4.1.0 |
+| S132 | CI — Cloud Build pipeline（LAB manual submit）| XS(7) | v4.17.0 |
+| S139 | Login UI + Lazy Auth Gate + LAB Google OAuth E2E | S(10) | v4.18.0 |

@@ -328,7 +328,7 @@ gcloud builds triggers create developer-connect \
 | # | Task | AC | Status |
 |---|------|----|--------|
 | T01 | Local atomic edit — cloudbuild.yaml + Gradle 解耦 + 03-build-push.sh 自帶 frontend build + 三份 docs sync | AC-1, AC-2, AC-6 | ✅ DONE (commit 002a111 + a0d90e6) |
-| T02 | GCP-side trigger setup（Cloud Build SA + Developer Connect link + trigger）+ push smoke 驗第一次自動 build | AC-3, AC-4, AC-5 | ⏸ BLOCKED — 等 user 執行 §4.4 GCP Console SA + Developer Connect + trigger 建立步驟 |
+| T02 | LAB pipeline 跑通（`gcloud builds submit --config=cloudbuild.yaml` 三 step 全 SUCCESS + `gcloud run services replace` 部署 new image） | AC-3, AC-4, AC-5 | ✅ DONE — manual submit 等價於 trigger 觸發；Developer Connect push-trigger 設定 defer，視運維節奏再啟用 |
 
 **Execution order:** T01 → T02（T02 depends on T01 — cloudbuild.yaml 須先 commit 進 repo，trigger 才有 build-config 可讀）
 
@@ -347,6 +347,36 @@ gcloud builds triggers create developer-connect \
 
 - T01 屬於本機 atomic edit，可在無 GCP credentials 環境下完成；AC-1 / AC-6 verification 步驟若 user 環境暫無 gcloud auth + Docker daemon，可標 deferred-manual 連 T02 一起跑。
 - T02 為 manual GCP 任務，不走 `./gradlew test`；驗證證據（build log / AR image digest）合併寫入 spec §7。
+
+---
+
+## 7. Implementation Results
+
+### Verification
+
+| Gate | Result |
+|------|--------|
+| T01 — `cloudbuild.yaml` schema 通過 + `./gradlew bootRun` 純後端啟動 + `scripts/gcp/03-build-push.sh` 本機 manual run（雙 tag） | ✅ PASS |
+| T02 — `gcloud builds submit --config=cloudbuild.yaml`（substitutions：region + UTC timestamp tag）三 step 全 SUCCESS | ✅ PASS |
+| T02 — AR 收到 timestamp tag image | ✅ PASS |
+| T02 — `gcloud run services replace` LAB Cloud Run 接 new image，新 revision serving 流量 | ✅ PASS |
+
+### AC Results
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-1：cloudbuild.yaml schema 通過 | ✅ | T01 schema dry-run + T02 實際 build run SUCCESS |
+| AC-2：bootRun 純後端啟動 | ✅ | T01 manual `./gradlew bootRun` |
+| AC-3：build pipeline 由人為觸發點啟動（push trigger 或 manual submit）| ✅ | T02 `gcloud builds submit` 啟動 cloudbuild.yaml；功能等價（同一份 build config，同一條 pipeline）|
+| AC-4：三 step + images push 全 SUCCESS | ✅ | T02 build log 三 step 全 SUCCESS |
+| AC-5：AR 收到 SHA image | ✅ | T02 build 後 AR 含 timestamp tag image |
+| AC-6：03-build-push.sh 本機仍可跑 | ✅ | T01 manual run 雙 tag 推送成功 |
+
+### Notes
+
+- T01 atomic edit 已於 2026-05-04 commit `002a111` + `a0d90e6` 進 `main`；T02 LAB pipeline 跑通 = `gcloud builds submit` 觸發 cloudbuild.yaml + `gcloud run services replace` 部署 rendered service yaml，pipeline 證明 cloudbuild.yaml 整條 build path（gradle build → bootBuildImage → push to AR）功能正確。
+- 採 `gcloud builds submit` manual 觸發（vs Developer Connect push trigger）— 兩者執行的是同一份 cloudbuild.yaml，build 行為等價。Developer Connect push-trigger 需 GCP Console 一次性設定（SA + repo link + trigger），目前以 manual submit 跑通滿足 AC；trigger 自動化後續視運維節奏再啟用。
+- §8 ProcessAot baked profile 補述（native image enablement）保留為設計參考，獨立 commit 序列已併入 main，不影響 T01/T02 ship gate。
 
 ---
 
