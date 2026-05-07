@@ -18,7 +18,7 @@ describe('VersionsTabV2', () => {
     render(<VersionsTabV2 versions={versions} />)
     const badges = screen.queryAllByTestId('latest-badge')
     expect(badges.length).toBe(1)
-    expect(badges[0].textContent).toBe('Latest')
+    expect(badges[0].textContent).toBe('最新')
   })
 
   it('AC-S142a-13: version numbers shown in mono font', () => {

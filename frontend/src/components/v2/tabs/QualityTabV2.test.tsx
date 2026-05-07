@@ -33,17 +33,17 @@ describe('QualityTabV2', () => {
     expect(container.querySelectorAll('[data-testid="score-dot"]').length).toBeGreaterThanOrEqual(2)
   })
 
-  it('AC-S142a-12: reasoning 預設展開，Show less button visible', () => {
+  it('AC-S142a-12: reasoning 預設展開，顯示較少 button visible', () => {
     render(<QualityTabV2 scores={mockScores} />)
     expect(screen.getByText('Schema is fully compliant with the spec.')).toBeTruthy()
-    expect(screen.getAllByText('Show less').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('顯示較少').length).toBeGreaterThan(0)
   })
 
-  it('AC-S142a-12: click Show less → Show more toggle', () => {
+  it('AC-S142a-12: click 顯示較少 → 顯示更多 toggle', () => {
     render(<QualityTabV2 scores={mockScores} />)
-    const toggleBtn = screen.getAllByText('Show less')[0]
+    const toggleBtn = screen.getAllByText('顯示較少')[0]
     fireEvent.click(toggleBtn)
-    expect(screen.getAllByText('Show more').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('顯示更多').length).toBeGreaterThan(0)
   })
 
   it('scores=null → 此版本尚未評分 fallback', () => {

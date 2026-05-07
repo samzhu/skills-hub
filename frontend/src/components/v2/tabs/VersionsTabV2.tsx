@@ -38,7 +38,7 @@ function VersionCard({ v, isLatest }: { v: SkillVersion; isLatest: boolean }) {
             data-testid="latest-badge"
             style={{ fontSize: 10, padding: '1px 7px', borderRadius: 999, background: 'rgba(127,119,221,0.2)', color: '#C9C5F2', fontWeight: 500 }}
           >
-            Latest
+            最新
           </span>
         )}
         <span style={{ fontSize: 12, color: 'var(--ink-3, rgba(238,236,234,0.4))', marginLeft: 'auto' }}>
@@ -66,7 +66,7 @@ function VersionCard({ v, isLatest }: { v: SkillVersion; isLatest: boolean }) {
           onClick={() => setExpanded(e => !e)}
           style={{ fontSize: 11, color: '#7F77DD', background: 'none', border: 'none', padding: 0, cursor: 'pointer', marginTop: 4 }}
         >
-          {expanded ? 'Show less' : 'Show more'}
+          {expanded ? '顯示較少' : '顯示更多'}
         </button>
       )}
     </div>

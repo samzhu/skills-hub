@@ -19,7 +19,7 @@ export function InstallCard({ skill }: Props) {
   return (
     <div data-testid="install-card" style={{ padding: '14px 16px', background: 'rgba(0,0,0,0.2)', borderRadius: 10 }}>
       <div style={{ fontSize: 11, color: 'var(--ink-3, rgba(238,236,234,0.4))', marginBottom: 8 }}>
-        Install
+        安裝
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{
@@ -38,7 +38,7 @@ export function InstallCard({ skill }: Props) {
         <button
           data-testid="install-copy-btn"
           onClick={handleCopy}
-          aria-label={copied ? 'Copied' : 'Copy install command'}
+          aria-label={copied ? '已複製' : '複製安裝指令'}
           style={{
             flexShrink: 0,
             background: copied ? 'rgba(29,158,117,0.15)' : 'rgba(127,119,221,0.15)',
@@ -59,7 +59,7 @@ export function InstallCard({ skill }: Props) {
           href="/docs/your-first-skill"
           style={{ fontSize: 10, color: 'var(--ink-3, rgba(238,236,234,0.4))', textDecoration: 'underline' }}
         >
-          What are skills?
+          什麼是技能？
         </a>
       </div>
     </div>

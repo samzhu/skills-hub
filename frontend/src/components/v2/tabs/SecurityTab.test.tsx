@@ -38,9 +38,9 @@ const failReport: SecurityReport = {
 }
 
 describe('SecurityTab', () => {
-  it('AC-S142a-8: PASS → hero title "No security issues found" (green)', () => {
+  it('AC-S142a-8: PASS → hero title "未發現安全問題" (green)', () => {
     render(<SecurityTab report={passReport} />)
-    expect(screen.getByTestId('security-hero-title').textContent).toBe('No security issues found')
+    expect(screen.getByTestId('security-hero-title').textContent).toBe('未發現安全問題')
     expect(screen.getByTestId('security-hero-title').style.color).toContain('6FD8B0')
   })
 
@@ -53,26 +53,26 @@ describe('SecurityTab', () => {
     expect(screen.getByTestId('quad-deps')).toBeTruthy()
   })
 
-  it('AC-S142a-8: WARN → "1 issue requires review" + amber color', () => {
+  it('AC-S142a-8: WARN → "N 個問題需要審查" + amber color', () => {
     render(<SecurityTab report={warnReport} />)
-    expect(screen.getByTestId('security-hero-title').textContent).toContain('review')
+    expect(screen.getByTestId('security-hero-title').textContent).toContain('審查')
     expect(screen.getByTestId('security-hero-title').style.color).toContain('FAC775')
   })
 
-  it('AC-S142a-8: FAIL → "N issues require attention" + red color', () => {
+  it('AC-S142a-8: FAIL → "N 個問題需要注意" + red color', () => {
     render(<SecurityTab report={failReport} />)
-    expect(screen.getByTestId('security-hero-title').textContent).toContain('attention')
+    expect(screen.getByTestId('security-hero-title').textContent).toContain('注意')
     expect(screen.getByTestId('security-hero-title').style.color).toContain('F08080')
   })
 
-  it('PASS quad shows "✓ Passed" status', () => {
+  it('PASS quad shows "✓ 通過" status', () => {
     render(<SecurityTab report={passReport} />)
-    expect(screen.getAllByText('✓ Passed').length).toBe(4)
+    expect(screen.getAllByText('✓ 通過').length).toBe(4)
   })
 
-  it('WARN quad shows "! Review" status', () => {
+  it('WARN quad shows "! 需審查" status', () => {
     render(<SecurityTab report={warnReport} />)
-    expect(screen.getByText('! Review')).toBeTruthy()
+    expect(screen.getByText('! 需審查')).toBeTruthy()
   })
 
   it('report=null → 尚未掃描 fallback', () => {

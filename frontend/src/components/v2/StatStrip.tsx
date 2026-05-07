@@ -54,7 +54,7 @@ export function StatStrip({ skill, stats }: Props) {
             <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}> / 5</span>
           )}
         </div>
-        <div style={subStyle}>{skill.reviewCount} reviews</div>
+        <div style={subStyle}>{skill.reviewCount} 則評論</div>
       </div>
 
       {/* Versions */}
@@ -63,8 +63,8 @@ export function StatStrip({ skill, stats }: Props) {
         <div data-testid="version-count" style={valStyle}>{skill.versionCount}</div>
         <div style={subStyle}>
           {skill.latestVersionPublishedAt
-            ? `Latest ${relativeTime(skill.latestVersionPublishedAt)}`
-            : 'No versions'}
+            ? `最新版本 ${relativeTime(skill.latestVersionPublishedAt)}`
+            : '尚無版本'}
         </div>
       </div>
 
@@ -80,7 +80,7 @@ export function StatStrip({ skill, stats }: Props) {
         >
           {skill.openFlagCount}
         </div>
-        <div style={subStyle}>{skill.openFlagCount > 0 ? 'Active reports' : 'No active reports'}</div>
+        <div style={subStyle}>{skill.openFlagCount > 0 ? '活躍回報' : '無活躍回報'}</div>
       </div>
     </div>
   )
@@ -89,9 +89,9 @@ export function StatStrip({ skill, stats }: Props) {
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const days = Math.floor(diff / 86400000)
-  if (days === 0) return 'today'
-  if (days === 1) return '1 day ago'
-  return `${days} days ago`
+  if (days === 0) return '今天'
+  if (days === 1) return '1 天前'
+  return `${days} 天前`
 }
 
 const cellStyle = (last: boolean): React.CSSProperties => ({

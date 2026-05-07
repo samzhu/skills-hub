@@ -48,10 +48,10 @@ function ShieldIcon({ overall }: { overall: string }) {
 }
 
 function heroTitle(report: SecurityReport): string {
-  if (report.overall === 'PASS') return 'No security issues found'
+  if (report.overall === 'PASS') return '未發現安全問題'
   const n = overallCount(report)
-  if (report.overall === 'WARN') return `${n} issue${n > 1 ? 's' : ''} require${n === 1 ? 's' : ''} review`
-  return `${n} issue${n > 1 ? 's' : ''} require${n > 1 ? '' : 's'} attention`
+  if (report.overall === 'WARN') return `${n} 個問題需要審查`
+  return `${n} 個問題需要注意`
 }
 
 function heroColor(overall: string): string {
@@ -61,9 +61,9 @@ function heroColor(overall: string): string {
 }
 
 function statusBadgeText(status: string): string {
-  if (status === 'PASS') return '✓ Passed'
-  if (status === 'WARN') return '! Review'
-  return '✗ Fail'
+  if (status === 'PASS') return '✓ 通過'
+  if (status === 'WARN') return '! 需審查'
+  return '✗ 失敗'
 }
 
 function statusBadgeColor(status: string): string {
@@ -124,7 +124,7 @@ export function SecurityTab({ report }: Props) {
   }
 
   const scannedDate = new Date(report.scannedAt).toLocaleDateString('zh-TW')
-  const metaSub = `Scanned ${scannedDate} · engine ${report.engineVersion} · rule set ${report.ruleSetVersion}`
+  const metaSub = `掃描時間 ${scannedDate} · 引擎 ${report.engineVersion} · 規則集 ${report.ruleSetVersion}`
 
   return (
     <div data-testid="security-tab" style={{ padding: '16px 0' }}>

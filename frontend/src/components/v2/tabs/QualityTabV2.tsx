@@ -61,7 +61,7 @@ function AxisSection({ axisKey, axis }: { axisKey: string; axis: AxisScore }) {
                   onClick={() => setExpanded(e => !e)}
                   style={{ fontSize: 11, color: '#7F77DD', background: 'none', border: 'none', padding: 0, cursor: 'pointer', marginTop: 2 }}
                 >
-                  {expanded ? 'Show less' : 'Show more'}
+                  {expanded ? '顯示較少' : '顯示更多'}
                 </button>
               </div>
             )}

@@ -34,9 +34,9 @@ describe('InstallCard', () => {
     await waitFor(() => expect(screen.getByTestId('install-copy-btn').textContent).toBe('✓'))
   })
 
-  it('AC-S142a-16: "What are skills?" link present', () => {
+  it('AC-S142a-16: "什麼是技能？" link present', () => {
     render(<InstallCard skill={baseSkill} />)
-    const link = screen.getByText('What are skills?') as HTMLAnchorElement
+    const link = screen.getByText('什麼是技能？') as HTMLAnchorElement
     expect(link).toBeTruthy()
     expect(link.href).toContain('/docs/your-first-skill')
   })

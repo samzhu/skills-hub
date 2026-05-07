@@ -159,7 +159,7 @@ function FilePreview({ skillId, path, meta }: { skillId: string; path: string; m
       {/* Security banner for scripts/ */}
       {inScripts && (
         <div data-testid="security-banner" style={{ padding: '6px 14px', background: 'rgba(239,159,39,0.1)', borderBottom: '0.5px solid rgba(239,159,39,0.3)', fontSize: 11, color: '#FAC775' }}>
-          ⚠ This file is in scripts/ — scanned for security risks
+          ⚠ 此檔案位於 scripts/ — 已進行安全掃描
         </div>
       )}
       {/* Content */}
@@ -169,7 +169,7 @@ function FilePreview({ skillId, path, meta }: { skillId: string; path: string; m
         {content === 'binary' && (
           <div data-testid="binary-fallback" className="ft-binary" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
             <span style={{ fontSize: 32, marginBottom: 8 }}>📄</span>
-            <span style={{ fontSize: 13 }}>Binary file — preview unavailable</span>
+            <span style={{ fontSize: 13 }}>二進制檔案 — 無法預覽</span>
           </div>
         )}
         {typeof content === 'string' && content !== 'loading' && content !== 'binary' && (

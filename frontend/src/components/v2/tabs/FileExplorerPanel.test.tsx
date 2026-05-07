@@ -104,7 +104,7 @@ describe('FileExplorerPanel', () => {
     const { container } = render(<FileExplorerPanel skillId="s1" />)
     fireEvent.click(screen.getByTestId('tree-item-assets-logo.png'))
     await waitFor(() => expect(container.querySelector('[data-testid="binary-fallback"]')).toBeTruthy())
-    expect(screen.getByText('Binary file — preview unavailable')).toBeTruthy()
+    expect(screen.getByText('二進制檔案 — 無法預覽')).toBeTruthy()
   })
 
   it('AC-S142a-14: lang badge visible for selected file', async () => {
