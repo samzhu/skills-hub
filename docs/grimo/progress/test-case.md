@@ -895,3 +895,34 @@ Cut axis: **Cross-cutting links**（所有 Link/navigate callsite 對齊 router 
 
 ### Tick 93 Summary
 - Round 46: 10 checks / **1 bug cluster (AW)** — 全數 inline 修復
+
+---
+
+## Tick 94 — Round 47: Page-level data audit (2026-05-08)
+
+Cut axis: **Page-level data audit**（每個 page 是否 fetch 真實 endpoint，無假資料/hardcoded stub）
+
+| # | 頁面 | 資料來源 | 結果 |
+|---|------|---------|------|
+| 1 | LandingPage | `fetchPublicStats` → `GET /api/v1/skills/stats`；`?? '—'` fallback ✓ | ✅ |
+| 2 | HomePage | `useSkillList` → `GET /api/v1/skills` ✓ | ✅ |
+| 3 | SearchResultsPage | `useSearchIntent` → 真實 search hook ✓ | ✅ |
+| 4 | SkillDetailPage | `useSkill` + `useVersions` + `useScores` + `useSecurityReport` → 真實 API ✓ | ✅ |
+| 5 | VersionDiffPage | `useVersionDiff` + `useFileListDiff` + `useSkill` + `useVersions` → 真實 API ✓ | ✅ |
+| 6 | PublishPage | 表單（無 pre-fetch）+ `useMutation` 提交 ✓ | ✅ |
+| 7 | PublishValidatePage | `useQuery` + `fetchSkillById` + polling interval ✓ | ✅ |
+| 8 | PublishReviewPage | `useQuery` + `fetchSkillById` ✓ | ✅ |
+| 9 | PublishFailedPage | 靜態錯誤提示頁（無 fetch 需求）✓ | ✅ |
+| 10 | MySkillsPage | `useMe` + `useSkillList` → 真實 API ✓ | ✅ |
+| 11 | AnalyticsPage | `useOverview` → `GET /api/v1/analytics/overview` ✓ | ✅ |
+| 12 | CollectionsPage | `useCollections` → `fetchCollections` 真實 API ✓ | ✅ |
+| 13 | RequestBoardPage | `useRequests` → `fetchRequests` 真實 API ✓ | ✅ |
+| 14 | NotificationsPage | 真實 API hooks ✓ | ✅ |
+| 15 | FlagsQueuePage | `useMutation` + `useQueryClient` 真實 API ✓ | ✅ |
+| 16 | AuthDebugPage | `useQuery` → `fetchAuthDebug` → `GET /api/v1/dev/auth-debug`（404 fallback）✓ | ✅ |
+| 17 | docs/* 頁面群 | 靜態 Markdown 說明文件（無 API 需求）✓ | ✅ |
+
+**0 bug**：所有頁面使用真實 API hooks；無 hardcoded stub 或假資料。
+
+### Tick 94 Summary
+- Round 47: 17 checks / **0 bugs** — 全部通過
