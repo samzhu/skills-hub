@@ -637,3 +637,28 @@ Cut axis: **User-visible string compliance**（spec ID leak / 英文 / 過時文
 ### Tick 83 Summary
 - Round 36: 5 checks / **1 bug (AO)**
 - Fix commit: 412ea5d
+
+---
+
+## Tick 84 — Round 37: Cross-cutting links (2026-05-07)
+
+Cut axis: **Cross-cutting links**（所有路由都有導覽入口？）
+
+| # | 路由 | 入口 | 結果 |
+|---|------|------|------|
+| 1 | `/browse` | AppShell nav | ✅ |
+| 2 | `/collections` | AppShell nav | ✅ |
+| 3 | `/requests` | AppShell nav | ✅ |
+| 4 | `/flags` | AppShell nav | ✅ |
+| 5 | `/my-skills` | AppShell nav / AuthArea | ✅ |
+| 6 | `/analytics` | AppShell nav | ✅ |
+| 7 | `/notifications` | AppShell bell icon | ✅ |
+| 8 | `/skills/:id/diff` | VersionList.tsx "比較版本" link | ✅ |
+| 9 | `/docs/*` 11 頁 | DocsSidebar 全覆蓋 | ✅ |
+| 10 | `/search` | 無任何連結 | ❌ **Bug AP** |
+
+**Bug AP (LOW / discoverability)**：`/search`（SearchResultsPage S094b）路由在整個 UI 沒有任何導覽入口，只能直接輸入 URL 到達。`docs/semantic-search` 文件說明語意搜尋原理但無「試用」CTA。Fix：在 SemanticSearchPage 加「試試語意搜尋 →」按鈕。
+
+### Tick 84 Summary
+- Round 37: 10 routes checked / **1 bug (AP)**
+- Fix commit: 214c9c3
