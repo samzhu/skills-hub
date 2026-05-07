@@ -36,7 +36,6 @@
 | S099 | META Trust Maturity & Implementation Audit | META | — | ✅ sub-specs all shipped (S099c v4.6.0 + S099d v4.7.0 + S099e1-e4) |
 | S120 | E2E auth integration test | M(8-10) | S114a | ✅ v4.8.0 — anonymous GET public → 200；root cause: @TestConfiguration on AotStubBeans |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | ✅ shipped — S135a (v3.14.0) + S135b (v4.1.0) |
-| S140 | E2E Critical Path Backfill（PRD P1-P6 + Quality Score → 6 happy-path Playwright specs + TestDataController） | S(11) | playwright-expert ✅（commit 31727db）| ⏳ Plan — 9 tasks in `docs/grimo/tasks/`，POC PASS，ready for /implementing-task |
 | S141 | `/api/v1/me` Display Claims（補 email/name/picture pass-through，修 user-visible 顯示成 Google sub bug） | XS(7) | S139 ✅（v4.18.0）| 📐 design complete — `/planning-tasks S141` next |
 
 ---
@@ -53,6 +52,7 @@
 | v3.14.0 | S135a (Backend Quality Score) | ✅ shipped 2026-05-06 |
 | v4.17.0 | S132 (CI Cloud Build pipeline — LAB manual submit 跑通) | ✅ shipped 2026-05-07 |
 | v4.18.0 | S139 (Login UI + Lazy Auth Gate + LAB Google OAuth E2E) | ✅ shipped 2026-05-07 |
+| v4.19.0 | S140 (E2E Critical Path Backfill — 6 happy-path specs + TestDataController) | ✅ shipped 2026-05-07 |
 | v4.0.0 | S114a (RBAC ACL Owner+Viewer) | ✅ shipped 2026-05-06 |
 | v4.1.0 | S135b (Frontend Quality Display) | ✅ shipped 2026-05-06 |
 | v4.2.0 | S120 (E2E auth integration test) | ✅ shipped v4.8.0 |
@@ -318,3 +318,4 @@
 | S135b | Frontend Quality Display（hero bar + 品質 tab）| S(9-11) | v4.1.0 |
 | S132 | CI — Cloud Build pipeline（LAB manual submit）| XS(7) | v4.17.0 |
 | S139 | Login UI + Lazy Auth Gate + LAB Google OAuth E2E | S(10) | v4.18.0 |
+| S140 | E2E Critical Path Backfill (P1-P6 + Quality, 6 happy-path specs) | S(11) | v4.19.0 |

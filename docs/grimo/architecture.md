@@ -258,8 +258,15 @@ io.github.samzhu.skillshub
 │   │   ├── SkillQueryService.java (skillRepo.findById / search via NamedParameterJdbcTemplate + Skill.fromRow)
 │   │   ├── SkillQueryController.java (GET — response type Skill / SkillVersion；@JsonIgnore version)
 │   │   └── SkillAclQueryService.java (skillRepo.findById → ACL entry 拆解)
-│   └── validation/             ← SKILL.md 驗證
-│       └── SkillValidator.java (agentskills.io 規範)
+│   ├── validation/             ← SKILL.md 驗證
+│   │   └── SkillValidator.java (agentskills.io 規範)
+│   └── testsupport/            ← S140：E2E fixture seeding endpoints（@Profile-gated, non-prod only）
+│       ├── TestDataController.java   (@RestController @Profile({"local","dev","e2e"})；
+│       │                              POST /internal/test/{reset,seed/skill,seed/download-event}）
+│       ├── SeedSkillRequest.java / SeedDownloadEventRequest.java (DTO records)
+│       └── E2EEmbeddingConfig.java   (@Configuration @Profile("e2e")；
+│                                      @Primary deterministic 768-dim stub EmbeddingModel
+│                                      取代 NoOp / Google bean，e2e 跑無 GenAI 依賴)
 │
 ├── security/                   ← Event-driven service（無 Aggregate）
 │   ├── RiskLevel.java          (enum: LOW, MEDIUM, HIGH)
@@ -436,9 +443,11 @@ CI（Cloud Build trigger: push to main）— S132
   Script 自帶 npm ci + npm run build + cp 三步前置，後接 bootBuildImage + docker push（SHA + :latest 雙 tag）
 ```
 
-### E2E Workspace（per ADR-007；S140 backfill in-design）
+### E2E Workspace（per ADR-007；S140 critical-path backfill ✅）
 
 `e2e/` 為獨立 Playwright workspace（與 `backend/` / `frontend/` 並列 repo root），不屬任一側。`playwright-expert` skill 統一管理 BOOTSTRAP / DESIGN / VERIFY 三個流程節點，跨 skill 透過 `e2e/results/evidence.json` 契約檔互通。
+
+S140 ship 後 V07（`--grep @happy-path`）入帶 6 支 critical-path spec（PRD P1-P6 + Quality Score），對應 `skill.testsupport` backend 三個 fixture seeding endpoint（per Pattern 1 / fixtures-patterns.md）。`backend/src/main/resources/application-e2e.yaml` 提供 e2e 行為配置（`oauth.enabled=false` LAB mode + `semantic-similarity-threshold=0.0` 接受 stub embedder cosine + `testsupport.E2EEmbeddingConfig` 的 deterministic 768-dim stub `EmbeddingModel` `@Primary`）。Cloud Build 不啟用 e2e profile（per S132 §8 baked profile），production binary 完全不含 testsupport bean / e2e yaml。
 
 ```
 e2e/

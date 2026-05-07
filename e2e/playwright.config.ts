@@ -11,7 +11,12 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // S140-T09: 全局單 worker。`fullyParallel: false` 只擋同檔內 test 並行；
+  // 跨 spec file 預設仍依 worker 數同跑，造成 resetAll/seedSkill 互踩
+  // （TRUNCATE 拿 AccessExclusiveLock 與 INSERT RowShareLock 互鎖 → deadlock；
+  // 同名 seed → 409 DUPLICATE_RESOURCE）。S140 6 支 spec 共用後端 state，
+  // 一律 workers=1 才能保證 fixture isolation。CI 本來就 1，這裡與 CI 對齊。
+  workers: 1,
 
   // Reporter list. The 'github' reporter prints `::notice::` lines
   // unconditionally; only GitHub Actions parses them as annotations
@@ -48,9 +53,16 @@ export default defineConfig({
       // -x processAot per qa-strategy.md Known Limitations (GraalVM
       // native build plugin pre-existing bug; workaround until AOT
       // config or OTel switch lands).
+      //
+      // S140: SPRING_PROFILES_ACTIVE 顯式宣告 local,dev,e2e。dev 提供
+      // DB 連線值 + LAB security（oauth disabled），e2e 補上 deterministic
+      // stub embedder + semantic threshold=-1.0。沒寫的話會走 base yaml
+      // default（local,dev），missing application-e2e.yaml + stub embedder
+      // → AC-5 永遠 empty results，AC-1/3/4/6 也不一定能跑通。
       name: 'Backend',
       command: './gradlew bootRun -x processAot',
       cwd: '../backend',
+      env: { SPRING_PROFILES_ACTIVE: 'local,dev,e2e' },
       url: 'http://localhost:8080/actuator/health',
       timeout: 180_000,
       reuseExistingServer: !process.env.CI,

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -42,11 +43,16 @@ class SemanticSearchService {
     private static final Logger log = LoggerFactory.getLogger(SemanticSearchService.class);
 
     /**
-     * Cosine similarity 最低門檻值（0–1）。
+     * Cosine similarity 最低門檻值（cosine 範圍 [-1, 1]）。
      * 低於此值的結果被視為與查詢無關，不回傳給前端。
-     * 0.3 為實務上適合一般語意搜尋的寬鬆門檻。
+     * 0.3 為實務上適合一般語意搜尋的寬鬆門檻（Gemini 真 embedding）。
+     *
+     * <p>S140 (e2e profile)：deterministic stub embedder cosine 範圍 ±0.1
+     * （per POC poc/S140/StubEmbeddingPoc.java），需 override 為 -1.0 才能讓所有
+     * skill 通過，allowing happy-path E2E 驗 deterministic ranking 而非 semantic 質量。
+     * 預設值維持 0.3 fail-safe（production 行為不變）。
      */
-    private static final double SIMILARITY_THRESHOLD = 0.3;
+    private final double similarityThreshold;
 
     private final JdbcTemplate jdbcTemplate;
     private final EmbeddingModel embeddingModel;
@@ -56,12 +62,14 @@ class SemanticSearchService {
 
     SemanticSearchService(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel,
             CurrentUserProvider currentUserProvider, AclPrincipalExpander aclExpander,
-            SkillRepository skillRepo) {
+            SkillRepository skillRepo,
+            @Value("${skillshub.search.semantic-similarity-threshold:0.3}") double similarityThreshold) {
         this.jdbcTemplate = jdbcTemplate;
         this.embeddingModel = embeddingModel;
         this.currentUserProvider = currentUserProvider;
         this.aclExpander = aclExpander;
         this.skillRepo = skillRepo;
+        this.similarityThreshold = similarityThreshold;
     }
 
     /**
@@ -83,7 +91,7 @@ class SemanticSearchService {
         var request = SearchRequest.builder()
                 .query(query)
                 .topK(topK)
-                .similarityThreshold(SIMILARITY_THRESHOLD)
+                .similarityThreshold(similarityThreshold)
                 .build();
 
         var docs = SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)

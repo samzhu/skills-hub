@@ -1,5 +1,43 @@
 # Changelog
 
+## [v4.19.0] — E2E Critical Path Backfill（S140 完成；2026-05-07）
+
+> PRD Critical Path P1-P6 + Quality Score 補上 6 支 happy-path Playwright spec，搭配 backend `skill.testsupport`（@Profile-gated）三個 fixture seeding endpoint。V07 (`--grep @happy-path`) 自此真正成為 critical-path regression gate。
+
+### Added — E2E
+
+- 6 支 critical-path Playwright spec（`e2e/tests/S140-critical-path-*.spec.ts`）涵蓋 PRD P1 browse+search、P1 detail+S135b Quality、P2+P3 publish+風險評估、P4 download zip、P5 semantic search、P6 analytics dashboard
+- `e2e/tests/_fixtures.ts` 共用 helper：`resetAll` / `seedSkill` / `seedDownloadEvents` + `profiles{empty,single,paged}` 3 個 canonical 狀態 + auto-fixture `resetState`
+- V07 evidence contract：`e2e/results/evidence.json` 6/6 ok=true（`render-evidence.sh` 從 `report.json` 產出）
+
+### Added — Backend (test-only, @Profile-gated)
+
+- `skill.testsupport` 子 package（per Modulith cycle 規避；top-level `testsupport` 跨模組存取 `SkillCommandService` 會破 verify cycle）
+  - `TestDataController` `@Profile({"local","dev","e2e"})` 暴露 `/internal/test/{reset, seed/skill, seed/download-event}`
+  - `reset` 對 16 張 application data tables 單句 `TRUNCATE … RESTART IDENTITY CASCADE`，內建 5× 200ms retry on `PessimisticLockingFailureException`（async listener AFTER_COMMIT race 兜底）
+  - `seed/skill` 透過 `SkillCommandService.uploadSkill()` 走完整 aggregate + outbox + audit path
+  - `seed/download-event` 直 INSERT `download_events` + 同步 `UPDATE skills.download_count += :delta`（對齊 production `SkillRepository.incrementDownloadCount` 行為）
+  - `E2EEmbeddingConfig` `@Configuration @Profile("e2e")`：`@Primary` deterministic 768-dim stub `EmbeddingModel`（`Random(input.hashCode())` 經 POC 驗證跨 reload 排序穩定）
+  - `application-e2e.yaml`：`oauth.enabled=false` LAB mode + `semantic-similarity-threshold=0.0`（Spring AI 強制 [0,1]，accept-all 對 stub embedder ±0.1 cosine）
+- `TestDataControllerTest`（4 tests）+ `TestDataControllerProfileTest`（4 profile guards）
+
+### Changed
+
+- `SemanticSearchService.SIMILARITY_THRESHOLD`：hardcoded `0.3` → `@Value("${skillshub.search.semantic-similarity-threshold:0.3}")` ctor inject。Production default 不變（仍 0.3 fail-safe）；e2e profile override 0.0 才放寬
+- `e2e/playwright.config.ts`：`workers: 1`（cross-spec 共用 backend state，多 worker 必撞 reset/seed deadlock 或 409 DUPLICATE）+ Backend `webServer.env: { SPRING_PROFILES_ACTIVE: 'local,dev,e2e' }`（沒這 env → e2e yaml 不載 → stub embedder/threshold/oauth 全失效）
+
+### Doc Sync
+
+- `docs/grimo/architecture.md` — 加 `skill.testsupport` 子 module + `application-e2e.yaml` profile 條目；E2E Workspace 段標記 S140 critical-path backfill ✅
+- `docs/grimo/development-standards.md` §E2E fixture seeding — 補述 3 個標準 endpoint contract + `workers: 1` + `SPRING_PROFILES_ACTIVE` 必填
+
+### Known Limitations / Tech Debts Surfaced
+
+- **Modulith verify cycle (pre-existing, not S140-introduced)**：`shared.api.ValidationErrorResponse → skill.validation.ValidationFinding`（S098b3-2 commit 7c94f0c）→ `processTestAot` 必 fail；workaround `-x processTestAot`。所有 backend test 都受影響，待 future tech debt spec 拆 `ValidationFinding` 至 shared.api 或加 NamedInterface
+- **WebMvcSlice `@EnableCaching` cache manager 缺 bean (pre-existing)**：per-test `@TestConfiguration ConcurrentMapCacheManager` workaround；應 lift 至 `WebMvcSliceTestBase`
+- **AC-2 Quality Score 8-dim relax**：e2e 無 `genai.api-key` → `LlmJudge` `@ConditionalOnProperty` 不建立。Test 改驗「品質 tab role 存在」；future spec 可加 `seed/quality-score` endpoint 恢復 strict assertion
+- **AC-6 sparkline 略過**：AnalyticsPage 實際無 dashboard-level sparkline；spec text drift，future spec 補實作或 PRD 收斂描述
+
 ## [v4.18.0] — Login UI + Lazy Auth Gate + LAB Google OAuth E2E（S139 完成；2026-05-07）
 
 > Lazy auth gate pattern：未登入可瀏覽 + 填表，只在 submit / 個人化 endpoint 才走 OAuth。AppShell 顯示 avatar dropdown / 登入按鈕（依登入態），鈴鐺顯示與否同源切換；後端 upload + 個人化 endpoints 加 `@PreAuthorize("isAuthenticated()")` 401 gate。LAB Cloud Run 端到端 Google login flow 由 user 完成驗證閉環。

@@ -1,0 +1,37 @@
+# =============================================================================
+# Skills Hub — E2E behavior profile (S140)
+# =============================================================================
+# Profile: e2e
+# 用途：Playwright E2E 跑 critical-path test 時啟用。
+#       1) 啟用 testsupport.TestDataController（fixture seeding endpoints）
+#       2) 啟用 testsupport.E2EEmbeddingConfig（@Primary deterministic stub
+#          EmbeddingModel；對齊 SkillshubProperties.GenAI.dimensions=768）
+#
+# 建議組合：local,e2e — 沿用 local Docker Compose 的 PostgreSQL + pgvector
+# 與 FileSystemStorageService（@Profile("local")），不需 GCP 憑證；e2e 行為
+# 層覆蓋 stub embedder。Cloud Build / production 不啟用此 profile（per S132
+# §8 baked profile 機制），TestDataController + E2EEmbeddingConfig bean 完全
+# 不存在 production binary。
+# =============================================================================
+
+skillshub:
+  security:
+    oauth:
+      # S140-T05: e2e 走 LAB 模式（LabSecurityFilter 注入 lab-user with ROLE_admin），
+      # Playwright 不需 storageState / OAuth round-trip — PublishPage 等 auth-gated
+      # endpoint 直接通過。Production prod profile 不啟用 e2e profile，OAuth 仍 fail-secure。
+      enabled: false
+  search:
+    # S140-T09: Spring AI 2.0.0-M5 SearchRequest.builder.similarityThreshold(...) 嚴格
+    # 驗證落在 [0,1]（IllegalArgumentException：「Similarity threshold must be in [0,1]
+    # range.」）。原訂 -1.0 直接 boom，改 0.0 = 「accept similarity ≥ 0」。Stub embedder
+    # cosine 跨 ±0.1（per POC poc/S140/StubEmbeddingPoc.java），統計上約半數 vector
+    # 對任一 query cosine ≥ 0；happy-path 只要 ≥ 1 結果就符 AC-5（deterministic ranking
+    # 非 semantic quality；test 自驗 reload 順序穩定）。Production 不啟用 e2e profile，
+    # threshold 仍走預設 0.3。
+    semantic-similarity-threshold: 0.0
+
+logging:
+  level:
+    # E2E 跑批時 SQL TRUNCATE 等動作清晰可見；其他維持 base 預設 INFO
+    io.github.samzhu.skillshub.skill.testsupport: DEBUG

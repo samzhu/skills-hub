@@ -100,7 +100,12 @@
 - Frontend: Vitest + React Testing Library
 - Module 邊界測試：Spring Modulith `@ApplicationModuleTest`
 - Browser E2E：Playwright 1.59.1 via `/playwright-expert` skill（per ADR-007）；`e2e/` workspace 獨立於 backend / frontend；spec test 命名 `<spec-id>-<slug>.spec.ts`，tag `@<spec-id> @ac-N @happy-path @profile-<name>`
-- E2E fixture seeding：**Pattern 1**（backend `@Profile({"local","dev","e2e"})` `TestDataController`）— 透過 `SkillCommandService.create()` 走 aggregate path 維持 outbox + audit invariant（per ADR-002 + ADR-007）；**禁止**直接 INSERT seed data；其他 3 patterns（direct DB / per-test API / DB snapshot）詳 `playwright-expert/references/fixtures-patterns.md`
+- E2E fixture seeding：**Pattern 1**（backend `@Profile({"local","dev","e2e"})` `TestDataController` 位於 `skill.testsupport` 子 package — top-level `testsupport` 跨模組存取 `SkillCommandService` 會破 Modulith verify cycle）— 透過 `SkillCommandService.uploadSkill()` 走 aggregate path 維持 outbox + audit invariant（per ADR-002 + ADR-007）。S140 ship 確立三個標準 endpoint：
+  - `POST /internal/test/reset` — 單句 `TRUNCATE ... RESTART IDENTITY CASCADE` 對 16 張 application data tables（allowlist 寫死於 controller，新表上線必須加入）；PG 內部一致性處理 FK 順序，比逐張安全
+  - `POST /internal/test/seed/skill` — 走 `SkillCommandService.uploadSkill()` 完整 path（aggregate + outbox + audit）；`skillMdContent` 為 null 時 controller 自動合成 minimal SKILL.md
+  - `POST /internal/test/seed/download-event` — 直 INSERT `download_events`（read-side projection table）+ `UPDATE skills.download_count += :count`（對齊 production `SkillRepository.incrementDownloadCount` 行為，防 Top 10 排行少了同步 counter 永遠 0）
+  - **禁止**繞過以上 endpoint 直 INSERT aggregate state；其他 3 patterns（direct DB / per-test API / DB snapshot）詳 `playwright-expert/references/fixtures-patterns.md`
+- E2E profile activation：`SPRING_PROFILES_ACTIVE=local,dev,e2e` 是 Playwright `webServer` env 必填（沒有 → e2e yaml 不載 → stub embedder 不啟用 / threshold 仍 0.3 / oauth gating 仍 fail-secure）。`workers: 1` 是必須（共用後端 state；多 worker 跑 reset/seed 互踩造成 PG `AccessExclusiveLock` deadlock 或 409 DUPLICATE_RESOURCE）
 
 ### 測試金字塔規範（S025a 起；per spec §3 + qa-strategy.md §Layer 1 細則）
 
