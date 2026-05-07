@@ -30,11 +30,11 @@
 | 領域 | 模式 | Aggregate | 說明 |
 |------|------|-----------|------|
 | **skill（核心域）** | **Spring Data JDBC 充血聚合 + Modulith Outbox** | `Skill` / `SkillVersion`（獨立 aggregate） | S024 起轉向；`@Table` + `extends AbstractAggregateRoot` + `@Version` 樂觀鎖；`repo.save()` 透過 `@DomainEvents` 自動 publish events 至 outbox（同 TX） |
-| **security** | **Event-driven service** | 無 | 訂閱 `SkillVersionPublishedEvent` 觸發風險評估，透過 `SkillVersion.attachRiskAssessment` 回寫 |
+| **security** | **Event-driven service** | 無 | 訂閱 `SkillVersionPublishedEvent` 觸發風險評估，透過 `SkillVersion.attachRiskAssessment` 回寫；S142b 加 `SecurityCategoryMapper`（4-quad partition / scoring）、`SecurityReportService` + `SecurityReportController`（GET /security-report） |
 | **search** | **Read-side projection** | 無 | 消費 skill events 建構搜尋索引（keyword + semantic） |
 | **analytics** | **Read-side projection** | 無 | 消費 download events 建構統計數據 |
 | **audit** | **Cross-cutting listener** | 無 | 訂閱所有 9 個 Skill domain events 寫入 `domain_events` audit log（async + idempotent；S024 引入） |
-| **score** | **Async LLM judge** | `SkillScore`（per-axis evaluation row） | S135a 引入；訂閱 `SkillVersionPublishedEvent` → 3-axis 品質評分（VALIDATION rule-based + IMPLEMENTATION/ACTIVATION Gemini 2.5 Flash LLM judge）→ 寫 `skill_scores` 表；獨立 `qualityExecutor` pool（corePool=1, queue=500）避免擠 `applicationTaskExecutor` |
+| **score** | **Async LLM judge** | `SkillScore`（per-axis evaluation row） | S135a 引入；訂閱 `SkillVersionPublishedEvent` → 3-axis 品質評分（VALIDATION rule-based + IMPLEMENTATION/ACTIVATION Gemini 2.5 Flash LLM judge）→ 寫 `skill_scores` 表；獨立 `qualityExecutor` pool（corePool=1, queue=500）避免擠 `applicationTaskExecutor`；S142b 加 `SkillScoreCalculator`（composite `round(0.6 × quality + 0.4 × security)` → `skillScore` field in `/scores` response） |
 | **storage** | **Infrastructure service** | 無 | 傳統 service，GCS 操作 |
 
 ### Core Concepts
@@ -270,9 +270,10 @@ io.github.samzhu.skillshub
 │
 ├── security/                   ← Event-driven service（無 Aggregate）
 │   ├── RiskLevel.java          (enum: LOW, MEDIUM, HIGH)
-│   ├── RiskScanner.java        (靜態分析引擎)
-│   ├── RiskAssessmentListener.java (@ApplicationModuleListener on SkillVersionPublished)
-│   ├── SkillRiskAssessed.java  (domain event — 由 listener 發佈)
+│   ├── SecurityCategoryMapper.java (S142b: 4-quad partition + scoring；SHELL/PATHS/SECRETS/DEPS)
+│   ├── SecurityReportService.java  (S142b: GET /security-report — 讀 riskAssessment JSONB → 4-quad response)
+│   ├── SecurityReportController.java (S142b: GET /api/v1/skills/{id}/security-report)
+│   ├── SecurityReportResponse.java   (S142b: 4-quad response DTO)
 │   ├── FlagService.java        (直接 CRUD，不走 aggregate)
 │   └── FlagController.java
 │
@@ -494,6 +495,8 @@ npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer
 | GET | `/api/v1/skills/{id}/versions/{ver}/download` | 下載指定版本 zip | storage |
 | GET | `/api/v1/skills/{id}/download` | 下載最新版本 zip | storage |
 | GET | `/api/v1/skills/{id}/risk` | 取得風險評估結果 | skill.query |
+| GET | `/api/v1/skills/{id}/security-report` | 取得 4-quad 安全報告（S142b） | security |
+| GET | `/api/v1/skills/{id}/scores` | 取得品質評分（含 skillScore composite） | score |
 | GET | `/api/v1/skills/{id}/flags` | 取得回報列表 | skill.query |
 | POST | `/api/v1/search/semantic` | 語意搜尋（自然語言） | search |
 | GET | `/api/v1/analytics/overview` | 平台總覽統計 | analytics |

@@ -1,5 +1,29 @@
 # Changelog
 
+## [v4.1.0] — SkillDetailPage v2 Backend Supplement（S142b 完成；2026-05-07）
+
+> GET /skills/{id} 新增 6 個衍生欄位（verified / latestVersionPublishedAt / license / compatibility / versionCount / openFlagCount）、GET /scores 加 skillScore composite（0.6×quality + 0.4×security）、新 GET /security-report 4-quad endpoint。S142a frontend 所需 API contract 全部就緒。
+
+### Added — Security module
+
+- `SecurityCategoryMapper` — 4-quad partition（SHELL / PATHS / SECRETS / DEPS）+ PASS/WARN/FAIL status + securityScore（pass=100 / 1warn=75 / 2warn=50 / 3+warn=25 / anyFail=25）+ detail string 格式化
+- `SecurityReportController` + `SecurityReportService` + `SecurityReportResponse` — `GET /api/v1/skills/{id}/security-report` 4-quad endpoint；未掃描回 404 SECURITY_NOT_SCANNED
+
+### Added / Modified — Score module
+
+- `SkillScoreCalculator` — `compute(int quality, Integer security)` 複合公式；`compute(skillId, quality)` 從 SkillVersion JSONB 讀 securityScore
+- `ScoreResponse` 加 `Integer skillScore` field（null = security 未掃描）
+- `QualityScoreController` 注入 `SkillScoreCalculator`，GET /scores response 含 skillScore
+
+### Modified — Skill domain
+
+- `Skill` aggregate 加 6 個 `@Transient` 衍生欄位（`verified`, `latestVersionPublishedAt`, `license`, `compatibility`, `versionCount`, `openFlagCount`）
+- `SkillQueryService.findById()` / `findByAuthorAndName()` 在 load 後執行 `enrichDetail()`：query latest SkillVersion metadata + COUNT open flags
+
+### Bugfix — Test
+
+- `SkillQueryControllerApiContractTest` 補上 `SkillDiffQueryService` / `SkillFileDiffService` `@MockitoBean`（pre-existing gap，controller ctor 4 deps 只 mock 2）
+
 ## [v4.19.0] — E2E Critical Path Backfill（S140 完成；2026-05-07）
 
 > PRD Critical Path P1-P6 + Quality Score 補上 6 支 happy-path Playwright spec，搭配 backend `skill.testsupport`（@Profile-gated）三個 fixture seeding endpoint。V07 (`--grep @happy-path`) 自此真正成為 critical-path regression gate。

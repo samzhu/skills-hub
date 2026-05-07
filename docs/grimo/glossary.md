@@ -40,3 +40,6 @@
 | 測試資料種子 | Test Data Seed | `TestDataController` | 走 backend `@Profile({"local","dev","e2e"})` controller 透過 `SkillCommandService.create()` 寫入測試資料；**禁繞 aggregate** 直接 INSERT |
 | 追蹤檔 | Playwright Trace | `trace.zip` | Playwright 錄製的 time-travel debugger artefact，含 screenshot film strip + DOM snapshot + network；本機 `npx playwright show-trace` 或拖到 trace.playwright.dev |
 | 證據檔 | Evidence Contract | `e2e/results/evidence.json` | `playwright-expert` VERIFY mode 產出的跨 skill 契約檔，給 `/verifying-quality` 讀取；schema 含 spec_id / stats / per-test ok / trace_paths |
+| 技能分數 | Skill Score | `skillScore` | S142b 複合評分公式：`round(0.6 × qualityTotal + 0.4 × securityScore)`；securityScore 為 null（未掃描）時 skillScore = null；出現在 GET /scores 回應 |
+| 安全報告 | Security Report | `SecurityReportResponse` | S142b 4-quad 安全檢查視圖（Shell / Paths / Secrets / Deps）；從 `risk_assessment` JSONB findings 依 analyzer + ruleId 分類為 4 個 quad；每 quad 各有 status（PASS/WARN/FAIL）+ detail；出現在 GET /security-report 回應 |
+| 已驗證 | Verified | `verified` | S142b 衍生旗標：`status === 'PUBLISHED' && riskLevel != null`；表示「平台已完成品質 + 安全兩階段審查」≠「無風險」；出現在 GET /skills/{id} 回應 |
