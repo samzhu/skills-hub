@@ -1,6 +1,6 @@
 ---
 name: using-git-worktrees
-description: Use when starting isolated work that risks disrupting the main checkout — POC for unfamiliar SDKs, multi-attempt root-cause debugging, hotfix interrupting an in-flight spec, or a sub-agent that edits code. Skip for normal spec implementation; this project's single-track workflow does not need a worktree per spec. Worktrees live at `.worktrees/<name>/` (NOT the platform default `.claude/worktrees/`).
+description: Use when starting isolated work that needs a disposable workspace — POC for unfamiliar SDKs, multi-attempt root-cause debugging, hotfix interrupting an in-flight spec, or a sub-agent that edits code. Don't use for normal spec implementation; the single-track cron-loop workflow does not need a worktree per spec. Worktrees go to the project's `.worktrees/` directory, never the platform default `.claude/worktrees/`.
 ---
 
 # Using Git Worktrees
@@ -139,3 +139,33 @@ cd backend && ./gradlew test       # 或對應 ecosystem 的 targeted test
 | 想切 session 進 worktree | 不要試 `EnterWorktree`（已 deny）；另開 terminal `cd .worktrees/<name> && claude` |
 | 同 session 想操作 worktree 內容 | `git -C .worktrees/<name> ...` 或 `(cd .worktrees/<name> && <cmd>)` |
 | Subagent 要 isolation | Subagent 自己跑 Step 1，不要用 `isolation: "worktree"` 參數 |
+
+## Examples
+
+**Positive — should trigger**
+
+> "我要試 Spring Modulith 的 SAGA pattern，沒用過、可能踩雷"
+> → trigger，Step 1 開 `.worktrees/poc-modulith-saga/`，跑 POC，Step 3 視結果 Ship 或 Discard。
+
+> "build CI 連續 3 次失敗，要試不同的 cache key 組合"
+> → trigger（multi-attempt debug），每次嘗試 commit 為 restore point，找到對的組合後 Step 3 cherry-pick clean，丟掉中間 noise。
+
+**Negative — should NOT trigger**
+
+> "把 SkillDetailPage 加一個 share 按鈕"
+> → 不 trigger，normal spec implementation，main 上做 commit per tick 即可。
+
+> "今天的 E2E 巡檢 round（Mode B）"
+> → 不 trigger，read-only investigation，找到 bug 才切回 Mode A 寫 fix-spec。
+
+## Error Handling
+
+| Condition | Cause | Recovery |
+|---|---|---|
+| Precondition 自檢顯示 `deny: MISSING` | `/planning-project` Project Policy Bootstrap 沒跑過、或 settings 被覆蓋 | 跑 `/planning-project`，或手動加 `permissions.deny` 進 `.claude/settings.local.json`，再回 Step 0 |
+| Precondition 自檢顯示 `gitignore: MISSING` | `.gitignore` 沒收 `.worktrees/` | 加 `.worktrees/` 到 `.gitignore` 並 commit，再跑 Step 1 |
+| `git worktree add` 失敗 with `already exists` | 同名 worktree 之前留下（崩潰 / wall-hit / 忘記收尾）| `git worktree list` 看孤兒；先對它跑 Step 3 收尾，再 retry Step 1 |
+| 嘗試 call `EnterWorktree` 收到 deny error | 違反 path policy，呼叫了平台 native tool | 改用 `git worktree add .worktrees/<name>` 走 Step 1；不要繞過 deny |
+| `git worktree remove` 失敗 with uncommitted changes | worktree 內有未 commit 的改動 | 確認改動取捨：要保留 → commit / cherry-pick 出去；要丟 → 加 `--force` |
+| `git branch -D` 失敗 with `branch is checked out` | branch 在另一個 worktree 用 | 先 `git worktree remove` 那個 worktree，再 `-D` |
+| Subagent 結束但留下孤兒 worktree | subagent 崩潰、超時、或 prompt 沒寫 Step 3 | 下個 tick 開頭 `git worktree list` 會顯示孤兒；走 Step 3 Discard 收尾 |
