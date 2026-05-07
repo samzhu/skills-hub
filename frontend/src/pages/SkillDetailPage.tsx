@@ -92,7 +92,7 @@ export function SkillDetailPage() {
     )
   }
 
-  const fileCount = skill.versionCount // fallback; replaced when files loaded
+  const fileCount = versions?.[0]?.fileCount ?? 0
 
   return (
     <AppShell>
@@ -140,12 +140,12 @@ export function SkillDetailPage() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="skill-md">SKILL.md</TabsTrigger>
-              <TabsTrigger value="quality">Quality</TabsTrigger>
-              <TabsTrigger value="versions">Versions</TabsTrigger>
-              <TabsTrigger value="reviews">Reviews</TabsTrigger>
-              <TabsTrigger value="security">Security</TabsTrigger>
-              <TabsTrigger value="flags">Flags</TabsTrigger>
-              <TabsTrigger value="files">Files {fileCount > 0 ? `(${fileCount})` : ''}</TabsTrigger>
+              <TabsTrigger value="quality">品質</TabsTrigger>
+              <TabsTrigger value="versions">版本</TabsTrigger>
+              <TabsTrigger value="reviews">評論</TabsTrigger>
+              <TabsTrigger value="security">安全性</TabsTrigger>
+              <TabsTrigger value="flags">旗標</TabsTrigger>
+              <TabsTrigger value="files">檔案 {fileCount > 0 ? `(${fileCount})` : ''}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="skill-md" className="mt-4">

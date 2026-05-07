@@ -31,7 +31,7 @@ export function StatStrip({ skill, stats }: Props) {
     >
       {/* Downloads */}
       <div style={cellStyle(false)}>
-        <div style={labelStyle}>DOWNLOADS</div>
+        <div style={labelStyle}>下載次數</div>
         <div style={valStyle}>{skill.downloadCount.toLocaleString()}</div>
         <div style={subStyle}>
           {delta !== null && (
@@ -39,7 +39,7 @@ export function StatStrip({ skill, stats }: Props) {
               data-testid="download-delta"
               style={{ color: delta >= 0 ? 'var(--green-text, #6FD8B0)' : 'var(--red-text, #F08080)' }}
             >
-              {delta >= 0 ? '↑' : '↓'} {Math.abs(delta)}% vs last week
+              {delta >= 0 ? '↑' : '↓'} {Math.abs(delta)}% 相較上週
             </span>
           )}
         </div>
@@ -47,7 +47,7 @@ export function StatStrip({ skill, stats }: Props) {
 
       {/* Rating */}
       <div style={cellStyle(false)}>
-        <div style={labelStyle}>RATING</div>
+        <div style={labelStyle}>評分</div>
         <div style={valStyle}>
           {skill.reviewCount > 0 ? skill.averageRating.toFixed(1) : '—'}
           {skill.reviewCount > 0 && (
@@ -59,7 +59,7 @@ export function StatStrip({ skill, stats }: Props) {
 
       {/* Versions */}
       <div style={cellStyle(false)}>
-        <div style={labelStyle}>VERSIONS</div>
+        <div style={labelStyle}>版本數</div>
         <div data-testid="version-count" style={valStyle}>{skill.versionCount}</div>
         <div style={subStyle}>
           {skill.latestVersionPublishedAt
@@ -70,7 +70,7 @@ export function StatStrip({ skill, stats }: Props) {
 
       {/* Open flags */}
       <div style={{ ...cellStyle(true), borderRight: 'none' }}>
-        <div style={labelStyle}>OPEN FLAGS</div>
+        <div style={labelStyle}>待處理旗標</div>
         <div
           data-testid="open-flags"
           style={{

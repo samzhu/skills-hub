@@ -18,10 +18,10 @@ const stats14d = [70, 70, 70, 70, 75, 75, 70, 80, 85, 85, 85, 85, 85, 85]
 describe('StatStrip', () => {
   it('AC-S142a-10: 4 cells rendered', () => {
     render(<StatStrip skill={baseSkill} stats={stats14d} />)
-    expect(screen.getByText('DOWNLOADS')).toBeTruthy()
-    expect(screen.getByText('RATING')).toBeTruthy()
-    expect(screen.getByText('VERSIONS')).toBeTruthy()
-    expect(screen.getByText('OPEN FLAGS')).toBeTruthy()
+    expect(screen.getByText('下載次數')).toBeTruthy()
+    expect(screen.getByText('評分')).toBeTruthy()
+    expect(screen.getByText('版本數')).toBeTruthy()
+    expect(screen.getByText('待處理旗標')).toBeTruthy()
   })
 
   it('AC-S142a-10: downloads delta ↑ with green color', () => {
