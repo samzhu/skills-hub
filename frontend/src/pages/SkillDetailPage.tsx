@@ -158,7 +158,7 @@ export function SkillDetailPage() {
 
             <TabsContent value="versions" className="mt-4">
               <VersionsTabV2 versions={versions ?? []} />
-              {skill.status !== 'SUSPENDED' && <AddVersionForm skillId={id} />}
+              {isOwner && skill.status !== 'SUSPENDED' && <AddVersionForm skillId={id} />}
             </TabsContent>
 
             <TabsContent value="reviews" className="mt-4">
@@ -191,7 +191,7 @@ export function SkillDetailPage() {
         />
       </div>
 
-      {/* Markdown action menu (floating — owner only, per S133) */}
+      {/* Markdown action menu (floating — PUBLISHED skill 所有訪客可見, per S133 AC-5) */}
       {skill.status === 'PUBLISHED' && skill.latestVersion && (
         <MarkdownActionMenu skillId={skill.id} />
       )}

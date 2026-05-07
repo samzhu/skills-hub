@@ -840,3 +840,31 @@ SVG `aria-label` → "技能分數環狀圖"；SVG 內文字 "SKILL SCORE" → "
 
 ### Tick 91 Summary
 - Round 44: 10 checks / **1 bug cluster (AU)** — 全數 inline 修復
+
+---
+
+## Tick 92 — Round 45: Anonymous vs authenticated flow 比對 (2026-05-08)
+
+Cut axis: **Anonymous vs authenticated flow 比對**（未登入/登入使用者看到不同 UI 的正確性）
+
+| # | 元件 | 檢查項目 | 結果 |
+|---|------|---------|------|
+| 1 | AuthGatedButton (StarButton) | anonymous click → `auth.login()` redirect ✓ | ✅ |
+| 2 | isOwner 判斷 | `!!skill && !!me && skill.ownerId === me.sub`；anonymous → me=undefined → isOwner=false ✓ | ✅ |
+| 3 | PageHeader 分享按鈕 | `isOwner && onShareClick &&` 才顯示 ✓ | ✅ |
+| 4 | AddVersionForm | `{skill.status !== 'SUSPENDED' && <AddVersionForm />}` — 缺 `isOwner` gate！非 owner 可見版本上傳表單 | ❌ **Bug AV** |
+| 5 | MarkdownActionMenu | 程式碼 comment 標 "owner only" 但 S133 AC-5 確認應對 PUBLISHED skill 全訪客可見；comment 錯誤 | ❌ **Bug AV（注釋）** |
+| 6 | ReviewsPanel "撰寫評論" | anonymous 時 currentUserId=undefined，`!myReview` 永遠 true → 表單可見；MVP permit-all 下可接受 | ✅（MVP 可接受）|
+| 7 | FlagsList "回報問題" | anonymous 可見；MVP permit-all 下為社群功能，設計如此 | ✅（MVP 可接受）|
+| 8 | MarkdownActionMenu 功能 | copy SKILL.md — 讀取操作，全訪客可用 ✓ | ✅ |
+| 9 | useMe() 失敗時 | query error → me=undefined → isOwner=false，owner gate 失效安全 ✓ | ✅ |
+| 10 | 下載技能 CTA | `skill.status === 'PUBLISHED'` 才顯示；無 auth gate（MVP 設計）✓ | ✅ |
+
+**Bug AV (MEDIUM / auth/UX)**：
+`AddVersionForm` 未檢查 `isOwner`，非 owner（含 anonymous）可見版本上傳表單。
+新增版本是 owner-only 寫入操作；前端 UI 應與所有權語意對齊，防止誤導性 UX。
+另 MarkdownActionMenu 旁的 comment "owner only" 與 S133 AC-5 規格不符，已更正。
+修復：加入 `isOwner &&` 判斷；更新 comment；318/318 Vitest PASS。
+
+### Tick 92 Summary
+- Round 45: 10 checks / **1 bug cluster (AV)** — 全數 inline 修復
