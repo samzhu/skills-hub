@@ -436,6 +436,31 @@ CI（Cloud Build trigger: push to main）— S132
   Script 自帶 npm ci + npm run build + cp 三步前置，後接 bootBuildImage + docker push（SHA + :latest 雙 tag）
 ```
 
+### E2E Workspace（per ADR-007；S140 backfill in-design）
+
+`e2e/` 為獨立 Playwright workspace（與 `backend/` / `frontend/` 並列 repo root），不屬任一側。`playwright-expert` skill 統一管理 BOOTSTRAP / DESIGN / VERIFY 三個流程節點，跨 skill 透過 `e2e/results/evidence.json` 契約檔互通。
+
+```
+e2e/
+├── .gitignore                  ← managed marker block by ensure-latest.sh
+├── package.json                ← @playwright/test ^1.59.1
+├── playwright.config.ts        ← Recipe A: Spring Boot bootRun -x processAot + Vite webServer
+├── tests/                      ← spec test files（per spec-id；@<spec-id> @ac-N @happy-path tags）
+├── results/                    ← gitignored: report.json + evidence.json（cross-skill contract）
+├── playwright-report/          ← gitignored: HTML report + 內嵌 trace.zip 連結
+└── test-results/               ← gitignored: per-test trace.zip + screenshot + video（only-on-failure）
+```
+
+執行：
+
+```bash
+cd e2e && npx playwright test --grep @<spec-id>     # spec-targeted run
+cd e2e && npx playwright test --grep @happy-path    # V07 critical-path gate
+npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer（純 local）
+```
+
+或 trace.zip 拖到 trace.playwright.dev — 官方靜態 PWA，純前端不上傳資料。詳 ADR-007 + `playwright-expert/references/caller-protocol.md`。
+
 ---
 
 ## API Design
@@ -512,6 +537,13 @@ CI（Cloud Build trigger: push to main）— S132
 | `border-beam` | latest | `import { BorderBeam } from 'border-beam'` | yes (npm) |
 | `vitest` | 4.1.5 | `import { describe, it, expect } from 'vitest'` | yes (npm) |
 | `@testing-library/react` | 16.x | `import { render, screen } from '@testing-library/react'` | yes (npm) |
+
+### E2E（Playwright workspace；per ADR-007）
+
+| Package | Version | Primary Import | Verified |
+|---------|---------|---------------|----------|
+| `@playwright/test` | ^1.59.1 | `import { test, expect } from '@playwright/test'` | yes (npm + bootstrap 2026-05-07 commit 31727db) |
+| Chromium Headless Shell | 1217 (Chrome 147.0.7727.15) | `--only-shell` install variant; cdn.playwright.dev | yes (smoke verified 2026-05-07) |
 
 ---
 

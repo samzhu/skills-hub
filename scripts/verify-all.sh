@@ -101,6 +101,17 @@ run_skip_if "V06" "cd frontend && npm test -- --coverage" \
   "[ ! -d '${REPO_ROOT}/frontend/node_modules' ]" \
   "(cd '${REPO_ROOT}/frontend' && npm test -- --coverage)"
 
+# V07: Playwright happy-path E2E gate (per ADR-007 + S140 critical-path backfill)
+# - skip if e2e/ not bootstrapped (no node_modules) 或 playwright.config.ts 缺
+# - 跑時 cd e2e && npx playwright test --grep @happy-path
+# Note: 至 S140 ship 6 個 critical-path spec 之前，--grep @happy-path 0 match
+# （placeholder smoke 標 @bootstrap，不在 happy-path gate 內）。Playwright default
+# 「0 tests run」exit 0 → V07 PASS as no-op；S140 ship 後才有真正 enforcement。
+# managed by /playwright-expert skill BOOTSTRAP / DESIGN / VERIFY 流程。
+run_skip_if "V07" "cd e2e && npx playwright test --grep @happy-path" \
+  "[ ! -d '${REPO_ROOT}/e2e/node_modules' ] || [ ! -f '${REPO_ROOT}/e2e/playwright.config.ts' ]" \
+  "(cd '${REPO_ROOT}/e2e' && npx playwright test --grep @happy-path)"
+
 # Summary
 PASS=0; FAIL=0; SKIP=0
 for r in "${RESULTS[@]}"; do

@@ -35,3 +35,8 @@
 | 需求 | Request | `SkillRequest` | 使用者公開發起的「我需要這種 skill」需求；可投票推升優先級、作者可認領（per P8 / S096g） |
 | 通知 | Notification | `Notification` | 從 domain events projected 出的 user-facing 動態提醒，支援分類過濾與已讀標記（per P9 / S096h） |
 | 訂閱 | Subscription | `SkillSubscription` | 使用者對特定 skill 的關注關係，作為通知過濾依據（per P9） |
+| 端對端測試 | E2E Test | `*.spec.ts` (Playwright) | 透過 browser 模擬使用者完整 user journey 的測試（Playwright via `/playwright-expert`，per ADR-007） |
+| 測試夾具狀態 | Fixture Profile | `@profile-<name>` tag | E2E 測試的初始 DB 狀態類型：empty / single / paged / full / mixed-visibility / multi-role / boundary（per `playwright-expert/references/fixtures-patterns.md`） |
+| 測試資料種子 | Test Data Seed | `TestDataController` | 走 backend `@Profile({"local","dev","e2e"})` controller 透過 `SkillCommandService.create()` 寫入測試資料；**禁繞 aggregate** 直接 INSERT |
+| 追蹤檔 | Playwright Trace | `trace.zip` | Playwright 錄製的 time-travel debugger artefact，含 screenshot film strip + DOM snapshot + network；本機 `npx playwright show-trace` 或拖到 trace.playwright.dev |
+| 證據檔 | Evidence Contract | `e2e/results/evidence.json` | `playwright-expert` VERIFY mode 產出的跨 skill 契約檔，給 `/verifying-quality` 讀取；schema 含 spec_id / stats / per-test ok / trace_paths |

@@ -87,15 +87,21 @@ skills-hub/
 │   │   └── static/                    ← React build output (Gradle 自動 copy)
 │   └── src/test/java/
 │
-└── frontend/                          ← [待建] React 19 SPA
-    ├── src/
-    │   ├── components/                ← shadcn/ui + Beam
-    │   ├── pages/
-    │   ├── hooks/
-    │   ├── api/
-    │   └── store/
-    ├── package.json
-    └── vite.config.ts
+├── frontend/                          ← React 19 SPA（Vite 8 + TypeScript 6）
+│   ├── src/
+│   │   ├── components/                ← shadcn/ui + Beam
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   ├── api/
+│   │   └── store/
+│   ├── package.json
+│   └── vite.config.ts
+│
+└── e2e/                               ← Playwright E2E workspace（per ADR-007；管理：/playwright-expert skill）
+    ├── .gitignore                    ← managed by ensure-latest.sh
+    ├── package.json                  ← @playwright/test ^1.59.1
+    ├── playwright.config.ts          ← Recipe A: Spring Boot + Vite webServer
+    └── tests/                         ← spec test files；results/ + playwright-report/ + test-results/ 皆 gitignored
 ```
 
 ## Architecture pattern
@@ -122,6 +128,7 @@ skills-hub/
 - **Auth:** Spring Security OAuth2 Resource Server (MVP: mock)
 - **Observability:** OpenTelemetry + Grafana LGTM
 - **API docs:** SpringDoc OpenAPI 3.0.2
+- **Browser E2E:** Playwright 1.59.1 + chromium-headless-shell（`e2e/` workspace；管理：`/playwright-expert` skill；fixture: Pattern 1 backend test API；per ADR-007）
 - **Deploy:** Docker container → GCP Cloud Run
 
 ## Key conventions
@@ -157,6 +164,12 @@ cd frontend && npm run dev
 # Tests
 cd backend && ./gradlew test           # Backend
 cd frontend && npm test                 # Frontend
+
+# Browser E2E（per ADR-007；webServer 自動啟 Spring Boot bootRun + Vite）
+cd e2e && npx playwright test                          # 全 e2e
+cd e2e && npx playwright test --grep @happy-path       # V07 critical-path gate
+cd e2e && npx playwright test --ui                      # Playwright UI mode（互動式）
+npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer
 
 # Container image
 cd backend && ./gradlew bootBuildImage
