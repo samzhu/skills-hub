@@ -269,7 +269,16 @@ verification need.
 its integration seams has an unverified assembly — the same risk
 category as an untested AC.
 
-**Execution protocol when E2E gate triggers:**
+**Browser-driven specs delegate execution.** When the integration
+seam is a browser/UI flow (HTTP → DOM → user-visible state), this
+skill does NOT run Playwright directly. Instead, invoke the
+`playwright-expert` skill in VERIFY mode with the spec id; read
+`e2e/results/evidence.json` for outcomes (PASS / fail per AC, trace
+paths). The protocol below applies to non-browser artefacts (CLI
+binaries, packaged tools, container images) where browser-stack
+hand-off is not relevant.
+
+**Execution protocol when E2E gate triggers (non-browser artefacts):**
 
 1. Clean-build the artifact
 2. **Create an isolated persistent state directory** (temporary

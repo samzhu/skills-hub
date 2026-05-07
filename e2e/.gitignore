@@ -1,0 +1,9 @@
+# playwright-expert managed (do not edit between markers)
+node_modules/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+playwright/.auth/
+results/
+# end playwright-expert managed

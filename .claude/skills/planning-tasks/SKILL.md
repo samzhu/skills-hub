@@ -307,16 +307,37 @@ command. Each task should carry enough work to justify a full
 RED → GREEN → REFACTOR cycle — if RED is just "file does not exist"
 and GREEN is creating a 5-line file, the task is too small.
 
-**E2E smoke test task (mandatory when stubs replace real systems):**
+**E2E task planning (mandatory when stubs replace real systems):**
 
 Ask: "Do unit tests for this spec stub or mock any external
 boundary — infrastructure, subprocesses, third-party services,
 credential stores?"
 
-If **yes** → the task plan MUST include a final task that exercises
-the feature through its real entry point against real dependencies,
-verifying every AC's data assertions return non-empty, conformant
-output. Stubs prove logic; only a real run proves assembly.
+If **yes** and the seam is browser/UI → delegate the E2E task
+design to `playwright-expert` in DESIGN mode, passing the spec id.
+That skill reads the spec's §3 ACs, decides the fixture profile
+each AC needs (per its `references/fixtures-patterns.md`), and
+produces both `e2e/tests/<spec-id>-*.spec.ts` and a list of
+findings (missing locators, missing seed endpoints). Treat each
+finding as an additional task in this spec's task plan:
+
+- Missing `data-testid` on UI element → frontend task to add it.
+- Missing backend test seed endpoint
+  (`POST /internal/test/seed/<entity>`) → backend task to add it
+  under a non-production profile (`@Profile({"local","dev","e2e"})`).
+- Missing fixture profile data → seed-data task.
+
+The Playwright spec files themselves count as one task in the
+plan (RED = `npx playwright test --grep @<spec-id>` fails because
+the feature is not built; GREEN = it passes). Authoring those
+spec files is `playwright-expert` DESIGN's responsibility, not
+`implementing-task`'s — but the verification of GREEN is.
+
+If **yes** and the seam is non-browser → the task plan MUST
+include a final task that exercises the feature through its real
+entry point against real dependencies, verifying every AC's data
+assertions return non-empty, conformant output. Stubs prove
+logic; only a real run proves assembly.
 
 If **no** (pure logic, no stubbed boundaries) → skip.
 
@@ -373,17 +394,25 @@ activates in the real artifact — framework wiring, schema
 initialization, event serialization, subprocess communication, or
 credential injection that unit tests bypass with stubs?"
 
-If **yes** → build the artifact, run it, and verify the feature
-end-to-end in an **isolated environment** (temporary directory for
-persistent state — never delete or overwrite the user's real data).
-Design **boundary-condition scenarios** that push known constraints:
-if the change enables larger payloads, test with payloads that
+If **yes** and the seam is a browser/UI flow → invoke the
+`playwright-expert` skill in VERIFY mode with the spec id; the
+skill produces `e2e/results/evidence.json` containing per-AC
+outcome, trace paths, and exit code. Copy the relevant evidence
+fields into spec §7. Do NOT run Playwright commands inline here.
+
+If **yes** and the seam is non-browser (CLI binary, packaged
+tool, container image) → build the artefact, run it in an
+**isolated environment** (temporary directory for persistent
+state — never delete or overwrite the user's real data). Design
+**boundary-condition scenarios** that push known constraints: if
+the change enables larger payloads, test with payloads that
 exceed the previous limit; if the change alters data flow, verify
-the data actually arrives at the terminal consumer intact.
-Record evidence (command + output) in the spec §7.
-If E2E reveals failures → record findings in spec §7, revert
-status to `⏳ Dev`, create new task files for fixes, re-enter
-Phase 3. **Do not hotfix without task files.**
+the data actually arrives at the terminal consumer intact. Record
+evidence (command + output) in the spec §7.
+
+If E2E reveals failures (either path) → record findings in spec
+§7, revert status to `⏳ Dev`, create new task files for fixes,
+re-enter Phase 3. **Do not hotfix without task files.**
 
 If **no** → skip, proceed to Step 2. Record the rationale in §7:
 "E2E not required — no integration seams identified."

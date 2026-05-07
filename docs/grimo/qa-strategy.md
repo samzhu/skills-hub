@@ -67,6 +67,7 @@ Spring Modulith 的 `ApplicationModules.verify()` 確保：
 | V04 | `cd frontend && npm test` | CRITICAL | `frontend/node_modules` 不存在 | Vitest run；frontend test gate |
 | V05 | `cd frontend && npm run lint` | CRITICAL | `frontend/node_modules` 不存在 | ESLint；frontend lint gate |
 | V06 | `cd frontend && npm test -- --coverage` | CRITICAL | `frontend/node_modules` 不存在 | vitest `coverage.thresholds.lines: 80` gate；text reporter inline 印 coverage table 到 stdout；`coverage.include` whitelist 鎖定有對應 test 的 source 檔（漸進加入 gate）；S022 落地 |
+| V07 | `cd e2e && npx playwright test --grep @happy-path` | CRITICAL | `e2e/node_modules` 不存在 / `e2e/playwright.config.ts` 不存在 | Playwright happy-path E2E gate；by `/playwright-expert` skill；artefacts → `e2e/test-results/` + `e2e/playwright-report/`（gitignored，managed block by `ensure-latest.sh`）；trace `on-first-retry`（official default per playwright.dev/docs/ci-intro）；本機看 `npx playwright show-trace <trace.zip>` 或拖到 trace.playwright.dev；CI 用 `actions/upload-artifact@v5` + `if: ${{ !cancelled() }}` 上傳 |
 
 ### Known Limitations
 
@@ -185,10 +186,10 @@ class MyControllerTest extends WebMvcSliceTestBase {
 
 | 驗證項目 | 方式 |
 |----------|------|
-| UI 功能驗證 | 啟動 dev server，手動操作 golden path |
-| 跨瀏覽器 | Chrome + Safari（主要目標） |
-| 上傳/下載流程 | 端對端手動測試（含大檔案、異常格式） |
-| 風險評估準確度 | 準備已知危險/安全的 skill 樣本驗證 |
+| UI 功能驗證 | Playwright via `/playwright-expert`（VERIFY mode）；3 個 happy-path E2E spec；evidence 寫至 `e2e/results/evidence.json`；本機 trace `npx playwright show-trace` 或 trace.playwright.dev（皆免費 + offline） |
+| 跨瀏覽器 | Playwright 預設 chromium（headless shell）；新增 Firefox / WebKit project 待規模需要時加 |
+| 上傳/下載流程 | 由 happy-path spec 涵蓋；大檔案 / 異常格式邊界由 backend integration test（Testcontainers）涵蓋，不重複放 E2E |
+| 風險評估準確度 | 準備已知危險/安全的 skill 樣本驗證（仍含人工抽驗，非全自動） |
 
 ---
 
