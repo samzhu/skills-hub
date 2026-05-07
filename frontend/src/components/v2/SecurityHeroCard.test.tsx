@@ -27,19 +27,19 @@ const warnReport: SecurityReport = {
 }
 
 describe('SecurityHeroCard', () => {
-  it('AC-S142a-6: PASS → "Passed" + 4 green segments', () => {
+  it('AC-S142a-6: PASS → "通過" + 4 green segments', () => {
     render(<SecurityHeroCard report={passReport} active={false} onClick={vi.fn()} />)
-    expect(screen.getByTestId('security-value').textContent).toBe('Passed')
+    expect(screen.getByTestId('security-value').textContent).toBe('通過')
     // JSDOM normalizes hex to rgb — check via toContain partial
     expect(screen.getByTestId('seg-shell').style.background).toContain('29')   // rgb(29,...)
     expect(screen.getByTestId('seg-paths').style.background).toContain('29')
   })
 
-  it('AC-S142a-9: WARN paths → seg-paths amber; others green; card border amber; "1 Issue"', () => {
+  it('AC-S142a-9: WARN paths → seg-paths amber; others green; card border amber; "1 個問題"', () => {
     const { getByTestId } = render(
       <SecurityHeroCard report={warnReport} active={false} onClick={vi.fn()} />
     )
-    expect(screen.getByTestId('security-value').textContent).toBe('1 Issue')
+    expect(screen.getByTestId('security-value').textContent).toBe('1 個問題')
     expect(getByTestId('seg-paths').style.background).toContain('239')    // rgb(239,...) = amber
     expect(getByTestId('seg-shell').style.background).toContain('29')     // rgb(29,...)  = green
     // border: JSDOM normalizes rgba shorthand; check key color components

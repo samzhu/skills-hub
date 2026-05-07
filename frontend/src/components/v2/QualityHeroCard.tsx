@@ -30,14 +30,14 @@ export function QualityHeroCard({ scores, active, onClick }: Props) {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
         <span style={{ fontSize: 10, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
-          QUALITY
+          品質
         </span>
         <span data-testid="quality-pct" style={{ fontSize: 22, fontWeight: 500 }}>
           {pct !== null ? `${pct}%` : '—'}
         </span>
       </div>
       <div style={{ fontSize: 11, color: 'var(--ink-3, rgba(238,236,234,0.4))', marginBottom: 10 }}>
-        {pct === null ? '評分計算中' : 'Does it follow best practices?'}
+        {pct === null ? '評分計算中' : '是否符合最佳實踐？'}
       </div>
       {/* progress bar */}
       <div style={{ height: 3, background: 'rgba(127,119,221,0.12)', borderRadius: 2, marginBottom: 8, overflow: 'hidden' }}>
@@ -55,11 +55,11 @@ export function QualityHeroCard({ scores, active, onClick }: Props) {
       {/* breakdown */}
       {scores && (
         <div data-testid="quality-breakdown" style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
-          <span>Validation <strong style={{ color: 'var(--ink-2, rgba(238,236,234,0.7))' }}>{scores.validation.totalScore}</strong></span>
+          <span>規格驗證 <strong style={{ color: 'var(--ink-2, rgba(238,236,234,0.7))' }}>{scores.validation.totalScore}</strong></span>
           <span>·</span>
-          <span>Implementation <strong style={{ color: 'var(--ink-2, rgba(238,236,234,0.7))' }}>{scores.implementation.totalScore}</strong></span>
+          <span>實作品質 <strong style={{ color: 'var(--ink-2, rgba(238,236,234,0.7))' }}>{scores.implementation.totalScore}</strong></span>
           <span>·</span>
-          <span>Discovery <strong style={{ color: 'var(--ink-2, rgba(238,236,234,0.7))' }}>{scores.activation.totalScore}</strong></span>
+          <span>觸發能力 <strong style={{ color: 'var(--ink-2, rgba(238,236,234,0.7))' }}>{scores.activation.totalScore}</strong></span>
         </div>
       )}
     </div>

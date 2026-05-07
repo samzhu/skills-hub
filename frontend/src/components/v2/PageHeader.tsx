@@ -36,7 +36,7 @@ function StarButton({ skillId, isOwner }: { skillId: string; isOwner: boolean })
   return (
     <AuthGatedButton
       data-testid="star-btn"
-      title={subscribed ? 'Unsubscribe' : 'Subscribe'}
+      title={subscribed ? '取消訂閱' : '訂閱'}
       onClick={() => {
         if (subscribed) unsubscribe.mutate(skillId)
         else subscribe.mutate(skillId)
@@ -83,7 +83,7 @@ function VerifiedPill() {
       <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">
         <path d="M2 5l2 2 4-4" stroke="#6FD8B0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      Verified
+      已驗證
     </span>
   )
 }
@@ -137,10 +137,10 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
             </p>
             {/* Meta row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
-              <span>by {skill.author}</span>
+              <span>作者：{skill.author}</span>
               {skill.license && <><span>·</span><span>{skill.license}</span></>}
               <span>·</span>
-              <span>Updated {relativeTime(skill.updatedAt)}</span>
+              <span>更新於 {relativeTime(skill.updatedAt)}</span>
               <span>·</span>
               <span>{skill.category}</span>
             </div>

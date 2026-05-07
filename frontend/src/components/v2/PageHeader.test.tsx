@@ -53,7 +53,7 @@ describe('PageHeader', () => {
     setupMocks()
     renderHeader()
     expect(screen.getByTestId('verified-pill')).toBeTruthy()
-    expect(screen.getByText('Verified')).toBeTruthy()
+    expect(screen.getByText('已驗證')).toBeTruthy()
   })
 
   it('AC-S142a-2: verified=false → no verified-pill', () => {

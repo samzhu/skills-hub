@@ -733,3 +733,32 @@ Cut axis: **Interactive state consistency**（計數 / 狀態訊號一致性）
 
 ### Tick 87 Summary
 - Round 40: 7 checks / **1 bug cluster (AR-1+2+3)** — 全數 inline 修復
+
+---
+
+## Tick 88 — Round 41: Component-context alignment — PageHeader / SecurityHeroCard / QualityHeroCard (2026-05-08)
+
+Cut axis: **Component-context alignment**（跨 context 共用元件語意一致性）
+
+| # | 元件 | 問題 | 結果 |
+|---|------|------|------|
+| 1 | PageHeader — VerifiedPill | 顯示 "Verified"（英文）| ❌ **Bug AS** |
+| 2 | PageHeader — StarButton title | 'Unsubscribe'/'Subscribe' 英文 tooltip | ❌ **Bug AS** |
+| 3 | PageHeader — 作者行 | "by {author}" / "Updated ..." 英文 prefix | ❌ **Bug AS** |
+| 4 | SecurityHeroCard — overallLabel | 'Passed' / 'N Issue(s)' 英文 | ❌ **Bug AS** |
+| 5 | SecurityHeroCard — subText | 'No known issues' 英文 | ❌ **Bug AS** |
+| 6 | SecurityHeroCard — section header | 'SECURITY' 英文 | ❌ **Bug AS** |
+| 7 | QualityHeroCard — section header | 'QUALITY' 英文 | ❌ **Bug AS** |
+| 8 | QualityHeroCard — subText | 'Does it follow best practices?' 英文 | ❌ **Bug AS** |
+| 9 | QualityHeroCard — breakdown labels | 'Validation/Implementation/Discovery' 英文，且 Discovery ≠ activation（語意不一致）| ❌ **Bug AS** |
+| 10 | RiskBadge — 4 consumers all use `level` prop | ✅ 一致 |
+| 11 | SkillScoreBadge — HeroMetricsRow 使用一致 | ✅ 一致 |
+
+**Bug AS (LOW / user-visible + semantic consistency)**：
+PageHeader / SecurityHeroCard / QualityHeroCard 包含多處英文字串，違反 CLAUDE.md zh-TW 政策。
+另 QualityHeroCard breakdown "Discovery" 與 QualityTabV2 軸名 "觸發能力"（activation key）不一致。
+全數改為繁體中文：已驗證/取消訂閱/訂閱/作者：/更新於/通過/N 個問題/無已知問題/安全性/品質/是否符合最佳實踐？/規格驗證/實作品質/觸發能力。
+同步更新 SecurityHeroCard.test.tsx 2 assertions + PageHeader.test.tsx 1 assertion；318/318 Vitest PASS。
+
+### Tick 88 Summary
+- Round 41: 11 checks / **1 bug cluster (AS)** — 全數 inline 修復

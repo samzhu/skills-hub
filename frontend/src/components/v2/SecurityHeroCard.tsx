@@ -16,9 +16,9 @@ const SEG_COLOR: Record<string, string> = {
 }
 
 function overallLabel(report: SecurityReport) {
-  if (report.overall === 'PASS') return 'Passed'
+  if (report.overall === 'PASS') return '通過'
   const issues = QUAD_ORDER.filter(q => report.checks[q].status !== 'PASS').length
-  return `${issues} Issue${issues > 1 ? 's' : ''}`
+  return `${issues} 個問題`
 }
 
 function overallColor(overall: string) {
@@ -35,7 +35,7 @@ function cardBorder(report: SecurityReport | null | undefined, active: boolean):
 }
 
 function subText(report: SecurityReport): string {
-  if (report.overall === 'PASS') return 'No known issues'
+  if (report.overall === 'PASS') return '無已知問題'
   const firstIssue = QUAD_ORDER.find(q => report.checks[q].status !== 'PASS')
   return firstIssue ? report.checks[firstIssue].detail : ''
 }
@@ -60,7 +60,7 @@ export function SecurityHeroCard({ report, active, onClick }: Props) {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
         <span style={{ fontSize: 10, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
-          SECURITY
+          安全性
         </span>
         <span
           data-testid="security-value"
