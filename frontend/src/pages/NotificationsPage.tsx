@@ -121,6 +121,13 @@ export function NotificationsPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">載入中...</div>
+      ) : !hasItems && filter !== 'all' ? (
+        <EmptyState
+          tone="redirect"
+          headline={`此分類（${CATEGORY_FILTERS.find((c) => c.key === filter)?.label}）目前沒有通知。`}
+          sub="試試選擇「全部」查看所有通知，或等待相關事件觸發。"
+          primaryAction={{ label: '查看全部通知', onClick: () => setFilter('all') }}
+        />
       ) : !hasItems ? (
         <EmptyState
           tone="clear"

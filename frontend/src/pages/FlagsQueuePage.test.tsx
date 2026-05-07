@@ -31,7 +31,7 @@ beforeEach(() => {
 })
 
 describe('FlagsQueuePage (S098e3-T04)', () => {
-  it('S098e3 AC-11: list OPEN flags 含 Resolve / Dismiss buttons', async () => {
+  it('S098e3 AC-11: list OPEN flags 含「標為已處理」/「駁回」buttons', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/flags?status=OPEN')) {
@@ -65,9 +65,9 @@ describe('FlagsQueuePage (S098e3-T04)', () => {
     expect(screen.getByText('惡意指令')).toBeInTheDocument()
     expect(screen.getByText('垃圾內容')).toBeInTheDocument()
     expect(screen.getByText('資安疑慮')).toBeInTheDocument()
-    // 每 row 含 Resolve + Dismiss 按鈕（3 row × 2 = 6）
-    expect(screen.getAllByRole('button', { name: 'Resolve' })).toHaveLength(3)
-    expect(screen.getAllByRole('button', { name: 'Dismiss' })).toHaveLength(3)
+    // 每 row 含「標為已處理」+「駁回」按鈕（3 row × 2 = 6）
+    expect(screen.getAllByRole('button', { name: '標為已處理' })).toHaveLength(3)
+    expect(screen.getAllByRole('button', { name: '駁回' })).toHaveLength(3)
     // skill link 跳 SkillDetail
     const skillLinks = screen.getAllByRole('link', { name: /sk-/ })
     expect(skillLinks[0]).toHaveAttribute('href', '/skills/sk-1')
@@ -96,9 +96,9 @@ describe('FlagsQueuePage (S098e3-T04)', () => {
 
     renderPage()
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '標為已處理' })).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Resolve' }))
+    fireEvent.click(screen.getByRole('button', { name: '標為已處理' }))
 
     // PATCH 應觸發到 /api/v1/skills/sk-1/flags/f1
     await waitFor(() => {

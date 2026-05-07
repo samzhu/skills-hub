@@ -1279,3 +1279,38 @@ Cut axis: **User-visible string compliance**（i18n / spec ID leak / hardcoded E
 
 ### Tick 104 Summary
 - Round 57: 12 checks / **1 bug (BE) — 9 處 err.message 改走 localizeApiError + 1 個英文 "block" 翻譯**
+
+---
+
+## Tick 105 — Mode B Round 58
+
+Cut axis: **Interactive state consistency**（filter / pagination / count / empty state 4 信號對齊）
+
+| # | 頁面 / 元件 | 檢查項目 | 結果 |
+|---|-----------|---------|------|
+| 1 | `MySkillsPage` tab filter | All/Published/Draft/Suspended 計數即時反映 allSkills | ✅ |
+| 2 | `MySkillsPage` empty state | tab filter 0 結果 → EmptyState（tone invite）| ✅ |
+| 3 | `MySkillsPage` loading | meLoading 或 skillsLoading → 全頁「載入中...」 | ✅ |
+| 4 | `CollectionsPage` risk filter | riskFilter active + 0 結果 → redirect tone EmptyState | ✅ |
+| 5 | `CollectionsPage` loading | isLoading → 「載入中...」| ✅ |
+| 6 | `CollectionsPage` empty | 0 collections → invite tone EmptyState | ✅ |
+| 7 | `RequestBoardPage` loading/empty | isLoading → spinner；0 requests → EmptyState | ✅ |
+| 8 | `FlagsQueuePage` loading/empty | isLoading → 「載入中...」；0 flags → clear EmptyState | ✅ |
+| 9 | `NotificationsPage` filter + empty | filter 'all' + empty → ✅「都看完了」；filter 'flags/reviews/requests' + empty → 仍顯「都看完了」— 訊息誤導 | ❌ **Bug BF** |
+| 10 | `HomePage` filter + empty | riskFilter active + 0 → redirect EmptyState 含清除按鈕 | ✅ |
+| 11 | `HomePage` filter count | riskFilter active → 顯「X 個技能（共 Y）」；無 filter → 「共 Y 個技能」| ✅ |
+| 12 | `FlagsQueuePage` action buttons | "Resolve" / "Dismiss" 為英文，違反 zh-TW 政策 | ❌ **Bug BF** |
+
+**Bug BF (LOW / UX + i18n)**：
+兩處問題合併為一次修復：
+1. `NotificationsPage` — 分類 filter（'回報'/'評論'/'需求'）active 且空時，顯示「都看完了，沒有未讀通知」，
+   誤導使用者以為全部通知已讀，實際是該分類無通知。修復：加前置條件 `filter !== 'all'` 分支，
+   顯示「此分類（X）目前沒有通知」+ 「查看全部通知」逃脫按鈕。
+2. `FlagsQueuePage` — 動作按鈕「Resolve」/「Dismiss」為英文，
+   修復：→「標為已處理」/「駁回」（對齊頁面描述文字既有 zh-TW 翻譯）。
+   同步更新 FlagsQueuePage.test.tsx（2 個 test + button query 3 處）。
+
+319/319 Vitest PASS。tsc clean。
+
+### Tick 105 Summary
+- Round 58: 12 checks / **1 bug (BF) — NotificationsPage filter 空狀態訊息 + FlagsQueuePage 英文按鈕**

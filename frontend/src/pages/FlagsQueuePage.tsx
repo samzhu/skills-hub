@@ -109,7 +109,7 @@ function FlagQueueRow({
             disabled={isPending}
             className="rounded-md border border-border px-3 py-1.5 text-[12px] font-medium hover:bg-muted disabled:opacity-50"
           >
-            Resolve
+            標為已處理
           </AuthGatedButton>
           <AuthGatedButton
             type="button"
@@ -117,7 +117,7 @@ function FlagQueueRow({
             disabled={isPending}
             className="rounded-md border border-border px-3 py-1.5 text-[12px] font-medium hover:bg-muted disabled:opacity-50"
           >
-            Dismiss
+            駁回
           </AuthGatedButton>
         </div>
       </div>
