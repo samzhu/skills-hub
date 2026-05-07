@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { EmptyState } from '@/components/EmptyState'
+import { AuthGatedButton } from '@/components/AuthGatedButton'
 import { FlagSubmitModal } from '@/components/FlagSubmitModal'
 import { useFlags } from '@/hooks/useFlags'
 import type { Flag } from '@/api/flags'
@@ -23,13 +24,14 @@ export function FlagsList({ skillId }: { skillId: string }) {
   return (
     <div>
       <div className="mb-3">
-        <button
+        {/* S139 lazy gate — anonymous → OAuth redirect；authenticated → 開 modal */}
+        <AuthGatedButton
           type="button"
           onClick={() => setShowModal(true)}
           className="rounded-md bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
         >
           回報問題
-        </button>
+        </AuthGatedButton>
       </div>
 
       {!flags || flags.length === 0 ? (

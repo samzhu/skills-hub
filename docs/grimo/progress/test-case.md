@@ -1455,3 +1455,38 @@ Cut axis: **Accessibility**（keyboard / aria-label / focus order / label associ
 
 ### Tick 109 Summary
 - Round 62: 20 checks / **2 bugs fixed — PublishPage + SkillDetailPage form label association**
+
+---
+
+## Tick 110 — Mode B Round 63
+
+Cut axis: **Anonymous vs authenticated flow 比對**
+
+| # | Component / Page | Anonymous UX | Authenticated UX | 一致？ | 備註 |
+|---|-----------------|-------------|-----------------|--------|------|
+| 1 | AppShell bell | 不顯 | 顯（含 unread badge） | ✅ | isAuthenticated guard |
+| 2 | AuthArea | 「登入」按鈕 | avatar dropdown（email/我的技能/登出） | ✅ | 3 state：loading/anon/authed |
+| 3 | PublishPage Submit | 點擊 → OAuth redirect（returnTo=/publish） | 正常 mutate 上傳 | ✅ | S139 handleSubmit 檢查 auth.status |
+| 4 | MySkillsPage | EmptyState + 「登入」CTA（S132 fix） | 顯示發佈者 dashboard | ✅ | `!author \|\| meError` early return |
+| 5 | NotificationsPage | EmptyState + 「登入」CTA | 通知 list + filter chips + 全部已讀 | ✅ | S139 early return on anonymous |
+| 6 | FlagsQueuePage Resolve/Dismiss | 點擊 → OAuth redirect | 觸發 PATCH | ✅ | AuthGatedButton |
+| 7 | CollectionsPage「建立集合」| 點擊 → OAuth redirect | 開 CreateCollectionModal | ✅ | AuthGatedButton |
+| 8 | RequestBoardPage「發起新需求」| 點擊 → OAuth redirect | 開 CreateRequestModal | ✅ | AuthGatedButton |
+| 9 | ReviewsPanel「撰寫評論」| 點擊 → OAuth redirect | 開 ReviewForm | ✅ | AuthGatedButton |
+| 10 | PageHeader StarButton | 點擊 → OAuth redirect | subscribe/unsubscribe toggle | ✅ | AuthGatedButton |
+| 11 | **FlagsList「回報問題」** | **點擊 → 直接開 modal（無 auth gate！）** | 開 FlagSubmitModal | **BUG** | S098e3-T03 ship 早於 S139；未加 AuthGatedButton |
+| 12 | VoteButton | 直接 mutate（無 gate） | 直接 mutate | ⚠️ note | Feature First MVP；backend permitAll；spec trim 已知；不算 bug |
+| 13 | RequestActionBar「認領」| 顯示（isRequester=false）→ mutate 失敗 | 顯示且成功 mutate | ⚠️ note | Feature First；action 條件已做身份隔離（isRequester/isClaimer）；不算 bug |
+| 14 | useAuth loading state | button 保持 enabled | button 保持 enabled | ✅ | spec §4.3：loading 不閃 disabled |
+
+**1 bug fixed（即時修復）**：
+
+- **BG-C**: `FlagsList.tsx` "回報問題" button 缺 `AuthGatedButton` — 匿名用戶點擊直接開 modal，
+  其他同類 write CTA（FlagsQueuePage Resolve/Dismiss / ReviewsPanel 撰寫評論）均已 auth gate。
+  修復：import + 替換為 `AuthGatedButton`；同步更新 FlagsList.test.tsx AC-10 mock `/me` + 
+  waitFor 包覆 click（auth 解析後才觸發 onClick）。
+
+319/319 Vitest PASS。tsc clean。
+
+### Tick 110 Summary
+- Round 63: 14 checks / **1 bug fixed — FlagsList auth gate gap**

@@ -56,6 +56,10 @@ describe('FlagsList (S112-T03)', () => {
   it('S098e3 AC-10: 點 CTA 開 modal → 選 type + 填 desc + Submit 觸發 POST', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      // AuthGatedButton 需要 useAuth authenticated，mock /me 回已登入 user
+      if (url.includes('/api/v1/me')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ sub: 'test-user' }) } as Response)
+      }
       if (url.includes('/flags') && init?.method === 'POST') {
         return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ id: 'new-flag-id' }) } as Response)
       }
@@ -66,10 +70,9 @@ describe('FlagsList (S112-T03)', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '回報問題' })).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: '回報問題' }))
-
-    // Modal 開
+    // AuthGatedButton 需 useAuth=authenticated 才觸發 onClick；waitFor 重試直到 /me 解析完
     await waitFor(() => {
+      fireEvent.click(screen.getByRole('button', { name: '回報問題' }))
       expect(screen.getByRole('dialog', { name: '回報問題' })).toBeInTheDocument()
     })
 
