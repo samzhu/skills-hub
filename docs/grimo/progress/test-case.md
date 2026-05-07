@@ -1139,3 +1139,40 @@ Cut axis: **API projection field completeness**（同 entity 跨 endpoint 欄位
 
 ### Tick 100 Summary
 - Round 53: 12 checks / **0 bugs** — API projection field completeness 全通過
+
+---
+
+## Tick 101 — Round 54: Anonymous vs authenticated flow (2026-05-08)
+
+Cut axis: **Anonymous vs authenticated flow**（未登入與登入後 UI 差異比對；auth gate 完整性）
+
+| # | 元件 / 頁面 | anonymous UI | authenticated UI | auth gate 正確？ | 結果 |
+|---|-----------|-------------|-----------------|----------------|------|
+| 1 | AppShell header — `AuthArea` | 顯「登入」按鈕（S139 AC-1）→ 點擊跳 OAuth | 顯 avatar dropdown（含我的技能 / 登出） | useAuth 3 state 切換 ✓ | ✅ |
+| 2 | AppShell header — 鈴鐺圖示 | 不顯示（S139 + S096h1 條件 render）| 顯示 + unread badge poll | `isAuthenticated` gate ✓ | ✅ |
+| 3 | MySkillsPage | EmptyState invite + 登入按鈕（`!author` gate）| 完整 dashboard（hero + metric cards + skill list）| `me.sub` 缺值 → early return ✓ | ✅ |
+| 4 | NotificationsPage | EmptyState invite + 登入按鈕（`auth.status === 'anonymous'` early return）| 通知列表 + filter chips + 全部已讀 + 設定 | `useAuth.status` gate ✓ | ✅ |
+| 5 | PublishPage submit | 點「發布技能」跳 OAuth（lazy gate in `handleSubmit`）| 執行上傳 mutation | `auth.status !== 'authenticated'` → `auth.login()` ✓ | ✅ |
+| 6 | RequestBoardPage「發起新需求」| AuthGatedButton → OAuth redirect | 開 CreateRequestModal | AuthGatedButton ✓ | ✅ |
+| 7 | CollectionsPage「建立集合」| AuthGatedButton → OAuth redirect | 開 CreateCollectionModal | AuthGatedButton ✓ | ✅ |
+| 8 | FlagsQueuePage — Resolve/Dismiss | AuthGatedButton → OAuth redirect（flags list 仍可讀，Feature First §2.1）| 執行 PATCH mutation | AuthGatedButton ✓；intentional 無頁面 gate（MVP 所有人可看 flags list） | ✅ |
+| 9 | SkillDetailPage — 訂閱按鈕（StarButton） | AuthGatedButton → OAuth redirect | subscribe/unsubscribe mutation | AuthGatedButton ✓（`isOwner=true` 時隱藏按鈕）| ✅ |
+| 10 | SkillDetailPage — AddVersionForm | 不顯示（`isOwner` = false when me=undefined）| 顯示（owner 才有 `isOwner=true`）| `isOwner = !!skill && !!me && ownerId===me.sub` gate ✓ | ✅ |
+| 11 | ReviewsPanel 0-reviews「撰寫評論」| 應 → OAuth redirect | 開 ReviewForm modal | **Bug BC** — 使用 plain `<button>` 而非 AuthGatedButton，anonymous 可開 form；submit 才得 401 | ❌ |
+| 12 | ReviewsPanel N-reviews「撰寫評論」| 應 → OAuth redirect | 開 ReviewForm modal | **Bug BC** 同上 | ❌ |
+
+**Bug BC (MEDIUM / auth gap)**：
+`ReviewsPanel` 兩處「撰寫評論」按鈕使用 plain `<button>` 未套 `AuthGatedButton`。
+anonymous 使用者可開啟 ReviewForm modal，輸入評論後 submit → backend 回 401 → 顯示錯誤訊息。
+與 S139 lazy gate 一致性原則不符（其他寫入動作均走 AuthGatedButton）。
+
+修復：
+1. `ReviewsPanel` 加 `import { AuthGatedButton }` — 兩個寫入 CTA 換成 `<AuthGatedButton>`
+2. 0-reviews EmptyState primaryAction 移除（不傳 onClick），改在 EmptyState 外獨立渲染 `AuthGatedButton`
+3. `ReviewsPanel.test.tsx`：
+   - 加 `vi.mock('../hooks/useAuth')` + `mockUseAuth.mockReturnValue(authenticated)` in `beforeEach`
+   - `mockFetchByUrl` 補 `/api/v1/me` handler
+319/319 Vitest PASS。tsc clean。
+
+### Tick 101 Summary
+- Round 54: 12 checks / **1 bug (BC) — ReviewsPanel 寫入 CTA 缺 auth gate 修復**

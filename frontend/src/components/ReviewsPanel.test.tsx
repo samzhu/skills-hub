@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReviewsPanel } from './ReviewsPanel'
+import * as useAuthModule from '../hooks/useAuth'
 import type { Skill } from '@/types/skill'
+
+vi.mock('../hooks/useAuth')
+const mockUseAuth = vi.mocked(useAuthModule.useAuth)
 
 /**
  * S098e2-T04 — ReviewsPanel isolation tests（per S112-T03 啟示直接 unit test
@@ -40,9 +44,15 @@ const renderPanel = (skill: Skill = skillFixture, currentUserId = 'alice') => {
   )
 }
 
-function mockFetchByUrl(reviewsResponse: unknown[]) {
+function mockFetchByUrl(reviewsResponse: unknown[], authed = true) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+    if (url.includes('/api/v1/me')) {
+      if (authed) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ sub: 'alice', email: 'alice@example.com' }) } as Response)
+      }
+      return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) } as Response)
+    }
     if (url.includes(`/api/v1/skills/${SKILL_ID}/reviews`)) {
       if (init?.method === 'POST') {
         return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ id: 'new-review-id' }) } as Response)
@@ -55,6 +65,13 @@ function mockFetchByUrl(reviewsResponse: unknown[]) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // AuthGatedButton 內含 useAuth；預設 mock 為 authenticated 讓評論 CTA 正常觸發
+  mockUseAuth.mockReturnValue({
+    status: 'authenticated',
+    user: { sub: 'alice', email: 'alice@example.com' },
+    login: vi.fn(),
+    logout: vi.fn(),
+  } as ReturnType<typeof useAuthModule.useAuth>)
 })
 
 describe('ReviewsPanel (S098e2-T04)', () => {

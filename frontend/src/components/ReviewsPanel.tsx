@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Star, Trash2 } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
+import { AuthGatedButton } from '@/components/AuthGatedButton'
 import { RatingStars } from '@/components/RatingStars'
 import { useReviews } from '@/hooks/useReviews'
 import { createReview, deleteReview, type Review } from '@/api/reviews'
@@ -56,8 +57,17 @@ export function ReviewsPanel({ skill, currentUserId }: { skill: Skill; currentUs
           tone="invite"
           headline="成為第一個評論這個技能的人"
           sub="你的回饋幫助其他開發者選擇合適的技能。撰寫評論後其他人可以看到你的星等與心得。"
-          primaryAction={{ label: '撰寫評論', onClick: () => setShowForm(true) }}
         />
+        <div className="mt-4 flex justify-center">
+          {/* S139 lazy gate — anonymous → OAuth redirect；authenticated → 開 form */}
+          <AuthGatedButton
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="rounded-md bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            撰寫評論
+          </AuthGatedButton>
+        </div>
         {showForm && (
           <ReviewForm
             onClose={() => setShowForm(false)}
@@ -76,13 +86,14 @@ export function ReviewsPanel({ skill, currentUserId }: { skill: Skill; currentUs
 
       {!myReview && (
         <div className="mb-4">
-          <button
+          {/* S139 lazy gate — anonymous → OAuth redirect；authenticated → 開 form */}
+          <AuthGatedButton
             type="button"
             onClick={() => setShowForm(true)}
             className="rounded-md bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
           >
             撰寫評論
-          </button>
+          </AuthGatedButton>
         </div>
       )}
 
