@@ -231,8 +231,9 @@ function AddVersionForm({ skillId }: { skillId: string }) {
           <FileDropZone onFileSelect={setFile} selectedFile={file} />
         </div>
         <div className="w-32">
-          <label className="mb-1 block text-xs text-muted-foreground">版本號</label>
+          <label htmlFor="version-upload-version" className="mb-1 block text-xs text-muted-foreground">版本號</label>
           <Input
+            id="version-upload-version"
             value={version}
             onChange={(e) => setVersion(e.target.value)}
             placeholder="2.0.0"

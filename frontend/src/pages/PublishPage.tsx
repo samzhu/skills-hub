@@ -220,8 +220,9 @@ export function PublishPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">版本號</label>
+                <label htmlFor="publish-version" className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">版本號</label>
                 <Input
+                  id="publish-version"
                   value={version}
                   onChange={(e) => setVersion(e.target.value)}
                   placeholder="1.0.0"
@@ -232,8 +233,9 @@ export function PublishPage() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">分類</label>
+                <label htmlFor="publish-category" className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">分類</label>
                 <Input
+                  id="publish-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   placeholder="DevOps"
@@ -244,8 +246,9 @@ export function PublishPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">作者</label>
+              <label htmlFor="publish-author" className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">作者</label>
               <Input
+                id="publish-author"
                 value={author}
                 onChange={(e) => {
                   setAuthor(e.target.value)

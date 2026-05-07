@@ -1414,3 +1414,44 @@ Cut axis: **API projection field completeness**（同 entity 跨 endpoint 欄位
 
 ### Tick 108 Summary
 - Round 61: 14 checks / **0 bugs — API projection field completeness 全部一致**
+
+---
+
+## Tick 109 — Mode B Round 62
+
+Cut axis: **Accessibility**（keyboard / aria-label / focus order / label association）
+
+| # | 類別 | 檢查項目 | 結果 | 備註 |
+|---|------|---------|------|------|
+| 1 | aria-label | icon-only button — Bell (AppShell) | ✅ | Link[to=/notifications][aria-label="通知"] |
+| 2 | aria-label | icon-only button — 刪除通知 (NotificationsPage) | ✅ | button[aria-label="刪除通知"] |
+| 3 | aria-label | icon-only button — 刪除我的評論 (ReviewsPanel) | ✅ | button[aria-label="刪除我的評論"] |
+| 4 | aria-label | icon-only button — 複製安裝指令 (InstallCard) | ✅ | button[aria-label="複製安裝指令"/"已複製"] |
+| 5 | aria-label | icon-only button — 分享 (PageHeader) | ✅ | button[aria-label="分享"] |
+| 6 | aria-label | icon-only button — 開啟使用者選單 (AuthArea) | ✅ | button[aria-label="開啟使用者選單"] |
+| 7 | aria-pressed | toggle button — VoteButton | ✅ | aria-pressed={voted}；aria-label 動態切換 |
+| 8 | role=dialog | 6 modals（ReviewForm/ShareModal/FlagSubmitModal/CreateCollectionModal/CreateRequestModal/PreferencesModal） | ✅ | 全部有 role="dialog" + aria-label |
+| 9 | radiogroup | RatingStars | ✅ | role="radiogroup" + aria-label="評分"；各 radio[aria-label="N 星"] |
+| 10 | form label | CreateCollectionModal — 4 inputs | ✅ | htmlFor/id 完整配對 |
+| 11 | form label | CreateRequestModal — 2 inputs | ✅ | htmlFor/id 完整配對 |
+| 12 | form label | FlagSubmitModal — textarea | ✅ | htmlFor="flag-description"；radio label 包覆 input |
+| 13 | form label | ReviewsPanel — textarea | ✅ | htmlFor="review-content" |
+| 14 | form label | **PublishPage — 版本號/分類/作者** | **BUG** | label 無 htmlFor；Input 無 id → 修復：加 htmlFor="publish-{version\|category\|author}" + id |
+| 15 | form label | **SkillDetailPage — 版本上傳版本號** | **BUG** | label 無 htmlFor；Input 無 id → 修復：加 htmlFor="version-upload-version" + id |
+| 16 | decorative icon | SkillCard Download icon（span 內純裝飾） | ✅ | 非互動元素；下載數字文字標示充分 |
+| 17 | decorative icon | VersionList Download（<a>下載</a> text） | ✅ | <a> 有文字標示 |
+| 18 | decorative icon | InstallButton Download（button 有文字） | ✅ | button 有 "安裝 N 個技能" 文字 |
+| 19 | svg/visual | SkillScoreBadge SVG | ✅ | aria-label="技能分數環狀圖" |
+| 20 | svg/visual | SecurityTab SVG shield | ✅ | aria-label="安全性掃描結果" |
+
+**2 bugs found（已即時修復）**：
+
+- **BG-A**: `PublishPage.tsx` 版本號/分類/作者三個 `<label>` 無 `htmlFor`，對應 `<Input>` 無 `id`
+  — 修復：加 `htmlFor="publish-version/category/author"` + `id="publish-version/category/author"`
+- **BG-B**: `SkillDetailPage.tsx` 版本號 `<label>` 無 `htmlFor`，對應 `<Input>` 無 `id`
+  — 修復：加 `htmlFor="version-upload-version"` + `id="version-upload-version"`
+
+319/319 Vitest PASS。tsc clean（production files）。
+
+### Tick 109 Summary
+- Round 62: 20 checks / **2 bugs fixed — PublishPage + SkillDetailPage form label association**
