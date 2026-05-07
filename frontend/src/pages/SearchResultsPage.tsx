@@ -83,7 +83,7 @@ export function SearchResultsPage() {
             <span>
               找到 <strong className="font-mono text-foreground">{results?.length ?? 0}</strong> 個相關技能
             </span>
-            <span className="font-mono text-[11px]">ranked by semantic similarity · embeddings via Gemini</span>
+            <span className="font-mono text-[11px]">以語意相似度排序 · 向量由 Gemini 建立</span>
           </div>
 
           {/* Results */}
@@ -117,7 +117,7 @@ export function SearchResultsPage() {
 
           {/* Footer hint — link to docs */}
           <div className="mt-8 border-t border-border pt-4 text-center text-[11.5px] text-muted-foreground">
-            想知道為什麼用語意搜尋？ <Link to="/docs/your-first-skill" className="underline-offset-2 hover:underline">看 description writing tips →</Link>
+            想知道為什麼用語意搜尋？ <Link to="/docs/your-first-skill" className="underline-offset-2 hover:underline">看描述撰寫技巧 →</Link>
           </div>
         </>
       )}

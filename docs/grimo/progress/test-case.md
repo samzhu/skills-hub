@@ -986,3 +986,35 @@ Cut axis: **User-visible string compliance**（全局 English strings scan — C
 
 ### Tick 96 Summary
 - Round 49: 12 checks / **1 bug cluster (AY)** — 全數 inline 修復
+
+---
+
+## Tick 97 — Round 50: Negative deep-link (2026-05-08)
+
+Cut axis: **Negative deep-link**（`/skills/null` / 不存在 ID / 超長 query / 邊緣 URL）
+
+| # | 測試 URL / 情境 | 前端行為 | 結果 |
+|---|---------------|---------|------|
+| 1 | `/skills/null` | id="null" → `useSkill("null")` → API 404 → "找不到此技能" + 返回列表 ✓ | ✅ |
+| 2 | `/skills/undefined` | id="undefined" → 同上 ✓ | ✅ |
+| 3 | `/skills/not-a-real-uuid` | id=non-existent → API 404 → error state ✓ | ✅ |
+| 4 | `/skills/null/null` | author/name route → `useSkillByAuthorAndName("null","null")` → API 404 → error state ✓ | ✅ |
+| 5 | `/skills/:id/diff`（無 from/to）| from=null, to=null → `useVersionDiff` disabled；版本數 < 2 → "技能版本不足 2 個" ✓ | ✅ |
+| 6 | `/publish/validate`（無 id）| `!skillId` guard → ErrorState "缺少 skill id 參數" ✓ | ✅ |
+| 7 | `/publish/review`（無 id）| 同 guard pattern ✓ | ✅ |
+| 8 | `/publish/failed`（無 state）| `stateRaw !== 'B'` → default A → state A UI 顯示 ✓ | ✅ |
+| 9 | `/search?q=`（空 query）| `!query.trim()` → invite EmptyState "輸入一句描述或關鍵字搜尋技能" ✓ | ✅ |
+| 10 | `*`（任何未定義路由）| `<Route path="*">` → NotFoundPage "404 / 找不到此頁面" ✓ | ✅ |
+| 11 | SearchResultsPage 結果後置文字 | `"ranked by semantic similarity · embeddings via Gemini"` 英文 | ❌ **Bug AZ**（bonus）|
+| 12 | SearchResultsPage 頁尾連結 | `"看 description writing tips →"` 英文 | ❌ **Bug AZ**（bonus）|
+
+**0 deep-link bug**：所有邊緣 URL 均有適當 guard 或 fallback。
+
+**Bug AZ (LOW / i18n 跨 round bonus)**：
+SearchResultsPage 兩個英文可見標籤：
+`"ranked by semantic similarity · embeddings via Gemini"` → `"以語意相似度排序 · 向量由 Gemini 建立"`；
+`"看 description writing tips →"` → `"看描述撰寫技巧 →"`。
+319/319 Vitest PASS。
+
+### Tick 97 Summary
+- Round 50: 12 checks / **0 deep-link bugs; 1 bonus Bug AZ (i18n) 全數修復**
