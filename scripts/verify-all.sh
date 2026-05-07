@@ -102,14 +102,17 @@ run_skip_if "V06" "cd frontend && npm test -- --coverage" \
   "(cd '${REPO_ROOT}/frontend' && npm test -- --coverage)"
 
 # V07: Playwright happy-path E2E gate (per ADR-007 + S140 critical-path backfill)
-# - skip if e2e/ not bootstrapped (no node_modules) 或 playwright.config.ts 缺
-# - 跑時 cd e2e && npx playwright test --grep @happy-path
-# Note: 至 S140 ship 6 個 critical-path spec 之前，--grep @happy-path 0 match
-# （placeholder smoke 標 @bootstrap，不在 happy-path gate 內）。Playwright default
-# 「0 tests run」exit 0 → V07 PASS as no-op；S140 ship 後才有真正 enforcement。
-# managed by /playwright-expert skill BOOTSTRAP / DESIGN / VERIFY 流程。
+# Skip-if 三條件任一成立：
+#   1. e2e/ 未 BOOTSTRAP（node_modules 缺）
+#   2. playwright.config.ts 缺
+#   3. tests/ 內無 @happy-path tag（grep 0 match）
+# 第 3 條件關鍵：避免 0 match 時 Playwright 仍啟 webServer（Spring Boot bootRun
+# 90-150s cold start）才回報 zero tests — 等於每次 verify-all 浪費 2 分鐘。
+# S140 ship 6 個 critical-path spec 後，每個都帶 @happy-path tag，grep match
+# 自然走 V07 active path；ship 前 placeholder smoke 標 @bootstrap，不 match
+# → V07 skip。managed by /playwright-expert skill BOOTSTRAP / DESIGN / VERIFY。
 run_skip_if "V07" "cd e2e && npx playwright test --grep @happy-path" \
-  "[ ! -d '${REPO_ROOT}/e2e/node_modules' ] || [ ! -f '${REPO_ROOT}/e2e/playwright.config.ts' ]" \
+  "[ ! -d '${REPO_ROOT}/e2e/node_modules' ] || [ ! -f '${REPO_ROOT}/e2e/playwright.config.ts' ] || ! grep -rq '@happy-path' '${REPO_ROOT}/e2e/tests/' 2>/dev/null" \
   "(cd '${REPO_ROOT}/e2e' && npx playwright test --grep @happy-path)"
 
 # Summary
