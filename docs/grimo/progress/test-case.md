@@ -1176,3 +1176,35 @@ anonymous 使用者可開啟 ReviewForm modal，輸入評論後 submit → backe
 
 ### Tick 101 Summary
 - Round 54: 12 checks / **1 bug (BC) — ReviewsPanel 寫入 CTA 缺 auth gate 修復**
+
+---
+
+## Tick 102 — Round 55: Negative deep-link (2026-05-08)
+
+Cut axis: **Negative deep-link**（`/skills/null` / 不存在 author / 超長 query string）
+
+| # | 測試 URL / 情境 | 預期行為 | 實際行為 | 結果 |
+|---|----------------|---------|---------|------|
+| 1 | `/skills/null` | 404 error state "找不到此技能" | `useSkill('null')` fires → backend 404 → SkillDetailPage "找不到此技能" | ✅ |
+| 2 | `/skills/undefined` | 404 error state | 同 #1，string 'undefined' → 404 | ✅ |
+| 3 | `/skills/null/null` | 404 error state | `useSkillByAuthorAndName('null','null')` → 404 → "找不到此技能" | ✅ |
+| 4 | `/skills/` (trailing slash) | 匹配 `/skills` route → HomePage | React Router：trailing slash stripped，match `/skills` → HomePage | ✅ |
+| 5 | `/skills/a/b/c` (三段路徑) | NotFoundPage | 不匹配任何 route → `<Route path="*" />` → NotFoundPage | ✅ |
+| 6 | `/skills/null/diff` | 錯誤 state（略帶誤導）| `useVersions('null')` error → "技能版本不足 2 個，無法比較"（message 略誤導；skill 不存在時仍安全）| ✅ note |
+| 7 | `/publish/validate?id=` (empty) | ErrorState "缺少 skill id 參數" | `!skillId` guard at line 61 → correct ErrorState | ✅ |
+| 8 | `/publish/review?id=` (empty) | ErrorState | `!skillId` guard → ErrorState | ✅ |
+| 9 | `/publish/failed?state=B` (no id) | StateBHighRiskReview，隱藏 id 行 | `id=null` → `{id && <p>技能 ID</p>}` 不顯 id 行；不 crash | ✅ |
+| 10 | `/search?q=` (empty q) | EmptyState invite（不觸發 API）| `!query.trim()` → EmptyState invite，`enabled: false` | ✅ |
+| 11 | `/search` (no q param) | 同 #10 | `searchParams.get('q')` = null → `query = ''` → same | ✅ |
+| 12 | `/search?q=` + 10000 chars | 觸發 API，error state 或正常結果 | `encodeURIComponent(query)` 正確編碼；若 backend 拒絕長查詢 → "搜尋失敗，請重試" | ✅ |
+| 13 | `fetchSkillByAuthorAndName` URL encoding | `encodeURIComponent` 正確 | `return apiFetch(\`/skills/${encodeURIComponent(author)}/${encodeURIComponent(name)}\`)` ✓ | ✅ |
+| 14 | `fetchSkillById` URL encoding | UUID IDs 安全（僅含 hex + `-`）| template literal 無 encodeURI，但 UUID charset 不需 encoding；非 UUID 手工 URL 照樣 404 | ✅ note |
+
+**Note #6**: `VersionDiffPage` 在 skill 不存在時顯示 "技能版本不足 2 個，無法比較"（`if (error || ...)`）— message 語意略誤導（應為 "技能不存在"）。MVP 邊緣情境，不開 bug；polish 列 backlog。
+
+**Note #14**: `fetchSkillById` 未用 `encodeURIComponent`，但 backend skill ID 為 UUID（hex + `-`）無需 encoding；`fetchSkillByAuthorAndName` 已正確 encode。
+
+**0 functional bugs — 全部 deep-link 邊緣情境安全降級。**
+
+### Tick 102 Summary
+- Round 55: 14 checks / **0 bugs** — Negative deep-link 全通過（2 個 polish notes 列 backlog）
