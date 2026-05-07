@@ -38,6 +38,7 @@
 | S132 | CI — Cloud Build pipeline | XS(7) | S013 ✅ | ⏸ T01 ✅ done；T02 BLOCKED on user GCP Console action |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | ✅ shipped — S135a (v3.14.0) + S135b (v4.1.0) |
 | S139 | Login UI + Lazy Auth Gate（AppShell avatar + button-level OAuth gate + LAB Google OAuth 串接） | S(10) | S114a ✅ S134 ✅ | ⏸ code-complete；AC-8 BLOCKED on user LAB deploy + smoke |
+| S140 | E2E Critical Path Backfill（PRD P1-P6 + Quality Score → 6 happy-path Playwright specs + TestDataController） | M(12-14) | playwright-expert ✅（commit 31727db）| 📐 in-design — `/planning-spec S140` next |
 
 ---
 
