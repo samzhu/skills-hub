@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-07（S132 ✅ v4.17.0 + S139 ✅ v4.18.0 — CI Cloud Build first push + LAB Google OAuth E2E PASS）
+> 最後更新：2026-05-07（S140 → ⏳ Plan：9 tasks 拆好，POC PASS — Random(hashCode) 768-dim 確認 deterministic + separation 但非 semantic；AC-5 已 relax）
 
 ## 使用說明
 
@@ -36,7 +36,7 @@
 | S099 | META Trust Maturity & Implementation Audit | META | — | ✅ sub-specs all shipped (S099c v4.6.0 + S099d v4.7.0 + S099e1-e4) |
 | S120 | E2E auth integration test | M(8-10) | S114a | ✅ v4.8.0 — anonymous GET public → 200；root cause: @TestConfiguration on AotStubBeans |
 | S135 | META Skill Quality Score System (Tessl 8-dim) | META | — | ✅ shipped — S135a (v3.14.0) + S135b (v4.1.0) |
-| S140 | E2E Critical Path Backfill（PRD P1-P6 + Quality Score → 6 happy-path Playwright specs + TestDataController） | M(12-14) | playwright-expert ✅（commit 31727db）| 📐 in-design — `/planning-spec S140` next |
+| S140 | E2E Critical Path Backfill（PRD P1-P6 + Quality Score → 6 happy-path Playwright specs + TestDataController） | S(11) | playwright-expert ✅（commit 31727db）| ⏳ Plan — 9 tasks in `docs/grimo/tasks/`，POC PASS，ready for /implementing-task |
 
 ---
 
