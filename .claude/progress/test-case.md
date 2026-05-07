@@ -617,3 +617,23 @@ Pre-condition: LlmJudge engine enabled in dev profile (commit 97cc24b)
 
 
 
+
+---
+
+## Tick 83 — Round 36: User-visible string compliance (2026-05-07)
+
+Cut axis: **User-visible string compliance**（spec ID leak / 英文 / 過時文字）
+
+| # | 檢查項 | 結果 |
+|---|--------|------|
+| 1 | Spec ID 出現在 page render output | ✅ 無 spec ID 出現在 JSX return 文字 |
+| 2 | TODO/FIXME/hardcoded English in production UI | ✅ 英文只在 placeholder + 技術術語（可接受）|
+| 3 | RiskScannerScopePage 已 ship 功能仍標「規劃中」| ❌ **Bug AO** — LLM01/LLM04/LLM05/LLM06 描述過時 |
+| 4 | EventPayloadPage 內部 dev reference 洩漏 | ❌ **Bug AO** — "PRD §B6 Backlog" 出現在用戶可見文字 |
+| 5 | Coverage summary card 計數對齊 | ❌ **Bug AO** — Covered=2（應=3），Gap=1（應=0）|
+
+**Bug AO (MEDIUM / user-visible)**：RiskScannerScopePage 四個 OWASP coverage item 描述仍引用「規劃中」spec（S099e1/e2/e3/e4），但這些 spec 皆已 ship；EventPayloadPage 顯示內部「PRD §B6 Backlog」dev reference。Fix：更新描述、LLM01 partial→covered、LLM04 gap→partial、summary card 3/0；移除 PRD reference。240/240 tests pass。
+
+### Tick 83 Summary
+- Round 36: 5 checks / **1 bug (AO)**
+- Fix commit: 412ea5d
