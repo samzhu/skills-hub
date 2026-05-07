@@ -1314,3 +1314,33 @@ Cut axis: **Interactive state consistency**（filter / pagination / count / empt
 
 ### Tick 105 Summary
 - Round 58: 12 checks / **1 bug (BF) — NotificationsPage filter 空狀態訊息 + FlagsQueuePage 英文按鈕**
+
+---
+
+## Tick 106 — Mode B Round 59
+
+Cut axis: **Component-context alignment**（shared component 多 context reuse 語意一致性）
+
+| # | 元件 | 使用 context 清單 | 對齊檢查 | 結果 |
+|---|------|----------------|---------|------|
+| 1 | `EmptyState` tone=seed | SkillCardGrid（無 query）| 平台空殼 → 激勵第一貢獻 | ✅ |
+| 2 | `EmptyState` tone=invite | ReviewsPanel / MySkillsPage / CollectionsPage / RequestBoardPage / NotificationsPage(anonymous) | 個人空殼 / 邀請加入 | ✅ |
+| 3 | `EmptyState` tone=redirect | SkillCardGrid(with query) / CollectionsPage(filter) / NotificationsPage(category-filter) / SearchResultsPage(0 results) | 搜尋失敗 / filter 0 結果 → 導流 | ✅ |
+| 4 | `EmptyState` tone=clear | FlagsList / FlagsQueuePage / NotificationsPage(all-clear) | 全部清空的慶祝語意 | ✅ |
+| 5 | `AuthGatedButton` | ReviewsPanel(撰寫評論) / PageHeader(FlagSubmit) / RequestBoardPage(發起) / CollectionsPage(建立) / FlagsQueuePage(標為已處理/駁回) | 皆為 write actions | ✅ |
+| 6 | `RiskFilterSidebar` | HomePage(skills) / CollectionsPage(collections) | HomePage 直接傳 `skillsPage.content`；Collections 先 map `maxRiskLevel → riskLevel`（interface 明確標注）| ✅ |
+| 7 | `RatingStars` | ReviewsPanel row(readonly) / ReviewsPanel form(interactive) | `onChange` 有無區分兩種 mode；readonly=`<span>` / interactive=radiogroup | ✅ |
+| 8 | `SkillCard` | SkillCardGrid / SearchResultsPage / LandingPage | SearchResultsPage 用 `as unknown as` 傳 `SemanticSearchResult`；`status` 缺失 → falsy → 正確不顯示 status pill（PUBLISHED-only results）| ✅ |
+| 9 | `MetricCard` | MySkillsPage(作者指標) / AnalyticsPage(平台指標) | 皆為「數字 + 標籤」顯示，語意一致 | ✅ |
+| 10 | `BeamFrame` | EmptyState(primaryAction) / SkillCard(featured) / SearchBar(focus ring) | 統一「主要/最強調」視覺強化語意 | ✅ |
+| 11 | `useAuth` vs `useMe` | 多頁使用 | useAuth=UI auth state / login/logout；useMe=後端 user data（sub/roles）— 語意分工清晰，無混用 | ✅ |
+| 12 | `VoteButton` | RequestBoardPage only | 單一 context，無對齊問題 | ✅ |
+
+**0 bugs found。**
+
+所有共用元件在不同 context 的語意皆一致，tone / mode / auth-gate / data shape 均符合設計意圖。
+唯一值得注意的是 SkillCard 的 `as unknown as` 型別繞過（SemanticSearchResult → Skill），
+為已知設計決策（code comment 已標注）且 runtime 安全。
+
+### Tick 106 Summary
+- Round 59: 12 checks / **0 bugs — component-context alignment 全部一致**
