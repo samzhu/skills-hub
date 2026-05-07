@@ -33,10 +33,29 @@ Worktrees live at **`.worktrees/<name>/`** at repo root（已加入 `.gitignore`
 | Tool | 為何不能用 |
 |---|---|
 | `EnterWorktree(name: ...)` | 平台內建邏輯寫死 `.claude/worktrees/`，無 path override |
-| `claude --worktree <name>` | 同上，CLI 起手就建 |
+| `EnterWorktree(path: ...)` | 同 tool，policy 一致禁用（見下） |
+| `ExitWorktree` | 同上 |
+| `claude --worktree <name>` | CLI 起手就建在 `.claude/worktrees/` |
 | `Agent(isolation: "worktree")` | tool 參數無 path 欄位 |
 
-要用 native tool 切入 session，只能用 `EnterWorktree(path: <絕對路徑>)` 進入**已存在**的 worktree。
+**Hard enforcement**：`.claude/settings.local.json` 的 `permissions.deny` 已加 `EnterWorktree` / `ExitWorktree`。任何呼叫直接被拒絕（不是 prompt），cron 半夜跑也不會卡。skill instruction 升級為 settings 層級執行。
+
+## Preconditions（開工前自檢）
+
+第一次跑或不確定 baseline 是否就緒時，**先驗證**：
+
+```bash
+# 1. Deny 規則（任一檔命中即 OK）
+( grep -q '"EnterWorktree"' .claude/settings.local.json 2>/dev/null \
+    || grep -q '"EnterWorktree"' .claude/settings.json 2>/dev/null ) \
+  && echo "deny: OK" || echo "deny: MISSING"
+
+# 2. .worktrees/ 已 gitignore
+git check-ignore -q .worktrees/ && echo "gitignore: OK" || echo "gitignore: MISSING"
+```
+
+任一 MISSING → 跑 `/planning-project`（Project Policy Bootstrap 步驟）補齊，
+或手動修。policy 沒就緒就往下走 Step 1，會踩到平台 default 行為（cron 卡 prompt）。
 
 ## Step 0 — Already in a worktree?
 
@@ -59,14 +78,14 @@ git rev-parse --show-superproject-working-tree 2>/dev/null
 ```bash
 NAME=<feature-slug>
 git worktree add .worktrees/$NAME -b feature/$NAME
-cd .worktrees/$NAME
 ```
 
-需要把當前 Claude Code session 切進去（不重啟）：
+要在 worktree 裡幹活，兩種模式擇一（**不要嘗試切換當前 session 的 CWD**，`EnterWorktree` 已 deny）：
 
-```
-EnterWorktree(path: "<absolute-path-to-.worktrees/$NAME>")
-```
+| 模式 | 怎麼做 | 適合 |
+|---|---|---|
+| **同 session、跨 worktree 操作** | 從 main session 用 `git -C .worktrees/$NAME ...` 跟 `(cd .worktrees/$NAME && <cmd>)` 操作 worktree 內容 | 短任務、subagent 自跑 |
+| **新 session 進 worktree** | 另一個 terminal: `cd .worktrees/$NAME && claude` | 長任務、要互動式工作 |
 
 ## Step 2 — Setup + clean baseline
 
@@ -104,7 +123,8 @@ cd backend && ./gradlew test       # 或對應 ecosystem 的 targeted test
 ## Anti-patterns
 
 - ❌ 每個 spec 都開 worktree —— 跟 single-track workflow 衝突，純增加 friction
-- ❌ `EnterWorktree(name:)` / `claude --worktree` / `Agent(isolation:)` 建新 worktree —— 全部 fall back `.claude/worktrees/`
+- ❌ 呼叫 `EnterWorktree` / `ExitWorktree` —— 已被 `permissions.deny` 攔截，會直接 fail；改走 `git worktree add` / `git worktree remove`
+- ❌ `claude --worktree` / `Agent(isolation: "worktree")` —— 都會落 `.claude/worktrees/`（permissions deny 對 CLI flag 跟 isolation 參數無效，得從工作流規範端避免）
 - ❌ `git worktree add` 到 `.worktrees/` 以外的路徑 —— 破壞 `.gitignore` 覆蓋
 - ❌ `--force` 移除後忘記 `git branch -D` —— 留 dead branch 累積
 - ❌ 在 worktree 裡寫到 main 的 `.claude/skills/` —— skill loader 是 CWD-relative，會看到 worktree 的副本，但你要 commit 的是 main，path 會搞混
@@ -116,5 +136,6 @@ cd backend && ./gradlew test       # 或對應 ecosystem 的 targeted test
 | Already in worktree (Step 0 detect) | Skip create, work in place |
 | Trigger matches | Step 1 → Step 2 → Step 3 |
 | Trigger doesn't match | Stay on main |
-| 想要 native tool 體驗 | 只用 `EnterWorktree(path: ...)` 進已存在的 worktree |
+| 想切 session 進 worktree | 不要試 `EnterWorktree`（已 deny）；另開 terminal `cd .worktrees/<name> && claude` |
+| 同 session 想操作 worktree 內容 | `git -C .worktrees/<name> ...` 或 `(cd .worktrees/<name> && <cmd>)` |
 | Subagent 要 isolation | Subagent 自己跑 Step 1，不要用 `isolation: "worktree"` 參數 |

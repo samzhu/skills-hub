@@ -33,6 +33,22 @@ YOU MUST 遵守：
 
 ---
 
+## 開工前 audit — `git worktree list`
+
+每 tick 開頭跑：
+
+```bash
+git worktree list
+```
+
+**期望**：只有 main entry。
+
+**有其他 entries** = 孤兒 worktree（崩潰 / wall-hit / forget collected）。**優先當阻塞處理** —— 先進該 worktree 跑 `using-git-worktrees` Step 3（merge / cherry-pick / discard）收尾，再回決策樹挑 unit。
+
+NEVER 在有孤兒的情況下開新 worktree —— path / branch 會搞混，後續 ship commit 容易撈到錯的 sha。
+
+---
+
 ## 決策樹：本 tick 要做什麼？
 
 YOU MUST 從上到下依序判斷，**遇到第一個 match 就停**：

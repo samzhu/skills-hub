@@ -107,6 +107,10 @@ module skeleton, CI config, etc.
       3–5 tool calls re-discovering layout. Preserve any user-
       supplied principles / workflow sections; **add or refresh** the
       "Where things live" section using the template below.
+- [ ] **Project policy bootstrap** — ensure `.claude/settings.local.json`
+      and `.gitignore` carry the baseline policies that lock in our
+      skill-driven workflow（特別是 `using-git-worktrees` skill 的 `.worktrees/`
+      路徑強制）。詳見 "Project Policy Bootstrap" 章節。
 ```
 
 ### Market & Technical Landscape Research — parallel with early grill, not after
@@ -318,6 +322,59 @@ Read `references/claude-md-template.md` for the full template.
 Drop the template into the project's top-level `CLAUDE.md`, replacing
 `<project>` with the actual project directory name. Preserve any
 user-supplied principles or workflow sections already present.
+
+### Project Policy Bootstrap
+
+Workflow skills enforce conventions through `.claude/settings.local.json`
+permission rules + `.gitignore` —— harness 層級的 hard enforcement，
+不是只靠 agent 紀律。Tech-lead 階段必須把 baseline 寫好，
+否則後續 cron-loop 半夜跑時會踩到平台預設行為。
+
+**baseline 1 — `using-git-worktrees` skill 強制路徑：**
+
+該 skill 規定 worktree 必須建在 `.worktrees/<name>/`（不在平台 default
+`.claude/worktrees/`）。光靠 skill instruction 不夠 —— agent 沒讀 skill 就
+直接 call `EnterWorktree` 會掉 fall-back path 並觸發 permission prompt
+（cron 環境下 = 卡死）。在 `.claude/settings.local.json` 加 deny：
+
+```json
+{
+  "permissions": {
+    "deny": [
+      "EnterWorktree",
+      "ExitWorktree"
+    ]
+  }
+}
+```
+
+`.claude/settings.local.json` 通常 globally gitignored（`~/.config/git/ignore`
+常列為 `**/.claude/settings.local.json`），不會 commit。要 team-portable
+（其他 dev / CI / fresh clone 都繼承），改放 `.claude/settings.json`（committed）。
+
+**baseline 2 — `.gitignore` 必加：**
+
+```gitignore
+.worktrees/
+```
+
+少這條 → worktree 內容會在 main checkout 顯示成 untracked，污染 `git status`。
+
+**檢查方法：**
+
+```bash
+# Deny 已生效？
+grep -q '"EnterWorktree"' .claude/settings.local.json 2>/dev/null \
+  || grep -q '"EnterWorktree"' .claude/settings.json 2>/dev/null \
+  && echo "OK" || echo "MISSING"
+
+# .worktrees/ 已 ignore？
+git check-ignore -q .worktrees/ && echo "OK" || echo "MISSING"
+```
+
+**何時跑：** 任何 planning-project 流程都該檢查並補齊（含 status 子模式
+`/planning-project status`）。新加 workflow skill 若也帶 policy 需求，
+都登在這節，集中管理。
 
 ## Doc Sync — after ADR changes
 
