@@ -46,6 +46,17 @@ export function SemanticSearchPage() {
         若上游 API 升版，舊 embeddings 會逐步 re-embed（背景 job）。
       </Callout>
 
+      <div className="mt-6 flex items-center gap-3">
+        <Link
+          to="/search"
+          className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-[14px] font-medium transition-colors"
+          style={{ backgroundColor: 'rgba(127,119,221,0.15)', color: '#C9C5F2', border: '1px solid rgba(127,119,221,0.30)' }}
+        >
+          試試語意搜尋 →
+        </Link>
+        <span className="text-[13px] text-[#5E5B55]">或直接在瀏覽頁搜尋列輸入自然語言</span>
+      </div>
+
       <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[16px]">
         <Link to="/docs/versioning" className="text-[#A8A49C] hover:text-[#EEECEA]">← 版本管理</Link>
         <Link to="/docs/rest-api" className="text-[#A8A49C] hover:text-[#EEECEA]">REST 參考 →</Link>
