@@ -662,3 +662,25 @@ Cut axis: **Cross-cutting links**（所有路由都有導覽入口？）
 ### Tick 84 Summary
 - Round 37: 10 routes checked / **1 bug (AP)**
 - Fix commit: 214c9c3
+
+---
+
+## Tick 85 — Round 38: Page-level data audit — SkillDetailPage v2 (2026-05-07)
+
+Cut axis: **Page-level data audit**（SkillDetailPage v2 全端點 + fallback 路徑）
+
+| # | 端點 | Hook / 來源 | Null/Error fallback | 結果 |
+|---|------|-------------|---------------------|------|
+| 1 | GET /skills/:id | useSkill / useSkillByAuthorAndName | 404 → 找不到此技能；500 → 載入失敗 | ✅ |
+| 2 | GET /skills/:id/versions | useVersions | undefined → `?? []` | ✅ |
+| 3 | GET /skills/:id/scores | useSkillScores | undefined → `?? null` → QualityTabV2 "尚未評分" fallback | ✅ |
+| 4 | GET /skills/:id/security-report | useSecurityReport | 404 → null → SecurityTab "尚未掃描" fallback | ✅ |
+| 5 | GET /skills/:id/stats?period=30d | useQuery direct | null → `?? []` | ✅ |
+| 6 | GET /skills/:id/files/SKILL.md | useSkillFile | error → skillMdContent=null → SkillMdTab "暫不可用" | ✅ |
+
+所有 6 個端點均有 graceful fallback；無 crash 路徑。
+
+微小缺陷（非 user-visible bug）：SKILL.md 500 error 與 404 顯示同一 fallback 訊息，無區分。不開 bug 條目（對 user 無差異）。
+
+### Tick 85 Summary
+- Round 38: 6 endpoints audited / **0 bugs**
