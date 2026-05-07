@@ -8,6 +8,7 @@ import java.util.UUID;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.PersistenceCreator;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.domain.AbstractAggregateRoot;
 import org.springframework.data.domain.Persistable;
@@ -98,6 +99,13 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     private Instant createdAt;
     @Column("updated_at")
     private Instant updatedAt;
+    // S142b: detail-enrichment fields — set by SkillQueryService.enrichDetail(); @Transient = not persisted.
+    @Transient private boolean verified;
+    @Transient private Instant latestVersionPublishedAt;
+    @Transient private String license;
+    @Transient private List<String> compatibility = List.of();
+    @Transient private long versionCount;
+    @Transient private long openFlagCount;
     @Version
     @JsonIgnore
     private Long version;
@@ -410,6 +418,24 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     public String getOwnerId() { return ownerId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public boolean isVerified() { return verified; }
+    public Instant getLatestVersionPublishedAt() { return latestVersionPublishedAt; }
+    public String getLicense() { return license; }
+    public List<String> getCompatibility() { return compatibility == null ? List.of() : List.copyOf(compatibility); }
+    public long getVersionCount() { return versionCount; }
+    public long getOpenFlagCount() { return openFlagCount; }
+
+    /** S142b: populate read-only detail fields; returns this for fluent chaining. */
+    public Skill withDetail(boolean verified, Instant latestVersionPublishedAt, String license,
+            List<String> compatibility, long versionCount, long openFlagCount) {
+        this.verified = verified;
+        this.latestVersionPublishedAt = latestVersionPublishedAt;
+        this.license = license;
+        this.compatibility = compatibility;
+        this.versionCount = versionCount;
+        this.openFlagCount = openFlagCount;
+        return this;
+    }
 
     /** {@code @Version} 樂觀鎖；不 expose 至 JSON response（per spec §AC-11）。 */
     @JsonIgnore

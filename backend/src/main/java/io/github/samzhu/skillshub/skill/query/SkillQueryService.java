@@ -98,12 +98,13 @@ public class SkillQueryService {
 	 * 依 ID 查詢單一技能。
 	 *
 	 * @param id 技能的 aggregate ID
-	 * @return 技能 aggregate
+	 * @return 技能 aggregate（含 S142b 6-field detail enrichment）
 	 * @throws NoSuchElementException 找不到該技能
 	 */
 	public Skill findById(String id) {
-		return skillRepo.findById(id)
+		var skill = skillRepo.findById(id)
 				.orElseThrow(() -> new NoSuchElementException("Skill not found: " + id));
+		return enrichDetail(skill);
 	}
 
 	/**
@@ -111,9 +112,43 @@ public class SkillQueryService {
 	 * case-insensitive；找不到回 {@link NoSuchElementException} → 404 by GlobalExceptionHandler.
 	 */
 	public Skill findByAuthorAndName(String author, String name) {
-		return skillRepo.findByAuthorAndName(author, name)
+		var skill = skillRepo.findByAuthorAndName(author, name)
 				.orElseThrow(() -> new NoSuchElementException(
 						"Skill not found: " + author + "/" + name));
+		return enrichDetail(skill);
+	}
+
+	/** S142b: enrich Skill with 6 detail fields (latest version metadata + counts). */
+	private Skill enrichDetail(Skill skill) {
+		var versions = skillVersionRepo.findBySkillIdOrderByPublishedAtDesc(skill.getId());
+		var latest = versions.isEmpty() ? null : versions.getFirst();
+		var params = new MapSqlParameterSource("skillId", skill.getId());
+		Long flagCount = jdbc.queryForObject(
+				"SELECT COUNT(*) FROM flags WHERE skill_id = :skillId AND status = 'OPEN'",
+				params, Long.class);
+		return skill.withDetail(
+				skill.getStatus() == SkillStatus.PUBLISHED && skill.getRiskLevel() != null,
+				latest != null ? latest.getPublishedAt() : null,
+				extractLicense(latest != null ? latest.getFrontmatter() : null),
+				extractCompatibility(latest != null ? latest.getFrontmatter() : null),
+				versions.size(),
+				flagCount != null ? flagCount : 0L);
+	}
+
+	private static String extractLicense(java.util.Map<String, Object> fm) {
+		if (fm == null) return null;
+		var raw = fm.get("license");
+		return raw instanceof String s ? s : null;
+	}
+
+	@SuppressWarnings("unchecked")
+	private static java.util.List<String> extractCompatibility(java.util.Map<String, Object> fm) {
+		if (fm == null) return List.of();
+		var raw = fm.get("compatibility");
+		if (raw instanceof java.util.List<?> list) {
+			return list.stream().filter(String.class::isInstance).map(Object::toString).toList();
+		}
+		return List.of();
 	}
 
 	/**

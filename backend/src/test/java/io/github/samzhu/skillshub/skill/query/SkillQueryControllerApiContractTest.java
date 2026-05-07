@@ -46,11 +46,14 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
     @MockitoBean
     private SkillQueryService skillQueryService;
 
-    // S098a3-2 ship 後 SkillQueryController ctor 多了 BundleInfoQueryService dep；
-    // @WebMvcTest slice 不掃 @Service，須顯式 @MockitoBean。本 test 僅驗 GET /skills/{id}
-    // + GET /skills (search) JSON shape，不 cover bundle-info endpoint，stub return 不需。
     @MockitoBean
     private BundleInfoQueryService bundleInfoQueryService;
+
+    @MockitoBean
+    private SkillDiffQueryService skillDiffQueryService;
+
+    @MockitoBean
+    private SkillFileDiffService skillFileDiffService;
 
     /**
      * S122: GET /skills/{id} 加 @PreAuthorize("hasPermission(#id, 'Skill', 'read')") 後，
