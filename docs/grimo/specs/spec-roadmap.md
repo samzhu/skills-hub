@@ -84,8 +84,8 @@
 | S152 | SPA fallback for unknown routes（未知 URL → React NotFoundPage，移除 allowlist drift）| S(6) | — | 📐 in-design |
 | S153 | Skill detail 404 UX — 統一 400/403/404 顯「找不到此技能」（移除誤導 retry 提示）| XS(3) | — | 📐 in-design |
 | S154 | Author display identity — `users` 表 + skills snapshot；UI 顯 name + handle 取代 sub ID | M(11) | — | 📐 in-design |
-| S155 | Deployment audit polish — 5 個 LAB 小 UX 問題（footer link / auth-debug / publish-failed / 文案 / 偏好 modal）| S(5) | — | 📐 in-design |
-| S156 | List clickability + Analytics hero — leaderboard / requests row 可點 + 移除 hero「前 3 名」placeholder | S(5) | S150-pattern reuse | 📐 in-design |
+| S155 | Deployment audit polish — 6 個 LAB 小 UX 問題（footer link / auth-debug / publish-failed / 文案 / 偏好 modal / sort active 不同步）| S(6) | — | 📐 in-design |
+| S156 | List clickability + Analytics hero + Request vote 補完（voted field / 擋 self-vote）| S(7) | S150-pattern reuse | 📐 in-design |
 | S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | M(8) | — | 📐 in-design |
 | S158 | API response privacy hardening — list 移除 aclEntries / ownerId；detail 條件 owner-only | S(5) | — | 📐 in-design |
 | S159 | Skill query API hardening — category case-insensitive + tag filter 實作 + 拒收未知 param | S(6) | — | 📐 in-design |

@@ -119,6 +119,18 @@ if (!state || !state.findings) {
 - 程式碼示意內的英文（如 `skills-hub install ...` command）保留
 - 專有名詞（如 SKILL.md / OAuth / OpenAPI）保留
 
+### 2.5b #6 `/browse` Sort Tabs Active Highlight Desync（新增）
+
+**現況**：`/browse` 右上角 sort tabs（推薦 / 最新 / 風險低 / 下載最多）— 點「最新」後資料順序確實重排（deep-research 移到首位），但**「推薦」pill 仍 active highlighted**（border 仍在「推薦」上，「最新」是 transparent border）。
+
+**確認 vs 假象**：實測 4 個 sort tab 點擊後 className：
+- 推薦: `border border-[rgba(255,2...` （白色 border 顯 active）
+- 最新 / 風險低 / 下載最多: `border border-transparent`
+
+**Root cause 假設**：`HomePage` 用 `sort` state 控 active class，但條件 typo / 比錯（如 `sort === 'recommended'` 預設 true 永遠 active；點擊只更新 query param 沒同步 state）。
+
+**修正**：sweep `HomePage.tsx` sort tab render 邏輯，確保 active class 條件 = 當前 sort state。
+
 ### 2.5 #5 通知偏好「新版本（敬請期待）」
 
 **現況**：`NotificationsPage` 偏好 modal 列出 4 項：回報 / 評論 / 需求 / 新版本。新版本顯示 `（敬請期待）` 但 checkbox 仍可互動（disabled 灰，與其他 3 項視覺有別）。
@@ -174,6 +186,12 @@ AC-5: 通知偏好 modal 不再顯「新版本（敬請期待）」
   When modal render
   Then 只顯 3 個訂閱項（回報、評論、需求）
   And 不出現 disabled 的「新版本」項
+
+AC-6: /browse sort tab active highlight 與 sort state 同步
+  Given 使用者訪問 /browse 預設 sort=推薦
+  When 點擊 「最新」/ 「風險低」/ 「下載最多」 任一 tab
+  Then 該 tab 視覺上 active（border 變白圈），其他 tab 失去 highlight
+  And 列表順序對應該 sort 規則
 ```
 
 驗證指令：
@@ -191,6 +209,7 @@ AC-5: 通知偏好 modal 不再顯「新版本（敬請期待）」
 | `frontend/src/pages/PublishFailedPage.tsx` | 開頭加 state guard，缺 state 顯 EmptyState + 「前往上傳」CTA |
 | `frontend/src/components/v2/tabs/FlagsPanel.tsx`（或 empty state copy） | 「由 reviewer 處理」→「由審核者處理」 |
 | `frontend/src/components/NotificationPreferencesModal.tsx` | 「被其他人 flag 時」→「被其他人回報時」；移除「新版本」項 |
+| `frontend/src/pages/HomePage.tsx` | sort tab active class 條件比對 sort state；確認 4 個 tab 互斥 highlight |
 | **Tests** | 對應 5 個 AC 寫 vitest case |
 
 ---

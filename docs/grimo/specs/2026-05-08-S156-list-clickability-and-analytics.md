@@ -205,3 +205,44 @@ deploy 後：
 
 - **S157（potential）**: Request 留言串 / 討論 thread — 本 spec 只做 detail 殼
 - **Analytics 強化**：時間 filter（7d/30d/90d）、download trend chart per skill — 留另開 spec（與 S145 訂閱管理一併考量）
+
+## 7. 補充 — Vote behavior 兩個小議題（並入 S156 範圍）
+
+LAB audit 後續發現兩個與 vote 相關 issue，並入本 spec 處理（detail page 順手解）：
+
+### 7.1 GET request response 缺 `voted` 欄位
+
+**現況**：`GET /api/v1/requests` / `GET /api/v1/requests/{id}` response 只有 `voteCount`，沒有 `voted: boolean` 表示「當前 viewer 是否已投票」。Frontend `VoteButton` 因此無法在初始 render 時正確顯示 voted 狀態（hot reload / 直訪頁無 voted hint）。
+
+**修正**：
+- API 加 viewer-aware 欄位 `voted: boolean`（背後查 `request_votes` 表 `EXISTS` user-request pair）
+- frontend `VoteButton` 改用 `request.voted` 為 initial state
+
+### 7.2 Self-vote 沒擋
+
+**現況**：使用者可以對自己發起的需求投票（`requesterId === currentSub` 仍 200）。對 leaderboard / vote-driven priority 是 anti-pattern：發起人自投 1 票，inflate own request rank。
+
+**修正**：
+- backend `RequestVoteService.toggle()` 檢查 `request.requesterId == currentUser.sub` → throw `SelfVoteNotAllowedException` → 400
+- frontend `VoteButton` 對 self request disable（hover tooltip「不能對自己的需求投票」）
+
+### 7.3 補 AC
+
+```
+AC-7: GET request response 含 voted 欄位
+  Given 使用者已對 request X 投票
+  When GET /api/v1/requests/{X}
+  Then response 含 voted: true
+  And /api/v1/requests list response 每筆也含 voted
+
+AC-8: Self-vote 被擋
+  Given Alice 是 request X 的 requester
+  When Alice POST /api/v1/requests/{X}/vote
+  Then backend 回 400 SELF_VOTE_NOT_ALLOWED
+  And request voteCount 不變
+
+AC-9: Frontend self-request 的 VoteButton disabled
+  Given Alice 看自己發起的 request
+  When VoteButton render
+  Then button disabled + tooltip「不能對自己的需求投票」
+```
