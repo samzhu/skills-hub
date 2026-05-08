@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-08（+ S157 semantic search not functional + S148 範圍擴展）
+> 最後更新：2026-05-08（+ S158 API response privacy hardening — list 移除 aclEntries / ownerId）
 
 ## 使用說明
 
@@ -87,6 +87,7 @@
 | S155 | Deployment audit polish — 5 個 LAB 小 UX 問題（footer link / auth-debug / publish-failed / 文案 / 偏好 modal）| S(5) | — | 📐 in-design |
 | S156 | List clickability + Analytics hero — leaderboard / requests row 可點 + 移除 hero「前 3 名」placeholder | S(5) | S150-pattern reuse | 📐 in-design |
 | S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | M(8) | — | 📐 in-design |
+| S158 | API response privacy hardening — list 移除 aclEntries / ownerId；detail 條件 owner-only | S(5) | — | 📐 in-design |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |
 | S098a2 | SSE 事件串流 + per-step 動畫 | M(8) | S098a ✅ | ⏸ deferred |
