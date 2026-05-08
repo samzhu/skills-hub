@@ -61,7 +61,7 @@ export function PreferencesModal({ onClose }: { onClose: () => void }) {
           <div className="space-y-3">
             <PreferenceRow
               label="回報"
-              hint="你發佈的技能被其他人 flag 時通知你"
+              hint="你發佈的技能被其他人回報時通知你"
               checked={draft.flags}
               onChange={() => toggle('flags')}
             />

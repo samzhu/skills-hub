@@ -38,7 +38,7 @@ export function FlagsList({ skillId }: { skillId: string }) {
         <EmptyState
           tone="clear"
           headline="目前沒有任何回報"
-          sub="若你發現此技能含惡意指令、誤導 description 或其他問題，可使用上方按鈕送出回報，由 reviewer 處理。"
+          sub="若你發現此技能含惡意指令、誤導描述或其他問題，可使用上方按鈕送出回報，由審核者處理。"
         />
       ) : (
         <div className="space-y-2">

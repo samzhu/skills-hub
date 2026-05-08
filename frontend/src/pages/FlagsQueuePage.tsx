@@ -37,7 +37,7 @@ export function FlagsQueuePage() {
       <div className="mb-4">
         <h1 className="text-[22px] font-semibold tracking-tight text-foreground">待審回報</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          目前 OPEN 狀態的回報；reviewer 可標 Resolve（已處理）或 Dismiss（駁回）。
+          目前待處理狀態的回報；審核者可標「已處理」或「駁回」。
         </p>
       </div>
 
@@ -49,7 +49,7 @@ export function FlagsQueuePage() {
         <EmptyState
           tone="clear"
           headline="目前沒有待審回報"
-          sub="新回報送出後會出現在此列表，等待 reviewer 處理。"
+          sub="新回報送出後會出現在此列表，等待審核者處理。"
         />
       )}
 

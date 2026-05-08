@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.31.0] — Deployment Polish #4（S155 partial；2026-05-08）
+
+> S155 第 6 項 ship — user-facing 文案夾雜英文 sweep。4 處皆改為一致繁中表達。
+
+### UX — Frontend i18n Compliance
+
+- `frontend/src/components/FlagsList.tsx:41`：empty state sub「誤導 description 或其他問題，可使用上方按鈕送出回報，由 reviewer 處理」→「誤導描述或其他問題，可使用上方按鈕送出回報，由審核者處理」
+- `frontend/src/components/PreferencesModal.tsx:64`：「回報」項 hint「被其他人 flag 時通知你」→「被其他人回報時通知你」
+- `frontend/src/pages/FlagsQueuePage.tsx:40`：標題下 sub「OPEN 狀態的回報；reviewer 可標 Resolve（已處理）或 Dismiss（駁回）」→「待處理狀態的回報；審核者可標『已處理』或『駁回』」
+- `frontend/src/pages/FlagsQueuePage.tsx:52`：empty state sub「等待 reviewer 處理」→「等待審核者處理」
+
+### Test Coverage
+
+- `FlagsList.test.tsx + FlagsQueuePage.test.tsx + NotificationsPage.test.tsx` — 13/13 PASS（既有 test 不直接 assert 修改字串，無需更新）
+
+### Drive-by 觀察（未修）
+
+- `MySkillsPage.test.tsx:112` 仍 assert「未處理 OPEN 狀態」字串，該字串源於 MySkillsPage source — 不在 S155 §2.4 列舉的 4 處範圍內，留下次 sweep / follow-up
+
+---
+
 ## [v4.30.0] — Deployment Polish #2（S155 partial；2026-05-08）
 
 > S155 第 5 項 ship — `/auth-debug` 加 AppShell wrap，使用者直訪此頁有 nav 退路；no-oauth fallback 改用 EmptyState 友善文案，不再對普通使用者洩漏 `SPRING_PROFILES_ACTIVE` 等 dev jargon。
