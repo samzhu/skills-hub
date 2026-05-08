@@ -82,7 +82,7 @@
 | S150 | Collection Detail Page（/collections/:id — 技能清單 + 逐一預覽）| S(7) | S096f2 ✅ | 📋 planned |
 | S151 | Quality Score 訊息一致性修正（hero card "評分計算中" vs. 品質 tab "此版本尚未評分"） | XS(2) | S135b ✅ | 📋 planned |
 | S152 | SPA fallback for unknown routes（未知 URL → React NotFoundPage，移除 allowlist drift）| S(6) | — | 📐 in-design |
-| S153 | Skill detail 404 UX — 統一 400/403/404 顯「找不到此技能」（移除誤導 retry 提示）| XS(3) | — | 📐 in-design |
+| S153 | Skill detail 404 UX — 統一 400/403/404 顯「找不到此技能」（移除誤導 retry 提示）| XS(3) | — | ✅ v4.24.0 — 9/9 vitest PASS（isUnviewable 擴展涵蓋 400/403/404） |
 | S154 | Author display identity — `users` 表 + skills snapshot；UI + ShareSkillModal 顯 name + handle 取代 sub ID | M(13) | — | 📐 in-design |
 | S155 | Deployment audit polish — 7 個 LAB 小 UX 問題（footer link / auth-debug / publish-failed / 文案 / 偏好 modal / sort active / CLI dropdown 死 UI）| S(7) | — | 📐 in-design |
 | S156 | List clickability + Analytics hero + Request vote 補完（voted field / 擋 self-vote）| S(7) | S150-pattern reuse | 📐 in-design |

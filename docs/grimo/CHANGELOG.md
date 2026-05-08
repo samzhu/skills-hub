@@ -1,5 +1,24 @@
 # Changelog
 
+## [v4.24.0] — Skill Detail 404 UX 統一（S153 完成；2026-05-08）
+
+> 修 `SkillDetailPage` 對 400 / 403 / 404 三種 API 回應顯示分歧的問題：以前只有 404 顯「找不到此技能」，400 / 403 顯「載入錯誤 / 請稍後重試」，誤導使用者反覆 refresh 浪費流量。
+
+### UX — Frontend Error Display
+
+- `frontend/src/pages/SkillDetailPage.tsx`：`isNotFound` 重命名為 `isUnviewable`，判斷條件由 `error.status === 404` 擴展為 `[400, 403, 404].includes(error.status)`
+  - 400（路徑變數格式錯誤，如非 UUID）→ 「找不到此技能」
+  - 403（ACL 拒讀，避免存在性 enumeration）→ 「找不到此技能」
+  - 404（標準 not-found）→ 「找不到此技能」
+  - 5xx / network error → 維持「載入技能時發生錯誤 / 請稍後重試」（合理 retry hint）
+
+### Test Coverage
+
+- `SkillDetailPage.test.tsx` +2 案例（S153 AC-1: 400 / AC-2: 403）— 9/9 PASS
+- 既有 5 case（404 / 500 / 返回列表 / share owner-only ×2）不受影響
+
+---
+
 ## [v4.23.0] — `/docs` Canonical Entry（S143 完成；2026-05-08）
 
 > 修 `/docs` 直訪 404 死路；nav「文件」與 URL 直訪行為對齊，皆 redirect 至 `/docs/overview`。

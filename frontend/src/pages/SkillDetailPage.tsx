@@ -74,14 +74,18 @@ export function SkillDetailPage() {
   }
 
   if (error || !skill) {
-    const isNotFound = ApiError.is(error) && error.status === 404
+    // S153: 400 (格式錯誤 ID) / 403 (ACL 拒讀) / 404 (不存在) 對 user 都是「找不到」
+    // 只有真正的 5xx / network error 才提示 retry — 對「永遠不存在的東西」叫使用者
+    // 重試是錯訊息，會誘發無效 refresh。
+    const isUnviewable =
+      ApiError.is(error) && [400, 403, 404].includes(error.status)
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
           <p className="text-lg font-medium">
-            {isNotFound ? '找不到此技能' : '載入技能時發生錯誤'}
+            {isUnviewable ? '找不到此技能' : '載入技能時發生錯誤'}
           </p>
-          {!isNotFound && (
+          {!isUnviewable && (
             <p className="mt-1 text-sm">請稍後重試或重新整理頁面</p>
           )}
           <Link to="/browse" className="mt-2 text-sm text-primary hover:underline">

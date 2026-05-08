@@ -1,6 +1,6 @@
 # S153: Skill Detail 404 UX — 區分「找不到」vs「真的錯誤」訊息
 
-> Spec: S153 | Size: XS(3) | Status: 📐 in-design
+> Spec: S153 | Size: XS(3) | Status: ✅ shipped 2026-05-08
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— 訪問不存在的 skill ID `/skills/non-existent-skill-id-12345` 顯示「載入技能時發生錯誤 / 請稍後重試或重新整理頁面」，使用者誤以為是 transient error，會反覆 refresh 浪費流量。
 
@@ -172,7 +172,49 @@ describe('SkillDetailPage — S153 unviewable status mapping', () => {
 
 ---
 
-## 6. 相關 spec / 後續 follow-up
+## 6. Verification
+
+| 項目 | 結果 |
+|------|------|
+| `npx vitest run src/pages/SkillDetailPage.test.tsx` | ✅ 9/9 pass（既有 5 + 新 2 個 S153 + 既有 share owner-only 2） |
+| 視覺檢查 SkillDetailPage.tsx line 76-95 | `isNotFound` 已改 `isUnviewable`；條件 `[400, 403, 404].includes(error.status)`；retry 提示僅在非 unviewable 顯示 |
+
+裁切：spec §2.5 提到 SkillVersionDiffPage 的類似 audit 留 follow-up；本 spec 不動。
+
+---
+
+## 7. Result
+
+**Shipped 2026-05-08** — 2 file changes，9/9 vitest pass。
+
+### 7.1 程式變動
+
+- `frontend/src/pages/SkillDetailPage.tsx` line 76-95
+  - `isNotFound` → `isUnviewable`，judge condition 由 `error.status === 404` 擴展為 `[400, 403, 404].includes(error.status)`
+  - 加註解說明「對使用者來說 400/403/404 都是『找不到』，retry 提示只給真實 5xx/network」
+- `frontend/src/pages/SkillDetailPage.test.tsx`
+  - 既有 4 個 error path test 保留（404 + 500 + 返回列表 + share owner-only ×2）
+  - 新增 2 個 S153 case：
+    - `S153 AC-1`: 400 VALIDATION_ERROR → 「找不到此技能」, no retry hint
+    - `S153 AC-2`: 403 Access Denied → 「找不到此技能」, no retry hint
+
+### 7.2 行為驗證
+
+| AC | 結果 |
+|----|------|
+| AC-1（400 格式錯誤）| ✅ vitest 覆蓋 |
+| AC-2（403 ACL 拒讀）| ✅ vitest 覆蓋 |
+| AC-3（404 標準）| ✅ 既有 AC-1 (404 not-found) 覆蓋 |
+| AC-4（500 真實錯誤仍顯 retry）| ✅ 既有 AC-2 (500) 覆蓋 |
+
+### 7.3 Trade-off / 後續
+
+- 本 spec 不動後端 — `/api/v1/skills/{nonexistent-uuid}` 回 403 是 ACL filter 副作用，保留可避免存在性 enumeration 攻擊。Frontend 統一處理足夠。
+- `SkillVersionDiffPage` 的 404 處理 audit 留 follow-up，未來如再發現相同問題可開新 spec 套同模式。
+
+---
+
+## 8. 相關 spec / 後續 follow-up
 
 - **S152**（SPA fallback for unknown routes）：本 spec 處理「使用者打對 SPA route，backend API 回非預期 status」；S152 處理「使用者打到根本不存在的 URL」。互不相依，可並行。
 - **後端 403 vs 404 trade-off**（不在本 spec 範圍）：`/api/v1/skills/{nonexistent-uuid}` 回 403 Access Denied 是 ACL filter 的副作用 — 保留可避免「skill 是否存在」的 enumeration 攻擊；改 404 對 user 訊息更清楚但稍微洩漏存在性。本 spec 走「frontend 統一處理」path，不動後端，避免動 ACL 行為。若未來決定動，另開 spec。

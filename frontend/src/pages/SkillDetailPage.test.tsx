@@ -71,6 +71,36 @@ describe('SkillDetailPage — error paths (ledger Round 1.4)', () => {
       expect(link.closest('a')).toHaveAttribute('href', '/browse')
     })
   })
+
+  // S153: 400 (格式錯誤 ID) 與 403 (ACL 拒讀) 對 user 都是「找不到此技能」
+  // 不再顯示誤導性的 retry 提示。404 行為由上方既有 AC-1 覆蓋。
+  it('S153 AC-1: 400 VALIDATION_ERROR (格式錯誤) shows 找不到此技能 (no retry hint)', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () =>
+        Promise.resolve({ error: 'VALIDATION_ERROR', message: "Invalid format for parameter 'id'" }),
+    } as Response)
+    renderPage('non-existent-skill-id-12345')
+    await waitFor(() => {
+      expect(screen.getByText('找不到此技能')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('請稍後重試或重新整理頁面')).not.toBeInTheDocument()
+  })
+
+  it('S153 AC-2: 403 Access Denied shows 找不到此技能 (no retry hint)', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: () =>
+        Promise.resolve({ status: 403, error: 'Forbidden', message: 'Access Denied' }),
+    } as Response)
+    renderPage('00000000-0000-0000-0000-000000000000')
+    await waitFor(() => {
+      expect(screen.getByText('找不到此技能')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('請稍後重試或重新整理頁面')).not.toBeInTheDocument()
+  })
 })
 
 const skillFixture = (status: string, id = 'skill-test-1') => ({
