@@ -1,5 +1,22 @@
 # Changelog
 
+## [v4.26.0] — SPA Fallback Catchall（S152 完成；2026-05-08）
+
+> 移除 SpaFallbackController 的 explicit allowlist，改用 catchall pattern。React 加新 nested route 不再需要同步 backend；外部 typo URL（如 `/random-xyz`）也走進 React `NotFoundPage` 取代 Spring Whitelabel/XML。
+
+### Routing — Backend SPA Fallback
+
+- `backend/.../shared/api/SpaFallbackController.java`：14 條 explicit allowlist 換成兩條 catchall pattern (`/{path:[^.]*}` + `/**/{path:[^.]*}`)
+- `/api/` 開頭一律 404 早返（保留 JSON 4xx 給 API client）
+- 含副檔名 path 不被本 controller 匹配 → 走 Spring static resource handler（既有行為）
+
+### Test Coverage
+
+- `SpaFallbackControllerTest`（新增）：8/8 PASS — AC-1（單層 + 多層）/ AC-2（/api/* 不 forward）/ AC-4（dotted path）/ AC-5（既有 route）/ AC-6（新 nested route 自動 forward）
+- 修正先前 S150 ship 時暴露的 drift bug：`/collections/:id` 直訪 404（allowlist 漏 `/collections/**`）— 現在自動覆蓋
+
+---
+
 ## [v4.25.0] — GraalVM JudgeResponse 反射修復（S148 完成；2026-05-08）
 
 > 修 GraalVM native image 跑品質評分時 `UnsupportedFeatureError: Record components not available` 導致全面 503 的根因。outbox 防護避免類似 native-image bug 再卡死 listener。

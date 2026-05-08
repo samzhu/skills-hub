@@ -1,6 +1,6 @@
 # S152: SPA Fallback for Unknown Routes — 任意未知 URL 走進 React `NotFoundPage`
 
-> Spec: S152 | Size: S(6) | Status: 📐 in-design
+> Spec: S152 | Size: S(6) | Status: ✅ shipped 2026-05-08
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB `https://skillshub-644359853825.asia-east1.run.app/`）— 直接訪問 `/random-xyz` 顯示 raw XML `<ErrorResponse>` 或 Spring Whitelabel Error Page，而非 React `NotFoundPage`。
 
@@ -239,7 +239,51 @@ deploy 後：
 
 ---
 
-## 6. 相關 spec
+## 6. Verification
+
+| 項目 | 結果 |
+|------|------|
+| `./gradlew test --tests "...SpaFallbackControllerTest" -x processTestAot` | ✅ 8/8 PASS |
+| 既有 SPA route（/browse / /docs/overview）regression | ✅ AC-5 + AC-6 直接覆蓋（forward 至 /index.html） |
+| `/api/` typo 早返 404 | ✅ AC-2 (/api/foo) + 變體 (/api/v1/nonexistent) 雙覆蓋 |
+| TypeScript 編譯（無前端改動） | n/a |
+
+實作對齊 spec：用 `WebMvcSliceTestBase` 共用 `SecurityConfig + AotStubBeans + CacheManager` stub，避免重複設置；test slice cache key 收斂到既有 base class。`@WebMvcTest` 走 `-x processTestAot` 繞過 pre-existing Modulith cycle（per S148c），不影響 runtime context loading。
+
+---
+
+## 7. Result
+
+**Shipped 2026-05-08** — 1 backend file edit + 1 new test file，8/8 PASS。
+
+### 7.1 程式變動
+
+- `backend/.../shared/api/SpaFallbackController.java`
+  - 移除 explicit allowlist (`/browse`, `/publish/**`, ..., `/auth-debug`) — 14 條 entry 全砍
+  - 新增 catchall pattern `{"/{path:[^.]*}", "/**/{path:[^.]*}"}` 涵蓋所有「無副檔名」path
+  - `/api/` 開頭 early-return 404（保留 JSON 4xx 給 API client）
+- `backend/.../shared/api/SpaFallbackControllerTest.java`（新增）
+  - 8 個 case 覆蓋 AC-1（單層 + 多層）/ AC-2（/api/ + /api/v1/ typo 變體）/ AC-4（dotted path）/ AC-5（既有 SPA route）/ AC-6（新 nested route 自動 forward）
+  - extends `WebMvcSliceTestBase` 共用 base class config
+
+### 7.2 行為對照
+
+| URL | 改前 | 改後 |
+|-----|------|------|
+| `/random-xyz` | 404 + Whitelabel/XML | 200 + index.html → React NotFoundPage ✅ |
+| `/collections/abc` | 404（allowlist 沒 `/collections/**`，drift bug）| 200 + forward ✅ |
+| `/api/foo` typo | Whitelabel HTML 404 | 純 404 無 body（HandlerMapping 順序保證 API path 不誤攔；本 controller 早返）✅ |
+| `/foo.txt` | 404（static handler 沒此檔）| 404（catchall 不匹配含 dot path → static handler）✅ |
+| `/browse` | 200 + forward（allowlist 命中）| 200 + forward（catchall 命中）✅ |
+
+### 7.3 Trade-off
+
+- 新 catchall 對 `/api/foo`（沒對應 controller 的 typo）行為微變：原本走 Spring `BasicErrorController` 回 Whitelabel；現在 `SpaFallbackController` 早返 純 404 無 body。對 client 而言皆 404，但 body 略簡。S162 ship 後 platform error handler 接管會回 JSON ErrorResponse，本 spec 不重複處理。
+- HandlerMapping 順序保證 `@RestController("/api/v1/...")` 永遠先於 catchall，正常 API 路徑不受影響。
+
+---
+
+## 8. 相關 spec
 
 - **S153**（Skill not found UX 區分 404 vs 5xx）：本 spec 解決路由層 fallback；S153 解決「打對 SPA 路由但 backend 回 404」的訊息區分。互不相依，可並行。
 - **S143**（`/docs` canonical entry）：原依賴 allowlist 已含 `/docs/**`；本 spec 移除 allowlist 後，S143 邏輯仍然成立（SPA route `/docs` redirect 在 client-side React Router 處理）。
