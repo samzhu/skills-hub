@@ -79,7 +79,8 @@
 | S147 | 掃描器語意分析缺口研究（W011/E004/W009/W013 vs. Snyk agent-scan） | META(research) | — | ⏸ deferred — 暫緩，等研究啟動時機 |
 | S148 | Bug — GraalVM native image AOT reflection 涵蓋不足（JudgeResponse 部分） | S(5) | — | ✅ v4.25.0 — 4/4 JudgeResponse deserialize PASS（@RegisterReflectionForBinding + catch(Error) 防 outbox 無限重試） |
 | S148b | GraalVM AOT 補齊 — SkillshubProperties `@ConfigurationProperties` 反射失敗 + build-time 驗證機制研究 | S(5-7) | — | 📋 planned |
-| S148c | Modulith cycle 修復 — `shared.api.GlobalExceptionHandler` ↔ `skill.validation` 雙向相依（拖垮 processTestAot） | S(5) | — | 📋 planned |
+| S148c | Modulith cycle 修復 — `shared.api.GlobalExceptionHandler` ↔ `skill.validation` 雙向相依（拖垮 processTestAot） | S(5) | — | ✅ v4.38.0 — SkillValidationException + ValidationFinding 移至 shared.api 解環；compile 通過；shared↔skill cycle violation 消失 |
+| S148d | Modulith allowed-targets 補 — `score → security` 跨 module 引用 SecurityFinding 未在 allowed targets 列表（S148c 解環後浮現） | XS(2) | — | 📋 planned |
 | S149 | Cloud Run 結構化日誌改善研究（JSON format + log levels + trace ID） | META(research) | — | 📋 planned |
 | S150 | Collection Detail Page（/collections/:id — 技能清單 + 逐一預覽）| S(7) | S096f2 ✅ | 📋 planned |
 | S151 | Quality Score 訊息一致性修正（hero card "評分計算中" vs. 品質 tab "此版本尚未評分"） | XS(2) | S135b ✅ | ✅ v4.37.0 — QualityTabV2「此版本尚未評分」改「評分計算中，請稍後重新整理」對齊 hero/badge 風格；12/12 PASS |

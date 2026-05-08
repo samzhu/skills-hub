@@ -24,7 +24,6 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import io.github.samzhu.skillshub.skill.validation.SkillValidationException;
 
 /**
  * 全域例外處理器。

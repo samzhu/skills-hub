@@ -3,8 +3,6 @@ package io.github.samzhu.skillshub.shared.api;
 import java.time.Instant;
 import java.util.List;
 
-import io.github.samzhu.skillshub.skill.validation.ValidationFinding;
-
 /**
  * S098b3-2 — 結構化驗證錯誤回應。
  *

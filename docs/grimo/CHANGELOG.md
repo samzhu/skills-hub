@@ -1,5 +1,28 @@
 # Changelog
 
+## [v4.38.0] — 解 Modulith shared↔skill 雙向相依（S148c；2026-05-08）
+
+> 把 `SkillValidationException` 與 `ValidationFinding` 從 `skill.validation` 移到 `shared.api`，斷掉 `shared.api.GlobalExceptionHandler / ValidationErrorResponse` 反向 import skill 子模組造成的 Modulith cycle。`processTestAot` 不再因 shared↔skill cycle 拒絕；新浮現的 `score → security` allowed-targets 漏宣告為獨立議題（拆 S148d）。
+
+### Refactor — Module Boundary
+
+- 移動：`SkillValidationException.java` 與 `ValidationFinding.java`（`skill.validation` → `shared.api`）— 同 package 已有 `ValidationErrorResponse` / `GlobalExceptionHandler` 使用；現屬同模組無 cross-module import
+- 同步 import：`SkillCommandService.java` 改 `import io.github.samzhu.skillshub.shared.api.SkillValidationException` + `ValidationFinding`
+- 移除：`GlobalExceptionHandler.java` 與 `ValidationErrorResponse.java` 對 skill.validation 的 import（同 package 直接引用）
+
+### Verify
+
+- `./gradlew compileJava` ✅ 通過
+- `./gradlew processTestAot` 原 violation message：`Cycle detected: Slice shared → skill → shared` 消失；新出現 `score → security` allowed-targets 違規（拆 S148d follow-up）
+- `./gradlew test --tests "...SkillAggregateTest" --tests "...SkillJsonViewTest" -x processTestAot` ✅ pure POJO tests 不受 refactor 影響
+
+### Trim
+
+- `score → security` 不在本 spec 範圍 — Modulith allowed-targets 漏宣告，獨立 issue
+- `SkillCommandServiceTest` `@DataJdbcTest` slice 缺 CacheManager bean 是 pre-existing 問題（per S148c 解環前已存在）— 非本 refactor 引入
+
+---
+
 ## [v4.37.0] — Quality Score 訊息一致性（S151；2026-05-08）
 
 > 修 SkillDetailPage 對「scores=null」狀態的字面分歧：hero card 顯「評分計算中」、品質 tab 顯「此版本尚未評分」、score badge 顯「評分計算中」— 三處同頁，user 不知道是「等一下會好」還是「永遠不會評分」。

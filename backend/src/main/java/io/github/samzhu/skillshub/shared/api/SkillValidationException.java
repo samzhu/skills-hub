@@ -1,4 +1,4 @@
-package io.github.samzhu.skillshub.skill.validation;
+package io.github.samzhu.skillshub.shared.api;
 
 import java.util.List;
 
@@ -7,6 +7,9 @@ import java.util.List;
  *
  * <p>由 {@link io.github.samzhu.skillshub.skill.command.SkillCommandService} 拋出；
  * {@link io.github.samzhu.skillshub.shared.api.GlobalExceptionHandler} 專屬 handler 捕捉。
+ *
+ * <p>S148c: 從 {@code skill.validation} 移至 {@code shared.api} 解 Modulith cycle
+ * （{@code shared.api.GlobalExceptionHandler} 反向 import skill 子模組造成雙向相依）。
  */
 public class SkillValidationException extends RuntimeException {
 
