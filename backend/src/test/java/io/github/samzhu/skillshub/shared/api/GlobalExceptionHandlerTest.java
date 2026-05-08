@@ -50,4 +50,34 @@ class GlobalExceptionHandlerTest {
         assertThat(body.error()).isEqualTo("UNSUPPORTED_MEDIA_TYPE");
         assertThat(body.message()).contains("(none)");
     }
+
+    @Test
+    @DisplayName("S162 AC-5: uncaught Exception fallback → 500 INTERNAL_ERROR generic message 不洩漏 stack")
+    void uncaughtExceptionReturnsGenericInternalError() {
+        var sensitive = new RuntimeException("SQL error: SELECT * FROM users WHERE id = 'leak'");
+
+        ResponseEntity<ErrorResponse> response = handler.handleUncaught(sensitive);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        ErrorResponse body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.error()).isEqualTo("INTERNAL_ERROR");
+        // 訊息固定 generic，不含 ex.getMessage() 的敏感資訊（SQL / 內部類名 / 路徑）
+        assertThat(body.message()).isEqualTo("An unexpected error occurred");
+        assertThat(body.message()).doesNotContain("SQL");
+        assertThat(body.message()).doesNotContain("SELECT");
+        assertThat(body.timestamp()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("S162 AC-5: 任意 Exception 子類（如 NullPointerException）也走 fallback shape")
+    void uncaughtNpeAlsoReturnsGenericShape() {
+        var npe = new NullPointerException("Cannot invoke \"X.foo()\" because \"X\" is null");
+
+        ResponseEntity<ErrorResponse> response = handler.handleUncaught(npe);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody().error()).isEqualTo("INTERNAL_ERROR");
+        assertThat(response.getBody().message()).doesNotContain("X");
+    }
 }

@@ -569,4 +569,34 @@ public class GlobalExceptionHandler {
 						Instant.now()));
 	}
 
+	/**
+	 * S162 AC-5: 全 catch fallback handler — 任何未被上述 specific handler 攔到的例外，回 500
+	 * + 平台 ErrorResponse 不洩漏 stack。
+	 *
+	 * <p>Spring 預設 most-specific-first 規則保證所有具體 handler 先 fire；此 method 只在沒有
+	 * 任一 specific handler 匹配時觸發。預設行為（無此 fallback）會落到 Spring Boot
+	 * {@code BasicErrorController}，body 走 framework default shape（{@code timestamp/status/
+	 * error/path}）— 與平台 ErrorResponse 不一致；極端情況可能洩漏 stack（取決於
+	 * {@code server.error.include-message} / {@code include-stacktrace} yaml）。
+	 *
+	 * <p><b>訊息策略</b>：固定 user-friendly「An unexpected error occurred」不暴露
+	 * {@code ex.getMessage()}（可能含 internal class name / SQL / file path 等敏感資訊）；
+	 * 完整 stack 走 {@code log.atError()} 留 server-side ops audit trail。
+	 *
+	 * <p><b>請優先用 specific handler</b>：新增 known exception type 時應加對應
+	 * {@code @ExceptionHandler}，給 frontend i18n 對應的 error code 而非 generic INTERNAL_ERROR。
+	 */
+	@ExceptionHandler(Exception.class)
+	ResponseEntity<ErrorResponse> handleUncaught(Exception ex) {
+		log.atError()
+				.addKeyValue("errorCode", "INTERNAL_ERROR")
+				.addKeyValue("exceptionType", ex.getClass().getName())
+				.setCause(ex)
+				.log("Unhandled exception reached fallback handler");
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+				.body(new ErrorResponse("INTERNAL_ERROR",
+						"An unexpected error occurred",
+						Instant.now()));
+	}
+
 }

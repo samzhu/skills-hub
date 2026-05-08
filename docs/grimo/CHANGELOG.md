@@ -1,5 +1,22 @@
 # Changelog
 
+## [v4.35.0] — 500 Uncaught Exception fallback handler（S162 partial；2026-05-08）
+
+> S162 AC-5 ship — 任何未被 specific handler 攔到的例外，回 500 + `{error: "INTERNAL_ERROR", message: "An unexpected error occurred", timestamp}` 平台格式，不再洩漏 `ex.getMessage()`（可能含 SQL / 內部類名 / file path 等敏感資訊）。完整 stack 走 server-side log 留 ops audit trail。
+
+### Backend — GlobalExceptionHandler
+
+- `backend/.../shared/api/GlobalExceptionHandler.java`：新增 `@ExceptionHandler(Exception.class)` fallback handler
+- 訊息固定 generic「An unexpected error occurred」，stack 寫進 `log.atError().setCause(ex)` 不對外暴露
+- Spring most-specific-first 規則保證所有 specific handler 先 fire；fallback 只在無匹配時觸發
+
+### Test Coverage
+
+- `GlobalExceptionHandlerTest` +2 case：RuntimeException with sensitive message + NPE — 4/4 PASS
+- 同步驗證 generic message 不含 SQL / 變數名等敏感字串
+
+---
+
 ## [v4.34.0] — 415 Unsupported Media Type 統一 ErrorResponse shape（S162 partial；2026-05-08）
 
 > S162 AC-3 ship — `Content-Type: text/plain` 等非 JSON 媒體類型不再走 Spring framework default body shape，改回 `{error: "UNSUPPORTED_MEDIA_TYPE", message, timestamp}` 平台格式，對齊 frontend i18n 對 error code 的 lookup。
