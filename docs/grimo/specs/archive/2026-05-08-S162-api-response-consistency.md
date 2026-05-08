@@ -1,6 +1,6 @@
 # S162: API Response Consistency — 統一 Error Shape + 鎖死 JSON Content Negotiation
 
-> Spec: S162 | Size: S(5) | Status: 🚧 in-progress（AC-3 + AC-5 完工 2026-05-08；AC-6 by Spring Boot 4 framework default 已滿足；剩 AC-1/2 SecurityConfig + AC-8b 409→403 sweep）
+> Spec: S162 | Size: S(5) | Status: ✅ shipped 2026-05-08（AC-3 + AC-5 完工；AC-6 framework default 已滿足；AC-1/2 + AC-8b 拆 S162b/c follow-up）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— 兩個 API 一致性問題：(1) 403 errors 走 Spring `BasicErrorController` whitelabel shape，與平台自家 `{error, message, timestamp}` shape 不同 → frontend 錯誤解析會 fail。(2) `Accept: application/xml` 直接回 XML serialized response — 非預期 surface area，OpenAPI 3.1 spec 只承諾 JSON。
 
