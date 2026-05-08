@@ -1,5 +1,20 @@
 # Changelog
 
+## [v4.32.0] — Analytics 「熱門排行」hero card 移除（S156 #3；2026-05-08）
+
+> S156 共 3 項；本版本 ship #3。#1 早已被 S100e 完成（spec 假設過時，verify-first 抓到）；#2 RequestDetailPage 是新 page，拆 S156b 跟進。
+
+### UX — Frontend Analytics
+
+- `frontend/src/pages/AnalyticsPage.tsx`：metric strip 4-up grid 改 3-up；移除「熱門排行」MetricCard（value 為 `前 N 名` 文字，與下方 leaderboard 標題「熱門技能 前 10 名」資訊重複，無實質 metric）
+
+### Test Coverage
+
+- `AnalyticsPage.test.tsx` +1 case：assert「熱門排行」字串不再出現 + 既有 3 個 metric label 仍渲染 — 5/5 PASS
+- 既有 S100e link guard 4 個 test 不受影響
+
+---
+
 ## [S155 close] — Deployment Polish 6/7 完工（2026-05-08）
 
 > S155 共 7 個 LAB UX fix，6 個 in-scope ship 完成（v4.27.0 ~ v4.31.0）。#6 sort tab 拆出 S155b — spec 假設與現況不符（程式碼邏輯正確），需 LAB 實機 reverify 才能判定 bug 是否仍存。

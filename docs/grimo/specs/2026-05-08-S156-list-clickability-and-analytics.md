@@ -1,6 +1,6 @@
 # S156: List Clickability + Analytics Hero Card 修正
 
-> Spec: S156 | Size: S(5) | Status: 📐 in-design
+> Spec: S156 | Size: S(5) | Status: 🚧 in-progress（2/3 — #1 早已 ship S100e + #3 ship 2026-05-08；#2 RequestDetailPage 拆 S156b 因新 page 偏 M）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— 三個獨立但同類的「列表項看似可點但不可點」+ analytics「前 3 名」placeholder 問題。
 
@@ -136,6 +136,17 @@ AC-6: 既有 actions 行為不變
 ```
 
 驗證指令：`cd frontend && npm test`（per qa-strategy.md）+ deploy 後手動測
+
+---
+
+## 4a. Verification（已 ship 部分）
+
+| 項目 | 結果 |
+|------|------|
+| #1 Analytics leaderboard 點擊跳轉 | ✅ already shipped — S100e（v4.x）已加 Link wrap + author guard；spec 假設過時 |
+| #3 「熱門排行」hero metric card 移除 | ✅ shipped 2026-05-08 — AnalyticsPage grid 4-up → 3-up；移除冗餘 card |
+| `npx vitest run AnalyticsPage.test.tsx` | ✅ 5/5 PASS（4 既有 S100e link guard test + 1 新 S156 #3 移除 assertion） |
+| #2 RequestDetailPage（新 page）| ⏳ 拆 S156b — 新 page + hook + route + backend SPA fallback (after S152)；不在 1-tick 範圍 |
 
 ---
 

@@ -35,12 +35,11 @@ export function AnalyticsPage() {
         <ErrorState variant="centered" title="載入數據失敗" message="請重新整理頁面" />
       ) : stats ? (
         <>
-          {/* metric strip 4-up */}
-          <div className="mb-[18px] grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* S156 #3: metric strip 3-up — 移除「熱門排行」card（值與下方 leaderboard 重複，無實質 metric） */}
+          <div className="mb-[18px] grid grid-cols-2 gap-3 sm:grid-cols-3">
             <MetricCard label="總技能數" value={stats.totalSkills} />
             <MetricCard label="總下載次數" value={stats.totalDownloads} />
             <MetricCard label="本週新增" value={stats.newSkillsThisWeek} subtitle="近 7 天" />
-            <MetricCard label="熱門排行" value={`前 ${stats.topSkills.length} 名`} />
           </div>
 
           {/* top skills card */}

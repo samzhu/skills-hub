@@ -86,4 +86,18 @@ describe('AnalyticsPage — S100e Top 10 link defensive guard', () => {
     renderWithProviders()
     expect(screen.getByText('尚無下載記錄')).toBeInTheDocument()
   })
+
+  it('S156 #3: 「熱門排行」hero metric card 已移除（與下方 leaderboard 重複）', () => {
+    mockUseOverview.mockReturnValue({
+      data: stats([{ name: 'x', author: 'alice', downloads: 5 }]),
+      isLoading: false,
+      error: null,
+    })
+    renderWithProviders()
+    expect(screen.queryByText('熱門排行')).toBeNull()
+    // hero metric strip 從 4-up 變 3-up（總技能數 / 總下載次數 / 本週新增）
+    expect(screen.getByText('總技能數')).toBeInTheDocument()
+    expect(screen.getByText('總下載次數')).toBeInTheDocument()
+    expect(screen.getByText('本週新增')).toBeInTheDocument()
+  })
 })
