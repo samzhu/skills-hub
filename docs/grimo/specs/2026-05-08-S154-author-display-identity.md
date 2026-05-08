@@ -330,3 +330,41 @@ deploy 後：
 - **S157**: Organization / namespace（agentskills.io standard）— 多人共同維護一組 skill
 - **S158**: 平台內 message — 不公開 email 也能聯絡作者
 - **S159**: User soft-delete 流程 + skill 「已停用作者」標籤 polish
+
+## 8. ShareSkillModal — S154 ship 後立即受惠
+
+LAB audit 「分享」button 開啟的 ShareSkillModal 是 S154「分享 skill 找得到對方」use case 核心。觀察到 4 個並列議題（同類解，附在本 spec 直接收尾）：
+
+| 觀察 | 修法 |
+|------|------|
+| 「現有分享」list 顯示「user:111161306011023995106 OWNER」raw sub | S154 helper getDisplayName 套用 — 「Alice Chen (alice@) OWNER」|
+| 「新增分享」radio 選 group / company — 平台無 organization model | hide group / company radio（feature first），等真做時 enable |
+| 已 public 仍可選「public」radio 加 — 重複授權無意義 | radio public 在已 public 時 disable + tooltip「此技能已公開」 |
+| 「輸入 ID...」placeholder — user 不知輸 sub 還是 email | 改 placeholder「輸入使用者 email 或 handle」+ S154 ship 後 backend 接 email/handle 都能 resolve |
+
+**範圍**：4 點全在 `ShareSkillModal.tsx` 與 `frontend/src/api/skills.ts` 的 grant API 改動。本 spec ship 同 commit 順手做（不另開 spec）。
+
+加 §3 補 AC：
+
+```
+AC-10: ShareSkillModal 顯示 displayName
+  Given 已分享給 Alice
+  When 開分享 modal
+  Then 顯示「Alice Chen OWNER」（不再 raw sub）
+
+AC-11: ShareSkillModal radio 隱藏未做的 group/company
+  Given MVP 階段無 organization model
+  When 開 modal「新增分享」section
+  Then 只見 user / public radio，無 group / company
+
+AC-12: 已 public skill 不允許重複加 public
+  Given skill ACL 已含 public:* VIEWER
+  When 點 public radio
+  Then radio disabled + tooltip「此技能已公開瀏覽」
+
+AC-13: 輸入欄 placeholder 友善
+  Given user radio active
+  When placeholder 顯示
+  Then 「輸入使用者 email 或 handle」（非 raw 「ID」）
+  And backend 接受 email / handle / sub 三種輸入 (S154 ship 後)
+```
