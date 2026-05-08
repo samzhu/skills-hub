@@ -1,25 +1,26 @@
 # Changelog
 
-## [v4.36.0] — Content negotiation 鎖 JSON only（S162 AC-6；2026-05-08）
+## [v4.36.0 reverted] — Content negotiation 鎖 JSON 嘗試（S162 AC-6；2026-05-08）
 
-> S162 AC-6 ship — 移除 Spring Boot 自動註冊的 XML message converter；REST API 對外只承諾 JSON contract。`Accept: application/xml` 不再有 converter 匹配 → 回 406 Not Acceptable。
+> **Reverted** — 原 commit 32952ed 加的 `WebMvcConfig` 用 `MappingJackson2XmlHttpMessageConverter`（Jackson 2）做 `removeIf`，但 Spring Boot 4 主 Jackson 已升級為 `tools.jackson:jackson-databind:3.1.2`（Jackson 3，新 package `tools.jackson`），message converter chain 不含 Jackson 2 XML converter — `removeIf` 永遠 no-op。
 
-### Backend — WebMvc Config
+### Verify-First 修正
 
-- `backend/.../shared/config/WebMvcConfig.java`（新增）：implements `WebMvcConfigurer`
-  - `configureMessageConverters` → `removeIf MappingJackson2XmlHttpMessageConverter`
-  - `configureContentNegotiation` → `defaultContentType = APPLICATION_JSON`，不註冊 xml mapping
+跑 `./gradlew dependencies --configuration runtimeClasspath`：
+- `spring-boot-starter-jackson:4.0.6` → `tools.jackson.core:jackson-databind:3.1.2`（Jackson 3 主路徑）
+- `com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.21.2`（Jackson 2）由 Google `genai` / `google-cloud-storage` 內部使用，**不被 Spring 註冊為 HTTP message converter**
 
-### 影響範圍（不受影響）
+→ Spring Boot 4 默認就只有 JSON converter，AC-6「鎖 JSON only」**已由 framework default 滿足**，無需任何專案 config。
 
-- Skill bundle 下載走 `application/octet-stream` per-endpoint produces — 不受
-- SKILL.md `text/markdown` endpoint per-endpoint produces — 不受
-- Actuator 自有 chain — 不受
+### 變動
 
-### Test Coverage
+- 刪除 `WebMvcConfig.java`（dead code 引用 Jackson 2 已不在 message converter chain）
+- 刪除 `WebMvcConfigTest.java`（測試的 removeIf 對 Jackson 2 list 通過，但實況下 Spring Boot 4 list 不含該 converter，意義為零）
 
-- `WebMvcConfigTest`（新增）：3/3 PASS — XML converter 從 list 移除 / idempotent / contentNegotiation 鏈不拋
-- 端到端「Accept: xml → 406」由 LAB deploy 後手動驗證（S162 spec §5.2）
+### 教訓
+
+- 寫 spec 之前要 verify framework 真實版本與行為，不能照舊版設計引用過期 API（per CLAUDE.md「Web-Verify First」原則）
+- Loop-Hint-Verify 對 spec 假設同樣適用 — spec §2.4 的「`Accept: application/xml` 回 XML」實測前提可能基於舊版 Spring Boot；Spring Boot 4 階段已自動失效
 
 ---
 
