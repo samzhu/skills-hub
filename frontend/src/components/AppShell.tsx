@@ -21,8 +21,8 @@ const navLinks = [
   { path: '/publish', label: '發佈' },
   { path: '/analytics', label: '數據' },
   { path: '/flags', label: '待審回報' }, // S098e3-T04: reviewer queue
-  // S094d: docs entry point；指向第一篇 walkthrough，未來 /docs 可改 index 頁
-  { path: '/docs/your-first-skill', label: '文件' },
+  // S143: /docs canonical entry — 由 App.tsx redirect 接走至 /docs/overview
+  { path: '/docs', label: '文件' },
 ] as const
 
 /**

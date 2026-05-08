@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router'
+import { Routes, Route, Navigate } from 'react-router'
 import { HomePage } from './pages/HomePage'
 import { SkillDetailPage } from './pages/SkillDetailPage'
 import { PublishPage } from './pages/PublishPage'
@@ -65,6 +65,8 @@ function App() {
       <Route path="/notifications" element={<NotificationsPage />} />
       {/* S094b: 語意搜尋結果頁 — split inline → dedicated route */}
       <Route path="/search" element={<SearchResultsPage />} />
+      {/* S143: /docs canonical entry — 直訪或 nav click 統一 redirect 至 overview，消除 404 */}
+      <Route path="/docs" element={<Navigate to="/docs/overview" replace />} />
       {/* S094d: docs walkthrough — 第一篇 walkthrough */}
       <Route path="/docs/your-first-skill" element={<YourFirstSkillPage />} />
       {/* S098f: docs IA expansion — Overview + Risk tiers stubs */}

@@ -72,7 +72,7 @@
 
 | SpecID | 標題 | 點數 | 相依 | 狀態 |
 |--------|------|------|------|------|
-| S143 | `/docs` canonical entry → `/docs/overview`（含 nav 對齊）| XS(2) | — | 📐 in-design |
+| S143 | `/docs` canonical entry → `/docs/overview`（含 nav 對齊）| XS(2) | — | ✅ v4.23.0 — 4/4 vitest PASS（Navigate replace + nav 對齊） |
 | S144 | Skill 刪除功能（DELETE API + 前端確認 dialog） | S(7) | — | 📋 planned |
 | S145 | 訂閱管理頁面（我的技能 → 訂閱 tab） | S(6) | S125b ✅ | 📋 planned |
 | S146 | 掃描器補強 — GitHub Actions Unpinned Dependency 偵測（`@master/@main/@HEAD`） | XS(3) | S147 research | ⏸ deferred — 等 S147 完成再規劃 |

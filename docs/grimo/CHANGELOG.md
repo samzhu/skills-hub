@@ -1,5 +1,21 @@
 # Changelog
 
+## [v4.23.0] — `/docs` Canonical Entry（S143 完成；2026-05-08）
+
+> 修 `/docs` 直訪 404 死路；nav「文件」與 URL 直訪行為對齊，皆 redirect 至 `/docs/overview`。
+
+### UX — Frontend Routing
+
+- `frontend/src/App.tsx`：新增 `<Route path="/docs" element={<Navigate to="/docs/overview" replace />} />`；`replace` 不留 history entry，按瀏覽器上一頁不卡 `/docs`
+- `frontend/src/components/AppShell.tsx`：nav「文件」連結 `/docs/your-first-skill` → `/docs`；移除 S094d 過期註解
+
+### Test Coverage
+
+- `App.test.tsx` +3 案例（AC-1 redirect / AC-3 子頁不被攔截 / overview 直訪正常）— 4/4 PASS
+- AppShell.test.tsx 既有 9 case 不受影響 — 13/13 PASS
+
+---
+
 ## [v4.22.0] — SkillDetailPage v2 Frontend Rework（S142a 完成；2026-05-07）
 
 > 以全新 v2 component system 重寫 SkillDetailPage：PageHeader + Sidebar + 7-tab layout。所有子元件獨立開發、測試後在 T06 整合。
