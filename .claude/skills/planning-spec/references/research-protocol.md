@@ -6,6 +6,14 @@ When starting solution design for an existing codebase, before dispatching any e
 
 **Exit criterion:** Can draw the complete call chain with actual class names, interfaces, and decorator stacks before any external research begins.
 
+**Input-space completeness.** When the integration point dispatches on
+the runtime type of its input (type switch, instanceof chain, strategy
+selection by type), ask the inverse question: what are ALL concrete types
+the system can produce for this input, across ALL deployment modes?
+Modifying only the branches visible in the current code path is
+incomplete if other configurations introduce additional concrete types
+that are not yet handled.
+
 **Rationale:** External research without codebase grounding produces solutions that violate existing contracts. The codebase is the single source of truth; external docs are supplementary. Sub-agent research reports summarize what libraries offer, but only the project's own source code reveals how those libraries are actually wired — which decorators wrap which interfaces, which event flows are in play, and which integration points the new design must preserve.
 
 **Anti-pattern:** Dispatching parallel sub-agents to research SDK docs and framework APIs, then proposing an approach that bypasses an existing decorator chain because the decorator was never read. The user corrects the oversight; the same oversight recurs in a different form because the root cause (not reading the project code) was not addressed.

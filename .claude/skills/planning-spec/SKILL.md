@@ -7,6 +7,8 @@ description: >
   writes spec file with SBE acceptance criteria.
   Use when a spec needs solution design, the user says "design S002",
   "plan spec S012", or "research and design [topic]".
+  Don't use for implementing tasks (use /planning-tasks), writing
+  multi-spec roadmaps (use /planning-project), or executing already-designed specs.
 argument-hint: "[spec-id]"
 allowed-tools:
   - Read
