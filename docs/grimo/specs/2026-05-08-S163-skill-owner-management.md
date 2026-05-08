@@ -1,29 +1,35 @@
-# S163: Skill Owner Management — Update / Suspend / Unsuspend
+# S163: Skill Owner Management — Update Metadata + Visibility Toggle
 
-> Spec: S163 | Size: S(7) | Status: 📐 in-design
-> Date: 2026-05-08
-> Origin: deployment audit 2026-05-08（LAB）— `PUT /api/v1/skills/{id}` 回 405 Method Not Allowed；no suspend / unsuspend endpoint。Owner 只能透過重新上傳整個 zip 改 metadata，無法 mid-version 編輯描述、分類、停用 skill。
+> Spec: S163 | Size: S(5) | Status: 📐 in-design
+> Date: 2026-05-08（修訂 2026-05-08 — 移除 suspend / unsuspend，per user 反饋「平台是 registry 不是 runtime」）
+> Origin: deployment audit 2026-05-08（LAB）— `PUT /api/v1/skills/{id}` 回 405 Method Not Allowed。Owner 只能透過重新上傳整個 zip 改 metadata，無法 mid-version 編輯描述 / 分類。
 
 ---
 
 ## 1. Goal
 
-補完 skill owner 的基本 management 操作：
+補上 skill owner 的中間 management 操作：
 
-1. **Update**: 改 description / category / compatibility / license（但不改 name / version — 這些屬於 publish 範疇）
-2. **Suspend**: owner 主動標 skill 為 `SUSPENDED`（list 與 detail 仍可訪但有醒目標示「已停用」）
-3. **Unsuspend**: owner 把 `SUSPENDED` 改回 `PUBLISHED`
+1. **Update metadata**（PUT）：改 description / category / compatibility / license（不改 name / version — 屬 publish flow）
+2. **Visibility toggle**（既有 ACL 機制 + UX shortcut）：public（含 `public:*` VIEWER ACL）↔ private（移除該 entry）
 
-S144 已涵蓋 delete；本 spec 補編輯 / 停用 / 恢復。
+S144 已涵蓋 hard delete。本 spec 補編輯與「轉為私人」的快捷 UX。
 
-**為什麼重要：**
-- Skill owner 發現 description typo 不能改 → 必須走完整 republish 流程，違背「small diff small effort」直覺
-- 發現 skill 有 bug 但無時間修 → 應能先 suspend 不再讓 user 安裝；不該被迫等修好才停下載量
+**為什麼不做 suspend / unsuspend：**
+
+Skills Hub 是 **registry / marketplace**（per CLAUDE.md：「企業內部 AI Agent 技能市集與 Registry 平台」），平台**不執行 / 不應用 skill**，僅儲存 + 發布 + 下載。
+→ 所以「停用」沒有 runtime 意義，與「**轉為私人**」結果相同：
+  - 不可被任意人發現 / 安裝（從 list 與 search 隱藏）
+  - 仍存在於系統可被 owner 編輯
+  - 已下載的 user 不影響（檔案在 client 端）
+- 「轉為私人」用既有 ACL 機制達成（移除 `public:*` VIEWER）— 無需新 status 欄位、無需新 API endpoint
+- 「真的要永久撤下」就 delete（S144）— 兩段式 lifecycle 比三段式（PUBLISHED / SUSPENDED / DELETED）簡單
 
 **非目標：**
-- 不改 name / version（這些是 publish flow 範疇）
-- 不做 admin force-suspend（屬未來 admin 功能）
+- 不改 name / version（這些屬 publish flow 範疇）
+- 不做 admin force-private（屬未來 admin 功能）
 - 不做 partial update PATCH（用 PUT 整段覆蓋簡單）
+- ~~不做 suspend / unsuspend~~（per 上面 rationale 已移除）
 
 ---
 
@@ -32,9 +38,7 @@ S144 已涵蓋 delete；本 spec 補編輯 / 停用 / 恢復。
 ### 2.1 API 設計
 
 ```
-PUT  /api/v1/skills/{id}          → update metadata
-POST /api/v1/skills/{id}/suspend  → status PUBLISHED → SUSPENDED
-POST /api/v1/skills/{id}/unsuspend → status SUSPENDED → PUBLISHED
+PUT /api/v1/skills/{id}    → update metadata
 ```
 
 **Update body**:
@@ -49,36 +53,48 @@ POST /api/v1/skills/{id}/unsuspend → status SUSPENDED → PUBLISHED
 
 **Authorization**：`@PreAuthorize("@skillPermission.check(#id, principal, 'write')")`
 
-`SUSPENDED` 狀態語意（per S033 lifecycle audit）：
-- list 仍可見（不 hide）
-- detail 仍可訪（顯醒目「已停用」標籤 + 說明）
-- 不能 install（API reject）
-- semantic search index 保留（已建好，避免 reindex 成本）— 但搜尋結果加「已停用」flag 提示
+**Visibility 切換**：reuse 既有 ACL grant / revoke API（per S016）：
+
+```
+POST   /api/v1/skills/{id}/grants  body={principalType:"public", principalId:"*", role:"VIEWER"}  → 公開
+DELETE /api/v1/skills/{id}/grants/{grantId}                                                       → 撤回 public:* → 變私人
+```
+
+ShareSkillModal（per S154 §8）已有 add/remove ACL UI；本 spec 不重做，只在 PageHeader 加 **快捷 toggle button**：
+
+- 當前 public → 顯「[轉為私人]」button → DELETE public:* grant → 即時轉私人
+- 當前 private → 顯「[公開分享]」button → POST public:* VIEWER grant → 即時公開
+
+純前端 UX shortcut；後端走既有 grant API。
 
 ### 2.2 Domain Events
 
-新增 events：
+新增：
 - `SkillUpdatedEvent(skillId, changedFields, ...)` — projections 對應更新
-- `SkillSuspendedEvent(skillId, reason?, ...)` — 通知訂閱者（per S145）
-- `SkillUnsuspendedEvent(skillId, ...)` — 通知
+
+ACL 切換已透過既有 `SkillAclGrantedEvent` / `SkillAclRevokedEvent` 處理，不新增。
 
 ### 2.3 Frontend
 
-`SkillDetailPage` PageHeader 加 owner-only action 區（per S158 用 viewerPermissions.canEdit）：
+`SkillDetailPage` PageHeader 加 owner-only action 區（per S158 用 `viewerPermissions.canEdit`）：
+
 - `[編輯]` button → 開 EditSkillModal（form：description / category / compatibility / license）
-- `[停用]` / `[恢復]` button — 依 status 切換
+- `[轉為私人]` / `[公開分享]` button — 依當前 ACL 切換
+- `[刪除]` button — per S144
 
-Modal 直接覆蓋整段 metadata；前端 form 預填當前值。
+### 2.4 私人 (Private) skill UX
 
-### 2.4 SUSPENDED 狀態 UI
+當 skill 沒有 `public:*` VIEWER ACL（變私人）：
+- 不出現在 `/browse` list
+- 不出現在 search 結果
+- detail page 仍可由 owner 訪問（與被 grant 的 user）
+- 非 owner / 非 grantee 訪問 → 403（per 既有 ACL）
 
-| 位置 | 顯示 |
-|------|------|
-| SkillCard | 加「已停用」灰底 badge；下載按鈕 disabled |
-| SkillDetail Hero | 顯醒目 banner「此技能已被作者停用，可能不再維護」+ 不顯下載 CTA |
-| /browse list | 預設 hide SUSPENDED（add filter toggle「顯示已停用」） |
-| Search 結果 | 顯但帶「已停用」flag |
-| Install API | reject 401 + ErrorCode `SKILL_SUSPENDED` |
+無需 new status 欄位 — 純由 ACL 篩選自然達成。
+
+### 2.5 Browse list filter
+
+`/browse` 僅顯示「viewer 有 read 權限」的 skill — 本來就是 ACL filter 的結果。無 `status=PUBLISHED` 概念，因為私人 skill 對其他人來說不是「停用」而是「不存在於我的視野」。
 
 ---
 
@@ -97,51 +113,44 @@ AC-2: 非 owner update → 403
   When Bob PUT /skills/X
   Then 回 403 FORBIDDEN
 
-AC-3: Owner suspend skill
-  Given skill X status=PUBLISHED, owner Alice
-  When Alice POST /skills/X/suspend
-  Then 回 200
-  And GET /skills/X.status="SUSPENDED"
-  And SkillSuspendedEvent 發布
-
-AC-4: SUSPENDED skill install reject
-  Given skill X status=SUSPENDED
-  When 任意 user GET /skills/X/download
-  Then 回 409 STATE_CONFLICT (or 410 GONE) + ErrorCode SKILL_SUSPENDED
-  And 不增 downloadCount
-
-AC-5: SUSPENDED skill 在 /browse 預設 hide
-  Given /browse?status=PUBLISHED (預設)
-  When 頁面 render
-  Then SUSPENDED 的 skill 不出現
-
-AC-6: SUSPENDED skill 可顯 detail page
-  Given 直接訪問 /skills/{suspended-id}
-  When 頁面 render
-  Then 顯 detail content 但加醒目「已停用」banner
-  And 不顯下載 CTA
-
-AC-7: Unsuspend 恢復
-  Given skill X status=SUSPENDED
-  When owner POST /skills/X/unsuspend
-  Then status="PUBLISHED" + SkillUnsuspendedEvent
-
-AC-8: Update 不能改 name / version
+AC-3: Update 不能改 name / version
   Given PUT body 含 {name:"new", version:"2.0.0"}
   When backend 處理
   Then 400 VALIDATION_ERROR「name and version are immutable」
-  Note: 這兩欄位需走 publish flow
 
-AC-9: EditSkillModal 預填當前值
+AC-4: Owner 切換為私人（透過 revoke public:* grant）
+  Given skill X 含 public:* VIEWER ACL
+  When Alice 點「轉為私人」（前端走 DELETE grant）
+  Then ACL 移除 public:*
+  And /browse 不再顯 skill X 給其他 user
+  And Alice 自己仍能 detail 訪 / 編輯
+
+AC-5: 私人 skill 對非 owner / 非 grantee 不可見
+  Given skill X 為私人（無 public:* VIEWER）
+  When Bob (anonymous 或 random user) GET /skills/X
+  Then 回 403（per 既有 ACL）
+
+AC-6: 重新公開
+  Given skill X 為私人
+  When Alice 點「公開分享」（前端走 POST grant public:* VIEWER）
+  Then /browse 再次顯示給其他 user
+
+AC-7: EditSkillModal 預填當前值
   Given owner 點「編輯」
   When modal open
   Then form 預填當前 description / category / compatibility / license
   And submit 後 success toast + close + refetch
+
+AC-8: 已下載的 client 不受 private 切換影響
+  Given Bob 在 skill 公開時下載過
+  When Alice 之後切換為私人
+  Then Bob 本地的 skill bundle.zip 仍可用（registry 行為，非 DRM）
+  And Bob 重訪 /skills/{id} 看到 403（不能看新 metadata 但自己已有舊版）
 ```
 
 驗證指令：
-- `cd backend && ./gradlew test`（per qa-strategy.md；新增 `SkillOwnerManagementTest`）
-- 手動 LAB：deploy 後跑 9 條 AC
+- `cd backend && ./gradlew test`（per qa-strategy.md；新增 `SkillUpdateTest`）
+- 手動 LAB：deploy 後跑 8 條 AC
 
 ---
 
@@ -149,16 +158,16 @@ AC-9: EditSkillModal 預填當前值
 
 | 檔案 | 變動 |
 |------|------|
-| `backend/src/main/java/.../skill/command/SkillCommandController.java` | 加 PUT / suspend / unsuspend endpoints |
-| `backend/src/main/java/.../skill/command/SkillCommandService.java` | 加 update / suspend / unsuspend 方法 |
-| `backend/src/main/java/.../skill/domain/Skill.java` | 加 update / suspend / unsuspend domain methods + registerEvent |
-| `backend/src/main/java/.../skill/domain/SkillUpdatedEvent.java`、`SkillSuspendedEvent.java`、`SkillUnsuspendedEvent.java` | 新增 |
-| `backend/src/main/java/.../skill/query/SkillQueryService.java` | /browse 預設 filter status=PUBLISHED |
-| `frontend/src/components/v2/PageHeader.tsx` | 加 owner-only [編輯][停用][恢復] buttons |
+| `backend/src/main/java/.../skill/command/SkillCommandController.java` | 加 PUT endpoint |
+| `backend/src/main/java/.../skill/command/SkillCommandService.java` | 加 update method |
+| `backend/src/main/java/.../skill/domain/Skill.java` | 加 update domain method + registerEvent |
+| `backend/src/main/java/.../skill/domain/SkillUpdatedEvent.java` | 新增 |
+| `frontend/src/components/v2/PageHeader.tsx` | 加 owner-only [編輯][轉為私人/公開分享] buttons |
 | `frontend/src/components/EditSkillModal.tsx` | 新增 |
-| `frontend/src/components/SkillCard.tsx` | SUSPENDED 顯灰 badge + disabled CTA |
-| `frontend/src/api/skills.ts` | 加 updateSkill / suspendSkill / unsuspendSkill helpers |
-| **Tests** | 對應 9 ACs |
+| `frontend/src/api/skills.ts` | 加 updateSkill helper（visibility toggle 走既有 grant API）|
+| **Tests** | 對應 8 ACs |
+
+**範圍縮小**（vs 原 S163 含 suspend）：刪除 SkillStatus enum 變更、suspend / unsuspend service 方法、SUSPENDED state UI sweep（多個 component 條件 render）等。原 S(7) → 修訂 S(5)。
 
 ---
 
@@ -169,7 +178,7 @@ AC-9: EditSkillModal 預填當前值
 ```java
 @Test @DisplayName("AC-1: owner update description")
 void ownerUpdateDescription() throws Exception {
-    var resp = mvc.perform(put("/api/v1/skills/{id}", skillId)
+    mvc.perform(put("/api/v1/skills/{id}", skillId)
             .contentType(APPLICATION_JSON)
             .content("{\"description\":\"new desc\"}")
             .with(authentication(ownerAuth())))
@@ -179,22 +188,31 @@ void ownerUpdateDescription() throws Exception {
     assertThat(fresh.getDescription()).isEqualTo("new desc");
 }
 
-@Test @DisplayName("AC-3: suspend changes status")
-void suspendChangesStatus() throws Exception {
-    mvc.perform(post("/api/v1/skills/{id}/suspend", skillId)
-            .with(authentication(ownerAuth())))
-        .andExpect(status().isOk());
-    
-    assertThat(skillRepo.findById(skillId).get().getStatus())
-        .isEqualTo(SkillStatus.SUSPENDED);
+@Test @DisplayName("AC-2: non-owner update → 403")
+void nonOwnerUpdate403() throws Exception {
+    mvc.perform(put("/api/v1/skills/{id}", skillId)
+            .contentType(APPLICATION_JSON)
+            .content("{\"description\":\"x\"}")
+            .with(authentication(nonOwnerAuth())))
+        .andExpect(status().isForbidden());
 }
 
-@Test @DisplayName("AC-4: suspended skill 不能 download")
-void suspendedSkillRejectDownload() throws Exception {
-    suspendSkill(skillId);
-    mvc.perform(get("/api/v1/skills/{id}/download", skillId))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.error").value("SKILL_SUSPENDED"));
+@Test @DisplayName("AC-3: name / version 不可變")
+void cannotUpdateNameVersion() throws Exception {
+    mvc.perform(put("/api/v1/skills/{id}", skillId)
+            .contentType(APPLICATION_JSON)
+            .content("{\"name\":\"new\"}")
+            .with(authentication(ownerAuth())))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+}
+
+@Test @DisplayName("AC-4/5: 私人 skill 對非 owner 403")
+void privateSkillNotVisibleToOthers() throws Exception {
+    revokePublicGrant(skillId);
+    mvc.perform(get("/api/v1/skills/{id}", skillId)
+            .with(authentication(otherUserAuth())))
+        .andExpect(status().isForbidden());
 }
 ```
 
@@ -202,11 +220,10 @@ void suspendedSkillRejectDownload() throws Exception {
 
 deploy 後：
 - [ ] PUT /skills/{id} 改 description → 立即可見
-- [ ] POST /suspend → /browse 不再見此 skill
-- [ ] 訪問 detail 仍可，顯「已停用」banner
-- [ ] download API → 409 + SKILL_SUSPENDED
-- [ ] /unsuspend 恢復後，再次出現在 /browse
+- [ ] PageHeader [轉為私人] → /browse 中該 skill 對 anonymous / 其他 user 消失
+- [ ] [公開分享] 恢復可見
 - [ ] 非 owner 操作 → 403
+- [ ] PUT name / version → 400
 
 ---
 
@@ -214,17 +231,17 @@ deploy 後：
 
 | 風險 | 緩解 |
 |------|------|
-| SUSPENDED 後 download_events 行為 | 不增 count；API reject 在 controller 層；listener 不觸發 |
-| Embedding 保留 vs 清理 | 保留（避免 unsuspend 後 reindex 成本）；search 結果加 status flag 顯示 |
-| 既有 install collection 含 SUSPENDED skill | install API filter SUSPENDED 跳過；前端提示「集合內含 N 個已停用技能，已自動排除」 |
-| Update name / version 觸發 Pandora's box | API 層 reject；確保只 publish flow 動 |
-| 前端 SUSPENDED state 顯示需多 sweep | 影響：SkillCard / Hero / Search results / MySkills tab，逐一補 |
+| Update 觸發 search index reindex 開銷 | description 改 → embedding 需 regenerate；走 SkillUpdatedEvent listener async；queue 控量 |
+| 私人 skill 變更後既有 collection 內含此 skill | install collection 時 skip 私人 skill（filter ACL）；前端提示「集合內含 N 個目前無權訪問的技能」 |
+| 私人切換頻繁造成 ACL 表 churn | 走既有 grant / revoke pattern；無 high-throughput 顧慮 |
+| 既有 skill `status` 欄位若未來其他 spec 用到 | per 本 spec rationale，status 欄位仍可保留 PUBLISHED 預設值；新 status 不再加；現有 PUBLISHED 保持即可 |
 
 ---
 
 ## 7. 與其他 spec 關係
 
-- **S144（skill delete）**：本 spec 處理 update + suspend；S144 處理 delete；可同 PR ship 一次補完 owner management
-- **S158（API privacy）**：本 spec PUT/suspend 路徑要走 owner-only authz，與 S158 viewerPermissions 整合
-- **S145（訂閱管理）**：SkillSuspendedEvent 觸發 notification 給訂閱者
-- **S150（CollectionDetail）**：collection 含 SUSPENDED skill 時的 UX 提示（在 S150 ship 後跟進）
+- **S144（skill delete）**：本 spec 處理 update + visibility；S144 處理 delete；可同 PR ship 一次補完 owner management
+- **S158（API privacy）**：本 spec PUT 路徑要走 owner-only authz，與 S158 viewerPermissions 整合
+- **S145（訂閱管理）**：SkillUpdatedEvent 觸發 notification 給訂閱者
+- **S150（CollectionDetail）**：collection 含 private skill 時的 UX 提示（在 S150 ship 後跟進）
+- **S164（collection owner management）**：本 spec 為 skill 對應；S164 為 collection；同期 ship 形成完整 owner ops
