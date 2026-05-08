@@ -1,5 +1,21 @@
 # Changelog
 
+## [v4.39.0] — Modulith score→security :: scan 補 NamedInterface（S148d；2026-05-08）
+
+> S148c 解 shared↔skill cycle 後，processTestAot 浮現第二個 Modulith violation：`score` 模組 import `security.scan.SecurityFinding`（sub-package）但未列入 allowed-targets。security 模組頂層 package 在 score 的 allowed-deps 已有 `"security"`，但 `scan` sub-package 預設視為 internal。
+
+### Refactor — Modulith Module Boundary
+
+- 新增 `backend/.../security/scan/package-info.java`：宣告 `@NamedInterface("scan")` 顯式對外曝露 `scan` 子套件，避免 Modulith 視為 internal
+- 更新 `backend/.../score/package-info.java`：`@ApplicationModule.allowedDependencies` 加 `"security :: scan"`，標 S148d 註解
+
+### Verify
+
+- `./gradlew compileJava` ✅ 通過
+- `./gradlew processTestAot` Modulith 驗證階段通過（不再出現「depends on module 'security'」violation）；接續浮現 `BeanDefinitionOverrideException`（`TestDataControllerTest$CacheStubConfig` vs `WebMvcSliceTestBase$AotStubBeans` 重複定義 cacheManager）— pre-existing 但被 Modulith violation mask 住，獨立議題拆 S148e
+
+---
+
 ## [v4.38.0] — 解 Modulith shared↔skill 雙向相依（S148c；2026-05-08）
 
 > 把 `SkillValidationException` 與 `ValidationFinding` 從 `skill.validation` 移到 `shared.api`，斷掉 `shared.api.GlobalExceptionHandler / ValidationErrorResponse` 反向 import skill 子模組造成的 Modulith cycle。`processTestAot` 不再因 shared↔skill cycle 拒絕；新浮現的 `score → security` allowed-targets 漏宣告為獨立議題（拆 S148d）。

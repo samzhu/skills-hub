@@ -8,7 +8,8 @@
         "shared :: events", "shared :: api", "shared :: persistence", "shared :: security",
         "skill :: domain", "skill :: validation",
         "storage",
-        "security"   // S142b: SkillScoreCalculator uses SecurityCategoryMapper to compute securityScore
+        "security",          // S142b: SkillScoreCalculator uses SecurityCategoryMapper to compute securityScore
+        "security :: scan"   // S148d: SkillScoreCalculator uses SecurityFinding from scan named interface
     }
 )
 package io.github.samzhu.skillshub.score;
