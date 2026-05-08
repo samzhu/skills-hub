@@ -1,6 +1,6 @@
-# S155: Deployment Audit Polish — 5 個 LAB 小 UX 問題
+# S155: Deployment Audit Polish — 7 個 LAB 小 UX 問題
 
-> Spec: S155 | Size: S(5) | Status: 📐 in-design
+> Spec: S155 | Size: S(7) | Status: 🚧 in-progress（2/7 shipped 2026-05-08 — items #1 + #7）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB skillshub-...run.app）— 一輪掃描中收集到 5 個獨立小問題，個別都太小不值得各開一隻 spec，但累積會破壞使用體驗一致性。打包進一隻 S(5) 解決。
 
@@ -262,7 +262,47 @@ deploy 後逐項：
 
 ---
 
-## 6. 設計筆記
+## 6. Verification
+
+| 項目 | 結果 |
+|------|------|
+| #1 Footer API link | ✅ shipped 2026-05-08 — LandingPage.tsx:158 改 `<Link to="/docs/rest-api">`，避開 LAB swagger-ui 404 |
+| #7 InstallCard「CLI ▼」死 UI | ✅ shipped 2026-05-08 — 改純文字 "Skills Hub CLI"，移除假 dropdown 視覺暗示 |
+| `npx vitest run InstallCard.test.tsx` | ✅ 5/5 PASS |
+| #2 /auth-debug AppShell | ⏳ pending |
+| #3 /publish/failed stale data | ⏳ pending |
+| #4 文案夾雜英文 | ⏳ pending |
+| #5 通知偏好「新版本」hide | ⏳ pending |
+| #6 /browse sort tab active highlight | ⏳ pending |
+
+---
+
+## 7. Result（partial — items #1 + #7）
+
+**Shipped 2026-05-08** — 3 file changes（footer link href + InstallCard label + test 同步），5/5 vitest PASS。
+
+### 7.1 程式變動
+
+- `frontend/src/pages/LandingPage.tsx:158`
+  - footer API link 由 `<a href="/swagger-ui/index.html">API</a>` 改為 `<Link to="/docs/rest-api">API</Link>`
+  - 註解標 S155 #1 + 解釋 LAB profile 沒 SpringDoc 的成因
+- `frontend/src/components/v2/InstallCard.tsx:58`
+  - `<span>CLI ▼</span>` 改為 `<span>Skills Hub CLI</span>`
+  - 註解標 S155 #7 + 解釋移除假 dropdown 暗示
+- `frontend/src/components/v2/InstallCard.test.tsx:45-49`
+  - `expect(screen.getByText('CLI ▼'))` 同步改成 `'Skills Hub CLI'` + 補 negative assertion 確保 ▼ 不再出現
+
+### 7.2 後續 follow-up（仍在 spec §2 設計內）
+
+下個 tick 可挑剩餘 5 項中的任一項繼續：#2（auth-debug AppShell）/ #3（publish/failed guard）/ #4（文案 sweep）/ #5（通知偏好 hide）/ #6（sort tab active）。每項 1 個 component edit + 對應 test，maps 1:1 到剩餘 AC-2 / AC-3 / AC-4 / AC-5 / AC-6。
+
+### 7.3 Drive-by 觀察（不修，留紀錄）
+
+LandingPage.tsx:157 footer「文件」link 仍指 `/docs/your-first-skill`；S143 ship 後 AppShell nav 已改 `/docs`。footer 與 nav 不一致。本 spec 範圍未涵蓋此 link，留下次 sweep 時跟進（footer 一致性 / docs IA 對齊）。
+
+---
+
+## 8. 設計筆記
 
 5 條 fix 都是獨立的小型 frontend 改動，互不依賴；可拆成 5 個 task 並行。Backend 無需修改（footer link 只是改 href）。
 

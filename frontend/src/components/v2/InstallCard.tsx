@@ -55,7 +55,8 @@ export function InstallCard({ skill }: Props) {
         </button>
       </div>
       <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 10, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>CLI ▼</span>
+        {/* S155 #7: 移除「▼」假 dropdown 暗示（無 onclick / role/handler）— 純文字 label */}
+        <span style={{ fontSize: 10, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>Skills Hub CLI</span>
         <Link
           to="/docs/your-first-skill"
           style={{ fontSize: 10, color: 'var(--ink-3, rgba(238,236,234,0.4))', textDecoration: 'underline' }}

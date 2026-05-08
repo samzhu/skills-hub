@@ -1,5 +1,20 @@
 # Changelog
 
+## [v4.27.0] — Deployment Polish #1 + #7（S155 partial；2026-05-08）
+
+> S155 共 7 個 LAB UX 小 fix；本版本 ship 其中 2 項。剩 5 項（#2-#6）後續 tick 接續。
+
+### UX — Frontend Polish
+
+- `frontend/src/pages/LandingPage.tsx:158`（**#1 Footer API link**）：由 `<a href="/swagger-ui/index.html">` 改 `<Link to="/docs/rest-api">`。LAB profile 未啟用 SpringDoc，原 link 直訪 raw JSON 404；改指內部 docs 頁
+- `frontend/src/components/v2/InstallCard.tsx:58`（**#7 CLI 死 UI**）：`<span>CLI ▼</span>` → `<span>Skills Hub CLI</span>`。原元件不是 button、無 onclick、無 ARIA dropdown 屬性，▼ 純粹是視覺欺騙
+
+### Test Coverage
+
+- `InstallCard.test.tsx` 既有「CLI label visible」case 同步改為 assert "Skills Hub CLI" + 確認 ▼ 不再出現 — 5/5 PASS
+
+---
+
 ## [v4.26.0] — SPA Fallback Catchall（S152 完成；2026-05-08）
 
 > 移除 SpaFallbackController 的 explicit allowlist，改用 catchall pattern。React 加新 nested route 不再需要同步 backend；外部 typo URL（如 `/random-xyz`）也走進 React `NotFoundPage` 取代 Spring Whitelabel/XML。

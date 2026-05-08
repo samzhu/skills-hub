@@ -155,7 +155,8 @@ export function LandingPage() {
           <span>Skills Hub · SKILL.md bundle 企業技能登錄中心</span>
           <div className="flex gap-5">
             <Link to="/docs/your-first-skill" className="hover:text-foreground">文件</Link>
-            <a href="/swagger-ui/index.html" className="hover:text-foreground">API</a>
+            {/* S155 #1: LAB profile 未啟用 SpringDoc → 改指向內部 docs/rest-api 頁，避免 swagger-ui 直訪 404 */}
+            <Link to="/docs/rest-api" className="hover:text-foreground">API</Link>
           </div>
         </div>
       </footer>

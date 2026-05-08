@@ -42,8 +42,9 @@ describe('InstallCard', () => {
     expect(link.href).toContain('/docs/your-first-skill')
   })
 
-  it('AC-S142a-16: CLI label visible', () => {
+  it('AC-S142a-16 / S155 #7: CLI label 純文字 — 不帶 ▼ 假 dropdown 暗示', () => {
     render(<MemoryRouter><InstallCard skill={baseSkill} /></MemoryRouter>)
-    expect(screen.getByText('CLI ▼')).toBeTruthy()
+    expect(screen.getByText('Skills Hub CLI')).toBeTruthy()
+    expect(screen.queryByText(/▼/)).toBeNull()
   })
 })
