@@ -1,6 +1,6 @@
 # S143: `/docs` Canonical Entry → `/docs/overview`
 
-> Spec: S143 | Size: XS(2) | Status: 📐 in-design
+> Spec: S143 | Size: XS(2) | Status: ✅ shipped 2026-05-08
 > Date: 2026-05-08
 > Origin: site audit 2026-05-08 — `/docs` 直接訪問回 404；nav「文件」指向 `/docs/your-first-skill`（walkthrough），與「直接輸入 URL 期待總覽」的直覺不符。`AppShell.tsx:24` 註解早已預告「未來 /docs 可改 index 頁」。
 
@@ -104,3 +104,41 @@ AC-3: docs 子頁面仍正常
 - [ ] `/docs/overview` 直訪 → 正常顯示，無多餘跳轉
 - [ ] `/docs/your-first-skill` 直訪 → 正常顯示
 - [ ] `/docs` 跳轉後按瀏覽器「上一頁」→ 回到前一頁（不卡 /docs）
+
+---
+
+## 6. Verification
+
+| 項目 | 結果 |
+|------|------|
+| `npx vitest run src/App.test.tsx` | ✅ 4/4 pass（NotFound + 3 個 S143 case） |
+| `npx vitest run src/App.test.tsx src/components/AppShell.test.tsx` | ✅ 13/13 pass（既有 AppShell test 不受影響） |
+| TypeScript（`tsc --noEmit`） | App.tsx + AppShell.tsx 無新增錯誤；pre-existing 錯誤在無關檔（PublishValidatePage / SkillDetailPage / VersionDiffPage），不在本 spec 範圍 |
+
+測試實作 trade-off：用 sentinel `<div data-testid>` 隔離測試 routing 邏輯，不拉入 OverviewPage 整條 dep chain（DocsLayout → AppShell → useAuth/useQuery）。代價是 App.tsx redirect 改動需同步維護 test 內的 routes 設定；換 fast feedback 與測試獨立性。
+
+---
+
+## 7. Result
+
+**Shipped 2026-05-08** — 2 file changes，4/4 vitest pass。
+
+### 7.1 程式變動
+
+- `frontend/src/App.tsx`
+  - import 加入 `Navigate`（react-router v7.14.2）
+  - 新增 `<Route path="/docs" element={<Navigate to="/docs/overview" replace />} />`，置於既有 `/docs/your-first-skill` 之前，註解標 S143
+- `frontend/src/components/AppShell.tsx`
+  - nav link `'/docs/your-first-skill'` → `'/docs'`，註解改為 S143 對齊
+  - 移除 S094d 過期暗示「未來 /docs 可改 index 頁」（已兌現）
+
+### 7.2 行為驗證
+
+- AC-1（直訪 /docs）：✅ Navigate `replace` 不留 history entry，符合「按上一頁不卡 /docs」要求
+- AC-2（nav 點「文件」）：✅ 點擊 `/docs` 立即被 redirect Route 接走至 `/docs/overview`
+- AC-3（子頁直訪）：✅ react-router v7 ranking 確保 `/docs/overview` / `/docs/your-first-skill` 優先匹配，不被 `/docs` redirect 攔截
+
+### 7.3 後續
+
+- 不需要 follow-up：行為純粹、單向、無 backward-compat 包袱
+- 若未來想把「文件」nav active state 表示「在文件區任一頁」，需另寫 spec 改 active state 比對邏輯（目前是精確 path match）
