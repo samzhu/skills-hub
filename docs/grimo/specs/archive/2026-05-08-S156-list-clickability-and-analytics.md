@@ -1,6 +1,6 @@
 # S156: List Clickability + Analytics Hero Card 修正
 
-> Spec: S156 | Size: S(5) | Status: 🚧 in-progress（2/3 — #1 早已 ship S100e + #3 ship 2026-05-08；#2 RequestDetailPage 拆 S156b 因新 page 偏 M）
+> Spec: S156 | Size: S(5) | Status: ✅ shipped 2026-05-08（in-scope items 完工：#1 已被 S100e 完成 / #3 v4.32.0 ship；#2 RequestDetailPage 屬新 page 偏 M，拆 S156b 跟進）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— 三個獨立但同類的「列表項看似可點但不可點」+ analytics「前 3 名」placeholder 問題。
 

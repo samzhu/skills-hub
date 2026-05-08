@@ -88,7 +88,7 @@
 | S154 | Author display identity — `users` 表 + skills snapshot；UI + ShareSkillModal 顯 name + handle 取代 sub ID | M(13) | — | 📐 in-design |
 | S155 | Deployment audit polish — 7 個 LAB 小 UX 問題（footer link / auth-debug / publish-failed / 文案 / 偏好 modal / CLI dropdown 死 UI）| S(7) | — | ✅ v4.27.0 + v4.28.0 + v4.29.0 + v4.30.0 + v4.31.0 — 6/6 in-scope items shipped；#6 拆出 S155b（sort tab needs-reverify-in-LAB）|
 | S155b | Sort tab active highlight LAB reverify — `/browse` 點擊 sort 後 active pill 是否同步（2026-05-08 audit 假設 desync，但程式碼邏輯正確；需實機驗證 bug 是否仍在） | XS(2) | — | 📋 planned |
-| S156 | List clickability + Analytics hero + Request vote 補完（voted field / 擋 self-vote）| S(7) | S150-pattern reuse | 🚧 partial — #1 早已 ship (S100e) + #3 v4.32.0 ship；#2 RequestDetailPage 拆 S156b |
+| S156 | List clickability + Analytics hero card 修正 | S(5) | — | ✅ v4.32.0 — #1 historical (S100e) + #3 hero card removed；#2 拆 S156b |
 | S156b | RequestDetailPage 新 page（描述 + actions + 留言）+ hook + route — `/requests/:id` | M(8) | S156 #1 + S156 #3 完成 | 📋 planned |
 | S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | M(8) | — | 📐 in-design |
 | S158 | API response privacy hardening — list 移除 aclEntries / ownerId；detail 條件 owner-only | S(5) | — | 📐 in-design |
