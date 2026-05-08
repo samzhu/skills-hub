@@ -21,6 +21,7 @@ import { SearchResultsPage } from './pages/SearchResultsPage'
 import { LandingPage } from './pages/LandingPage'
 import { RequestBoardPage } from './pages/RequestBoardPage'
 import { CollectionsPage } from './pages/CollectionsPage'
+import { CollectionDetailPage } from './pages/CollectionDetailPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { PublishReviewPage } from './pages/PublishReviewPage'
 import { PublishFailedPage } from './pages/PublishFailedPage'
@@ -58,6 +59,8 @@ function App() {
       <Route path="/requests" element={<RequestBoardPage />} />
       {/* S096f1: Collections stub — read-only list；install/create 留 S096f2 */}
       <Route path="/collections" element={<CollectionsPage />} />
+      {/* S150: collection detail — shows skills inside a collection */}
+      <Route path="/collections/:id" element={<CollectionDetailPage />} />
       {/* S096h1: Notifications stub — read-only list + bell badge in AppShell */}
       <Route path="/notifications" element={<NotificationsPage />} />
       {/* S094b: 語意搜尋結果頁 — split inline → dedicated route */}

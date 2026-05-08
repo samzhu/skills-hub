@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { Boxes, Download } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
 import { EmptyState } from '@/components/EmptyState'
@@ -104,12 +105,14 @@ export function CollectionsPage() {
 function CollectionCard({ collection }: { collection: SkillCollection }) {
   return (
     <article className="flex flex-col rounded-xl border border-border bg-card p-5 transition-colors hover:border-[rgba(255,255,255,0.10)]">
-      <div className="mb-2 flex items-center gap-2">
-        <Boxes className="h-4 w-4 text-muted-foreground" />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{collection.category}</span>
-      </div>
-      <h3 className="text-[15px] font-medium">{collection.name}</h3>
-      <p className="mt-2 line-clamp-3 flex-1 text-[12.5px] leading-relaxed text-muted-foreground">{collection.description}</p>
+      <Link to={`/collections/${collection.id}`} className="block">
+        <div className="mb-2 flex items-center gap-2">
+          <Boxes className="h-4 w-4 text-muted-foreground" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{collection.category}</span>
+        </div>
+        <h3 className="text-[15px] font-medium">{collection.name}</h3>
+        <p className="mt-2 line-clamp-3 flex-1 text-[12.5px] leading-relaxed text-muted-foreground">{collection.description}</p>
+      </Link>
       <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-[11px] text-muted-foreground">
         <span>{collection.skillCount} 個技能</span>
         <span className="flex items-center gap-1">
