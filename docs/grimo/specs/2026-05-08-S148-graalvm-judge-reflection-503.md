@@ -1,8 +1,15 @@
 # S148: Bug — GraalVM Native Image 缺少 JudgeResponse Reflection Config 導致全面 503
 
-> Spec: S148 | Size: XS(4) | Status: 📋 planned
-> Date: 2026-05-08
+> Spec: S148 | Size: S(5) | Status: 📐 in-design
+> Date: 2026-05-08（更新 2026-05-08 — 範圍擴展）
 > Origin: site audit 2026-05-08 — skill 上傳後後端全面回 503；`gcloud logging read` 確認根因：`UnsupportedFeatureError: Record components not available for record class io.github.samzhu.skillshub.score.judge.JudgeResponse`
+>
+> **2026-05-08 範圍擴展**：deployment audit 同日發現 **第 2 個** GraalVM reflection metadata gap — `/actuator/configprops` 直接回 500：
+> ```
+> Cannot reflectively invoke method 'public io.github.samzhu.skillshub.SkillshubProperties$Storage SkillshubProperties.storage()'.
+> To allow this operation, add the following to the 'reflection' section of 'reachability-metadata.json'...
+> ```
+> 兩個 case 共同 root cause：**GraalVM AOT processing 沒涵蓋全部需要反射的 class**。本 spec 範圍從「修一個 JudgeResponse」擴展為「補齊 AOT hints + 加 build-time 驗證機制」，避免下一個 reflection-using class 又出包。
 
 ---
 

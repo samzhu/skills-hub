@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-08（+ S156 list clickability + analytics hero polish）
+> 最後更新：2026-05-08（+ S157 semantic search not functional + S148 範圍擴展）
 
 ## 使用說明
 
@@ -77,7 +77,7 @@
 | S145 | 訂閱管理頁面（我的技能 → 訂閱 tab） | S(6) | S125b ✅ | 📋 planned |
 | S146 | 掃描器補強 — GitHub Actions Unpinned Dependency 偵測（`@master/@main/@HEAD`） | XS(3) | — | 📋 planned |
 | S147 | 掃描器語意分析缺口研究（W011/E004/W009/W013 vs. Snyk agent-scan） | META(research) | — | 📋 planned |
-| S148 | Bug — GraalVM native image 缺 JudgeResponse reflection config 導致全面 503 | XS(4) | — | 📋 planned |
+| S148 | Bug — GraalVM native image AOT reflection 涵蓋不足（JudgeResponse / SkillshubProperties）| S(5) | — | 📐 in-design |
 | S149 | Cloud Run 結構化日誌改善研究（JSON format + log levels + trace ID） | META(research) | — | 📋 planned |
 | S150 | Collection Detail Page（/collections/:id — 技能清單 + 逐一預覽）| S(7) | S096f2 ✅ | 📋 planned |
 | S151 | Quality Score 訊息一致性修正（hero card "評分計算中" vs. 品質 tab "此版本尚未評分"） | XS(2) | S135b ✅ | 📋 planned |
@@ -86,6 +86,7 @@
 | S154 | Author display identity — `users` 表 + skills snapshot；UI 顯 name + handle 取代 sub ID | M(11) | — | 📐 in-design |
 | S155 | Deployment audit polish — 5 個 LAB 小 UX 問題（footer link / auth-debug / publish-failed / 文案 / 偏好 modal）| S(5) | — | 📐 in-design |
 | S156 | List clickability + Analytics hero — leaderboard / requests row 可點 + 移除 hero「前 3 名」placeholder | S(5) | S150-pattern reuse | 📐 in-design |
+| S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | M(8) | — | 📐 in-design |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |
 | S098a2 | SSE 事件串流 + per-step 動畫 | M(8) | S098a ✅ | ⏸ deferred |
