@@ -1,6 +1,6 @@
 # S155: Deployment Audit Polish — 7 個 LAB 小 UX 問題
 
-> Spec: S155 | Size: S(7) | Status: 🚧 in-progress（2/7 shipped 2026-05-08 — items #1 + #7）
+> Spec: S155 | Size: S(7) | Status: 🚧 in-progress（3/7 shipped 2026-05-08 — items #1 + #5 + #7）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB skillshub-...run.app）— 一輪掃描中收集到 5 個獨立小問題，個別都太小不值得各開一隻 spec，但累積會破壞使用體驗一致性。打包進一隻 S(5) 解決。
 
@@ -268,18 +268,21 @@ deploy 後逐項：
 |------|------|
 | #1 Footer API link | ✅ shipped 2026-05-08 — LandingPage.tsx:158 改 `<Link to="/docs/rest-api">`，避開 LAB swagger-ui 404 |
 | #7 InstallCard「CLI ▼」死 UI | ✅ shipped 2026-05-08 — 改純文字 "Skills Hub CLI"，移除假 dropdown 視覺暗示 |
+| #5 通知偏好「新版本」placeholder | ✅ shipped 2026-05-08 — PreferencesModal 移除整項；NotificationsPage.test 同步驗 hidden |
 | `npx vitest run InstallCard.test.tsx` | ✅ 5/5 PASS |
+| `npx vitest run NotificationsPage.test.tsx` | ✅ 7/7 PASS |
 | #2 /auth-debug AppShell | ⏳ pending |
 | #3 /publish/failed stale data | ⏳ pending |
 | #4 文案夾雜英文 | ⏳ pending |
-| #5 通知偏好「新版本」hide | ⏳ pending |
 | #6 /browse sort tab active highlight | ⏳ pending |
 
 ---
 
-## 7. Result（partial — items #1 + #7）
+## 7. Result（partial — items #1 + #5 + #7）
 
-**Shipped 2026-05-08** — 3 file changes（footer link href + InstallCard label + test 同步），5/5 vitest PASS。
+**Shipped 2026-05-08** — 兩個 commit：
+- `973007b` items #1 + #7（footer link + InstallCard 死 UI）— 3 file changes，5/5 vitest PASS
+- `<S155 #5 commit>` item #5（通知偏好 hide「新版本」）— 2 file changes，7/7 vitest PASS
 
 ### 7.1 程式變動
 

@@ -227,7 +227,8 @@ describe('NotificationsPage — AC-14 preferences modal', () => {
     expect(flagsToggle).toBeChecked()
     expect(within(dialog).getByLabelText('評論')).toBeChecked()
     expect(within(dialog).getByLabelText('需求')).toBeChecked()
-    expect(within(dialog).getByLabelText('新版本')).toBeDisabled()
+    // S155 #5: 「新版本」項已移除（placeholder anti-pattern）— 等真實做時再加回
+    expect(within(dialog).queryByLabelText('新版本')).toBeNull()
   })
 
   it('AC-14: toggle flags off → 儲存 → POST partial body {flags:false}', async () => {

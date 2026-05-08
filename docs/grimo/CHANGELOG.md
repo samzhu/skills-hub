@@ -1,5 +1,19 @@
 # Changelog
 
+## [v4.28.0] — Deployment Polish #5（S155 partial；2026-05-08）
+
+> S155 第 3 項 ship — 通知偏好 modal 移除「新版本（敬請期待）」項。Placeholder anti-pattern：既然不能用 user 不該看到。
+
+### UX — Frontend Polish
+
+- `frontend/src/components/PreferencesModal.tsx`：移除整個「新版本」`PreferenceRow`（檔案內含 disabled checkbox + 「敬請期待」hint）。`versions` 欄位仍存於 API；等真實做（S145 訂閱管理）時再加回 UI
+
+### Test Coverage
+
+- `NotificationsPage.test.tsx` 既有 AC「modal 顯 4 toggles」case 同步：`getByLabelText('新版本').toBeDisabled()` → `queryByLabelText('新版本').toBeNull()` — 7/7 PASS
+
+---
+
 ## [v4.27.0] — Deployment Polish #1 + #7（S155 partial；2026-05-08）
 
 > S155 共 7 個 LAB UX 小 fix；本版本 ship 其中 2 項。剩 5 項（#2-#6）後續 tick 接續。

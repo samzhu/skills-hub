@@ -7,13 +7,14 @@ import type { NotificationPreferences } from '@/api/notifications'
 import { localizeApiError } from '@/lib/api-error-messages'
 
 /**
- * S096h2-T04 — 通知訂閱偏好 modal（4 個 toggle）。
+ * S096h2-T04 — 通知訂閱偏好 modal（3 個 toggle）。
  *
  * Mirror CreateRequestModal pattern：fixed overlay + card + cancel/save buttons。
  * 開啟時 lazy fetch 當前 preferences；本地 state 編輯，submit 後 POST partial。
  * Server 回完整 preferences → setQueryData 立即生效（無需 refetch）。
  *
- * Versions toggle 標示「敬請期待」— 後端 listener 不產 versions 通知（spec §2.6 trim）。
+ * S155 #5: 移除「新版本（敬請期待）」項 — placeholder anti-pattern；等真實做時
+ * 再加回（可由 S145 訂閱管理 ship 時帶入）。`versions` 欄位仍存於 API；UI 暫不顯示。
  */
 export function PreferencesModal({ onClose }: { onClose: () => void }) {
   const { data: current, isLoading } = useNotificationPreferences()
@@ -75,13 +76,6 @@ export function PreferencesModal({ onClose }: { onClose: () => void }) {
               hint="你發起的需求被人認領 / 完成時通知你"
               checked={draft.requests}
               onChange={() => toggle('requests')}
-            />
-            <PreferenceRow
-              label="新版本"
-              hint="關注的技能發佈新版本時通知你（敬請期待）"
-              checked={draft.versions}
-              onChange={() => toggle('versions')}
-              disabled
             />
           </div>
         )}
