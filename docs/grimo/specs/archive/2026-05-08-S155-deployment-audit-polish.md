@@ -1,6 +1,6 @@
 # S155: Deployment Audit Polish — 7 個 LAB 小 UX 問題
 
-> Spec: S155 | Size: S(7) | Status: 🚧 in-progress（6/7 shipped 2026-05-08 — items #1 + #2 + #3 + #4 + #5 + #7）；剩 #6 sort tab needs-reverify-in-LAB
+> Spec: S155 | Size: S(7) | Status: ✅ shipped 2026-05-08（6/7 items shipped；#6 sort tab 拆出至 S155b 因 spec 假設與現況不符需 LAB 實機 reverify）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB skillshub-...run.app）— 一輪掃描中收集到 5 個獨立小問題，個別都太小不值得各開一隻 spec，但累積會破壞使用體驗一致性。打包進一隻 S(5) 解決。
 
@@ -282,11 +282,31 @@ deploy 後逐項：
 
 ---
 
-## 7. Result（partial — items #1 + #5 + #7）
+## 7. Result（6/7 items shipped — close S155 + 拆 #6 出 S155b）
 
-**Shipped 2026-05-08** — 兩個 commit：
-- `973007b` items #1 + #7（footer link + InstallCard 死 UI）— 3 file changes，5/5 vitest PASS
-- `<S155 #5 commit>` item #5（通知偏好 hide「新版本」）— 2 file changes，7/7 vitest PASS
+**Shipped 2026-05-08** — 6 個獨立 atomic commit：
+
+| Commit | Item | Files |
+|--------|------|-------|
+| `973007b` | #1 footer API link + #7 InstallCard 死 UI | LandingPage + InstallCard + InstallCard.test |
+| `7a14961` | #5 通知偏好 hide「新版本」 | PreferencesModal + NotificationsPage.test |
+| `6570465` | #3 publish/failed 直訪 EmptyState | PublishFailedPage + PublishFailedPage.test |
+| `5462752` | #2 /auth-debug AppShell + EmptyState | AuthDebugPage + AuthDebugPage.test |
+| `ad58ee0` | #4 文案夾雜英文 sweep（4 處） | FlagsList + PreferencesModal + FlagsQueuePage |
+
+**累積測試**：5 + 7 + 6 + 2 + 13 = **33 vitest case PASS**（含修改既有 test + 新增 negative assertion）。
+
+**#6 拆出原因（→ S155b backlog row）**：
+- spec §2.5b 假設 sort tab 用 query param 但 active class 由 state 驅動造成 desync；實機 audit 後寫 spec
+- 現況 `HomePage.tsx:217` `const isOn = sortMode === mode` 是 state-based 比對，邏輯**正確**
+- 兩種解釋：(a) audit 當下偶發顯示問題（已被其他 tick / 重整自然修復）；(b) 該 bug 本來就不存在（audit 寫錯）
+- 任一情況都需要 LAB 實機 reverify 才能定案；本 tick 不能 ship 沒有 ground truth 的「fix」
+- 拆 S155b → roadmap 📋 planned（未來 LAB session 時實際點 4 個 sort tab 看 active highlight 確認）
+
+### 7.1 Drive-by 觀察（未修；留 follow-up）
+
+- `MySkillsPage.test:112` 仍 assert「未處理 OPEN 狀態」字串；該 source 在 `MySkillsPage.tsx`，**不在 spec §2.4 列舉的 4 處範圍內** — 留下次 sweep / S155 follow-up
+- `LandingPage.tsx:157` footer「文件」link 仍指 `/docs/your-first-skill`；S143 ship 後 AppShell nav 已改 `/docs`，footer 不一致 — 留 footer 一致性 follow-up
 
 ### 7.1 程式變動
 

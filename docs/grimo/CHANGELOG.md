@@ -1,5 +1,22 @@
 # Changelog
 
+## [S155 close] — Deployment Polish 6/7 完工（2026-05-08）
+
+> S155 共 7 個 LAB UX fix，6 個 in-scope ship 完成（v4.27.0 ~ v4.31.0）。#6 sort tab 拆出 S155b — spec 假設與現況不符（程式碼邏輯正確），需 LAB 實機 reverify 才能判定 bug 是否仍存。
+
+### Wrap-up
+
+- 6 個 atomic commit：`973007b`（#1 + #7）→ `7a14961`（#5）→ `6570465`（#3）→ `5462752`（#2）→ `ad58ee0`（#4）
+- 33 vitest case PASS 累積（含修改既有 test + 新增 negative assertion 確保 dev jargon / 死 UI 不再出現）
+- spec doc archive 至 `docs/grimo/specs/archive/`
+
+### Drive-by 觀察（未修；留 follow-up sweep）
+
+- `MySkillsPage.test:112` 仍 assert「未處理 OPEN 狀態」— 該 source 在 MySkillsPage.tsx，不在 S155 §2.4 範圍
+- `LandingPage.tsx:157` footer「文件」link 仍指 `/docs/your-first-skill`；S143 ship 後 AppShell nav 已改 `/docs`，footer 不一致
+
+---
+
 ## [v4.31.0] — Deployment Polish #4（S155 partial；2026-05-08）
 
 > S155 第 6 項 ship — user-facing 文案夾雜英文 sweep。4 處皆改為一致繁中表達。

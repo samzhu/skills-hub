@@ -86,7 +86,8 @@
 | S152 | SPA fallback for unknown routes（未知 URL → React NotFoundPage，移除 allowlist drift）| S(6) | — | ✅ v4.26.0 — 8/8 PASS（catchall pattern 取代 14 條 allowlist + /api/ early-return） |
 | S153 | Skill detail 404 UX — 統一 400/403/404 顯「找不到此技能」（移除誤導 retry 提示）| XS(3) | — | ✅ v4.24.0 — 9/9 vitest PASS（isUnviewable 擴展涵蓋 400/403/404） |
 | S154 | Author display identity — `users` 表 + skills snapshot；UI + ShareSkillModal 顯 name + handle 取代 sub ID | M(13) | — | 📐 in-design |
-| S155 | Deployment audit polish — 7 個 LAB 小 UX 問題（footer link / auth-debug / publish-failed / 文案 / 偏好 modal / sort active / CLI dropdown 死 UI）| S(7) | — | 🚧 v4.31.0 partial — 6/7 shipped (#1 + #2 + #3 + #4 文案 sweep + #5 + #7)；剩 #6 sort tab needs-reverify-in-LAB |
+| S155 | Deployment audit polish — 7 個 LAB 小 UX 問題（footer link / auth-debug / publish-failed / 文案 / 偏好 modal / CLI dropdown 死 UI）| S(7) | — | ✅ v4.27.0 + v4.28.0 + v4.29.0 + v4.30.0 + v4.31.0 — 6/6 in-scope items shipped；#6 拆出 S155b（sort tab needs-reverify-in-LAB）|
+| S155b | Sort tab active highlight LAB reverify — `/browse` 點擊 sort 後 active pill 是否同步（2026-05-08 audit 假設 desync，但程式碼邏輯正確；需實機驗證 bug 是否仍在） | XS(2) | — | 📋 planned |
 | S156 | List clickability + Analytics hero + Request vote 補完（voted field / 擋 self-vote）| S(7) | S150-pattern reuse | 📐 in-design |
 | S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | M(8) | — | 📐 in-design |
 | S158 | API response privacy hardening — list 移除 aclEntries / ownerId；detail 條件 owner-only | S(5) | — | 📐 in-design |
