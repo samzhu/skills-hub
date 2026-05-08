@@ -96,7 +96,7 @@
 | S159 | Skill query API hardening — category case-insensitive + tag filter 實作 + 拒收未知 param | S(6) | — | 📐 in-design |
 | S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) | — | 📐 in-design |
 | S161 | User input sanitization — Review / Flag / Request 文字欄位 XSS strip + backfill | S(6) | — | 📐 in-design |
-| S162 | API response consistency — 統一 error shape (401/403/415/500) + 鎖死 JSON content negotiation | S(5) | — | 📐 in-design |
+| S162 | API response consistency — 統一 error shape (401/403/415/500) + 鎖死 JSON content negotiation | S(5) | — | 🚧 v4.34.0 partial — AC-3 415 handler ship；剩 401/403/500 fallback / xml→406 / BasicErrorController 替換 |
 | S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) | S144 同期 | 📐 in-design |
 | S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) | S150 ✅ ship 前提 | 📐 in-design |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |

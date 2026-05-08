@@ -13,6 +13,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -501,6 +502,29 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(new ErrorResponse("VALIDATION_ERROR",
 						"Invalid zip file: cannot read package contents",
+						Instant.now()));
+	}
+
+	/**
+	 * S162 AC-3：處理 Content-Type 不被支援（{@link HttpMediaTypeNotSupportedException}）。
+	 *
+	 * <p>當 client POST/PUT 帶 {@code Content-Type: text/plain} 等非 JSON 媒體類型時，Spring MVC
+	 * argument resolution 階段拋此例外。預設由 Spring Boot {@code DefaultHandlerExceptionResolver}
+	 * 處理 → 回 415 但 body 走 framework default shape（{@code timestamp/status/error/path}），
+	 * 與平台 ErrorResponse 不一致。本 handler normalize 至 {@code UNSUPPORTED_MEDIA_TYPE} ErrorResponse
+	 * 對齊 frontend i18n 對 {@code error} code 的 lookup。
+	 */
+	@ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+	ResponseEntity<ErrorResponse> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
+		var contentType = ex.getContentType();
+		log.atWarn()
+				.addKeyValue("errorCode", "UNSUPPORTED_MEDIA_TYPE")
+				.addKeyValue("contentType", contentType == null ? "(none)" : contentType.toString())
+				.log("Content-Type not supported");
+		return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+				.body(new ErrorResponse("UNSUPPORTED_MEDIA_TYPE",
+						"Content-Type not supported: "
+								+ (contentType == null ? "(none)" : contentType.toString()),
 						Instant.now()));
 	}
 

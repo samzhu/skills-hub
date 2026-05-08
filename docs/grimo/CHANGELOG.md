@@ -1,5 +1,28 @@
 # Changelog
 
+## [v4.34.0] — 415 Unsupported Media Type 統一 ErrorResponse shape（S162 partial；2026-05-08）
+
+> S162 AC-3 ship — `Content-Type: text/plain` 等非 JSON 媒體類型不再走 Spring framework default body shape，改回 `{error: "UNSUPPORTED_MEDIA_TYPE", message, timestamp}` 平台格式，對齊 frontend i18n 對 error code 的 lookup。
+
+### Backend — GlobalExceptionHandler
+
+- `backend/.../shared/api/GlobalExceptionHandler.java`：新增 `@ExceptionHandler(HttpMediaTypeNotSupportedException.class)` handler；attribution null-safe（client 沒帶 Content-Type 顯 `(none)`）
+
+### Test Coverage
+
+- `GlobalExceptionHandlerTest`（新增）：2/2 PASS — 415 帶 text/plain 與 null content-type 雙場景
+- 純 POJO 單元測試，無 Spring context，快速且不污染 test cache key
+
+### 拆 follow-up（仍在 spec §3 設計內）
+
+- AC-1/2: 401 + 403 平台 shape — 需 SecurityConfig `authenticationEntryPoint` / `accessDeniedHandler`（filter chain 階段拋出，@ExceptionHandler 接不到）
+- AC-4: 404 typo path 走平台 shape — 已由 S127 NoResourceFoundException handler 部分 cover；需 audit BasicErrorController 替換
+- AC-5: 500 fallback `@ExceptionHandler(Exception.class)` — risk 高，獨立 tick
+- AC-6/7: Accept xml → 406 + JSON / WebMvcConfigurer 鎖 JSON — 獨立 tick
+- AC-8b: ownership 拒絕 409 → 403 sweep — 獨立 tick
+
+---
+
 ## [v4.33.0] — API 列表端隱私強化（S158 partial；2026-05-08）
 
 > 列表端 `GET /api/v1/skills` 不再暴露 `aclEntries` / `ownerId` 兩個 internal authorization 欄位。User 從 list 看不到誰能 write / delete 該 skill；ACL 結構改動不再變 breaking change。Detail endpoint owner-conditional 拆 S158b 跟進。
