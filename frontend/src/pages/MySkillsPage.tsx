@@ -97,7 +97,7 @@ export function MySkillsPage() {
       {/* Hero */}
       <div className="mb-6">
         <p className="text-[12px] text-muted-foreground">
-          以 <span className="font-mono text-foreground">{author}</span> 身份發布
+          以 <span className="font-mono text-foreground">{me?.name ?? me?.email ?? author}</span> 身份發布
         </p>
         <div className="mt-1 flex items-end justify-between gap-4">
           <h1 className="text-[22px] font-semibold tracking-tight">
