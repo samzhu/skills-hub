@@ -265,3 +265,41 @@ curl -s -H "Authorization: Bearer <jwt>" 'https://.../api/v1/skills/<your-id>' |
 
 - **S159（potential）**: 同類 audit 套用至 Collection / Request / Flag / Review read model，確認沒遺漏 aclEntries / ownerId 暴露
 - **S160（potential）**: 加上 OpenAPI schema annotation 與 contract test，避免未來 reintroduce internal field
+
+## 8. /skills/{id}/grants endpoint — 同類議題並入
+
+LAB audit 發現第 2 個 ACL 暴露點：`GET /api/v1/skills/{id}/grants` 回 完整 grant list：
+```json
+[{
+  "grantedAt": "2026-05-08T03:47:04.220488Z",
+  "grantedBy": "111161306011023995106",
+  "id": "a94997a5-cd20-4e71-88e2-65711b25a3b2",
+  "principalId": "111161306011023995106",
+  "principalType": "user",
+  "role": "OWNER",
+  "skillId": "..."
+}, ...]
+```
+
+含 grant ID（內部 PK）、grantedBy（誰授權）、principalId / role 等完整 RBAC metadata。
+
+**修法（並入本 spec）：**
+
+- `/grants` endpoint enforce owner / admin only access；非 owner 走 403 FORBIDDEN
+- 補 `viewerPermissions.canManageGrants` boolean 給前端判斷是否顯示「管理分享」入口
+- 既有 `/skills/{id}/grants` 為 ShareSkillModal 用；前端只在 owner viewer 顯示此 modal，本 spec 後 backend 也 enforce
+
+加 §3 補 AC：
+
+```
+AC-7: 非 owner 不能 GET grants
+  Given Bob 非 skill X 的 owner
+  When Bob GET /api/v1/skills/{X}/grants
+  Then 回 403 FORBIDDEN
+  And response = ErrorResponse 平台格式 (per S162)
+
+AC-8: Owner GET grants 仍正常
+  Given Alice 是 skill Y 的 owner
+  When Alice GET /api/v1/skills/{Y}/grants
+  Then 回 200 + 完整 grant list
+```
