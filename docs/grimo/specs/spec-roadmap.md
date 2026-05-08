@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-08（+ S148 503 bug GraalVM JudgeResponse reflection + S149 structured logging research）
+> 最後更新：2026-05-08（+ S150 Collection Detail Page + S151 Quality Score Message Alignment）
 
 ## 使用說明
 
@@ -79,6 +79,8 @@
 | S147 | 掃描器語意分析缺口研究（W011/E004/W009/W013 vs. Snyk agent-scan） | META(research) | — | 📋 planned |
 | S148 | Bug — GraalVM native image 缺 JudgeResponse reflection config 導致全面 503 | XS(4) | — | 📋 planned |
 | S149 | Cloud Run 結構化日誌改善研究（JSON format + log levels + trace ID） | META(research) | — | 📋 planned |
+| S150 | Collection Detail Page（/collections/:id — 技能清單 + 逐一預覽）| S(7) | S096f2 ✅ | 📋 planned |
+| S151 | Quality Score 訊息一致性修正（hero card "評分計算中" vs. 品質 tab "此版本尚未評分"） | XS(2) | S135b ✅ | 📋 planned |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |
 | S098a2 | SSE 事件串流 + per-step 動畫 | M(8) | S098a ✅ | ⏸ deferred |
