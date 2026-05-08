@@ -1,6 +1,6 @@
 # S147: 掃描器語意分析缺口研究
 
-> Spec: S147 | Size: META(research) | Status: 📋 planned
+> Spec: S147 | Size: META(research) | Status: ⏸ deferred（2026-05-08 暫緩，等研究啟動時機；恢復後再決定是否拆 sub-spec 實作）
 > Date: 2026-05-08
 > Origin: site audit 2026-05-08 — 對比 Snyk agent-scan 結果與我們的掃描器輸出，發現多個 regex 無法覆蓋的語意分析盲點（W011/E004/W009/W013）；需研究補強方向再決定是否拆 sub-spec 實作。
 

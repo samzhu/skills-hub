@@ -1,6 +1,6 @@
 # S146: 掃描器補強 — GitHub Actions Unpinned Dependency 偵測
 
-> Spec: S146 | Size: XS(3) | Status: 📋 planned
+> Spec: S146 | Size: XS(3) | Status: ⏸ deferred（2026-05-08 暫緩，等 S147 研究結論後再規劃實作優先序）
 > Date: 2026-05-08
 > Origin: site audit 2026-05-08 — 上傳 `auditing-terraform-infrastructure-for-security` skill（tessl.io Advisory W012），我們的掃描器回傳「無風險」；Snyk 已標記 `uses: bridgecrewio/checkov-action@master` 為 medium severity「Unverifiable external dependency detected」。掃描器盲點確認。
 
