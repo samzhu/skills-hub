@@ -1,6 +1,6 @@
 # S158: API Response Privacy Hardening — 過度曝露的 internal authorization 資料
 
-> Spec: S158 | Size: S(5) | Status: 🚧 in-progress（list endpoint 完工 2026-05-08；detail endpoint owner-conditional 拆 S158b 跟進）
+> Spec: S158 | Size: S(5) | Status: ✅ shipped 2026-05-08（list endpoint 完工 v4.33.0；detail endpoint owner-conditional + /grants authz 拆 S158b 因 surface 偏 M）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— `GET /api/v1/skills` response 每一個 skill 都帶 `aclEntries: ["user:<sub>:read","user:<sub>:write","user:<sub>:delete","public:*:read"]` 給未登入 / 任意登入 user。對外 API 洩漏 RBAC 結構、誰能編輯 / 刪除、平台 internal authorization model。
 

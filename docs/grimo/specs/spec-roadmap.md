@@ -91,7 +91,7 @@
 | S156 | List clickability + Analytics hero card 修正 | S(5) | — | ✅ v4.32.0 — #1 historical (S100e) + #3 hero card removed；#2 拆 S156b |
 | S156b | RequestDetailPage 新 page（描述 + actions + 留言）+ hook + route — `/requests/:id` | M(8) | S156 #1 + S156 #3 完成 | 📋 planned |
 | S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | M(8) | — | 📐 in-design |
-| S158 | API response privacy hardening — list 移除 aclEntries / ownerId；detail 條件 owner-only | S(5) | — | 🚧 v4.33.0 partial — list endpoint 完工（@JsonView Views.List）；detail owner-conditional 拆 S158b |
+| S158 | API response privacy hardening — list 移除 aclEntries / ownerId | S(5) | — | ✅ v4.33.0 — list endpoint 隱藏 aclEntries+ownerId（@JsonView）；detail owner-conditional 拆 S158b |
 | S158b | Detail endpoint viewer permissions — owner-only aclEntries + viewerPermissions{isOwner/canEdit/canDelete} + /grants endpoint authz | M(8) | S158 list 完工 | 📋 planned |
 | S159 | Skill query API hardening — category case-insensitive + tag filter 實作 + 拒收未知 param | S(6) | — | 📐 in-design |
 | S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) | — | 📐 in-design |
