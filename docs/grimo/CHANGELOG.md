@@ -1,5 +1,28 @@
 # Changelog
 
+## [v4.36.0] — Content negotiation 鎖 JSON only（S162 AC-6；2026-05-08）
+
+> S162 AC-6 ship — 移除 Spring Boot 自動註冊的 XML message converter；REST API 對外只承諾 JSON contract。`Accept: application/xml` 不再有 converter 匹配 → 回 406 Not Acceptable。
+
+### Backend — WebMvc Config
+
+- `backend/.../shared/config/WebMvcConfig.java`（新增）：implements `WebMvcConfigurer`
+  - `configureMessageConverters` → `removeIf MappingJackson2XmlHttpMessageConverter`
+  - `configureContentNegotiation` → `defaultContentType = APPLICATION_JSON`，不註冊 xml mapping
+
+### 影響範圍（不受影響）
+
+- Skill bundle 下載走 `application/octet-stream` per-endpoint produces — 不受
+- SKILL.md `text/markdown` endpoint per-endpoint produces — 不受
+- Actuator 自有 chain — 不受
+
+### Test Coverage
+
+- `WebMvcConfigTest`（新增）：3/3 PASS — XML converter 從 list 移除 / idempotent / contentNegotiation 鏈不拋
+- 端到端「Accept: xml → 406」由 LAB deploy 後手動驗證（S162 spec §5.2）
+
+---
+
 ## [v4.35.0] — 500 Uncaught Exception fallback handler（S162 partial；2026-05-08）
 
 > S162 AC-5 ship — 任何未被 specific handler 攔到的例外，回 500 + `{error: "INTERNAL_ERROR", message: "An unexpected error occurred", timestamp}` 平台格式，不再洩漏 `ex.getMessage()`（可能含 SQL / 內部類名 / file path 等敏感資訊）。完整 stack 走 server-side log 留 ops audit trail。
