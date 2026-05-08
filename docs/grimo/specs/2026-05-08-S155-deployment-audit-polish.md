@@ -102,18 +102,22 @@ if (!state || !state.findings) {
 
 對齊 `PublishValidatePage` / `PublishReviewPage` 既有「缺 skill id 參數 — 請從 /publish 重新發佈」的 pattern。
 
-### 2.4 #4 文案夾雜英文「reviewer」「flag」
+### 2.4 #4 文案夾雜英文（多處）
 
-**現況**（旗標 tab `FlagsPanel`、通知偏好 modal）：
-- 「目前沒有任何回報 / 若你發現此技能含惡意指令、誤導 description 或其他問題，可使用上方按鈕送出回報，由 **reviewer** 處理。」
-- 「回報 / 你發佈的技能被其他人 **flag** 時通知你」
+**現況** — sweep 全 frontend user-facing 文案，至少以下處夾雜英文：
 
-**修正**：
-- `reviewer` → `審核者`
-- 被其他人 flag 時 → 被其他人**回報**時
-- 同步 sweep `description` 字眼是否該繁中（其屬於 SKILL.md 規範字段，技術名詞保留可，但 UI 內描述句改「描述」）
+| 位置 | 英文字 | 修為 |
+|------|--------|------|
+| `FlagsPanel` empty state（skill detail 旗標 tab） | reviewer、flag | 審核者、回報 |
+| `NotificationPreferencesModal` | flag、description | 回報、描述 |
+| `FlagsQueuePage` 標題下 sub | OPEN、reviewer、Resolve、Dismiss | 待處理、審核者、處理、駁回 |
+| `FlagsQueuePage` empty state | reviewer | 審核者 |
 
-實作：grep 全 frontend `'reviewer'`、`'flag'`、`'description'` 在 user-facing 文案內出現，逐一替換。技術代碼裡的識別子名稱不改。
+**修正方法**：grep 全 frontend `'reviewer'`、`'flag'`、`'OPEN'`、`'Resolve'`、`'Dismiss'`、`'description'`（在 user-facing 文案內），逐一替換。技術代碼裡的識別子名稱（變數、API path、enum value）不改 — 只動 UI 顯示文案。
+
+**例外保留英文**：
+- 程式碼示意內的英文（如 `skills-hub install ...` command）保留
+- 專有名詞（如 SKILL.md / OAuth / OpenAPI）保留
 
 ### 2.5 #5 通知偏好「新版本（敬請期待）」
 
@@ -157,11 +161,13 @@ AC-3: /publish/failed 直訪不顯示 stale 資料
   Then 顯示 EmptyState「沒有失敗紀錄可顯示」+ 「前往上傳」CTA
   And 不出現「驗證失敗 / 0 error · 0 warning」混亂訊息
 
-AC-4: User-facing 文案無夾雜英文
-  Given 任何 user 訪問 旗標 tab 與通知偏好 modal
+AC-4: User-facing 文案無夾雜英文（4 處）
+  Given 任何 user 訪問以下 4 處：旗標 tab empty state、通知偏好 modal、
+        /flags queue page header sub、/flags queue empty state
   When 文案 render
-  Then 「reviewer」字眼變「審核者」
-  And 「flag」（動詞）字眼變「回報」
+  Then 「reviewer」→「審核者」、「flag」→「回報」、
+       「OPEN」→「待處理」、「Resolve」→「處理」、「Dismiss」→「駁回」、
+       「description」（在中文 sentence 內）→「描述」
 
 AC-5: 通知偏好 modal 不再顯「新版本（敬請期待）」
   Given 使用者打開通知中心 → 設定 modal
