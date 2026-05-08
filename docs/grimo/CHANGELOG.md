@@ -1,5 +1,20 @@
 # Changelog
 
+## [v4.29.0] — Deployment Polish #3（S155 partial；2026-05-08）
+
+> S155 第 4 項 ship — `/publish/failed` 直訪不再顯示自相矛盾的「驗證失敗 / 0 error · 0 warning」fallback；改用 EmptyState 友善引導回 /publish。
+
+### UX — Frontend Error Boundary
+
+- `frontend/src/pages/PublishFailedPage.tsx`：頂端加 state guard — 偵測 router state findings + query msg + id 全空 → render `EmptyState` (tone=redirect)「沒有失敗紀錄可顯示」+ 「前往上傳」/「返回瀏覽」CTA
+- 沿用既有 `EmptyState` 元件（tone=redirect），對齊其他「缺 context」頁的 UX pattern
+
+### Test Coverage
+
+- `PublishFailedPage.test.tsx`：6/6 PASS — AC-3 改驗 EmptyState 顯示；AC-4 補 `&msg=` 走原 render path（避免命中新 guard）
+
+---
+
 ## [v4.28.0] — Deployment Polish #5（S155 partial；2026-05-08）
 
 > S155 第 3 項 ship — 通知偏好 modal 移除「新版本（敬請期待）」項。Placeholder anti-pattern：既然不能用 user 不該看到。

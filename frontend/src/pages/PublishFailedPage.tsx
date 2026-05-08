@@ -1,6 +1,7 @@
 import { Link, useSearchParams, useLocation } from 'react-router'
 import { AlertOctagon, RefreshCw, ArrowLeft, X, AlertTriangle } from 'lucide-react'
 import { AppShell } from '@/components/AppShell'
+import { EmptyState } from '@/components/EmptyState'
 import type { ValidationFinding } from '@/types/skill'
 
 /**
@@ -30,6 +31,26 @@ export function PublishFailedPage() {
   const routerState = location.state as { findings?: ValidationFinding[]; msg?: string } | null
   const findings = routerState?.findings
   const msg = routerState?.msg ?? params.get('msg')
+
+  // S155 #3: 直訪 /publish/failed 但缺所有錯誤 context → 改顯 EmptyState 引導回 /publish，
+  // 取代原本「驗證失敗 / 0 error · 0 warning」自相矛盾的 fallback 顯示。
+  // 觸發條件：沒 router state findings、沒 query msg、沒 id —— user 是 bookmark / typo 直訪。
+  const hasErrorContext = (findings && findings.length > 0) || !!msg || !!id
+  if (!hasErrorContext) {
+    return (
+      <AppShell>
+        <div className="mx-auto max-w-2xl py-10">
+          <EmptyState
+            tone="redirect"
+            headline="沒有失敗紀錄可顯示"
+            sub="此頁面僅在發佈流程觸發失敗時自動導入。請從上傳開始；若你以為應該有失敗紀錄，請回到上傳頁重新發佈。"
+            primaryAction={{ label: '前往上傳', href: '/publish' }}
+            secondaryAction={{ label: '返回瀏覽', href: '/browse' }}
+          />
+        </div>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell>

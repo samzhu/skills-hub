@@ -44,14 +44,17 @@ describe('PublishFailedPage — S098b', () => {
     expect(screen.getByText('abc-123')).toBeInTheDocument()
   })
 
-  it('AC-3: missing state defaults to A (validation error fallback)', () => {
+  it('AC-3 / S155 #3: 直訪無 context → EmptyState 引導回 /publish，不顯自相矛盾「0 error · 0 warning」', () => {
     renderWith('')
-    // 預期 fallback 為 State A — h1 為「發佈未通過驗證」
-    expect(screen.getByRole('heading', { level: 1, name: '發佈未通過驗證' })).toBeInTheDocument()
+    expect(screen.getByText('沒有失敗紀錄可顯示')).toBeInTheDocument()
+    const cta = screen.getByText('前往上傳').closest('a')
+    expect(cta).toHaveAttribute('href', '/publish')
+    // 不顯原本的 fallback 標題
+    expect(screen.queryByRole('heading', { level: 1, name: '發佈未通過驗證' })).not.toBeInTheDocument()
   })
 
-  it('AC-4: footer CTAs link to /publish + /browse', () => {
-    renderWith('?state=A')
+  it('AC-4: footer CTAs link to /publish + /browse（state=A 帶 msg → 走原 render path）', () => {
+    renderWith('?state=A&msg=Missing%20field')
     const retry = screen.getByText('重新上傳').closest('a')
     expect(retry).toHaveAttribute('href', '/publish')
     const back = screen.getByText('返回瀏覽').closest('a')
