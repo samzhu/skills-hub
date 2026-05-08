@@ -161,6 +161,36 @@ class PlatformErrorController implements ErrorController {
 
 註冊覆蓋 default：自動發現（`@Component` 實作 `ErrorController`）。
 
+### 2.3b HTTP Status Code Semantic Audit（新增）
+
+LAB audit 發現 status code 語意誤用：
+
+| 觀察 case | 實際 status | 應為 status | 原因 |
+|----------|------------|------------|------|
+| DELETE /api/v1/requests/{id} 由非 requester 操作 | **409 STATE_CONFLICT** `not_request_requester: only requester can delete` | **403 FORBIDDEN** | 「沒權限做這個動作」是 authorization 失敗，不是 resource state conflict |
+| 同類疑慮：其他 ownership-check 拒絕路徑（review delete by non-owner、collection delete by non-owner、skill suspend by non-owner 等）| 待 audit | 應 403 | 同上 |
+
+**405 / 409 / 403 / 404 語意定義（per RFC 9110）：**
+
+| Status | 適用情境 |
+|--------|---------|
+| **400 Bad Request** | 語法 / 格式錯誤（ill-formed JSON / 缺欄位） |
+| **401 Unauthorized** | 沒登入 / 認證 failed |
+| **403 Forbidden** | 已認證但**該 user 對該 resource 無權限**做這個 action |
+| **404 Not Found** | resource 不存在（或 viewer 看不到 — security-by-obscurity）|
+| **405 Method Not Allowed** | HTTP method 對該 endpoint 不支援 |
+| **409 Conflict** | 業務 invariant 衝突，與 viewer 是誰**無關**（例：duplicate review by same user、version 已存在）|
+
+「Only requester can delete」明顯是 403（與 viewer 是誰直接相關）；放 409 是錯類別。
+
+**修法**：sweep 全 backend `@ExceptionHandler` 與業務 service throw exception 對應 status code mapping，把「ownership / permission 拒絕」一律改 403。
+
+**Sweep 範圍**（implementer 用 `git grep` 找）：
+```bash
+grep -rn 'STATE_CONFLICT\|HttpStatus.CONFLICT\|throw new ConflictException' backend/src/main/java/
+```
+逐一檢視 throw 條件 — 若是「viewer 沒權限」改 ForbiddenException + 403；保留 conflict 在 duplicate / version 衝突等真 conflict 情境。
+
 ### 2.4 鎖死 JSON Content Negotiation
 
 **現況**：`Accept: application/xml` 走 Jackson XML extension 序列化 response 為 XML。可能因 classpath 含 `jackson-dataformat-xml` 自動 register。
@@ -239,6 +269,17 @@ AC-7: 既有 JSON contract 不破
   When 處理
   Then 200 + JSON content-type
   And body 結構與本 spec 前完全一致
+
+AC-8b: Ownership 拒絕走 403 不走 409
+  Given Bob 非 request X 的 requester
+  When Bob DELETE /api/v1/requests/{X}
+  Then 回 403 FORBIDDEN（不是 409 STATE_CONFLICT）
+  And body = {"error":"FORBIDDEN", "message":"只有發起人能刪除此需求", ...}
+
+AC-8c: Sweep 其他 ownership 拒絕點
+  Given DELETE/PUT 對 review / collection / skill / flag 等需 owner
+  When 非 owner 操作
+  Then 全部走 403 + FORBIDDEN code
 
 AC-8: Frontend ApiError 對所有 status 正確 parse
   Given 前端任一 4xx/5xx response
