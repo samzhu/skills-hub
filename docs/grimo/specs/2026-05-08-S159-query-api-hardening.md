@@ -96,6 +96,22 @@ List<Skill> findByTag(String tag);
 
 支援多 tag AND（`?tag=terraform&tag=security`）：留 follow-up；MVP 單 tag 即可。
 
+### 2.2b 拒收非法 page / size 值（新增）
+
+**現況**：
+- `?page=-1` → 200 回全部 list（Spring Pageable 預設 silently coerce 為 0）
+- `?size=0` → 200 回全部（degenerate to no limit）
+- `?size=-5` → 200 回全部
+- `?size=99999` → 200 回實際 totalElements
+
+**問題**：silent coerce 是 anti-pattern；user 寫錯沒 hint。`size=0` 還可能踩 framework 邊界（無上限可能導致記憶體 spike）。
+
+**修法**：自訂 `PageableArgumentResolver`（或 controller-level `@Validated` + `@Positive @Max(100) Integer size`），檢查：
+- `page >= 0`（負數 → 400）
+- `1 <= size <= 100`（0 / 負數 / >100 → 400）
+
+實作或設 `spring.data.web.pageable.max-page-size=100`（Spring Data 內建限制；至少 cap 上限）。
+
 ### 2.3 拒收未知 query param（return 400）
 
 **現況**：`?tag=` `?fooBar=` `?random=` 全被 backend 接受 → 回 200 + 全 list（filter 沒套）。
@@ -196,6 +212,13 @@ AC-7: Frontend 既有 filter 不破
   Given /browse sidebar 用 ?category=Security ?keyword=terraform
   When 點擊 / search
   Then 仍正常 work（frontend 改傳 lowercase category 即可）
+
+AC-8: 非法 page / size 值拒收
+  Given ?page=-1 或 ?size=0 或 ?size=-5 或 ?size=10000
+  When backend 處理
+  Then 回 400 VALIDATION_ERROR
+       message 含 page must be ≥ 0 或 size must be 1–100
+  Note: ?size=100 仍 OK（上限）；?size=99 OK
 ```
 
 驗證指令：
