@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
+import { AppShell } from '@/components/AppShell'
+import { EmptyState } from '@/components/EmptyState'
 
 /**
  * S134 — dev-only「我的認證」頁。
@@ -6,8 +8,11 @@ import { useQuery } from '@tanstack/react-query'
  * 顯示後端 `/api/v1/dev/auth-debug` dump 的 OAuth2 session / JWT claim shape，
  * 供開發者比對真實 IdP claim 與 mock-oauth2-server 的差異。
  *
- * 啟用條件：後端跑 real-oauth profile（`SPRING_PROFILES_ACTIVE` 含 `real-oauth`）；
- * 否則 fetch 收 404（@Profile gate 沒註冊 controller） → 顯示提示文字。
+ * <p>啟用條件：後端跑 real-oauth profile（`SPRING_PROFILES_ACTIVE` 含 `real-oauth`）；
+ * 否則 fetch 收 404（@Profile gate 沒註冊 controller） → 顯示 EmptyState 提示。
+ *
+ * <p>S155 #2: 加 AppShell wrapper 讓使用者保有 nav 退路；no-oauth fallback 改用
+ * EmptyState 友善文案（不顯示 SPRING_PROFILES_ACTIVE 等 dev jargon 給普通 user）。
  *
  * @see backend/src/main/java/io/github/samzhu/skillshub/shared/security/dev/AuthDebugController
  */
@@ -37,44 +42,54 @@ export function AuthDebugPage() {
   // 載入中：showtime 短，不刻意做 skeleton
   if (isLoading) {
     return (
-      <div className="p-6">
-        <h1 className="text-2xl mb-4 font-semibold">我的認證</h1>
-        <p className="text-zinc-400">載入中…</p>
-      </div>
+      <AppShell>
+        <div className="p-6">
+          <h1 className="text-2xl mb-4 font-semibold">我的認證</h1>
+          <p className="text-zinc-400">載入中…</p>
+        </div>
+      </AppShell>
     )
   }
 
   // 404 fallback：dev 端未啟用 real-oauth profile
   if (error?.message === NOT_REAL_OAUTH) {
     return (
-      <div className="p-6 max-w-2xl">
-        <h1 className="text-2xl mb-4 font-semibold">我的認證</h1>
-        <p className="text-zinc-400">
-          目前未啟用真實 OAuth profile（需要 SPRING_PROFILES_ACTIVE 含 real-oauth）。
-        </p>
-      </div>
+      <AppShell>
+        <div className="mx-auto max-w-2xl py-10">
+          <EmptyState
+            tone="redirect"
+            headline="此功能僅在開發環境啟用"
+            sub="這是給開發者除錯用的頁面，需要後端開啟真實認證才會有資料；目前不是相符的環境。一般使用者請回到首頁繼續瀏覽技能。"
+            primaryAction={{ label: '返回首頁', href: '/browse' }}
+          />
+        </div>
+      </AppShell>
     )
   }
 
   // 其他錯誤：顯示通用錯誤訊息（網路斷線 / 後端 500 等）
   if (error) {
     return (
-      <div className="p-6 text-red-400">
-        錯誤：{error.message}
-      </div>
+      <AppShell>
+        <div className="p-6 text-red-400">
+          錯誤：{error.message}
+        </div>
+      </AppShell>
     )
   }
 
   return (
-    <div className="p-6 max-w-4xl">
-      <h1 className="text-2xl mb-4 font-semibold">我的認證</h1>
-      {/* 純 JSON dump（含 access_token_value）— 僅 dev 用；real-oauth profile 嚴禁部署到 LAB / prod */}
-      <pre
-        data-testid="auth-debug-json"
-        className="text-xs bg-zinc-900 p-4 rounded overflow-auto border border-zinc-800"
-      >
-        {JSON.stringify(data, null, 2)}
-      </pre>
-    </div>
+    <AppShell>
+      <div className="p-6 max-w-4xl">
+        <h1 className="text-2xl mb-4 font-semibold">我的認證</h1>
+        {/* 純 JSON dump（含 access_token_value）— 僅 dev 用；real-oauth profile 嚴禁部署到 LAB / prod */}
+        <pre
+          data-testid="auth-debug-json"
+          className="text-xs bg-zinc-900 p-4 rounded overflow-auto border border-zinc-800"
+        >
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      </div>
+    </AppShell>
   )
 }

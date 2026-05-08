@@ -1,5 +1,21 @@
 # Changelog
 
+## [v4.30.0] — Deployment Polish #2（S155 partial；2026-05-08）
+
+> S155 第 5 項 ship — `/auth-debug` 加 AppShell wrap，使用者直訪此頁有 nav 退路；no-oauth fallback 改用 EmptyState 友善文案，不再對普通使用者洩漏 `SPRING_PROFILES_ACTIVE` 等 dev jargon。
+
+### UX — Frontend Page Wrapper
+
+- `frontend/src/pages/AuthDebugPage.tsx`：4 個 return path（loading / no-oauth / generic error / 200 JSON dump）全部包進 `<AppShell>`
+- no-oauth 404 fallback 由 `<div>提示文字</div>` 改為 `<EmptyState tone="redirect">`：headline「此功能僅在開發環境啟用」+ sub 友善描述 + 「返回首頁」CTA href=/browse
+
+### Test Coverage
+
+- `AuthDebugPage.test.tsx` 全面更新：補 `MemoryRouter` wrap（AppShell 內 `<Link>` 需 router context）+ /me 401 mock（讓 `useAuth` 走 anonymous，AppShell bell badge 不啟 polling）
+- 404 case 改驗 EmptyState headline + 「返回首頁」CTA + 確認 `SPRING_PROFILES_ACTIVE` 字串不再洩漏 — 2/2 PASS
+
+---
+
 ## [v4.29.0] — Deployment Polish #3（S155 partial；2026-05-08）
 
 > S155 第 4 項 ship — `/publish/failed` 直訪不再顯示自相矛盾的「驗證失敗 / 0 error · 0 warning」fallback；改用 EmptyState 友善引導回 /publish。

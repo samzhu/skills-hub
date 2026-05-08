@@ -1,6 +1,6 @@
 # S155: Deployment Audit Polish — 7 個 LAB 小 UX 問題
 
-> Spec: S155 | Size: S(7) | Status: 🚧 in-progress（4/7 shipped 2026-05-08 — items #1 + #3 + #5 + #7）
+> Spec: S155 | Size: S(7) | Status: 🚧 in-progress（5/7 shipped 2026-05-08 — items #1 + #2 + #3 + #5 + #7）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB skillshub-...run.app）— 一輪掃描中收集到 5 個獨立小問題，個別都太小不值得各開一隻 spec，但累積會破壞使用體驗一致性。打包進一隻 S(5) 解決。
 
@@ -270,12 +270,13 @@ deploy 後逐項：
 | #7 InstallCard「CLI ▼」死 UI | ✅ shipped 2026-05-08 — 改純文字 "Skills Hub CLI"，移除假 dropdown 視覺暗示 |
 | #5 通知偏好「新版本」placeholder | ✅ shipped 2026-05-08 — PreferencesModal 移除整項；NotificationsPage.test 同步驗 hidden |
 | #3 /publish/failed stale data | ✅ shipped 2026-05-08 — 加 EmptyState guard；缺 findings/msg/id 顯「沒有失敗紀錄可顯示」+ 「前往上傳」CTA |
+| #2 /auth-debug AppShell | ✅ shipped 2026-05-08 — AppShell wrap 全 4 個 return；no-oauth fallback 改 EmptyState 友善文案，移除 SPRING_PROFILES_ACTIVE dev jargon |
 | `npx vitest run InstallCard.test.tsx` | ✅ 5/5 PASS |
 | `npx vitest run NotificationsPage.test.tsx` | ✅ 7/7 PASS |
 | `npx vitest run PublishFailedPage.test.tsx` | ✅ 6/6 PASS（AC-3 改驗 EmptyState；AC-4 補 `&msg=` 走原 render path） |
-| #2 /auth-debug AppShell | ⏳ pending |
+| `npx vitest run AuthDebugPage.test.tsx` | ✅ 2/2 PASS（補 MemoryRouter wrap + /me 401 mock；404 case 改驗 EmptyState + 「返回首頁」CTA + 確認 SPRING_PROFILES_ACTIVE 不再洩漏） |
 | #4 文案夾雜英文 | ⏳ pending |
-| #6 /browse sort tab active highlight | ⏳ pending |
+| #6 /browse sort tab active highlight | ⚠ spec 假設與現況不符 — 現況 `sortMode === mode` state-based 比對正確；audit 寫 spec 時可能假 bug 或已被其他 commit 修；標 "needs-reverify-in-LAB" |
 
 ---
 
