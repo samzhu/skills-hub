@@ -43,7 +43,7 @@ export function AuthArea() {
   const { user } = auth
   // avatar fallback 首字母：name → email → sub 順序取首字
   const fallbackChar = (user.name ?? user.email ?? user.sub).charAt(0).toUpperCase()
-  const displayLabel = user.email ?? user.name ?? user.sub
+  const displayLabel = user.name ?? user.email ?? user.sub
 
   return (
     <DropdownMenu>

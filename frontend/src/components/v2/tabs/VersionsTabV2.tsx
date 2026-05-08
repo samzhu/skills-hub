@@ -59,7 +59,7 @@ function VersionCard({ v, isLatest }: { v: SkillVersion; isLatest: boolean }) {
           margin: 0,
         }}
       >
-        版本 {v.version} · {(v.fileSize / 1024).toFixed(1)} KB · {v.fileCount} 個檔案
+        版本 {v.version} · {v.fileSize >= 0 ? `${(v.fileSize / 1024).toFixed(1)} KB` : '—'} · {v.fileCount} 個檔案
       </p>
       {hasLongDesc && (
         <button

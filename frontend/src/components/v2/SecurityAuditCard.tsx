@@ -14,7 +14,7 @@ function relativeTime(iso: string): string {
 export function SecurityAuditCard({ report }: Props) {
   const rows = [
     { label: 'Last scanned', value: relativeTime(report.scannedAt), mono: false },
-    { label: 'Engine', value: `risk-scanner ${report.engineVersion}`, mono: true },
+    { label: 'Engine', value: report.engineVersion, mono: true },
     { label: 'Rule set', value: report.ruleSetVersion, mono: true },
     { label: 'Dep scan', value: 'not yet enabled', mono: false },
   ]

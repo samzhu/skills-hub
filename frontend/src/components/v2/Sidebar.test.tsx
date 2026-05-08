@@ -36,7 +36,7 @@ const baseScores: SkillScores = {
 
 const baseReport: SecurityReport = {
   skillId: 's1', skillVersionId: 'v1', skillVersion: '1.0.0',
-  scannedAt: '2026-05-07T00:00:00Z', engineVersion: 'v1.0', ruleSetVersion: '2026-05',
+  scannedAt: '2026-05-07T00:00:00Z', engineVersion: 'risk-scanner v1.0', ruleSetVersion: '2026-05',
   overall: 'PASS',
   checks: {
     shell:   { status: 'PASS', detail: 'OK' },
