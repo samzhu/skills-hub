@@ -1,5 +1,36 @@
 # Changelog
 
+## [v4.40.0] — 移除 TestDataControllerTest 重複 cacheManager bean（S148e；2026-05-08）
+
+> S148c+d 解 Modulith 兩個 violation 後浮現的最後一個 processTestAot blocker：`TestDataControllerTest$CacheStubConfig.cacheManager` 與 `WebMvcSliceTestBase$AotStubBeans.cacheManager` 在 AOT 階段重複註冊 → `BeanDefinitionOverrideException`。
+
+### Refactor — Test Config
+
+- `backend/src/test/.../TestDataControllerTest.java`：
+  - 移除 inner class `CacheStubConfig`（base class 已透過 `WebMvcSliceTestBase.AotStubBeans.cacheManager()` 提供同型 `ConcurrentMapCacheManager` stub）
+  - 移除 `@Import(TestDataControllerTest.CacheStubConfig.class)` 標註
+  - 移除 unused imports：`TestConfiguration` / `CacheManager` / `ConcurrentMapCacheManager` / `Bean` / `Import`
+  - 更新類別註解：S148e 紀錄移除原因
+
+### Verify — processTestAot 全恢復
+
+- `./gradlew test --tests "...TestDataControllerTest" -x processTestAot` ✅ PASS
+- `./gradlew processTestAot` ✅ **BUILD SUCCESSFUL**（Modulith verify + AOT processing 兩階段皆通過）
+- 自此 backend test 不再需要 `-x processTestAot` 繞過；S148c (shared↔skill cycle) + S148d (score→security :: scan) + S148e (cacheManager 重複) 三 spec 共解 GraalVM native test 流程的所有 blocker
+
+### S148-Series 完工總結
+
+| Spec | 修復 | 版本 |
+|------|------|------|
+| S148 | GraalVM JudgeResponse 反射 | v4.25.0 |
+| S148c | Modulith shared↔skill cycle | v4.38.0 |
+| S148d | Modulith score→security :: scan named interface | v4.39.0 |
+| S148e | TestDataControllerTest 重複 cacheManager | v4.40.0 |
+
+剩 S148b（GraalVM AOT SkillshubProperties + build-time 驗證機制研究）仍 📋 planned，與 GraalVM native build 較相關，本系列 test infra 部分已完工。
+
+---
+
 ## [v4.39.0] — Modulith score→security :: scan 補 NamedInterface（S148d；2026-05-08）
 
 > S148c 解 shared↔skill cycle 後，processTestAot 浮現第二個 Modulith violation：`score` 模組 import `security.scan.SecurityFinding`（sub-package）但未列入 allowed-targets。security 模組頂層 package 在 score 的 allowed-deps 已有 `"security"`，但 `scan` sub-package 預設視為 internal。

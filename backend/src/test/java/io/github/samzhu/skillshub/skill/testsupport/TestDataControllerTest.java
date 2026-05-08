@@ -18,12 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -42,23 +37,13 @@ import io.github.samzhu.skillshub.storage.PackageService;
  * （{@code @Profile({"local","dev","e2e"})} 守門通過）。Slice 只掃 controller，service /
  * jdbc 由 {@code @MockitoBean} mock。
  *
- * <p>{@link CacheStubConfig} stub {@link CacheManager} — {@code SkillshubApplication} 標
- * {@code @EnableCaching}，slice 不載 {@code CacheAutoConfiguration} 會在
- * {@code CacheAspectSupport.afterSingletonsInstantiated} 找不到 CacheManager 而 fail context；
- * 提供 {@link ConcurrentMapCacheManager} 滿足契約即可（slice 不驗 cache 行為）。
+ * <p>S148e: 既有本地 {@code CacheStubConfig} 已移除 — {@link WebMvcSliceTestBase.AotStubBeans}
+ * 提供同型 {@code ConcurrentMapCacheManager} stub；雙重定義在 AOT 階段觸發
+ * {@code BeanDefinitionOverrideException}。
  */
 @WebMvcTest(TestDataController.class)
 @ActiveProfiles({"test", "e2e"})
-@Import(TestDataControllerTest.CacheStubConfig.class)
 class TestDataControllerTest extends WebMvcSliceTestBase {
-
-    @TestConfiguration
-    static class CacheStubConfig {
-        @Bean
-        CacheManager cacheManager() {
-            return new ConcurrentMapCacheManager();
-        }
-    }
 
     @Autowired
     private MockMvc mockMvc;
