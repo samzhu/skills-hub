@@ -42,7 +42,7 @@ String forwardToIndex() {
 
 **設計動機（既有 JavaDoc）：** 用 explicit list 避免攔到不存在的 `/api/...` typo（應回 JSON 404 給前端 / curl）。
 
-**Drift 證據：** `/auth-debug` 有，`/auth-debug/x` 在 React 中不存在但若有也不被 allowlist 接到；任何 1 條新 React route 沒同步 → refresh 即壞。
+**Drift 證據（fresh 案例 2026-05-08）：** S150 新增 React route `/collections/:id`，但 `SpaFallbackController` allowlist 僅含 `/collections`（無 `/collections/**`）。LAB 實測 `curl /collections/test-id` 直接回 **404**（連 SPA shell 都沒服務），證明每加一條新 nested React route 都需手改 backend，**極易遺漏**。任何 1 條新 React route 沒同步 → 書籤 / refresh 即壞。
 
 ### 2.2 實測 LAB（2026-05-08）
 
