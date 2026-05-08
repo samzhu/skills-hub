@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-08（+ S152 SPA fallback unknown routes + S153 Skill detail 404 UX）
+> 最後更新：2026-05-08（+ S154 Author display identity — users 表 + handle + snapshot）
 
 ## 使用說明
 
@@ -83,6 +83,7 @@
 | S151 | Quality Score 訊息一致性修正（hero card "評分計算中" vs. 品質 tab "此版本尚未評分"） | XS(2) | S135b ✅ | 📋 planned |
 | S152 | SPA fallback for unknown routes（未知 URL → React NotFoundPage，移除 allowlist drift）| S(6) | — | 📐 in-design |
 | S153 | Skill detail 404 UX — 統一 400/403/404 顯「找不到此技能」（移除誤導 retry 提示）| XS(3) | — | 📐 in-design |
+| S154 | Author display identity — `users` 表 + skills snapshot；UI 顯 name + handle 取代 sub ID | M(11) | — | 📐 in-design |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |
 | S098a2 | SSE 事件串流 + per-step 動畫 | M(8) | S098a ✅ | ⏸ deferred |
