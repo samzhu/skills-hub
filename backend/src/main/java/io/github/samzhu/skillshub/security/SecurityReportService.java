@@ -96,9 +96,9 @@ public class SecurityReportService {
 
     private String computeOverall(Map<Category, CheckStatus> statuses) {
         boolean hasFail = statuses.values().stream().anyMatch(s -> s == CheckStatus.FAIL);
-        if (hasFail) return "fail";
+        if (hasFail) return "FAIL";
         boolean hasWarn = statuses.values().stream().anyMatch(s -> s == CheckStatus.WARN);
-        return hasWarn ? "warn" : "pass";
+        return hasWarn ? "WARN" : "PASS";
     }
 
     private Map<String, SecurityReportResponse.CheckDetail> buildChecks(
@@ -111,7 +111,7 @@ public class SecurityReportService {
             List<SecurityFinding> catFindings = partitioned.get(cat);
             String detail = mapper.formatDetail(catFindings);
             checks.put(cat.name().toLowerCase(),
-                    new SecurityReportResponse.CheckDetail(status.name().toLowerCase(), detail));
+                    new SecurityReportResponse.CheckDetail(status.name(), detail));
         }
         return checks;
     }
