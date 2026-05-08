@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.annotation.JsonView;
+
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillVersion;
 
@@ -127,7 +129,9 @@ public class SkillQueryController {
 	 * 公開查詢只露 PUBLISHED 行為。LAB 模式無 auth gate，任何 user 可查任何 author 的全狀態 — 此屬
 	 * 已知 MVP 限制（Feature First），future spec 加入 auth 後 author filter 會 gated by current user.
 	 */
+	/** S158: list endpoint 走 List view — 不暴露 aclEntries / ownerId（internal authorization 不對外）。 */
 	@GetMapping("/skills")
+	@JsonView(Skill.Views.List.class)
 	Page<Skill> search(
 			@RequestParam(required = false) String keyword,
 			@RequestParam(required = false) String category,

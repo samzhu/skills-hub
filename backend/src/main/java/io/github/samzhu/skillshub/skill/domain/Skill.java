@@ -16,6 +16,7 @@ import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonView;
 
 import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
 import io.github.samzhu.skillshub.skill.command.GrantAclCommand;
@@ -50,6 +51,21 @@ import io.github.samzhu.skillshub.skill.command.SuspendCommand;
  */
 @Table("skills")
 public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<String> {
+
+    /**
+     * S158: Jackson @JsonView marker — 控制 list vs detail endpoint 序列化差異。
+     *
+     * <p>List view 不暴露 {@code aclEntries} / {@code ownerId} — internal authorization
+     * detail 不該對 list browser 公開（least-privilege response）；改 ACL 結構不變成
+     * breaking change。Detail extends List → owner 視角的 detail endpoint 仍可看到全部。
+     *
+     * <p>S158 #1 only: list view limitation；detail view 條件 owner-only 留 follow-up。
+     * 目前 detail endpoint 為 unrestricted Detail view（任何 viewer 看 aclEntries）。
+     */
+    public static final class Views {
+        public interface List {}
+        public interface Detail extends List {}
+    }
 
     @Id
     private String id;
@@ -90,9 +106,13 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     @org.springframework.data.annotation.ReadOnlyProperty
     @Column("review_count")
     private long reviewCount;
+    /** S158: aclEntries 僅 Detail view 暴露 — list endpoint 不洩漏 internal authorization 結構。 */
+    @JsonView(Views.Detail.class)
     @Column("acl_entries")
     private List<String> aclEntries;
     /** S114a — owner_id maps to V16 schema column; derived from author at create time. */
+    /** S158: ownerId 僅 Detail view 暴露 — list endpoint 不洩漏 owner identity（與 author 重複）。 */
+    @JsonView(Views.Detail.class)
     @Column("owner_id")
     private String ownerId;
     @Column("created_at")

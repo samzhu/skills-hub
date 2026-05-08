@@ -1,5 +1,25 @@
 # Changelog
 
+## [v4.33.0] — API 列表端隱私強化（S158 partial；2026-05-08）
+
+> 列表端 `GET /api/v1/skills` 不再暴露 `aclEntries` / `ownerId` 兩個 internal authorization 欄位。User 從 list 看不到誰能 write / delete 該 skill；ACL 結構改動不再變 breaking change。Detail endpoint owner-conditional 拆 S158b 跟進。
+
+### Privacy — Backend Skill List Endpoint
+
+- `backend/.../skill/domain/Skill.java`：新增 `Views.List` + `Views.Detail` interface（Detail extends List），`aclEntries` + `ownerId` 標 `@JsonView(Detail.class)`
+- `backend/.../skill/query/SkillQueryController.search()`：加 `@JsonView(Skill.Views.List.class)` — list 序列化走 List view，內部 authorization 欄位被 Jackson 自動排除
+
+### Test Coverage
+
+- `SkillJsonViewTest`（新增）：3/3 PASS — list view 排除兩欄位 / detail view 包含 / no-view 預設保留全欄位
+- 純 Jackson 單元測試，無 Spring context，快速且不污染 test cache key
+
+### Frontend 影響
+
+- 零 — production 程式無 list-page 消費 `ownerId` / `aclEntries`（grep 確認）；TS type `Skill.ownerId?: string` 早已 optional
+
+---
+
 ## [v4.32.0] — Analytics 「熱門排行」hero card 移除（S156 #3；2026-05-08）
 
 > S156 共 3 項；本版本 ship #3。#1 早已被 S100e 完成（spec 假設過時，verify-first 抓到）；#2 RequestDetailPage 是新 page，拆 S156b 跟進。

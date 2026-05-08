@@ -1,6 +1,6 @@
 # S158: API Response Privacy Hardening — 過度曝露的 internal authorization 資料
 
-> Spec: S158 | Size: S(5) | Status: 📐 in-design
+> Spec: S158 | Size: S(5) | Status: 🚧 in-progress（list endpoint 完工 2026-05-08；detail endpoint owner-conditional 拆 S158b 跟進）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— `GET /api/v1/skills` response 每一個 skill 都帶 `aclEntries: ["user:<sub>:read","user:<sub>:write","user:<sub>:delete","public:*:read"]` 給未登入 / 任意登入 user。對外 API 洩漏 RBAC 結構、誰能編輯 / 刪除、平台 internal authorization model。
 
@@ -250,7 +250,50 @@ curl -s -H "Authorization: Bearer <jwt>" 'https://.../api/v1/skills/<your-id>' |
 
 ---
 
-## 6. 設計筆記
+## 6. Verification（partial — list endpoint 完工）
+
+| 項目 | 結果 |
+|------|------|
+| `./gradlew test --tests "...SkillJsonViewTest" -x processTestAot` | ✅ 3/3 PASS（list view 排除 aclEntries/ownerId / detail view 包含 / no-view 包含） |
+| Skill domain 加 `Views.List` + `Views.Detail` interface | ✅ aclEntries + ownerId 標 `@JsonView(Detail)` |
+| `SkillQueryController.search()` `@JsonView(List)` | ✅ list endpoint 序列化走 List view |
+| Detail endpoint `findById` / `findByAuthorAndName` | ⏳ 不動 — 走 default view（含 aclEntries/ownerId）；owner-conditional 邏輯留 S158b |
+| Frontend 影響 | ✅ 零 — production 程式無 list-page 消費 ownerId/aclEntries；TS type 已 optional |
+
+---
+
+## 7. Result（list endpoint partial）
+
+**Shipped 2026-05-08** — backend-only，3 file changes，3/3 unit test PASS。
+
+### 7.1 程式變動
+
+- `backend/.../skill/domain/Skill.java`
+  - 新增 `public static final class Views { interface List {} interface Detail extends List {} }`
+  - `aclEntries` 欄位加 `@JsonView(Views.Detail.class)`
+  - `ownerId` 欄位加 `@JsonView(Views.Detail.class)`
+- `backend/.../skill/query/SkillQueryController.java`
+  - `search()` 方法加 `@JsonView(Skill.Views.List.class)` — 觸發 list view 序列化
+- `backend/src/test/.../SkillJsonViewTest.java`（新增）
+  - 3 個 case：list 排除 / detail 包含 / no-view 預設行為
+
+### 7.2 拆出 follow-up（→ S158b）
+
+Detail endpoint 條件 owner-only 邏輯（spec §2.4 提到的 `viewerPermissions: { isOwner, canEdit, canDelete }` + 條件 aclEntries 露出）需要：
+- 注入 `CurrentUserProvider` 至 `SkillQueryService.findById`
+- 計算 viewer permissions（per-call）
+- 條件 fill 或 strip aclEntries（per viewer identity）
+- DTO 拆 `SkillSummary` vs `SkillDetail` 或用 dynamic Jackson filter
+
+surface 偏 M（多 layer 變動 + frontend `viewerPermissions` 型別 + SkillDetailPage `isOwner` 改邏輯）— 拆 S158b backlog row。
+
+### 7.3 `/skills/{id}/grants` endpoint（spec §8）
+
+仍未 fix — 暴露完整 grant list（含 grantedBy / principalId / role / grantId）給任何 viewer。同樣留 S158b 跟進（authz check + frontend `canManageGrants` flag）。
+
+---
+
+## 8. 設計筆記
 
 | 風險 | 緩解 |
 |------|------|
