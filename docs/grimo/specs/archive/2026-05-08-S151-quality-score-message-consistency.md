@@ -1,6 +1,6 @@
 # S151: Quality Score 訊息一致性修正
 
-> Spec: S151 | Size: XS(2) | Status: 📐 in-design
+> Spec: S151 | Size: XS(2) | Status: ✅ shipped 2026-05-08
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— 同一個 skill detail page 顯示三種不同字面：hero `QualityHeroCard` 顯「評分計算中」、Quality tab `QualityTabV2` 顯「此版本尚未評分」、`SkillScoreBadge` 顯「評分計算中」。語意分歧（transient「計算中」vs. 中性「尚未評分」），user 不知道是「等一下會好」還是「永遠不會評分」。
 
@@ -119,7 +119,43 @@ AC-4: 既有測試同步
 
 ---
 
-## 6. 後續 follow-up
+## 6. Verification
+
+| 項目 | 結果 |
+|------|------|
+| `npx vitest run QualityTabV2.test.tsx QualityHeroCard.test.tsx SkillScoreBadge.test.tsx` | ✅ 12/12 PASS |
+| QualityTabV2 改文案 + test 同步（含 negative assertion 「此版本尚未評分」不再出現） | ✅ |
+| QualityHeroCard / SkillScoreBadge 既有「評分計算中」 | ✅ 不動 |
+
+---
+
+## 7. Result
+
+**Shipped 2026-05-08** — 1 source 改 1 line + 1 test 同步，12/12 vitest PASS。
+
+### 7.1 程式變動
+
+- `frontend/src/components/v2/tabs/QualityTabV2.tsx:95`：「此版本尚未評分」→「評分計算中，請稍後重新整理」+ S151 註解標 alignment 動機
+- `frontend/src/components/v2/tabs/QualityTabV2.test.tsx`：「scores=null → 此版本尚未評分」case 改驗新文案；補 negative assertion 確認舊文案不再渲染
+
+### 7.2 跨頁文案一致性
+
+| 元件 | 字面 | 風格 |
+|------|------|------|
+| `QualityHeroCard.tsx:44` | 「評分計算中」 | 短版（hero metric block 空間有限）|
+| `SkillScoreBadge.tsx:74` | 「評分計算中」 | 短版（badge sub-label 空間有限）|
+| `QualityTabV2.tsx:95` | 「評分計算中，請稍後重新整理」 | 完整版（tab empty state 中央顯示）|
+
+3 處皆「評分計算中」base 字面；user 切換頁面 / 元件不會再看到分歧的「尚未評分」字面。
+
+### 7.3 Drive-by 觀察（不修；留 follow-up）
+
+- `frontend/src/components/QualitySection.tsx:46` 與 `QualityTab.tsx:80` 屬 v1 元件；S142a SkillDetailPage v2 重寫後是否仍 render 需 audit。本 spec 不動 v1（不在 §4 範圍）。
+- Stuck score 監控（async listener fail → score 卡 null）— 另開 spec 處理 admin alerting。
+
+---
+
+## 8. 後續 follow-up
 
 - v1 `QualitySection` / `QualityTab` 元件 audit：是否仍渲染？若否則刪檔；若是則本 spec 完工後也對齊新文案（單獨 spec or 本 spec 擴大範圍視 audit 結果決定）
 - Stuck score 監控（async listener fail → score 卡 null）— 另開 spec 處理 admin alerting

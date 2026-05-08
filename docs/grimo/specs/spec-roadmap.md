@@ -82,7 +82,7 @@
 | S148c | Modulith cycle 修復 — `shared.api.GlobalExceptionHandler` ↔ `skill.validation` 雙向相依（拖垮 processTestAot） | S(5) | — | 📋 planned |
 | S149 | Cloud Run 結構化日誌改善研究（JSON format + log levels + trace ID） | META(research) | — | 📋 planned |
 | S150 | Collection Detail Page（/collections/:id — 技能清單 + 逐一預覽）| S(7) | S096f2 ✅ | 📋 planned |
-| S151 | Quality Score 訊息一致性修正（hero card "評分計算中" vs. 品質 tab "此版本尚未評分"） | XS(2) | S135b ✅ | 📐 in-design — spec doc 完成 2026-05-08，下 tick 可直接 ship |
+| S151 | Quality Score 訊息一致性修正（hero card "評分計算中" vs. 品質 tab "此版本尚未評分"） | XS(2) | S135b ✅ | ✅ v4.37.0 — QualityTabV2「此版本尚未評分」改「評分計算中，請稍後重新整理」對齊 hero/badge 風格；12/12 PASS |
 | S152 | SPA fallback for unknown routes（未知 URL → React NotFoundPage，移除 allowlist drift）| S(6) | — | ✅ v4.26.0 — 8/8 PASS（catchall pattern 取代 14 條 allowlist + /api/ early-return） |
 | S153 | Skill detail 404 UX — 統一 400/403/404 顯「找不到此技能」（移除誤導 retry 提示）| XS(3) | — | ✅ v4.24.0 — 9/9 vitest PASS（isUnviewable 擴展涵蓋 400/403/404） |
 | S154 | Author display identity — `users` 表 + skills snapshot；UI + ShareSkillModal 顯 name + handle 取代 sub ID | M(13) | — | 📐 in-design |

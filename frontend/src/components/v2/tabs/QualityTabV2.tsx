@@ -92,7 +92,8 @@ export function QualityTabV2({ scores }: Props) {
     return (
       <div data-testid="quality-tab-empty" style={{ padding: 24, textAlign: 'center', color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
         <div style={{ fontSize: 24, marginBottom: 8 }}>—</div>
-        <div>此版本尚未評分</div>
+        {/* S151: 對齊 hero card / SkillScoreBadge 的「評分計算中」風格；tab empty state 用完整版含「請稍後重新整理」hint */}
+        <div>評分計算中，請稍後重新整理</div>
       </div>
     )
   }

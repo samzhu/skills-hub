@@ -1,5 +1,20 @@
 # Changelog
 
+## [v4.37.0] — Quality Score 訊息一致性（S151；2026-05-08）
+
+> 修 SkillDetailPage 對「scores=null」狀態的字面分歧：hero card 顯「評分計算中」、品質 tab 顯「此版本尚未評分」、score badge 顯「評分計算中」— 三處同頁，user 不知道是「等一下會好」還是「永遠不會評分」。
+
+### UX — Frontend Quality Display
+
+- `frontend/src/components/v2/tabs/QualityTabV2.tsx:95`：empty state「此版本尚未評分」→「評分計算中，請稍後重新整理」對齊 hero / badge 既有「評分計算中」基底字面
+- 風格：hero / badge 短版（空間有限）；tab empty state 完整版含「請稍後重新整理」hint
+
+### Test Coverage
+
+- `QualityTabV2.test.tsx` 既有「scores=null fallback」case 同步：assert 新文案 + negative assertion 確認舊「此版本尚未評分」不再渲染 — 12/12 PASS（含 QualityHeroCard / SkillScoreBadge 既有 test）
+
+---
+
 ## [v4.36.0 reverted] — Content negotiation 鎖 JSON 嘗試（S162 AC-6；2026-05-08）
 
 > **Reverted** — 原 commit 32952ed 加的 `WebMvcConfig` 用 `MappingJackson2XmlHttpMessageConverter`（Jackson 2）做 `removeIf`，但 Spring Boot 4 主 Jackson 已升級為 `tools.jackson:jackson-databind:3.1.2`（Jackson 3，新 package `tools.jackson`），message converter chain 不含 Jackson 2 XML converter — `removeIf` 永遠 no-op。

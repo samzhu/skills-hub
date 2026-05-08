@@ -46,10 +46,12 @@ describe('QualityTabV2', () => {
     expect(screen.getAllByText('顯示更多').length).toBeGreaterThan(0)
   })
 
-  it('scores=null → 此版本尚未評分 fallback', () => {
+  it('S151: scores=null → 「評分計算中，請稍後重新整理」(對齊 hero card 風格)', () => {
     render(<QualityTabV2 scores={null} />)
     expect(screen.getByTestId('quality-tab-empty')).toBeTruthy()
-    expect(screen.getByText('此版本尚未評分')).toBeTruthy()
+    expect(screen.getByText('評分計算中，請稍後重新整理')).toBeTruthy()
+    // 不再顯舊版「此版本尚未評分」字面
+    expect(screen.queryByText('此版本尚未評分')).toBeNull()
   })
 
   it('scores=undefined → loading skeleton', () => {
