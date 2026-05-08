@@ -37,7 +37,17 @@ class QualityScoreListener {
                     .log("[quality] skip duplicate sourceEventId");
             return;
         }
-        // re-throw on failure → outbox keeps completion_date=NULL → IncompleteEventRepublishTask retry
-        service.evaluateAndPersist(event);
+        // S148: 隔離不可重試的 Error（如 GraalVM UnsupportedFeatureError） — 紀錄後吞掉，
+        // 讓 Modulith 將 outbox publication 標為 completed，避免 IncompleteEventRepublishTask
+        // 每分鐘重投對 qualityExecutor pool 造成壓力。RuntimeException 仍 re-throw 走原 retry。
+        try {
+            service.evaluateAndPersist(event);
+        } catch (Error e) {
+            log.atError()
+                    .addKeyValue("sourceEventId", event.sourceEventId())
+                    .addKeyValue("error", e.getClass().getSimpleName())
+                    .setCause(e)
+                    .log("[quality] non-retryable Error in quality evaluation — skipping outbox retry");
+        }
     }
 }

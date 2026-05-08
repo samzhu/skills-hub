@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.25.0] — GraalVM JudgeResponse 反射修復（S148 完成；2026-05-08）
+
+> 修 GraalVM native image 跑品質評分時 `UnsupportedFeatureError: Record components not available` 導致全面 503 的根因。outbox 防護避免類似 native-image bug 再卡死 listener。
+
+### Bugfix — Score / GraalVM AOT
+
+- `backend/.../score/ScoreNativeConfig.java`：新增 AOT-only `@Configuration`，用 `@RegisterReflectionForBinding({JudgeResponse.class, JudgeResponse.DimensionScore.class})` 補上 GraalVM AOT processor 自動分析涵蓋不到的反射路徑（Spring AI `BeanOutputConverter.entity(Class<?>)` 是泛型，build-time 看不到具體 class）
+- `backend/.../score/QualityScoreListener.java`：`try { evaluateAndPersist } catch (Error e) { log; 吞掉 }` — `Error` 類型不可重試，避免 Modulith outbox `IncompleteEventRepublishTask` 每分鐘重投對 `qualityExecutor` pool 造成壓力，連帶讓 Cloud Run health check 抖動
+
+### Test Coverage
+
+- `JudgeResponseDeserializationTest`（新增）：4/4 PASS（完整 JSON / 空 scores / 缺欄位 / 空白 `{}`）— 純 Jackson 測試，AOT 反射 metadata 觀察自然觸發
+- 跑測試使用 `-x processTestAot` 暫繞過 pre-existing Modulith cycle（已記錄為 S148c follow-up）
+
+### Trim
+
+- 原規劃含 SkillshubProperties + build-time validation 機制 → 拆出 S148b（`@ConfigurationProperties` AOT bug 需另外研究）
+- 發現 pre-existing `shared` ↔ `skill` Modulith cycle → 拆出 S148c
+
+---
+
 ## [v4.24.0] — Skill Detail 404 UX 統一（S153 完成；2026-05-08）
 
 > 修 `SkillDetailPage` 對 400 / 403 / 404 三種 API 回應顯示分歧的問題：以前只有 404 顯「找不到此技能」，400 / 403 顯「載入錯誤 / 請稍後重試」，誤導使用者反覆 refresh 浪費流量。

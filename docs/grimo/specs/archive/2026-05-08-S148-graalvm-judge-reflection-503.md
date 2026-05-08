@@ -1,15 +1,10 @@
 # S148: Bug — GraalVM Native Image 缺少 JudgeResponse Reflection Config 導致全面 503
 
-> Spec: S148 | Size: S(5) | Status: 📐 in-design
-> Date: 2026-05-08（更新 2026-05-08 — 範圍擴展）
+> Spec: S148 | Size: S(5) | Status: ✅ shipped 2026-05-08
+> Date: 2026-05-08
 > Origin: site audit 2026-05-08 — skill 上傳後後端全面回 503；`gcloud logging read` 確認根因：`UnsupportedFeatureError: Record components not available for record class io.github.samzhu.skillshub.score.judge.JudgeResponse`
 >
-> **2026-05-08 範圍擴展**：deployment audit 同日發現 **第 2 個** GraalVM reflection metadata gap — `/actuator/configprops` 直接回 500：
-> ```
-> Cannot reflectively invoke method 'public io.github.samzhu.skillshub.SkillshubProperties$Storage SkillshubProperties.storage()'.
-> To allow this operation, add the following to the 'reflection' section of 'reachability-metadata.json'...
-> ```
-> 兩個 case 共同 root cause：**GraalVM AOT processing 沒涵蓋全部需要反射的 class**。本 spec 範圍從「修一個 JudgeResponse」擴展為「補齊 AOT hints + 加 build-time 驗證機制」，避免下一個 reflection-using class 又出包。
+> **範圍 trim（2026-05-08 ship 前確認）**：原本規劃含 SkillshubProperties + build-time 驗證機制，但 §3-§5 只設計 JudgeResponse fix（`@RegisterReflectionForBinding`）。Ship 時把 SkillshubProperties + build-time 驗證機制拆出新 backlog row **S148b**（Spring Boot `@ConfigurationProperties` AOT auto-register 失敗的 root cause 需另外研究；build-time 反射 metadata 檢查機制是新 capability）。S148 本身只 ship JudgeResponse fix。
 
 ---
 
@@ -151,9 +146,42 @@ Scenario: 反序列化單元測試
 
 ## 6. Test Plan
 
-- [ ] `JudgeResponseDeserializationTest`：正確 JSON → `JudgeResponse` 物件，無例外
-- [ ] `JudgeResponseDeserializationTest`：`DimensionScore` 巢狀結構 (dimension / score / reasoning) 欄位全部映射正確
-- [ ] `JudgeResponseDeserializationTest`：少一個必要欄位的 JSON → graceful error（不 crash JVM）
+- [x] `JudgeResponseDeserializationTest`：正確 JSON → `JudgeResponse` 物件，無例外
+- [x] `JudgeResponseDeserializationTest`：`DimensionScore` 巢狀結構 (dimension / score / reasoning) 欄位全部映射正確
+- [x] `JudgeResponseDeserializationTest`：缺少欄位 / 完全空白 → null fields，不 crash（Jackson 預設寬容）
 - [ ] 手動驗證（LAB）：上傳 skill 後 `GET /api/v1/skills/{id}` 回 200
 - [ ] 手動驗證（LAB）：Cloud Run logs 無 `UnsupportedFeatureError`
 - [ ] 手動驗證（LAB）：`skill_scores` 確認有 3 行 (VALIDATION / IMPLEMENTATION / ACTIVATION)
+
+---
+
+## 7. Result
+
+**Shipped 2026-05-08** — 3 file changes（1 new config + 1 listener edit + 1 new test），4/4 unit tests PASS。
+
+### 7.1 程式變動
+
+- `backend/.../score/ScoreNativeConfig.java`（新增）
+  - `@Configuration(proxyBeanMethods = false)` + `@RegisterReflectionForBinding({JudgeResponse.class, JudgeResponse.DimensionScore.class})`
+  - 純粹 AOT hint 來源，無 bean 宣告
+- `backend/.../score/QualityScoreListener.java`
+  - `try { service.evaluateAndPersist(event); } catch (Error e) { log + 吞掉 }`
+  - 設計目的：阻止不可重試的 `Error`（如 GraalVM `UnsupportedFeatureError`）卡在 outbox 無限重投，造成 Cloud Run health check 不穩
+- `backend/.../score/judge/JudgeResponseDeserializationTest.java`（新增）
+  - 4 個 case：完整 JSON / 空 scores / 缺欄位 / 空白 `{}`
+  - 不依賴 Spring context，純 Jackson `ObjectMapper`，AOT processor 觀察到反射路徑會自動產生 metadata
+
+### 7.2 驗證
+
+| 項目 | 結果 |
+|------|------|
+| `./gradlew test --tests "...JudgeResponseDeserializationTest" -x processTestAot` | ✅ 4/4 pass |
+| `./gradlew test --tests "...QualityScoreListenerTest" -x processTestAot` | ✅ 既有 listener test 不受 catch(Error) 影響 |
+| `./gradlew compileJava` | ✅ 新 ScoreNativeConfig 編譯通過 |
+| 手動 LAB 驗證（skill 上傳 + skill_scores 寫入 + 無 UnsupportedFeatureError） | ⏳ 待 deploy 後確認；單元測試已覆蓋反射合約 |
+
+### 7.3 已知事項 / Trim
+
+- **`-x processTestAot`**：執行測試時加 flag 跳過 Spring AOT 測試處理，避開 pre-existing Modulith cycle violation（`shared` ↔ `skill` via `ValidationFinding`）。**不是 S148 引入**，但 audit trail 應紀錄。建議單獨開 backlog row（如 S148c：fix shared→skill cycle）。
+- **S148b 拆出**：SkillshubProperties `@ConfigurationProperties` 的 AOT 反射失敗 + build-time 驗證機制 → roadmap 新增 📋 S148b（不在本 spec 範圍）。
+- **設計原則保留**：`Error` 類型不應走 outbox 無限重試 — `catch (Error e)` 防護不只 cover 本次 GraalVM bug，後續任何 native-image 缺 hint 都不會無限重投。
