@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.shared.security;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -82,6 +83,25 @@ class MeControllerTest extends WebMvcSliceTestBase {
             .andExpect(jsonPath("$.email").value("lab-user-001@lab.skillshub.local"))
             .andExpect(jsonPath("$.name").value("LAB User"))
             .andExpect(jsonPath("$.picture").doesNotExist());
+    }
+
+    @Test
+    @Tag("AC-S141-3")
+    @DisplayName("AC-S141-3: /api/v1/me OAuth2Login session → 200 + 真實 Google profile（非合成 email）")
+    void me_oauth2LoginSession_returnsRealProfile() throws Exception {
+        mockMvc.perform(get("/api/v1/me")
+                .with(oauth2Login()
+                        .attributes(attrs -> {
+                            attrs.put("sub",     "116549129985546340268");
+                            attrs.put("email",   "sam@example.com");
+                            attrs.put("name",    "Sam Zhu");
+                            attrs.put("picture", "https://example.com/sam.jpg");
+                        })))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.sub").value("116549129985546340268"))
+            .andExpect(jsonPath("$.email").value("sam@example.com"))
+            .andExpect(jsonPath("$.name").value("Sam Zhu"))
+            .andExpect(jsonPath("$.picture").value("https://example.com/sam.jpg"));
     }
 
     @Test

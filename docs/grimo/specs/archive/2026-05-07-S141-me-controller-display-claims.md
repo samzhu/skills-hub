@@ -258,3 +258,45 @@ cd backend && ./gradlew test --tests "io.github.samzhu.skillshub.shared.security
 ### Trim rationale
 
 None — XS spec completed in full within single tick.
+
+---
+
+## 8. Post-ship Bug Report（2026-05-08）
+
+### 症狀
+
+LAB 環境 Google OAuth 登入後，AppShell avatar dropdown 仍顯示 `116549129985546340268...`（Google numeric sub），而非真實 email 或姓名。
+
+### Root cause（Spec 分析漏洞）
+
+本 spec §1 / §2.1 只分析了兩條 Authentication 路徑：
+
+| 路徑 | Authentication 型別 | 是否在 spec 內 |
+|------|---------------------|---------------|
+| Bearer JWT（Resource Server） | `JwtAuthenticationToken` | ✅ 已分析並實作 |
+| LAB filter 注入 | `UsernamePasswordAuthenticationToken` | ✅ 已分析並實作 |
+| **oauth2Login session（LAB Google OIDC）** | **`OAuth2AuthenticationToken`** | ❌ **Spec 漏分析** |
+
+LAB 環境啟用 `skillshub.security.oauth.login.enabled=true` → Spring `oauth2Login()` chain → callback 後 SecurityContext 存入 `OAuth2AuthenticationToken`，不是 `JwtAuthenticationToken`。`MeController` 的 `instanceof JwtAuthenticationToken` 判斷為 false，掉進 LAB fallback else 分支 → email 合成為 `<sub>@lab.skillshub.local` → 前端 `displayLabel = user.email` 顯示該合成字串被截斷為 `116...`。
+
+### 修法（2026-05-08 補丁）
+
+`MeController.me()` 加第二個 `instanceof` 分支處理 `OAuth2AuthenticationToken`，從 `OAuth2User.getAttribute("email/name/picture")` 取真實 Google OIDC profile attributes：
+
+```java
+} else if (auth instanceof OAuth2AuthenticationToken oauth2Auth) {
+    var principal = oauth2Auth.getPrincipal();
+    result.put("sub",     principal.getName());
+    result.put("email",   principal.getAttribute("email"));
+    result.put("name",    principal.getAttribute("name"));
+    result.put("picture", principal.getAttribute("picture"));
+    // roles/groups/companyId/deptId/scope 無 Google claim → 空值
+    ...
+}
+```
+
+新增 AC-S141-3 測試（`oauth2Login()` post-processor），4/4 PASS。
+
+### Spec 分析缺失說明
+
+本 spec 寫作時未意識到 `oauth2Login()` 與 JWT Resource Server 使用不同的 `Authentication` 型別。正確分析應為三條路徑；「OAuth 模式從 JWT claims 抽」的描述只對 API client（Bearer token）成立，對 browser session（oauth2Login）不成立。

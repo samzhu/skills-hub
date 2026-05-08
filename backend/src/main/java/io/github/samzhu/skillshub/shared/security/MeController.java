@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,10 +32,12 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>{@code scope}      — OAuth scope，空格分隔（OAuth: claim；LAB: 空字串）</li>
  * </ul>
  *
- * <p>實作分支策略：OAuth 模式直接從 {@link JwtAuthenticationToken} 抽 6 個 JWT claims，
- * 保留 S011 既有測試斷言；其他 Authentication（含 LAB 注入的
- * {@code UsernamePasswordAuthenticationToken}）退回 {@link CurrentUserProvider}
- * 取 sub + roles，其餘 4 欄填空值。
+ * <p>實作分支策略：三個 Authentication 型別各自處理：
+ * (1) {@link JwtAuthenticationToken} — Bearer JWT（Resource Server）抽 JWT claims；
+ * (2) {@code OAuth2AuthenticationToken} — oauth2Login session（LAB Google OIDC）從
+ *     {@code OAuth2User} attributes 取真實 email/name/picture；
+ * (3) 其他（含 LAB 注入的 {@code UsernamePasswordAuthenticationToken}）退回
+ *     {@link CurrentUserProvider} 取 sub + roles，其餘欄合成空值。
  *
  * @see CurrentUserProvider
  * @see LabSecurityFilter
@@ -56,7 +59,7 @@ class MeController {
         var result = new LinkedHashMap<String, Object>();
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth instanceof JwtAuthenticationToken jwtAuth) {
-            // OAuth 模式：S141 加 email/name/picture OIDC standard claims
+            // Bearer JWT（Resource Server mode）
             var jwt = jwtAuth.getToken();
             result.put("sub",       jwt.getSubject());
             result.put("email",     jwt.getClaimAsString("email"));
@@ -67,8 +70,20 @@ class MeController {
             result.put("companyId", jwt.getClaimAsString("company_id"));
             result.put("deptId",    jwt.getClaimAsString("dept_id"));
             result.put("scope",     jwt.getClaimAsString("scope"));
+        } else if (auth instanceof OAuth2AuthenticationToken oauth2Auth) {
+            // oauth2Login session（LAB Google OIDC）— 從 OAuth2User attributes 取真實 profile
+            var principal = oauth2Auth.getPrincipal();
+            result.put("sub",       principal.getName());
+            result.put("email",     principal.getAttribute("email"));
+            result.put("name",      principal.getAttribute("name"));
+            result.put("picture",   principal.getAttribute("picture"));
+            result.put("roles",     List.of());
+            result.put("groups",    List.of());
+            result.put("companyId", null);
+            result.put("deptId",    null);
+            result.put("scope",     "");
         } else {
-            // LAB / fallback：S141 加合成 email/name/picture；sub + roles 從 CurrentUserProvider
+            // LAB fallback（LabSecurityFilter 注入的 UsernamePasswordAuthenticationToken）
             var u = users.current();
             result.put("sub",       u.userId());
             result.put("email",     u.userId() + "@lab.skillshub.local");
