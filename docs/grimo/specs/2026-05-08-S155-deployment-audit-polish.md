@@ -119,6 +119,25 @@ if (!state || !state.findings) {
 - 程式碼示意內的英文（如 `skills-hub install ...` command）保留
 - 專有名詞（如 SKILL.md / OAuth / OpenAPI）保留
 
+### 2.5c #7 InstallCard「CLI ▼」Dead UI（新增）
+
+**現況**：SkillDetail 右側 sidebar `InstallCard` 顯示「CLI ▼」字眼 + 下三角箭頭，視覺上**強烈暗示 dropdown selector**（claude / cline / cursor / 等 CLI 選擇）。實測：
+- 該元素是純 `<span>` 不是 `<button>`
+- 無 onclick / event handler
+- 點下去無 dropdown 出現
+- 無 ARIA `role="combobox"` / `aria-haspopup`
+
+→ **死 UI**：佯裝可互動，user 點了沒反應，挫敗。
+
+**修法（兩選一）：**
+
+A. **若 CLI selector 是 design intent 但未實作**：移除 ▼ 箭頭與「CLI」字眼，純文字 hint「複製為 CLI 命令」即可
+B. **若應該是 dropdown 但 ship 漏**：實作真 dropdown，列出 npm / Claude Code / Cline / Cursor 等 client；切換改 `prefix` 文字（如 `npx skills-hub install` / `claude skill install`）
+
+**選 A**（MVP 階段先省互動，留下次需求一起做）：
+- `<span>CLI ▼</span>` → 移除 ▼，刪除 placeholder hint
+- 等真有 multi-CLI support 時另開 spec 實作（與 S145 訂閱 UI 同期）
+
 ### 2.5b #6 `/browse` Sort Tabs Active Highlight Desync（新增）
 
 **現況**：`/browse` 右上角 sort tabs（推薦 / 最新 / 風險低 / 下載最多）— 點「最新」後資料順序確實重排（deep-research 移到首位），但**「推薦」pill 仍 active highlighted**（border 仍在「推薦」上，「最新」是 transparent border）。
@@ -187,6 +206,13 @@ AC-5: 通知偏好 modal 不再顯「新版本（敬請期待）」
   Then 只顯 3 個訂閱項（回報、評論、需求）
   And 不出現 disabled 的「新版本」項
 
+AC-7: InstallCard「CLI ▼」死 UI 移除
+  Given 使用者訪問 SkillDetail 右側 sidebar InstallCard
+  When 元素 render
+  Then 不顯示 ▼ 箭頭暗示可 dropdown
+  And 「CLI」placeholder 改為簡潔文字「Skills Hub CLI」（純文字 label）
+  And user 滑鼠 hover / click 此區無 misleading dropdown indicator
+
 AC-6: /browse sort tab active highlight 與 sort state 同步
   Given 使用者訪問 /browse 預設 sort=推薦
   When 點擊 「最新」/ 「風險低」/ 「下載最多」 任一 tab
@@ -210,6 +236,7 @@ AC-6: /browse sort tab active highlight 與 sort state 同步
 | `frontend/src/components/v2/tabs/FlagsPanel.tsx`（或 empty state copy） | 「由 reviewer 處理」→「由審核者處理」 |
 | `frontend/src/components/NotificationPreferencesModal.tsx` | 「被其他人 flag 時」→「被其他人回報時」；移除「新版本」項 |
 | `frontend/src/pages/HomePage.tsx` | sort tab active class 條件比對 sort state；確認 4 個 tab 互斥 highlight |
+| `frontend/src/components/v2/InstallCard.tsx` | 移除「CLI ▼」死 UI placeholder；改純文字 label |
 | **Tests** | 對應 5 個 AC 寫 vitest case |
 
 ---
