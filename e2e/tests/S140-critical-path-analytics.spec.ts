@@ -37,11 +37,8 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
       const totalDownloadsCard = page.getByText('總下載次數').locator('..');
       await expect(totalDownloadsCard.getByText(/^\s*5\s*$/)).toBeVisible();
 
-      // 熱門排行 metric — Top 1 (only 1 skill seeded)
-      await expect(page.getByText('Top 1', { exact: true })).toBeVisible();
-
-      // 熱門技能 Top 10 list — seeded skill name appears as row
-      await expect(page.getByRole('heading', { level: 2, name: '熱門技能 Top 10' })).toBeVisible();
+      // 熱門技能 — UI rework 後 heading 從 "Top 10" → "前 10 名"，rank label 改為純數字 "1"
+      await expect(page.getByRole('heading', { level: 2, name: '熱門技能 前 10 名' })).toBeVisible();
       await expect(page.getByText('docker-compose-helper')).toBeVisible();
       // download count 5 displayed in row（tabular-nums span）
       await expect(page.locator('text=docker-compose-helper').locator('..').getByText(/^\s*5\s*$/)).toBeVisible();

@@ -32,10 +32,11 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
     });
 
     await test.step('Then browser downloads zip with filename + content assertions + counter increment', async () => {
-      // Anchor `<a href="/api/v1/skills/{id}/download">下載</a>` — Playwright 攔截 download event
+      // UI rework 後是 `<button data-testid="download-cta">下載技能</button>`，
+      // onClick handler 觸發 browser download；用 data-testid 比 role/text 穩定（不隨 i18n 變動）
       const [download] = await Promise.all([
         page.waitForEvent('download'),
-        page.getByRole('link', { name: /^下載$/ }).click(),
+        page.getByTestId('download-cta').click(),
       ]);
 
       // suggestedFilename comes from server's Content-Disposition: attachment; filename=...
@@ -56,8 +57,9 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
       // SkillReadModelRepository 反映已 +1（read-projection 異步但毫秒級）
       await page.waitForTimeout(500); // give async listener a moment
       await page.reload();
-      // 下載次數 metric pill: "1 次下載" (vs initial "0 次下載")
-      await expect(page.getByText(/^\s*1\s*次下載\s*$/)).toBeVisible({ timeout: 10_000 });
+      // UI rework 後 metric stat 結構為 label「下載次數」+ value「1」分開渲染（非合併字串）
+      const downloadCard = page.getByText('下載次數', { exact: true }).locator('..');
+      await expect(downloadCard.getByText(/^\s*1\s*$/)).toBeVisible({ timeout: 10_000 });
     });
   });
 });
