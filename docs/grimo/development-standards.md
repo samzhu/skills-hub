@@ -196,6 +196,42 @@ OAuth2 Resource Server controller test：
 
 全 backend test 中 `Duration.ofSeconds(30) + Awaitility` 為禁用 anti-pattern。Standard timeout 為 5s（搭配 Scenario default）。Infra 計數類（`HikariPoolUnderLoadTest`）保留 Awaitility 但 timeout ≤ 5s。
 
+### JSON contract 必走 Spring auto-configured `JsonMapper`（S165 教訓）
+
+API JSON shape contract test（`@JsonView` / `@JsonInclude` / 序列化 wrapper / DTO 命名）**必須**走 `@SpringBootTest` 或 `@WebMvcTest` slice 的 auto-configured `JsonMapper`（Spring Boot 4 / Jackson 3）— **禁止**用 `new ObjectMapper()` 或 `new JsonMapper()` 寫 contract assertion。
+
+理由（S158→S165 prod hotfix saga）：
+
+1. `new ObjectMapper()` / `new JsonMapper()` 用 Jackson library 預設值，**與 Spring Boot 4 auto-config 應用的 mapper feature 完全脫節**（Boot 4 對 `DEFAULT_VIEW_INCLUSION` / `FAIL_ON_UNKNOWN_PROPERTIES` 等明確 disable）
+2. S158 加 `@JsonView(Skill.Views.List.class)` 時的 unit test 用 `new ObjectMapper()`（預設 `DEFAULT_VIEW_INCLUSION=true`）→ 通過；但 prod 的 auto-configured `JsonMapper` 是 `false` → `Page<Skill>` 序列成 `{}`
+3. 走 `@WebMvcTest` slice + `mockMvc.perform(...).andExpect(jsonPath(...))` 才是真正觸發 production code path 的 contract test
+
+**正例**（`SkillQueryControllerApiContractTest`）：
+```java
+@WebMvcTest(SkillQueryController.class)
+class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
+    @Test
+    void apiContract() throws Exception {
+        mockMvc.perform(get("/api/v1/skills").param("category", "Testing"))
+                .andExpect(jsonPath("$.content").isArray());  // 走 prod JsonMapper
+    }
+}
+```
+
+**反例**（S158 ship 時類似 pattern → prod 翻車）：
+```java
+@Test
+void serializesCorrectly() throws Exception {
+    var mapper = new ObjectMapper();  // ❌ 與 prod 用的 mapper 不同
+    var json = mapper.writerWithView(Skill.Views.List.class).writeValueAsString(...);
+    assertThat(json).contains("\"content\"");  // false-positive：prod 跑 prod mapper 得到 {}
+}
+```
+
+**相關 regression test**：`JacksonViewInclusionDiagnosticTest`（full `@SpringBootTest` 直接斷言 runtime `MapperFeature.DEFAULT_VIEW_INCLUSION=true`），守 future Spring Boot/Jackson 版本變動把 default 翻回 false。
+
+> **Spring Boot 4 / Jackson 3 customization**：用 `JsonMapperBuilderCustomizer` bean 比 yaml `spring.jackson.mapper.*` property 更穩定（property namespace 隨版本可能變動，bean 是 program-level explicit）。詳 `shared.api.JacksonConfiguration`。
+
 ## Configuration Best Practices (S009)
 
 - **Pure values in YAML** — `skillshub.*` properties must not use `${...}` placeholder indirection. Relaxed binding handles env var override automatically (e.g., `SKILLSHUB_GENAI_API_KEY`).

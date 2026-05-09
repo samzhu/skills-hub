@@ -50,17 +50,17 @@ export default defineConfig({
 
   webServer: [
     {
-      // -x processAot per qa-strategy.md Known Limitations (GraalVM
-      // native build plugin pre-existing bug; workaround until AOT
-      // config or OTel switch lands).
-      //
       // S140: SPRING_PROFILES_ACTIVE 顯式宣告 local,dev,e2e。dev 提供
       // DB 連線值 + LAB security（oauth disabled），e2e 補上 deterministic
       // stub embedder + semantic threshold=-1.0。沒寫的話會走 base yaml
       // default（local,dev），missing application-e2e.yaml + stub embedder
       // → AC-5 永遠 empty results，AC-1/3/4/6 也不一定能跑通。
+      //
+      // 不加 -x processAot — AOT 全程跑保留 prod-only bug（如 S158
+      // Jackson default-view-inclusion）早期捕捉能力，per qa-strategy.md
+      // Known Limitations。
       name: 'Backend',
-      command: './gradlew bootRun -x processAot',
+      command: './gradlew bootRun',
       cwd: '../backend',
       env: { SPRING_PROFILES_ACTIVE: 'local,dev,e2e' },
       url: 'http://localhost:8080/actuator/health',

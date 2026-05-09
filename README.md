@@ -32,7 +32,7 @@ Skills Hub 就是這層平台。
 
 ```bash
 # Backend (Spring Boot 4 + Java 25)
-cd backend && ./gradlew bootRun -x processAot
+cd backend && ./gradlew bootRun
 
 # Frontend (React 19 + Vite 8)
 cd frontend && npm run dev

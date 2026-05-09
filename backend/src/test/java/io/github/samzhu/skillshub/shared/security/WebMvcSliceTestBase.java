@@ -14,6 +14,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import io.github.samzhu.skillshub.SkillshubProperties;
+import io.github.samzhu.skillshub.shared.api.JacksonConfiguration;
 
 /**
  * S025b T03 — {@code @WebMvcTest} slice 共用 base class，收斂 10+ controller test 為單一
@@ -78,7 +79,7 @@ import io.github.samzhu.skillshub.SkillshubProperties;
  * @see LabModeTestBase S025a base class precedent
  */
 @ImportAutoConfiguration
-@Import({SecurityConfig.class, WebMvcSliceTestBase.AotStubBeans.class})
+@Import({SecurityConfig.class, JacksonConfiguration.class, WebMvcSliceTestBase.AotStubBeans.class})
 @EnableConfigurationProperties(SkillshubProperties.class)
 @TestPropertySource(properties = "management.tracing.enabled=false")
 public abstract class WebMvcSliceTestBase {
@@ -118,15 +119,6 @@ public abstract class WebMvcSliceTestBase {
                     return false;
                 }
             };
-        }
-
-        /**
-         * S114b @EnableCaching stub — CacheInterceptor.afterSingletonsInstantiated() 找 CacheManager
-         * bean；WebMvc slice 不載 CaffeineCacheManagerAutoConfiguration → 需補 stub 避免 context fail。
-         */
-        @Bean
-        org.springframework.cache.CacheManager cacheManager() {
-            return new org.springframework.cache.concurrent.ConcurrentMapCacheManager();
         }
     }
 }

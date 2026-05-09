@@ -1,5 +1,73 @@
 # Changelog
 
+## [v4.41.0] — AOT cluster sweep + Jackson `@JsonView` prod hotfix + 401/403 anonymous + coverage ratchet（S165 + S166a + S162 hotfix + S148e ratchet + S166d；2026-05-09）
+
+> P0 hotfix wave：S158 `@JsonView` 在 Spring Boot 4 / Jackson 3 預設 `DEFAULT_VIEW_INCLUSION=false` 下序列化 `Page<Skill>` 成 `{}` 把 `/api/v1/skills` 打死。連帶解 S148e 後 `processTestAot` 全綠揭露的 cluster A AOT 失敗（S114b ACL cache infra），S162 closed 後 anonymous user 走 `@PreAuthorize` fallback 被 generic 500 吞掉的 hole，FileBrowserService 47 missed lines 補齊把 jacoco threshold 從 0.77 ratchet 回 0.80，以及 active doc / config 路徑殘留的 `-x processAot` 工作流（S158 prod-only bug 的 enabler）。**AOT 全程跑保留 prod-only bug 早期捕捉能力**（per CLAUDE.md「AOT 是 Cloud Run native binary 的核心特色」）。
+
+### Fix — S165 Jackson `@JsonView` prod hotfix（P0）
+
+- 新增 `backend/.../shared/api/JacksonConfiguration.java`：`JsonMapperBuilderCustomizer` bean 顯式 `enable(MapperFeature.DEFAULT_VIEW_INCLUSION)`
+  - **Why bean not yaml**：Spring Boot 4 / Jackson 3 yaml namespace 從 `spring.jackson.*` 改至 `spring.jackson.mapper.*`；bean customizer 跨版本穩定，不依賴 property name
+  - 對齊 Spring Boot 4 reference (https://docs.spring.io/spring-boot/reference/features/json.html#features.json.jackson)
+- 新增 `backend/.../shared/api/JacksonViewInclusionDiagnosticTest.java`：full `@SpringBootTest` 直斷 runtime `MapperFeature.DEFAULT_VIEW_INCLUSION=true`，未來 Jackson 版本翻 default 會立即綠變紅
+- 修 `WebMvcSliceTestBase.java`：`@Import(JacksonConfiguration.class)` 讓 slice test 也吃到同 mapper config
+- 強化 `SkillJsonViewTest.java`：本地 `new ObjectMapper()` 顯式 `configure(MapperFeature.DEFAULT_VIEW_INCLUSION, true)`，移除「靠 Jackson 2 default」的隱式假設
+- 新增 `docs/grimo/development-standards.md` rule：「JSON contract 必走 Spring auto-configured `JsonMapper`」 — 禁用 `new ObjectMapper()` / `new JsonMapper()` 寫 `@JsonView` / `@JsonInclude` contract assertion
+
+### Refactor — S166a remove cache infrastructure
+
+- 移 `@EnableCaching`：`SkillshubApplication.java`
+- 拆 `SkillPermissionStrategy`：移 `CacheManager` ctor 參數 + `Cache cache` 欄位 + `cache.get/.put` 邏輯，每次 `@PreAuthorize` 走 DB 直接判斷（MVP 流量痛感為 0）
+- 拆 `SkillAclProjectionListener`：移 2 處 `@CacheEvict(value = "skill-acl", allEntries = true)`
+- 移 `WebMvcSliceTestBase.cacheManager()` AOT stub bean
+- 移 `SkillPermissionStrategyTest` 的 cache assertion；行為不變（DB 直查）
+- **Why**：MVP 階段 ACL eval 流量 < 100 RPS 不需 dedup；S114b 是早期 LAB perf 過度設計。Future re-introduce 走新 spec（S2XX-cache）+ profiling-driven SLA 觸發
+
+### Fix — S162 hotfix anonymous-aware AccessDenied/Authentication（補 ship）
+
+- `GlobalExceptionHandler.java`：補 `@ExceptionHandler(AccessDeniedException.class)` + `@ExceptionHandler(AuthenticationException.class)`
+  - anonymous（`auth==null` / `!isAuthenticated()` / `AnonymousAuthenticationToken`）→ **401 UNAUTHORIZED**「Authentication required」
+  - authenticated 但缺 perm → **403 ACCESS_DENIED**「Access denied」
+  - 對齊 Spring Security `ExceptionTranslationFilter` 標準語意；advice 層補回（advice 早於 filter 攔到 → 不能讓 filter 處理）
+- `GlobalExceptionHandlerTest.java`：擴 4 → 30+ tests，含 anonymous / authenticated / null context 三 path；達 100% 覆蓋
+- `SkillsHubAuthE2ETest.java`：`grantAcl` helper 改走 `/grants` source-of-truth（避 `/acl` deprecated dual-source race）；`listAclEntries` 同步改讀 `/grants`；Awaitility 10s 等 projection settle
+- `RiskAssessmentIntegrationTest.java` / `CollectionControllerTest.java` / `SkillsApiAnonymousTest.java`：對齊 anonymous 401 行為
+
+### Refactor — S148e ratchet（coverage gate + JVM heap）
+
+- 新增 `backend/gradle.properties`：`org.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=512m`（daemon heap）
+- `build.gradle.kts`：test heap `2g → 3g`（18+ context cache 下避 BatchSpanProcessor OOM）+ `-Pcache-debug` flag for cache stats logging
+- `build.gradle.kts`：jacoco threshold `0.77 → 0.80`（FileBrowserService 47 missed line 補齊；bundle line coverage 82.5% / 3453 of 4184）
+- `FileBrowserServiceTest.java`：擴 7 → 16 tests（+9 Mockito-based instance method tests for `listFiles` / `readFile` 含 SUSPENDED / not-found / oversize / zip-slip 全 fail-fast 守則）；FileBrowserService 自身 line coverage 37% → 94.9%
+
+### Doc/Config — S166d AOT-doc cleanup
+
+> 殘留 `-x processAot` 工作流是 S158-style prod-only bug 的 enabler。經驗證 `./gradlew processAot` 與 `./gradlew bootRun` 在 current main 全綠（after S148e + S166a），所有 active doc / config 路徑改回 bare `bootRun`，AOT 全程跑。
+
+- `e2e/playwright.config.ts`：webServer `command` 改 `./gradlew bootRun -x processAot` → `./gradlew bootRun`（**最關鍵**，這是執行的 code，不是 doc）
+- `qa-strategy.md`：Known Limitations 條目改寫 — 明確 **不要** 用 `-x processAot`，引 S158 教訓
+- `README.md` / `CONTRIBUTING.md`：quick-start / build-verify command 移除 `-x processAot`
+- `architecture.md` / `adr/ADR-007-browser-e2e-playwright.md`：Recipe A 標籤 + decision rationale 對齊
+- `.claude/skills/playwright-expert/SKILL.md`：example 中性化（不再用 `-x processAot` 當 illustrative example）
+- `.claude/skills/playwright-expert/references/webserver-recipes.md`：recipe + rationale 注解全更新
+- `SkillAclController.java`：加 `@Deprecated(since = "v4.41.0", forRemoval = true)` + 每端點 `warnDeprecated()` log（dual-source-of-truth race；遷移路徑 `/grants`）
+
+### Verify
+
+- `./scripts/verify-all.sh` ✅ V01=PASS V02=INFO（line 82.5%）V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS — FAIL=0 SKIP=0
+- `./gradlew processAot` ✅ BUILD SUCCESSFUL（standalone）
+- `./gradlew bootRun`（無 `-x`）✅ Started in 4.131s（process running for 4.396）
+- `./gradlew test`（含 `processTestAot`）✅ jacoco line 82.5% > threshold 0.80
+- `cd e2e && npx playwright test --grep @happy-path` ✅ 6 passed (2.0m)
+
+### Lessons
+
+- **Jackson 3 default 翻轉**：Spring Boot 4 升 Jackson 3 把 `MapperFeature.DEFAULT_VIEW_INCLUSION` default 從 `true` 改 `false`。S158 加 `@JsonView` 時的 unit test 用 `new ObjectMapper()`（看到的是 Jackson 2 預設）綠，但 prod 用 Spring auto-configured `JsonMapper`（被 Boot 4 明確 disable）→ `Page<Skill>` 序列成 `{}`。**修法**：bean customizer 在 prod-mapper 顯式 enable + diagnostic test 守 default 翻轉
+- **`-x processAot` shortcut 是 prod-only bug 的 enabler**：S148c+d+e 解開 AOT 後**首次跑** verify 揭露 ~30 個失敗，全是長期被 shortcut 遮的 AOT bean graph gap（S158 即其中典型；prod 才壞掉）。本 session 一次清光所有 active doc / config 殘跡 + 寫進 CLAUDE.md「AOT 不要捨棄」原則
+- **MVP 階段 cache 是 premature optimization**：S114b 設計時用 LAB perf 證明 dedup 效益，但 MVP 流量 < 100 RPS 沒痛感；引入 cache 反而為 AOT graph 增複雜度。先拆，未來真有 hot path（profiling-driven）再 reintroduce
+
+---
+
 ## [v4.40.0] — 移除 TestDataControllerTest 重複 cacheManager bean（S148e；2026-05-08）
 
 > S148c+d 解 Modulith 兩個 violation 後浮現的最後一個 processTestAot blocker：`TestDataControllerTest$CacheStubConfig.cacheManager` 與 `WebMvcSliceTestBase$AotStubBeans.cacheManager` 在 AOT 階段重複註冊 → `BeanDefinitionOverrideException`。

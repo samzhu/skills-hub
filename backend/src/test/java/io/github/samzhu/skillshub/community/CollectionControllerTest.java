@@ -16,6 +16,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -39,6 +40,10 @@ class CollectionControllerTest extends WebMvcSliceTestBase {
 
     @MockitoBean
     private CollectionService service;
+
+    // CollectionQueryController ctor 需 NamedParameterJdbcTemplate；slice 不載 JDBC 須顯式 mock
+    @MockitoBean
+    private NamedParameterJdbcTemplate jdbc;
 
     @Test
     @Tag("AC-1")

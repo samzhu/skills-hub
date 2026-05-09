@@ -17,6 +17,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.query.BundleInfoQueryService;
+import io.github.samzhu.skillshub.skill.query.SkillDiffQueryService;
+import io.github.samzhu.skillshub.skill.query.SkillFileDiffService;
 import io.github.samzhu.skillshub.skill.query.SkillQueryController;
 import io.github.samzhu.skillshub.skill.query.SkillQueryService;
 
@@ -42,6 +44,13 @@ class SkillsApiAnonymousTest extends WebMvcSliceTestBase {
     // S098a3-2 ship 後 SkillQueryController ctor 多了 BundleInfoQueryService dep；slice 不掃 @Service 須顯式宣告
     @MockitoBean
     private BundleInfoQueryService bundleInfoQueryService;
+
+    // S142b ship 後 SkillQueryController ctor 多了 SkillDiffQueryService + SkillFileDiffService deps
+    @MockitoBean
+    private SkillDiffQueryService skillDiffQueryService;
+
+    @MockitoBean
+    private SkillFileDiffService skillFileDiffService;
 
     @Test
     @Tag("AC-8")

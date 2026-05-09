@@ -454,7 +454,7 @@ S140 ship 後 V07（`--grep @happy-path`）入帶 6 支 critical-path spec（PRD
 e2e/
 ├── .gitignore                  ← managed marker block by ensure-latest.sh
 ├── package.json                ← @playwright/test ^1.59.1
-├── playwright.config.ts        ← Recipe A: Spring Boot bootRun -x processAot + Vite webServer
+├── playwright.config.ts        ← Recipe A: Spring Boot bootRun + Vite webServer
 ├── tests/                      ← spec test files（per spec-id；@<spec-id> @ac-N @happy-path tags）
 ├── results/                    ← gitignored: report.json + evidence.json（cross-skill contract）
 ├── playwright-report/          ← gitignored: HTML report + 內嵌 trace.zip 連結

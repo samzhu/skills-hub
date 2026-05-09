@@ -38,8 +38,6 @@ extra["shedlockVersion"] = "7.7.0"
 dependencies {
 	// implementation("org.springframework.boot:spring-boot-micrometer-tracing-brave")
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
-	implementation("org.springframework.boot:spring-boot-starter-cache")
-	implementation("com.github.ben-manes.caffeine:caffeine")
 	implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
 	implementation("org.springframework.boot:spring-boot-starter-jdbc")
 	// core artifact（非 starter）— 自寫 SkillshubPgVectorStore 子類控制 6-欄 INSERT
@@ -82,7 +80,6 @@ dependencies {
 	annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 	testImplementation("org.springframework.boot:spring-boot-micrometer-tracing-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
-	testImplementation("org.springframework.boot:spring-boot-starter-cache-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-data-jdbc-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-opentelemetry-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server-test")
@@ -143,8 +140,14 @@ jacoco {
 
 tasks.test {
 	finalizedBy(tasks.jacocoTestReport)
-	// 18 個 @SpringBootTest CONFIG bucket 受限於既有 customizer 多樣性，需 2g heap
-	maxHeapSize = "2g"
+	// Spring TestContext cache 預設 max 32 contexts；@MockitoBean / @TestPropertySource 任一變動皆新 context。
+	// 各 context 持 Tomcat + Hikari pool + OpenTelemetry + Modulith runtime → ~90-150 MB／context。
+	// 2g 在 18+ contexts 下會 thrash GC / BatchSpanProcessor OOM；3g 給安全 buffer。
+	maxHeapSize = "3g"
+	// 觀察 context cache hit/miss/eviction — 平時靜音；troubleshoot 用 -Pcache-debug 開啟
+	if (project.hasProperty("cache-debug")) {
+		systemProperty("logging.level.org.springframework.test.context.cache", "DEBUG")
+	}
 }
 
 tasks.jacocoTestReport {
@@ -168,7 +171,10 @@ tasks.jacocoTestReport {
 	)
 }
 
-// project-wide LINE coverage gate；threshold = 0.80
+// project-wide LINE coverage gate
+// S019 ship 時 baseline 0.88，threshold 0.80。多 spec 累積後降至 ~0.77。本 session
+// 補 GlobalExceptionHandlerTest（35% → 100% +148 lines）拉回 baseline 0.81，threshold
+// 同步 ratchet 回 0.80 防 future regression。後續 spec 持續補測逐步往 0.85 推（per backlog #17）。
 tasks.jacocoTestCoverageVerification {
 	dependsOn(tasks.test)
 	classDirectories.setFrom(tasks.jacocoTestReport.get().classDirectories)

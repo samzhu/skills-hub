@@ -13,6 +13,10 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -565,6 +569,58 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(new ErrorResponse("CONCURRENT_MODIFICATION",
 						"Resource was modified concurrently. Retry the request.",
+						Instant.now()));
+	}
+
+	/**
+	 * S162 AC-5 hotfix: Spring Security {@link AccessDeniedException}（含
+	 * Spring Security 6+ {@code AuthorizationDeniedException} subclass）→ 401 / 403。
+	 *
+	 * <p>本 handler 必須早於 {@link #handleUncaught(Exception)} 的 {@code Exception.class}
+	 * fallback。{@code @PreAuthorize} 拒絕時拋的 {@code AuthorizationDeniedException} 在
+	 * controller method 內 throw，被 Spring MVC 的 {@code DispatcherServlet} 在 dispatch 結束前
+	 * 用 {@code @RestControllerAdvice} 處理，**早於** Spring Security 的 {@code ExceptionTranslationFilter}。
+	 * 如沒此 specific handler，會被 generic 500 fallback 吞掉。
+	 *
+	 * <p><b>Anonymous → 401 / Authenticated → 403</b>：對齊 Spring Security 標準語意 — anonymous
+	 * 拒絕代表「需先驗證」回 401（client 應提供 credential 重試）；已驗證但缺 perm 才回 403。
+	 * Spring Security {@code ExceptionTranslationFilter} 預設行為相同；本 handler 在 advice 層補回
+	 * 同等行為（advice 早於 filter 攔到 → 不能讓 filter 處理）。
+	 */
+	@ExceptionHandler(AccessDeniedException.class)
+	ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+		var auth = SecurityContextHolder.getContext().getAuthentication();
+		boolean anonymous = auth == null || !auth.isAuthenticated()
+				|| auth instanceof AnonymousAuthenticationToken;
+		var status = anonymous ? HttpStatus.UNAUTHORIZED : HttpStatus.FORBIDDEN;
+		var code = anonymous ? "UNAUTHORIZED" : "ACCESS_DENIED";
+		var msg = anonymous ? "Authentication required" : "Access denied";
+		log.atDebug()
+				.addKeyValue("errorCode", code)
+				.addKeyValue("anonymous", anonymous)
+				.addKeyValue("message", ex.getMessage())
+				.log("Access denied");
+		return ResponseEntity.status(status)
+				.body(new ErrorResponse(code, msg, Instant.now()));
+	}
+
+	/**
+	 * S162 AC-5 hotfix: Spring Security {@link AuthenticationException} → 401 Unauthorized。
+	 *
+	 * <p>同 {@link #handleAccessDenied}：必須早於 generic fallback。涵蓋 BadCredentials /
+	 * InsufficientAuth / 等所有 Spring Security 認證異常（{@link AuthenticationException} 為基類）。
+	 * 通常認證錯誤由 Spring Security filter 早於 controller dispatch 攔截，但若上游已過 filter 而
+	 * controller 內邏輯仍拋認證例外（罕見），本 handler 保證 401 而非 500。
+	 */
+	@ExceptionHandler(AuthenticationException.class)
+	ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex) {
+		log.atDebug()
+				.addKeyValue("errorCode", "UNAUTHORIZED")
+				.addKeyValue("message", ex.getMessage())
+				.log("Authentication failed");
+		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+				.body(new ErrorResponse("UNAUTHORIZED",
+						"Authentication required",
 						Instant.now()));
 	}
 

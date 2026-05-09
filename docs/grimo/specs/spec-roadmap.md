@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-08（+ S164 collection owner management — PUT update + DELETE）
+> 最後更新：2026-05-09（v4.41.0 ship — S165 + S166a + S162 hotfix + S148e ratchet + S166d AOT-doc cleanup）
 
 ## 使用說明
 
@@ -103,6 +103,13 @@
 | S162c | API consistency — ownership 拒絕 409→403 sweep（DELETE/PUT 對 review/collection/skill/flag 等需 owner 操作） | S(6) | — | 📋 planned |
 | S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) | S144 同期 | 📐 in-design |
 | S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) | S150 ✅ ship 前提 | 📐 in-design |
+| S165 | Jackson `@JsonView` prod hotfix — `JsonMapperBuilderCustomizer` 顯式 enable `DEFAULT_VIEW_INCLUSION` | XS(2) | S158 ✅ + S166a ✅ | ✅ v4.41.0 — bean + diagnostic test + dev-standards rule |
+| S166 | META Spring AOT bean registration sweep — verify-all.sh 全綠（S148e 後 processTestAot 解封首次跑揭露 ~30 fail） | META | S148e ✅ | ✅ v4.41.0 — sub-spec a 已 ship；b/c 改判定無真實 cluster（V01 全綠後消失）|
+| S166a | 拆 cache 基礎設施（`@EnableCaching` + S114b ACL cache + Caffeine dep） — 一次解 cluster A ~10 個 AOT context-load fail | S(5) | — | ✅ v4.41.0 — cache infra 全拆；MVP 不需，未來 reintroduce 走 S2XX-cache |
+| S166b | WebMvcSlice cluster B per-test stub bean 補完（~15 個 AOT 缺 bean） | M(8) | S166a ✅ | ⛔ 取消 — S166a + S165 ship 後 V01 全綠，cluster B 不再存在（之前的失敗多由 cache infra 連鎖造成） |
+| S166c | `@SpringBootTest` 全 context cluster C 真實 fail 排查（S016 / S120 e2e / RiskAssessment） | S(5) | S166a ✅ | ⛔ 取消 — V01 全綠後 cluster C 失敗也消失（S120 dual-source race 由 SkillsHubAuthE2ETest 改走 `/grants` 修） |
+| S166d | AOT-doc cleanup — README/CONTRIBUTING/qa-strategy/architecture/ADR-007/playwright-expert/`e2e/playwright.config.ts` 移 `-x processAot` 殘留 | XS(1) | S166a ✅ | ✅ v4.41.0 — micro-spec ship 同 v4.41.0 |
+| S2XX-cache | 未來 re-introduce ACL eval cache（profiling-driven，明確 SLA 觸發） | — | production traffic 起來 | ⏸ deferred |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |
 | S098a2 | SSE 事件串流 + per-step 動畫 | M(8) | S098a ✅ | ⏸ deferred |

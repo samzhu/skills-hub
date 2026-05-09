@@ -48,7 +48,7 @@
 - 第一次 cold start 慢（Spring Boot + Testcontainers pgvector pull 90–150 s；cached 後 ~30 s）— `reuseExistingServer: !process.env.CI` 緩解本機 dev 痛點
 - backend `TestDataController` 必須嚴格 `@Profile` 限制，production absolutely never expose — S140 design phase 必須在 SecurityConfig + integration test 雙保險
 - Playwright 版本月更節奏快 — `ensure-latest.sh` 的 `--upgrade` 由 user opt-in（per intent-b decision），不主動升級避免 CI flaky
-- `bootRun -x processAot` workaround per `qa-strategy.md` Known Limitations 直接 bake 入 Recipe A — 待 GraalVM AOT plugin upstream fix 才能拿掉
+- ~~`bootRun -x processAot` workaround per `qa-strategy.md` Known Limitations~~ — 已過時（2026-05-09 確認 `processAot` + `bootRun` 全綠 after S148e + S166a）；Recipe A 改回 bare `./gradlew bootRun`，AOT 全程跑保留 prod-only bug 早期捕捉能力（per S158 教訓）
 
 **Out of scope（後續另起 spec）：**
 
@@ -64,7 +64,7 @@
 - `playwright-expert` skill：`.claude/skills/playwright-expert/SKILL.md`
 - Fixture pattern：`playwright-expert/references/fixtures-patterns.md`（4 patterns + 7 state profile + per-AC decision protocol）
 - Caller protocol：`playwright-expert/references/caller-protocol.md`（cross-skill contract + CI artefact convention）
-- webServer config recipe：`playwright-expert/references/webserver-recipes.md` Recipe A（含 `-x processAot` workaround）
+- webServer config recipe：`playwright-expert/references/webserver-recipes.md` Recipe A（bare `bootRun`，AOT 全程跑）
 - e2e workspace bootstrap commit：`31727db`
 - S140 critical path backfill spec：`docs/grimo/specs/2026-05-07-S140-e2e-critical-path-backfill.md`（📐 in-design — `/planning-spec S140` next）
 - V07 Verification Command Registry：`docs/grimo/qa-strategy.md`

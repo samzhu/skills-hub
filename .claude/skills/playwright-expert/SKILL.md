@@ -106,9 +106,10 @@ Use when no `e2e/` exists, or when the user asks to upgrade.
    project's QA strategy / known limitations doc (e.g.
    `docs/grimo/qa-strategy.md` § Known Limitations) and bake any
    command-level workaround the project requires into the marker
-   value — for example `./gradlew bootRun -x processAot` rather than
-   bare `./gradlew bootRun` if a build flag is documented as
-   required. Copy `assets/playwright-config-template.ts` to
+   value — e.g. project-specific build flags or env vars that the QA
+   doc documents as required (none currently for Skills Hub: bare
+   `./gradlew bootRun` is correct as of 2026-05-09). Copy
+   `assets/playwright-config-template.ts` to
    `e2e/playwright.config.ts` and substitute every `{{ MARKER }}`
    per the chosen recipe. Leave no marker behind.
 5. Author a placeholder smoke test at `e2e/tests/smoke.spec.ts` that

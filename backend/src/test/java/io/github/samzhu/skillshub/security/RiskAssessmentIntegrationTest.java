@@ -27,6 +27,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.modulith.test.EnableScenarios;
 import org.springframework.modulith.test.Scenario;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.util.LinkedMultiValueMap;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
@@ -64,6 +65,9 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
 @AutoConfigureTestRestTemplate
 @Import(TestcontainersConfiguration.class)
 @EnableScenarios
+// S139 ship 後 POST /api/v1/skills/upload 需 JWT；本 e2e 走 LAB mode（oauth.enabled=false）
+// → permit all + LabSecurityFilter 注入預設 lab user，讓 restTemplate 可直接上傳
+@TestPropertySource(properties = "skillshub.security.oauth.enabled=false")
 class RiskAssessmentIntegrationTest {
 
 	private static final Duration SCAN_TIMEOUT = Duration.ofSeconds(15);
@@ -173,13 +177,18 @@ class RiskAssessmentIntegrationTest {
 					assertThat(sarif.get("$schema"))
 							.isEqualTo("https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.json");
 
-					// runs[]：每個啟用引擎一個 run。LLM 關閉 → 4 個（pattern, secret, metadata, meta）
+					// runs[]：每個啟用引擎一個 run。
+					// LLM 關閉的情況下目前 7 engines：
+					//   pattern, secret, metadata, meta（基礎四 engine）
+					//   dep-vuln, prompt-injection, resource-dos（後續擴充）
 					var runs = (List<Map<String, Object>>) sarif.get("runs");
-					assertThat(runs).hasSize(4);
+					assertThat(runs).hasSize(7);
 					assertThat(runs)
 							.extracting(r -> ((Map<String, Object>) r.get("tool")).get("driver"))
 							.extracting(d -> (String) ((Map<String, Object>) d).get("name"))
-							.containsExactlyInAnyOrder("pattern", "secret", "metadata", "meta");
+							.containsExactlyInAnyOrder(
+									"pattern", "secret", "metadata", "meta",
+									"dep-vuln", "prompt-injection", "resource-dos");
 
 					// scannedAt 是合法時間戳（JSONB 序列化為 ISO-8601 字串）
 					assertThat(riskAssessment.get("scannedAt"))

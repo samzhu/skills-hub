@@ -73,7 +73,7 @@ Spring Modulith 的 `ApplicationModules.verify()` 確保：
 
 | Item | Workaround | Why not enroll |
 |------|-----------|----------------|
-| `./gradlew bootRun` 觸發 `:processAot` 失敗（GraalVM `org.graalvm.buildtools.native:0.11.5` plugin pre-existing bug）| `./gradlew bootRun -x processAot` | bootRun smoke 慢且非 PR gate；待獨立 spec 處理 AOT 配置或切換 OpenTelemetry |
+| _（無）— S148e + S166a 後 `processAot` / `processTestAot` 全綠（驗證 2026-05-09：`./gradlew processAot` BUILD SUCCESSFUL）；歷史「GraalVM 0.11.5 plugin pre-existing bug + `bootRun -x processAot`」工作流已過時，**不要再用 `-x processAot`** — AOT 是部署到 Cloud Run native binary 的核心特色（per CLAUDE.md），跳過會把 prod-only 失敗（如 S158 Jackson default-view-inclusion）藏到上線才爆。_ | — | — |
 
 ### 不 enroll 的命令
 

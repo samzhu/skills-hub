@@ -28,7 +28,7 @@ Skills Hub 採 **spec-first ship pipeline**：每個 user-facing 變動先有一
 
 ```bash
 # Backend (Spring Boot 4 + Java 25 + Gradle)
-cd backend && ./gradlew bootRun -x processAot      # dev
+cd backend && ./gradlew bootRun                    # dev
 cd backend && ./gradlew test                       # tests
 cd backend && ./gradlew bootBuildImage             # OCI image
 

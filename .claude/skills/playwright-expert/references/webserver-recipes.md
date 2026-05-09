@@ -26,7 +26,7 @@ Boot already auto-starts `compose.yaml` at boot when one is present.
 Markers:
 
 ```
-BACKEND_COMMAND     = ./gradlew bootRun -x processAot
+BACKEND_COMMAND     = ./gradlew bootRun
 BACKEND_CWD         = ../backend
 BACKEND_HEALTH_URL  = http://localhost:8080/actuator/health
 FRONTEND_COMMAND    = npm run dev
@@ -51,11 +51,13 @@ Pre-flight checks (verify before substituting markers):
   Compose file).
 
 Notes:
-- `-x processAot` is required while the GraalVM native-build plugin
-  pre-existing bug stands (see `docs/grimo/qa-strategy.md` Known
-  Limitations). Drop the flag once the AOT config / OpenTelemetry
-  switch ships in its own spec. Re-check the project's QA strategy
-  doc before each new project bootstrap; this flag is not universal.
+- `processAot` runs as part of `bootRun` and works on current main
+  (verified 2026-05-09 after S148e + S166a). Do **not** add
+  `-x processAot` — AOT processing catches prod-only failures (e.g.
+  S158 Jackson default-view-inclusion) at build time instead of in
+  prod. The historical "GraalVM 0.11.5 plugin pre-existing bug"
+  workaround is obsolete; see `docs/grimo/qa-strategy.md` Known
+  Limitations entry.
 - **`timeout: 180_000` for backend** — sized for the first-ever run
   on a clean machine (~90–150 s for Spring Boot 4 cold + first
   Docker image pull of pgvector + first Flyway migration set). Once

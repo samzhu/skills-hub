@@ -1,18 +1,12 @@
 package io.github.samzhu.skillshub.skill.security;
 
-import java.lang.invoke.MethodHandles;
 import java.sql.Types;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.TreeSet;
 
 import javax.sql.DataSource;
 
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.jdbc.core.SqlParameterValue;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -48,11 +42,6 @@ import io.github.samzhu.skillshub.shared.security.PermissionStrategy;
 @Component
 public class SkillPermissionStrategy implements PermissionStrategy {
 
-    private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-
-    /** Caffeine cache name — S114b ACL read 去重（grant/revoke 後由 SkillAclProjectionListener evict）。 */
-    static final String CACHE_NAME = "skill-acl";
-
     /**
      * acl_entries ?| :patterns — 任一 pattern 命中即 true。
      *
@@ -69,24 +58,22 @@ public class SkillPermissionStrategy implements PermissionStrategy {
     private final NamedParameterJdbcTemplate jdbc;
     private final CurrentUserProvider currentUserProvider;
     private final AclPrincipalExpander expander;
-    private final Cache cache;
 
     /**
+     * S166a — cache 移除（MVP 階段 ACL 流量不需 dedup；每次 @PreAuthorize 走 DB 直接判斷）。
+     *
      * @param dataSource          專屬 DataSource — 不複用既有的 {@link NamedParameterJdbcTemplate} bean，
      *                            因 strategy 邏輯與既有 query service 互無依賴；獨立 instance 簡化 module
      *                            邊界（{@code skill :: security} 不需 import {@code skill :: query}）。
      * @param currentUserProvider 取當前 user 的 groups（dispatcher 不展 group，由本 strategy 補）
      * @param expander            把 groups 展開成 {@code group:<name>:<perm>} patterns
-     * @param cacheManager        Caffeine CacheManager（S114b ACL read 去重）
      */
     public SkillPermissionStrategy(DataSource dataSource,
                                    CurrentUserProvider currentUserProvider,
-                                   AclPrincipalExpander expander,
-                                   CacheManager cacheManager) {
+                                   AclPrincipalExpander expander) {
         this.jdbc = new NamedParameterJdbcTemplate(dataSource);
         this.currentUserProvider = currentUserProvider;
         this.expander = expander;
-        this.cache = cacheManager.getCache(CACHE_NAME);
     }
 
     @Override
@@ -121,18 +108,8 @@ public class SkillPermissionStrategy implements PermissionStrategy {
         var skillId = targetIdOrObject.toString();
 
         // 補 group: patterns — dispatcher 不知 groups（避免循環依賴 CurrentUserProvider）；strategy 端補。
-        // fullPatterns 必須先展開才能作為 cache key（group patterns 在此決定，非 principals 參數本身）。
         var fullPatterns = new HashSet<>(principals);
         fullPatterns.addAll(expander.expandGroups(currentUserProvider.current().groups(), permission));
-
-        // Cache key = skillId + sorted fullPatterns + permission（TreeSet 保證排序一致性）
-        var cacheKey = skillId + ":" + new TreeSet<>(fullPatterns) + ":" + permission;
-        if (cache != null) {
-            var cached = cache.get(cacheKey, Boolean.class);
-            if (cached != null) {
-                return cached;
-            }
-        }
 
         var patternsArray = fullPatterns.toArray(new String[0]);
         var params = new MapSqlParameterSource()
@@ -141,10 +118,6 @@ public class SkillPermissionStrategy implements PermissionStrategy {
                 // 對 Iterable<?> 的 IN-list 自動展開（會把 String[] 拆成 ?,?,? 破壞 ?| 語意）
                 .addValue("patterns", new SqlParameterValue(Types.ARRAY, patternsArray));
 
-        var result = Boolean.TRUE.equals(jdbc.queryForObject(SQL, params, Boolean.class));
-        if (cache != null) {
-            cache.put(cacheKey, result);
-        }
-        return result;
+        return Boolean.TRUE.equals(jdbc.queryForObject(SQL, params, Boolean.class));
     }
 }
