@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-09（v4.42.0 ship — S167 移除 deprecated `/api/v1/skills/{id}/acl` HTTP layer）
+> 最後更新：2026-05-09（v4.43.0 ship — S159a SkillQuery 端點未知 query 參數 fail-fast 400）
 
 ## 使用說明
 
