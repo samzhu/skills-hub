@@ -2,10 +2,12 @@
 name: shipping-release
 description: >
   Merges completed work, syncs documentation to reflect new reality,
-  updates changelog, manages version tags. Use after QA/auto-verify
-  passes, when the user says "ship it" or "merge."
+  updates changelog, manages version tags. Auto-invokable by the model
+  ONLY after QA gate passes (see "QA Gate Precondition" below).
+  Use when the user says "ship it" / "merge", or when an upstream
+  workflow (cron-loop / planning-tasks Phase 3 / verifying-quality
+  PASS verdict) has confirmed all AC green and verify-all.sh exit=0.
   Do NOT use before implementation and verification are complete.
-disable-model-invocation: true
 allowed-tools:
   - Read
   - Glob
@@ -15,7 +17,7 @@ allowed-tools:
   - Edit
 metadata:
   author: samzhu
-  version: 1.0.0
+  version: 1.1.0
   category: workflow-automation
   pattern: sequential-orchestration
 ---
@@ -37,6 +39,33 @@ Output: Merge commit, updated docs, spec-roadmap ✅, archived spec
 Valid:  Spec section 7 shows all AC PASS, tests pass, docs synced
 Next:   /planning-tasks next (continue loop)
 ```
+
+## QA Gate Precondition (auto-invocation guard)
+
+This skill is auto-invokable, but the model MUST verify ALL of the
+following before doing anything destructive (commit / tag / push):
+
+1. **Spec doc §7 Implementation Results** lists every AC with PASS
+   verdict. Missing §7 or any FAIL → REJECT, route to `/planning-tasks
+   [spec-id]` to finish implementation first.
+
+2. **verify-all.sh exit 0** within the current tick — i.e. ran
+   `scripts/verify-all.sh` and Verdict line shows "✅ all CRITICAL
+   passed; exit=0". A stale earlier-tick PASS does NOT satisfy the
+   gate; re-run if untouched files have changed since the last run.
+
+3. **`git status` clean of unrelated changes** — only the spec's own
+   diff should be staged. If working tree contains drive-by edits
+   from another spec, REJECT and ask user to split.
+
+4. **Touched test files actually run** — targeted gradle test for
+   modified production classes must show non-zero test count + 0
+   failures. A green build that ran zero tests is NOT a PASS.
+
+If ANY precondition fails, the model MUST STOP, summarize the gap, and
+either route to the upstream skill (`/planning-tasks [spec-id]` /
+`/verifying-quality [spec-id]`) or ask the user to resolve. Never
+"ship around" a failing gate by rationalizing it as low-risk.
 
 ## Prerequisites
 
