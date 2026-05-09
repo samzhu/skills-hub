@@ -7,7 +7,9 @@ plugins {
 	// native-image buildpack，metadata 存在即觸發 native compile chain — bootBuildImage
 	// 直接產 native binary。
 	id("org.graalvm.buildtools.native") version "0.11.5"
-	id("org.cyclonedx.bom") version "3.2.4"
+	// S148b POC TEMP: cyclonedx 3.2.4 與 nativeCompile 有 task graph 衝突（processResources
+	// 與 cyclonedxBom 互相依賴 race） — POC 期間註解，POC 完還原。
+	// id("org.cyclonedx.bom") version "3.2.4"
 	// /actuator/info git 區塊 — 從 .git/ 抽 commit hash / branch / message 寫進
 	// META-INF/git.properties，Spring Boot GitInfoContributor 自動 expose。
 	// build 階段需要 .git/ 可訪問（Cloud Build 預設 source upload 含 .git，未排除）。
@@ -193,4 +195,18 @@ tasks.jacocoTestCoverageVerification {
 // JaCoCo plugin 預設不接 check lifecycle，須顯式宣告
 tasks.check {
 	dependsOn(tasks.jacocoTestCoverageVerification)
+}
+
+// S148b: GraalVM native-image 反射 metadata fail-fast — gated by -PexactReachability=true
+// 平常 nativeCompile 不影響；POC + deploy-day 開啟 flag 強制 build 階段 catch missing
+// reflection registration，避免 Cloud Run runtime 才 throw MissingReflectionRegistrationError。
+// `--exact-reachability-metadata` 預設 reporting mode = Throw，不需另設 -XX flag。
+graalvmNative {
+	binaries {
+		named("main") {
+			if (project.hasProperty("exactReachability")) {
+				buildArgs.add("--exact-reachability-metadata=io.github.samzhu.skillshub")
+			}
+		}
+	}
 }

@@ -19,6 +19,14 @@
 4. **Walk decision branches; don't flatten.** A spec-level decision (e.g., which library provides a capability) typically determines the next question (e.g., which adapter shape to expose, which errors translate across the port). Re-plan the next question based on the answer just received.
 5. **Don't stop early.** Keep grilling until every load-bearing detail is pinned: scope boundaries, constraints, integration points, data shape, error strategy, and the acceptance-verification command.
 6. **Incorporate research findings into questions.** When a research finding reveals an ecosystem capability or limitation, present it as context in the grill question. Example: "Research shows GeminiAgentModel already accepts Sandbox in its constructor. Should we use this pattern, or..."
+7. **Use plain-language framing (大白話 first).** Each grill option must be understandable to a non-engineer reader. Lead with concrete **technical** sample data, "what the user sees" scenarios, or a side-by-side example. Two banned anti-patterns:
+   - **No jargon abstractions** — don't write "JWT-derived sub vs caller-supplied param"; show the actual `author=<sub>` request body field and what value gets stored.
+   - **No life analogies** — banned: cabinets, moving house, insurance, parking, cooking, building blocks. The user wants to know "what row appears in DB after click", not "is the cabinet going to break". Analogies feel friendly but they erase the technical detail the user needs to actually decide.
+   - If the user replies "可以解釋白話一點嗎" / "聽不懂", that is a hard signal to rewrite the entire question — not paraphrase one term, not switch to a different analogy. Restart with concrete technical data.
+   - **Bad (jargon)**: "Should snapshot source-of-truth be JWT-derived sub or caller-supplied param?"
+   - **Bad (life analogy)**: "想像你家有個櫃子可能在搬家時壞掉，要不要花 35 分鐘模擬搬一次家？"
+   - **Good (concrete tech)**: "現在前端送上傳請求時，會帶 `author=<sub>` 欄位，後端傻傻存進 DB。也就是說 Bob 登入時可以把 author 改成 Alice 的 sub。要不要順手修這個？選 A=信前端 / B=信 JWT / C=兩邊比對不等就 400。"
+   - **Pattern**: every option row should include real technical artifacts — sample data row (`author = "111161306011023995106"`), file path:line, actual command (`./gradlew nativeCompile`), expected DB state delta, or visible UI string. Not metaphors, not abstractions.
 
 ## Focus Topics
 

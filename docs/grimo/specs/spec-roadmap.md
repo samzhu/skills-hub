@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-09（v4.43.0 ship — S159a SkillQuery 端點未知 query 參數 fail-fast 400）
+> 最後更新：2026-05-09（all-specs sweep 完成 — Bucket C 9 specs 全 design：S148f / S156b / S158b / S159b / S159c / S159d / S162b / S162c / S167b spec file 都 ready；S148b POC done shrink XS(3)；S155b cancelled）
 
 ## 使用說明
 
@@ -78,7 +78,8 @@
 | S146 | 掃描器補強 — GitHub Actions Unpinned Dependency 偵測（`@master/@main/@HEAD`） | XS(3) | S147 research | ⏸ deferred — 等 S147 完成再規劃 |
 | S147 | 掃描器語意分析缺口研究（W011/E004/W009/W013 vs. Snyk agent-scan） | META(research) | — | ⏸ deferred — 暫緩，等研究啟動時機 |
 | S148 | Bug — GraalVM native image AOT reflection 涵蓋不足（JudgeResponse 部分） | S(5) | — | ✅ v4.25.0 — 4/4 JudgeResponse deserialize PASS（@RegisterReflectionForBinding + catch(Error) 防 outbox 無限重試） |
-| S148b | GraalVM AOT 補齊 — SkillshubProperties `@ConfigurationProperties` 反射失敗 + build-time 驗證機制研究 | S(5-7) | — | 📋 planned |
+| S148b | GraalVM AOT 驗證機制 — POC reject H1（SkillshubProperties 無 bug）；`--exact-reachability-metadata` flag 已 ship；剩 architecture.md 文件化 | XS(3) | — | ⏳ Plan — 1 task ready (T01 architecture.md doc) |
+| S148f | cyclonedx-bom 3.2.4 + nativeCompile 衝突修復 — 升 plugin 4.x / 換 SPDX / 隔離 task graph（POC 決定）；本 spec 是 ship native production deploy 的 blocker | XS(3) — POC 結果可漲 S | S148b ✅ | 📐 in-design — spec file 完成；POC required (3 path H1/H2/H3) |
 | S148c | Modulith cycle 修復 — `shared.api.GlobalExceptionHandler` ↔ `skill.validation` 雙向相依（拖垮 processTestAot） | S(5) | — | ✅ v4.38.0 — SkillValidationException + ValidationFinding 移至 shared.api 解環；compile 通過；shared↔skill cycle violation 消失 |
 | S148d | Modulith allowed-targets 補 — `score → security` 跨 module 引用 SecurityFinding 未在 allowed targets 列表（S148c 解環後浮現） | XS(2) | — | ✅ v4.39.0 — security.scan 加 @NamedInterface("scan") + score allowedDependencies 加 "security :: scan"；processTestAot Modulith 驗證階段通過 |
 | S148e | processTestAot duplicate cacheManager bean — TestDataControllerTest$CacheStubConfig vs WebMvcSliceTestBase$AotStubBeans 重複定義（S148c+d 解後浮現） | XS(2) | — | ✅ v4.40.0 — 移除 TestDataControllerTest 本地 CacheStubConfig；processTestAot BUILD SUCCESSFUL 預設流程恢復 |
@@ -87,24 +88,25 @@
 | S151 | Quality Score 訊息一致性修正（hero card "評分計算中" vs. 品質 tab "此版本尚未評分"） | XS(2) | S135b ✅ | ✅ v4.37.0 — QualityTabV2「此版本尚未評分」改「評分計算中，請稍後重新整理」對齊 hero/badge 風格；12/12 PASS |
 | S152 | SPA fallback for unknown routes（未知 URL → React NotFoundPage，移除 allowlist drift）| S(6) | — | ✅ v4.26.0 — 8/8 PASS（catchall pattern 取代 14 條 allowlist + /api/ early-return） |
 | S153 | Skill detail 404 UX — 統一 400/403/404 顯「找不到此技能」（移除誤導 retry 提示）| XS(3) | — | ✅ v4.24.0 — 9/9 vitest PASS（isUnviewable 擴展涵蓋 400/403/404） |
-| S154 | Author display identity — `users` 表 + skills snapshot；UI + ShareSkillModal 顯 name + handle 取代 sub ID | M(13) | — | 📐 in-design |
+| S154 | Author display identity (backend) — platform user_id 解耦 OAuth sub；`users` 表 + skills.author/owner_id/acl_entries 全切 user_id；CurrentUserProvider refactor；Command forgery fix；Query LEFT JOIN | M(12) | — | ⏳ Plan — 6 tasks ready (T01-T06) |
+| S154b | Author display identity (frontend) — getDisplayName helper + 9 component sweep + ShareSkillModal 4-polish | S(9) | S154 ✅ | 📐 in-design — 拆自 S154 backend/frontend split |
 | S155 | Deployment audit polish — 7 個 LAB 小 UX 問題（footer link / auth-debug / publish-failed / 文案 / 偏好 modal / CLI dropdown 死 UI）| S(7) | — | ✅ v4.27.0 + v4.28.0 + v4.29.0 + v4.30.0 + v4.31.0 — 6/6 in-scope items shipped；#6 拆出 S155b（sort tab needs-reverify-in-LAB）|
-| S155b | Sort tab active highlight LAB reverify — `/browse` 點擊 sort 後 active pill 是否同步（2026-05-08 audit 假設 desync，但程式碼邏輯正確；需實機驗證 bug 是否仍在） | XS(2) | — | 📋 planned |
+| S155b | Sort tab active highlight LAB reverify | XS(2) | — | ⛔ cancelled 2026-05-09 — 程式碼掃描確認無 bug：HomePage.tsx:217 `isOn = sortMode === mode` derived state，無 secondary state 可漂移；click handler line 222 `setSortMode + setPage(0)` 同 batch；auditor 觀察解釋為 stale cached bundle pre-commit `6211734` |
 | S156 | List clickability + Analytics hero card 修正 | S(5) | — | ✅ v4.32.0 — #1 historical (S100e) + #3 hero card removed；#2 拆 S156b |
-| S156b | RequestDetailPage 新 page（描述 + actions + 留言）+ hook + route — `/requests/:id` | M(8) | S156 #1 + S156 #3 完成 | 📋 planned |
+| S156b | RequestDetailPage 新 page（描述 + 7 actions + 留言 simple list）+ hook + route — `/requests/:id` | M(8) | S156 ✅ | 📐 in-design — spec file 完成 2026-05-09 |
 | S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | M(8) | — | 📐 in-design |
 | S158 | API response privacy hardening — list 移除 aclEntries / ownerId | S(5) | — | ✅ v4.33.0 — list endpoint 隱藏 aclEntries+ownerId（@JsonView）；detail owner-conditional 拆 S158b |
-| S158b | Detail endpoint viewer permissions — owner-only aclEntries + viewerPermissions{isOwner/canEdit/canDelete} + /grants endpoint authz | M(8) | S158 list 完工 | 📋 planned |
+| S158b | Detail viewer permissions — viewerPermissions backend-computed + aclEntries 全 strip (CQRS 內化) + /grants owner-only authz | M(8) | S158 ✅ | 📐 in-design — spec file 完成 2026-05-09 |
 | S159 | Skill query API hardening — META 拆 S159a/b/c/d | META | — | 📋 partial — S159a ✅ ship；S159b/c/d backlog |
 | S159a | Unknown query param 拒收（SkillQuery / categories 端點 fail-fast 400） | XS(3) | — | ✅ v4.43.0 — interceptor + handler；11+1+2 unit tests PASS |
-| S159b | Category storage normalize — V19 lowercase migration + CHECK constraint + frontend `capitalize` | S(5) | — | 📋 planned — 拆自 S159 §2.1 |
-| S159c | `?tag=` filter 實作 — controller param + repo `findByTag()` + frontend filter chip | S(5) | — | 📋 planned — 拆自 S159 §2.2 |
-| S159d | Pageable 非法值拒收 — `page < 0` / `size <= 0` / `size > 100` → 400 | XS(2) | — | 📋 planned — 拆自 S159 §2.2b |
+| S159b | Category storage normalize — V19 lowercase migration + CHECK constraint + frontend `capitalize` | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
+| S159c | `?tag=` filter 實作 — controller param + repo `findByTag()` + frontend filter chip | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
+| S159d | Pageable 非法值拒收 — `page < 0` / `size <= 0` / `size > 100` → 400 | XS(2) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) | — | 📐 in-design |
 | S161 | User input sanitization — Review / Flag / Request 文字欄位 XSS strip + backfill | S(6) | — | 📐 in-design |
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |
-| S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📋 planned |
-| S162c | API consistency — ownership 拒絕 409→403 sweep（DELETE/PUT 對 review/collection/skill/flag 等需 owner 操作） | S(6) | — | 📋 planned |
+| S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
+| S162c | API consistency — ownership 拒絕 409→403 sweep（DELETE/PUT 對 review/collection/skill/flag 等需 owner 操作） | S(6) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) | S144 同期 | 📐 in-design |
 | S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) | S150 ✅ ship 前提 | 📐 in-design |
 | S165 | Jackson `@JsonView` prod hotfix — `JsonMapperBuilderCustomizer` 顯式 enable `DEFAULT_VIEW_INCLUSION` | XS(2) | S158 ✅ + S166a ✅ | ✅ v4.41.0 — bean + diagnostic test + dev-standards rule |
@@ -114,7 +116,7 @@
 | S166c | `@SpringBootTest` 全 context cluster C 真實 fail 排查（S016 / S120 e2e / RiskAssessment） | S(5) | S166a ✅ | ⛔ 取消 — V01 全綠後 cluster C 失敗也消失（S120 dual-source race 由 SkillsHubAuthE2ETest 改走 `/grants` 修） |
 | S166d | AOT-doc cleanup — README/CONTRIBUTING/qa-strategy/architecture/ADR-007/playwright-expert/`e2e/playwright.config.ts` 移 `-x processAot` 殘留 | XS(1) | S166a ✅ | ✅ v4.41.0 — micro-spec ship 同 v4.41.0 |
 | S167 | 移除 deprecated `/api/v1/skills/{id}/acl` HTTP layer — controller + test + frontend doc + S016/E2E test 對齊 `/grants` shape | XS(2) | S114a ✅ + v4.41.0 deprecation log | ✅ v4.42.0 — HTTP 層拿掉；dead code 留 S167b |
-| S167b | dead-code 清理 — `SkillCommandService.grantAcl/revokeAcl` + `Skill.grantAcl/revokeAcl` + `SkillAclGrantedEvent/Revoked` + `SkillAclQueryService` + `AuditEventListener` 對應 handlers + 4 個 unit test | S(5) | S167 ✅ | 📋 planned — 拆 6+ 檔，獨立 ship 降回退風險 |
+| S167b | dead-code 清理 — `SkillCommandService.grantAcl/revokeAcl` + `Skill.grantAcl/revokeAcl` + `SkillAclGrantedEvent/Revoked` + `SkillAclQueryService` + `AuditEventListener` 對應 handlers + 4 個 unit test | S(5) | S167 ✅ | 📐 in-design — spec file 完成 2026-05-09；建議 S154 backend 前先 ship（sequencing） |
 | S2XX-cache | 未來 re-introduce ACL eval cache（profiling-driven，明確 SLA 觸發） | — | production traffic 起來 | ⏸ deferred |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |

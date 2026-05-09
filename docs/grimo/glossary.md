@@ -43,3 +43,8 @@
 | 技能分數 | Skill Score | `skillScore` | S142b 複合評分公式：`round(0.6 × qualityTotal + 0.4 × securityScore)`；securityScore 為 null（未掃描）時 skillScore = null；出現在 GET /scores 回應 |
 | 安全報告 | Security Report | `SecurityReportResponse` | S142b 4-quad 安全檢查視圖（Shell / Paths / Secrets / Deps）；從 `risk_assessment` JSONB findings 依 analyzer + ruleId 分類為 4 個 quad；每 quad 各有 status（PASS/WARN/FAIL）+ detail；出現在 GET /security-report 回應 |
 | 已驗證 | Verified | `verified` | S142b 衍生旗標：`status === 'PUBLISHED' && riskLevel != null`；表示「平台已完成品質 + 安全兩階段審查」≠「無風險」；出現在 GET /skills/{id} 回應 |
+| 平台識別碼 | Platform User ID | `userId` (`u_<6hex>`) | S154 起，平台對 user 的 internal PK；解耦 OAuth provider 的 sub；ACL principal / `skills.author` / `skills.owner_id` 都用此 ID（`u_a3f9c1` 格式）；同一個人換 OAuth provider 仍是不同 user_id（per S154 §2.4 Pattern A）|
+| 顯示用 slug | Handle | `handle` | S154 起，user 在平台上的可讀短名稱（`alice`）；install command + `/api/v1/skills/{handle}/{name}` URL 用它；user 可改、撞名時自動加 `-2/-3` 後綴 |
+| OAuth 識別碼 | OAuth Sub | `sub` | OAuth provider 給的 raw subject identifier（Google: 21 位數字；GitHub: 數字 ID）；S154 起只在 `users.sub` 出現，**不**在業務表（`skills` / `acl_entries`）|
+| 顯示名快照 | Author Name Snapshot | `authorNameSnapshot` | S154 起，publish/republish 時 freeze 的作者 display name；user 帳號刪除後 fallback 顯示來源（per S154 §2.6） |
+| 顯示名解析鏈 | DisplayName Resolver | `DisplayNameResolver` | S154 起，五層 fallback：name → snapshot → email local-part → handle → user_id（per S154 §2.5）；frontend `lib/displayName.ts` 與 backend static helper 同邏輯 |

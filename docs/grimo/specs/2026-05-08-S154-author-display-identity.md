@@ -1,370 +1,387 @@
-# S154: Author Display Identity — 把 OAuth sub ID 替換為人類可讀的作者顯示
+# S154: Author Display Identity (Backend) — 平台 user_id 解耦 OAuth sub
 
-> Spec: S154 | Size: M(11) | Status: 📐 in-design
-> Date: 2026-05-08
-> Origin: deployment audit 2026-05-08（LAB）— `skill.author` 存 OAuth sub `111161306011023995106`，導致 SkillCard / PageHeader / InstallCard / Profile dropdown / LandingPage cards / Reviews / Flags 全部顯示一串無人能讀的 21 位數字。Install command `skills-hub install 111161306011023995106/auditing-terraform-infrastructure-for-security` 完全沒人記得起來。
+> Spec: S154 | Size: M(12) | Status: 📐 in-design
+> Date: 2026-05-08（v3 split 2026-05-09 — planning-tasks size gate 拆出 S154b frontend）
+> Origin: deployment audit 2026-05-08（LAB）— `skill.author` 存 OAuth sub `111161306011023995106`，導致 SkillCard / PageHeader / InstallCard / Profile dropdown / LandingPage cards / Reviews / Flags 全顯示一串無人能讀的 21 位數字。Install command `skills-hub install 111161306011023995106/auditing-terraform-...` 完全沒人記得起來。
+>
+> **本 spec scope = backend foundation**。Frontend display rollout + ShareSkillModal polish 拆至 [S154b](./2026-05-09-S154b-author-display-frontend.md)。
 
 ---
 
 ## 1. Goal
 
-讓「作者」概念從 raw OAuth `sub` 升級為**人類可讀的 user identity**：UI 顯示 user name（或 email 局部），install command 用 username slug，並具備「分享技能找得到聯絡資訊」的基礎。
+**一句話：** 後端建立 `users` 表把 OAuth `sub` 跟平台 `user_id` 解耦；既存 `skills.author` / `owner_id` / `acl_entries` 全部切到 `user_id`；API 回傳作者顯示資訊（displayName / handle / email-conditional）給未來 frontend 用；順手修「caller 偽造 author」漏洞。
 
 **為什麼重要：**
-- **可發現性歸零**：使用者看到 `111161306011023995106` 完全無法判斷是誰，平台「社群」屬性瓦解
-- **Install command 不可記**：CLI install 是核心 UX 路徑，要求記 21 位數字違背 npm/registry 業界經驗
-- **跨技能 author 連動失效**：同一作者多個 skill 看不出是同一人（兩個 skill 顯示相同數字串才看得出，但 user 不會比對）
-- **Sharing pivot**：使用者要把技能丟給同事 review、找作者問問題、回報，沒任何聯絡點
+- **可發現性歸零**：使用者看到 `111161306011023995106` 完全無法判斷是誰
+- **OAuth provider lock-in**：sub 散在 `skills.author` + `acl_entries` JSONB，未來換 / 加 OAuth provider 就斷
+- **Forgery 漏洞**：`POST /skills` 收 `@RequestParam("author") String` 後端不校驗，Bob 可填 Alice 的 sub 偷掛 skill
+- **Frontend 無資料可顯**：S154b 要 render「作者：Alice Chen」必須先有 backend 回 `authorDisplayName` 等欄位
 
 **非目標：**
-- 不改 ACL / authorization 邏輯（內部 ID 仍用 sub，這層不動）
-- 不做 user profile 編輯頁（公開的「我的個人資料」延後另開 spec）
-- 不做 organization / team / namespace（agentskills.io standard 的 namespace 概念，更後期再開）
+- 不動 frontend（S154b 處理）
+- 不做 ShareSkillModal polish（S154b 處理）
+- 不做 ACL 機制改動（principal 比對方式不變，只是 principal 字串從 sub 改成 user_id）
+- 不做 user profile 編輯頁 / 帳號連結 / org namespace（見 §7）
 
 ---
 
 ## 2. Approach
 
-### 2.1 現況回顧
+### 2.1 現況回顧（已驗證 2026-05-09）
 
 **寫入路徑**（publish skill）：
 ```
 SkillCommandController.publishSkill()
-  → CurrentUserProvider.getCurrent().name  // 此 .name 其實是 sub
-  → Skill.create(..., author=sub, ...)
-  → repo.save() → skills.author = "111161306011023995106"
+  ← 收 @RequestParam("author") String author    （caller-supplied，server 不校驗 — 這是漏洞）
+  → Skill.create(..., author=<caller-supplied-sub>, ...)
+  → repo.save() → skills.author = "111161306011023995106"（OAuth sub raw）
+  → acl_entries[0] = "user:111161306011023995106:OWNER"
 ```
 
 **讀取路徑**（Skill detail）：
 ```
 GET /api/v1/skills/{id} → Skill record → JSON.author = "111161306011023995106"
-  → Frontend：SkillCard / PageHeader 直接顯示 raw author
+（frontend 直接顯示 raw author — 屬 S154b 範圍）
 ```
 
-**現有資產**：
-- `MeController` 已能從 JWT / OAuth2User 抽 `name`, `email`, `picture`（S141 ship）
-- `CurrentUserProvider` 統一 principal 抽取（OAuth/Lab 模式皆通），但只給出 `sub` + `roles`，**沒 surface name/email**
+**現有資產**（已 ship，無需另做）：
+- `MeController` `GET /api/v1/me` 已回 9 個 keys（S141 v4.21.0 ship）：`sub / email / name / picture / roles / groups / companyId / deptId / scope`
+- `CurrentUserProvider.current()` 回 `CurrentUser(userId, roles, groups, companyId)` — 但 `userId` **目前等於 OAuth sub**（本 spec 要改成 platform user_id）
+- `JwtAuthenticationToken` extract claim 模式已在 `MeController` 建立可參考
 
 **Database 現況**：
-- `skills.author` 是 `VARCHAR` 單欄，無關聯 user 表
-- 無 `users` 表（user identity 完全只活在 OAuth Provider 端）
-- ACL 用 `acl_entries(skill_id, principal)`，principal 也是 sub 字串
+- `skills.author` `VARCHAR` 存 OAuth sub raw（既存 3 筆 row）
+- `skills.owner_id` `VARCHAR` 存 OAuth sub raw（S114a / S016）
+- `acl_entries` JSONB List<String>，內容如 `["user:<sub>:OWNER", "public:*:read"]`
+- 無 `users` 表
 
-### 2.2 三個 user-journey 場景（先寫場景，再評估方案）
+### 2.2 設計核心：Platform user_id 解耦 OAuth sub
 
-| # | 場景 | 期望行為 | 目前 |
-|---|------|---------|------|
-| 1 | Alice 發布 skill「auditing-terraform」，Bob 在 LandingPage 看到 | SkillCard 顯示「Alice Chen」（或 alice@example.com）| 顯 `111161306011023995106` |
-| 2 | Bob 想 install Alice 的 skill | `skills-hub install alice/auditing-terraform`（username 短）| `skills-hub install 111161306011023995106/auditing-terraform...`（21+ chars） |
-| 3 | Bob 想聯絡 Alice 問問題 | SkillDetail 看見作者 link，點進去看 profile / 寄信 | 沒任何聯絡入口 |
-| 4 | Alice 過了一週後改了 Google account display name | 既有 skill 顯示更新（或保留發佈時 snapshot — 由 spec §2.5 決定）| Skill 永遠是 sub 數字串 |
-| 5 | Alice 換 Google account（sub 變了，少見但可能）| 既有 skill 仍歸屬「原本那個 Alice」 | sub 變 = 不同 user，skill 仍歸舊 sub |
+```
+┌───────────────────────────┐         ┌──────────────────────────┐
+│   OAuth Provider          │         │   Skills Hub Platform    │
+│   (Google / GitHub / ...) │         │                          │
+│                           │         │  users:                  │
+│   sub = 111161306...      │ ──UPSERT→  id = "u_a3f9c1"         │
+│   email = alice@..        │   /me   │  oauth_provider="google" │
+│   name = "Alice Chen"     │         │  sub = "111161306..."    │
+│                           │         │  email / name / handle   │
+└───────────────────────────┘         └──────────────────────────┘
 
-### 2.3 三個方案
+之後平台所有地方只用 user_id（"u_a3f9c1"）：
+  skills.author = "u_a3f9c1"
+  skills.owner_id = "u_a3f9c1"
+  acl_entries = ["user:u_a3f9c1:OWNER", "public:*:read"]
+  API 回傳: { author: "u_a3f9c1", authorDisplayName: "Alice Chen",
+             authorHandle: "alice", authorEmail: <conditional> }
+```
 
-| 方案 | 核心 | Pros | Cons |
-|------|------|------|------|
-| **A. Snapshot only**（npm pattern）| publish 時把 `name` + `email` snapshot 進 `skills.author_name` / `skills.author_email`；ACL 仍用 sub | 簡單；user 刪除不影響 skill 顯示；無 join 開銷 | user 改名 → skill display stale；無集中的 user 表，sharing/contact 找不到當前資訊 |
-| **B. Users table + JOIN**（typical SaaS）| 建 `users(sub PK, email, name, avatar_url, ...)` 表；`/me` UPSERT；skills query JOIN users | 單一真實源；改名即時生效；有 contact 點 | user 刪除 → skill 顯示斷；JOIN 多打一次 DB；user 表 PII 治理需設計 |
-| **C. Hybrid — users 表 + skills 內 snapshot** ⭐ | A + B：publish 時 snapshot；同時 maintain users 表；display 優先 join users（fresh）fallback skill snapshot（resilient） | 改名能更新；user 刪除 skill 仍可顯示 snapshot；sharing/contact 走 users 表 | 兩處資料；同步邏輯（不複雜，UPSERT）；多打 1 個 JOIN |
+**Platform user_id 格式：** `u_<6-hex>` — 從 `UUID.randomUUID()` 取前 6 hex 字元，UNIQUE check + collision retry。
 
-**選 C**：sharing/contact 需求需要集中 user 表（A 做不到）；resilience 需要 snapshot（B 做不到）；複雜度增量低（一個 UPSERT + 一個 nullable JOIN）。
+### 2.3 OAuth provider 多供應商支援（schema 預留，UI 不做）
+
+`users` 表加 `oauth_provider` 欄位（MVP 全 `'google'`），`UNIQUE(oauth_provider, sub)` composite key。未來 GitHub 上線：Alice 用 GitHub 登入 → 開**新 row**（不做帳號連結；升級路徑見 §7 S170）。
 
 ### 2.4 Display Name 計算規則
 
-OAuth claims → display name 優先序：
-1. `name`（OIDC standard claim — Google 提供 full name）
+`DisplayNameResolver` static helper（pure function；frontend `lib/displayName.ts` 同邏輯，由 S154b 實作）：
+
+優先序：
+1. `name`（OIDC standard claim — Google 提供 full name → "Alice Chen"）
 2. `given_name + " " + family_name`
-3. `email` 的 local-part（`@` 前），首字大寫
-4. `sub` 取最後 6 碼當 fallback handle
+3. `email` 的 local-part（`@` 前），首字大寫 → "Alice"
+4. `handle` → "alice"
+5. `user_id` → "u_a3f9c1"（**永遠不會 fall 到 raw OAuth sub**）
 
-實作：寫一個 `DisplayNameResolver` static helper，pure function，給 OAuth claims map 回 display name。
+### 2.5 Snapshot vs Live —「user 改名 / 刪帳號後既有 skill 顯示」
 
-### 2.5 Snapshot vs Live —「改名後既有 skill 顯示」決策
+**選擇：** 顯示優先 live（join `users` 表），無資料 fallback `skills.author_name_snapshot`。
 
-**選擇：** 顯示優先 live（users 表 join），無資料 fallback skill snapshot。
+| 變化 | 結果 |
+|------|------|
+| Alice 改 Google name | 下次 /me UPSERT → users.name 更新 → API live 回新名 |
+| Alice 帳號被 admin 刪除（users row 刪） | API fallback 回 `skills.author_name_snapshot`（publish 時 freeze），可加 polish「（已停用）」 |
 
-理由：
-- Skill 是「使用者的作品」概念（vs 不可變 immutable artifact），改名 update 顯示符合 user 預期（GitHub repo author 也是 live）
-- snapshot 仍保留為 fallback：若 user 刪除帳號（users row gone），skill 仍可顯示「原作者：Alice Chen（已停用）」
-- 反例（npm）的 snapshot-only 是因為 npm 是 immutable registry；本平台支援 unpublish/edit，更接近 GitHub 模式
+**Snapshot 範圍：** 只存 `author_name_snapshot`（VARCHAR 255），**不存 email**（PII 副本越少越好）。極端 fallback 走 `user_id` 而非 email local-part。
 
-### 2.6 Username Slug —「install 用什麼 handle？」
+### 2.6 Username Slug — handle 規則
 
-`/api/v1/skills/{author}/{name}` canonical alias 目前 author 是 sub。改 username slug：
+**生成規則（first /me on signup）：**
+1. Slugify email local-part：`alice@example.com` → `alice`
+2. 過濾：lowercase、移除非 `[a-z0-9-]`、縮短到 ≤ 32 chars
+3. 撞名 retry：`alice` 被佔 → `alice-2` → `alice-3` → ...
+4. local-part 太怪（純數字、空字串）→ fallback `user-<6-hex>`（同 user_id 後綴）
 
-選項：
-- **a.** username = sub 後 6 碼 `999106/auditing-terraform`（短但仍不可讀）
-- **b.** username = email local-part `alice/auditing-terraform`（可讀但可能撞名 — 兩個 alice@ 不同 domain）
-- **c.** username = 自選 handle（user 第一次登入時 provision；類似 GitHub username）— **複雜，留 future spec**
-- **d.** username = email-derived slug，撞名時加 `-2`、`-3` 後綴（auto-resolve）
+**Mutability：**
+- `user_id` (`u_a3f9c1`) — 永遠不變（內部 PK + ACL principal）
+- `handle` (`alice`) — 可改（本 spec 不做改 handle UI，留 §7 S169 followup）
 
-**選 b（先做）+ 留升級路徑到 c**：MVP 用 email local-part，提供 `users.handle` column（nullable，可手動填），未來新增「設 handle」UI 時 user 可改。撞名情境：兩個 alice@diff-domain.com 直接以 `alice / alice2` 區分（自動化簡單）。
+`/api/v1/skills/{author}/{name}` resolve order：handle → user_id → sub（向下相容老 install command）。
 
-**Username 生效範圍**：
-- `/api/v1/skills/{username}/{name}` API endpoint（既有 path 已是 `{author}/{name}` shape）
-- `skills-hub install {username}/{name}` CLI command（InstallCard 改顯）
-- `/skills/{username}/{name}` 前端 canonical URL（既有 React route）
+### 2.7 Email 公開 / Contact 機制
 
-向下相容：
-- 既存 `skills.author = sub` 不刪，與新 `users.handle` 並存
-- 舊 install command `skills-hub install <sub>/<name>` 在 backend 加 fallback：先比 `users.handle`，沒中再比 `users.sub`，仍能 resolve（避免外部書籤斷）
+`users.contact_email_public BOOLEAN DEFAULT FALSE` — user 自選是否公開 email。
 
-### 2.7 Email 公開與 Contact 機制
+| flag | API 回傳 |
+|------|---------|
+| FALSE（default） | `authorEmail` 不出現在 SkillResponse JSON |
+| TRUE | `authorEmail = "alice@example.com"` |
 
-「分享 skill 找得到對方信箱」需求：
+**MVP 範圍**：schema + read-side filter ready；toggle UI 留 follow-up（手動 SQL 設 TRUE 可驗證）。
 
-- 預設：`users.email` 是 PII，**不公開**到 SkillDetail
-- `users.contact_email_public BOOLEAN DEFAULT FALSE` — user 自選是否公開
-- 公開時：SkillDetail 顯示「聯絡作者」按鈕 → mailto:link
-- 非公開時：可顯示「聯絡作者」按鈕 → 走平台內 message（不在本 spec；先 hide 即可）
-
-**MVP 範圍：** users 表內存 email + contact_email_public flag（default false），UI 先不做「設定公開」的 toggle，全 user 預設 hidden。toggle UI 留 follow-up spec。重點：基礎 schema 留好。
-
-### 2.8 Migration & Backfill
-
-**新 migration `V18__create_users_and_author_snapshot.sql`**：
+### 2.8 Migration & Backfill — V18
 
 ```sql
--- users 表（OAuth sub → display profile snapshot）
+-- V18__create_users_and_decouple_oauth_sub.sql
+
+-- 1. users 表
 CREATE TABLE users (
-    sub                  VARCHAR(255) PRIMARY KEY,
-    email                VARCHAR(320) NOT NULL,
-    name                 VARCHAR(255),
-    handle               VARCHAR(64) UNIQUE,
-    avatar_url           TEXT,
-    contact_email_public BOOLEAN NOT NULL DEFAULT FALSE,
-    first_seen_at        TIMESTAMPTZ NOT NULL,
-    last_seen_at         TIMESTAMPTZ NOT NULL
+    id                     VARCHAR(20)  PRIMARY KEY,        -- "u_<6hex>"
+    oauth_provider         VARCHAR(20)  NOT NULL,           -- 'google' (MVP)
+    sub                    VARCHAR(255) NOT NULL,           -- OAuth provider sub
+    email                  VARCHAR(320) NOT NULL,
+    name                   VARCHAR(255),
+    handle                 VARCHAR(64)  UNIQUE NOT NULL,
+    avatar_url             TEXT,
+    contact_email_public   BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at             TIMESTAMPTZ  NOT NULL,
+    last_seen_at           TIMESTAMPTZ  NOT NULL,
+    UNIQUE(oauth_provider, sub)
 );
+CREATE INDEX idx_users_email ON users(email);
 
-CREATE INDEX idx_users_handle ON users(handle) WHERE handle IS NOT NULL;
-CREATE INDEX idx_users_email  ON users(email);
+-- 2. skills 加 snapshot column（只存 name，不存 email）
+ALTER TABLE skills ADD COLUMN author_name_snapshot VARCHAR(255);
 
--- skills 加 snapshot columns（NULLABLE — 舊資料無 snapshot 不擋讀）
-ALTER TABLE skills ADD COLUMN author_name_snapshot  VARCHAR(255);
-ALTER TABLE skills ADD COLUMN author_email_snapshot VARCHAR(320);
+-- 3. backfill 既有 3 筆 skill
+DO $$
+DECLARE
+    rec RECORD;
+    new_user_id VARCHAR(20);
+    derived_handle VARCHAR(64);
+BEGIN
+    FOR rec IN SELECT DISTINCT author FROM skills WHERE author IS NOT NULL LOOP
+        new_user_id := 'u_' || substr(replace(uuid_generate_v4()::text, '-', ''), 1, 6);
+        derived_handle := 'user-' || substr(rec.author, length(rec.author) - 5);
 
--- backfill：對既存 3 筆 skill，author 是 sub，沒 OAuth claims 可拿 → 留 NULL，UI 走最後 fallback「sub 後 6 碼」
--- （後續使用者重新登入時 /me UPSERT users 表會建立 row；既存 skill snapshot 仍 NULL，但 JOIN users 可拿到 fresh name）
+        INSERT INTO users (id, oauth_provider, sub, email, name, handle, created_at, last_seen_at)
+        VALUES (new_user_id, 'google', rec.author,
+                'pending-backfill-' || new_user_id || '@unknown.local',
+                NULL,
+                derived_handle,
+                NOW(), NOW())
+        ON CONFLICT (oauth_provider, sub) DO NOTHING;
+
+        UPDATE skills SET author = (SELECT id FROM users WHERE oauth_provider='google' AND sub=rec.author)
+        WHERE author = rec.author;
+
+        UPDATE skills SET owner_id = (SELECT id FROM users WHERE oauth_provider='google' AND sub=rec.author)
+        WHERE owner_id = rec.author;
+
+        UPDATE skills
+        SET acl_entries = (
+            SELECT jsonb_agg(
+                CASE WHEN entry::text LIKE '"user:' || rec.author || ':%'
+                     THEN to_jsonb(replace(entry #>> '{}', 'user:' || rec.author || ':',
+                                          'user:' || (SELECT id FROM users WHERE oauth_provider='google' AND sub=rec.author) || ':'))
+                     ELSE entry
+                END
+            )
+            FROM jsonb_array_elements(acl_entries) entry
+        )
+        WHERE acl_entries::text LIKE '%' || rec.author || '%';
+    END LOOP;
+END $$;
 ```
 
-**Domain code**：
-- `Skill` aggregate 加 `authorNameSnapshot`、`authorEmailSnapshot` fields
-- `SkillCommandService.publish()` 透過 `CurrentUserProvider.getProfile()`（新增 method 回 name/email）填 snapshot
-- `MeController` 已能取 OAuth profile，加 UPSERT users logic（每次 /me 呼叫時更新 last_seen_at + sync name/email/avatar_url）
+**Backfill 風險評估**：既存 ~3 筆 skill；`ON CONFLICT DO NOTHING` + WHERE 過濾 → 冪等；placeholder email `pending-backfill-...@unknown.local` 在 user 真登入觸發 /me UPSERT 時被 OAuth email 覆寫。
 
-**Read side**：
-- `SkillReadModel` 加 `authorDisplayName`、`authorEmail`（已 join users 後填，nullable）
-- 前端 `Skill` interface 對齊新欄位
-- 顯示 priority：`authorDisplayName` (live) → `authorNameSnapshot` (snapshot) → `email local-part` → `sub-suffix-fallback`
+### 2.9 Application code 改動（summary — 詳 §4）
 
-### 2.9 Frontend 影響範圍
+**新建：**
+- `User` entity / `UserRepository` / `UserUpsertService` / `UserResolver` / `DisplayNameResolver` — 放 `shared/security/`
 
-| 元件 | 現顯 | 改 |
-|------|------|----|
-| `SkillCard`（HomePage / LandingPage / SearchResults / MySkills） | `{skill.author}` raw | `{getDisplayName(skill)}` |
-| `PageHeader`（SkillDetailPage） | `作者：{skill.author}` raw | `作者：{getDisplayName(skill)}`（可選 + email link） |
-| `InstallCard`（v2） | `skills-hub install {author}/{name}` | `skills-hub install {handle ?? sub}/{name}` |
-| `Profile dropdown`（AppShell） | `{me.email ?? me.sub}` | 已有部份邏輯（S141 ship 後 `me.name`），確認優先序 |
-| `MySkillsPage` Hero 「以 X 身份發布」 | `{me.name ?? me.email ?? sub}` | 確認 LAB 拿到 OAuth name 後正確 |
-| `ReviewsPanel` review item author | `{review.author}` raw | `{getDisplayName(review)}` |
+**改動：**
+- `MeController` hook UserUpsertService；response 加 `userId / handle`
+- `CurrentUserProvider.current()` — JWT sub → users 表查 → 回 `CurrentUser(userId=<platform user_id>, sub, name, email, handle, roles, groups, companyId)`
+- `SkillCommandController.publishSkill()` — **拒收 `author` request param**，server 自取 `currentUserProvider.userId()`
+- `Skill.create()` 加 `authorNameSnapshot` 參數（從 `currentUserProvider.name()` 取）
+- `SkillQueryService.findById/search()` LEFT JOIN users → 回應加 `authorDisplayName / authorHandle / authorEmail`（後者 conditional）
+- `SkillQueryController.getByAuthorAndName()` — resolve order: handle → user_id → sub
 
-`getDisplayName(obj)` helper（frontend `lib/displayName.ts`）：
-```ts
-export function getDisplayName(obj: { authorDisplayName?: string; authorNameSnapshot?: string; authorEmail?: string; author: string }) {
-  if (obj.authorDisplayName) return obj.authorDisplayName;
-  if (obj.authorNameSnapshot) return obj.authorNameSnapshot;
-  if (obj.authorEmail) return obj.authorEmail.split('@')[0];
-  return `user-${obj.author.slice(-6)}`;
-}
-```
+**Modulith 邊界：** `User` 放 `shared/security/`（既有 named interface，無 cycle 風險）；`skill` module 既有 `allowedDependencies = {"shared :: security", ...}` → User 自動 visible。
 
 ---
 
 ## 3. Acceptance Criteria
 
 ```
-AC-1: SkillCard 不再顯 sub
-  Given Alice 已 publish skill 且 alice@example.com 有 OAuth name "Alice Chen"
-  When Bob 訪問 LandingPage / HomePage / SearchResults / MySkills 看到 Alice 的 skill
-  Then 顯示「作者：Alice Chen」（不再顯 21 位 sub ID）
+AC-1: V18 migration 建表 + 既存 3 row backfill 成功
+  Given 開發環境跑 V17 migration 後（既存 3 筆 skill author/owner_id 為 sub；acl_entries 為 ["user:<sub>:OWNER", ...]）
+  When V18 migrate
+  Then users 表存在且每個 distinct sub 有 1 row（id=u_<6hex>, oauth_provider='google', handle='user-<6char>', email='pending-backfill-...@unknown.local'）
+  And skills.author / owner_id 全部更新成對應 user_id
+  And acl_entries JSONB 內 "user:<sub>:perm" → "user:<user_id>:perm"
+  And 二次跑 migration no-op（冪等）
 
-AC-2: Install command 用 username
-  Given Alice handle 是 "alice"（從 email local-part derive）
-  When Bob 訪問 SkillDetail 並複製 install command
-  Then command 為 `skills-hub install alice/auditing-terraform-infrastructure-for-security`
+AC-2: /me 觸發 UPSERT，新 user 建 row + 舊 user refresh
+  Given Alice 第一次用 Google 登入（JWT sub=111161..., email=alice@..., name="Alice Chen"）
+  When 呼叫 GET /api/v1/me
+  Then users 表新增 1 row（id=u_<6hex>, oauth_provider='google', sub='111161...', email='alice@...', name='Alice Chen', handle='alice', created_at=now, last_seen_at=now）
+  And response JSON 含 `userId="u_<6hex>"` + `handle="alice"`
+  Given Alice 第二次登入（OAuth name 改成「Alice Liu」）
+  When 呼叫 /me
+  Then users row 同 id，但 name 更新為 "Alice Liu"，last_seen_at refresh
 
-AC-3: 舊 install command 仍 resolve（向下相容）
-  Given backend 收到 GET /api/v1/skills/{old-sub}/{name}
-  When 比對 users.handle 找不到，再比對 users.sub
-  Then 仍能成功取得 skill record（避免既有書籤斷）
+AC-3: SkillCommandController 拒收偽造 author（forgery 漏洞修復）
+  Given Bob 已登入（JWT sub=bob_sub → user_id=u_bob_xx）
+  When Bob POST /api/v1/skills 帶 multipart 不含 `author` 欄位
+  Then 後端從 currentUserProvider.userId() 取 u_bob_xx 寫入 skills.author
+  Given Bob POST /api/v1/skills 帶 `author=u_alice_xx` (試圖偽造)
+  Then 後端 ignore 該 param，仍寫 u_bob_xx (或 400 拒收 — 實作擇一)
 
-AC-4: User 改 OAuth display name 後，既有 skill 自動 refresh
-  Given Alice publish 完後，下次登入時 OAuth name 從「Alice Chen」改為「Alice Liu」
-  When users 表 /me UPSERT 同步新 name
-  And 任何人下次訪問 Alice 的 skill page
-  Then 顯示「Alice Liu」（live join 優先 snapshot）
+AC-4: ACL principal 切換到 user_id (既有 RBAC 行為等價)
+  Given V18 backfill 跑完，acl_entries 從 "user:<sub>:OWNER" 改成 "user:<user_id>:OWNER"
+  And CurrentUserProvider.current().userId() 回 user_id (非 sub)
+  When 既有 RBAC 測試集 run（owner edit / viewer read / public anonymous read）
+  Then 全部通過（principal 比對機制不變，比對值對齊 user_id）
 
-AC-5: User 帳號刪除後，skill 仍可顯示
-  Given Alice 帳號被 admin 刪除（users row gone），但 skill 留著（snapshot 已存）
-  When 任何人訪問 Alice 的 skill
-  Then 顯示「Alice Chen（已停用）」 (snapshot fallback) — disabled 標籤可選 polish
+AC-5: Skill aggregate freeze authorNameSnapshot 於 publish/republish
+  Given Alice publish skill (CurrentUserProvider.name()="Alice Chen")
+  When skill.publishVersion(...) 觸發 (initial publish 或 new version)
+  Then skills.author_name_snapshot = "Alice Chen"
+  Given Alice 改名 "Alice Liu" 後 republish
+  Then snapshot 更新為 "Alice Liu"
 
-AC-6: 未公開 email 的作者不被洩漏
-  Given Alice users.contact_email_public = false（default）
-  When Bob 訪問 SkillDetail
-  Then 不顯示 alice@example.com 任何形式
-  And 「聯絡作者」按鈕 hide（未做 mailto fallback 前 MVP 先 hide）
+AC-6: SkillQueryService LEFT JOIN users 回 authorDisplayName / Handle / Email-conditional
+  Given Alice (users.name="Alice Chen", handle="alice", contact_email_public=false) publish skill
+  When GET /api/v1/skills/{id}
+  Then response JSON 含 `authorDisplayName="Alice Chen"` + `authorHandle="alice"`
+  And **不**含 `authorEmail` 欄位（contact_email_public=false）
+  Given Alice 改 contact_email_public=true
+  When GET /api/v1/skills/{id}
+  Then response 含 `authorEmail="alice@example.com"`
+  Given users row 被刪 (但 skills.author_name_snapshot="Alice Chen" 仍在)
+  When GET /api/v1/skills/{id}
+  Then response 含 `authorDisplayName="Alice Chen"` (snapshot fallback)
 
-AC-7: 公開 email 的作者可顯 mailto link
-  Given Alice users.contact_email_public = true
-  When Bob 訪問 SkillDetail
-  Then 顯示「聯絡作者」按鈕 link 至 mailto:alice@example.com
-  Note: AC-7 觸發需 user toggle UI；MVP 暫無 toggle UI，可手動 SQL 設 true 驗證；toggle 留 follow-up
+AC-7: GET /skills/{author}/{name} resolve order: handle → user_id → sub
+  Given Alice (handle="alice", user_id="u_a3f9c1", sub="111161...")
+  When GET /api/v1/skills/alice/my-skill
+  Then 回 200 (handle 中)
+  When GET /api/v1/skills/u_a3f9c1/my-skill
+  Then 回 200 (user_id 中)
+  When GET /api/v1/skills/111161306011023995106/my-skill
+  Then 回 200 (sub 中 — 向下相容老 install command)
+  When GET /api/v1/skills/nonexistent/my-skill
+  Then 回 404
 
-AC-8: Migration backfill 不破現有 skill 顯示
-  Given V18 migration 跑完
-  When 訪問既存 3 筆 skill
-  Then snapshot 為 NULL 但 join users（若 user 已登入過 → users row 存在）正常顯示 name
-  And 若 users row 也 missing（首次部署無人登入），顯示 fallback「user-995106」（sub 後 6 碼）— 不顯 raw sub
+AC-8: user_id 格式校驗 + collision retry
+  Given UserUpsertService 連續生成 1000 user_id
+  When 全部 INSERT users
+  Then 每個 user_id 符合 `u_[0-9a-f]{6}` regex
+  And 無 PRIMARY KEY conflict (collision 時 retry up to 5 次)
 
-AC-9: ACL / authorization 行為不變
-  Given Skill ACL entries 仍用 sub 為 principal
-  When 既有 RBAC 測試集 run
-  Then 全部通過（本 spec 不動 ACL）
+AC-9: backfill placeholder email 在 user 真登入後被覆寫
+  Given V18 backfill 跑完 (Alice 對應 row：email="pending-backfill-u_xxx@unknown.local", name=NULL)
+  When Alice 第一次用 Google 登入觸發 /me UPSERT
+  Then users row 同 id (oauth_provider+sub UNIQUE 中)
+  And email 更新為 "alice@example.com"，name 更新為 "Alice Chen"
 ```
 
-驗證指令：`cd backend && ./gradlew test`（含新 SkillUserJoinTest、UsersUpsertTest、DisplayNameResolverTest）+ `cd frontend && npm test`（getDisplayName helper test、SkillCard render test）
+**驗證指令：** `cd backend && ./gradlew test`（含新 `UserRepositoryTest` / `UserUpsertServiceTest` / `DisplayNameResolverTest` / `UserResolverTest` / `SkillAuthorJoinIntegrationTest` / `V18MigrationTest` / `SkillPublishForgeryTest`）
 
 ---
 
 ## 4. Files to Change
 
-### Backend
+### Backend production code
 
 | 檔案 | 變動 |
 |------|------|
-| `backend/src/main/resources/db/migration/V18__create_users_and_author_snapshot.sql` | 新增 — users table + skills snapshot columns |
-| `backend/src/main/java/.../shared/security/User.java` | 新增 entity（@Table users，sub PK，email/name/handle/avatar/...) |
-| `backend/src/main/java/.../shared/security/UserRepository.java` | 新增 — Spring Data JDBC，含 `findByHandle()` / `findBySub()` |
-| `backend/src/main/java/.../shared/security/UserUpsertService.java` | 新增 — `/me` 呼叫時 UPSERT user，含 handle generate（email local-part；撞名加數字） |
-| `backend/src/main/java/.../shared/security/MeController.java` | hook UserUpsertService — 每次 /me UPSERT |
-| `backend/src/main/java/.../shared/security/CurrentUserProvider.java` | 加 `getProfile()` method 回 name/email/avatar |
-| `backend/src/main/java/.../skill/domain/Skill.java` | 加 `authorNameSnapshot`, `authorEmailSnapshot` fields |
-| `backend/src/main/java/.../skill/command/SkillCommandService.java` | publish/republish 時填 snapshot |
-| `backend/src/main/java/.../skill/query/SkillQueryService.java` | 改成 join users 拿 live `authorDisplayName`，fallback snapshot |
-| `backend/src/main/java/.../skill/query/SkillQueryController.java` | `/skills/{author}/{name}` 改先比 handle 再比 sub（向下相容） |
-| `backend/src/main/java/.../shared/security/DisplayNameResolver.java` | 新增 static helper，OAuth claims → display name |
+| `backend/src/main/resources/db/migration/V18__create_users_and_decouple_oauth_sub.sql` | **新增** — users 表 + skills.author_name_snapshot + backfill DO block |
+| `backend/src/main/java/.../shared/security/User.java` | **新增** — `@Table("users")` Spring Data JDBC entity |
+| `backend/src/main/java/.../shared/security/UserRepository.java` | **新增** — `ListCrudRepository<User, String>` + findByOauthProviderAndSub / findByHandle / findByEmail |
+| `backend/src/main/java/.../shared/security/UserUpsertService.java` | **新增** — /me 觸發 UPSERT；user_id `u_<6hex>` + collision retry；handle slugify + collision retry |
+| `backend/src/main/java/.../shared/security/UserResolver.java` | **新增** — `resolveByEmailHandleOrId(String) → user_id`（給未來 grant 端點 + Query Controller resolve order 用） |
+| `backend/src/main/java/.../shared/security/DisplayNameResolver.java` | **新增** — pure static helper，五層 fallback |
+| `backend/src/main/java/.../shared/security/MeController.java` | hook `UserUpsertService.upsertFromAuthentication()`；response 加 `userId` + `handle` |
+| `backend/src/main/java/.../shared/security/CurrentUserProvider.java` | `current()` 改：JWT sub → users 查 → 回 `CurrentUser(userId=<platform>, sub, name, email, handle, roles, groups, companyId)` |
+| `backend/src/main/java/.../shared/security/CurrentUser.java` | record 加 `sub / name / email / handle` 4 個 fields |
+| `backend/src/main/java/.../skill/domain/Skill.java` | 加 `authorNameSnapshot` `@Column` field |
+| `backend/src/main/java/.../skill/command/CreateSkillCommand.java` | 加 `authorNameSnapshot` field |
+| `backend/src/main/java/.../skill/command/SkillCommandController.java` | **拒收 `author` request param**；server 從 `currentUserProvider.userId()` 取；snapshot 從 `currentUserProvider.name()` 取 |
+| `backend/src/main/java/.../skill/query/SkillQueryService.java` | `findById` / `search` 改 LEFT JOIN users → 回 authorDisplayName / Handle / Email-conditional |
+| `backend/src/main/java/.../skill/query/SkillQueryController.java` | `/skills/{author}/{name}` resolve order: handle → user_id → sub |
 
-### Frontend
-
-| 檔案 | 變動 |
-|------|------|
-| `frontend/src/types/skill.ts` | 加 `authorDisplayName?: string`、`authorNameSnapshot?: string`、`authorEmail?: string`、`authorHandle?: string` |
-| `frontend/src/lib/displayName.ts` | 新增 `getDisplayName()` helper |
-| `frontend/src/components/SkillCard.tsx` | 改用 helper |
-| `frontend/src/components/v2/PageHeader.tsx` | 改用 helper；作者欄加 link 至 `/users/{handle}` (留未來；先純文字) |
-| `frontend/src/components/v2/InstallCard.tsx` | install command 改用 `skill.authorHandle ?? skill.author` |
-| `frontend/src/components/AppShell.tsx` | profile dropdown 顯 priority：name > email > sub-suffix |
-| `frontend/src/pages/SkillDetailPage.tsx` | 作者顯示 helper；contact button conditional |
-| `frontend/src/components/ReviewsPanel.tsx` | review.author 走 helper（如果 review API 也改 expose 同欄位） |
-| `frontend/src/pages/MySkillsPage.tsx` | hero「以 X 身份發布」 — 已有邏輯，確認生效 |
-| `frontend/src/components/EmptyState.tsx` 等顯示 author 文案 | sweep 一遍 |
-
-### Test
+### Backend test
 
 | 檔案 | 變動 |
 |------|------|
-| `backend/src/test/java/.../shared/security/DisplayNameResolverTest.java` | 新增 — pure unit |
-| `backend/src/test/java/.../shared/security/UserUpsertServiceTest.java` | 新增 — UPSERT logic + handle collision |
-| `backend/src/test/java/.../skill/SkillAuthorJoinIntegrationTest.java` | 新增 — Testcontainers + Flyway，verify join + snapshot fallback |
-| `frontend/src/lib/displayName.test.ts` | 新增 |
-| `frontend/src/components/SkillCard.test.tsx` | 新增 — render 驗 author display |
+| `backend/src/test/java/.../shared/security/DisplayNameResolverTest.java` | **新增** — 五層 fallback pure unit |
+| `backend/src/test/java/.../shared/security/UserUpsertServiceTest.java` | **新增** — UPSERT logic + handle/user_id collision retry |
+| `backend/src/test/java/.../shared/security/UserRepositoryTest.java` | **新增** — `@DataJdbcTest` `RepositorySliceTestBase` derived queries |
+| `backend/src/test/java/.../shared/security/UserResolverTest.java` | **新增** — email / handle / user_id 三種輸入 resolve |
+| `backend/src/test/java/.../skill/SkillAuthorJoinIntegrationTest.java` | **新增** — `@SpringBootTest` Testcontainers，verify LEFT JOIN + snapshot fallback + email-conditional |
+| `backend/src/test/java/.../skill/V18MigrationTest.java` | **新增** — Flyway clean migrate verify backfill 正確 |
+| `backend/src/test/java/.../skill/command/SkillPublishForgeryTest.java` | **新增** — AC-3 偽造 author 拒收 / 自動覆寫 |
 
 ---
 
 ## 5. Test Plan
 
-### 5.1 自動化（gradlew test + npm test）
+### 5.1 自動化（gradlew test）
 
-- AC-1：`SkillQueryServiceIntegrationTest` 跑 join users 場景
-- AC-2：`InstallCard.test.tsx` 驗 command 字串含 handle 而非 sub
-- AC-3：`SkillQueryControllerTest` 驗 `/skills/{old-sub}/{name}` fallback
-- AC-4：`UserUpsertServiceTest` UPSERT 改 name → 下次 join 取新值
-- AC-5：手動 SQL 模擬 users row delete，integration 驗 snapshot fallback
-- AC-6：`SkillDetailPage.test.tsx` 驗 contact button 預設 hide
-- AC-7：手動測 + spec note：toggle UI 為 follow-up
-- AC-8：`V18__migration_test`（Flyway clean migrate verify backfill 正確）
-- AC-9：既有 RBAC test suite must pass unchanged
+| AC | 驗證方式 |
+|----|---------|
+| AC-1 | `V18MigrationTest`（Flyway clean migrate verify backfill 三個 dimension：users INSERT / skills.author UPDATE / acl_entries JSONB rewrite） |
+| AC-2 | `UserUpsertServiceTest` UPSERT 新 user + 改 name 既存 user |
+| AC-3 | `SkillPublishForgeryTest` 不帶 author param + 帶錯 author param 都驗證 |
+| AC-4 | 既有 RBAC test suite must pass unchanged（V18 backfill 後 acl_entries 內容變但語意等價）|
+| AC-5 | `SkillAuthorJoinIntegrationTest` publish + republish 兩次驗 snapshot freeze |
+| AC-6 | `SkillAuthorJoinIntegrationTest` 三 case：default hide email / public show email / users row 刪除 fallback snapshot |
+| AC-7 | `SkillQueryControllerTest` 四 path：handle / user_id / sub / 404 |
+| AC-8 | `UserUpsertServiceTest` 跑 1000 user 生成驗 user_id 格式 + 唯一 |
+| AC-9 | `UserUpsertServiceTest` placeholder email 被覆寫場景 |
 
-### 5.2 手動 LAB 驗證
+### 5.2 手動 LAB 驗證（S154 ship 後，S154b 未 ship 前）
 
 deploy 後：
-- [ ] 登入 LAB → 確認 /api/v1/me 觸發 users 表 UPSERT（DB 查 users 應有 1 row）
-- [ ] 訪問 LandingPage → SkillCard 顯 OAuth name（不再 21 位數字）
-- [ ] 訪問 SkillDetail → install command 含 handle 短形式
-- [ ] 改 Google account display name → 重登 → /me UPSERT → SkillDetail 顯新名
-- [ ] 既有 skill 仍能讀取（向下相容）
+- [ ] 登入 LAB → DB 查 `users` 應有 1 row（id=`u_<6hex>`、oauth_provider='google'、handle 從 email derive）
+- [ ] `curl /api/v1/me -H "Authorization: Bearer ..."` → response 含 `userId / handle`
+- [ ] `curl /api/v1/skills/{id}` → response 含 `authorDisplayName / authorHandle`，無 `authorEmail`（default）
+- [ ] `curl /api/v1/skills/alice/my-skill` 中（handle resolve）
+- [ ] `curl /api/v1/skills/u_a3f9c1/my-skill` 中（user_id resolve）
+- [ ] `curl /api/v1/skills/111161...../my-skill` 中（sub backwards compat）
+- [ ] 偽造 publish request 帶 `author=other_user_id` → 後端覆寫成自己的 user_id
+
+> 注意：SkillCard / install command 仍顯舊 `author` raw（待 S154b ship）
 
 ---
 
-## 6. 設計風險與緩解
+## 6. Task Plan
 
-| 風險 | 緩解 |
-|------|------|
-| handle 撞名（兩個 alice@diff-domain）| UPSERT 時自動加 `-2`/`-3`/...；email-derive 失敗時 fallback `user-{sub-suffix}` |
-| handle 含特殊字元 / 非 ASCII | local-part 先過 slugify（lowercase + 移除非 `[a-z0-9-]` + 縮短到 ≤32 chars） |
-| OAuth `name` 含特殊字元 / XSS | DB 存 raw，frontend render 用 React 預設 escape 即可（無需另寫 sanitizer） |
-| User 帳號刪除 → ACL 漏洞 | 本 spec 不動 ACL，只動 display；ACL 仍 query `acl_entries.principal = sub`，刪 users row 不影響 |
-| Email PII 曝露 | default `contact_email_public = false`；read-side 主動 filter（即使 API leak 也擋 frontend）|
-| 既有 skill snapshot NULL backfill | 第一次部署+登入後 join 自動填；displayName helper 有 4-tier fallback，不會 crash UI |
-| `Skill` 領域物件爆炸（充血聚合 invariant）| snapshot fields 是 mutable VALUE，不參與 invariant；只在 publish/republish 寫一次 |
+**POC: not required** — pattern 是教科書（users 表 + Flyway backfill + Spring Data JDBC entity + JOIN）；無新 framework SPI / external API；風險在 coordination（cross-cutting ACL principal switch）不在 technique。
 
----
+### Tasks
 
-## 7. 後續 follow-up（不在本 spec）
+| ID | 標題 | 涵蓋 AC | 主要檔案 | Depends On |
+|----|------|--------|---------|-----------|
+| T01 | V18 migration + users 表 + backfill | AC-1, AC-9（部分） | V18 SQL + V18MigrationTest | none |
+| T02 | User domain（entity / repo / upsert / resolvers） | AC-8 | User.java + UserRepository + UserUpsertService + UserResolver + DisplayNameResolver + 4 unit tests | T01 |
+| T03 | Auth refactor（CurrentUserProvider + MeController） | AC-2, AC-9 | CurrentUserProvider + CurrentUser + MeController + UserUpsertServiceTest extended | T02 |
+| T04 | Command side（Skill snapshot + Controller forgery fix） | AC-3, AC-5 | Skill.java + CreateSkillCommand + SkillCommandController + SkillPublishForgeryTest | T03 |
+| T05 | Query side（LEFT JOIN + Controller resolve order） | AC-6, AC-7 | SkillQueryService + SkillQueryController + SkillAuthorJoinIntegrationTest | T03 |
+| T06 | ACL principal verification | AC-4 | 既有 RBAC test suite 跑（無需改 production code，純驗證 backfill 後等價）| T01 + T05 |
 
-- **S155**: User profile page `/users/{handle}` — 列出該作者所有 skill
-- **S156**: User settings UI — 改 handle、toggle email 公開、頭像上傳
-- **S157**: Organization / namespace（agentskills.io standard）— 多人共同維護一組 skill
-- **S158**: 平台內 message — 不公開 email 也能聯絡作者
-- **S159**: User soft-delete 流程 + skill 「已停用作者」標籤 polish
-
-## 8. ShareSkillModal — S154 ship 後立即受惠
-
-LAB audit 「分享」button 開啟的 ShareSkillModal 是 S154「分享 skill 找得到對方」use case 核心。觀察到 4 個並列議題（同類解，附在本 spec 直接收尾）：
-
-| 觀察 | 修法 |
-|------|------|
-| 「現有分享」list 顯示「user:111161306011023995106 OWNER」raw sub | S154 helper getDisplayName 套用 — 「Alice Chen (alice@) OWNER」|
-| 「新增分享」radio 選 group / company — 平台無 organization model | hide group / company radio（feature first），等真做時 enable |
-| 已 public 仍可選「public」radio 加 — 重複授權無意義 | radio public 在已 public 時 disable + tooltip「此技能已公開」 |
-| 「輸入 ID...」placeholder — user 不知輸 sub 還是 email | 改 placeholder「輸入使用者 email 或 handle」+ S154 ship 後 backend 接 email/handle 都能 resolve |
-
-**範圍**：4 點全在 `ShareSkillModal.tsx` 與 `frontend/src/api/skills.ts` 的 grant API 改動。本 spec ship 同 commit 順手做（不另開 spec）。
-
-加 §3 補 AC：
+### Execution order
 
 ```
-AC-10: ShareSkillModal 顯示 displayName
-  Given 已分享給 Alice
-  When 開分享 modal
-  Then 顯示「Alice Chen OWNER」（不再 raw sub）
-
-AC-11: ShareSkillModal radio 隱藏未做的 group/company
-  Given MVP 階段無 organization model
-  When 開 modal「新增分享」section
-  Then 只見 user / public radio，無 group / company
-
-AC-12: 已 public skill 不允許重複加 public
-  Given skill ACL 已含 public:* VIEWER
-  When 點 public radio
-  Then radio disabled + tooltip「此技能已公開瀏覽」
-
-AC-13: 輸入欄 placeholder 友善
-  Given user radio active
-  When placeholder 顯示
-  Then 「輸入使用者 email 或 handle」（非 raw 「ID」）
-  And backend 接受 email / handle / sub 三種輸入 (S154 ship 後)
+T01 ─┬──▶ T02 ──▶ T03 ──┬──▶ T04
+     │                  └──▶ T05 ──▶ T06
+     └──▶ (T06 也依 T01 — 等 backfill 完才能跑既有 RBAC test)
 ```
+
+T04 + T05 可平行（都依 T03，無互相依賴）。但為避免同時改 Skill domain 衝突，序列跑。
+

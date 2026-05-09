@@ -20,6 +20,7 @@ IMPORTANT: Follow these in every session.
 - **Scope-Check Before Applying**: When applying a security or compliance finding, verify the current code falls within the finding's stated scope before changing anything. Search for the distinguishing identifier in the codebase.
 - **Clean Experiments**: When debugging, create a restore point before each attempt. Revert failed experiments before trying the next one. When the fix is confirmed, audit the complete changeset — every line must trace to the actual fix, not to leftover experiments.
 - **Finish-Current-First**: 把手上的 spec / task 做完再開新的。User mid-flight 提新需求時，acknowledge → 先收尾當前（test + ship + commit）→ 再啟動新需求。Stack-not-overlap：避免半成品累積、context 丟失、PR 混雜。
+- **Plain-Language Explanations (大白話 first)**: 跟 user 提設計選項 / trade-off / 跨領域決策時，**用具體技術範例領頭**（sample data row、file path:line、實際 command、SQL/JSON shape、DB 多一筆什麼 row、UI 上看到的字串），**不要 jargon**（"JWT-derived sub vs caller-supplied param" 這種寫法），**也不要生活化比喻**（櫃子/搬家/加固鐵片/買保險這類 analogy — user 想知道的是「按鈕按下去 DB 多一筆什麼」，不是日常物件類比）。每個選項要有：sample data、實際行為、一句話 trade-off。User 回「可以解釋白話一點嗎」/「聽不懂」是硬訊號 — 整題重寫，不是改一個詞、不是換個比喻。適用所有 grill / proposal / approach comparison。
 
 > Cron-loop 操作層面的 3 條原則（Loop-Hint-Verify / Spec-Only-Handoff / No-Spec-Means-E2E）寫在 `.claude/loop.md`，不重複於此。
 
