@@ -61,15 +61,6 @@ export function RestApiPage() {
         ]}
       />
 
-      <H2>Skills ACL（SkillAclController）— Row-level 權限</H2>
-      <EndpointGroup
-        rows={[
-          { method: 'GET', path: '/api/v1/skills/{id}/acl', note: '查詢該 skill 的 acl_entries 清單' },
-          { method: 'POST', path: '/api/v1/skills/{id}/acl', note: '加 acl_entry（user/role/group + permission）' },
-          { method: 'DELETE', path: '/api/v1/skills/{id}/acl', note: '移除 acl_entry' },
-        ]}
-      />
-
       <H2>搜尋（SearchController + SearchIntentController）</H2>
       <EndpointGroup
         rows={[

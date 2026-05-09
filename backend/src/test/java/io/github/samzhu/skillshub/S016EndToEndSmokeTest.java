@@ -161,14 +161,14 @@ class S016EndToEndSmokeTest {
                     return current != null && current.contains("group:engineering:read") ? current : null;
                 });
 
-        // (3) carol via groups=engineering → 200 + 命中 group:engineering:read
-        mockMvc.perform(get("/api/v1/skills/" + skillId + "/acl")
+        // (3) carol via groups=engineering → 200 + 命中 group:engineering grant（role=VIEWER expand 為 read）
+        mockMvc.perform(get("/api/v1/skills/" + skillId + "/grants")
                 .with(jwtFor("carol", List.of("engineering"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.type=='group' && @.principal=='engineering' && @.permission=='read')]").exists());
+                .andExpect(jsonPath("$[?(@.principalType=='group' && @.principalId=='engineering' && @.role=='VIEWER')]").exists());
 
         // (4) bob 有 *:read public access → 200（S026 *:read 預設公開；S125b expandPrincipals 含 *:read）
-        mockMvc.perform(get("/api/v1/skills/" + skillId + "/acl")
+        mockMvc.perform(get("/api/v1/skills/" + skillId + "/grants")
                 .with(jwtFor("bob", List.of())))
                 .andExpect(status().isOk());
 

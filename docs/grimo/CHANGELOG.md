@@ -1,5 +1,42 @@
 # Changelog
 
+## [v4.42.0] — 移除 deprecated `/api/v1/skills/{id}/acl` HTTP endpoint（S167；2026-05-09）
+
+> v4.41.0 把 `SkillAclController` 標 `@Deprecated(forRemoval=true)` 並加 warning log；本版正式拿掉 HTTP 層。`/grants` 端點（S114a SkillGrantController）為唯一寫 ACL 入口，避開 dual-source-of-truth race（aggregate 直寫 vs `SkillAclProjectionListener.rebuildAcl` 從 `skill_grants` 重建）。
+
+### Remove — HTTP layer
+
+- 刪 `backend/.../skill/command/SkillAclController.java`：3 個 endpoint（POST/DELETE/GET `/api/v1/skills/{id}/acl`）全拿掉
+- 刪 `backend/.../skill/command/SkillAclControllerTest.java`：對應 controller test
+- 改 `frontend/src/pages/docs/RestApiPage.tsx`：移 3 row REST API doc
+
+### Migrate — Tests pointing to /acl
+
+- `backend/src/test/.../S016EndToEndSmokeTest.java`：2 處 `GET /api/v1/skills/{id}/acl` 改 `/grants` + 對齊 `SkillGrant` shape（`principalType` / `principalId` / `role`）
+- `backend/src/test/.../e2e/SkillsHubAuthE2ETest.java`：清除 helper 內 `/acl` 過時註解；`listAclEntries` assertion 改驗 `viewer-007`（不再強制 `:read` suffix —`/grants` shape 用 role）
+
+### NOT removed (dead code, separate cleanup spec)
+
+下列為純 in-process dead code，HTTP 層拿掉後無 caller，但有 unit test 守 / 列為 follow-up 清理（S167b 候選）：
+
+- `SkillCommandService.grantAcl/revokeAcl` + `GrantAclCommand` / `RevokeAclCommand`
+- `Skill.grantAcl/revokeAcl` + `SkillAclGrantedEvent` / `SkillAclRevokedEvent` + `SkillAclQueryService` / `AclEntryResponse`
+- `AuditEventListener.on(SkillAclGrantedEvent)` / `on(SkillAclRevokedEvent)` handlers
+
+**Why deferred**：dead-code 移除涉及 6+ 檔交織（domain method / event / service / listener / 4 個 test class），scope 與 HTTP 層拿掉是兩件事；分開 ship 降回退風險。
+
+### Verify
+
+- `./scripts/verify-all.sh` ✅ V01-V07 全綠（FAIL=0 SKIP=0；line coverage 82.4% > threshold 0.80）
+- `./gradlew test` ✅ BUILD SUCCESSFUL in 2m 56s
+
+### Lessons
+
+- **Deprecation closure 要分階段**：先標 `@Deprecated(forRemoval=true)` + warning log（v4.41.0），再實際移 HTTP 層（v4.42.0），最後清 dead code（S167b）。三段式比一次大刀拆乾淨低回退風險，特別當 dual-source-of-truth race 已存在時
+- **HTTP 層拆掉後保留 service / domain dead code 短期可接受**：unit test 維持綠 → 隨時可重啟 endpoint 或被新 caller 用。永久 dead 才 follow-up 拆
+
+---
+
 ## [v4.41.0] — AOT cluster sweep + Jackson `@JsonView` prod hotfix + 401/403 anonymous + coverage ratchet（S165 + S166a + S162 hotfix + S148e ratchet + S166d；2026-05-09）
 
 > P0 hotfix wave：S158 `@JsonView` 在 Spring Boot 4 / Jackson 3 預設 `DEFAULT_VIEW_INCLUSION=false` 下序列化 `Page<Skill>` 成 `{}` 把 `/api/v1/skills` 打死。連帶解 S148e 後 `processTestAot` 全綠揭露的 cluster A AOT 失敗（S114b ACL cache infra），S162 closed 後 anonymous user 走 `@PreAuthorize` fallback 被 generic 500 吞掉的 hole，FileBrowserService 47 missed lines 補齊把 jacoco threshold 從 0.77 ratchet 回 0.80，以及 active doc / config 路徑殘留的 `-x processAot` 工作流（S158 prod-only bug 的 enabler）。**AOT 全程跑保留 prod-only bug 早期捕捉能力**（per CLAUDE.md「AOT 是 Cloud Run native binary 的核心特色」）。

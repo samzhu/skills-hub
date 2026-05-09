@@ -183,7 +183,7 @@ class SkillsHubAuthE2ETest {
 
         // SkillAclProjectionListener 是 @ApplicationModuleListener AFTER_COMMIT async — POST grant
         // 回應後才 rebuild skills.acl_entries projection。所有後續讀 ACL 的端點都依賴 projection：
-        // (a) GET /skills/{id}/acl 透過 SkillAclQueryService.listEntries 直讀 skills.acl_entries
+        // (a) GET /skills/{id}/grants 讀 skill_grants source-of-truth
         // (b) GET /skills/{id} 走 @PreAuthorize hasPermission → SQL 對 acl_entries
         // 等 projection 含 viewer-007:read 後再做 read-side assertion 才避 timing race。
         //
@@ -199,11 +199,11 @@ class SkillsHubAuthE2ETest {
                     .contains("user:viewer-007:read");
         });
 
-        // Projection 確認 settle 後再驗 GET /acl endpoint 端對端回傳 entry list（讀同 projection）：
+        // Projection 確認 settle 後再驗 GET /grants endpoint 端對端回傳 entry list（讀 source-of-truth）：
         var aclEntries = listAclEntries(tokenA, privateId);
         assertThat(aclEntries)
-                .as("AC-11: GET /acl endpoint 讀 projection 含 viewer-007:read")
-                .anyMatch(e -> e.contains("viewer-007") && e.contains("read"));
+                .as("AC-11: GET /grants endpoint 讀 source-of-truth 含 viewer-007")
+                .anyMatch(e -> e.contains("viewer-007"));
 
         // ── AC-12: B list 後看到 public + private ─────────────────────────────
         var bAfterGrant = listSkillIds(tokenB);
@@ -347,13 +347,9 @@ class SkillsHubAuthE2ETest {
     }
 
     /**
-     * Grant ACL via S114a /grants endpoint（proper modern flow）— SkillGrantService 寫
-     * skill_grants + publish SkillGrantedEvent → SkillAclProjectionListener 重建
-     * skills.acl_entries projection。
-     *
-     * <p>避開 /acl 端點的 aggregate-direct 路徑：該路徑只更動 aggregate 的 aclEntries field
-     * 但不寫 skill_grants；onSkillCreated 的 rebuildAcl 會用 skill_grants 為唯一來源覆蓋
-     * acl_entries → 會清掉 aggregate 的 in-memory 改動造成 race condition（dual-source-of-truth bug）。
+     * Grant ACL via S114a /grants endpoint — SkillGrantService 寫 skill_grants
+     * + publish SkillGrantedEvent → SkillAclProjectionListener 重建
+     * skills.acl_entries projection。S016-legacy /acl 端點已 v4.42.0 移除。
      *
      * <p>"read" permission → Role.VIEWER；"write"/"owner" 給 OWNER（per Role.permissions()）。
      */
