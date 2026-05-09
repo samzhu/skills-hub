@@ -63,7 +63,8 @@ export function CollectionsPage() {
             onToggle={(level) =>
               setRiskFilter((prev) => {
                 const next = new Set(prev)
-                next.has(level) ? next.delete(level) : next.add(level)
+                if (next.has(level)) next.delete(level)
+                else next.add(level)
                 return next
               })
             }

@@ -4,8 +4,9 @@ import { MemoryRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { LandingPage } from './LandingPage'
 
-// S108 — verify footer 「API」link 連到 Swagger UI（not raw OpenAPI JSON）
-//   AC-3: footer 「API」link href = /swagger-ui/index.html
+// S108 / S155 #1 — verify footer 「API」link
+//   S108 originally: /swagger-ui/index.html
+//   S155 #1 superseded: LAB profile 未啟用 SpringDoc → 改指向 /docs/rest-api 避免 swagger-ui 404
 
 const renderPage = () => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -25,13 +26,13 @@ beforeEach(() => {
 })
 
 describe('LandingPage — S108 footer API link UX', () => {
-  it('AC-3: footer 「API」link 指向 Swagger UI (UX-friendly), not raw JSON', async () => {
+  it('AC-3 (S155 #1 supersedes S108): footer 「API」link 指向 /docs/rest-api (LAB SpringDoc 未啟用)', async () => {
     renderPage()
     await waitFor(() => {
       expect(screen.getByText('API')).toBeInTheDocument()
     })
     const apiLink = screen.getByText('API').closest('a')
-    expect(apiLink).toHaveAttribute('href', '/swagger-ui/index.html')
+    expect(apiLink).toHaveAttribute('href', '/docs/rest-api')
   })
 
   it('AC-baseline: footer 同時保留「文件」link (per S102 ship)', async () => {

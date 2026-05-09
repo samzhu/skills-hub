@@ -130,23 +130,27 @@ function TreeItem({
 /* ── File preview ── */
 
 function FilePreview({ skillId, path, meta }: { skillId: string; path: string; meta: SkillFile | undefined }) {
+  // 父層用 key={path} 觸發 remount → 切檔時 state 自動重置；本元件只跑單檔 lifecycle 不需 path-reset 邏輯。
   const [content, setContent] = useState<string | null | 'loading' | 'binary'>('loading')
   const [error, setError] = useState<string | null>(null)
   const inScripts = isInScripts(path)
 
   useEffect(() => {
     if (!path) return
-    setContent('loading')
-    setError(null)
+    let cancelled = false
     fetchSkillFile(skillId, path)
       .then(({ blob, contentType }) => {
+        if (cancelled) return
         if (isBinary(contentType)) {
           setContent('binary')
           return
         }
-        blob.text().then(t => setContent(t)).catch(() => setContent('binary'))
+        blob.text()
+          .then(t => { if (!cancelled) setContent(t) })
+          .catch(() => { if (!cancelled) setContent('binary') })
       })
-      .catch(e => setError(ApiError.is(e) ? e.message : '載入失敗'))
+      .catch(e => { if (!cancelled) setError(ApiError.is(e) ? e.message : '載入失敗') })
+    return () => { cancelled = true }
   }, [skillId, path])
 
   return (
@@ -242,9 +246,10 @@ export function FileExplorerPanel({ skillId }: Props) {
         ))}
       </div>
 
-      {/* Preview */}
+      {/* Preview — key={selected} 讓 path 變動時 FilePreview remount，state 自動 reset
+           （per React 19 docs「Resetting state when a prop changes」— 取代 useEffect 內 sync setState） */}
       {selected ? (
-        <FilePreview skillId={skillId} path={selected} meta={selectedMeta} />
+        <FilePreview key={selected} skillId={skillId} path={selected} meta={selectedMeta} />
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-3, rgba(238,236,234,0.4))', fontSize: 13 }}>
           請從左側選取檔案

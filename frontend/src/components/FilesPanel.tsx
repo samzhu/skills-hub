@@ -135,7 +135,7 @@ function FileViewer({
     return (
       <div className="rounded-md border bg-card p-4">
         <p className="mb-2 text-xs text-muted-foreground font-mono">{path} · {data.contentType} · {formatSize(meta.size)}</p>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* Vite app, not Next.js — native <img> is correct here */}
         <img src={url} alt={path} className="max-h-[60vh] max-w-full" />
       </div>
     )

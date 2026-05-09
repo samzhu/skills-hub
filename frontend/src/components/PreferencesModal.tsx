@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
@@ -10,7 +10,9 @@ import { localizeApiError } from '@/lib/api-error-messages'
  * S096h2-T04 — 通知訂閱偏好 modal（3 個 toggle）。
  *
  * Mirror CreateRequestModal pattern：fixed overlay + card + cancel/save buttons。
- * 開啟時 lazy fetch 當前 preferences；本地 state 編輯，submit 後 POST partial。
+ * 開啟時 lazy fetch 當前 preferences；本地 state 只記 user edits，draft 由 render-time
+ * 推導（per React 19 docs「Adjusting some state when a prop changes」— derive in render
+ * 比 useEffect+setState sync 不會 cascading render，避免 react-hooks/set-state-in-effect）。
  * Server 回完整 preferences → setQueryData 立即生效（無需 refetch）。
  *
  * S155 #5: 移除「新版本（敬請期待）」項 — placeholder anti-pattern；等真實做時
@@ -19,28 +21,31 @@ import { localizeApiError } from '@/lib/api-error-messages'
 export function PreferencesModal({ onClose }: { onClose: () => void }) {
   const { data: current, isLoading } = useNotificationPreferences()
   const mutation = useUpdateNotificationPreferences()
-  const [draft, setDraft] = useState<NotificationPreferences | null>(null)
-
-  // 載入後初始化 draft（避免 controlled-input race）
-  useEffect(() => {
-    if (current && !draft) {
-      setDraft(current)
-    }
-  }, [current, draft])
+  // Local state 只記 user 編輯過的欄位（diff vs current）；display draft = current ⊕ edits（render-time derive）
+  const [edits, setEdits] = useState<Partial<NotificationPreferences>>({})
+  const draft: NotificationPreferences | null = current ? { ...current, ...edits } : null
 
   const toggle = (key: keyof NotificationPreferences) => {
-    if (!draft) return
-    setDraft({ ...draft, [key]: !draft[key] })
+    if (!current || !draft) return
+    const newValue = !draft[key]
+    setEdits((prev) => {
+      // 如果切回 current 的原值，從 edits 移除（保持 diff 最精準）
+      if (newValue === current[key]) {
+        const { [key]: _removed, ...rest } = prev
+        return rest
+      }
+      return { ...prev, [key]: newValue }
+    })
   }
 
   const handleSave = () => {
-    if (!draft || !current) return
-    // 只送有差異的欄位 — backend partial update 標準（null = 不動）
-    const diff: Partial<NotificationPreferences> = {}
-    ;(Object.keys(draft) as Array<keyof NotificationPreferences>).forEach((k) => {
-      if (draft[k] !== current[k]) diff[k] = draft[k]
-    })
-    mutation.mutate(diff, { onSuccess: () => onClose() })
+    if (!current) return
+    // edits 已只含 diff 欄位（toggle 端負責清理同值 entry）
+    if (Object.keys(edits).length === 0) {
+      onClose()
+      return
+    }
+    mutation.mutate(edits, { onSuccess: () => onClose() })
   }
 
   return (

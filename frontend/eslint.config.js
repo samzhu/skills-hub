@@ -33,6 +33,24 @@ export default defineConfig([
           allowExportNames: ['badgeVariants', 'tabsListVariants'],
         },
       ],
+      // `_` prefix 表示故意 unused（destructure 移 key、catch error 不用 etc.）— 標準 TS 慣例
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
+  // Test files 放寬 `no-explicit-any` — partial mocks 對 useMutation/useQuery 等複雜 return type
+  // 用 `as any` 是常見、合理 pattern；嚴格驗 prod code 即可。
+  {
+    files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ])

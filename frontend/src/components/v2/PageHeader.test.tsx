@@ -98,4 +98,28 @@ describe('PageHeader', () => {
     renderHeader({ ...baseSkill, status: 'SUSPENDED' })
     expect(screen.queryByTestId('download-cta')).toBeNull()
   })
+
+  it('regression (S142a-T06 prod-bug): download-cta click invokes onDownload prop', () => {
+    setupMocks()
+    const onDownload = vi.fn()
+    render(
+      <MemoryRouter>
+        <PageHeader
+          skill={baseSkill}
+          isOwner={false}
+          activeTab="skill-md"
+          onTabChange={vi.fn()}
+          scores={null}
+          report={null}
+          stats={[]}
+          onDownload={onDownload}
+        />
+      </MemoryRouter>,
+    )
+    fireEvent.click(screen.getByTestId('download-cta'))
+    // 守 onClick wiring：S142a-T06 ship 時這個 button 接 onClick={onDownload} 但 parent (SkillDetailPage)
+    // 漏傳 onDownload prop → click 沒反應 (real prod bug). 本 regression 驗 PageHeader 端 wire 仍正確；
+    // SkillDetailPage 端 prop 傳遞由 e2e (S140-critical-path-download) 守。
+    expect(onDownload).toHaveBeenCalledTimes(1)
+  })
 })

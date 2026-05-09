@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
 import { FileText, Upload as UploadIcon, Check, AlertCircle, Eye, EyeOff } from 'lucide-react'
@@ -78,15 +78,14 @@ export function PublishPage() {
   const [showPreview, setShowPreview] = useState(false)
   // 預填 1.0.0 作為首次發佈的慣例起始版本
   const [version, setVersion] = useState('1.0.0')
-  // S100c: author 自動 prefill 從 /me.sub；user 仍可改（如 team override / publish-on-behalf）
+  // S100c: author 自動 prefill 從 /me.sub；user 仍可改（如 team override / publish-on-behalf）。
+  // Per React 19 docs「Adjusting some state when a prop changes」— 不用 useEffect+setState sync，
+  // 改用 derive-in-render：authorEdit === null 表 user 未編輯，回傳 me.sub；非 null 表已編輯（含清空）。
   const { data: me } = useMe()
   const auth = useAuth()
-  const [author, setAuthor] = useState('')
-  const [authorTouched, setAuthorTouched] = useState(false)
-  // /me 解析完成且 user 未手動改過 → 自動 fill。authorTouched 防 user 清空後又被覆蓋。
-  useEffect(() => {
-    if (me?.sub && !authorTouched && !author) setAuthor(me.sub)
-  }, [me?.sub, authorTouched, author])
+  const [authorEdit, setAuthorEdit] = useState<string | null>(null)
+  const author = authorEdit ?? me?.sub ?? ''
+  const authorTouched = authorEdit !== null
   const [category, setCategory] = useState('')
   // S116: visibility radio — default PUBLIC 對齊 v3.x 既有行為
   const [visibility, setVisibility] = useState<Visibility>('PUBLIC')
@@ -250,10 +249,7 @@ export function PublishPage() {
               <Input
                 id="publish-author"
                 value={author}
-                onChange={(e) => {
-                  setAuthor(e.target.value)
-                  setAuthorTouched(true)
-                }}
+                onChange={(e) => setAuthorEdit(e.target.value)}
                 placeholder={me?.sub ?? 'your-name'}
                 required
                 maxLength={255}

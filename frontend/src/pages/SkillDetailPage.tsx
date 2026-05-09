@@ -49,15 +49,24 @@ export function SkillDetailPage() {
   const stats = statsData ?? []
 
   // SKILL.md content for SkillMdTab
+  // 純 async decode 進 local state；error 分支由 render-time derive，避免 useEffect 內 sync setState
+  // （per React 19 docs「Adjusting some state when a prop changes」— derive-in-render）。
   const skillMdQuery = useSkillFile(id, 'SKILL.md')
-  const [skillMdContent, setSkillMdContent] = useState<string | null | undefined>(undefined)
+  const [decodedSkillMd, setDecodedSkillMd] = useState<string | null>(null)
   useEffect(() => {
-    if (!skillMdQuery.data) {
-      if (skillMdQuery.error) setSkillMdContent(null)
-      return
-    }
-    skillMdQuery.data.blob.text().then(t => setSkillMdContent(t)).catch(() => setSkillMdContent(null))
-  }, [skillMdQuery.data, skillMdQuery.error])
+    if (!skillMdQuery.data) return
+    let cancelled = false
+    skillMdQuery.data.blob.text()
+      .then(t => { if (!cancelled) setDecodedSkillMd(t) })
+      .catch(() => { if (!cancelled) setDecodedSkillMd(null) })
+    return () => { cancelled = true }
+  }, [skillMdQuery.data])
+  // Display value: error → null（顯示「載入失敗」），loading → undefined（顯示 spinner），ready → decoded text
+  const skillMdContent: string | null | undefined = skillMdQuery.error
+    ? null
+    : skillMdQuery.data
+      ? decodedSkillMd
+      : undefined
 
   const [activeTab, setActiveTab] = useState('skill-md')
   const [shareOpen, setShareOpen] = useState(false)
@@ -116,6 +125,13 @@ export function SkillDetailPage() {
         scores={scores}
         report={report}
         stats={stats}
+        onDownload={() => {
+          // S142a-T06 missing wire-up — `<button data-testid="download-cta">下載技能</button>` 的
+          // onClick={onDownload} 在父層沒傳就 noop（prod bug：button 點不動）。
+          // 觸發 native browser download：set window.location 走 backend
+          // /api/v1/skills/{id}/download endpoint（Content-Disposition: attachment）。
+          window.location.href = `/api/v1/skills/${skill.id}/download`
+        }}
         onShareClick={() => setShareOpen(true)}
       />
 

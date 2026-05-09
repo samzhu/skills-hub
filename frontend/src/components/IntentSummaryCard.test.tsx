@@ -19,7 +19,7 @@ describe('IntentSummaryCard — S094b', () => {
   })
 
   it('AC-3: empty concepts array → no concept chips rendered', () => {
-    const { container } = render(<IntentSummaryCard summary="x" concepts={[]} />)
+    render(<IntentSummaryCard summary="x" concepts={[]} />)
     // 沒 concept chips → 應只有 label + summary 兩段文字結構
     expect(screen.queryByText('docker')).not.toBeInTheDocument()
   })

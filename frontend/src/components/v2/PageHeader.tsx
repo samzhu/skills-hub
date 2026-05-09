@@ -116,7 +116,7 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, marginBottom: 16 }}>
         {/* Left: skill info */}
         <div style={{ display: 'flex', gap: 14 }}>
-          <IconTile name={skill.name} category={skill.category as any} size="xl" />
+          <IconTile name={skill.name} category={skill.category} size="xl" />
           <div>
             {/* Name row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
