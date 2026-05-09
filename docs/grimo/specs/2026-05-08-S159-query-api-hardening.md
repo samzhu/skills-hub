@@ -1,8 +1,16 @@
 # S159: Skill Query API Hardening — Category Normalization + Tag Filter + 拒收未知 param
 
-> Spec: S159 | Size: S(6) | Status: 📐 in-design
+> Spec: S159 | Size: S(6) | Status: 📋 META（partial — 已拆 S159a/b/c/d；S159a ✅ ship 2026-05-09 v4.43.0）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— `GET /api/v1/skills?category=...` 大小寫敏感（`security` 0 / `Security` 1），且 SKILL.md 有 `tags:` frontmatter 但 `?tag=` query 被 backend 靜默忽略 → 回全部 skills，使用者以為 filter 有作用其實沒。
+>
+> **Trim 拆分（2026-05-09）**：原 S(6) 含 4 個獨立 cut（§2.1 category storage normalize / §2.2 tag filter / §2.2b pageable validation / §2.3 unknown query param 拒收），cron-loop 一 tick wall budget 不夠。拆為 sub-specs：
+> - **S159a**（XS3）— Unknown query param 拒收（§2.3）— ✅ ship 2026-05-09 v4.43.0
+> - **S159b**（S5）— Category storage normalize（§2.1，含 V19 migration）— 📋 backlog
+> - **S159c**（S5）— Tag filter 實作（§2.2）— 📋 backlog
+> - **S159d**（XS2）— Pageable 非法值拒收（§2.2b）— 📋 backlog
+>
+> 本 doc 保留為 master design 供 S159b/c/d 寫子 spec 時引用（§2.1/§2.2/§2.2b 設計細節保有效）。
 
 ---
 

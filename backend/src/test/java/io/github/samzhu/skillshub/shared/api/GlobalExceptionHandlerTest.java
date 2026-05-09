@@ -498,4 +498,21 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody().error()).isEqualTo("CONCURRENT_MODIFICATION");
     }
+
+    @Test
+    @DisplayName("S159a UnknownQueryParamException → 400 VALIDATION_ERROR + 列出參數名")
+    void unknownQueryParamReturns400WithParamNames() {
+        var ex = new UnknownQueryParamException(java.util.Set.of("categroy", "fooBar"));
+
+        ResponseEntity<ErrorResponse> response = handler.handleUnknownQueryParam(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        ErrorResponse body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.error()).isEqualTo("VALIDATION_ERROR");
+        assertThat(body.message())
+                .contains("Unknown query parameter")
+                .contains("categroy")
+                .contains("fooBar");
+    }
 }

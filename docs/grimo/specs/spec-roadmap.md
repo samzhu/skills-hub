@@ -95,7 +95,11 @@
 | S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | M(8) | — | 📐 in-design |
 | S158 | API response privacy hardening — list 移除 aclEntries / ownerId | S(5) | — | ✅ v4.33.0 — list endpoint 隱藏 aclEntries+ownerId（@JsonView）；detail owner-conditional 拆 S158b |
 | S158b | Detail endpoint viewer permissions — owner-only aclEntries + viewerPermissions{isOwner/canEdit/canDelete} + /grants endpoint authz | M(8) | S158 list 完工 | 📋 planned |
-| S159 | Skill query API hardening — category case-insensitive + tag filter 實作 + 拒收未知 param | S(6) | — | 📐 in-design |
+| S159 | Skill query API hardening — META 拆 S159a/b/c/d | META | — | 📋 partial — S159a ✅ ship；S159b/c/d backlog |
+| S159a | Unknown query param 拒收（SkillQuery / categories 端點 fail-fast 400） | XS(3) | — | ✅ v4.43.0 — interceptor + handler；11+1+2 unit tests PASS |
+| S159b | Category storage normalize — V19 lowercase migration + CHECK constraint + frontend `capitalize` | S(5) | — | 📋 planned — 拆自 S159 §2.1 |
+| S159c | `?tag=` filter 實作 — controller param + repo `findByTag()` + frontend filter chip | S(5) | — | 📋 planned — 拆自 S159 §2.2 |
+| S159d | Pageable 非法值拒收 — `page < 0` / `size <= 0` / `size > 100` → 400 | XS(2) | — | 📋 planned — 拆自 S159 §2.2b |
 | S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) | — | 📐 in-design |
 | S161 | User input sanitization — Review / Flag / Request 文字欄位 XSS strip + backfill | S(6) | — | 📐 in-design |
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |

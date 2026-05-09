@@ -1,5 +1,37 @@
 # Changelog
 
+## [v4.43.0] — Unknown query param 拒收（S159a；2026-05-09）
+
+> 拼錯 query 參數例如 `?categroy=Security` 過去 silent fall-through 回全部 list，user 誤以為「沒命中」其實參數名錯。本版於 SkillQuery / categories 端點加 `UnknownQueryParamInterceptor`，未在 controller method 宣告的 query 參數 fail-fast 回 400 + 列出未知參數名。
+>
+> 拆自 S159 META（原 S(6) 拆 4 個 sub-specs），本版 ship S159a §2.3。S159b/c/d（category storage normalize / `?tag=` filter / pageable validation）留 backlog。
+
+### Add — Unknown query param interceptor
+
+- 新增 `shared/api/UnknownQueryParamException.java`：record-style exception 帶 unmodifiable `unknownParams` set
+- 新增 `shared/api/UnknownQueryParamInterceptor.java`：實作 `HandlerInterceptor.preHandle`，反射 `HandlerMethod.@RequestParam` + `Pageable` 三個 reserved 名（`page` / `size` / `sort`）→ 比對 request param key set，差集非空即拋
+- 新增 `shared/config/WebMvcConfig.java`：首個 `WebMvcConfigurer`，註冊 interceptor 套用 `/api/v1/skills/**` + `/api/v1/categories`
+- 改 `shared/api/GlobalExceptionHandler.java`：加 `@ExceptionHandler(UnknownQueryParamException)` → 400 `VALIDATION_ERROR` + 平台 `ErrorResponse`
+
+### Tests
+
+- `UnknownQueryParamInterceptorTest`：11/11 PASS（GET / non-GET / HandlerMethod / 非 HandlerMethod / empty query / pageable / 多 unknown / @RequestParam alias / 跳過條件）
+- `GlobalExceptionHandlerTest`：43/43 PASS（含新增 1 個 handler 合約 test，從 42 → 43）
+- `SkillQueryControllerApiContractTest`：2/2 PASS（既有 MockMvc test 不被 interceptor 影響）
+
+### Trim rationale
+
+S159 master 含 4 個獨立 cut（category normalize / tag filter / pageable validation / unknown param）— 一 tick wall 不夠。挑 §2.3 unknown param 拒收作為最 atomic 單位（無 schema 改動、無 frontend 觸碰、純加新檔案 + 1 個 handler）優先 ship；風險高的 V19 migration 與 storage backfill 留 sub-spec 走漸進化。
+
+### Verify metric
+
+```
+./gradlew test --tests UnknownQueryParam* --tests GlobalExceptionHandler* --tests SkillQueryControllerApi*
+BUILD SUCCESSFUL in 1m 19s
+```
+
+---
+
 ## [v4.42.0] — 移除 deprecated `/api/v1/skills/{id}/acl` HTTP endpoint（S167；2026-05-09）
 
 > v4.41.0 把 `SkillAclController` 標 `@Deprecated(forRemoval=true)` 並加 warning log；本版正式拿掉 HTTP 層。`/grants` 端點（S114a SkillGrantController）為唯一寫 ACL 入口，避開 dual-source-of-truth race（aggregate 直寫 vs `SkillAclProjectionListener.rebuildAcl` 從 `skill_grants` 重建）。

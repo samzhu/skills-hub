@@ -625,6 +625,22 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
+	 * S159a — 處理未知 query 參數（{@link UnknownQueryParamException}）。
+	 *
+	 * <p>由 {@code UnknownQueryParamInterceptor} 在 preHandle 階段拋出；回 HTTP 400 +
+	 * {@code VALIDATION_ERROR} 並列出所有未知參數，避免 typo silent fall-through。
+	 */
+	@ExceptionHandler(UnknownQueryParamException.class)
+	ResponseEntity<ErrorResponse> handleUnknownQueryParam(UnknownQueryParamException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "VALIDATION_ERROR")
+				.addKeyValue("unknownParams", ex.getUnknownParams())
+				.log("Unknown query parameter(s) rejected");
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ErrorResponse("VALIDATION_ERROR", ex.getMessage(), Instant.now()));
+	}
+
+	/**
 	 * S162 AC-5: 全 catch fallback handler — 任何未被上述 specific handler 攔到的例外，回 500
 	 * + 平台 ErrorResponse 不洩漏 stack。
 	 *
