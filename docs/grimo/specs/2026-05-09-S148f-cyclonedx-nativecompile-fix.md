@@ -1,9 +1,51 @@
 # S148f: cyclonedx-bom 3.2.4 nativeCompile 衝突修復 — 還原 SBOM 生成 + 不擋 native build
 
-> Spec: S148f | Size: XS(3) — 可能因 plugin upgrade 結果漲 S | Status: 📐 in-design
+> Spec: S148f | Size: XS(3) — 可能因 plugin upgrade 結果漲 S | Status: ⏸ Deferred (2026-05-10)
 > Date: 2026-05-09
 > Origin: S148b POC v1+v2 失敗發現 — cyclonedx-bom 3.2.4 plugin 與 Gradle 9.4.1 nativeCompile task graph 互衝
 > Depends On: S148b ✅（POC workaround 在位）
+
+---
+
+## ⏸ Deferred 2026-05-10 — POC Phase 1 H1 結果 + 戰略 reframe
+
+### POC H1 結果（path A）
+
+`org.cyclonedx.bom` plugin 最新版 = **3.2.4**（同既有版本）。Gradle Plugin Portal + Maven Central 都查過，**無 4.x release**。
+- 上游 issue：[CycloneDX/cyclonedx-gradle-plugin#821](https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues/821)（2026-04-06 開）— 同根因（Gradle 9.4.1 + maven-publish 變體 `Cannot mutate the artifacts`），狀態 open，無修復計畫
+- **H1 verdict: REJECTED — 無上游可升路徑**
+
+### 戰略 reframe — 為何 H2/H3 也不跑
+
+`backend/build.gradle.kts` line 12 cyclonedx 註解狀態的實際影響：
+
+```bash
+$ grep -rn "cyclonedx\|sbom\|bom\.json" /Users/samzhu/workspace/github-samzhu/skills-hub/scripts/ /Users/samzhu/workspace/github-samzhu/skills-hub/cloudbuild.yaml /Users/samzhu/workspace/github-samzhu/skills-hub/.github/
+# (無 output — 0 個 pipeline 在讀 bom.json)
+```
+
+```yaml
+# cloudbuild.yaml — production 跑 Paketo JVM buildpack（非 native）
+# BP_NATIVE_IMAGE=false
+```
+
+**`bom.json` 沒人讀；native binary 也沒在 production 跑。** 兩個都是「未來才需要」，今天沒卡到任何人。
+
+POC §6 risk row 3 已早預警：「若觸發 path C wrapper script，spec scope 漲 S；考慮拖到 native deploy 真正啟用時再做」。H1 reject 後實質剩 path B/C，都漲 S，cost-benefit 不對齊。
+
+### Reactivate 觸發條件（任一）
+
+1. 上游 cyclonedx 4.x 發布（issue #821 解，重做 path A 即可）
+2. 新 spec 要做 SBOM upload（Snyk / Dependency Track / etc）— 那時需求清楚會是「要送 X format 給 Y service」
+3. 切 native production deploy（BP_NATIVE_IMAGE=true）— 那 spec 會 inherit 此 blocker
+
+### 同步更新項
+
+- `docs/grimo/architecture.md` (d) 段：「blocker → S148f」改成 「⏸ deferred + 三條 reactivate 觸發條件」
+- `docs/grimo/specs/spec-roadmap.md` S148f row 狀態 📐 → ⏸ deferred
+- 本 spec 檔 status line → ⏸ Deferred
+
+---
 
 ---
 

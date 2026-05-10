@@ -611,7 +611,18 @@ V2（excludeTask cyclonedxBom）: Querying the mapped value of task ':cyclonedxB
 V3+（plugin 整個註解）     : ✅ 通過
 ```
 
-POC 期間 workaround：`build.gradle.kts` line 12 cyclonedx-bom plugin 暫註解。**這是 ship native production deploy 的 blocker** — 必須先修 build 工具相容性才能進 (e) 升級路徑。追蹤：**S148f**（升 plugin 4.x / 換 SPDX / 隔離 task graph，POC 結果決定路線）。
+**現況（2026-05-10）：** `build.gradle.kts` line 12 cyclonedx-bom plugin 註解狀態維持。`./gradlew cyclonedxBom` 跑不出 `backend/build/reports/bom.json`；無實際使用者受阻（`scripts/` / `cloudbuild.yaml` / `.github/` 全 grep 過，無任何 SBOM 上傳 / 安全掃描 pipeline 在讀此檔）。
+
+**為何不修（S148f deferred）：**
+- 上游 cyclonedx-gradle-plugin 最新版仍是 3.2.4（同我們版本；無 4.x release）— [GitHub issue #821](https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues/821)（2026-04-06 開，狀態 open，無修復計畫）
+- 換 SPDX 工具或寫 wrapper script 都會把 spec 從 XS 漲到 S，cost-benefit 不划算（沒 SBOM 消費者今天受阻）
+
+**何時 reactivate**（任一觸發）：
+1. 上游 cyclonedx 4.x 發布（issue #821 解）
+2. 新 spec 要做 SBOM upload（Snyk / Dependency Track / etc）
+3. 切 native production deploy（BP_NATIVE_IMAGE=true）— 那時得先解此衝突
+
+追蹤：**S148f ⏸ deferred**（spec 仍在 backlog，等觸發條件之一）。
 
 ### (e) 未來啟用 native production deploy 觸發條件
 

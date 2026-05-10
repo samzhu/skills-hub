@@ -20,7 +20,14 @@ IMPORTANT: Follow these in every session.
 - **Scope-Check Before Applying**: When applying a security or compliance finding, verify the current code falls within the finding's stated scope before changing anything. Search for the distinguishing identifier in the codebase.
 - **Clean Experiments**: When debugging, create a restore point before each attempt. Revert failed experiments before trying the next one. When the fix is confirmed, audit the complete changeset — every line must trace to the actual fix, not to leftover experiments.
 - **Finish-Current-First**: 把手上的 spec / task 做完再開新的。User mid-flight 提新需求時，acknowledge → 先收尾當前（test + ship + commit）→ 再啟動新需求。Stack-not-overlap：避免半成品累積、context 丟失、PR 混雜。
-- **Plain-Language Explanations (大白話 first)**: 跟 user 提設計選項 / trade-off / 跨領域決策時，**用具體技術範例領頭**（sample data row、file path:line、實際 command、SQL/JSON shape、DB 多一筆什麼 row、UI 上看到的字串），**不要 jargon**（"JWT-derived sub vs caller-supplied param" 這種寫法），**也不要生活化比喻**（櫃子/搬家/加固鐵片/買保險這類 analogy — user 想知道的是「按鈕按下去 DB 多一筆什麼」，不是日常物件類比）。每個選項要有：sample data、實際行為、一句話 trade-off。User 回「可以解釋白話一點嗎」/「聽不懂」是硬訊號 — 整題重寫，不是改一個詞、不是換個比喻。適用所有 grill / proposal / approach comparison。
+- **Plain-Language Explanations (大白話 first)**: 對 user 任何 explanation / proposal / option comparison，送出前自檢這 5 條：
+  1. **第一句 ground 在實體** — file path:line / 實際 command / DB 多一筆什麼 row / API response shape / UI 看到的字串。**不可**從「策略 / 戰略 / 觀察 / 重要發現 / trade-off / approach / blocker / POC verdict」這類抽象結論詞開頭。
+  2. **專詞先具體化再用** — SBOM / OAuth / Modulith / outbox / projection / native binary / fixture / aggregate / ACL 等用詞前，先一句話交代「跑 X 會出 Y 檔 / DB 多 Z row / 回 W response」。✅「SBOM = `./gradlew cyclonedxBom` 跑出 `backend/build/reports/bom.json`，內容是我們用了哪些 library 的清單」 ❌「SBOM 是 supply chain audit 標準」。
+  3. **抽象主述詞禁當 lead** —「supply chain audit」「downstream consumer」「lock-in」「blocker」「strategic」「approach comparison」用前必先翻成「跑 X command 會看到 Y」。
+  4. **不要生活化比喻**（櫃子 / 搬家 / 加固鐵片 / 買保險 / 鎖頭 / 抽屜 / 紅綠燈 等 analogy 全禁）。User 想知道的是「按鈕按下去 DB 多一筆什麼」。
+  5. **每個選項 3 件事**：(a) 改哪個 file:line / 加什麼 command (b) 跑出實際行為（command output / file 內容 / UI 變化）(c) 一句話成本（時間 / 風險）。
+
+  **「聽不懂」/「白話一點」/「重講」= 硬訊號 — 整題從新的實體 lead 重寫**（不是改一個詞、不是換個比喻、不是縮短句子）。適用所有 grill / proposal / option presentation / cross-domain explanation。
 
 > Cron-loop 操作層面的 3 條原則（Loop-Hint-Verify / Spec-Only-Handoff / No-Spec-Means-E2E）寫在 `.claude/loop.md`，不重複於此。
 
