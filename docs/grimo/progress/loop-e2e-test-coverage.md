@@ -885,3 +885,54 @@ User 端任一：
 ### EXIT
 
 ⏸ **BLOCKED** — needs vMLX exit OR user manual push decision
+
+---
+
+## Tick 2026-05-10 #2 — S167b ship BLOCKED（vMLX 持續，stack 第 2 個 spec）
+
+**Spec**：S167b ACL grant/revoke dead-code 清理（S/5）— 純刪除，無 user-facing 行為變動。
+**Commit**：8b73b86（feat(S167b): v4.45.0）。
+
+### Pre-flight 部分驗證
+
+跑 targeted test + processAot 取代 verify-all.sh 全跑（已知 V07 會卡同樣 vMLX 環境）：
+
+```
+./gradlew compileJava        ✓ BUILD SUCCESSFUL in 1s
+./gradlew processAot         ✓ BUILD SUCCESSFUL in 5s（registration log 少 2 行確認 dead event 全清）
+./gradlew test --tests SkillAggregate --tests AuditEventListener \
+              --tests SkillCommandService --tests SkillQueryControllerApiContract
+✓ 36/36 PASS · 0 failures（25 + 7 + 2 + 2）
+```
+
+### 為何不跑 /shipping-release
+
+- vMLX (PID 87938) 仍佔 port 8080（同上 tick 環境）
+- V07 Playwright @happy-path 必再次 webServer timeout 180s — 無新訊息
+- 跑 verify-all 全套耗 5 min（V01 clean test + V03/V05 frontend …）只為再驗證一個已知 fail = 浪費 wall budget
+- Stack 處理：origin/main 已落後 4 commits（160741a + 153fa0c S159d + baa96de + 8b73b86 S167b）
+
+### Stack 狀態 — origin/main 落後 main 4 個 commit
+
+```
+8b73b86 feat(S167b): v4.45.0 — ACL grant/revoke dead-code 全清          ← HEAD
+baa96de chore(progress): S159d ship BLOCKED — vMLX
+153fa0c feat(S159d): v4.44.0 — Pageable 非法值拒收
+960741a chore(handover): 補存 mass spec design sweep
+4a4e1cf chore(planning)                                                  ← origin/main
+```
+
+### Resolution path（user）
+
+1. **退 vMLX** → 下個 tick `/shipping-release` 跑 verify-all 應該全綠 → tag HEAD 為 v4.45.0 + push
+2. **手動 tag v4.44.0**：vMLX 解開後 user 跑：
+   ```bash
+   git tag v4.44.0 153fa0c    # S159d 中間 commit
+   git tag v4.45.0 8b73b86    # S167b HEAD（/shipping-release 會自動做這個）
+   git push origin main --tags
+   ```
+3. 或 user 信任 CI 跑 V07 → `git push origin main` 後手動加兩個 tag
+
+### EXIT
+
+⏸ **BLOCKED** — vMLX port 8080 持續佔用；2 個 spec stacked local main（v4.44.0 S159d + v4.45.0 S167b）
