@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-09（all-specs sweep 完成 — Bucket C 9 specs 全 design：S148f / S156b / S158b / S159b / S159c / S159d / S162b / S162c / S167b spec file 都 ready；S148b POC done shrink XS(3)；S155b cancelled）
+> 最後更新：2026-05-10（v4.46.0 ship — S148b architecture.md GraalVM AOT Strategy 段落落地）
 
 ## 使用說明
 
@@ -78,7 +78,7 @@
 | S146 | 掃描器補強 — GitHub Actions Unpinned Dependency 偵測（`@master/@main/@HEAD`） | XS(3) | S147 research | ⏸ deferred — 等 S147 完成再規劃 |
 | S147 | 掃描器語意分析缺口研究（W011/E004/W009/W013 vs. Snyk agent-scan） | META(research) | — | ⏸ deferred — 暫緩，等研究啟動時機 |
 | S148 | Bug — GraalVM native image AOT reflection 涵蓋不足（JudgeResponse 部分） | S(5) | — | ✅ v4.25.0 — 4/4 JudgeResponse deserialize PASS（@RegisterReflectionForBinding + catch(Error) 防 outbox 無限重試） |
-| S148b | GraalVM AOT 驗證機制 — POC reject H1（SkillshubProperties 無 bug）；`--exact-reachability-metadata` flag 已 ship；剩 architecture.md 文件化 | XS(3) | — | ⏳ Plan — 1 task ready (T01 architecture.md doc) |
+| S148b | GraalVM AOT 驗證機制 — POC reject H1（SkillshubProperties 無 bug）；`--exact-reachability-metadata` flag 已 ship；architecture.md 文件化 | XS(3) | — | ✅ v4.46.0 — architecture.md 加 GraalVM AOT Strategy 段（5 子段 + reviewer 4 自檢）|
 | S148f | cyclonedx-bom 3.2.4 + nativeCompile 衝突修復 — 升 plugin 4.x / 換 SPDX / 隔離 task graph（POC 決定）；本 spec 是 ship native production deploy 的 blocker | XS(3) — POC 結果可漲 S | S148b ✅ | 📐 in-design — spec file 完成；POC required (3 path H1/H2/H3) |
 | S148c | Modulith cycle 修復 — `shared.api.GlobalExceptionHandler` ↔ `skill.validation` 雙向相依（拖垮 processTestAot） | S(5) | — | ✅ v4.38.0 — SkillValidationException + ValidationFinding 移至 shared.api 解環；compile 通過；shared↔skill cycle violation 消失 |
 | S148d | Modulith allowed-targets 補 — `score → security` 跨 module 引用 SecurityFinding 未在 allowed targets 列表（S148c 解環後浮現） | XS(2) | — | ✅ v4.39.0 — security.scan 加 @NamedInterface("scan") + score allowedDependencies 加 "security :: scan"；processTestAot Modulith 驗證階段通過 |

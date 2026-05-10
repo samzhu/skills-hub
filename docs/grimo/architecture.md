@@ -563,6 +563,77 @@ npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer
 
 ---
 
+## GraalVM AOT Strategy
+
+> Source: S148b POC v4 (2026-05-09) — `nativeCompile` BUILD SUCCESSFUL in 3m 17s 出 223 MB native binary，證實 reflection metadata 完整度足夠。本段記錄目前 AOT 編譯機制現況與啟用 native production deploy 的升級路徑。
+
+### (a) Production deploy mode：JVM buildpack（非 native-image）
+
+目前 production 走 **Paketo JVM buildpack**（`./gradlew bootBuildImage` 預設行為），不是 native-image。但 GraalVM 工具鏈完整可用：
+
+```bash
+cd backend && ./gradlew nativeCompile               # 手動產 native binary（POC v4 驗 3m 17s）
+ls backend/build/native/nativeCompile/skillshub      # 223 MB ELF executable，啟動 Spring Boot 4.0.6 banner 正常
+```
+
+切換到 native production deploy 的觸發條件見 (e)。
+
+### (b) AOT processing 啟用機制
+
+`processAot` task 由 `org.graalvm.buildtools.native` 0.11.5 plugin 觸發（見 Framework Dependency Table 上游）。完整 AOT pipeline 由 4 個元件協作 — 對應 Spring Boot 4 AOT processing 的已知限制各自做 workaround：
+
+| 元件 | 路徑 | 作用 |
+|------|------|------|
+| `AotStubConfig` | `backend/src/main/java/.../shared/aot/AotStubConfig.java` | `@Profile("aot")` 提供 DataSource bean — 走 `System.getenv()` 直連 process env vars，繞過 Spring Boot 4 AOT 對 `@ConfigurationProperties` eager-bean binding 失效（`DataSourceProperties.determineDriverClassName()` 需 URL 不為空）；同時提供 `FlywayMigrationStrategy` bean，build time 檢查 `SPRING_DATASOURCE_URL` env var，無值則 skip migrate |
+| `JdbcConfiguration.jdbcDialect()` | `backend/src/main/java/.../shared/persistence/JdbcConfiguration.java` | Override 預設 dialect 偵測（會跑 connection metadata query），改顯式回 `JdbcPostgresDialect.INSTANCE` — 我們 100% PostgreSQL，不需 auto-detect；同時解決 AOT 階段（無真實 DB 連線）這條 path 會炸 |
+| `application-aot.yaml` | `backend/src/main/resources/application-aot.yaml` | Modulith autoconfig 排除（`ApplicationModulesEndpointConfiguration` / `ModuleObservabilityAutoConfiguration` / `SpringDataRestModuleObservabilityAutoConfiguration` — 觸發 ArchUnit `ClassFileImporter` 在 native image 階段 ClassNotFoundException，issue spring-modulith#735/#1556 未修）；`spring.cloud.gcp.secretmanager.enabled=false`（AOT 階段沒 creds 不該試呼 API；runtime 由 `application-gcp.yaml` 顯式 enable 蓋回）；OAuth2 client stub credentials（`OAuth2ClientProperties.validate()` 在 AOT binding 階段強制 client-id 非空，runtime env var 蓋回真值） |
+| `ProcessAot` task config | `backend/build.gradle.kts` line 129–132 | `args("--spring.profiles.active=$profiles")` 預設 `aot,local`；換環境用 `-Pspring.profiles.active=aot,gcp,{lab\|prod}` 覆蓋。AOT 階段 active profile 會被 baked 進 `__ApplicationContextInitializer.addActiveProfile()`，runtime `SPRING_PROFILES_ACTIVE` 不能移除已 baked 的（per spring-boot#41562 / #48408） |
+
+### (c) Reflection hint fast-fail 機制
+
+```bash
+./gradlew nativeCompile -PexactReachability=true
+```
+
+`backend/build.gradle.kts` line 200–212 的 `graalvmNative {}` block 在 `-PexactReachability=true` Gradle property 存在時加 `--exact-reachability-metadata=io.github.samzhu.skillshub` flag，限制 scope 只檢查專案 package（不 cover framework code 漏 hint）。
+
+預設 reporting mode = `Throw` — 任何 `io.github.samzhu.skillshub.*` 內 missing reflection registration 在 build 階段直接 fail（不等到 Cloud Run runtime 才 throw `MissingReflectionRegistrationError`）。平常 `nativeCompile` 不開 flag 不影響；POC 與 deploy-day 開啟做 fast-fail safety net。
+
+POC v4 (2026-05-09) 驗證 flag 生效 — BUILD SUCCESSFUL 等同確認 SkillshubProperties 11 個 nested record + 全 production package 反射 metadata 涵蓋完整。
+
+### (d) 既知 blocker：cyclonedx-bom 3.2.4 vs nativeCompile
+
+`org.cyclonedx.bom` 3.2.4 plugin 與 Gradle 9.4.1 + nativeCompile task graph 互相衝突（`processResources` ↔ `cyclonedxBom` 互依賴 race）：
+
+```
+V1（plugin 啟用）         : Cannot mutate the artifacts of configuration ':cyclonedxDirectBom' after the configuration was consumed as a variant
+V2（excludeTask cyclonedxBom）: Querying the mapped value of task ':cyclonedxBom' property 'jsonOutput' before task ':cyclonedxBom' has completed is not supported
+V3+（plugin 整個註解）     : ✅ 通過
+```
+
+POC 期間 workaround：`build.gradle.kts` line 12 cyclonedx-bom plugin 暫註解。**這是 ship native production deploy 的 blocker** — 必須先修 build 工具相容性才能進 (e) 升級路徑。追蹤：**S148f**（升 plugin 4.x / 換 SPDX / 隔離 task graph，POC 結果決定路線）。
+
+### (e) 未來啟用 native production deploy 觸發條件
+
+升級路徑（依序滿足）：
+
+1. **S148f** ship — cyclonedx 衝突修復，恢復 plugin
+2. **Cloud Build pipeline 切 BP_NATIVE_IMAGE=true** — Paketo `noble-java-tiny` order group `java-native-image` 已含必要 buildpack，metadata 存在即觸發 native compile chain；目前 `cloudbuild.yaml` 預設走 JVM buildpack
+3. **評估邊際效益** — 目前 JVM mode + AOT cache 已 cold start ~0.5s；切 native binary（cold start 進一步壓低 + 記憶體佔用降）vs build time 成本（local 3 分鐘、CI 25–35 分鐘 cold cache）。**邊際效益待評估**，不主動切換
+
+啟用 `nativeTest` 進 nightly CI 屬獨立議題（與 (c) 的 build-time fast-fail 重疊涵蓋率，ROI 待 native production deploy 上線後再評估）。
+
+### Reviewer 自檢
+
+讀完本段應能回答：
+
+- 「目前 production 跑 native 還是 JVM？」 → JVM（Paketo JVM buildpack）。Native 工具鏈完整但未啟用 production deploy。
+- 「誰的 reflection metadata 是手動加 vs auto-register？」 → 手動：`ScoreNativeConfig.java` 用 `@RegisterReflectionForBinding(JudgeResponse.class)`（S148 v4.25.0 ship）。其餘走 Spring Boot 4 auto-registration + `org.graalvm.buildtools.native` plugin scan。
+- 「想跑 native compile 怎麼跑？fast-fail 怎麼開？」 → `./gradlew nativeCompile`（一般），`-PexactReachability=true` 加上去開 fast-fail。
+- 「為何不直接切 native production deploy？」 → S148f cyclonedx 衝突未修 + JVM cold start 已達 ~0.5s 邊際效益不高。
+
+---
+
 ## PostgreSQL Configuration
 
 ### Local Development（Docker Compose）

@@ -1,6 +1,6 @@
 # S148b: GraalVM AOT 驗證機制 — 把「reflection 失敗只在 Cloud Run 才現形」變成「local 3 分鐘 catch」
 
-> Spec: S148b | Size: XS(3) — POC reject H1 後 scope 縮（per §6 POC findings 2026-05-09）| Status: ⏳ Plan
+> Spec: S148b | Size: XS(3) — POC reject H1 後 scope 縮（per §6 POC findings 2026-05-09）| Status: ✅ Done (2026-05-10)
 > Date: 2026-05-09
 > Origin: S148 (v4.25.0 — JudgeResponse AOT reflection ship) 後遺留 — `SkillshubProperties` `@ConfigurationProperties` **被推測**有同類 AOT 反射失敗，但**從未 reproduce**；同時專案完全沒有 systematic AOT 驗證機制（`nativeTest` 沒跑、`bootBuildImage` 沒在 CI、reflection failure 只在 Cloud Run 真跑時才會炸）。
 
@@ -227,7 +227,7 @@ AC-5: docs/grimo/architecture.md 補 GraalVM AOT 段落（待 T01 實作）
 
 ---
 
-## 6. 風險與注意
+## 5.4 風險與注意
 
 | 風險 | 緩解 |
 |------|------|
@@ -297,7 +297,101 @@ per user decision 2026-05-09（B/B/留）— scope 縮 XS：
 
 ---
 
-## 7. 後續 follow-up（不在本 spec）
+## 7. Implementation Results
+
+> Status: ✅ Done | Date: 2026-05-10 | Spec size confirmed: XS(3)
+
+### Verification
+
+| Step | 結果 | 證據 |
+|------|------|------|
+| Phase 4 Step 1（Deterministic checks）| ⏭ Skipped — rationale | XS doc-only spec，僅修改 `architecture.md` + 任務檔；無 .java/.gradle/.ts 變動，無 production code regression 風險（spec §5.1 已聲明） |
+| Phase 4 Step 1.5（E2E artifact gate）| ⏭ Skipped — rationale | Doc-only change，無 framework wiring / schema / event serialization / subprocess seam 變動；無 integration boundary 須 verify |
+| AC-1（POC verdict）| ✅ DONE | 已記於 §6 POC Findings：`nativeCompile -PexactReachability=true` BUILD SUCCESSFUL in 3m 17s（H1 REJECTED） |
+| AC-3（exact-reachability flag）| ✅ DONE | `backend/build.gradle.kts` line 200–212 graalvmNative block 已 ship；POC v4 證實 flag 生效 |
+| AC-5（architecture.md doc）| ✅ DONE — T01 | architecture.md line 566–631 新增 「GraalVM AOT Strategy」段（5 子段 + Reviewer 自檢 4 題）|
+
+### AC-5 文件涵蓋核對
+
+| BDD 要點 | 文件位置 | 是否滿足 |
+|----------|---------|---------|
+| (a) Production deploy mode = JVM buildpack；nativeCompile 可手動 | line 570–579 | ✅ 含 223 MB ELF binary 證據 |
+| (b) AOT processing 啟用機制（4 元件）| line 581–590 | ✅ 4-row table（路徑 + 作用 + 對應 Spring Boot 4 限制 workaround）|
+| (c) Reflection hint fast-fail（`--exact-reachability-metadata` + gated by `-PexactReachability=true`）| line 592–602 | ✅ 含命令範例 + reporting mode = Throw 說明 |
+| (d) Known blocker（cyclonedx-bom 3.2.4 + nativeCompile 衝突；追蹤 S148f）| line 604–614 | ✅ V1/V2/V3 三階段失敗訊息 + workaround + S148f link |
+| (e) 未來 native production deploy 觸發條件 | line 616–624 | ✅ 3 步驟升級路徑 + JVM cold start ~0.5s 邊際效益討論 |
+| Reviewer 4 自檢題 | line 626–631 | ✅ 4 題 + 一句答案 |
+
+### Key Findings
+
+1. **與 BDD 描述的事實修正**：BDD 寫「`application-aot.yaml` — flyway.enabled=false + GcpContextAutoConfiguration exclude」，實際 yaml（已 grep 驗）：
+   - **flyway.enabled** 不在 yaml — 改用 Java config `AotStubConfig.flywayMigrationStrategy()` bean 在 build time skip migrate（避免 yaml disable 後 leak 到 runtime）
+   - **GcpContextAutoConfiguration** 沒 exclude（yaml comment 明寫「不再 exclude」— Cloud Build 環境有 metadata server）
+   - 實際 excludes = **Modulith 3 個 autoconfig**（`ApplicationModulesEndpointConfiguration` / `ModuleObservabilityAutoConfiguration` / `SpringDataRestModuleObservabilityAutoConfiguration`）— 觸發 ArchUnit `ClassFileImporter` 在 native image 階段 ClassNotFoundException（spring-modulith#735/#1556 未修）
+   - 額外含 `secretmanager.enabled=false` + OAuth2 client stub credentials
+
+   文件以實際 code 為準寫，未照抄 BDD 過時描述（per Web-Verify First + Log-Driven Debugging 原則）。
+
+2. **架構 doc 編號修正順手做**：原 spec 兩個 §6（「風險與注意」+「Task Plan + POC Findings」）。本 Phase 4 將「風險與注意」降為 §5.4，原 §7 follow-up 升為 §8，新增 §7 Implementation Results — 維持 spec template 慣例（§7 = Results）。
+
+3. **POC v4 binary 留存**：`backend/build/native/nativeCompile/skillshub` 223 MB ELF executable 已存在；下次想實機跑驗證 reflection metadata 完整度時不需重 build（incremental cache 約 3 分鐘）。
+
+### Files Changed
+
+| 檔案 | 變動 | 行數 |
+|------|------|------|
+| `docs/grimo/architecture.md` | + 「GraalVM AOT Strategy」段（5 子段 + reviewer 自檢） | +66 (line 566–631) |
+
+### Pending Verification
+
+無。AC-1 + AC-3 已於 POC 期間實機驗證；AC-5 純 doc，可由 reviewer 視覺驗證。
+
+---
+
+## QA Review
+
+> Reviewer: Independent QA | Date: 2026-05-10 | Verdict: **PASS**
+
+### Verification Summary
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| `architecture.md` §GraalVM AOT Strategy 存在 | ✅ | line 566–635，含 5 sub-sections (a)–(e) + Reviewer 自檢 |
+| `AotStubConfig.java` — `@Profile("aot")` | ✅ | line 50，確認 |
+| `AotStubConfig.java` — DataSource 走 `System.getenv()` | ✅ | lines 56–59，三個 env var `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` |
+| `AotStubConfig.java` — `FlywayMigrationStrategy` bean | ✅ | lines 75–82，`SPRING_DATASOURCE_URL` env var 無值則 skip |
+| `JdbcConfiguration.jdbcDialect()` 回 `JdbcPostgresDialect.INSTANCE` | ✅ | line 57 |
+| `application-aot.yaml` — 3 Modulith autoconfig excludes | ✅ | `ApplicationModulesEndpointConfiguration` / `ModuleObservabilityAutoConfiguration` / `SpringDataRestModuleObservabilityAutoConfiguration` 全在 |
+| `application-aot.yaml` — `secretmanager.enabled=false` | ✅ | line 50 |
+| `application-aot.yaml` — OAuth2 stub credentials | ✅ | `aot-stub-client-id` / `aot-stub-client-secret` |
+| `build.gradle.kts` ProcessAot args (line 129–132) | ✅ | 完全符合文件描述，profiles 預設 `aot,local` |
+| `build.gradle.kts` graalvmNative block (line 200–212) | ✅ | `-PexactReachability` gate + `--exact-reachability-metadata=io.github.samzhu.skillshub` |
+| cyclonedx-bom 於 `build.gradle.kts` 被註解 | ✅ | line 12（`// id("org.cyclonedx.bom") version "3.2.4"`）— 注意 §4 寫「line 10」但 architecture.md 寫「line 12」；line 12 是 `id(...)` 實際所在，architecture.md 正確，§4 屬 MINOR 描述不精確 |
+| S148f spec 檔案存在 | ✅ | `docs/grimo/specs/2026-05-09-S148f-cyclonedx-nativecompile-fix.md` 確認 |
+| Reviewer 4 題可從文件回答 | ✅ | line 630–633 均有明確一句答案 |
+
+### §7 Key Findings BDD vs Reality 事實核對
+
+§7 主張 `application-aot.yaml` 實際內容與 BDD 描述不符：
+
+- **`flyway.enabled` 不在 yaml** — 確認：yaml 無此 key，改用 `AotStubConfig.flywayMigrationStrategy()` Java bean（yaml 第 22–24 行 comment 明確說明理由）。
+- **`GcpContextAutoConfiguration` 沒 exclude** — 確認：yaml comment 第 27–28 行寫「不再 exclude」。
+- **實際 excludes = 3 個 Modulith autoconfig** — 確認：與 architecture.md 文字完全一致。
+- **額外含 `secretmanager.enabled=false` + OAuth2 stub** — 確認。
+
+§7 描述完全準確。
+
+### Minor Finding
+
+`backend/build.gradle.kts` 中 `id("org.cyclonedx.bom")` 實際在 **line 12**（非 line 10）。`architecture.md` 寫的是 "line 12"（正確）；spec §4 Files to Change 表格寫「build.gradle.kts line 10」（指向 comment 起始行）。兩者邏輯一致，僅行號指向不同（comment block vs id line）。MINOR — 不影響可操作性。
+
+### Verdict
+
+**PASS** — architecture.md 新段落準確反映實際程式碼；所有 5 個 sub-sections 存在且內容可從 source 驗證；BDD vs reality 差異已在 §7 Key Findings 正確記錄；S148f 追蹤 spec 存在。
+
+---
+
+## 8. 後續 follow-up（不在本 spec）
 
 | ID | 範圍 | 說明 |
 |----|------|------|

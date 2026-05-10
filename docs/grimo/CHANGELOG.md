@@ -1,5 +1,35 @@
 # Changelog
 
+## [v4.46.0] — GraalVM AOT Strategy 段落落地（S148b；2026-05-10）
+
+> S148b POC v4 (2026-05-09) 已 reject H1（SkillshubProperties 無 AOT bug；`nativeCompile -PexactReachability=true` BUILD SUCCESSFUL in 3m 17s 出 223 MB native binary）+ ship `--exact-reachability-metadata` flag (gated by `-PexactReachability=true` Gradle property)。本版（XS(3) doc-only）把策略性說明補進 `architecture.md`：未來新人或 LLM 進來該檔就能一次看懂「目前 production 跑 JVM 還是 native」「AOT processing 怎麼啟用」「reflection metadata fast-fail 怎麼開」「為何不切 native production deploy」。
+>
+> Sequencing 價值：S148f（cyclonedx-bom + nativeCompile 衝突修復；native production deploy blocker）下次 spec planning 進來時，architecture.md 已備好背景，不需從 spec 重看 POC findings。
+
+### Add — Documentation
+
+- 新增 `docs/grimo/architecture.md` § GraalVM AOT Strategy（line 566–631；+66 行）：
+  - **(a)** Production deploy mode：Paketo JVM buildpack（非 native-image）；`./gradlew nativeCompile` 可手動產 223 MB ELF binary
+  - **(b)** AOT processing 啟用機制 4 元件 — `AotStubConfig` (`@Profile("aot")` DataSource + FlywayMigrationStrategy bean)、`JdbcConfiguration.jdbcDialect()` override、`application-aot.yaml`（Modulith autoconfig 排除 + secretmanager.disabled + OAuth2 stub）、`ProcessAot` task baked profiles
+  - **(c)** Reflection hint fast-fail：`--exact-reachability-metadata=io.github.samzhu.skillshub` flag (gated by `-PexactReachability=true`)；reporting mode = Throw
+  - **(d)** Known blocker：cyclonedx-bom 3.2.4 與 Gradle 9.4.1 nativeCompile task graph 衝突（V1/V2/V3 三階段失敗訊息記錄）；追蹤 S148f
+  - **(e)** 未來啟用 native production deploy 觸發條件 — S148f cyclonedx fix + Cloud Build BP_NATIVE_IMAGE=true + 評估邊際效益（目前 JVM AOT cache cold start ~0.5s）
+  - Reviewer 自檢 4 題（含一句答案）
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-09-S148b-graalvm-aot-validation.md` → archive（`archive/`）
+- POC artifacts (`poc/S148b/native-compile-output*.log` × 4) 清除
+- Task file (`docs/grimo/tasks/2026-05-09-S148b-T01.md`) 清除
+- spec-roadmap.md S148b 狀態 ⏳ Plan → ✅ v4.46.0
+
+### Verification
+
+- `verify-all.sh`：8/8 PASS（V01-V08b 含 native image build；user 自跑 2026-05-10T08:13Z）
+- 獨立 QA subagent：PASS — fact-check architecture.md 所有引用的 file path / mechanism 對應實際 code；1 MINOR（spec §4 行號 drift line 10 vs line 12，無操作影響）
+
+---
+
 ## [v4.45.0] — ACL grant/revoke dead code 清理（S167b；2026-05-10）
 
 > v4.42.0（S167）拿掉 deprecated `/api/v1/skills/{id}/acl` HTTP endpoint，但 service / aggregate / event / handler / test 層 6+ 檔 dead code 還在 — 新人讀以為這 path 還活著。本版全清，砍掉 8 個整檔 + 修 3 個 production + 3 個 test 檔。寫 ACL 路徑唯一入口為 S114a `SkillGrantController` → `SkillGrantService` → `skill_grants` 表 → `SkillAclProjectionListener` 重建 `skills.acl_entries` 投影，不再經 aggregate 充血方法。
