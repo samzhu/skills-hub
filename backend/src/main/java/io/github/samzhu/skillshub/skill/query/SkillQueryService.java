@@ -79,11 +79,14 @@ public class SkillQueryService {
 	private final ApplicationEventPublisher eventPublisher;
 	private final CurrentUserProvider currentUserProvider;
 	private final AclPrincipalExpander aclExpander;
+	/** S154 — author identity enrichment (LEFT JOIN users) via post-fetch lookup。*/
+	private final io.github.samzhu.skillshub.shared.security.UserRepository userRepo;
 
 	public SkillQueryService(SkillRepository skillRepo, SkillVersionRepository skillVersionRepo,
 			NamedParameterJdbcTemplate jdbc, StorageService storageService,
 			ObjectMapper objectMapper, ApplicationEventPublisher eventPublisher,
-			CurrentUserProvider currentUserProvider, AclPrincipalExpander aclExpander) {
+			CurrentUserProvider currentUserProvider, AclPrincipalExpander aclExpander,
+			io.github.samzhu.skillshub.shared.security.UserRepository userRepo) {
 		this.skillRepo = skillRepo;
 		this.skillVersionRepo = skillVersionRepo;
 		this.jdbc = jdbc;
@@ -92,6 +95,7 @@ public class SkillQueryService {
 		this.eventPublisher = eventPublisher;
 		this.currentUserProvider = currentUserProvider;
 		this.aclExpander = aclExpander;
+		this.userRepo = userRepo;
 	}
 
 	/**
@@ -118,7 +122,7 @@ public class SkillQueryService {
 		return enrichDetail(skill);
 	}
 
-	/** S142b: enrich Skill with 6 detail fields (latest version metadata + counts). */
+	/** S142b: enrich Skill with 6 detail fields (latest version metadata + counts) + S154 author identity. */
 	private Skill enrichDetail(Skill skill) {
 		var versions = skillVersionRepo.findBySkillIdOrderByPublishedAtDesc(skill.getId());
 		var latest = versions.isEmpty() ? null : versions.getFirst();
@@ -126,13 +130,44 @@ public class SkillQueryService {
 		Long flagCount = jdbc.queryForObject(
 				"SELECT COUNT(*) FROM flags WHERE skill_id = :skillId AND status = 'OPEN'",
 				params, Long.class);
-		return skill.withDetail(
+		skill.withDetail(
 				skill.getStatus() == SkillStatus.PUBLISHED && skill.getRiskLevel() != null,
 				latest != null ? latest.getPublishedAt() : null,
 				extractLicense(latest != null ? latest.getFrontmatter() : null),
 				extractCompatibility(latest != null ? latest.getFrontmatter() : null),
 				versions.size(),
 				flagCount != null ? flagCount : 0L);
+		return enrichAuthorIdentity(skill);
+	}
+
+	/**
+	 * S154 — LEFT JOIN users by skill.author (= platform user_id post-T04)。
+	 *
+	 * <p>計算 displayName / handle / email-conditional：
+	 * <ul>
+	 *   <li>users row 找到：displayName 由 {@link io.github.samzhu.skillshub.shared.security.DisplayNameResolver}
+	 *       5-layer fallback 算出；handle 直取；email 只在 {@code contact_email_public=true} 時 expose</li>
+	 *   <li>users row 缺（user 帳號刪 / 舊資料 author 不是 user_id）：displayName fallback skill.authorNameSnapshot；
+	 *       handle / email 為 null（snapshot 不含此資訊）</li>
+	 * </ul>
+	 */
+	private Skill enrichAuthorIdentity(Skill skill) {
+		var author = skill.getAuthor();
+		if (author == null) {
+			// LAB / 舊資料 fixture 可能 author=null；保持既有 transient field default null
+			return skill;
+		}
+		var userOpt = userRepo.findById(author);
+		if (userOpt.isPresent()) {
+			var user = userOpt.get();
+			var displayName = io.github.samzhu.skillshub.shared.security.DisplayNameResolver.resolve(
+					user.getName(), null, null, user.getEmail(), user.getHandle(), user.getId());
+			// contact_email_public=false → 隱藏 email（API JSON 出 null）；TRUE → 公開
+			var email = user.isContactEmailPublic() ? user.getEmail() : null;
+			return skill.withAuthorIdentity(displayName, user.getHandle(), email);
+		}
+		// users row 缺 → snapshot fallback（spec §2.5：user 帳號刪後 detail 仍能顯名）
+		return skill.withAuthorIdentity(skill.getAuthorNameSnapshot(), null, null);
 	}
 
 	private static String extractLicense(java.util.Map<String, Object> fm) {
@@ -233,14 +268,18 @@ public class SkillQueryService {
 		var results = jdbc.query(sql.toString(), params, this::mapSkillRow);
 		Long total = jdbc.queryForObject(countSql.toString(), params, Long.class);
 
+		// S154 AC-6 Scenario D — search results 也要 LEFT JOIN users 出 authorDisplayName/Handle/Email
+		// 一筆一筆 lookup（results page size <= 100，PK lookup O(1)；MVP 不做 batch IN 優化）
+		var enriched = results.stream().map(this::enrichAuthorIdentity).toList();
+
 		log.atDebug()
 				.addKeyValue("keyword", keyword)
 				.addKeyValue("category", category)
 				.addKeyValue("author", author)
-				.addKeyValue("resultCount", results.size())
+				.addKeyValue("resultCount", enriched.size())
 				.log("技能搜尋完成");
 
-		return new PageImpl<>(results, pageable, total != null ? total : 0L);
+		return new PageImpl<>(enriched, pageable, total != null ? total : 0L);
 	}
 
 	/**

@@ -91,6 +91,62 @@ class SkillAuthorJoinIntegrationTest {
     }
 
     @Test
+    @DisplayName("AC-6 Scenario A: withAuthorIdentity 設 displayName + handle + null email（私人 email 隱藏）")
+    @Tag("AC-6")
+    void withAuthorIdentityHidesEmailWhenContactEmailPublicFalse() {
+        var skill = Skill.create(new CreateSkillCommand("docker-helper", "test",
+                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen"));
+
+        // Service enrichAuthorIdentity 對 contact_email_public=false 傳 email=null
+        skill.withAuthorIdentity("Alice Chen", "alice", null);
+
+        assertThat(skill.getAuthorDisplayName()).isEqualTo("Alice Chen");
+        assertThat(skill.getAuthorHandle()).isEqualTo("alice");
+        assertThat(skill.getAuthorEmail()).as("contact_email_public=false → email 隱藏").isNull();
+    }
+
+    @Test
+    @DisplayName("AC-6 Scenario B: 公開 email 則 expose")
+    @Tag("AC-6")
+    void withAuthorIdentityExposesEmailWhenPublic() {
+        var skill = Skill.create(new CreateSkillCommand("docker-helper", "test",
+                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen"));
+
+        skill.withAuthorIdentity("Alice Chen", "alice", "alice@example.com");
+
+        assertThat(skill.getAuthorEmail()).isEqualTo("alice@example.com");
+    }
+
+    @Test
+    @DisplayName("AC-6 Scenario C: users row 缺 → snapshot fallback；handle/email NULL")
+    @Tag("AC-6")
+    void withAuthorIdentityFallbackToSnapshotWhenUserRowMissing() {
+        var skill = Skill.create(new CreateSkillCommand("docker-helper", "test",
+                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen"));
+
+        // Service 端 userRepo.findById 回 empty → 走 snapshot fallback path
+        skill.withAuthorIdentity(skill.getAuthorNameSnapshot(), null, null);
+
+        assertThat(skill.getAuthorDisplayName())
+                .as("users row 缺時 displayName fallback skill.authorNameSnapshot")
+                .isEqualTo("Alice Chen");
+        assertThat(skill.getAuthorHandle()).isNull();
+        assertThat(skill.getAuthorEmail()).isNull();
+    }
+
+    @Test
+    @DisplayName("AC-6 Scenario A.2: getAuthorDisplayName/Handle/Email default null（未呼叫 withAuthorIdentity）")
+    @Tag("AC-6")
+    void authorIdentityFieldsDefaultNullWhenNotEnriched() {
+        var skill = Skill.create(new CreateSkillCommand("docker-helper", "test",
+                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen"));
+
+        assertThat(skill.getAuthorDisplayName()).isNull();
+        assertThat(skill.getAuthorHandle()).isNull();
+        assertThat(skill.getAuthorEmail()).isNull();
+    }
+
+    @Test
     @DisplayName("AC-5: Skill.create 帶 null snapshot → field 為 null（schema NULLABLE 容許）")
     @Tag("AC-5")
     void createWithNullSnapshotResultsInNullField() {

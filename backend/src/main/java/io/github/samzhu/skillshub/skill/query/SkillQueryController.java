@@ -61,13 +61,17 @@ public class SkillQueryController {
 	private final BundleInfoQueryService bundleInfoService;
 	private final SkillDiffQueryService diffQueryService;
 	private final SkillFileDiffService fileDiffService;
+	/** S154 — author path segment 解析鏈 (handle / user_id / email / OAuth sub backward-compat)。 */
+	private final io.github.samzhu.skillshub.shared.security.UserResolver userResolver;
 
 	public SkillQueryController(SkillQueryService queryService, BundleInfoQueryService bundleInfoService,
-			SkillDiffQueryService diffQueryService, SkillFileDiffService fileDiffService) {
+			SkillDiffQueryService diffQueryService, SkillFileDiffService fileDiffService,
+			io.github.samzhu.skillshub.shared.security.UserResolver userResolver) {
 		this.queryService = queryService;
 		this.bundleInfoService = bundleInfoService;
 		this.diffQueryService = diffQueryService;
 		this.fileDiffService = fileDiffService;
+		this.userResolver = userResolver;
 	}
 
 	/**
@@ -117,7 +121,12 @@ public class SkillQueryController {
 	@GetMapping("/skills/{author}/{name}")
 	@PostAuthorize("hasPermission(returnObject.id, 'Skill', 'read')")
 	Skill getByAuthorAndName(@PathVariable String author, @PathVariable String name) {
-		return queryService.findByAuthorAndName(author, name);
+		// S154 AC-7 — author path 段 4-path resolve：handle → user_id → email → OAuth sub backward-compat
+		// （UserResolver 內建 4 條 fallback 鏈）。Caller 傳「alice」/「u_a3f9c1」/「111161306...」皆可命中。
+		// resolve miss → 用原 input 走 SkillRepository.findByAuthorAndName（既有 case-insensitive LIKE）
+		// — 對應未 onboard users 表的 LAB / 舊資料路徑保留。
+		var resolvedAuthor = userResolver.resolveByEmailHandleOrId(author).orElse(author);
+		return queryService.findByAuthorAndName(resolvedAuthor, name);
 	}
 
 	/**

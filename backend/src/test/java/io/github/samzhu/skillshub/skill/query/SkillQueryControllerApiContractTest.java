@@ -55,6 +55,10 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
     @MockitoBean
     private SkillFileDiffService skillFileDiffService;
 
+    /** S154-T05: SkillQueryController 注入 UserResolver — slice 不 scan service，需 mock。 */
+    @MockitoBean
+    private io.github.samzhu.skillshub.shared.security.UserResolver userResolver;
+
     /**
      * S122: GET /skills/{id} 加 @PreAuthorize("hasPermission(#id, 'Skill', 'read')") 後，
      * 本 test 僅驗 JSON contract 不關心 ACL 邏輯；stub permissionEvaluator 一律放行避免

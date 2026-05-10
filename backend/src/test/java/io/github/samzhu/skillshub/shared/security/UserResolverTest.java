@@ -61,6 +61,21 @@ class UserResolverTest extends RepositorySliceTestBase {
     }
 
     @Test
+    @DisplayName("AC-7: T05 sub fallback — 老 install command 用 Google sub raw 仍 resolve")
+    @Tag("AC-7")
+    void resolveByOauthSubBackwardCompat() {
+        // 老 install command 用 OAuth sub raw（"111161306011023995106"）— 4 條 fallback 鏈最後一條
+        var userId = "u_dddff";
+        var googleSub = "111161306011023995106";
+        repo.save(User.createNew(userId, "google", googleSub,
+                "alice-sub@example.com", "Alice", "alice-sub-" + uniqueSuffix(),
+                null, Instant.now()));
+
+        // 直接傳 sub raw — 不像 user_id 格式、不含 @、handle 表沒對應 → 最後 fallback findByOauthProviderAndSub
+        assertThat(resolver.resolveByEmailHandleOrId(googleSub)).contains(userId);
+    }
+
+    @Test
     @DisplayName("AC-7: 不存在 → Optional.empty()")
     @Tag("AC-7")
     void resolveNonexistent() {

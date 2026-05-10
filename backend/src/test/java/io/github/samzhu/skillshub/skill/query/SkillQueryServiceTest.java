@@ -48,6 +48,8 @@ class SkillQueryServiceTest {
     @Mock ApplicationEventPublisher eventPublisher;
     @Mock CurrentUserProvider currentUserProvider;
     @Mock AclPrincipalExpander aclExpander;
+    /** S154-T05: enrichAuthorIdentity 走 userRepo.findById；mock 預設返 empty → snapshot fallback path */
+    @Mock io.github.samzhu.skillshub.shared.security.UserRepository userRepo;
 
     @InjectMocks
     SkillQueryService queryService;

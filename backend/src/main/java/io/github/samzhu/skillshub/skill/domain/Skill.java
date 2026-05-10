@@ -135,6 +135,11 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     @Transient private List<String> compatibility = List.of();
     @Transient private long versionCount;
     @Transient private long openFlagCount;
+    // S154 — author identity enrichment fields (LEFT JOIN users at query time，per AC-6)；
+    // 來源 SkillQueryService.enrichAuthorIdentity()；users row 缺時走 authorNameSnapshot fallback。
+    @Transient @org.jspecify.annotations.Nullable private String authorDisplayName;
+    @Transient @org.jspecify.annotations.Nullable private String authorHandle;
+    @Transient @org.jspecify.annotations.Nullable private String authorEmail;
     @Version
     @JsonIgnore
     private Long version;
@@ -412,6 +417,32 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     public List<String> getCompatibility() { return compatibility == null ? List.of() : List.copyOf(compatibility); }
     public long getVersionCount() { return versionCount; }
     public long getOpenFlagCount() { return openFlagCount; }
+    /** S154 — display name from users LEFT JOIN（fallback authorNameSnapshot 當 users row 已 deleted）。*/
+    @org.jspecify.annotations.Nullable
+    public String getAuthorDisplayName() { return authorDisplayName; }
+    /** S154 — platform handle from users LEFT JOIN；users row 缺時 null（snapshot 不含 handle）。*/
+    @org.jspecify.annotations.Nullable
+    public String getAuthorHandle() { return authorHandle; }
+    /** S154 — author email；只在 users.contact_email_public=true 時 set，否則 null（API 隱藏）。*/
+    @org.jspecify.annotations.Nullable
+    public String getAuthorEmail() { return authorEmail; }
+
+    /**
+     * S154 — populate author identity fields from users LEFT JOIN result（per AC-6）。
+     *
+     * @param displayName  從 {@link io.github.samzhu.skillshub.shared.security.DisplayNameResolver} 計算（5-layer fallback）；
+     *                     users row 缺時可傳 {@code authorNameSnapshot} 當 fallback；caller responsibility
+     * @param handle       users.handle；無 row 傳 null
+     * @param email        users.email；只在 {@code contact_email_public=true} 時傳；否則傳 null（API 隱藏 author email）
+     */
+    public Skill withAuthorIdentity(@org.jspecify.annotations.Nullable String displayName,
+                                    @org.jspecify.annotations.Nullable String handle,
+                                    @org.jspecify.annotations.Nullable String email) {
+        this.authorDisplayName = displayName;
+        this.authorHandle = handle;
+        this.authorEmail = email;
+        return this;
+    }
 
     /** S142b: populate read-only detail fields; returns this for fluent chaining. */
     public Skill withDetail(boolean verified, Instant latestVersionPublishedAt, String license,

@@ -52,6 +52,10 @@ class SkillsApiAnonymousTest extends WebMvcSliceTestBase {
     @MockitoBean
     private SkillFileDiffService skillFileDiffService;
 
+    /** S154-T05: SkillQueryController 注入 UserResolver — slice 不 scan service，需 mock。 */
+    @MockitoBean
+    private io.github.samzhu.skillshub.shared.security.UserResolver userResolver;
+
     @Test
     @Tag("AC-8")
     @DisplayName("AC-8: GET /api/v1/skills 無 token → 200 (S001 行為保留)")
