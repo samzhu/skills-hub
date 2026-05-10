@@ -137,6 +137,8 @@ public class SkillQueryController {
 			@RequestParam(required = false) String category,
 			@RequestParam(required = false) String author,
 			@PageableDefault(size = 20) Pageable pageable) {
+		// S159d: page<0 / size<=0 / size>100 已由 PageableValidationInterceptor 在 preHandle
+		// 階段 fail-fast（resolver 會 silent clamp，故 controller 端檢查抓不到，須前移）
 		return queryService.search(keyword, category, author, pageable);
 	}
 

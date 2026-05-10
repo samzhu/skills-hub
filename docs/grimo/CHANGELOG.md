@@ -1,5 +1,44 @@
 # Changelog
 
+## [v4.44.0] — Pageable 非法值拒收（S159d；2026-05-10）
+
+> `?page=-1` 或 `?size=999999` 過去由 Spring Data Web `PageableHandlerMethodArgumentResolver` silent clamp（page<0→0、size<=0→default、size>maxPageSize→clamp），用戶看到的回應「正常」但邏輯不對 — debug 困難，且大 size 會觸發大量 DB row fetch / JSON 反序列化造成 Cloud Run instance OOM 風險。本版於 SkillQuery 端點加 `PageableValidationInterceptor` 在 preHandle 階段攔 raw query string 數值，違規一律 400 + `INVALID_PAGEABLE` error code。
+>
+> 對齊 S159a `UnknownQueryParamInterceptor` 的 fail-fast 哲學；S159 META 進度 2/4（S159a + S159d）；S159b（category normalize）/ S159c（`?tag=` filter）留 backlog。
+
+### Add — Pageable validation interceptor
+
+- 新增 `shared/api/InvalidPageableException.java`：extends `IllegalArgumentException`；專屬 `INVALID_PAGEABLE` error code 區隔於 generic `VALIDATION_ERROR`，前端 i18n 可細分 pagination 違規
+- 新增 `shared/api/PageableValidationInterceptor.java`：`HandlerInterceptor.preHandle` 動態偵測 `HandlerMethod` 含 `Pageable` 參數時觸發；檢 raw `request.getParameter("page")` / `getParameter("size")` 字串，違規拋 `InvalidPageableException`；非 GET / 無 `Pageable` 參數 / 非 `HandlerMethod` 全部跳過；上限常數 `MAX_PAGE_SIZE = 100`
+- 改 `shared/config/WebMvcConfig.java`：註冊 interceptor 套同 S159a 之 path scope（`/api/v1/skills/**` + `/api/v1/skills` + `/api/v1/categories`）
+- 改 `shared/api/GlobalExceptionHandler.java`：加 `@ExceptionHandler(InvalidPageableException)` → 400 `INVALID_PAGEABLE`（most-specific 早於 generic `IllegalArgumentException` handler 匹配）
+- 改 `skill/query/SkillQueryController.java`：inline 註解標 S159d 由 interceptor 處理（無實質程式變動）
+
+### Design correction（spec → impl）
+
+原 spec §2.2 預想「controller 收 `Pageable` 起手 call `PageableValidator.validate(pageable)`」。實作驗證 Spring 行為發現此路不通：`PageableHandlerMethodArgumentResolver.parseAndApplyBoundaries()` 對 raw query string silent clamp，等到 `pageable` 進到 controller method body 時，違規值已被 silent fixed。改走 `HandlerInterceptor.preHandle`（早於 argument resolution）攔 raw 值；spec §2.2a/b 補記設計修正過程。
+
+### Tests
+
+- 新增 `PageableValidationInterceptorTest`：13/13 PASS（4 reject + 4 accept + 5 跳過情境，含 size=100 邊界 / size=999999 OOM 防護 / page=abc 非數值 silent fallthrough / non-GET / 無 Pageable param / 非 HandlerMethod）
+- 改 `GlobalExceptionHandlerTest`：+1 case `handleInvalidPageable`（44/44 PASS，從 43 → 44）
+- `UnknownQueryParamInterceptorTest`：11/11 PASS（regression check S159a 不受影響）
+- `SkillQueryControllerApiContractTest`：2/2 PASS（既有 controller contract 不破）
+
+### Verify metric
+
+```
+./gradlew test --tests PageableValidation* --tests GlobalExceptionHandler* \
+              --tests UnknownQueryParam* --tests SkillQueryControllerApi*
+70/70 PASS · BUILD SUCCESSFUL in 1m 24s
+```
+
+### META progress
+
+S159 query API hardening — 2/4 sub-specs shipped（S159a v4.43.0 + S159d v4.44.0）；剩 S159b（category normalize）+ S159c（`?tag=` filter）。
+
+---
+
 ## [v4.43.0] — Unknown query param 拒收（S159a；2026-05-09）
 
 > 拼錯 query 參數例如 `?categroy=Security` 過去 silent fall-through 回全部 list，user 誤以為「沒命中」其實參數名錯。本版於 SkillQuery / categories 端點加 `UnknownQueryParamInterceptor`，未在 controller method 宣告的 query 參數 fail-fast 回 400 + 列出未知參數名。

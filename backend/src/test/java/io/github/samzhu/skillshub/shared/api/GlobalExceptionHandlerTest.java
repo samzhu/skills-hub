@@ -515,4 +515,18 @@ class GlobalExceptionHandlerTest {
                 .contains("categroy")
                 .contains("fooBar");
     }
+
+    @Test
+    @DisplayName("S159d InvalidPageableException → 400 INVALID_PAGEABLE + 原訊息")
+    void invalidPageableReturns400WithCode() {
+        var ex = new InvalidPageableException("size must be <= 100");
+
+        ResponseEntity<ErrorResponse> response = handler.handleInvalidPageable(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        ErrorResponse body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.error()).isEqualTo("INVALID_PAGEABLE");
+        assertThat(body.message()).isEqualTo("size must be <= 100");
+    }
 }

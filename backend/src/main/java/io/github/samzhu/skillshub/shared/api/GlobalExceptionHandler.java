@@ -58,6 +58,24 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
+	 * S159d — Pageable 範圍違規（{@code page<0} / {@code size<=0} / {@code size>100}）→ 400
+	 * + {@code INVALID_PAGEABLE} error code。
+	 *
+	 * <p>{@link InvalidPageableException} extends {@link IllegalArgumentException}；most-specific-first
+	 * 規則保證本 handler 早於下方 generic handler 匹配，前端 i18n 可從 {@code INVALID_PAGEABLE}
+	 * 細分 pagination 違規 vs. 一般 {@code VALIDATION_ERROR}。
+	 */
+	@ExceptionHandler(InvalidPageableException.class)
+	ResponseEntity<ErrorResponse> handleInvalidPageable(InvalidPageableException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", "INVALID_PAGEABLE")
+				.addKeyValue("message", ex.getMessage())
+				.log("Invalid pageable parameter");
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(new ErrorResponse("INVALID_PAGEABLE", ex.getMessage(), Instant.now()));
+	}
+
+	/**
 	 * 處理輸入驗證失敗（{@link IllegalArgumentException}）。
 	 *
 	 * <p>通常由業務邏輯驗證不通過時拋出，回傳 HTTP 400 Bad Request。
