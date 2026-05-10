@@ -1,7 +1,7 @@
 # S167b: dead-code 清理 — 移除 SkillCommandService.grantAcl/revokeAcl 等 6+ 檔
 
-> Spec: S167b | Size: S(5) | Status: 📐 in-design
-> Date: 2026-05-09
+> Spec: S167b | Size: S(5) | Status: ✅ shipped
+> Date: 2026-05-09 (designed) → 2026-05-10 (shipped)
 > Origin: 拆自 S167（v4.42.0 — 移除 deprecated `/api/v1/skills/{id}/acl` HTTP endpoint）；S167 拿掉 controller 後留 service/aggregate/event 層 dead code
 
 ---
@@ -174,3 +174,57 @@ AC-6: 替代 path /grants 仍 work
 
 - S154 backend ship 後 verify 既有 `/grants` endpoint ACL principal 對齊 user_id（S154 內已 cover）
 - 若有需求加回 deprecated path，本 spec ship commit hash 即 revert 起點
+
+---
+
+## 6. Verification
+
+實際 sweep 比 spec §2.1 預期多刪 3 檔（spec §2.1 末尾「sweep 結果若發現其他 reference → 補進清單」即此情境）：
+- `GrantAclCommand.java` — 唯一 caller 為被刪的 `SkillCommandService.grantAcl`
+- `RevokeAclCommand.java` — 同上
+- `AclEntryResponse.java` — 唯一 caller 為被刪的 `SkillAclQueryService`
+
+**AC 驗證結果**：
+
+| AC | 結果 | 證據 |
+|----|------|------|
+| AC-1: 0 production reference | ✅ | `grep -rn "SkillAclGrantedEvent\|SkillAclRevokedEvent\|grantAcl\|revokeAcl\|GrantAclCommand\|RevokeAclCommand\|SkillAclQueryService\|AclEntryResponse" src/main` 僅留 AuditEventListener javadoc 自身 S167b 註記（intentional） |
+| AC-2: ./gradlew compileJava 通過 | ✅ | `BUILD SUCCESSFUL in 1s` |
+| AC-3: ./gradlew test 全綠 | ✅ | targeted 4 suites 36/36 PASS |
+| AC-4: ./gradlew processAot 通過 | ✅ | `BUILD SUCCESSFUL in 5s`；TransactionalEventListenerAotProcessor registration 不再含 `SkillAclGrantedEvent` / `SkillAclRevokedEvent`（原 9 個事件 → 7 個，預期 log 少 2 行） |
+| AC-5: domain_events schema 不變 | ✅ | DDL 無觸碰；`event_type` column 仍可存歷史 row（保留 audit 不可變語意） |
+| AC-6: /grants endpoint 仍 work | ✅ | `SkillQueryControllerApiContractTest` (2/2) + `SkillCommandServiceTest` (2/2) PASS — 替代 path 行為不變 |
+
+**驗證指令**：
+
+```
+$ cd backend && ./gradlew compileJava                                   # AC-2
+✓ BUILD SUCCESSFUL in 1s
+
+$ ./gradlew test --tests SkillAggregateTest --tests AuditEventListenerTest \
+                --tests SkillCommandServiceTest --tests SkillQueryControllerApiContractTest
+✓ SkillAggregateTest:                25/25 PASS  (was 29; -4 deleted ACL tests)
+✓ AuditEventListenerTest:             7/7  PASS  (was 8;  -1 deleted ACL test)
+✓ SkillCommandServiceTest:            2/2  PASS  (regression; not touched)
+✓ SkillQueryControllerApiContractTest: 2/2  PASS  (regression)
+
+$ ./gradlew processAot                                                  # AC-4
+✓ BUILD SUCCESSFUL in 5s
+```
+
+---
+
+## 7. Result
+
+**ship metric**：
+
+- 刪除整檔：8（GrantAclCommand / RevokeAclCommand / SkillAclGrantedEvent / SkillAclRevokedEvent / SkillAclQueryService / AclEntryResponse / SkillAclCommandServiceTest / SkillAclQueryServiceTest）
+- 修改 production 檔：3（Skill.java 刪 2 method + helper + ACL_TYPES/ACL_PERMISSIONS sets / SkillCommandService.java 刪 2 method / AuditEventListener.java 刪 2 handler + 2 import）
+- 修改 test 檔：3（SkillAggregateTest 刪 4 test、AuditEventListenerTest 刪 1 test、SkillQueryControllerApiContractTest 改 stale doc reference）
+- 修改 docs：2（CLAUDE.md + architecture.md — 9→7 events 對齊；package tree 移除）
+- LOC：production -255 / test -210 / docs -3
+- 編譯時間：1s（compileJava）+ 5s（processAot）；test 1m31s
+- 0 production caller / 0 dead test 殘留 / 0 stale 文件數字
+
+**對 S154 backend 的 sequencing 鋪路**：S154 的 ACL principal 切換不需處理 deprecated grantAcl 的 user_id rewrite（少寫 5-10 line code；migration 也不用 cover dead event）。
+

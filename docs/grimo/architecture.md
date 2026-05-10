@@ -33,7 +33,7 @@
 | **security** | **Event-driven service** | 無 | 訂閱 `SkillVersionPublishedEvent` 觸發風險評估，透過 `SkillVersion.attachRiskAssessment` 回寫；S142b 加 `SecurityCategoryMapper`（4-quad partition / scoring）、`SecurityReportService` + `SecurityReportController`（GET /security-report） |
 | **search** | **Read-side projection** | 無 | 消費 skill events 建構搜尋索引（keyword + semantic） |
 | **analytics** | **Read-side projection** | 無 | 消費 download events 建構統計數據 |
-| **audit** | **Cross-cutting listener** | 無 | 訂閱所有 9 個 Skill domain events 寫入 `domain_events` audit log（async + idempotent；S024 引入） |
+| **audit** | **Cross-cutting listener** | 無 | 訂閱所有 7 個 Skill domain events 寫入 `domain_events` audit log（async + idempotent；S024 引入；S167b 移除 SkillAclGranted/Revoked 兩個 dead events） |
 | **score** | **Async LLM judge** | `SkillScore`（per-axis evaluation row） | S135a 引入；訂閱 `SkillVersionPublishedEvent` → 3-axis 品質評分（VALIDATION rule-based + IMPLEMENTATION/ACTIVATION Gemini 2.5 Flash LLM judge）→ 寫 `skill_scores` 表；獨立 `qualityExecutor` pool（corePool=1, queue=500）避免擠 `applicationTaskExecutor`；S142b 加 `SkillScoreCalculator`（composite `round(0.6 × quality + 0.4 × security)` → `skillScore` field in `/scores` response） |
 | **storage** | **Infrastructure service** | 無 | 傳統 service，GCS 操作 |
 
@@ -70,7 +70,7 @@ Command → Service.@Transactional method:
     - 各 listener 完成 → event_publication.completion_date = now()
 ```
 
-### Domain Events（skill domain；9 個）
+### Domain Events（skill domain；7 個 — S167b 後）
 
 | Event | Trigger | Payload |
 |-------|---------|---------|
@@ -79,10 +79,15 @@ Command → Service.@Transactional method:
 | `SkillVersionPublishedFromAggregate` | `Skill.recordVersionPublished(version)`（state-change marker） | version |
 | `SkillSuspendedEvent` | `Skill.suspend(cmd)` | reason, suspendedBy |
 | `SkillReactivatedEvent` | `Skill.reactivate(cmd)` | reason |
-| `SkillAclGrantedEvent` | `Skill.grantAcl(cmd)` | type, principal, permission, grantedBy |
-| `SkillAclRevokedEvent` | `Skill.revokeAcl(cmd)` | type, principal, permission, revokedBy |
 | `SkillDownloadedEvent` | `Skill.recordDownload()` | version, eventId |
 | `SkillRiskAssessedEvent` | `SkillVersion.attachRiskAssessment(map)` | skillId, version, level, findings |
+
+> **S167b 移除（2026-05-10 v4.45.0）**：`SkillAclGrantedEvent` / `SkillAclRevokedEvent` 連同
+> `Skill.grantAcl/revokeAcl` 充血方法、`SkillCommandService.grantAcl/revokeAcl` orchestration、
+> `SkillAclQueryService` 全部清空。寫 ACL 路徑唯一入口為 S114a `SkillGrantController` →
+> `SkillGrantService` → `skill_grants` 表 → `SkillAclProjectionListener` 重建 `skills.acl_entries`
+> 投影。歷史 `domain_events` row（`event_type IN ('SkillAclGranted', 'SkillAclRevoked')`）保留不刪
+> （audit log 不可變）。
 
 ### Code Pattern
 
@@ -107,7 +112,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         this.status = this.status.suspend();          // state machine guard
         registerEvent(new SkillSuspendedEvent(id, cmd.reason(), cmd.suspendedBy()));
     }
-    // ... grantAcl / revokeAcl / recordDownload / etc — 同樣 mutate + register pattern
+    // ... reactivate / recordDownload / etc — 同樣 mutate + register pattern
 }
 
 // Service — 3-line orchestration
@@ -248,7 +253,6 @@ io.github.samzhu.skillshub
 │   │   ├── SkillStatus.java    (enum: DRAFT → PUBLISHED → SUSPENDED；state machine guard)
 │   │   ├── SkillCreatedEvent / SkillVersionPublishedEvent / SkillVersionPublishedFromAggregate
 │   │   ├── SkillSuspendedEvent / SkillReactivatedEvent
-│   │   ├── SkillAclGrantedEvent / SkillAclRevokedEvent
 │   │   ├── SkillDownloadedEvent / SkillRiskAssessedEvent
 │   ├── command/                ← Command Side（3-line orchestration）
 │   │   ├── CreateSkillCommand / PublishVersionCommand / SuspendCommand / etc

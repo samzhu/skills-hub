@@ -1,5 +1,64 @@
 # Changelog
 
+## [v4.45.0] — ACL grant/revoke dead code 清理（S167b；2026-05-10）
+
+> v4.42.0（S167）拿掉 deprecated `/api/v1/skills/{id}/acl` HTTP endpoint，但 service / aggregate / event / handler / test 層 6+ 檔 dead code 還在 — 新人讀以為這 path 還活著。本版全清，砍掉 8 個整檔 + 修 3 個 production + 3 個 test 檔。寫 ACL 路徑唯一入口為 S114a `SkillGrantController` → `SkillGrantService` → `skill_grants` 表 → `SkillAclProjectionListener` 重建 `skills.acl_entries` 投影，不再經 aggregate 充血方法。
+>
+> Sequencing 價值：S154 backend 即將大改 ACL principal 機制，dead code 先清掉 → S154 的 ACL principal 切換不需處理 deprecated grantAcl 的 user_id rewrite（少寫 5-10 line code）。
+
+### Remove — Files deleted
+
+- `skill/command/GrantAclCommand.java`：dead command record（唯一 caller 為被刪的 `SkillCommandService.grantAcl`）
+- `skill/command/RevokeAclCommand.java`：同上
+- `skill/domain/SkillAclGrantedEvent.java`：domain event；無 production caller
+- `skill/domain/SkillAclRevokedEvent.java`：同上
+- `skill/query/SkillAclQueryService.java`：被 `/grants` endpoint 對應 service 取代
+- `skill/query/AclEntryResponse.java`：唯一 producer 為被刪的 `SkillAclQueryService`
+- 對應 test：`SkillAclCommandServiceTest.java`（4 tests 全 dead）+ `SkillAclQueryServiceTest.java`
+
+### Modify — Production 端
+
+- 改 `skill/domain/Skill.java`：刪 `grantAcl(GrantAclCommand)` + `revokeAcl(RevokeAclCommand)` 充血方法、`validateAclTuple` private helper、`ACL_TYPES` / `ACL_PERMISSIONS` static set、`entry()` private helper、相關 imports；javadoc 充血方法清單同步更新（含 S167b 路徑遷移註記）
+- 改 `skill/command/SkillCommandService.java`：刪 `grantAcl(GrantAclCommand cmd)` + `revokeAcl(RevokeAclCommand cmd)` 兩個 `@Transactional` orchestration method；class javadoc 同步更新
+- 改 `audit/AuditEventListener.java`：刪 `on(SkillAclGrantedEvent)` + `on(SkillAclRevokedEvent)` 兩個 `@ApplicationModuleListener` handler；class javadoc 訂閱事件表從 9 個更新為 7 個；imports 清理
+
+### Modify — Test 端
+
+- 改 `skill/domain/SkillAggregateTest.java`：刪 4 個 AC-8 test（recordAclGrantedAppendsAndRegistersEvent / grantAclDuplicateThrows / revokeAclRemovesAndRegistersEvent / revokeAclNotFoundThrows）；保留 `getAclEntriesReturnsImmutableCopy`（測 `getAclEntries()` getter 仍 work）；imports 清理；class javadoc 更新
+- 改 `audit/AuditEventListenerTest.java`：刪 `aclEvents_writeAuditRows` test method；imports 清理
+- 改 `skill/query/SkillQueryControllerApiContractTest.java`：javadoc 中 stale `SkillAclQueryServiceTest` 引用更新
+
+### Modify — Docs
+
+- 改 `CLAUDE.md`：「9 個 Skill domain events」→「7 個」+ S167b 移除註記
+- 改 `docs/grimo/architecture.md`：audit module 描述 9→7；Domain Events 表移除 SkillAcl* 兩 row + 加 S167b 移除 callout block；package tree 移除 SkillAclGrantedEvent / SkillAclRevokedEvent 行；Code Pattern 範例註解 grantAcl → reactivate
+
+### NOT removed
+
+- `Skill.getAclEntries()` getter — 仍由 JSON serialization (Detail view) 使用
+- `Skill.aclEntries` 欄位 + `skills.acl_entries` 表 column — `SkillAclProjectionListener` 重建用
+- `domain_events` 表內歷史 `SkillAclGranted` / `SkillAclRevoked` row — audit log 不可變語意保留
+
+### Verify metric
+
+```
+./gradlew compileJava                              ✓ BUILD SUCCESSFUL in 1s
+./gradlew processAot                               ✓ BUILD SUCCESSFUL in 5s（registration 少 2 行）
+./gradlew test --tests SkillAggregateTest \
+              --tests AuditEventListenerTest \
+              --tests SkillCommandServiceTest \
+              --tests SkillQueryControllerApiContractTest
+✓ 36/36 PASS · 0 failures（SkillAggregateTest 25 +AuditEventListenerTest 7 +SkillCommandServiceTest 2 +API contract 2）
+```
+
+### Lessons
+
+- **Dead code 走 sweep 路徑可超出 spec §4 預估**：spec 列了 6+ 檔，實作 grep 後找出 8 個整檔 + 3 個 helper（含 GrantAclCommand / RevokeAclCommand / AclEntryResponse 沒被 spec §4 列出的）。這正是 spec §2.1 末尾「sweep 結果若發現其他 reference → 補進清單」覆蓋的場景
+- **AC-4 processAot 是這類 spec 的硬指標**：dead event 拿掉後若 AOT registration 失敗 = 還有 hidden caller。本次 registration log 少了 2 行符合預期
+- **Audit log 連動 gap 待 follow-up**：S114a 的 SkillGrantedEvent / SkillRevokedEvent 目前 AuditEventListener 沒對應 handler，新 ACL 流程的 audit trail 是 known gap（不在 S167b 範圍內，candidate follow-up spec）
+
+---
+
 ## [v4.44.0] — Pageable 非法值拒收（S159d；2026-05-10）
 
 > `?page=-1` 或 `?size=999999` 過去由 Spring Data Web `PageableHandlerMethodArgumentResolver` silent clamp（page<0→0、size<=0→default、size>maxPageSize→clamp），用戶看到的回應「正常」但邏輯不對 — debug 困難，且大 size 會觸發大量 DB row fetch / JSON 反序列化造成 Cloud Run instance OOM 風險。本版於 SkillQuery 端點加 `PageableValidationInterceptor` 在 preHandle 階段攔 raw query string 數值，違規一律 400 + `INVALID_PAGEABLE` error code。

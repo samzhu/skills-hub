@@ -19,9 +19,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonView;
 
 import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
-import io.github.samzhu.skillshub.skill.command.GrantAclCommand;
 import io.github.samzhu.skillshub.skill.command.ReactivateCommand;
-import io.github.samzhu.skillshub.skill.command.RevokeAclCommand;
 import io.github.samzhu.skillshub.skill.command.SuspendCommand;
 
 /**
@@ -39,10 +37,13 @@ import io.github.samzhu.skillshub.skill.command.SuspendCommand;
  *   <li>{@link #recordVersionPublished(String)} — 新版發布；DRAFT→PUBLISHED transition</li>
  *   <li>{@link #suspend(SuspendCommand)} — 停用；PUBLISHED→SUSPENDED</li>
  *   <li>{@link #reactivate(ReactivateCommand)} — 重啟；SUSPENDED→PUBLISHED</li>
- *   <li>{@link #grantAcl(GrantAclCommand)} — 授權 ACL entry（業務不變量：不重複）</li>
- *   <li>{@link #revokeAcl(RevokeAclCommand)} — 撤銷 ACL entry（業務不變量：必須存在）</li>
  *   <li>{@link #recordDownload()} — 累計下載計數 + 發 SkillDownloadedEvent</li>
  * </ul>
+ *
+ * <p>S167b — ACL grant/revoke 經 aggregate 充血方法的舊 path 已移除（v4.42.0 之 S167 拿掉 HTTP
+ * controller，留下的 aggregate / event / handler dead code 全清）。寫 ACL 路徑唯一入口為 S114a
+ * {@code SkillGrantController} → {@code SkillGrantService} → {@code skill_grants} 表 +
+ * {@code SkillAclProjectionListener} 重建 {@code aclEntries} 投影。
  *
  * @see SkillRepository
  * @see SkillCreatedEvent
@@ -237,29 +238,6 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     private static final java.util.regex.Pattern VERSION_REGEX =
             java.util.regex.Pattern.compile("^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$");
 
-    /** S055: ACL principal 命名空間 — controller 預期 user/role/group 三類，aggregate 守 invariant。 */
-    private static final java.util.Set<String> ACL_TYPES =
-            java.util.Set.of("user", "role", "group");
-
-    /** S055: ACL permission 動詞 — 與 architecture.md ACL spec 對齊。 */
-    private static final java.util.Set<String> ACL_PERMISSIONS =
-            java.util.Set.of("read", "write", "delete", "suspend", "reactivate");
-
-    /** S055: ACL tuple 統一驗證 — grantAcl + revokeAcl 共用，違反 → 400 VALIDATION_ERROR。 */
-    private static void validateAclTuple(String type, String principal, String permission) {
-        if (type == null || !ACL_TYPES.contains(type)) {
-            throw new IllegalArgumentException(
-                    "ACL type must be one of " + ACL_TYPES + " (got: " + type + ")");
-        }
-        if (principal == null || principal.isBlank()) {
-            throw new IllegalArgumentException("ACL principal must not be blank");
-        }
-        if (permission == null || !ACL_PERMISSIONS.contains(permission)) {
-            throw new IllegalArgumentException(
-                    "ACL permission must be one of " + ACL_PERMISSIONS + " (got: " + permission + ")");
-        }
-    }
-
     /**
      * SkillQueryService 動態 SQL search 場景的 row → entity 物化 factory。
      * 一般查詢路徑（findById）走 {@link SkillRepository}，由 Spring Data JDBC 自動 mapping。
@@ -353,44 +331,6 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     }
 
     /**
-     * 授權 ACL entry。
-     * <ul>
-     *   <li>業務不變量：相同 {@code type:principal:permission} 不可重複 grant → 違反拋 {@link IllegalStateException}</li>
-     *   <li>{@code aclEntries} 為 {@link java.util.ArrayList}（mutable）；行內 add — {@code repo.save()}
-     *       觸發單條 {@code UPDATE skills SET acl_entries = ?, ...}（per ADR-002 §2.4 — 避開
-     *       {@code @MappedCollection} delete-and-reinsert 雷）</li>
-     * </ul>
-     */
-    public void grantAcl(GrantAclCommand cmd) {
-        // S055: aggregate 守 ACL tuple invariant — type/principal/permission 缺失或不合法 → 400
-        validateAclTuple(cmd.type(), cmd.principal(), cmd.permission());
-        var entry = entry(cmd.type(), cmd.principal(), cmd.permission());
-        if (aclEntries.contains(entry)) {
-            throw new IllegalStateException("ACL entry already exists: " + entry);
-        }
-        aclEntries.add(entry);
-        this.updatedAt = Instant.now();
-        registerEvent(new SkillAclGrantedEvent(
-                id, cmd.type(), cmd.principal(), cmd.permission(), cmd.grantedBy()));
-    }
-
-    /**
-     * 撤銷 ACL entry。
-     * 業務不變量：必須存在對應 entry 才可 revoke；不存在拋 {@link IllegalStateException}。
-     */
-    public void revokeAcl(RevokeAclCommand cmd) {
-        // S055: 同 grant 守 ACL tuple invariant
-        validateAclTuple(cmd.type(), cmd.principal(), cmd.permission());
-        var entry = entry(cmd.type(), cmd.principal(), cmd.permission());
-        if (!aclEntries.remove(entry)) {
-            throw new IllegalStateException("ACL entry not found: " + entry);
-        }
-        this.updatedAt = Instant.now();
-        registerEvent(new SkillAclRevokedEvent(
-                id, cmd.type(), cmd.principal(), cmd.permission(), cmd.revokedBy()));
-    }
-
-    /**
      * 累計下載計數 + register {@link SkillDownloadedEvent}。
      * {@code latestVersion} 用作 event 的 version 欄位；呼叫前必須已發布過版本。
      */
@@ -464,10 +404,6 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     // ============================================================================
     // Helpers
     // ============================================================================
-
-    private static String entry(String type, String principal, String permission) {
-        return type + ":" + principal + ":" + permission;
-    }
 
     /**
      * 從 frontmatter Map 解析 {@code allowed-tools} space-separated 字串為 List。

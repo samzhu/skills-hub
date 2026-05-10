@@ -116,7 +116,7 @@
 | S166c | `@SpringBootTest` 全 context cluster C 真實 fail 排查（S016 / S120 e2e / RiskAssessment） | S(5) | S166a ✅ | ⛔ 取消 — V01 全綠後 cluster C 失敗也消失（S120 dual-source race 由 SkillsHubAuthE2ETest 改走 `/grants` 修） |
 | S166d | AOT-doc cleanup — README/CONTRIBUTING/qa-strategy/architecture/ADR-007/playwright-expert/`e2e/playwright.config.ts` 移 `-x processAot` 殘留 | XS(1) | S166a ✅ | ✅ v4.41.0 — micro-spec ship 同 v4.41.0 |
 | S167 | 移除 deprecated `/api/v1/skills/{id}/acl` HTTP layer — controller + test + frontend doc + S016/E2E test 對齊 `/grants` shape | XS(2) | S114a ✅ + v4.41.0 deprecation log | ✅ v4.42.0 — HTTP 層拿掉；dead code 留 S167b |
-| S167b | dead-code 清理 — `SkillCommandService.grantAcl/revokeAcl` + `Skill.grantAcl/revokeAcl` + `SkillAclGrantedEvent/Revoked` + `SkillAclQueryService` + `AuditEventListener` 對應 handlers + 4 個 unit test | S(5) | S167 ✅ | 📐 in-design — spec file 完成 2026-05-09；建議 S154 backend 前先 ship（sequencing） |
+| S167b | dead-code 清理 — `SkillCommandService.grantAcl/revokeAcl` + `Skill.grantAcl/revokeAcl` + `SkillAclGrantedEvent/Revoked` + `SkillAclQueryService` + `AuditEventListener` 對應 handlers + 4 個 unit test | S(5) | S167 ✅ | ✅ v4.45.0 — 8 整檔 + 3 production + 3 test 修改；36/36 PASS；S154 backend sequencing 鋪路 |
 | S2XX-cache | 未來 re-introduce ACL eval cache（profiling-driven，明確 SLA 觸發） | — | production traffic 起來 | ⏸ deferred |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |

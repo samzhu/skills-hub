@@ -112,7 +112,7 @@ skills-hub/
   - `repo.save()` 透過 `@DomainEvents` proxy interceptor 自動 publish 至 Modulith `event_publication` outbox（同 TX；at-least-once）
   - AFTER_COMMIT async listeners 訂閱 domain events 維護衍生資料（vector_store / download_events / domain_events audit log）
 - **Security domain (security):** 簡化 ES path 保留（`SkillFlaggedEvent` 由 `FlagService` 直接寫；流量低、event 簡單；無轉向計畫）
-- **Audit (cross-cutting):** `AuditEventListener` 訂閱 9 個 Skill domain events 寫 `domain_events` audit log（async + idempotent；獨立 module 避開 shared → skill cycle）
+- **Audit (cross-cutting):** `AuditEventListener` 訂閱 7 個 Skill domain events 寫 `domain_events` audit log（async + idempotent；獨立 module 避開 shared → skill cycle；S167b 移除 SkillAclGranted/Revoked）
 - **Supporting (search, analytics):** Read-side projections consuming domain events（不變）
 - **Infrastructure (storage):** Traditional service (GCS operations)（不變）
 - **Event bus:** Spring Modulith `ApplicationEventPublisher` + Event Publication Registry outbox（`event_publication` 表）

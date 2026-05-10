@@ -13,9 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.AbstractAggregateRoot;
 
 import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
-import io.github.samzhu.skillshub.skill.command.GrantAclCommand;
 import io.github.samzhu.skillshub.skill.command.ReactivateCommand;
-import io.github.samzhu.skillshub.skill.command.RevokeAclCommand;
 import io.github.samzhu.skillshub.skill.command.SuspendCommand;
 
 /**
@@ -25,10 +23,10 @@ import io.github.samzhu.skillshub.skill.command.SuspendCommand;
  * <ul>
  *   <li>T1 AC-2 partial — {@link Skill#create(CreateSkillCommand)} factory + S016 owner ACL seed +
  *       {@link Skill#recordVersionPublished(String)} state transition</li>
- *   <li>T2 AC-2 full — recordSuspended / recordReactivated / recordAclGranted / recordAclRevoked /
- *       recordDownload mutate state + register events</li>
+ *   <li>T2 AC-2 full — recordSuspended / recordReactivated / recordDownload mutate state + register events</li>
  *   <li>T2 AC-6 — {@link Skill#recordVersionPublished} on SUSPENDED throws state machine guard</li>
- *   <li>T2 AC-8 — recordAclGranted / recordAclRevoked 業務不變量檢查（重複 grant / 不存在 revoke）</li>
+ *   <li>T2 AC-8 — {@link Skill#getAclEntries()} returns unmodifiable view（read-side immutability）。
+ *       S167b 後 grantAcl/revokeAcl aggregate 充血方法已移除，寫 ACL 改走 S114a SkillGrantService。</li>
  * </ul>
  */
 class SkillAggregateTest {
@@ -195,76 +193,6 @@ class SkillAggregateTest {
     // ============================================================================
     // T2 — AC-8: recordAclGranted / recordAclRevoked
     // ============================================================================
-
-    @Test
-    @Tag("AC-8")
-    @DisplayName("AC-8: recordAclGranted append entry to aclEntries + register SkillAclGrantedEvent")
-    void recordAclGrantedAppendsAndRegistersEvent() {
-        // 用 null author 避免 S016 自動 seed user-namespace ACL 干擾本 test
-        // S026 + S114a: null author 仍 seed "public:*:read" public-read entry
-        var skill = Skill.create(new CreateSkillCommand("acl-grant-test", "desc", null, "DevOps"));
-        assertThat(skill.getAclEntries()).containsExactly("public:*:read");
-        clearDomainEvents(skill);
-
-        skill.grantAcl(new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin"));
-
-        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder("public:*:read", "user:alice:read");
-        var events = retrieveDomainEvents(skill);
-        assertThat(events).hasSize(1);
-        assertThat(events.iterator().next()).isInstanceOf(SkillAclGrantedEvent.class);
-    }
-
-    @Test
-    @Tag("AC-8")
-    @DisplayName("AC-8: grantAcl 重複 entry → IllegalStateException + state 不變")
-    void grantAclDuplicateThrows() {
-        var skill = Skill.create(new CreateSkillCommand("acl-dup-test", "desc", null, "DevOps"));
-        skill.grantAcl(new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin"));
-        clearDomainEvents(skill);
-
-        assertThatThrownBy(() -> skill.grantAcl(
-                new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin")))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("already exists");
-
-        // aclEntries 不變（S026 + S114a: null author 預設含 "public:*:read"）
-        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder("public:*:read", "user:alice:read");
-        assertThat(retrieveDomainEvents(skill)).isEmpty();
-    }
-
-    @Test
-    @Tag("AC-8")
-    @DisplayName("AC-8: revokeAcl 移除 entry + register SkillAclRevokedEvent")
-    void revokeAclRemovesAndRegistersEvent() {
-        var skill = Skill.create(new CreateSkillCommand("acl-revoke-test", "desc", null, "DevOps"));
-        skill.grantAcl(new GrantAclCommand(skill.getId(), "user", "alice", "read", "admin"));
-        clearDomainEvents(skill);
-
-        skill.revokeAcl(new RevokeAclCommand(skill.getId(), "user", "alice", "read", "admin"));
-
-        // S026 + S114a: null author 預設 seed "public:*:read"；alice grant 後 revoke 只移 user:alice:read
-        assertThat(skill.getAclEntries()).containsExactly("public:*:read");
-        var events = retrieveDomainEvents(skill);
-        assertThat(events).hasSize(1);
-        assertThat(events.iterator().next()).isInstanceOf(SkillAclRevokedEvent.class);
-    }
-
-    @Test
-    @Tag("AC-8")
-    @DisplayName("AC-8: revokeAcl entry 不存在 → IllegalStateException")
-    void revokeAclNotFoundThrows() {
-        var skill = Skill.create(new CreateSkillCommand("acl-nonex-test", "desc", null, "DevOps"));
-        clearDomainEvents(skill);
-
-        assertThatThrownBy(() -> skill.revokeAcl(
-                new RevokeAclCommand(skill.getId(), "user", "alice", "read", "admin")))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("not found");
-
-        // S026 + S114a: null author 預設 seed "public:*:read"；revoke 失敗後狀態維持
-        assertThat(skill.getAclEntries()).containsExactly("public:*:read");
-        assertThat(retrieveDomainEvents(skill)).isEmpty();
-    }
 
     @Test
     @Tag("AC-8")

@@ -29,7 +29,8 @@ import io.github.samzhu.skillshub.storage.StorageService;
  * <ul>
  *   <li>Aggregate load via {@link SkillRepository#findById}（O(1) row read，取代 v1.5.0 ES O(events) replay）</li>
  *   <li>業務不變量 + state mutation 由 {@link Skill} 充血方法執行（{@code suspend} / {@code reactivate} /
- *       {@code grantAcl} / {@code revokeAcl} / {@code recordVersionPublished}）</li>
+ *       {@code recordVersionPublished}）。S167b 後 ACL grant/revoke 走 S114a {@code SkillGrantService}
+ *       唯一寫入路徑（不再經 aggregate 充血方法）</li>
  *   <li>Persist + publish 由 {@code skillRepo.save / skillVersionRepo.save} 透過 Spring Data
  *       {@code @DomainEvents} 自動觸發；events 進入 Modulith {@code event_publication} outbox 同 TX</li>
  *   <li>Audit log（domain_events table 寫入）由 {@code AuditEventListener} 訂閱 events 後 async 處理 —
@@ -207,36 +208,6 @@ public class SkillCommandService {
 		skill.recordVersionPublished(cmd.version());
 		skillRepo.save(skill);
 		skillVersionRepo.save(SkillVersion.publish(cmd));
-	}
-
-	@Transactional
-	public void grantAcl(GrantAclCommand cmd) {
-		var skill = skillRepo.findById(cmd.skillId())
-				.orElseThrow(() -> new IllegalArgumentException("Skill not found: " + cmd.skillId()));
-		skill.grantAcl(cmd);
-		skillRepo.save(skill);
-		log.atInfo()
-				.addKeyValue("skillId", cmd.skillId())
-				.addKeyValue("type", cmd.type())
-				.addKeyValue("principal", cmd.principal())
-				.addKeyValue("permission", cmd.permission())
-				.addKeyValue("grantedBy", cmd.grantedBy())
-				.log("ACL entry 授權完成");
-	}
-
-	@Transactional
-	public void revokeAcl(RevokeAclCommand cmd) {
-		var skill = skillRepo.findById(cmd.skillId())
-				.orElseThrow(() -> new IllegalArgumentException("Skill not found: " + cmd.skillId()));
-		skill.revokeAcl(cmd);
-		skillRepo.save(skill);
-		log.atInfo()
-				.addKeyValue("skillId", cmd.skillId())
-				.addKeyValue("type", cmd.type())
-				.addKeyValue("principal", cmd.principal())
-				.addKeyValue("permission", cmd.permission())
-				.addKeyValue("revokedBy", cmd.revokedBy())
-				.log("ACL entry 撤銷完成");
 	}
 
 	@Transactional

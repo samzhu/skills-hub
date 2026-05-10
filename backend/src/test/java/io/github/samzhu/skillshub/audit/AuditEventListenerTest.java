@@ -17,8 +17,6 @@ import org.springframework.modulith.test.Scenario;
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.events.DomainEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
-import io.github.samzhu.skillshub.skill.domain.SkillAclGrantedEvent;
-import io.github.samzhu.skillshub.skill.domain.SkillAclRevokedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillReactivatedEvent;
@@ -136,31 +134,6 @@ class AuditEventListenerTest {
                         () -> downloadRowsFor(skillId),
                         rows -> rows.size() >= 2)
                 .andVerify(rows -> assertThat(rows).hasSize(2));
-    }
-
-    @Test
-    @DisplayName("AC-10: SkillAclGranted/Revoked 各自 1 row；同內容重投不疊加")
-    @Tag("AC-10")
-    void aclEvents_writeAuditRows(Scenario scenario) {
-        var skillId = newId();
-
-        scenario.stimulate((tx, pub) -> {
-                    tx.executeWithoutResult(s -> pub.publishEvent(
-                            new SkillAclGrantedEvent(skillId, "user", "bob", "read", "alice")));
-                    tx.executeWithoutResult(s -> pub.publishEvent(
-                            new SkillAclRevokedEvent(skillId, "user", "bob", "read", "alice")));
-                    tx.executeWithoutResult(s -> pub.publishEvent(
-                            new SkillAclGrantedEvent(skillId, "user", "bob", "read", "alice"))); // dedup
-                })
-                .andWaitForStateChange(
-                        () -> auditRowsFor(skillId),
-                        rows -> rows.stream().map(DomainEvent::eventType).toList()
-                                .containsAll(List.of("SkillAclGranted", "SkillAclRevoked")))
-                .andVerify(rows -> {
-                    var types = rows.stream().map(DomainEvent::eventType).toList();
-                    assertThat(types).contains("SkillAclGranted", "SkillAclRevoked");
-                    assertThat(types.stream().filter("SkillAclGranted"::equals).count()).isEqualTo(1);
-                });
     }
 
     @Test

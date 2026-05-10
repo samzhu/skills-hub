@@ -35,7 +35,7 @@ import io.github.samzhu.skillshub.skill.domain.Skill;
  * slice + extends {@link WebMvcSliceTestBase} + {@code @MockitoBean SkillQueryService}：
  * 原 test 透過 POST 真 skill row 走 SkillCommandController → DB → 查 SkillQueryController 屬 E2E；
  * slice 後僅驗 query controller JSON contract（同 v1.5.0 shape + 無 internal version 欄位 expose），
- * service 層由 SkillVersionRepositoryTest / SkillAclQueryServiceTest 涵蓋。
+ * service 層由 SkillVersionRepositoryTest 等 repo / service test 涵蓋（S167b 後 SkillAclQueryService 已刪）。
  */
 @WebMvcTest(SkillQueryController.class)
 class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {

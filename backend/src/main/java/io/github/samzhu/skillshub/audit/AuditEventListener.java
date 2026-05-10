@@ -16,8 +16,6 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
-import io.github.samzhu.skillshub.skill.domain.SkillAclGrantedEvent;
-import io.github.samzhu.skillshub.skill.domain.SkillAclRevokedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillReactivatedEvent;
@@ -50,7 +48,9 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedFromAggregat
  * 第二筆遇 {@code (aggregate_id, sequence)} UNIQUE 衝突 → Spring Modulith 自動 retry，
  * 第二輪讀 MAX 遞增 → 順利寫入。
  *
- * <p><b>9 個訂閱事件對應</b>：
+ * <p><b>7 個訂閱事件對應</b>（S167b 後；移除 SkillAclGrantedEvent / SkillAclRevokedEvent —
+ * 改由 {@code SkillGrantService} → {@code skill_grants} 表 + {@code SkillAclProjectionListener}
+ * 重建 {@code skills.acl_entries} 投影；新流程 audit log 追蹤待 follow-up spec）：
  * <table>
  *   <caption>event type ↔ event_type column ↔ dedupKey 構成</caption>
  *   <tr><th>Event class</th><th>event_type</th><th>dedupKey 構成</th></tr>
@@ -58,16 +58,13 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedFromAggregat
  *   <tr><td>SkillVersionPublishedEvent</td><td>SkillVersionPublished</td><td>sourceEventId（事件自帶 UUID）</td></tr>
  *   <tr><td>SkillVersionPublishedFromAggregate</td><td>SkillStateAdvancedToPublished</td><td>aggregateId+version</td></tr>
  *   <tr><td>SkillDownloadedEvent</td><td>SkillDownloaded</td><td>eventId（事件自帶 UUID）</td></tr>
- *   <tr><td>SkillAclGrantedEvent</td><td>SkillAclGranted</td><td>aggregateId+type+principal+permission+grantedBy</td></tr>
- *   <tr><td>SkillAclRevokedEvent</td><td>SkillAclRevoked</td><td>aggregateId+type+principal+permission+revokedBy</td></tr>
  *   <tr><td>SkillSuspendedEvent</td><td>SkillSuspended</td><td>aggregateId+suspendedBy+reason</td></tr>
  *   <tr><td>SkillReactivatedEvent</td><td>SkillReactivated</td><td>aggregateId+reason</td></tr>
  *   <tr><td>SkillRiskAssessedEvent</td><td>SkillRiskAssessed</td><td>skillId+version+level</td></tr>
  * </table>
  *
- * <p>業務不變量已在 aggregate 端阻止「同內容重複觸發」（state machine + ACL contains check），
- * 故 content-based dedupKey 對 retry 場景安全；唯一例外為 SkillDownloaded（用戶可重複下載），
- * 故依賴事件自帶的 {@code eventId}。
+ * <p>業務不變量已在 aggregate 端阻止「同內容重複觸發」（state machine），故 content-based dedupKey
+ * 對 retry 場景安全；唯一例外為 SkillDownloaded（用戶可重複下載），故依賴事件自帶的 {@code eventId}。
  *
  * @see DomainEventRepository#saveAuditIdempotent
  * @see <a href="../../../../../../../../../docs/grimo/adr/ADR-002-skill-aggregate-state-based.md">ADR-002</a>
@@ -124,33 +121,6 @@ public class AuditEventListener {
         var payload = Map.<String, Object>of("version", event.version());
         recordAudit(event.aggregateId(), "SkillDownloaded", payload,
                 dedupKey("SkillDownloaded", event.eventId()));
-    }
-
-    @ApplicationModuleListener
-    void on(SkillAclGrantedEvent event) {
-        // S069: defensive null-coalesce — pre-S055 outbox 可能含 type/principal/permission=null（Map.of 拋 NPE）。
-        // S055 後 aggregate 已驗，但 listener 須能處理 historical bad data 才能 drain stuck outbox。
-        var type = event.type() == null ? "" : event.type();
-        var principal = event.principal() == null ? "" : event.principal();
-        var permission = event.permission() == null ? "" : event.permission();
-        var grantedBy = event.grantedBy() == null ? "" : event.grantedBy();
-        var payload = Map.<String, Object>of(
-                "type", type, "principal", principal, "permission", permission, "grantedBy", grantedBy);
-        recordAudit(event.aggregateId(), "SkillAclGranted", payload,
-                dedupKey("SkillAclGranted", event.aggregateId(), type, principal, permission, grantedBy));
-    }
-
-    @ApplicationModuleListener
-    void on(SkillAclRevokedEvent event) {
-        // S069: 同 grant 防 null
-        var type = event.type() == null ? "" : event.type();
-        var principal = event.principal() == null ? "" : event.principal();
-        var permission = event.permission() == null ? "" : event.permission();
-        var revokedBy = event.revokedBy() == null ? "" : event.revokedBy();
-        var payload = Map.<String, Object>of(
-                "type", type, "principal", principal, "permission", permission, "revokedBy", revokedBy);
-        recordAudit(event.aggregateId(), "SkillAclRevoked", payload,
-                dedupKey("SkillAclRevoked", event.aggregateId(), type, principal, permission, revokedBy));
     }
 
     @ApplicationModuleListener
