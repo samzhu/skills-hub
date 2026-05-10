@@ -7,7 +7,8 @@
 #   - timestamped log → backend/build/verify-all.log
 #
 # Usage:
-#   ./scripts/verify-all.sh            # 跑全部 V01-V06
+#   ./scripts/verify-all.sh            # 跑全部 V01-V08b（含 native image build）
+#   SKIP_NATIVE=1 ./scripts/verify-all.sh   # 跳 V08b（dev fast loop）；CI 留空
 #   ./scripts/verify-all.sh --help     # 印 usage
 #
 # Exit:
@@ -114,6 +115,39 @@ run_skip_if "V06" "cd frontend && npm test -- --coverage" \
 run_skip_if "V07" "cd e2e && npx playwright test --grep @happy-path" \
   "[ ! -d '${REPO_ROOT}/e2e/node_modules' ] || [ ! -f '${REPO_ROOT}/e2e/playwright.config.ts' ] || ! grep -rq '@happy-path' '${REPO_ROOT}/e2e/tests/' 2>/dev/null" \
   "(cd '${REPO_ROOT}/e2e' && npx playwright test --grep @happy-path)"
+
+# V08a: AOT processing smoke — fast (~30s) catch AOT-bake-time bugs（如 S158
+# Jackson default-view-inclusion）。always run；不依 Docker / GraalVM。
+# 與 V07 重複跑 processAot 是 cache hit，cost 接近 0。
+run_critical "V08a" "./gradlew processAot" \
+  "(cd '${REPO_ROOT}/backend' && ./gradlew processAot)"
+
+# V08b: Full native image build — 抓 GraalVM native-image static analysis、
+# reflection metadata 缺、Paketo container layer 失敗。預設 ON（完整防線）；
+# dev 快迭代時 SKIP_NATIVE=1 opt-out（明示風險而非偷偷跳）。
+# imageName 用 skillshub-verify:local 避免污染 cloudbuild 產的 latest tag。
+#
+# Profile = aot,local（不用 cloudbuild.yaml 的 gcp,aot,lab）：
+#   gcp profile 觸發 SecretManagerConfigDataLocationResolver，需 ADC（本機普遍沒設
+#   `gcloud auth application-default login`）+ 真打 SM API 產生 GCP 計費 / audit log。
+#   `application-aot.yaml` L41-44 明確設計為 aot profile 本地 disable SM。
+#   gcp-profile-only AOT bug（SM import 解析、GCP autoconfig）由 cloudbuild.yaml
+#   step 3（gcp,aot,lab）在 CI push 時擔當 canonical gate；V08b 抓 90% prod-only
+#   bug（native-image / reflection metadata / Paketo container），剩 10% 由 CI 擋。
+section "V08b [CRITICAL/skip-if-unavailable] ./gradlew bootBuildImage"
+if [[ "${SKIP_NATIVE:-0}" != "0" ]]; then
+  log "▸ V08b: SKIP - SKIP_NATIVE=${SKIP_NATIVE} (dev opt-out)"; RESULTS+=("V08b=SKIP")
+elif ! docker info >/dev/null 2>&1; then
+  log "▸ V08b: SKIP - Docker daemon not available"; RESULTS+=("V08b=SKIP")
+else
+  if (cd "${REPO_ROOT}/backend" && ./gradlew --no-daemon -x test bootBuildImage \
+       --imageName=skillshub-verify:local \
+       -Pspring.profiles.active=aot,local) >> "${LOG}" 2>&1; then
+    log "▸ V08b: PASS"; RESULTS+=("V08b=PASS")
+  else
+    rc=$?; log "▸ V08b: FAILED (exit=${rc})"; RESULTS+=("V08b=FAIL"); CRIT_FAIL=$((CRIT_FAIL+1))
+  fi
+fi
 
 # Summary
 PASS=0; FAIL=0; SKIP=0

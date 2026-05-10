@@ -68,12 +68,14 @@ Spring Modulith 的 `ApplicationModules.verify()` 確保：
 | V05 | `cd frontend && npm run lint` | CRITICAL | `frontend/node_modules` 不存在 | ESLint；frontend lint gate |
 | V06 | `cd frontend && npm test -- --coverage` | CRITICAL | `frontend/node_modules` 不存在 | vitest `coverage.thresholds.lines: 80` gate；text reporter inline 印 coverage table 到 stdout；`coverage.include` whitelist 鎖定有對應 test 的 source 檔（漸進加入 gate）；S022 落地 |
 | V07 | `cd e2e && npx playwright test --grep @happy-path` | CRITICAL | `e2e/node_modules` 不存在 / `e2e/playwright.config.ts` 不存在 | Playwright happy-path E2E gate；by `/playwright-expert` skill；artefacts → `e2e/test-results/` + `e2e/playwright-report/`（gitignored，managed block by `ensure-latest.sh`）；trace `on-first-retry`（official default per playwright.dev/docs/ci-intro）；本機看 `npx playwright show-trace <trace.zip>` 或拖到 trace.playwright.dev；CI 用 `actions/upload-artifact@v5` + `if: ${{ !cancelled() }}` 上傳 |
+| V08a | `./gradlew processAot` | CRITICAL | — | AOT-bake-time smoke（~30s）；抓 S158 類 prod-only bug（Jackson default-view-inclusion）；不依 Docker / GraalVM；V07 已跑 processAot 故 cache hit |
+| V08b | `./gradlew --no-daemon -x test bootBuildImage --imageName=skillshub-verify:local -Pspring.profiles.active=aot,local` | CRITICAL | `SKIP_NATIVE=1` env / Docker daemon 不可用 | Paketo native-image buildpack；抓 GraalVM native-image static analysis / reflection metadata / container layer failure；~10min cold；本機 dev `SKIP_NATIVE=1` opt-out（明示風險）。**profile=aot,local**（非 cloudbuild 的 gcp,aot,lab）：gcp profile 觸發 SM ConfigData 需 ADC + 計費，`application-aot.yaml` 設計為 aot 本地 disable SM；gcp-profile-only AOT bug 由 cloudbuild.yaml step 3 在 CI push 時擔當 canonical gate（90/10 split） |
 
 ### Known Limitations
 
 | Item | Workaround | Why not enroll |
 |------|-----------|----------------|
-| _（無）— S148e + S166a 後 `processAot` / `processTestAot` 全綠（驗證 2026-05-09：`./gradlew processAot` BUILD SUCCESSFUL）；歷史「GraalVM 0.11.5 plugin pre-existing bug + `bootRun -x processAot`」工作流已過時，**不要再用 `-x processAot`** — AOT 是部署到 Cloud Run native binary 的核心特色（per CLAUDE.md），跳過會把 prod-only 失敗（如 S158 Jackson default-view-inclusion）藏到上線才爆。_ | — | — |
+| _（無）— S148e + S166a 後 `processAot` / `processTestAot` 全綠；V08a 落地後 AOT smoke 進入 verify-all 主流程，V08b 補上完整 native-image build 對齊 cloudbuild.yaml prod path。歷史「`bootRun -x processAot`」工作流已過時，**不要再用 `-x processAot`**。_ | — | — |
 
 ### 不 enroll 的命令
 
@@ -82,7 +84,7 @@ Spring Modulith 的 `ApplicationModules.verify()` 確保：
 | `./gradlew test --tests "*ModularityTests*"` | V01 `./gradlew test` 已含 modularity tests；單跑 redundant |
 | `./gradlew compileTestJava` | V01 已含 compile（`test` task 自動 depends）|
 | `./gradlew cyclonedxBom` | SBOM 為 ship artifact，非 quality gate |
-| `./gradlew bootBuildImage` | 容器 image build；慢、非 PR gate |
+| ~~`./gradlew bootBuildImage`~~ | 已 enroll 為 V08b（CRITICAL，default ON，`SKIP_NATIVE=1` opt-out）|
 | `cd frontend && npm run coverage` | `package.json` 無此 script + `@vitest/coverage-v8` 未裝；待獨立 frontend coverage spec（即 §Verification Pipeline §Coverage L23-25 宣告但尚未實作部分）|
 
 ---
