@@ -838,3 +838,50 @@ LAB profile 應用 `oauth.enabled=true` mode（**不是** `local` profile 預設
 - S129 (Server compression XS=1) — production 部署前 bandwidth 議題
 - S120 (M-size test infra) 仍 backlog；非 LAB-blocking
 - Subscribe-side anon write polish (R41 observation) — defer post-LAB
+
+---
+
+## Tick 2026-05-10 — S159d ship BLOCKED（環境 port 衝突，非程式問題）
+
+**Spec**：S159d Pageable 非法值拒收（XS/2）— 程式 + 文件 + commit 全完成。
+**Commit**：153fa0c（feat(S159d): v4.44.0）+ 960741a（chore(handover) housekeeping）。
+
+### Pre-flight verify-all.sh 結果
+
+```
+V01 (gradle test + jacoco):  PASS
+V02 (LINE coverage 82.7%):   INFO
+V03 (jacocoTestCoverageVerification): PASS
+V04 (frontend npm test):     PASS
+V05 (frontend npm run lint): PASS
+V06 (frontend coverage):     PASS
+V07 (Playwright @happy-path): FAIL — webServer timeout 180s
+Verdict: ❌ 1 CRITICAL failure(s); exit=1
+```
+
+### V07 失敗根因（環境）
+
+- Port 8080 被 desktop app `vMLX` (PID 87938, `/Applications/vMLX.app`) 佔用
+- Playwright webServer 嘗試 `./gradlew bootRun`（spring boot 預設 8080）→ bind 失敗
+- webServer 等 `http://localhost:8080/actuator/health` 回應 timeout（180s）
+- Playwright report.json: `errors=["Error: Timed out waiting 180000ms from config.webServer."]`
+
+**與 S159d 程式無關**：S159d 改 backend Java 5 個檔（interceptor + handler + config）；70/70 targeted unit tests PASS；V01-V06 backend + frontend 全綠。前一次 V07 PASS 是 2026-05-09T04:14（S159a / S167 ship 時）。
+
+### Ship 卡點
+
+依 shipping-release skill 嚴格 QA gate：
+> "ALL CRITICAL commands must PASS"
+> "Never 'ship around' a failing gate by rationalizing it as low-risk"
+
+未執行 `git tag v4.44.0` 與 `git push origin main`。Commit 留 local main。
+
+### Resolution path
+
+User 端任一：
+1. 退出 vMLX（釋放 port 8080）→ 下個 tick 重跑 `/shipping-release`
+2. 或 user 直接 `git push origin main` push 已 commit 的 v4.44.0（信任 CI 跑 V07）；之後 user 自己 `git tag v4.44.0 && git push --tags`
+
+### EXIT
+
+⏸ **BLOCKED** — needs vMLX exit OR user manual push decision
