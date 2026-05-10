@@ -130,12 +130,14 @@ GET /api/v1/skills/{id} → Skill record → JSON.author = "11116130601102399510
 
 **MVP 範圍**：schema + read-side filter ready；toggle UI 留 follow-up（手動 SQL 設 TRUE 可驗證）。
 
-### 2.8 Migration & Backfill — V18
+### 2.8 Migration — V18 Schema (Fresh Start)
+
+> **2026-05-10 user 決策**：資料庫舊資料會清掉，V18 不做 backfill。Local dev 跑 `cd backend && docker compose down -v && ./gradlew bootRun` 走 V1-V18 fresh 即可；既有 3 筆 skill / skill_grants / acl_entries 全棄。Original V18 backfill `DO $$` block 連同 placeholder email 機制（AC-9）一起 drop。
 
 ```sql
 -- V18__create_users_and_decouple_oauth_sub.sql
 
--- 1. users 表
+-- 1. users 表 — platform user_id 解耦 OAuth sub
 CREATE TABLE users (
     id                     VARCHAR(20)  PRIMARY KEY,        -- "u_<6hex>"
     oauth_provider         VARCHAR(20)  NOT NULL,           -- 'google' (MVP)
@@ -153,49 +155,16 @@ CREATE INDEX idx_users_email ON users(email);
 
 -- 2. skills 加 snapshot column（只存 name，不存 email）
 ALTER TABLE skills ADD COLUMN author_name_snapshot VARCHAR(255);
-
--- 3. backfill 既有 3 筆 skill
-DO $$
-DECLARE
-    rec RECORD;
-    new_user_id VARCHAR(20);
-    derived_handle VARCHAR(64);
-BEGIN
-    FOR rec IN SELECT DISTINCT author FROM skills WHERE author IS NOT NULL LOOP
-        new_user_id := 'u_' || substr(replace(uuid_generate_v4()::text, '-', ''), 1, 6);
-        derived_handle := 'user-' || substr(rec.author, length(rec.author) - 5);
-
-        INSERT INTO users (id, oauth_provider, sub, email, name, handle, created_at, last_seen_at)
-        VALUES (new_user_id, 'google', rec.author,
-                'pending-backfill-' || new_user_id || '@unknown.local',
-                NULL,
-                derived_handle,
-                NOW(), NOW())
-        ON CONFLICT (oauth_provider, sub) DO NOTHING;
-
-        UPDATE skills SET author = (SELECT id FROM users WHERE oauth_provider='google' AND sub=rec.author)
-        WHERE author = rec.author;
-
-        UPDATE skills SET owner_id = (SELECT id FROM users WHERE oauth_provider='google' AND sub=rec.author)
-        WHERE owner_id = rec.author;
-
-        UPDATE skills
-        SET acl_entries = (
-            SELECT jsonb_agg(
-                CASE WHEN entry::text LIKE '"user:' || rec.author || ':%'
-                     THEN to_jsonb(replace(entry #>> '{}', 'user:' || rec.author || ':',
-                                          'user:' || (SELECT id FROM users WHERE oauth_provider='google' AND sub=rec.author) || ':'))
-                     ELSE entry
-                END
-            )
-            FROM jsonb_array_elements(acl_entries) entry
-        )
-        WHERE acl_entries::text LIKE '%' || rec.author || '%';
-    END LOOP;
-END $$;
 ```
 
-**Backfill 風險評估**：既存 ~3 筆 skill；`ON CONFLICT DO NOTHING` + WHERE 過濾 → 冪等；placeholder email `pending-backfill-...@unknown.local` 在 user 真登入觸發 /me UPSERT 時被 OAuth email 覆寫。
+**冪等保證**：fresh schema 純 DDL；二次跑 Flyway 因 `flyway_schema_history` 有 V18 row 自動 skip。
+
+**舊資料清空後的全新流程**（V18 ship 後第一次跑 LAB）：
+1. User 第一次 Google 登入 → `MeController` UPSERT → 建 users row（真實 email + name + handle）
+2. User publish skill → `Skill.create()` 寫 author = user_id（從 `CurrentUserProvider`），author_name_snapshot = name
+3. ACL 寫入經 `SkillGrantService` → 寫 skill_grants 用 user_id principal → projection 重建 skills.acl_entries
+
+skill_grants / acl_entries 全程從零累積，永不會跨 sub/user_id 兩種 principal 格式混雜。
 
 ### 2.9 Application code 改動（summary — 詳 §4）
 
@@ -217,13 +186,18 @@ END $$;
 ## 3. Acceptance Criteria
 
 ```
-AC-1: V18 migration 建表 + 既存 3 row backfill 成功
-  Given 開發環境跑 V17 migration 後（既存 3 筆 skill author/owner_id 為 sub；acl_entries 為 ["user:<sub>:OWNER", ...]）
+AC-1: V18 migration 建 fresh schema 成功（per 2026-05-10 user 決策 — 舊資料清空、不做 backfill）
+  Given Flyway clean DB（或 docker compose down -v 後 fresh 重跑 V1-V17）
   When V18 migrate
-  Then users 表存在且每個 distinct sub 有 1 row（id=u_<6hex>, oauth_provider='google', handle='user-<6char>', email='pending-backfill-...@unknown.local'）
-  And skills.author / owner_id 全部更新成對應 user_id
-  And acl_entries JSONB 內 "user:<sub>:perm" → "user:<user_id>:perm"
-  And 二次跑 migration no-op（冪等）
+  Then users 表存在
+    And 含欄位：id VARCHAR(20) PK / oauth_provider VARCHAR(20) NOT NULL / sub VARCHAR(255) NOT NULL
+        / email VARCHAR(320) NOT NULL / name VARCHAR(255) / handle VARCHAR(64) UNIQUE NOT NULL
+        / avatar_url TEXT / contact_email_public BOOLEAN NOT NULL DEFAULT FALSE
+        / created_at TIMESTAMPTZ NOT NULL / last_seen_at TIMESTAMPTZ NOT NULL
+    And UNIQUE(oauth_provider, sub) constraint 存在
+    And idx_users_email 索引存在
+  And skills 表新增 author_name_snapshot VARCHAR(255) NULLABLE 欄位
+  And 二次跑 Flyway no-op（schema_history 中 V18 row → skip）
 
 AC-2: /me 觸發 UPSERT，新 user 建 row + 舊 user refresh
   Given Alice 第一次用 Google 登入（JWT sub=111161..., email=alice@..., name="Alice Chen"）
@@ -283,11 +257,10 @@ AC-8: user_id 格式校驗 + collision retry
   Then 每個 user_id 符合 `u_[0-9a-f]{6}` regex
   And 無 PRIMARY KEY conflict (collision 時 retry up to 5 次)
 
-AC-9: backfill placeholder email 在 user 真登入後被覆寫
-  Given V18 backfill 跑完 (Alice 對應 row：email="pending-backfill-u_xxx@unknown.local", name=NULL)
-  When Alice 第一次用 Google 登入觸發 /me UPSERT
-  Then users row 同 id (oauth_provider+sub UNIQUE 中)
-  And email 更新為 "alice@example.com"，name 更新為 "Alice Chen"
+AC-9: ❌ DROPPED 2026-05-10 — 資料庫舊資料清空、無 backfill 需要
+  原 BDD：backfill placeholder email 在 user 真登入後被覆寫
+  Drop 理由：V18 不再做 backfill，placeholder email 機制不存在；user 第一次 /me 觸發
+           UPSERT 直接建真實 row（已涵蓋於 AC-2）。
 ```
 
 **驗證指令：** `cd backend && ./gradlew test`（含新 `UserRepositoryTest` / `UserUpsertServiceTest` / `DisplayNameResolverTest` / `UserResolverTest` / `SkillAuthorJoinIntegrationTest` / `V18MigrationTest` / `SkillPublishForgeryTest`）
@@ -368,7 +341,7 @@ deploy 後：
 
 | ID | 標題 | 涵蓋 AC | 主要檔案 | Depends On |
 |----|------|--------|---------|-----------|
-| T01 | V18 migration + users 表 + backfill | AC-1, AC-9（部分） | V18 SQL + V18MigrationTest | none |
+| T01 | V18 migration — users 表 + skills.author_name_snapshot column（fresh schema, no backfill per 2026-05-10 user 決策） | AC-1 | V18 SQL + V18MigrationTest | none |
 | T02 | User domain（entity / repo / upsert / resolvers） | AC-8 | User.java + UserRepository + UserUpsertService + UserResolver + DisplayNameResolver + 4 unit tests | T01 |
 | T03 | Auth refactor（CurrentUserProvider + MeController） | AC-2, AC-9 | CurrentUserProvider + CurrentUser + MeController + UserUpsertServiceTest extended | T02 |
 | T04 | Command side（Skill snapshot + Controller forgery fix） | AC-3, AC-5 | Skill.java + CreateSkillCommand + SkillCommandController + SkillPublishForgeryTest | T03 |
