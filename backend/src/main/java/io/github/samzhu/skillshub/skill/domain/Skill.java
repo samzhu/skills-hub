@@ -154,6 +154,11 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * S024 充血聚合 factory — 建立新 Skill aggregate；註冊 {@link SkillCreatedEvent}。
      *
      * <p>S016 既有設計：作者自動 seed 為 owner（read + write + delete 三 ACL entries）。
+     *
+     * <p>S154-T04：{@link CreateSkillCommand#authorNameSnapshot} 於此處 freeze 至
+     * {@link #authorNameSnapshot} field，後續 user 改名 OAuth name 不影響本 skill 已 publish 的
+     * 顯示名稱（query 端 LEFT JOIN users 取 live name；users row 缺則 fallback 此 snapshot）。
+     * Nullable — test fixture / 無 OIDC name claim 場景可傳 null。
      */
     public static Skill create(CreateSkillCommand cmd) {
         // S054: 用 IllegalArgumentException 而非 NPE — 走 GlobalExceptionHandler 既有 400 VALIDATION_ERROR 路徑。

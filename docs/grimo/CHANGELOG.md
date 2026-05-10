@@ -1,5 +1,40 @@
 # Changelog
 
+## [v4.47.0] — Author display identity backend（S154；2026-05-11）
+
+> Backend foundation for displaying readable author identity instead of raw OAuth sub. 建立 `users` 表把 OAuth `sub` 跟平台 `user_id` 解耦；既存 `skills.author` / `owner_id` / `acl_entries` 全切到 `user_id`；API 回傳 `authorDisplayName / Handle / Email-conditional`；順手修「caller 偽造 author」漏洞。
+
+### Add
+
+- **DB schema** — `V18__create_users_and_decouple_oauth_sub.sql`：建 `users` 表（`id VARCHAR(20) PK` `u_<6hex>` / `oauth_provider` / `sub` / `email` / `name` / `handle UNIQUE` / `avatar_url` / `contact_email_public` / `created_at` / `last_seen_at`；`UNIQUE(oauth_provider, sub)`；`idx_users_email`）；`skills` 加 `author_name_snapshot VARCHAR(255) NULLABLE`。Per 2026-05-10 user 決策走 fresh schema，不做 backfill。
+- **User domain（`shared/security/`）** — `User`（Spring Data JDBC `Persistable<String>` + `createNew()` factory + `refreshFromOidc()` mutator）；`UserRepository`（`findByOauthProviderAndSub` / `findByHandle` / `findFirstByEmail`）；`UserUpsertService`（/me 觸發 idempotent UPSERT；`u_<6hex>` collision retry 5×；handle slugify + collision retry 100×）；`UserResolver.resolveByEmailHandleOrId`（4-path：handle / user_id regex / email / Google sub backward-compat）；`DisplayNameResolver`（pure static 5-layer fallback：name → given+family → email local-part → handle → user_id）。
+- **Auth refactor** — `CurrentUser` record 4 → 8 fields（加 `sub / name / email / handle`）；`CurrentUserProvider.current()` JWT path 走 `upsertFromOidc("google", sub)` lazy upsert 回 platform user_id；OAuth2AuthenticationToken 分支補上；`MeController` response 9 → 11 keys（加 `userId / handle`）。
+- **Command side（forgery fix）** — `SkillCommandController.uploadSkill()` drop `@RequestParam("author")`；server 一律從 `currentUserProvider.userId()` 取 author，從 `currentUserProvider.name()` 取 `authorNameSnapshot`。Bob 偽造 author=alice 寫不進去（caller body 欄位 silent ignored）。`Skill.create()` 加 `authorNameSnapshot` 於 publish/republish freeze；`recordVersionPublished(version, snapshot)` overload 同步更新。
+- **Query side** — `SkillQueryService.enrichAuthorIdentity` per-row `userRepo.findById(author)` LEFT JOIN 等價：填 `authorDisplayName`（5-layer DisplayNameResolver）/ `authorHandle` / `authorEmail`（contact_email_public conditional）；users row 缺則 fallback `skill.authorNameSnapshot`。`SkillQueryController.getByAuthorAndName` 注 `UserResolver` 走 4-path resolve order。
+
+### Change
+
+- **Permission evaluator alignment** — `DelegatingPermissionEvaluator.expandPrincipals` 注 `CurrentUserProvider`；line 153 `auth.getName()` → `currentUserProvider.userId()`。T03 改 `acl_entries` 寫入端用 platform user_id 後，dispatcher 端漏改一處 → @PreAuthorize 永遠 false（owner 自己 PUT 也 403）。T06 root-cause + fix。
+- **Test fixture pattern** — 新增 `shared/security/testsupport/TestUserSeed`：6 個固定 (oauthSub → userId) mapping 常數；idempotent `INSERT ... ON CONFLICT DO NOTHING`；JWT auth 走 `upsertFromOidc("google", sub)` 找到既有 row 直接返穩定 user_id。S016 / S120 / SemanticSearchIT 三個 RBAC 整合測試集 `@BeforeEach seedDefaults`，hardcoded ACL string 改用 `TestUserSeed.ALICE_ID` 等常數對齊。
+
+### Drop
+
+- **AC-9 (placeholder email backfill)** — Per 2026-05-10 user 決策走 fresh schema 後，V18 backfill DO block 連同 placeholder email 機制一起 drop。User 第一次 /me 觸發 UPSERT 直接建真實 row，placeholder fallback 不存在。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-08-S154-author-display-identity.md` → archive
+- Task files（T01 ~ T06）已於 `/planning-tasks` Phase 4 清除
+- spec-roadmap.md S154 狀態 ⏳ Dev → ✅ v4.47.0
+
+### Verification
+
+- `./gradlew test`：tests=719 failures=0 skipped=7（T03/T04 期間 `@Disabled` 的 8 個 RBAC 測試於 T06 完整 re-enable + PASS）
+- `verify-all.sh`：8/8 CRITICAL PASS（V01-V08b；2026-05-11）
+- 獨立 QA subagent：PASS（3 minor Javadoc findings 已 in-place fix：DelegatingPermissionEvaluator class header 反映 T06、UserRepository `@link findFirstByEmail`、Skill.create() 補 snapshot 段）
+
+---
+
 ## [v4.46.0] — GraalVM AOT Strategy 段落落地（S148b；2026-05-10）
 
 > S148b POC v4 (2026-05-09) 已 reject H1（SkillshubProperties 無 AOT bug；`nativeCompile -PexactReachability=true` BUILD SUCCESSFUL in 3m 17s 出 223 MB native binary）+ ship `--exact-reachability-metadata` flag (gated by `-PexactReachability=true` Gradle property)。本版（XS(3) doc-only）把策略性說明補進 `architecture.md`：未來新人或 LLM 進來該檔就能一次看懂「目前 production 跑 JVM 還是 native」「AOT processing 怎麼啟用」「reflection metadata fast-fail 怎麼開」「為何不切 native production deploy」。

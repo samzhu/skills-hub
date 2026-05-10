@@ -1,6 +1,6 @@
 # S154: Author Display Identity (Backend) — 平台 user_id 解耦 OAuth sub
 
-> Spec: S154 | Size: M(12) | Status: 📐 in-design
+> Spec: S154 | Size: M(12) | Status: ✅ Done (2026-05-11)
 > Date: 2026-05-08（v3 split 2026-05-09 — planning-tasks size gate 拆出 S154b frontend）
 > Origin: deployment audit 2026-05-08（LAB）— `skill.author` 存 OAuth sub `111161306011023995106`，導致 SkillCard / PageHeader / InstallCard / Profile dropdown / LandingPage cards / Reviews / Flags 全顯示一串無人能讀的 21 位數字。Install command `skills-hub install 111161306011023995106/auditing-terraform-...` 完全沒人記得起來。
 >
@@ -358,3 +358,179 @@ T01 ─┬──▶ T02 ──▶ T03 ──┬──▶ T04
 
 T04 + T05 可平行（都依 T03，無互相依賴）。但為避免同時改 Skill domain 衝突，序列跑。
 
+---
+
+## 7. Implementation Results
+
+> Status: ✅ Done (2026-05-11) — 6 tasks shipped 序列；所有 9 AC PASS（AC-9 dropped per design 不算 fail）。
+
+### 7.1 Verification
+
+```
+$ ./gradlew test
+BUILD SUCCESSFUL in 2m 51s
+Total: tests=719 failures=0 skipped=7
+
+$ ./gradlew compileTestJava
+BUILD SUCCESSFUL in 819ms
+```
+
+T06 收尾後：8 個 RBAC 整合測試（S016 / S120 / SemanticSearchIT）全綠；T03/T04 期間
+暫時 `@Disabled` 的 8 個測試於 T06 完整 re-enable 並通過。`skipped=7` 為其他 spec
+既有的條件性 disable，與 S154 無關。
+
+### 7.2 E2E Verification (integration seam gate)
+
+**評估：non-browser**。本 spec 的 critical seam 為：
+- JWT auth → DB upsert（real Spring Security filter chain + real Postgres）
+- ACL row-level filter via Postgres jsonb `?|` operator（real pgJDBC + real JSONB schema）
+- LEFT JOIN users 端到端 enrich response（real Spring Data JDBC + 真實 schema）
+- V18 Flyway migration 寫入端 schema（real container fresh-init）
+
+**這些 seam 在 task loop 中已透過 `@SpringBootTest + Testcontainers` 覆蓋：**
+
+| Seam | 覆蓋 test | 結果 |
+|---|---|---|
+| JWT → user_id UPSERT（mock-oauth2-server + 真 JWT decoder） | `SkillsHubAuthE2ETest.e2e_authAclDownloadFlow` | ✅ |
+| JWT → user_id UPSERT（test JWT post-processor） | `S016EndToEndSmokeTest.*`（8 tests） | ✅ |
+| ACL `?|` Postgres jsonb filter（owner edit / non-owner 403） | `S016.e2e_putVersion_acl_gate` + `SkillsHubAuthE2ETest` | ✅ |
+| 跨 user namespace ACL（alice 看自己 skill / bob 隱蔽） | `SemanticSearchIntegrationTest.aliceSeesOnlyOwnSkills` | ✅ |
+| LEFT JOIN users → authorDisplayName / handle / email-conditional | `SkillAuthorJoinIntegrationTest` 4 unit | ✅ |
+| Author identity snapshot fallback when users row deleted | `withAuthorIdentityFallbackToSnapshotWhenUserRowMissing` | ✅ |
+| V18 fresh-schema migration + idempotent re-run | `V18MigrationTest`（T01）| ✅ |
+| Forgery prevention（caller author param ignored） | `SkillPublishForgeryTest`（T04）| ✅ |
+| Resolver order（handle / user_id / sub / 404） | `UserResolverTest` 5+1 | ✅ |
+
+**無瀏覽器/UI seam** — frontend display rollout 拆至 S154b。**無外部 CLI/binary** —
+所有 contract 透過 HTTP API 驗證。整合 seam 全部 covered through real-stack
+integration tests，**不需 Playwright/瀏覽器 E2E**。
+
+### 7.3 Key Findings
+
+#### F1. Dispatcher principal expansion 與 ACL 寫入端 user_id 對齊（T06 root-cause）
+
+T03 改 `CurrentUserProvider.userId()` 回 platform user_id 後，`acl_entries` 寫入端
+（`Skill.create()` line 219-223）也對齊用 platform user_id。但 `DelegatingPermissionEvaluator.expandPrincipals`
+line 153 仍走 `auth.getName()`（JWT sub），導致 dispatcher 與 acl_entries 用兩個不同 identity，
+@PreAuthorize 永遠 false。RED 才暴露此漏改點。
+
+**Correct pattern：dispatcher 也走 `currentUserProvider.userId()`：**
+
+```java
+// DelegatingPermissionEvaluator.java（T06 fix）
+private Set<String> expandPrincipals(Authentication auth, String permission) {
+    var p = new HashSet<String>();
+    // S154-T06：用平台 user_id（CurrentUserProvider）而非 JWT sub（auth.getName()）。
+    // acl_entries 寫入的是 currentUser.userId()，評估端必須一致。
+    p.add("user:" + currentUserProvider.userId() + ":" + permission);
+    auth.getAuthorities().forEach(...);
+    if ("read".equals(permission)) p.add("public:*:read");
+    return p;
+}
+```
+
+#### F2. Test fixture 用 pre-seed 固定 mapping 取代 random user_id
+
+T03 之後 `(google, "alice")` upsert 產 random `u_<6hex>`，每次 test 不可預期 →
+hardcoded `user:alice:read` ACL string 全失敗。T06 引入 `TestUserSeed`：
+6 個固定 `(oauthSub → userId)` mapping 常數（`ALICE_ID="u_alice1"` 等），idempotent
+`INSERT ... ON CONFLICT DO NOTHING`。後續 JWT auth 走 `upsertFromOidc("google", sub)`
+找到既有 row 直接返穩定 user_id，hardcoded string 對得上。
+
+**Test fixture pattern：**
+
+```java
+// shared/security/testsupport/TestUserSeed.java
+public static final String ALICE_ID = "u_alice1";
+public static void seedDefaults(JdbcTemplate jdbc) {
+    seed(jdbc, ALICE_ID, "alice");      // (google, "alice") → "u_alice1"
+    seed(jdbc, BOB_ID, "bob");
+    // ... 6 個固定 mapping
+}
+
+// 任何 RBAC test 在 @BeforeEach 加：
+TestUserSeed.seedDefaults(jdbc);
+
+// 後續 assertion 走常數對齊：
+.contains("user:" + TestUserSeed.ALICE_ID + ":read")
+```
+
+#### F3. WebMvcTest slice + 新依賴 → @MockitoBean pattern
+
+T05 給 `SkillQueryController` 加 `UserResolver` 依賴後，既有 2 個 `@WebMvcTest` slice
+（`SkillQueryControllerApiContractTest` / `SkillsApiAnonymousTest`）ApplicationContext
+load 失敗，因為 slice 不 scan `@Service` bean。Pattern：一行加 `@MockitoBean UserResolver` 解決。
+記入 dev-standards 隱性慣例。
+
+#### F4. 資料庫 fresh schema 取代 backfill — 拿掉 AC-9
+
+原設計 V18 含 backfill DO block 把舊 `acl_entries` 從 `user:<sub>` 改寫為 `user:<user_id>`。
+T01 期間 user 反饋「沒關係 改用新設計, 資料庫舊資料會清掉」，drop 該 DO block 改 pure DDL。
+AC-9（backfill placeholder email 正確覆寫）順帶 drop（後續 user 第一次 /me 觸發 UPSERT
+直接建真實 row，placeholder 機制不存在）。**節省維護成本**：免 SQL backfill 邊界調整、
+免測 placeholder fallback 行為、免擔心 backfill 對 prod row 的相容性。
+
+#### F5. AOT processor 與 dual-ctor visibility-for-test pattern
+
+T02 給 `UserUpsertService` 加 visible-for-test ctor（注入 `Supplier<String>` 控制 random
+generator）後，AOT processor 失敗 "No constructor or factory method candidate found"。
+Fix：給 production single-arg ctor 加 `@Autowired` 顯式 disambiguate。記為 development-standards
+新加 pattern reference。
+
+### 7.4 Pending Verification
+
+無。E2E artifact verification 已透過 real-stack integration tests 完整覆蓋
+（見 §7.2 表）。無 ⏳ 標記項目。
+
+### 7.5 AC Results
+
+| AC | 對應 test | 結果 |
+|----|----------|------|
+| AC-1: V18 fresh schema | `V18MigrationTest`（T01） | ✅ |
+| AC-2: /me UPSERT first + refresh | `MeControllerTest` + `UserUpsertServiceTest`（T03） | ✅ |
+| AC-3: forgery prevention | `SkillPublishForgeryTest`（T04） + `S016.postThenGetSkill_jsonRoundTrip` | ✅ |
+| AC-4: ACL principal user_id 等價 | 8 RBAC tests（T06）| ✅ |
+| AC-5: snapshot freeze on publish/republish | `SkillCommandServiceTest` snapshot capture | ✅ |
+| AC-6: LEFT JOIN + email-conditional + snapshot fallback | `SkillAuthorJoinIntegrationTest` 4 + service unit | ✅ |
+| AC-7: resolve order handle / user_id / sub / 404 | `UserResolverTest` 5+1 | ✅ |
+| AC-8: user_id 格式 + collision retry | `UserUpsertServiceTest`（T02）| ✅ |
+| AC-9: ❌ DROPPED 2026-05-10（無 backfill）— per F4 | n/a | n/a |
+
+### 7.6 Tech Debt
+
+無新增 tech debt。F1 / F3 / F5 已 fix in-place；F4 為 user 主動精簡 scope，
+非延後項；F2 為 fixture pattern 改善（已落地，不需 follow-up）。
+
+---
+
+### 7.7 QA Review (Independent Verification — 2026-05-11)
+
+**Reviewer**: Independent subagent (general-purpose)
+**Verdict**: PASS (MINOR findings — no blocking issues)
+
+**Verification commands**:
+- `./gradlew test` → tests=719 failures=0 skipped=7
+- `./gradlew compileTestJava` → BUILD SUCCESSFUL (UP-TO-DATE)
+
+**AC Coverage** (each must have matching @DisplayName test):
+| AC | Test | Status |
+|---|---|---|
+| AC-1: V18 fresh schema | `V18MigrationTest` 5 tests (@Tag("AC-1")) | ✅ PASS |
+| AC-2: /me UPSERT first + refresh | `MeControllerTest` (userId+handle assertions) + `UserUpsertServiceTest` (real UPSERT via @SpringBootTest); no dedicated `@Tag("AC-2")`/`@DisplayName("AC-2: /me UPSERT…")` for S154 UPSERT scenario | ⚠ COVERED (indirect) |
+| AC-3: forgery prevention | `SkillPublishForgeryTest` 3 tests (@Tag("AC-3")) | ✅ PASS |
+| AC-4: ACL principal user_id equiv | `S016EndToEndSmokeTest` (TestUserSeed + ALICE_ID assertions) + `SemanticSearchIntegrationTest` | ✅ PASS |
+| AC-5: snapshot freeze on publish/republish | `SkillAuthorJoinIntegrationTest` 5 tests (@Tag("AC-5")) | ✅ PASS |
+| AC-6: LEFT JOIN + email-conditional + fallback | `SkillAuthorJoinIntegrationTest` 4 tests (@Tag("AC-6")) | ✅ PASS |
+| AC-7: resolve order handle/user_id/sub/404 | `UserResolverTest` 6 tests (@Tag("AC-7")) | ✅ PASS |
+| AC-8: user_id format + collision retry | `UserUpsertServiceTest` 6 tests (@Tag("AC-8")) | ✅ PASS |
+| AC-9: DROPPED | n/a | n/a |
+
+**Findings**:
+
+1. MINOR: `DelegatingPermissionEvaluator` class-level Javadoc (line 40-43) says "dispatcher 僅展開 `user:` / `role:` 兩命名空間（從 `Authentication` 直接取，避免循環依賴 `CurrentUserProvider`）" — but after T06, `expandPrincipals` now calls `currentUserProvider.userId()` directly, not `auth.getName()`. The class-level `<h2>Principal 展開分工</h2>` block contradicts the actual implementation. The constructor Javadoc (line 62-66) correctly explains the T06 change, so the risk is reader confusion. Suggest updating the class-level block to remove the "避免循環依賴 CurrentUserProvider" clause and note T06 changed this. No runtime impact.
+
+2. MINOR: `UserRepository` Javadoc at line 15 references `{@link #findByEmail}` but the actual method name is `findFirstByEmail`. Spec §4 table also says "findByEmail". The `{@link}` reference points to a non-existent method (broken @link tag). Actual code and behavior are correct; only the Javadoc link is stale.
+
+3. MINOR: `Skill.create()` Javadoc (line 153-157) does not mention the `authorNameSnapshot` field added in T04 (S154 AC-5). The Javadoc only references S024/S016 design. Per CLAUDE.md "Spec-Linked Rationale" policy, the factory Javadoc should note the `authorNameSnapshot` parameter from `CreateSkillCommand` and its S154 origin. No runtime impact.
+
+4. OBSERVATION: AC-2 has no dedicated `@Tag("S154-AC-2")` or `@DisplayName("AC-2: /me UPSERT 新 user 建 row + response 含 userId+handle")` test in the S154 context. Coverage exists but is scattered: `MeControllerTest` verifies the JSON response shape with `userId`/`handle` using mocked `CurrentUserProvider`; `UserUpsertServiceTest` verifies the real UPSERT logic. An integration test calling real `/me` endpoint and asserting DB row creation + `userId`/`handle` in response would close this gap, but the existing combination is functionally adequate. Not blocking.

@@ -32,6 +32,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.security.testsupport.TestUserSeed;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
@@ -85,6 +86,9 @@ class SemanticSearchIntegrationTest {
         // S025b T04 absorb: 跨 test class 共享 Testcontainer，TRUNCATE skills CASCADE 自動清 vector_store
         // （FK ON DELETE CASCADE）— 取代原 IT class 個別 row delete 與 ACL test class 各自 TRUNCATE。
         jdbc.update("TRUNCATE TABLE skills RESTART IDENTITY CASCADE");
+        // S154-T06: pre-seed (google, alice/bob/...) → 穩定 platform user_id；JWT auth 走
+        // upsertFromOidc 找到既有 row 直接返 ALICE_ID/BOB_ID；ACL filter 對得上 user:ALICE_ID:read。
+        TestUserSeed.seedDefaults(jdbc);
     }
 
     @Test
@@ -150,15 +154,15 @@ class SemanticSearchIntegrationTest {
 
     // === S025b T04 absorbed from SemanticSearchAclTest ===
 
-    // TODO(S154-T06): test 用 "user:alice:read" ACL 但 currentUser.userId() T03 起變 u_<6hex> ≠ "alice"，
-    // alice 看自己的 skill 被 ACL filter 排除。T06 fix RBAC fixture 用 platform user_id。
-    @org.junit.jupiter.api.Disabled("S154-T03 收尾：JWT sub→user_id mapping breaking change；T06 fix")
     @Test
     @DisplayName("AC-7: alice JWT GET /search/semantic → 只回 alice 有權限的 skill（不含 bob's）")
     @Tag("AC-7")
     void aliceSeesOnlyOwnSkills() throws Exception {
-        var skillA = seedVectorWithAcl("alice", List.of("user:alice:read"), "docker-compose-helper");
-        seedVectorWithAcl("bob", List.of("user:bob:read"), "kubernetes-deploy");
+        // S154-T06: ACL principal id 是 platform user_id（ALICE_ID），不是 OAuth sub "alice"
+        var skillA = seedVectorWithAcl("alice",
+                List.of("user:" + TestUserSeed.ALICE_ID + ":read"), "docker-compose-helper");
+        seedVectorWithAcl("bob",
+                List.of("user:" + TestUserSeed.BOB_ID + ":read"), "kubernetes-deploy");
 
         mockMvc.perform(get("/api/v1/search/semantic")
                 .param("q", URLEncoder.encode("docker", StandardCharsets.UTF_8))
@@ -188,26 +192,24 @@ class SemanticSearchIntegrationTest {
     @Tag("AC-9")
     void anonymous_failSecure() throws Exception {
         // 種 row：owner 不是 lab user（application.yaml `lab.user-id: lab-user`）
-        seedVectorWithAcl("alice", List.of("user:alice:read"), "private-skill");
+        seedVectorWithAcl("alice", List.of("user:" + TestUserSeed.ALICE_ID + ":read"), "private-skill");
 
         mockMvc.perform(get("/api/v1/search/semantic")
                 .param("q", "private"))
                 .andExpect(status().isOk())
                 // anonymous → CurrentUserProvider fallback (labUserId="lab-user", ["admin"], [])
                 // → patterns = ["user:lab-user:read", "role:admin:read"]
-                // → 不命中 acl_entries=["user:alice:read"] → empty result
+                // → 不命中 acl_entries=["user:ALICE_ID:read"] → empty result
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$").isEmpty());
     }
 
-    // TODO(S154-T06): 同 aliceSeesOnlyOwnSkills — T03 起 currentUser.userId() ≠ "alice" 導致 ACL filter
-    // 排除 alice 的 skill；shape 驗 sample 缺資料 → assertion fail。T06 fix RBAC fixture。
-    @org.junit.jupiter.api.Disabled("S154-T03 收尾：JWT sub→user_id mapping breaking change；T06 fix")
     @Test
     @DisplayName("AC-10: SemanticSearchResult JSON 合約 — id/name/description/author/category/score 欄位齊全")
     @Tag("AC-10")
     void responseShapeUnchanged() throws Exception {
-        var skillA = seedVectorWithAcl("alice", List.of("user:alice:read"), "shape-test");
+        var skillA = seedVectorWithAcl("alice",
+                List.of("user:" + TestUserSeed.ALICE_ID + ":read"), "shape-test");
 
         mockMvc.perform(get("/api/v1/search/semantic")
                 .param("q", "shape")

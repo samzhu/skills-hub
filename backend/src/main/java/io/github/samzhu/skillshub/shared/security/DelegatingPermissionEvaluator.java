@@ -37,10 +37,17 @@ import org.springframework.stereotype.Component;
  * 等病態 entry；read 走 {@code *:read} 是「不展 user 命名空間」的 principle-respecting 設計。
  *
  * <h2>Principal 展開分工</h2>
- * dispatcher 僅展開 {@code user:} / {@code role:} 兩命名空間（從 {@link Authentication}
- * 直接取，避免循環依賴 {@link CurrentUserProvider}）；{@code group:} 由各 strategy 自行
- * 透過 {@link CurrentUserProvider#current()}.{@code groups()} 取得後補上 — 為了讓 strategy
- * 同時能用真實 SecurityContext 與測試 stub，不強耦合 dispatcher 與 user-context 抽象。
+ * dispatcher 展開 {@code user:} / {@code role:} 兩命名空間：
+ * <ul>
+ *   <li>{@code user:<userId>:<perm>} — 來自 {@link CurrentUserProvider#userId()}（platform
+ *       user_id；S154-T06 起）；不再用 {@code Authentication.getName()}（OAuth sub）— 因為
+ *       {@code acl_entries} 寫入端統一用 platform user_id，dispatcher 必須一致才能命中</li>
+ *   <li>{@code role:<roleName>:<perm>} — 從 {@link Authentication#getAuthorities()} 取，
+ *       剝去 {@code ROLE_} 前綴</li>
+ * </ul>
+ * {@code group:} 命名空間由各 strategy 自行透過 {@link CurrentUserProvider#current()}.
+ * {@code groups()} 取得後補上 — 為了讓 strategy 同時能用真實 SecurityContext 與測試 stub，
+ * 不強耦合 dispatcher 與 group context 抽象。
  *
  * @see PermissionStrategy
  * @see <a href="https://docs.spring.io/spring-security/reference/servlet/authorization/acls.html">Spring Security ACLs Reference</a>
@@ -54,9 +61,20 @@ public class DelegatingPermissionEvaluator implements PermissionEvaluator {
     private static final Set<String> ANONYMOUS_READ_PRINCIPALS = Set.of("public:*:read");
 
     private final List<PermissionStrategy> strategies;
+    private final CurrentUserProvider currentUserProvider;
 
-    public DelegatingPermissionEvaluator(List<PermissionStrategy> strategies) {
+    /**
+     * S154-T06：注入 {@link CurrentUserProvider} 取平台 user_id（不再用 {@code auth.getName()}）。
+     * JWT sub 自 T03 起 ≠ platform user_id（{@code upsertFromOidc} 產 {@code u_<6hex>}），
+     * 而 {@code acl_entries} 寫入的是 platform user_id；evaluator 須用同一身份才對得上。
+     *
+     * <p>循環依賴可能：dispatcher 用 {@code CurrentUserProvider}，後者間接呼到 ACL 評估的話會循環。
+     * 實測 {@code CurrentUserProvider} 只 read SecurityContext + DB upsert，無回呼路徑 → 安全直注。
+     */
+    public DelegatingPermissionEvaluator(List<PermissionStrategy> strategies,
+                                         CurrentUserProvider currentUserProvider) {
         this.strategies = strategies;
+        this.currentUserProvider = currentUserProvider;
     }
 
     /**
@@ -150,7 +168,10 @@ public class DelegatingPermissionEvaluator implements PermissionEvaluator {
      */
     private Set<String> expandPrincipals(Authentication auth, String permission) {
         var p = new HashSet<String>();
-        p.add("user:" + auth.getName() + ":" + permission);
+        // S154-T06：用平台 user_id（CurrentUserProvider）而非 JWT sub（auth.getName()）。
+        // acl_entries 寫入的是 currentUser.userId()（T03/T04 統一 author = platform user_id），
+        // 評估端必須一致才能命中。
+        p.add("user:" + currentUserProvider.userId() + ":" + permission);
         auth.getAuthorities().forEach(a -> {
             // 剝去 ROLE_ 前綴回到業務語意（與 CurrentUserProvider 的處理一致）
             var role = a.getAuthority().replaceFirst("^ROLE_", "");

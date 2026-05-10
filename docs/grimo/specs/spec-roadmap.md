@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-10（v4.46.0 ship — S148b architecture.md GraalVM AOT Strategy 段落落地）
+> 最後更新：2026-05-11（v4.47.0 ship — S154 author display identity backend；platform user_id 解耦 OAuth sub）
 
 ## 使用說明
 
@@ -88,7 +88,7 @@
 | S151 | Quality Score 訊息一致性修正（hero card "評分計算中" vs. 品質 tab "此版本尚未評分"） | XS(2) | S135b ✅ | ✅ v4.37.0 — QualityTabV2「此版本尚未評分」改「評分計算中，請稍後重新整理」對齊 hero/badge 風格；12/12 PASS |
 | S152 | SPA fallback for unknown routes（未知 URL → React NotFoundPage，移除 allowlist drift）| S(6) | — | ✅ v4.26.0 — 8/8 PASS（catchall pattern 取代 14 條 allowlist + /api/ early-return） |
 | S153 | Skill detail 404 UX — 統一 400/403/404 顯「找不到此技能」（移除誤導 retry 提示）| XS(3) | — | ✅ v4.24.0 — 9/9 vitest PASS（isUnviewable 擴展涵蓋 400/403/404） |
-| S154 | Author display identity (backend) — platform user_id 解耦 OAuth sub；`users` 表 + skills.author/owner_id/acl_entries 全切 user_id；CurrentUserProvider refactor；Command forgery fix；Query LEFT JOIN | M(12) | — | ⏳ Dev — T01 開跑 2026-05-10 (V18 migration) |
+| S154 | Author display identity (backend) — platform user_id 解耦 OAuth sub；`users` 表 + skills.author/owner_id/acl_entries 全切 user_id；CurrentUserProvider refactor；Command forgery fix；Query LEFT JOIN | M(12) | — | ✅ v4.47.0 — 6 tasks T01-T06 ship；DelegatingPermissionEvaluator 對齊 platform user_id；TestUserSeed fixture pattern；719/0/7（含 T06 re-enable 8 RBAC tests）|
 | S154b | Author display identity (frontend) — getDisplayName helper + 9 component sweep + ShareSkillModal 4-polish | S(9) | S154 ✅ | 📐 in-design — 拆自 S154 backend/frontend split |
 | S155 | Deployment audit polish — 7 個 LAB 小 UX 問題（footer link / auth-debug / publish-failed / 文案 / 偏好 modal / CLI dropdown 死 UI）| S(7) | — | ✅ v4.27.0 + v4.28.0 + v4.29.0 + v4.30.0 + v4.31.0 — 6/6 in-scope items shipped；#6 拆出 S155b（sort tab needs-reverify-in-LAB）|
 | S155b | Sort tab active highlight LAB reverify | XS(2) | — | ⛔ cancelled 2026-05-09 — 程式碼掃描確認無 bug：HomePage.tsx:217 `isOn = sortMode === mode` derived state，無 secondary state 可漂移；click handler line 222 `setSortMode + setPage(0)` 同 batch；auditor 觀察解釋為 stale cached bundle pre-commit `6211734` |

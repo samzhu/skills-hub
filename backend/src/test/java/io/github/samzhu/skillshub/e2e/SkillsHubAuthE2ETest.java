@@ -41,6 +41,7 @@ import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.shared.security.testsupport.TestUserSeed;
 
 /**
  * S120 — E2E Auth Integration Test: OAuth JWT + Visibility + ACL Grant + Download Counter。
@@ -118,15 +119,17 @@ class SkillsHubAuthE2ETest {
         jdbc.update("DELETE FROM domain_events");
         jdbc.update("DELETE FROM event_publication WHERE completion_date IS NULL");
 
+        // S154-T06: pre-seed (google, dev-042) → DEV042_ID and (google, viewer-007) → VIEWER007_ID
+        // 使 JWT auth 走 upsertFromOidc 找到既有 row 直接返穩定 user_id；後續 grant
+        // user:VIEWER007_ID:read 與 B 的 currentUser.userId() 對得上。
+        TestUserSeed.seedDefaults(jdbc);
+
         tokenA = fetchToken("developer-client");
         tokenB = fetchToken("viewer-client");
     }
 
     // ─── Main E2E scenario ────────────────────────────────────────────────────
 
-    // TODO(S154-T06): T03 起 JWT sub→user_id 不再相等（upsertFromOidc 產 random u_<6hex>），
-    // 此 E2E 流程把 sub 當 owner principal 寫入 skill；T06 改 fixture 用 platform user_id 後再 enable。
-    @org.junit.jupiter.api.Disabled("S154-T03 收尾：JWT sub→user_id mapping breaking change；T06 fix")
     @Test
     @DisplayName("S120 E2E: OAuth JWT + visibility + ACL grant + download counter（A 上傳 / B 共享 / 真實下載）")
     void e2e_authAclDownloadFlow() {
@@ -181,8 +184,10 @@ class SkillsHubAuthE2ETest {
         var bPrivateStatus = getStatus(tokenB, "/api/v1/skills/" + privateId);
         assertThat(bPrivateStatus).as("AC-10 current-behavior: response received").isNotNull();
 
-        // ── AC-11: A grant user:viewer-007:read on private ───────────────────
-        grantAcl(tokenA, privateId, "user", "viewer-007", "read");
+        // ── AC-11: A grant user:VIEWER007_ID:read on private ──────────────────
+        // S154-T06: principal id 必須為 platform user_id（B 的 currentUser.userId()），
+        // 不是 OAuth sub "viewer-007"。pre-seed 已將 (google, viewer-007) → VIEWER007_ID。
+        grantAcl(tokenA, privateId, "user", TestUserSeed.VIEWER007_ID, "read");
 
         // SkillAclProjectionListener 是 @ApplicationModuleListener AFTER_COMMIT async — POST grant
         // 回應後才 rebuild skills.acl_entries projection。所有後續讀 ACL 的端點都依賴 projection：
@@ -198,15 +203,15 @@ class SkillsHubAuthE2ETest {
                     "SELECT acl_entries::text FROM skills WHERE id = ?",
                     String.class, privateId);
             assertThat(aclJson)
-                    .as("AC-11: ACL projection (skills.acl_entries) rebuilt 含 viewer-007:read")
-                    .contains("user:viewer-007:read");
+                    .as("AC-11: ACL projection (skills.acl_entries) rebuilt 含 VIEWER007_ID:read")
+                    .contains("user:" + TestUserSeed.VIEWER007_ID + ":read");
         });
 
         // Projection 確認 settle 後再驗 GET /grants endpoint 端對端回傳 entry list（讀 source-of-truth）：
         var aclEntries = listAclEntries(tokenA, privateId);
         assertThat(aclEntries)
-                .as("AC-11: GET /grants endpoint 讀 source-of-truth 含 viewer-007")
-                .anyMatch(e -> e.contains("viewer-007"));
+                .as("AC-11: GET /grants endpoint 讀 source-of-truth 含 VIEWER007_ID")
+                .anyMatch(e -> e.contains(TestUserSeed.VIEWER007_ID));
 
         // ── AC-12: B list 後看到 public + private ─────────────────────────────
         var bAfterGrant = listSkillIds(tokenB);

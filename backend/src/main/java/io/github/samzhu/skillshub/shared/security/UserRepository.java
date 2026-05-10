@@ -12,7 +12,7 @@ import org.springframework.data.repository.ListCrudRepository;
  *   <li>{@link #findByOauthProviderAndSub} — {@link UserUpsertService} 第一查詢點，決定 INSERT vs UPDATE</li>
  *   <li>{@link #findByHandle} — {@link UserResolver} resolve 「handle → user_id」；
  *       {@link UserUpsertService} handle collision retry 用</li>
- *   <li>{@link #findByEmail} — {@link UserResolver} resolve 「email → user_id」</li>
+ *   <li>{@link #findFirstByEmail} — {@link UserResolver} resolve 「email → user_id」</li>
  * </ul>
  *
  * @see User

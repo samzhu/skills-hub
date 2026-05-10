@@ -38,6 +38,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
+import io.github.samzhu.skillshub.shared.security.testsupport.TestUserSeed;
+import org.junit.jupiter.api.BeforeEach;
 
 /**
  * S016 端到端 smoke — 跨模組驗證完整 Skill lifecycle（CRUD + upload + ACL + download）。
@@ -94,10 +96,16 @@ class S016EndToEndSmokeTest {
     @Autowired private DomainEventRepository eventStore;
     @Autowired private JdbcTemplate jdbc;
 
-    // TODO(S154-T06): test 把 JWT sub "alice" 直接當 skills.author 寫入；T03 起 currentUser.userId() 走
-    // upsertFromOidc 變成 random u_<6hex>，跟 "alice" 對不上 → 403 NOT_SKILL_OWNER。T06 scope 含
-    // "fix RBAC test setup 用 platform user_id" — 由 T06 改 fixture（pre-seed users row 或捕獲 user_id 後用）。
-    @org.junit.jupiter.api.Disabled("S154-T03 收尾：JWT sub→user_id mapping breaking change；T06 fix")
+    /**
+     * S154-T06：seed users 使 JWT sub → platform user_id 對應穩定。
+     * 之後 upsertFromOidc("google", "alice") 找到既有 row 直接返 ALICE_ID；
+     * acl_entries 等 hardcoded 字串 "user:u_alice1:read" 對得上。
+     */
+    @BeforeEach
+    void seedRbacFixtureUsers() {
+        TestUserSeed.seedDefaults(jdbc);
+    }
+
     @Test
     @DisplayName("AC-1~15: end-to-end smoke — upload → grant → list → revoke 跨模組驗證")
     @Tag("AC-1")
@@ -135,9 +143,9 @@ class S016EndToEndSmokeTest {
                 "SELECT acl_entries::text FROM skills WHERE id = ?",
                 String.class, skillId);
         assertThat(skillAcl)
-                .contains("user:alice:read")
-                .contains("user:alice:write")
-                .contains("user:alice:delete");
+                .contains("user:" + TestUserSeed.ALICE_ID + ":read")
+                .contains("user:" + TestUserSeed.ALICE_ID + ":write")
+                .contains("user:" + TestUserSeed.ALICE_ID + ":delete");
 
         // (2) alice grant group:engineering VIEWER via new S114a /grants endpoint —
         // SkillGrantedEvent → onGranted() fires async → rebuildAcl() writes group:engineering:read
@@ -193,13 +201,13 @@ class S016EndToEndSmokeTest {
                             "SELECT acl_entries::text FROM skills WHERE id = ?",
                             String.class, skillId);
                     return current != null && !current.contains("group:engineering:read")
-                            && current.contains("user:alice:read") ? current : null;
+                            && current.contains("user:" + TestUserSeed.ALICE_ID + ":read") ? current : null;
                 })
                 .andVerify(finalAcl -> assertThat(finalAcl)
                         .doesNotContain("group:engineering:read")
-                        .contains("user:alice:read")
-                        .contains("user:alice:write")
-                        .contains("user:alice:delete"));
+                        .contains("user:" + TestUserSeed.ALICE_ID + ":read")
+                        .contains("user:" + TestUserSeed.ALICE_ID + ":write")
+                        .contains("user:" + TestUserSeed.ALICE_ID + ":delete"));
 
         // (6) verify SkillCreated + SkillVersionPublished in domain_events audit trail
         // (SkillGranted/Revoked go via ApplicationEventPublisher, not recorded by AuditEventListener)
@@ -213,8 +221,6 @@ class S016EndToEndSmokeTest {
                 });
     }
 
-    // TODO(S154-T06): 同 e2e_uploadGrantListRevoke_acrossModules — JWT sub→user_id mapping 後 alice ACL 對不上。
-    @org.junit.jupiter.api.Disabled("S154-T04 收尾：JWT sub→user_id mapping breaking change；T06 fix")
     @Test
     @DisplayName("AC-7: PUT /skills/{id}/versions 對 alice owner 通過 @PreAuthorize；對 bob 非 owner 403")
     @Tag("AC-7")
@@ -251,14 +257,11 @@ class S016EndToEndSmokeTest {
 
     // === absorbed from SkillIntegrationTest ===
 
-    // TODO(S154-T06): test 預期 caller-supplied "tester" 寫入 skills.author；T04 forgery fix 後
-    // server 一律 override 成 currentUser.userId() (LAB="lab-user", JWT=u_<6hex>)。assertion
-    // 「$.author == tester」反映舊（vulnerable）行為，T06 update 為驗 currentUser.userId() override。
-    @org.junit.jupiter.api.Disabled("S154-T04 forgery fix override caller-supplied author；T06 update assertion")
     @Test
     @DisplayName("AC-2: POST /api/v1/skills (JSON) → 201；GET /skills/{id} returns consistent data")
     @Tag("AC-2")
     void postThenGetSkill_jsonRoundTrip() throws Exception {
+        // S154-T06: body 內偽造的 author=ignored；server 從 JWT sub "tester" → upsert 找到 TESTER_ID
         var commandJson = """
                 {"name":"test-skill","description":"A test skill","author":"tester","category":"Testing"}
                 """;
@@ -277,7 +280,8 @@ class S016EndToEndSmokeTest {
                 .andExpect(jsonPath("$.id").value(skillId))
                 .andExpect(jsonPath("$.name").value("test-skill"))
                 .andExpect(jsonPath("$.description").value("A test skill"))
-                .andExpect(jsonPath("$.author").value("tester"))
+                // S154-T04 forgery fix：caller body 的 "tester" 被 server override 為平台 user_id
+                .andExpect(jsonPath("$.author").value(TestUserSeed.TESTER_ID))
                 .andExpect(jsonPath("$.category").value("Testing"))
                 .andExpect(jsonPath("$.status").value("DRAFT"))
                 .andExpect(jsonPath("$.createdAt").exists());
@@ -342,9 +346,6 @@ class S016EndToEndSmokeTest {
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("SKILL.md not found")));
     }
 
-    // TODO(S154-T06): test 用 ?author=tester upload 後 PUT /versions；JWT auth 後 author 寫入是
-    // currentUser.userId() (lab-user / u_<6hex>) ≠ "tester"，PUT @PreAuthorize 評估失敗 → 403。
-    @org.junit.jupiter.api.Disabled("S154-T04 收尾：caller-supplied author override 後 ACL fixture 過時；T06 fix")
     @Test
     @DisplayName("AC-3: PUT /{id}/versions 加版 → 200 + 兩筆 SkillVersionPublished audit")
     @Tag("AC-3")
@@ -390,9 +391,6 @@ class S016EndToEndSmokeTest {
                         .containsExactlyInAnyOrder("1.0.0", "1.1.0"));
     }
 
-    // TODO(S154-T06): 同 addVersionToExistingSkill — caller author override 後 PUT 走不到 service
-    // dup-check 因為 ACL 先 403。T06 fix fixture 後驗 dup check 仍 work（409）。
-    @org.junit.jupiter.api.Disabled("S154-T04 收尾：caller-supplied author override 後 ACL fixture 過時；T06 fix")
     @Test
     @DisplayName("AC-4: 版本號重複 — PUT /{id}/versions → 409 + 不重複寫 audit")
     @Tag("AC-4")
