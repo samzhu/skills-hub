@@ -74,6 +74,14 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     private String description;
     private String author;
     private String category;
+    /**
+     * S154 — publish/republish 時 freeze 的 author 顯示名稱（從 {@code CurrentUserProvider.current().name()}
+     * 取得；後續 user 改名 {@link #author} 對應 user 改名時，已 publish 的 snapshot 不變）。Nullable —
+     * V18 schema {@code author_name_snapshot VARCHAR(255) NULLABLE}；無 OIDC name claim 時可為 null
+     * （回 SkillResponse 時走 DisplayNameResolver fallback）。
+     */
+    @Column("author_name_snapshot")
+    private String authorNameSnapshot;
     private SkillStatus status;
     @Column("latest_version")
     private String latestVersion;
@@ -185,6 +193,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         skill.name = name;
         skill.description = description;
         skill.author = author;
+        skill.authorNameSnapshot = cmd.authorNameSnapshot();  // S154 — nullable；test fixture 常傳 null
         skill.category = category;
         skill.status = SkillStatus.DRAFT;
         skill.latestVersion = null;
@@ -301,6 +310,18 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * {@code UNIQUE (skill_id, version)} constraint 兜底。
      */
     public void recordVersionPublished(String version) {
+        // S154 backward-compat overload — 不更新 snapshot；既有 caller（含 service 內 publish path）
+        // 走此 ctor 行為與 v3.x 完全一致。新 caller（T04 controller）走 2-arg version 帶 snapshot。
+        recordVersionPublished(version, null);
+    }
+
+    /**
+     * S154 — publish/republish 同時更新 {@link #authorNameSnapshot}（per AC-5）。
+     *
+     * <p>{@code snapshot} 由 {@code SkillCommandService} 從 {@code currentUserProvider.current().name()}
+     * 取得後透傳；null 代表「不更新 snapshot」（既有值維持不動），non-null 代表 freeze 該值。
+     */
+    public void recordVersionPublished(String version, @org.jspecify.annotations.Nullable String snapshot) {
         // S056: semver 預驗 — 違反 → IllegalArgumentException → 400 VALIDATION_ERROR
         if (version == null || !VERSION_REGEX.matcher(version).matches()) {
             throw new IllegalArgumentException(
@@ -309,6 +330,10 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         SkillStatus next = this.status.publish();
         this.latestVersion = version;
         this.status = next;
+        // S154: snapshot != null → freeze；null → 維持既有（避免 republish 路徑誤清 snapshot）
+        if (snapshot != null) {
+            this.authorNameSnapshot = snapshot;
+        }
         this.updatedAt = Instant.now();
         registerEvent(new SkillVersionPublishedFromAggregate(id, version));
     }
@@ -366,6 +391,9 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     public String getDescription() { return description; }
     public String getAuthor() { return author; }
     public String getCategory() { return category; }
+    /** S154 — publish 時 freeze 的 author 顯示名稱；null 為合法（無 OIDC name claim 場景）。*/
+    @org.jspecify.annotations.Nullable
+    public String getAuthorNameSnapshot() { return authorNameSnapshot; }
     public SkillStatus getStatus() { return status; }
     public String getLatestVersion() { return latestVersion; }
     public String getRiskLevel() { return riskLevel; }

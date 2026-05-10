@@ -76,12 +76,25 @@ public class SkillCommandService {
 
 	/** S116 backward-compat 4-arg overload — defaults visibility=PUBLIC（v3.x 既有行為）。 */
 	public String uploadSkill(byte[] uploadedBytes, String version, String author, String category) throws IOException {
-		return uploadSkill(uploadedBytes, version, author, category, io.github.samzhu.skillshub.skill.domain.Visibility.PUBLIC);
+		return uploadSkill(uploadedBytes, version, author, category,
+				io.github.samzhu.skillshub.skill.domain.Visibility.PUBLIC, null);
 	}
 
-	@Transactional
+	/** S154 backward-compat 5-arg overload — null snapshot；S116 既有 visibility 路徑。 */
 	public String uploadSkill(byte[] uploadedBytes, String version, String author, String category,
 			io.github.samzhu.skillshub.skill.domain.Visibility visibility) throws IOException {
+		return uploadSkill(uploadedBytes, version, author, category, visibility, null);
+	}
+
+	/**
+	 * S154 — 6-arg canonical：含 author 顯示名稱 snapshot。controller 從 currentUserProvider 取後透傳。
+	 *
+	 * @param authorNameSnapshot publish 時 freeze 的 author 顯示名稱（nullable；無 OIDC name claim 時 null）
+	 */
+	@Transactional
+	public String uploadSkill(byte[] uploadedBytes, String version, String author, String category,
+			io.github.samzhu.skillshub.skill.domain.Visibility visibility,
+			@org.jspecify.annotations.Nullable String authorNameSnapshot) throws IOException {
 		// S053: normalize plain .md → 合法 zip；若已是 zip 原樣返回。下游流程一致 zip contract。
 		var zipBytes = packageService.normalizeToZip(uploadedBytes);
 		log.atInfo()
@@ -110,8 +123,9 @@ public class SkillCommandService {
 		var name = (String) validation.metadata().get("name");
 		var description = (String) validation.metadata().get("description");
 
-		var skill = Skill.create(new CreateSkillCommand(name, description, author, category, visibility));
-		skill.recordVersionPublished(version);
+		var skill = Skill.create(new CreateSkillCommand(
+				name, description, author, category, visibility, authorNameSnapshot));
+		skill.recordVersionPublished(version, authorNameSnapshot);
 		var storagePath = "skills/" + skill.getId() + "/" + version + "/skill.zip";
 
 		storageService.upload(storagePath, zipBytes);
@@ -136,8 +150,20 @@ public class SkillCommandService {
 		return skill.getId();
 	}
 
-	@Transactional
+	/** S154 backward-compat 3-arg overload — null snapshot；既有 caller 不更新 author 顯示名稱。 */
 	public void addVersion(String skillId, byte[] uploadedBytes, String version) throws IOException {
+		addVersion(skillId, uploadedBytes, version, null);
+	}
+
+	/**
+	 * S154 — 4-arg canonical：republish 時更新 {@link Skill#authorNameSnapshot}（per AC-5）。
+	 *
+	 * @param authorNameSnapshot 新版本的 author 顯示名稱（從 {@code currentUserProvider.current().name()}
+	 *                           取得）；null 代表不更新 snapshot（保留既有 freeze 值）
+	 */
+	@Transactional
+	public void addVersion(String skillId, byte[] uploadedBytes, String version,
+			@org.jspecify.annotations.Nullable String authorNameSnapshot) throws IOException {
 		// S053: normalize plain .md / subfolder zip → 標準化 zip（SKILL.md 在根）
 		var zipBytes = packageService.normalizeToZip(uploadedBytes);
 		log.atInfo()
@@ -180,7 +206,8 @@ public class SkillCommandService {
 		if (skillVersionRepo.existsBySkillIdAndVersion(skillId, version)) {
 			throw new VersionExistsException("Version " + version + " already exists");
 		}
-		skill.recordVersionPublished(version);
+		// S154: 透傳 snapshot；null → recordVersionPublished 內部不更新（既有 snapshot 保留）
+		skill.recordVersionPublished(version, authorNameSnapshot);
 		skillRepo.save(skill);
 
 		var storagePath = "skills/" + skillId + "/" + version + "/skill.zip";

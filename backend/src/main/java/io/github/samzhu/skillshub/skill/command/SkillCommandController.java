@@ -60,7 +60,16 @@ public class SkillCommandController {
 	 */
 	@PostMapping
 	ResponseEntity<Map<String, String>> createSkill(@RequestBody CreateSkillCommand command) {
-		var id = commandService.createSkill(command);
+		// S154 AC-3 forgery fix：caller-supplied author + authorNameSnapshot 全部 ignore；
+		// server 從 currentUserProvider 直取 platform user_id + 顯示名稱。Bob 偷填 alice 寫不進去。
+		var current = currentUserProvider.current();
+		var serverCommand = new CreateSkillCommand(
+				command.name(), command.description(),
+				current.userId(),                    // override：caller 傳 alice 也蓋成 server 的 user_id
+				command.category(),
+				command.visibility(),
+				current.name());                     // S154 author_name_snapshot freeze
+		var id = commandService.createSkill(serverCommand);
 		return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id));
 	}
 
@@ -80,10 +89,12 @@ public class SkillCommandController {
 	ResponseEntity<Map<String, String>> uploadSkill(
 			@RequestParam("file") MultipartFile file,
 			@RequestParam("version") String version,
-			@RequestParam("author") String author,
+			// S154 AC-3 forgery fix：dropped @RequestParam("author") — caller 傳的 author param Spring
+			// 預設 silently ignored；server 一律從 currentUserProvider 取 platform user_id。
 			@RequestParam("category") String category,
 			@RequestParam(name = "visibility", required = false, defaultValue = "PUBLIC")
 					io.github.samzhu.skillshub.skill.domain.Visibility visibility) throws IOException {
+		var current = currentUserProvider.current();
 		// S139 diagnostic — entry log：若 SecurityFilterChain 攔下 403，這行不會出現；
 		// 出現代表 request 已穿過 filter 鏈到 controller，用來判斷 403 來自 filter 還是
 		// 後續業務（GCS upload / DB write 等）。確認原因後可移除（保留無害）。
@@ -97,11 +108,14 @@ public class SkillCommandController {
 				.addKeyValue("version", version)
 				.addKeyValue("category", category)
 				.addKeyValue("visibility", visibility)
+				.addKeyValue("authorUserId", current.userId())
 				.log("uploadSkill entered");
 		// S116: visibility 缺省 PUBLIC 對齊 v3.x 既有行為；前端 PublishPage 顯式透傳
 		// PRIVATE 走私人 skill 路徑（acl_entries 不含 *:read，由既有 GIN ?| filter
 		// 自動 fail-closed against anonymous / non-grant user）。
-		var id = commandService.uploadSkill(file.getBytes(), version, author, category, visibility);
+		// S154: author = 平台 user_id；authorNameSnapshot = OIDC name 顯示名稱 freeze。
+		var id = commandService.uploadSkill(file.getBytes(), version,
+				current.userId(), category, visibility, current.name());
 		return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id));
 	}
 
@@ -125,7 +139,9 @@ public class SkillCommandController {
 			@PathVariable String id,
 			@RequestParam("file") MultipartFile file,
 			@RequestParam("version") String version) throws IOException {
-		commandService.addVersion(id, file.getBytes(), version);
+		// S154 AC-5: republish 時也更新 author_name_snapshot — Alice 改名後 republish snapshot 改新名
+		var current = currentUserProvider.current();
+		commandService.addVersion(id, file.getBytes(), version, current.name());
 		return ResponseEntity.ok().build();
 	}
 
