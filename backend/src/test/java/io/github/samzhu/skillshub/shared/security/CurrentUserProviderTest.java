@@ -2,7 +2,10 @@ package io.github.samzhu.skillshub.shared.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -12,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,8 +41,27 @@ class CurrentUserProviderTest {
 
     private final MeterRegistry registry = new SimpleMeterRegistry();
     private final JwtClaimAnomalyMetrics anomalyMetrics = new JwtClaimAnomalyMetrics(registry);
+    /**
+     * Stub UPSERT — JWT sub 直接當 user_id（test fixture 不關心 platform user_id 格式，
+     * 只要可預期：sub 進什麼，userId 出什麼）。Production 會跑真 UPSERT 產 u_<6hex> + handle slugify。
+     */
+    private final UserUpsertService userUpsertService = stubUpsertReturningSubAsUserId();
     private final CurrentUserProvider provider =
-            new CurrentUserProvider(propsWithLabUser(LAB_USER_ID), anomalyMetrics);
+            new CurrentUserProvider(propsWithLabUser(LAB_USER_ID), anomalyMetrics, userUpsertService);
+
+    private static UserUpsertService stubUpsertReturningSubAsUserId() {
+        var stub = Mockito.mock(UserUpsertService.class);
+        Mockito.when(stub.upsertFromOidc(eq("google"), any(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    String sub = inv.getArgument(1);
+                    String email = inv.getArgument(2);
+                    String name = inv.getArgument(3);
+                    String avatar = inv.getArgument(4);
+                    // userId = sub（fixture）；handle = sub；email 用 stub 帶進來的值
+                    return User.createNew(sub, "google", sub, email, name, sub, avatar, Instant.now());
+                });
+        return stub;
+    }
 
     @AfterEach
     void clearContext() {

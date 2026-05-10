@@ -63,7 +63,7 @@ class SkillGrantServiceTest {
     void grant_ownerGrantsViewer_returnsGrantId() {
         var skillId = "skill-1";
         var skill = mockSkillWithOwner(skillId, "alice");
-        when(users.current()).thenReturn(new CurrentUser("alice", java.util.List.of(), java.util.List.of(), null));
+        when(users.current()).thenReturn(CurrentUser.synthetic("alice", java.util.List.of(), java.util.List.of(), null));
         when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
         when(grantRepo.existsBySkillIdAndRole(skillId, "OWNER")).thenReturn(false);
 
@@ -81,7 +81,7 @@ class SkillGrantServiceTest {
     void revoke_ownerRevokesViewerGrant_deletesAndPublishes() {
         var skillId = "skill-1";
         var skill = mockSkillWithOwner(skillId, "alice");
-        when(users.current()).thenReturn(new CurrentUser("alice", java.util.List.of(), java.util.List.of(), null));
+        when(users.current()).thenReturn(CurrentUser.synthetic("alice", java.util.List.of(), java.util.List.of(), null));
         when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
 
         var grant = SkillGrant.create(skillId, "user", "bob", Role.VIEWER, "alice");
@@ -99,7 +99,7 @@ class SkillGrantServiceTest {
     void grant_ownerAlreadyExists_throws() {
         var skillId = "skill-1";
         var skill = mockSkillWithOwner(skillId, "alice");
-        when(users.current()).thenReturn(new CurrentUser("alice", java.util.List.of(), java.util.List.of(), null));
+        when(users.current()).thenReturn(CurrentUser.synthetic("alice", java.util.List.of(), java.util.List.of(), null));
         when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
         when(grantRepo.existsBySkillIdAndRole(skillId, "OWNER")).thenReturn(true);
 
@@ -114,7 +114,7 @@ class SkillGrantServiceTest {
     void grant_nonOwner_throws() {
         var skillId = "skill-1";
         var skill = mockSkillWithOwner(skillId, "alice");
-        when(users.current()).thenReturn(new CurrentUser("bob", java.util.List.of(), java.util.List.of(), null));
+        when(users.current()).thenReturn(CurrentUser.synthetic("bob", java.util.List.of(), java.util.List.of(), null));
         when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
 
         var req = new SkillGrantService.GrantRequest("user", "carol", Role.VIEWER);
@@ -128,7 +128,7 @@ class SkillGrantServiceTest {
     void revoke_ownOwnerGrant_throws() {
         var skillId = "skill-1";
         var skill = mockSkillWithOwner(skillId, "alice");
-        when(users.current()).thenReturn(new CurrentUser("alice", java.util.List.of(), java.util.List.of(), null));
+        when(users.current()).thenReturn(CurrentUser.synthetic("alice", java.util.List.of(), java.util.List.of(), null));
         when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
 
         var grant = SkillGrant.create(skillId, "user", "alice", Role.OWNER, "alice");
@@ -144,7 +144,7 @@ class SkillGrantServiceTest {
     void revoke_grantNotFound_throws() {
         var skillId = "skill-1";
         var skill = mockSkillWithOwner(skillId, "alice");
-        when(users.current()).thenReturn(new CurrentUser("alice", java.util.List.of(), java.util.List.of(), null));
+        when(users.current()).thenReturn(CurrentUser.synthetic("alice", java.util.List.of(), java.util.List.of(), null));
         when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
         when(grantRepo.findById("missing")).thenReturn(Optional.empty());
 

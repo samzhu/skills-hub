@@ -22,7 +22,7 @@ class AclPrincipalExpanderTest {
     @DisplayName("AC-12: expand 三命名空間皆有資料 → user + role + group patterns 全展開")
     @Tag("AC-12")
     void expand_allThreeNamespaces() {
-        var user = new CurrentUser("alice", List.of("admin"), List.of("engineering", "platform"), null);
+        var user = CurrentUser.synthetic("alice", List.of("admin"), List.of("engineering", "platform"), null);
 
         var patterns = expander.expand(user, "read");
 
@@ -39,7 +39,7 @@ class AclPrincipalExpanderTest {
     @DisplayName("AC-12: expand groups 為空 list → 不誤產 group:: patterns")
     @Tag("AC-12")
     void expand_emptyGroups_skipsGroupPrefix() {
-        var user = new CurrentUser("bob", List.of("user"), List.of(), null);
+        var user = CurrentUser.synthetic("bob", List.of("user"), List.of(), null);
 
         var patterns = expander.expand(user, "write");
 
@@ -52,7 +52,7 @@ class AclPrincipalExpanderTest {
     @DisplayName("AC-12: expand roles 為空 list → 不誤產 role:: patterns")
     @Tag("AC-12")
     void expand_emptyRoles_skipsRolePrefix() {
-        var user = new CurrentUser("carol", List.of(), List.of("research"), null);
+        var user = CurrentUser.synthetic("carol", List.of(), List.of("research"), null);
 
         var patterns = expander.expand(user, "delete");
 
@@ -65,7 +65,7 @@ class AclPrincipalExpanderTest {
     @DisplayName("AC-12: expand 不同 permission 動詞 → suspend / reactivate 也支援（為 S018 鋪路）")
     @Tag("AC-12")
     void expand_supportsAllMvpPermissions() {
-        var user = new CurrentUser("dan", List.of("admin"), List.of(), null);
+        var user = CurrentUser.synthetic("dan", List.of("admin"), List.of(), null);
 
         // S016 spec §2.4 #5：MVP 啟用 verbs = read/write/delete/suspend/reactivate
         // S026 + S114a: read 一律附 "public:*:read"；write/delete/suspend/reactivate 不附
@@ -99,7 +99,7 @@ class AclPrincipalExpanderTest {
     @DisplayName("AC-9: expand user with companyId=acme → includes company:acme:read")
     @Tag("AC-9")
     void expand_withCompanyId_includesCompanyPattern() {
-        var user = new CurrentUser("bob", List.of("user"), List.of(), "acme");
+        var user = CurrentUser.synthetic("bob", List.of("user"), List.of(), "acme");
 
         var patterns = expander.expand(user, "read");
 
@@ -111,7 +111,7 @@ class AclPrincipalExpanderTest {
     @DisplayName("AC-9: expand user with null companyId → no company: pattern")
     @Tag("AC-9")
     void expand_nullCompanyId_noCompanyPattern() {
-        var user = new CurrentUser("bob", List.of("user"), List.of(), null);
+        var user = CurrentUser.synthetic("bob", List.of("user"), List.of(), null);
 
         var patterns = expander.expand(user, "read");
 

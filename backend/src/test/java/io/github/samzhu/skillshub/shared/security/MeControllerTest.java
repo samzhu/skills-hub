@@ -45,6 +45,18 @@ class MeControllerTest extends WebMvcSliceTestBase {
     @Tag("AC-S141-1")
     @DisplayName("AC-S141-1 / AC-4: /api/v1/me 帶 admin token → 200 + 9 keys 含 email/name/picture")
     void me_withAdminJwt_returnsAllClaims() throws Exception {
+        // S154 T03 起 MeController 委派 currentUserProvider 取 8 個 platform 欄位（含 sub/email/name 等）；
+        // mock 回傳對齊 JWT claim 內容，測試 controller 把 8 + 3 OAuth-only 欄位（picture/deptId/scope）正確組裝。
+        when(currentUserProvider.current()).thenReturn(new CurrentUser(
+                "u_admin1",                                          // userId（platform，S154 新增）
+                "admin-001",                                         // sub（OAuth raw）
+                "Admin User",                                        // name
+                "admin-001@example.com",                             // email
+                "admin",                                             // handle（platform，S154 新增）
+                List.of("admin"),                                    // roles
+                List.of("platform-admins", "skills-curators"),       // groups
+                "skills-hub-corp"));                                 // companyId
+
         mockMvc.perform(get("/api/v1/me")
                 .with(jwt().jwt(j -> j
                         .subject("admin-001")
@@ -57,6 +69,8 @@ class MeControllerTest extends WebMvcSliceTestBase {
                         .claim("dept_id", "engineering")
                         .claim("scope", "skills:admin skills:read skills:write"))))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.userId").value("u_admin1"))                  // S154 新增
+            .andExpect(jsonPath("$.handle").value("admin"))                     // S154 新增
             .andExpect(jsonPath("$.sub").value("admin-001"))
             .andExpect(jsonPath("$.email").value("admin-001@example.com"))
             .andExpect(jsonPath("$.name").value("Admin User"))
@@ -74,7 +88,7 @@ class MeControllerTest extends WebMvcSliceTestBase {
     @DisplayName("AC-S141-2: /api/v1/me LAB branch → 200 + 合成 email=<sub>@lab.skillshub.local + name=LAB User")
     void me_labBranch_returnsSynthesizedClaims() throws Exception {
         when(currentUserProvider.current()).thenReturn(
-                new CurrentUser("lab-user-001", List.of("admin"), List.of(), null));
+                CurrentUser.synthetic("lab-user-001", List.of("admin"), List.of(), null));
 
         mockMvc.perform(get("/api/v1/me")
                 .with(user("lab-user-001").roles("admin")))  // UsernamePasswordAuthenticationToken → else branch
@@ -89,6 +103,15 @@ class MeControllerTest extends WebMvcSliceTestBase {
     @Tag("AC-S141-3")
     @DisplayName("AC-S141-3: /api/v1/me OAuth2Login session → 200 + 真實 Google profile（非合成 email）")
     void me_oauth2LoginSession_returnsRealProfile() throws Exception {
+        // S154 T03 起 MeController 委派 currentUserProvider 取 platform 欄位
+        when(currentUserProvider.current()).thenReturn(new CurrentUser(
+                "u_sam001",                                          // userId
+                "116549129985546340268",                             // sub
+                "Sam Zhu",                                           // name
+                "sam@example.com",                                   // email
+                "sam",                                               // handle
+                List.of(), List.of(), null));
+
         mockMvc.perform(get("/api/v1/me")
                 .with(oauth2Login()
                         .attributes(attrs -> {
@@ -98,6 +121,8 @@ class MeControllerTest extends WebMvcSliceTestBase {
                             attrs.put("picture", "https://example.com/sam.jpg");
                         })))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.userId").value("u_sam001"))                  // S154 新增
+            .andExpect(jsonPath("$.handle").value("sam"))                       // S154 新增
             .andExpect(jsonPath("$.sub").value("116549129985546340268"))
             .andExpect(jsonPath("$.email").value("sam@example.com"))
             .andExpect(jsonPath("$.name").value("Sam Zhu"))

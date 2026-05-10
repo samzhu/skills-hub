@@ -47,7 +47,7 @@ class MeFlagsControllerTest extends WebMvcSliceTestBase {
 	@DisplayName("AC-5: GET /me/flags-summary → 200 + {openCount:N} JSON")
 	void flagsSummary_returnsOpenCount() throws Exception {
 		Mockito.when(currentUserProvider.current())
-				.thenReturn(new CurrentUser("alice", List.of("user"), List.of(), null));
+				.thenReturn(CurrentUser.synthetic("alice", List.of("user"), List.of(), null));
 		Mockito.when(flagService.countOpenFlagsForAuthor(eq("alice"))).thenReturn(7L);
 
 		mockMvc.perform(get("/api/v1/me/flags-summary")

@@ -64,7 +64,7 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
     private void asUser(String userId) {
         when(currentUserProvider.userId()).thenReturn(userId);
         when(currentUserProvider.current())
-                .thenReturn(new CurrentUser(userId, List.of("viewer"), List.of(), null));
+                .thenReturn(CurrentUser.synthetic(userId, List.of("viewer"), List.of(), null));
     }
 
     @Test
