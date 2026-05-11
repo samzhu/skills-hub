@@ -371,6 +371,50 @@ gcloud logging read 'resource.type=cloud_run_revision AND resource.labels.servic
 
 ---
 
+## 7. Result（implementation 已 ship；LAB AC 待 deploy 驗證）
+
+### 7.1 Backend implementation 完成（2026-05-12）
+
+| Phase | File | 變動 |
+|---|---|---|
+| F1 | `search/SearchConfig.java` | 合併 2 個 @Bean 為單一 `embeddingModel(props)` factory；移除 `@ConditionalOnProperty(api-key)` + `@ConditionalOnMissingBean`；body 內依 `apiKey null/blank` branch real / NoOp |
+| F2 | `security/scan/ScannerAiConfig.java` | 移除整個 `LlmEnabledCondition` inner class；合併為單一 `scannerChatClient(props)` factory；engine.enabled=false 或 api-key blank → return null（NullBean placeholder）|
+| F2.1 | `security/scan/engines/LlmJudge.java` | 拿掉 `@Conditional(LlmEnabledCondition.class)`；constructor 改 `Optional<ChatClient>`；analyze() 加 empty Optional → 空 findings + notice graceful skip |
+| F3 | `search/SearchNativeConfig.java`（**新檔**）| `@RegisterReflectionForBinding({LlmIntentOutput.class})` mirror ScoreNativeConfig — 防 native runtime `UnsupportedFeatureError` |
+
+### 7.2 自動化測試結果
+
+```
+SearchConfigTest                 3 PASS（NoOp / blank / real branch）
+ScannerAiConfigTest              5 PASS（engine×api-key 4 組合 + blank api-key）
+SearchConfigRegressionTest       3 PASS（AC-5 / AC-6 / AC-7 reflection guard）
+LlmJudgeTest                     既有 8 PASS（constructor 改 Optional 後仍綠）
+search + security.scan 全包      ALL PASS
+```
+
+`./gradlew test --tests "io.github.samzhu.skillshub.search.*" --tests "io.github.samzhu.skillshub.security.scan.*"` BUILD SUCCESSFUL（1m 48s）
+
+### 7.3 待驗證 AC（LAB deploy 後）
+
+| AC | 內容 | 驗證指令 |
+|---|---|---|
+| AC-1 | terraform 搜尋命中 | `curl /api/v1/search/semantic?q=terraform` ≥ 1 結果 |
+| AC-2 | 中文 query 命中 | `curl '?q=Terraform 安全稽核'` ≥ 1 結果 |
+| AC-3 | intent 真實 concepts | `POST /search/intent {"query":"terraform 部署"}` concepts.length > 0 |
+| AC-4 | startup log 不警告 | `gcloud logging read` 0 筆 "No EmbeddingModel" |
+| AC-8 | 0 命中時 fallback UX 不退化 | `/search?q=xyzqqqzzz` 顯既有空狀態 CTA |
+
+### 7.4 不變數（regression guard）
+
+AC-5/6/7 寫成 reflection-based test — 未來任何 PR：
+- 把 `@ConditionalOnProperty(api-key)` 加回 `SearchConfig.embeddingModel` → 紅
+- 把任何 `@Conditional*` 加回 `ScannerAiConfig.scannerChatClient` → 紅
+- 把 `LlmIntentOutput.class` 從 `SearchNativeConfig` `@RegisterReflectionForBinding` 拿掉 → 紅
+
+防覆轍 S148 / S157 / S168 同 family bug。
+
+---
+
 ## 8. 相關 spec / 參考資料
 
 - **S135a (v3.14.0)** — `QualityJudgeConfig` 是本 spec fix pattern 直接來源

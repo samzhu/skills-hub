@@ -4,16 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.google.genai.text.GoogleGenAiTextEmbeddingModel;
 
 import io.github.samzhu.skillshub.SkillshubProperties;
 
 /**
- * AC-5 驗證：SearchConfig 的 EmbeddingModel @Bean 方法直接測試。
+ * S157: SearchConfig 單一 factory branching 行為驗證。
  *
- * <p>T8：SearchConfig 已削減為「只提供 EmbeddingModel beans」（無 VectorStore @Bean）；
- * VectorStore 操作由 {@link SkillshubPgVectorStore} per-request builder 提供，由
- * {@code SearchProjectionTest} / {@code PgVectorStoreOwnerWriteTest} 覆蓋。
+ * <p>原 build-time {@code @ConditionalOnProperty} 已拿掉（per spec §3.2），bean 永遠註冊；
+ * 真假 EmbeddingModel 由 factory body 依 api-key 是否存在 runtime branch。
  *
  * <p>純 JUnit 5 unit test，無 Spring context 啟動。
  */
@@ -22,24 +22,44 @@ class SearchConfigTest {
     private final SearchConfig config = new SearchConfig();
 
     @Test
-    @DisplayName("AC-5: noOpEmbeddingModel() 回傳 768 維零向量（本機開發備用）")
-    void noOpEmbeddingModelReturns768DimVector() {
-        var em = config.noOpEmbeddingModel();
+    @DisplayName("api-key 為 null → 走 NoOp (768 維零向量)")
+    void noApiKeyReturnsNoOp() {
+        var props = propsWithApiKey(null);
+
+        var em = config.embeddingModel(props);
 
         var vector = em.embed("test text");
-
         assertThat(vector).hasSize(768);
+        assertThat(vector).containsOnly(0f);
     }
 
     @Test
-    @DisplayName("AC-3: googleGenAiEmbeddingModel() 當 skillshub.genai.api-key 設定時回傳 GoogleGenAiTextEmbeddingModel")
-    void googleGenAiEmbeddingModelReturnsRealModel() {
-        // S134 collateral fix：對齊 SkillshubProperties record 當前簽章
-        // Search: 2-arg → 1-arg（per S014 簡化）；Security: 2-arg → 3-arg（per S128 加 Cors）。
-        var props = new SkillshubProperties(
+    @DisplayName("api-key 為 blank → 走 NoOp")
+    void blankApiKeyReturnsNoOp() {
+        var props = propsWithApiKey("   ");
+
+        var em = config.embeddingModel(props);
+
+        var vector = em.embed("test text");
+        assertThat(vector).hasSize(768);
+        assertThat(vector).containsOnly(0f);
+    }
+
+    @Test
+    @DisplayName("api-key 存在 → 走真實 GoogleGenAiTextEmbeddingModel")
+    void realApiKeyReturnsGoogleGenAi() {
+        var props = propsWithApiKey("AIzaTestKey");
+
+        EmbeddingModel em = config.embeddingModel(props);
+
+        assertThat(em).isInstanceOf(GoogleGenAiTextEmbeddingModel.class);
+    }
+
+    private static SkillshubProperties propsWithApiKey(String apiKey) {
+        return new SkillshubProperties(
                 new SkillshubProperties.Storage("skillshub-packages", "./storage-local"),
                 new SkillshubProperties.Search("skill_embeddings"),
-                new SkillshubProperties.GenAI("gemini-embedding-2", 768, "test-api-key"),
+                new SkillshubProperties.GenAI("gemini-embedding-2", 768, apiKey),
                 new SkillshubProperties.Scanner(new SkillshubProperties.Engines(
                         new SkillshubProperties.Engine(true),
                         new SkillshubProperties.Engine(true),
@@ -50,13 +70,5 @@ class SearchConfigTest {
                         new SkillshubProperties.OAuth(true, new SkillshubProperties.OAuth.Login(false)),
                         new SkillshubProperties.Lab("lab-user"),
                         new SkillshubProperties.Cors(java.util.List.of(), false)));
-
-        var em = config.googleGenAiEmbeddingModel(props);
-
-        assertThat(em).isInstanceOf(GoogleGenAiTextEmbeddingModel.class);
     }
-
-    // T8: helpers (mockEmbeddingModel + randomVector) 已移除 —
-    // 不再有 simpleVectorStore tests 需要 mock embedding；EmbeddingModel 整合驗證
-    // 由 SemanticSearchIntegrationTest（@MockitoBean EmbeddingModel）覆蓋。
 }

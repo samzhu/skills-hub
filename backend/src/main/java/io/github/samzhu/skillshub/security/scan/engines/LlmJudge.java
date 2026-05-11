@@ -2,12 +2,12 @@ package io.github.samzhu.skillshub.security.scan.engines;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
 
 import io.github.samzhu.skillshub.security.scan.AnalysisOutput;
@@ -22,9 +22,10 @@ import io.github.samzhu.skillshub.security.scan.ScannerAiConfig;
  * Phase 2 LLM 引擎 — 接收 Phase 1 的靜態 findings，請 Gemini 對 skill 整體做語意層判斷，
  * 找出規則式引擎無法偵測的混淆指令、社交工程、隱含意圖等高階風險。
  *
- * <p>觸發條件：{@code skillshub.scanner.engines.llm.enabled=true} AND
- * {@code skillshub.genai.api-key} 非空（雙條件由 {@link ScannerAiConfig.LlmEnabledCondition} 把守）。
- * 任一條件不滿足，本 bean 與 {@link ChatClient} bean 都不會建立。
+ * <p>S157：bean 改為**無條件建立**，但 ChatClient 注入為 {@code Optional<ChatClient>} —
+ * runtime 缺 ChatClient（engine 關閉 / api-key 缺）時 analyze() 走 graceful skip，回傳空 findings
+ * + 一筆 notice。原 build-time {@code @Conditional(LlmEnabledCondition.class)} 在 Spring AOT
+ * native image 階段會把 bean 從 baked context 排除（與 S135a / S157 同 family bug）。
  *
  * <p>LLM 失敗（API 錯誤、JSON parse 失敗等）一律 graceful degradation —— 回傳空 findings +
  * 一筆 notice 紀錄失敗原因，不向 ScanOrchestrator 拋例外，避免單一引擎拖垮整體 pipeline。
@@ -42,7 +43,6 @@ import io.github.samzhu.skillshub.security.scan.ScannerAiConfig;
  * @see ScannerAiConfig
  */
 @Component("llm-judge")
-@Conditional(ScannerAiConfig.LlmEnabledCondition.class)
 public class LlmJudge implements SecurityAnalyzer {
 
 	private static final Logger log = LoggerFactory.getLogger(LlmJudge.class);
@@ -92,10 +92,13 @@ public class LlmJudge implements SecurityAnalyzer {
 			Verdict must be SAFE / SUSPICIOUS / MALICIOUS.
 			""";
 
-	private final ChatClient chatClient;
+	private final Optional<ChatClient> chatClient;
 
-	public LlmJudge(ChatClient chatClient) {
+	public LlmJudge(Optional<ChatClient> chatClient) {
 		this.chatClient = chatClient;
+		if (chatClient.isEmpty()) {
+			log.info("LlmJudge initialised in disabled mode (no ChatClient) — analyze() will return empty findings + notice");
+		}
 	}
 
 	@Override
@@ -106,9 +109,13 @@ public class LlmJudge implements SecurityAnalyzer {
 
 	@Override
 	public AnalysisOutput analyze(ScanContext context) {
+		if (chatClient.isEmpty()) {
+			return new AnalysisOutput(List.<SecurityFinding>of(),
+					List.of(new ScanNotice(name(), "LLM judge disabled (engine off or api-key absent)")));
+		}
 		var prompt = buildUserPrompt(context);
 		try {
-			LlmJudgement judgement = chatClient.prompt()
+			LlmJudgement judgement = chatClient.get().prompt()
 					.system(SYSTEM_PROMPT)
 					.user(prompt)
 					.call()

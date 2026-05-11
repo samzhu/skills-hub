@@ -5,69 +5,93 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.autoconfigure.AutoConfigurations;
-import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.ai.chat.client.ChatClient;
 
 import io.github.samzhu.skillshub.SkillshubProperties;
 
+/**
+ * S157: ScannerAiConfig 單一 factory branching 行為驗證。
+ *
+ * <p>原 build-time {@code @Conditional(LlmEnabledCondition.class)} 已拿掉；bean 永遠註冊，
+ * 真假 ChatClient 由 factory body 依 engine.enabled × api-key 兩條件 runtime branch。
+ * 缺條件 → return null（Spring NullBean placeholder，consumer Optional empty）。
+ *
+ * <p>純 JUnit 5 unit test，無 Spring context 啟動。
+ */
 class ScannerAiConfigTest {
 
-	private final ApplicationContextRunner runner = new ApplicationContextRunner()
-			.withConfiguration(AutoConfigurations.of(PropertyPlaceholderAutoConfiguration.class))
-			.withUserConfiguration(TestRoot.class, ScannerAiConfig.class);
+	private final ScannerAiConfig config = new ScannerAiConfig();
 
 	@Test
-	@DisplayName("AC-2.1: engine.llm.enabled=true AND genai.api-key 存在 → bean 建立")
+	@DisplayName("AC-2.1: engine.llm.enabled=true AND api-key 存在 → 真實 ChatClient")
 	@Tag("AC-2")
-	void bothPropertiesPresentCreatesBean() {
-		runner.withPropertyValues(
-				"skillshub.scanner.engines.llm.enabled=true",
-				"skillshub.genai.api-key=AIzaTestKey")
-				.run(ctx -> {
-					assertThat(ctx).hasBean("scannerChatModel");
-					assertThat(ctx).hasBean("scannerChatClient");
-				});
+	void bothPropertiesPresentReturnsRealClient() {
+		var props = props(true, "AIzaTestKey");
+
+		var client = config.scannerChatClient(props);
+
+		assertThat(client).isNotNull();
+		assertThat(client).isInstanceOf(ChatClient.class);
 	}
 
 	@Test
-	@DisplayName("AC-2.1: engine.llm.enabled=false (api-key 存在) → bean 不建立")
+	@DisplayName("AC-2.1: engine.llm.enabled=false → null")
 	@Tag("AC-2")
-	void engineDisabledSkipsBean() {
-		runner.withPropertyValues(
-				"skillshub.scanner.engines.llm.enabled=false",
-				"skillshub.genai.api-key=AIzaTestKey")
-				.run(ctx -> {
-					assertThat(ctx).doesNotHaveBean("scannerChatModel");
-					assertThat(ctx).doesNotHaveBean("scannerChatClient");
-				});
+	void engineDisabledReturnsNull() {
+		var props = props(false, "AIzaTestKey");
+
+		var client = config.scannerChatClient(props);
+
+		assertThat(client).isNull();
 	}
 
 	@Test
-	@DisplayName("AC-2.1: api-key 缺席 (engine 開啟) → bean 不建立")
+	@DisplayName("AC-2.1: api-key 缺席（engine 開啟）→ null")
 	@Tag("AC-2")
-	void missingApiKeySkipsBean() {
-		runner.withPropertyValues("skillshub.scanner.engines.llm.enabled=true")
-				.run(ctx -> {
-					assertThat(ctx).doesNotHaveBean("scannerChatModel");
-					assertThat(ctx).doesNotHaveBean("scannerChatClient");
-				});
+	void missingApiKeyReturnsNull() {
+		var props = props(true, null);
+
+		var client = config.scannerChatClient(props);
+
+		assertThat(client).isNull();
 	}
 
 	@Test
-	@DisplayName("AC-2.1: 兩屬性都缺 → bean 不建立")
+	@DisplayName("AC-2.1: 兩屬性都缺 → null")
 	@Tag("AC-2")
-	void bothAbsentSkipsBean() {
-		runner.run(ctx -> {
-			assertThat(ctx).doesNotHaveBean("scannerChatModel");
-			assertThat(ctx).doesNotHaveBean("scannerChatClient");
-		});
+	void bothAbsentReturnsNull() {
+		var props = props(false, null);
+
+		var client = config.scannerChatClient(props);
+
+		assertThat(client).isNull();
 	}
 
-	/** 啟用 SkillshubProperties relaxed binding，否則 props bean 不存在。 */
-	@Configuration
-	@EnableConfigurationProperties(SkillshubProperties.class)
-	static class TestRoot {}
+	@Test
+	@DisplayName("AC-2.1: api-key blank（whitespace 視同缺）→ null")
+	@Tag("AC-2")
+	void blankApiKeyReturnsNull() {
+		var props = props(true, "   ");
+
+		var client = config.scannerChatClient(props);
+
+		assertThat(client).isNull();
+	}
+
+	private static SkillshubProperties props(boolean llmEnabled, String apiKey) {
+		return new SkillshubProperties(
+				new SkillshubProperties.Storage("skillshub-packages", "./storage-local"),
+				new SkillshubProperties.Search("skill_embeddings"),
+				new SkillshubProperties.GenAI("gemini-embedding-2", 768, apiKey),
+				new SkillshubProperties.Scanner(new SkillshubProperties.Engines(
+						new SkillshubProperties.Engine(true),
+						new SkillshubProperties.Engine(true),
+						new SkillshubProperties.Engine(true),
+						new SkillshubProperties.Engine(llmEnabled),
+						new SkillshubProperties.Engine(true))),
+				new SkillshubProperties.Security(
+						new SkillshubProperties.OAuth(true, new SkillshubProperties.OAuth.Login(false)),
+						new SkillshubProperties.Lab("lab-user"),
+						new SkillshubProperties.Cors(java.util.List.of(), false)));
+	}
 }

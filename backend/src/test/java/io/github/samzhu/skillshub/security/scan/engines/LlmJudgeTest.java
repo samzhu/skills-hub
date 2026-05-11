@@ -57,7 +57,7 @@ class LlmJudgeTest {
 		var stub = new CapturingStubChatModel("""
 				{"verdict":"SAFE","reasoning":"none","claims":[]}
 				""");
-		var judge = new LlmJudge(ChatClient.create(stub));
+		var judge = new LlmJudge(java.util.Optional.of(ChatClient.create(stub)));
 
 		var phase1 = List.of(new SecurityFinding(
 				"DANGEROUS_COMMAND_RM_RF", Severity.HIGH, "rm -rf",
@@ -85,7 +85,7 @@ class LlmJudgeTest {
 				}
 				""";
 		var stub = new CapturingStubChatModel(canned);
-		var judge = new LlmJudge(ChatClient.create(stub));
+		var judge = new LlmJudge(java.util.Optional.of(ChatClient.create(stub)));
 
 		var output = judge.analyze(withPhase1(List.of(), "# md", Map.of()));
 
@@ -111,7 +111,7 @@ class LlmJudgeTest {
 		var stub = new CapturingStubChatModel("""
 				{"verdict":"SAFE","reasoning":"No risky behavior detected.","claims":[]}
 				""");
-		var judge = new LlmJudge(ChatClient.create(stub));
+		var judge = new LlmJudge(java.util.Optional.of(ChatClient.create(stub)));
 
 		var output = judge.analyze(withPhase1(List.of(), "", Map.of()));
 
@@ -124,7 +124,7 @@ class LlmJudgeTest {
 	@DisplayName("AC-6.3: LLM 拋例外 → graceful degradation，回傳 empty AnalysisOutput")
 	@Tag("AC-6")
 	void llmFailureReturnsEmpty() {
-		var judge = new LlmJudge(ChatClient.create(new FailingStubChatModel()));
+		var judge = new LlmJudge(java.util.Optional.of(ChatClient.create(new FailingStubChatModel())));
 
 		var output = judge.analyze(withPhase1(List.of(), "", Map.of()));
 
@@ -138,7 +138,7 @@ class LlmJudgeTest {
 	@DisplayName("LlmJudge 是 SecurityAnalyzer，phase=LLM, name=\"llm-judge\"")
 	void implementsSecurityAnalyzerContract() {
 		var stub = new CapturingStubChatModel("{\"verdict\":\"SAFE\",\"reasoning\":\"x\",\"claims\":[]}");
-		var judge = new LlmJudge(ChatClient.create(stub));
+		var judge = new LlmJudge(java.util.Optional.of(ChatClient.create(stub)));
 
 		assertThat(judge.name()).isEqualTo("llm-judge");
 		assertThat(judge.phase()).isEqualTo(Phase.LLM);
@@ -149,7 +149,7 @@ class LlmJudgeTest {
 	@Tag("AC-6")
 	void promptIncludesFrontmatterAndSkillMd() {
 		var stub = new CapturingStubChatModel("{\"verdict\":\"SAFE\",\"reasoning\":\"x\",\"claims\":[]}");
-		var judge = new LlmJudge(ChatClient.create(stub));
+		var judge = new LlmJudge(java.util.Optional.of(ChatClient.create(stub)));
 
 		var ctx = new ScanContext("s", "1.0.0",
 				Map.of("name", "my-skill", "description", "do things"),
