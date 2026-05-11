@@ -15,6 +15,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
@@ -76,6 +77,25 @@ class SecurityConfig {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
+    /**
+     * S160 Phase 1：CSP report-only policy。{@code unsafe-inline} / {@code unsafe-eval} 留著對 React +
+     * Vite + shadcn 既有 inline style / script 行為相容；Phase 2 改 nonce-based enforce 移除。
+     * {@code googleusercontent.com} 允許 OAuth user picture（S154 author avatar）。
+     */
+    private static final String CSP_REPORT_ONLY = "default-src 'self'; "
+            + "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            + "style-src 'self' 'unsafe-inline'; "
+            + "img-src 'self' data: https://lh3.googleusercontent.com https://*.googleusercontent.com; "
+            + "font-src 'self' data:; "
+            + "connect-src 'self'; "
+            + "frame-ancestors 'none'; "
+            + "base-uri 'self'; "
+            + "form-action 'self'";
+
+    /** S160 Phase 1：Permissions-Policy — deny camera / mic / geolocation；interest-cohort 反 FLoC 隱私訊號。 */
+    private static final String PERMISSIONS_POLICY =
+            "camera=(), microphone=(), geolocation=(), interest-cohort=()";
+
     private final SkillshubProperties props;
 
     SecurityConfig(SkillshubProperties props) {
@@ -131,6 +151,20 @@ class SecurityConfig {
             ObjectProvider<AuthenticationSuccessHandler> oauthSuccessHandlerProvider) throws Exception {
         // S128：啟用 CORS（per Mode B Round 40 Bug AZ fix）— allowlist 由 SkillshubProperties.Cors 管理
         http.cors(cors -> cors.configurationSource(corsConfigurationSource));
+
+        // S160 Phase 1：security headers — CSP report-only / HSTS / Referrer-Policy / Permissions-Policy。
+        // 既有預設 X-Frame-Options DENY + X-Content-Type-Options nosniff 由 Spring Security 自動加，
+        // 不手動覆寫。CSRF 改啟用屬 S160b 範疇（要 frontend apiFetch 配合送 X-XSRF-TOKEN header）。
+        http.headers(headers -> headers
+                .contentSecurityPolicy(csp -> csp
+                        .policyDirectives(CSP_REPORT_ONLY)
+                        .reportOnly())
+                .httpStrictTransportSecurity(hsts -> hsts
+                        .maxAgeInSeconds(31_536_000L)
+                        .includeSubDomains(true))
+                .referrerPolicy(rp -> rp.policy(
+                        ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                .permissionsPolicyHeader(pp -> pp.policy(PERMISSIONS_POLICY)));
 
         if (props.security().oauth().enabled()) {
             // ── OAuth 模式（S011 行為）──

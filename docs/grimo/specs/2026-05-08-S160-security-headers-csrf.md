@@ -1,6 +1,6 @@
 # S160: Security Headers + CSRF — pre-production hardening 清單
 
-> Spec: S160 | Size: M(8) | Status: 📐 in-design
+> Spec: S160 | Size: M(8) → Phase 1 trim S(5) | Status: 🚧 Phase 1 backend impl 完成 2026-05-12（headers ship；CSRF + CSP report endpoint defer 至 S160b）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— 實測 LAB env 缺 4 項標準 web security baseline：CSRF 關閉（POST 不需 token）、CSP missing、HSTS missing、Referrer-Policy missing。X-Frame-Options 與 X-Content-Type-Options 已設好。
 
@@ -347,6 +347,43 @@ deploy 後：
 - **Rate limiting**: 對 `/api/v1/requests` / `/skills/install` 等可被 spam 的 endpoint 加 rate limit
 - **WAF / GCP Cloud Armor**: 規則設定
 - **Audit log**: auth failure / privilege escalation 嘗試紀錄
+
+## 7.5 Phase 1 implementation 結果（2026-05-12）
+
+### 7.5.1 Ship 範圍（本 tick）
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-4 | CSP Report-Only header `default-src 'self'; ...; form-action 'self'` | ✅ PASS |
+| AC-5 | HSTS `max-age=31536000; includeSubDomains` | ✅ PASS |
+| AC-6 | Referrer-Policy `strict-origin-when-cross-origin` | ✅ PASS |
+| AC-7 | Permissions-Policy `camera/microphone/geolocation/interest-cohort` all deny | ✅ PASS |
+| AC-9 | X-Frame-Options DENY + X-Content-Type-Options nosniff 不退化 | ✅ PASS |
+
+### 7.5.2 Defer 至 S160b（trim rationale）
+
+| AC | 內容 | 為何 defer |
+|---|---|---|
+| AC-1 | cookie session POST 無 token → 403 | 需 frontend `apiFetch` 同 commit 改 read XSRF-TOKEN cookie + 帶 X-XSRF-TOKEN header；全 mutation flow 跟著動，動 multi-PR 風險高，獨立 sub-spec 收斂 |
+| AC-2 | Bearer JWT POST exempt | 同上 — 需與 frontend CSRF 一起 ship 才完整 |
+| AC-3 | SPA cookie-based session 流程 | 需 frontend `api/csrf.ts` helper + apiFetch wiring |
+| AC-8 | CSP report endpoint 接 violation | 純後端但無實際 consumer（無 log analytics 接 receiver）；報而不收等同 dead endpoint，留下次跟 logging 改善一起 |
+
+### 7.5.3 改動檔案
+
+| File | 變動 |
+|---|---|
+| `backend/.../shared/security/SecurityConfig.java` | 加 `http.headers(headers -> headers.contentSecurityPolicy(...reportOnly()).httpStrictTransportSecurity(...).referrerPolicy(...).permissionsPolicyHeader(...))`；新增兩個 `static final String` constants（`CSP_REPORT_ONLY` / `PERMISSIONS_POLICY`） |
+| `backend/.../shared/security/SecurityHeadersTest.java`（**新增**） | 5 ACs（AC-4/5/6/7/9）— extends WebMvcSliceTestBase + @WebMvcTest(AdminController.class) + admin JWT |
+
+### 7.5.4 驗證指令
+
+```bash
+./gradlew test --tests "*SecurityHeadersTest"                 # 5/5 PASS
+./gradlew test --tests "io.github.samzhu.skillshub.shared.security.*"   # 91/91 PASS（無 regression）
+```
+
+---
 
 ## 8. 與其他 spec 關係
 
