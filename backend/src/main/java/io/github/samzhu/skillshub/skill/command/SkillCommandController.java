@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -35,6 +36,7 @@ import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
  *   <li>{@code POST /api/v1/skills} — 以 JSON 建立技能（測試/seeding 用）</li>
  *   <li>{@code POST /api/v1/skills/upload} — 上傳 zip 建立技能 + 首版</li>
  *   <li>{@code PUT /api/v1/skills/{id}/versions} — 為既有技能新增版本</li>
+ *   <li>{@code DELETE /api/v1/skills/{id}} — 刪除技能與相關資料</li>
  * </ul>
  */
 @RestController
@@ -143,6 +145,18 @@ public class SkillCommandController {
 		var current = currentUserProvider.current();
 		commandService.addVersion(id, file.getBytes(), version, current.name());
 		return ResponseEntity.ok().build();
+	}
+
+	/**
+	 * S144：刪除 skill。呼叫者需具 delete 權限；blob 清理由 commit 後 listener 執行。
+	 *
+	 * @return 204 No Content
+	 */
+	@DeleteMapping("/{id}")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'delete')")
+	ResponseEntity<Void> delete(@PathVariable String id) {
+		commandService.deleteSkill(id, currentUserProvider.userId());
+		return ResponseEntity.noContent().build();
 	}
 
 	/**

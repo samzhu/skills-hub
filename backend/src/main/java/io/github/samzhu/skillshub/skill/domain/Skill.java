@@ -375,6 +375,16 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         registerEvent(SkillDownloadedEvent.of(id, latestVersion));
     }
 
+    /**
+     * S144 — register hard-delete event before repository deletes the aggregate row.
+     *
+     * <p>No state field is mutated because {@code skills} is removed in the same transaction.
+     */
+    public void markDeleted(String deletedBy, List<String> storagePaths) {
+        registerEvent(new SkillDeletedEvent(id, name, deletedBy, Instant.now(),
+                storagePaths == null ? List.of() : List.copyOf(storagePaths)));
+    }
+
     // ============================================================================
     // Read accessors
     // ============================================================================

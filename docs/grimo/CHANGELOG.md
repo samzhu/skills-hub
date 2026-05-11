@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.51.0] — S144 Skill delete（2026-05-11）
+
+### Added
+
+- **Backend delete API** — `DELETE /api/v1/skills/{id}` returns 204 for owners, 403 for non-owners, and 404 for missing skills.
+- **Domain cleanup** — `SkillDeletedEvent` preserves audit history, deletes the `skills` row with FK cascade, clears soft-FK user-facing rows, and asynchronously removes all version package files.
+- **Frontend delete UX** — `/my-skills` row menu now keeps `檢視` and `刪除` as separate actions, shows a confirmation dialog, removes the row after 204, and displays localized success/error toasts.
+- **Local agent artifact ignore** — repo root `.gitignore` now excludes `.agents/` and `AGENTS.md`.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01/V03/V04/V05/V06/V07/V08a/V08b all PASS; V02 INFO line coverage 82.8%; exit=0.
+- S144 AC：6/6 PASS.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-08-S144-skill-delete.md` → `docs/grimo/specs/archive/`
+- spec-roadmap.md S144 row moved from Backlog to Shipped as `v4.51.0`.
+
+---
+
 ## [v4.50.0] — S154b Author Display Identity (frontend)（2026-05-11）
 
 > S154 backend 已 expose `authorDisplayName / authorHandle / authorEmail` 4 個 enriched 欄位；本 spec 在前端 10 個元件渲染出來，並修 ShareSkillModal 4 個 UX bug + PublishPage 「作者」欄位改 read-only display（user-reported：原 input 仍顯 OAuth sub raw 21 位 `116549129985546340268` 且可改但 backend silent ignore）。

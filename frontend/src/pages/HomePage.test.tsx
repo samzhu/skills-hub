@@ -144,4 +144,36 @@ describe('HomePage — S104 filter-active 0-hits UX', () => {
     expect(screen.queryByRole('button', { name: '上一頁' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '下一頁' })).not.toBeInTheDocument()
   })
+
+  it('AC-S144-6: 重新載入 /browse 後不渲染已被刪除的 skill', async () => {
+    const deletedSkill = { id: 'deleted-skill', name: '已刪除技能', author: 'alice', description: 'deleted', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z', aclEntries: ['*:read'] }
+    const survivor = { id: 'survivor-skill', name: '保留技能', author: 'alice', description: 'survivor', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z', aclEntries: ['*:read'] }
+    let page = {
+      content: [deletedSkill, survivor],
+      page: { number: 0, size: 20, totalElements: 2, totalPages: 1 },
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/v1/skills')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(page) } as Response)
+      }
+      if (url.includes('/api/v1/categories')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
+    })
+
+    const first = renderPage()
+    await waitFor(() => expect(screen.getByText('已刪除技能')).toBeInTheDocument())
+    first.unmount()
+
+    page = {
+      content: [survivor],
+      page: { number: 0, size: 20, totalElements: 1, totalPages: 1 },
+    }
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('保留技能')).toBeInTheDocument())
+    expect(screen.queryByText('已刪除技能')).not.toBeInTheDocument()
+  })
 })

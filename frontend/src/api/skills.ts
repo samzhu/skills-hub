@@ -1,4 +1,4 @@
-import { apiFetch, ApiError } from './client'
+import { apiFetch, apiFetchVoid, ApiError } from './client'
 import type { Skill, SpringPage, CategoryCount, SkillVersion } from '../types/skill'
 
 /**
@@ -68,6 +68,10 @@ export function fetchSkills(params: SkillSearchParams): Promise<SpringPage<Skill
  */
 export function fetchSkillById(id: string): Promise<Skill> {
   return apiFetch(`/skills/${id}`)
+}
+
+export function deleteSkill(id: string): Promise<void> {
+  return apiFetchVoid(`/skills/${id}`, { method: 'DELETE' })
 }
 
 /**

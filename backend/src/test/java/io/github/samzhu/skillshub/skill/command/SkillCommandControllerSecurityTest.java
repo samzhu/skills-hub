@@ -1,9 +1,12 @@
 package io.github.samzhu.skillshub.skill.command;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.NoSuchElementException;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
@@ -98,5 +101,72 @@ class SkillCommandControllerSecurityTest extends WebMvcSliceTestBase {
                                 .claim("groups", List.<String>of()))
                         .authorities(new SimpleGrantedAuthority("ROLE_user"))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("AC-S144-2: alice (user:alice:delete 已 grant) DELETE /skills/{id} → 204 No Content")
+    @Tag("AC-S144-2")
+    void ownerDelete_returns204() throws Exception {
+        var skillId = "test-skill-id";
+        Mockito.when(currentUserProvider.userId()).thenReturn("alice");
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq(skillId),
+                        ArgumentMatchers.eq("Skill"), ArgumentMatchers.eq("delete")))
+                .thenReturn(true);
+
+        mockMvc.perform(delete("/api/v1/skills/" + skillId)
+                .with(jwt()
+                        .jwt(j -> j.subject("alice")
+                                .claim("roles", List.of("user"))
+                                .claim("groups", List.<String>of()))
+                        .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+                .andExpect(status().isNoContent());
+
+        Mockito.verify(skillCommandService).deleteSkill(skillId, "alice");
+    }
+
+    @Test
+    @DisplayName("AC-S144-2: bob (無 delete verb) DELETE /skills/{id} → 403 Forbidden")
+    @Tag("AC-S144-2")
+    void nonOwnerDelete_returns403() throws Exception {
+        var skillId = "test-skill-id";
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq(skillId),
+                        ArgumentMatchers.eq("Skill"), ArgumentMatchers.eq("delete")))
+                .thenReturn(false);
+
+        mockMvc.perform(delete("/api/v1/skills/" + skillId)
+                .with(jwt()
+                        .jwt(j -> j.subject("bob")
+                                .claim("roles", List.of("user"))
+                                .claim("groups", List.<String>of()))
+                        .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+                .andExpect(status().isForbidden());
+
+        Mockito.verify(skillCommandService, Mockito.never())
+                .deleteSkill(ArgumentMatchers.anyString(), ArgumentMatchers.anyString());
+    }
+
+    @Test
+    @DisplayName("AC-S144-3: DELETE /skills/{id} target 不存在 → 404 NOT_FOUND")
+    @Tag("AC-S144-3")
+    void deleteMissingSkill_returns404() throws Exception {
+        var skillId = "missing-skill-id";
+        Mockito.when(currentUserProvider.userId()).thenReturn("alice");
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq(skillId),
+                        ArgumentMatchers.eq("Skill"), ArgumentMatchers.eq("delete")))
+                .thenReturn(true);
+        Mockito.doThrow(new NoSuchElementException("Skill not found: " + skillId))
+                .when(skillCommandService).deleteSkill(skillId, "alice");
+
+        mockMvc.perform(delete("/api/v1/skills/" + skillId)
+                .with(jwt()
+                        .jwt(j -> j.subject("alice")
+                                .claim("roles", List.of("user"))
+                                .claim("groups", List.<String>of()))
+                        .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOT_FOUND"));
     }
 }

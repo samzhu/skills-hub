@@ -430,4 +430,28 @@ class SkillAggregateTest {
 
         assertThat(skill.getAclEntries()).containsExactly("public:*:read");
     }
+
+    @Test
+    @Tag("AC-S144-1")
+    @DisplayName("AC-S144-1: markDeleted registers SkillDeletedEvent with deletedBy + storage paths")
+    void markDeletedRegistersSkillDeletedEvent() {
+        var skill = Skill.create(new CreateSkillCommand("delete-event", "desc", "alice", "DevOps"));
+        clearDomainEvents(skill);
+
+        skill.markDeleted("alice", List.of(
+                "skills/%s/1.0.0/skill.zip".formatted(skill.getId()),
+                "skills/%s/1.1.0/skill.zip".formatted(skill.getId())));
+
+        var events = retrieveDomainEvents(skill);
+        assertThat(events).hasSize(1);
+        assertThat(events.iterator().next()).isInstanceOf(SkillDeletedEvent.class);
+        var event = (SkillDeletedEvent) events.iterator().next();
+        assertThat(event.aggregateId()).isEqualTo(skill.getId());
+        assertThat(event.name()).isEqualTo("delete-event");
+        assertThat(event.deletedBy()).isEqualTo("alice");
+        assertThat(event.deletedAt()).isNotNull();
+        assertThat(event.storagePaths()).containsExactly(
+                "skills/%s/1.0.0/skill.zip".formatted(skill.getId()),
+                "skills/%s/1.1.0/skill.zip".formatted(skill.getId()));
+    }
 }

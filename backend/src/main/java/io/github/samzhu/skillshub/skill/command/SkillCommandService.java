@@ -2,9 +2,12 @@ package io.github.samzhu.skillshub.skill.command;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.util.NoSuchElementException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,17 +52,20 @@ public class SkillCommandService {
 	private final StorageService storageService;
 	private final PackageService packageService;
 	private final SkillValidator skillValidator;
+	private final NamedParameterJdbcTemplate jdbc;
 
 	public SkillCommandService(SkillRepository skillRepo,
 			SkillVersionRepository skillVersionRepo,
 			StorageService storageService,
 			PackageService packageService,
-			SkillValidator skillValidator) {
+			SkillValidator skillValidator,
+			NamedParameterJdbcTemplate jdbc) {
 		this.skillRepo = skillRepo;
 		this.skillVersionRepo = skillVersionRepo;
 		this.storageService = storageService;
 		this.packageService = packageService;
 		this.skillValidator = skillValidator;
+		this.jdbc = jdbc;
 	}
 
 	@Transactional
@@ -260,6 +266,39 @@ public class SkillCommandService {
 				.addKeyValue("skillId", cmd.skillId())
 				.addKeyValue("reason", cmd.reason())
 				.log("Skill 重啟完成");
+	}
+
+	/**
+	 * S144 — hard-delete one skill and its user-facing references.
+	 *
+	 * <p>FK-backed tables are removed by PostgreSQL {@code ON DELETE CASCADE};
+	 * this method only deletes soft-FK references that would otherwise become orphaned.
+	 */
+	@Transactional
+	public void deleteSkill(String skillId, String deletedBy) {
+		var skill = skillRepo.findById(skillId)
+				.orElseThrow(() -> new NoSuchElementException("Skill not found: " + skillId));
+		var storagePaths = skillVersionRepo.findBySkillIdOrderByPublishedAtDesc(skillId).stream()
+				.map(SkillVersion::getStoragePath)
+				.toList();
+
+		skill.markDeleted(deletedBy, storagePaths);
+		deleteSoftReferences(skillId);
+		skillRepo.delete(skill);
+
+		log.atInfo()
+				.addKeyValue("skillId", skillId)
+				.addKeyValue("deletedBy", deletedBy)
+				.addKeyValue("storagePathCount", storagePaths.size())
+				.log("Skill 刪除完成");
+	}
+
+	private void deleteSoftReferences(String skillId) {
+		var params = new MapSqlParameterSource("skillId", skillId);
+		jdbc.update("DELETE FROM skill_subscriptions WHERE skill_id = :skillId", params);
+		jdbc.update("DELETE FROM skill_scores WHERE skill_id = :skillId", params);
+		jdbc.update("DELETE FROM collection_skills WHERE skill_id = :skillId", params);
+		jdbc.update("DELETE FROM notifications WHERE skill_id = :skillId", params);
 	}
 
 	private List<ValidationFinding> buildFindings(ValidationResult r) {

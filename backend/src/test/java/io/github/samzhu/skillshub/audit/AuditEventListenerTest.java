@@ -2,6 +2,7 @@ package io.github.samzhu.skillshub.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,6 +19,7 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.events.DomainEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillDeletedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillReactivatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillRiskAssessedEvent;
@@ -174,6 +176,29 @@ class AuditEventListenerTest {
                             .toList();
                     assertThat(riskRows).hasSize(1);
                     assertThat(riskRows.getFirst().payload()).containsEntry("level", "HIGH");
+                });
+    }
+
+    @Test
+    @DisplayName("AC-S144-4: SkillDeletedEvent → 1 SkillDeleted audit row；重投不疊加")
+    @Tag("AC-S144-4")
+    void skillDeleted_idempotentByAggregateId(Scenario scenario) {
+        var skillId = newId();
+        var event = new SkillDeletedEvent(skillId, "delete-service", "alice", Instant.now(),
+                List.of("skills/%s/1.0.0.zip".formatted(skillId)));
+
+        scenario.stimulate((tx, pub) -> {
+                    tx.executeWithoutResult(s -> pub.publishEvent(event));
+                    tx.executeWithoutResult(s -> pub.publishEvent(event));
+                })
+                .andWaitForStateChange(() -> firstRowOrNull(skillId))
+                .andVerify(row -> {
+                    var rows = auditRowsFor(skillId);
+                    assertThat(rows).hasSize(1);
+                    assertThat(rows.getFirst().eventType()).isEqualTo("SkillDeleted");
+                    assertThat(rows.getFirst().payload())
+                            .containsEntry("name", "delete-service")
+                            .containsEntry("deletedBy", "alice");
                 });
     }
 

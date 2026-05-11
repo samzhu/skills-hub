@@ -57,3 +57,12 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   }
   return res.json() as Promise<T>
 }
+
+export async function apiFetchVoid(path: string, init?: RequestInit): Promise<void> {
+  const res = await fetch(`${BASE}${path}`, init)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    const b = body as { message?: string; error?: string; findings?: ValidationFinding[] }
+    throw new ApiError(res.status, b.message ?? `API error ${res.status}`, b.error, b.findings)
+  }
+}

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { ArrowRight } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ArrowRight, Eye, MoreVertical, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { AppShell } from '@/components/AppShell'
 import { MetricCard } from '@/components/MetricCard'
 import { IconTile } from '@/components/IconTile'
@@ -8,6 +10,8 @@ import { RiskBadge } from '@/components/RiskBadge'
 import { BeamFrame } from '@/components/BeamFrame'
 import { EmptyState } from '@/components/EmptyState'
 import { Sparkline } from '@/components/Sparkline'
+import { deleteSkill } from '@/api/skills'
+import { localizeApiError } from '@/lib/api-error-messages'
 import { useMe } from '@/hooks/useMe'
 import { useAuth } from '@/hooks/useAuth'
 import { useSkillList } from '@/hooks/useSkillList'
@@ -35,6 +39,7 @@ import type { Skill } from '@/types/skill'
  * 任何 user 可改 URL 看別人的 dashboard（已知 MVP 限制 per Feature First）
  */
 export function MySkillsPage() {
+  const queryClient = useQueryClient()
   const { data: me, isLoading: meLoading, isError: meError } = useMe()
   const auth = useAuth()
   // S154b — 用 platform userId 作 author filter（S154 backend `skills.author` 已切 user_id；
@@ -49,6 +54,22 @@ export function MySkillsPage() {
   // S112-T04: 待處理回報 — me 已 loaded 才查（避免 anonymous 拒接）；放早 return 前以對齊 Rules of Hooks
   const { data: flagsSummary } = useFlagsSummary(!!author)
   const [tab, setTab] = useState<'all' | 'PUBLISHED' | 'DRAFT' | 'SUSPENDED'>('all')
+  const [pendingDelete, setPendingDelete] = useState<Skill | null>(null)
+  const deleteMutation = useMutation({
+    mutationFn: (skillId: string) => deleteSkill(skillId),
+    onSuccess: (_, skillId) => {
+      queryClient.setQueriesData({ queryKey: ['skills', 'list'] }, (old: unknown) => {
+        if (!old || typeof old !== 'object' || !('content' in old)) return old
+        const page = old as { content: Skill[]; page?: unknown }
+        return { ...page, content: page.content.filter((skill) => skill.id !== skillId) }
+      })
+      setPendingDelete(null)
+      toast.success('技能已刪除')
+    },
+    onError: (err) => {
+      toast.error(`刪除失敗：${localizeApiError(err)}`)
+    },
+  })
 
   if (meLoading || (author && skillsLoading)) {
     return (
@@ -174,11 +195,52 @@ export function MySkillsPage() {
               </div>
             ) : (
               filteredSkills.map((skill, i) => (
-                <SkillRow key={skill.id} skill={skill} isLast={i === filteredSkills.length - 1} />
+                <SkillRow
+                  key={skill.id}
+                  skill={skill}
+                  isLast={i === filteredSkills.length - 1}
+                  onDelete={() => setPendingDelete(skill)}
+                />
               ))
             )}
           </div>
         </>
+      )}
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-skill-title"
+            className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-xl"
+          >
+            <h2 id="delete-skill-title" className="text-[16px] font-semibold">
+              確定要刪除「{pendingDelete.name}」嗎？
+            </h2>
+            <p className="mt-2 text-[13px] leading-6 text-muted-foreground">
+              此操作會移除技能、版本、分享權限與相關統計資料；刪除後無法從頁面復原。
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                className="h-9 rounded-md border border-border px-4 text-[13px] hover:bg-muted/50"
+                disabled={deleteMutation.isPending}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteMutation.mutate(pendingDelete.id)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-[#B42318] px-4 text-[13px] font-medium text-white hover:bg-[#912018] disabled:opacity-70"
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                確認刪除
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </AppShell>
   )
@@ -208,26 +270,26 @@ function TabPill({
   )
 }
 
-function SkillRow({ skill, isLast }: { skill: Skill; isLast: boolean }) {
+function SkillRow({ skill, isLast, onDelete }: { skill: Skill; isLast: boolean; onDelete: () => void }) {
   // S096d3: 30d sparkline data；只 PUBLISHED skill 拉（DRAFT/SUSPENDED 沒下載資料）
   const { data: trend } = useSkillStats(skill.status === 'PUBLISHED' ? skill.id : undefined, '30d')
+  const [menuOpen, setMenuOpen] = useState(false)
   return (
-    <Link
-      to={`/skills/${skill.id}`}
+    <div
       className={
-        'flex items-center gap-3 px-4 py-3 hover:bg-muted/30 ' +
+        'relative flex items-center gap-3 px-4 py-3 hover:bg-muted/30 ' +
         (isLast ? '' : 'border-b border-border')
       }
     >
       <IconTile name={skill.name} category={skill.category} size="sm" />
-      <div className="min-w-0 flex-1">
+      <Link to={`/skills/${skill.id}`} className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-[13px] font-medium">{skill.name}</span>
           <StatusPill status={skill.status} />
           <RiskBadge level={skill.riskLevel} />
         </div>
         <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">{skill.description}</p>
-      </div>
+      </Link>
       {/* S096d3: 30d sparkline column (per prototype my_skills_author_dashboard.html) */}
       <div className="hidden shrink-0 sm:block" aria-label="30d download trend">
         {trend && <Sparkline data={trend} width={64} height={20} />}
@@ -243,7 +305,46 @@ function SkillRow({ skill, isLast }: { skill: Skill; isLast: boolean }) {
           v{skill.latestVersion ?? '—'}
         </span>
       </div>
-    </Link>
+      <div className="relative shrink-0">
+        <button
+          type="button"
+          aria-label={`${skill.name}的動作`}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
+        {menuOpen && (
+          <div
+            role="menu"
+            className="absolute right-0 top-9 z-20 min-w-28 rounded-md border border-border bg-card p-1 shadow-lg"
+          >
+            <Link
+              to={`/skills/${skill.id}`}
+              role="menuitem"
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] text-foreground hover:bg-muted"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              檢視
+            </Link>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false)
+                onDelete()
+              }}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[13px] text-[#B42318] hover:bg-muted"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              刪除
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

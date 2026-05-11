@@ -28,6 +28,7 @@ const ERROR_MESSAGE_BUILDER: Record<string, (backend?: string) => string> = {
   METHOD_NOT_ALLOWED: () => '此操作的請求方法不正確，請重新整理頁面後再試。',
   CONCURRENT_MODIFICATION: () => '資源被其他請求同時修改，請重試。',
   NOT_FOUND: () => '找不到指定的資源。',
+  FORBIDDEN: () => '沒有權限執行此操作。',
   SKILL_SUSPENDED: () => '此技能已被停用，無法操作。',
 }
 

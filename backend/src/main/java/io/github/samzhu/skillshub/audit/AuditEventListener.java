@@ -17,6 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillDeletedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillReactivatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillRiskAssessedEvent;
@@ -48,7 +49,7 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedFromAggregat
  * 第二筆遇 {@code (aggregate_id, sequence)} UNIQUE 衝突 → Spring Modulith 自動 retry，
  * 第二輪讀 MAX 遞增 → 順利寫入。
  *
- * <p><b>7 個訂閱事件對應</b>（S167b 後；移除 SkillAclGrantedEvent / SkillAclRevokedEvent —
+ * <p><b>8 個訂閱事件對應</b>（S167b 後；移除 SkillAclGrantedEvent / SkillAclRevokedEvent —
  * 改由 {@code SkillGrantService} → {@code skill_grants} 表 + {@code SkillAclProjectionListener}
  * 重建 {@code skills.acl_entries} 投影；新流程 audit log 追蹤待 follow-up spec）：
  * <table>
@@ -61,6 +62,7 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedFromAggregat
  *   <tr><td>SkillSuspendedEvent</td><td>SkillSuspended</td><td>aggregateId+suspendedBy+reason</td></tr>
  *   <tr><td>SkillReactivatedEvent</td><td>SkillReactivated</td><td>aggregateId+reason</td></tr>
  *   <tr><td>SkillRiskAssessedEvent</td><td>SkillRiskAssessed</td><td>skillId+version+level</td></tr>
+ *   <tr><td>SkillDeletedEvent</td><td>SkillDeleted</td><td>aggregateId（一 skill 一筆刪除 audit）</td></tr>
  * </table>
  *
  * <p>業務不變量已在 aggregate 端阻止「同內容重複觸發」（state machine），故 content-based dedupKey
@@ -150,6 +152,15 @@ public class AuditEventListener {
                 "level", event.level());
         recordAudit(event.skillId(), "SkillRiskAssessed", payload,
                 dedupKey("SkillRiskAssessed", event.skillId(), event.version(), event.level()));
+    }
+
+    @ApplicationModuleListener
+    void on(SkillDeletedEvent event) {
+        var payload = Map.<String, Object>of(
+                "name", event.name() == null ? "" : event.name(),
+                "deletedBy", event.deletedBy() == null ? "" : event.deletedBy());
+        recordAudit(event.aggregateId(), "SkillDeleted", payload,
+                dedupKey("SkillDeleted", event.aggregateId()));
     }
 
     /**

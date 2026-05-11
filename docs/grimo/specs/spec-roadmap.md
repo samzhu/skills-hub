@@ -66,6 +66,7 @@
 | v4.7.0 | S099d (LLM description quality audit) | ✅ shipped — tools/quality-audit.py 5-dim rubric |
 | v4.16.0 | S098c3 (file-list diff) | ✅ shipped — GET /file-list-diff + FileListDiffPanel |
 | v4.50.0 | S154b (Author display identity — frontend) | ✅ shipped 2026-05-11 |
+| v4.51.0 | S144 (Skill delete) | ✅ shipped 2026-05-11 |
 
 ---
 
@@ -74,7 +75,6 @@
 | SpecID | 標題 | 點數 | 相依 | 狀態 |
 |--------|------|------|------|------|
 | S143 | `/docs` canonical entry → `/docs/overview`（含 nav 對齊）| XS(2) | — | ✅ v4.23.0 — 4/4 vitest PASS（Navigate replace + nav 對齊） |
-| S144 | Skill 刪除功能（DELETE API + 前端確認 dialog） | S(9) | — | ⏳ Dev |
 | S145 | 訂閱管理頁面（我的技能 → 訂閱 tab） | S(6) | S125b ✅ | 📋 planned |
 | S146 | 掃描器補強 — GitHub Actions Unpinned Dependency 偵測（`@master/@main/@HEAD`） | XS(3) | S147 research | ⏸ deferred — 等 S147 完成再規劃 |
 | S147 | 掃描器語意分析缺口研究（W011/E004/W009/W013 vs. Snyk agent-scan） | META(research) | — | ⏸ deferred — 暫緩，等研究啟動時機 |
@@ -108,7 +108,7 @@
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |
 | S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S162c | API consistency — ownership 拒絕 409→403 sweep（DELETE/PUT 對 review/collection/skill/flag 等需 owner 操作） | S(6) | — | 📐 in-design — spec file 完成 2026-05-09 |
-| S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) | S144 同期 | 📐 in-design |
+| S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) | S144 ✅ | 📐 in-design |
 | S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) | S150 ✅ ship 前提 | 📐 in-design |
 | S165 | Jackson `@JsonView` prod hotfix — `JsonMapperBuilderCustomizer` 顯式 enable `DEFAULT_VIEW_INCLUSION` | XS(2) | S158 ✅ + S166a ✅ | ✅ v4.41.0 — bean + diagnostic test + dev-standards rule |
 | S166 | META Spring AOT bean registration sweep — verify-all.sh 全綠（S148e 後 processTestAot 解封首次跑揭露 ~30 fail） | META | S148e ✅ | ✅ v4.41.0 — sub-spec a 已 ship；b/c 改判定無真實 cluster（V01 全綠後消失）|
@@ -211,6 +211,7 @@
 
 | SpecID | 標題 | 點數 | 版本 |
 |--------|------|------|------|
+| S144 | Skill delete | S(9) | v4.51.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

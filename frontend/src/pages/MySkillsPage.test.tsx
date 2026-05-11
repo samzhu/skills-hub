@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MySkillsPage } from './MySkillsPage'
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() }, Toaster: () => null }))
 
 // S110 — verify MySkillsPage user-facing labels 全 zh-TW（per CLAUDE.md「UI 語言: 繁體中文」）
 
@@ -125,5 +127,85 @@ describe('MySkillsPage — Flags wiring (S112-T04)', () => {
     // 移除「平均評分」card 後不應出現此 label / subtitle
     expect(screen.queryByText('平均評分')).not.toBeInTheDocument()
     expect(screen.queryByText('評分系統未啟用')).not.toBeInTheDocument()
+  })
+})
+
+describe('MySkillsPage — S144 delete skill UX', () => {
+  const skill = {
+    id: 'skill-1',
+    name: '刪除測試技能',
+    description: '可被作者刪除',
+    category: 'Testing',
+    status: 'PUBLISHED',
+    riskLevel: 'LOW',
+    latestVersion: '1.0.0',
+    downloadCount: 3,
+  }
+
+  const setSkillsFetchMock = (deleteResponse: Response) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/api/v1/me/flags-summary')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ openCount: 0 }) } as Response)
+      }
+      if (url.includes('/api/v1/me')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ userId: 'u_alice0', handle: 'alice', sub: 'alice', name: 'Alice', email: 'alice@example.com', picture: null, roles: ['user'], groups: [], companyId: null, deptId: null, scope: '' }) } as Response)
+      }
+      if (url.includes('/api/v1/skills/skill-1/stats')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([0, 1, 2]) } as Response)
+      }
+      if (url.endsWith('/api/v1/skills/skill-1') && init?.method === 'DELETE') {
+        return Promise.resolve(deleteResponse)
+      }
+      if (url.includes('/api/v1/skills')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [skill], page: { number: 0, size: 200, totalPages: 1, totalElements: 1 } }) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) } as Response)
+    })
+  }
+
+  it('AC-S144-5: 確認刪除成功後 row 消失並顯示成功 toast', async () => {
+    setSkillsFetchMock({ ok: true, status: 204 } as Response)
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('刪除測試技能')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '刪除測試技能的動作' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '刪除' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('確定要刪除「刪除測試技能」嗎？')
+
+    fireEvent.click(screen.getByRole('button', { name: '確認刪除' }))
+
+    await waitFor(() => expect(screen.queryByText('刪除測試技能')).not.toBeInTheDocument())
+    const { toast } = await import('sonner')
+    expect(toast.success).toHaveBeenCalledWith('技能已刪除')
+  })
+
+  it('AC-S144-5: row action menu keeps detail navigation and delete command separate', async () => {
+    setSkillsFetchMock({ ok: true, status: 204 } as Response)
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('刪除測試技能')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '刪除測試技能的動作' }))
+
+    const view = screen.getByRole('menuitem', { name: '檢視' })
+    expect(view.closest('a')).toHaveAttribute('href', '/skills/skill-1')
+    expect(screen.getByRole('menuitem', { name: '刪除' })).toBeInTheDocument()
+  })
+
+  it('AC-S144-5: 刪除 403/404 失敗顯示繁中錯誤 toast', async () => {
+    setSkillsFetchMock({
+      ok: false,
+      status: 403,
+      json: () => Promise.resolve({ error: 'FORBIDDEN', message: 'Forbidden' }),
+    } as Response)
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('刪除測試技能')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '刪除測試技能的動作' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '刪除' }))
+    fireEvent.click(screen.getByRole('button', { name: '確認刪除' }))
+
+    const { toast } = await import('sonner')
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('刪除失敗：沒有權限執行此操作。'))
   })
 })
