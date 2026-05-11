@@ -139,6 +139,20 @@ public class GlobalExceptionHandler {
 	}
 
 	/**
+	 * S164 — Collection update / delete 被拒（requester 非 owner）。403 + error code
+	 * 帶 {@code "not_collection_owner"} 給 FE i18n 對應。Mirror ReviewForbiddenException
+	 * pattern。
+	 */
+	@ExceptionHandler(CollectionForbiddenException.class)
+	ResponseEntity<ErrorResponse> handleCollectionForbidden(CollectionForbiddenException ex) {
+		log.atWarn()
+				.addKeyValue("errorCode", ex.getMessage())
+				.log("Collection operation forbidden");
+		return ResponseEntity.status(HttpStatus.FORBIDDEN)
+				.body(new ErrorResponse(ex.getMessage(), ex.getMessage(), Instant.now()));
+	}
+
+	/**
 	 * S098e3 AC-7 — Flag status transition 違規（如 RESOLVED → OPEN）或 unknown status。
 	 * 400 + error code {@code "invalid_status_transition"} 對齊 spec error code naming。
 	 */

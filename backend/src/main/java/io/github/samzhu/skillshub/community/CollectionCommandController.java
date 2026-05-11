@@ -5,8 +5,10 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,7 +49,29 @@ class CollectionCommandController {
         return new InstallResponse(service.install(id));
     }
 
+    /**
+     * S164 AC-1/2 — owner 更新 collection metadata + skillIds。
+     *
+     * <p>非 owner → 403（{@code CollectionForbiddenException}）；不存在 → 404；
+     * skillIds 含非 PUBLISHED → 400。授權檢查在 service 端做 ownerId 比對，
+     * 不走 {@code @PreAuthorize} hasPermission（無 CollectionPermissionEvaluator 註冊）。
+     */
+    @PutMapping("/{id}")
+    ResponseEntity<Void> update(@PathVariable String id, @RequestBody UpdateCollectionBody body) {
+        service.update(id, body.name(), body.description(), body.category(), body.skillIds());
+        return ResponseEntity.ok().build();
+    }
+
+    /** S164 AC-3/4 — owner 刪除 collection；非 owner → 403；不存在 → 404。 */
+    @DeleteMapping("/{id}")
+    ResponseEntity<Void> delete(@PathVariable String id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
     record CreateCollectionBody(String name, String description, String category, List<String> skillIds) {}
+
+    record UpdateCollectionBody(String name, String description, String category, List<String> skillIds) {}
 
     record InstallResponse(List<String> downloadUrls) {}
 }

@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.samzhu.skillshub.shared.api.CollectionForbiddenException;
 import io.github.samzhu.skillshub.shared.api.CollectionNotFoundException;
 import io.github.samzhu.skillshub.shared.api.SkillNotPublishableException;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
@@ -52,6 +53,53 @@ public class CollectionService {
         // 2. factory + save (outbox auto-publish via @DomainEvents)
         var collection = Collection.create(name, description, category, users.userId(), skillIds);
         return repo.save(collection).getId();
+    }
+
+    /**
+     * S164 AC-1 — owner 更新 metadata。caller 須是 owner，否則 {@link CollectionForbiddenException}
+     * → 403。skillIds 須全 PUBLISHED（同 create 預檢），missing / 非 PUBLISHED → 400。
+     *
+     * @param collectionId 被更新的 collection id
+     * @param name         新 name
+     * @param description  新 description（可 null）
+     * @param category     新 category
+     * @param skillIds     新 skillIds（整段覆蓋）
+     */
+    @Transactional
+    public void update(String collectionId, String name, String description,
+                       String category, List<String> skillIds) {
+        var collection = repo.findById(collectionId)
+                .orElseThrow(() -> new CollectionNotFoundException(collectionId));
+        var currentUser = users.userId();
+        if (!collection.getOwnerId().equals(currentUser)) {
+            throw new CollectionForbiddenException("not_collection_owner");
+        }
+        // skillIds 全 PUBLISHED 預檢（mirror create）
+        var found = skillRepo.findAllByIdInAndStatus(skillIds, SkillStatus.PUBLISHED);
+        var foundIds = new HashSet<>(found.stream().map(Skill::getId).toList());
+        var invalid = skillIds.stream().filter(id -> !foundIds.contains(id)).toList();
+        if (!invalid.isEmpty()) {
+            throw new SkillNotPublishableException(invalid);
+        }
+        collection.update(name, description, category, skillIds, currentUser);
+        repo.save(collection);
+    }
+
+    /**
+     * S164 AC-3 — owner 刪除 collection。row 物理刪除（無 soft-delete），
+     * {@code collection_skills} 由 DB CASCADE 連動清。inner skill aggregate 不動
+     * （per spec §2.3）。
+     */
+    @Transactional
+    public void delete(String collectionId) {
+        var collection = repo.findById(collectionId)
+                .orElseThrow(() -> new CollectionNotFoundException(collectionId));
+        var currentUser = users.userId();
+        if (!collection.getOwnerId().equals(currentUser)) {
+            throw new CollectionForbiddenException("not_collection_owner");
+        }
+        collection.markDeleted(currentUser);
+        repo.delete(collection);
     }
 
     /**

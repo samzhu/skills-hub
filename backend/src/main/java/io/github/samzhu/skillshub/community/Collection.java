@@ -19,7 +19,9 @@ import org.springframework.data.relational.core.mapping.Table;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import io.github.samzhu.skillshub.community.events.CollectionCreatedEvent;
+import io.github.samzhu.skillshub.community.events.CollectionDeletedEvent;
 import io.github.samzhu.skillshub.community.events.CollectionInstalledEvent;
+import io.github.samzhu.skillshub.community.events.CollectionUpdatedEvent;
 
 /**
  * S096f2 — Collection aggregate root（curated bundle of skills）。
@@ -109,6 +111,53 @@ public class Collection extends AbstractAggregateRoot<Collection> {
         c.registerEvent(new CollectionCreatedEvent(c.id, c.name, c.ownerId,
                 List.copyOf(skillIds), c.createdAt));
         return c;
+    }
+
+    /**
+     * S164 — owner 更新 metadata + skillIds 整段覆蓋。
+     *
+     * <p>同 {@link #create} validation rules（name / description / category / skillIds 全部
+     * 必須通過原 factory 的長度與唯一性檢查）。caller (Service) 另外驗 skillIds 全 PUBLISHED
+     * — 此處不重做避免 cross-module 反向依賴。
+     *
+     * <p>策略：整段覆蓋而非 partial diff — 對齊 spec §2.2 PUT semantic（REST PUT = full
+     * replace），frontend EditCollectionModal 永遠帶完整 form。Spring Data JDBC
+     * {@code @MappedCollection} save() 走 delete-and-reinsert，position 由新 list 索引重派生。
+     */
+    public void update(String name, String description, String category,
+                       List<String> skillIds, String updatedBy) {
+        validateName(name);
+        validateDescription(description);
+        validateCategory(category);
+        validateSkillIds(skillIds);
+        if (updatedBy == null || updatedBy.isBlank()) {
+            throw new IllegalArgumentException("updatedBy is required");
+        }
+        this.name = name.trim();
+        this.description = description == null ? null : description.trim();
+        this.category = category.trim();
+        this.skills = IntStream.range(0, skillIds.size())
+                .mapToObj(i -> new CollectionSkillRef(skillIds.get(i)))
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        var now = Instant.now();
+        registerEvent(new CollectionUpdatedEvent(
+                this.id, this.name, this.description, this.category,
+                List.copyOf(skillIds), updatedBy, now));
+    }
+
+    /**
+     * S164 — register hard-delete event before repository deletes the aggregate row.
+     *
+     * <p>Mirror {@code Skill.markDeleted}: 無 state 變動（row 同 TX 被刪），純註冊 event 讓 listener
+     * 在 commit 後處理 audit / cleanup。FK 子表 {@code collection_skills} 由 DB
+     * {@code ON DELETE CASCADE} 連動清除。
+     */
+    public void markDeleted(String deletedBy) {
+        if (deletedBy == null || deletedBy.isBlank()) {
+            throw new IllegalArgumentException("deletedBy is required");
+        }
+        registerEvent(new CollectionDeletedEvent(
+                this.id, this.name, this.ownerId, deletedBy, Instant.now()));
     }
 
     /**

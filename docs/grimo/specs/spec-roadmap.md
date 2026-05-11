@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-12（S161 Phase 1 ship — PlainTextDeserializer regex strip + review.content 套用；OWASP encode 破繁中後改 regex；S161b/c 拆 backlog）
+> 最後更新：2026-05-12（S164 backend ship — PUT/DELETE collection 6/8 ACs PASS；frontend AC-7/8 拆 S164b；原 5-spec 全 backend ship 達成）
 
 ## 使用說明
 
@@ -113,7 +113,8 @@
 | S162c | API consistency — ownership 拒絕 409→403 sweep（DELETE/PUT 對 review/collection/skill/flag 等需 owner 操作） | S(6) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) → backend XS(3) | S144 ✅ | 🚧 backend ship 2026-05-12（PUT /skills/{id} + AC-1/2/3 PASS）；frontend EditSkillModal + toggle UX 拆 S163b |
 | S163b | Skill owner frontend — EditSkillModal + PageHeader 公開/私人 toggle button (reuse existing /grants API) | S(4) | S163 ✅ | 📋 planned — AC-4/5/6/7/8 from S163 |
-| S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) | S150 ✅ ship 前提 | 📐 in-design — spec file 完成 2026-05-12（PUT/DELETE /collections/{id} + EditCollectionModal；8 ACs）|
+| S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) → backend XS(3) | S150 ✅ ship 前提 | 🚧 backend ship 2026-05-12（PUT+DELETE + 2 events + auth check；6/8 ACs PASS）；frontend AC-7/8 拆 S164b（依 S150）|
+| S164b | Collection owner frontend — EditCollectionModal + CollectionDetailPage action bar + CollectionCard kebab menu | S(4) | S164 ✅ + S150 ✅ | 📋 planned — AC-7/8 from S164 |
 | S165 | Jackson `@JsonView` prod hotfix — `JsonMapperBuilderCustomizer` 顯式 enable `DEFAULT_VIEW_INCLUSION` | XS(2) | S158 ✅ + S166a ✅ | ✅ v4.41.0 — bean + diagnostic test + dev-standards rule |
 | S166 | META Spring AOT bean registration sweep — verify-all.sh 全綠（S148e 後 processTestAot 解封首次跑揭露 ~30 fail） | META | S148e ✅ | ✅ v4.41.0 — sub-spec a 已 ship；b/c 改判定無真實 cluster（V01 全綠後消失）|
 | S166a | 拆 cache 基礎設施（`@EnableCaching` + S114b ACL cache + Caffeine dep） — 一次解 cluster A ~10 個 AOT context-load fail | S(5) | — | ✅ v4.41.0 — cache infra 全拆；MVP 不需，未來 reintroduce 走 S2XX-cache |

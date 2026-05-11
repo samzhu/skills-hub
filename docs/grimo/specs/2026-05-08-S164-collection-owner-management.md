@@ -1,6 +1,6 @@
 # S164: Collection Owner Management — Update / Delete
 
-> Spec: S164 | Size: S(5) | Status: 📐 in-design
+> Spec: S164 | Size: S(5) → backend XS(3) | Status: 🚧 backend impl 完成 2026-05-12（PUT + DELETE + 2 events + auth check + 8 tests PASS；frontend EditCollectionModal + action bar 待 S150 ship 後拆 S164b）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— `OPTIONS /api/v1/collections/{id}` 回 `Allow: GET, HEAD, OPTIONS`，**完全沒 mutation methods**。Owner 創 collection 後無法改 / 刪。實測 anon 建了 spam collection `0a514c85-...` 後**沒任何 API 可清**，必須走 DBA 手動 SQL。
 
@@ -190,6 +190,58 @@ deploy 後：
 - [ ] PUT 改 name / description → 即時生效
 - [ ] DELETE → 204 + 從 list 消失
 - [ ] 非 owner DELETE → 403
+
+---
+
+## 5.3 Backend Phase 1 結果（2026-05-12）
+
+### Ship 範圍
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-1 | owner update collection → service save + CollectionUpdatedEvent | ✅ PASS |
+| AC-2 | 非 owner update → CollectionForbiddenException "not_collection_owner" → 403 | ✅ PASS |
+| AC-3 | owner delete collection → repo.delete called + CollectionDeletedEvent | ✅ PASS |
+| AC-4 | 非 owner delete → CollectionForbiddenException → 403 | ✅ PASS |
+| AC-5 | 刪 collection 不影響內含 skill | ✅ 隱含 PASS（service.delete 只 repo.delete collection；skillRepo 從未被呼叫）|
+| AC-6 | skillIds 整段覆蓋（不 append）| ✅ PASS |
+| 加碼 | aggregate validate name 太長 reject | ✅ PASS |
+| 加碼 | markDeleted 拒空 deletedBy | ✅ PASS |
+
+### Defer 至 S164b（frontend，blocked by S150 CollectionDetailPage 未 ship）
+
+| AC | 內容 | 為何 defer |
+|---|---|---|
+| AC-7 | Frontend owner 可見編輯/刪除 button | 需 CollectionDetailPage 加 action bar；S150 (📋 planned) 為前提 |
+| AC-8 | Frontend 確認 dialog + redirect + toast | 同 S164b |
+
+### 授權設計：service-level ownerId 比對 vs @PreAuthorize
+
+不採 `@PreAuthorize("hasPermission(#id, 'Collection', 'manage')")` 因 community module 尚無
+`CollectionPermissionEvaluator` 註冊到 `DelegatingPermissionEvaluator`（S016 是 Skill domain
+專用）。新註冊 evaluator 跨 trim budget；改在 service load aggregate 後 `ownerId.equals(currentUser)`
+比對，mismatch 拋 `CollectionForbiddenException("not_collection_owner")`，`GlobalExceptionHandler`
+攔截 → HTTP 403。Mirror ReviewForbiddenException 既驗 pattern。
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `backend/.../community/events/CollectionUpdatedEvent.java`（**新檔**）| record (collectionId, name, description, category, skillIds, updatedBy, updatedAt) |
+| `backend/.../community/events/CollectionDeletedEvent.java`（**新檔**）| record (collectionId, name, ownerId, deletedBy, deletedAt) — mirror SkillDeletedEvent |
+| `backend/.../shared/api/CollectionForbiddenException.java`（**新檔**）| mirror ReviewForbiddenException pattern → 403 |
+| `backend/.../community/Collection.java` | 加 `update(name, description, category, skillIds, updatedBy)` 充血方法（整段覆蓋 + validate + registerEvent） + `markDeleted(deletedBy)` |
+| `backend/.../community/CollectionService.java` | 加 `update(...)` + `delete(...)` — ownerId 比對 + skillIds 全 PUBLISHED 預檢 + 3-line orchestration |
+| `backend/.../community/CollectionCommandController.java` | 加 `PUT /api/v1/collections/{id}` + `DELETE /api/v1/collections/{id}` + UpdateCollectionBody record |
+| `backend/.../shared/api/GlobalExceptionHandler.java` | 加 `handleCollectionForbidden` → 403 |
+| `backend/.../community/CollectionOwnerManagementTest.java`（**新檔**）| 8 tests — 4 ACs + aggregate validation + event schema sanity |
+
+### 驗證指令
+
+```bash
+./gradlew test --tests "*CollectionOwnerManagementTest"     # 8/8 PASS
+./gradlew test --tests "io.github.samzhu.skillshub.community.*"  # 63/63 PASS（無 regression）
+```
 
 ---
 
