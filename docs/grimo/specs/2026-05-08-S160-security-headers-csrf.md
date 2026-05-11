@@ -119,7 +119,7 @@ Content-Security-Policy-Report-Only:
 - shadcn/ui / Beam 預設 inline style attributes
 - 完全 strict CSP 需重做 build（add nonce / hash）— 留 follow-up
 
-**Phase 2（enforce + nonce-based，留 S161 follow-up）：**
+**Phase 2（enforce + nonce-based，留未來 polish spec follow-up；非 S161/S162/S163/S164 — 那些 ID 已分配給 input sanitization / API consistency / owner mgmt）：**
 - 拿掉 `unsafe-inline` / `unsafe-eval`
 - 用 Vite plugin 為 inline script / style 加 nonce
 - 改 `Content-Security-Policy`（非 Report-Only）正式 enforce
@@ -341,9 +341,15 @@ deploy 後：
 
 ---
 
-## 7. 後續 follow-up
+## 7. 後續 follow-up（未來 spec ID 待分配 — S161~S164 已用於其他主題）
 
-- **S161（potential）**: CSP Phase 2 — 拿掉 unsafe-inline，用 nonce + Vite plugin
-- **S162（potential）**: Rate limiting on /api/v1/requests / /skills/install 等可被 spam 的 endpoint
-- **S163（potential）**: WAF / GCP Cloud Armor rule 設定
-- **S164（potential）**: Audit log — auth failure / privilege escalation 嘗試
+- **CSP Phase 2**: 拿掉 unsafe-inline，用 nonce + Vite plugin
+- **Rate limiting**: 對 `/api/v1/requests` / `/skills/install` 等可被 spam 的 endpoint 加 rate limit
+- **WAF / GCP Cloud Armor**: 規則設定
+- **Audit log**: auth failure / privilege escalation 嘗試紀錄
+
+## 8. 與其他 spec 關係
+
+- **S161（user input sanitization）**：縱深防禦另一層 — 即使 stored XSS payload 存進 DB，CSP 也擋住 inline script exec；本 spec 攔 transport / response header 層
+- **S148（GraalVM AOT）**：Spring Security CSRF token repo / header writers 反射；若 native build 需驗證 reflection metadata
+- **S139（OAuth login）**：OAuth flow 透過 cookie session；CSRF 對該 path 必啟；Bearer JWT exempt 路徑要驗證 LAB 與 prod parity

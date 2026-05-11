@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-11（v4.52.0 ship — S145 subscription management tab；platform notification inbox only）
+> 最後更新：2026-05-12（S157/S160/S161/S163/S164 spec 設計完成標記 — 五份 spec doc §1-§7 完整；可進 /planning-tasks）
 
 ## 使用說明
 
@@ -95,7 +95,7 @@
 | S155b | Sort tab active highlight LAB reverify | XS(2) | — | ⛔ cancelled 2026-05-09 — 程式碼掃描確認無 bug：HomePage.tsx:217 `isOn = sortMode === mode` derived state，無 secondary state 可漂移；click handler line 222 `setSortMode + setPage(0)` 同 batch；auditor 觀察解釋為 stale cached bundle pre-commit `6211734` |
 | S156 | List clickability + Analytics hero card 修正 | S(5) | — | ✅ v4.32.0 — #1 historical (S100e) + #3 hero card removed；#2 拆 S156b |
 | S156b | RequestDetailPage 新 page（描述 + 7 actions + 留言 simple list）+ hook + route — `/requests/:id` | M(8) | S156 ✅ | 📐 in-design — spec file 完成 2026-05-09 |
-| S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | M(8) | — | 📐 in-design |
+| S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | M(8) → S(6) | — | 📐 in-design — spec file 完成 2026-05-12（root cause: Spring AOT @ConditionalOnProperty bake-out；fix mirror S135a QualityJudgeConfig pattern + LlmIntentOutput AOT hint）|
 | S158 | API response privacy hardening — list 移除 aclEntries / ownerId | S(5) | — | ✅ v4.33.0 — list endpoint 隱藏 aclEntries+ownerId（@JsonView）；detail owner-conditional 拆 S158b |
 | S158b | Detail viewer permissions — viewerPermissions backend-computed + aclEntries 全 strip (CQRS 內化) + /grants owner-only authz | M(8) | S158 ✅ | 📐 in-design — spec file 完成 2026-05-09 |
 | S159 | Skill query API hardening — META 拆 S159a/b/c/d | META | — | 📋 partial — S159a (v4.43.0) + S159d (v4.44.0) ✅ ship；S159b/c backlog |
@@ -103,13 +103,13 @@
 | S159b | Category storage normalize — V19 lowercase migration + CHECK constraint + frontend `capitalize` | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S159c | `?tag=` filter 實作 — controller param + repo `findByTag()` + frontend filter chip | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S159d | Pageable 非法值拒收 — `page < 0` / `size <= 0` / `size > 100` → 400 | XS(2) | — | ✅ v4.44.0 — `PageableValidationInterceptor` + handler；13+1+11+2 unit tests PASS |
-| S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) | — | 📐 in-design |
-| S161 | User input sanitization — Review / Flag / Request 文字欄位 XSS strip + backfill | S(6) | — | 📐 in-design |
+| S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) | — | 📐 in-design — spec file 完成 2026-05-12（CSP Phase 1 report-only + CSRF cookie-based + Bearer JWT exempt；9 ACs）|
+| S161 | User input sanitization — Review / Flag / Request 文字欄位 XSS strip + backfill | S(6) | — | 📐 in-design — spec file 完成 2026-05-12（OWASP html-sanitizer + @PlainText/@MarkdownSafe annotation + V20 backfill；8 ACs）|
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |
 | S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S162c | API consistency — ownership 拒絕 409→403 sweep（DELETE/PUT 對 review/collection/skill/flag 等需 owner 操作） | S(6) | — | 📐 in-design — spec file 完成 2026-05-09 |
-| S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) | S144 ✅ | 📐 in-design |
-| S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) | S150 ✅ ship 前提 | 📐 in-design |
+| S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) | S144 ✅ | 📐 in-design — spec file 完成 2026-05-12（PUT /skills/{id} 改 metadata + ShareSkillModal 快捷 toggle；8 ACs）|
+| S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) | S150 ✅ ship 前提 | 📐 in-design — spec file 完成 2026-05-12（PUT/DELETE /collections/{id} + EditCollectionModal；8 ACs）|
 | S165 | Jackson `@JsonView` prod hotfix — `JsonMapperBuilderCustomizer` 顯式 enable `DEFAULT_VIEW_INCLUSION` | XS(2) | S158 ✅ + S166a ✅ | ✅ v4.41.0 — bean + diagnostic test + dev-standards rule |
 | S166 | META Spring AOT bean registration sweep — verify-all.sh 全綠（S148e 後 processTestAot 解封首次跑揭露 ~30 fail） | META | S148e ✅ | ✅ v4.41.0 — sub-spec a 已 ship；b/c 改判定無真實 cluster（V01 全綠後消失）|
 | S166a | 拆 cache 基礎設施（`@EnableCaching` + S114b ACL cache + Caffeine dep） — 一次解 cluster A ~10 個 AOT context-load fail | S(5) | — | ✅ v4.41.0 — cache infra 全拆；MVP 不需，未來 reintroduce 走 S2XX-cache |
