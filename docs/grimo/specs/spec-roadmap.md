@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-12（S161b' partial ship — request.title plain-text strip；description markdown allowlist 拆 S161b''；S161 plain-text scope 已覆蓋 7 個欄位）
+> 最後更新：2026-05-12（S161 全 8 ACs PASS — 原 5-spec 第二個 fully shipped；MarkdownSafeDeserializer 用 OWASP HtmlPolicyBuilder allowlist 保留 markdown 安全 subset；79/0 tests PASS）
 
 ## 使用說明
 
@@ -105,11 +105,11 @@
 | S159d | Pageable 非法值拒收 — `page < 0` / `size <= 0` / `size > 100` → 400 | XS(2) | — | ✅ v4.44.0 — `PageableValidationInterceptor` + handler；13+1+11+2 unit tests PASS |
 | S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) → Phase 1 S(5) | — | 🚧 Phase 1 ship 2026-05-12（4 headers + 5 ACs PASS / 5 = AC-4/5/6/7/9）；CSRF + frontend coordination defer 至 S160b |
 | S160b | CSRF re-enable + frontend apiFetch X-XSRF-TOKEN + CSP report endpoint | S(5) | S160 ✅ | 📋 planned — AC-1/2/3/8 from S160 |
-| S161 | User input sanitization — Review / Flag / Request 文字欄位 XSS strip + backfill | S(6) → Phase 1 XS(3) | — | 🚧 Phase 1 ship 2026-05-12（PlainTextDeserializer + review.content；regex 取代 OWASP 避 entity encode 破繁中；8/8 PASS）|
-| S161b | Apply PlainTextDeserializer 至 flag + collection DTOs（completed）；request DTO + markdown allowlist 拆 S161b' | XS(2) | S161 ✅ | 🚧 partial ship 2026-05-12（flag.description + collection.name/description PASS；附帶 fix RiskAssessmentIntegrationTest S157 regression）|
-| S161b' | Request DTO — title plain-text 套用 (completed) | XS(1) | S161 ✅ | ✅ shipped 2026-05-12 — title plain-text strip；5/5 integration test PASS |
-| S161b'' | Request.description markdown safe subset (OWASP HtmlPolicyBuilder allowlist) — javascript: URL 擋 | S(3) | S161b' ✅ | 📋 planned — AC-5/6 from S161 |
-| S161c | V19 Flyway migration backfill 既存 stored XSS payload | XS(2) | S161 ✅ | ✅ shipped 2026-05-12 — V19 cover reviews/flags/collections 4 個欄位；Testcontainers 啟動驗證；雙 pass strip + placeholder 退化保 NOT NULL/CHECK 邊界 |
+| S161 | User input sanitization — Review / Flag / Request 文字欄位 XSS strip + backfill | S(6) → 五段 ship | — | ✅ **shipped 2026-05-12 — 全部 8 ACs PASS**（plain-text 7 欄位 + markdown allowlist + V19 backfill；原 5-spec 第二個 fully shipped） |
+| S161b | Apply PlainTextDeserializer 至 flag + collection DTOs | XS(2) | S161 ✅ | ✅ shipped 2026-05-12 0af2883 |
+| S161b' | Request DTO — title plain-text 套用 | XS(1) | S161 ✅ | ✅ shipped 2026-05-12 47a4506 |
+| S161b'' | Request.description markdown safe subset (OWASP HtmlPolicyBuilder allowlist) — javascript: URL 擋 | S(3) | S161b' ✅ | ✅ shipped 2026-05-12 — MarkdownSafeDeserializer + 11/11 cases PASS |
+| S161c | V19 Flyway migration backfill 既存 stored XSS payload | XS(2) | S161 ✅ | ✅ shipped 2026-05-12 46eee1e |
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |
 | S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S162c | API consistency — ownership 拒絕 409→403 sweep（DELETE/PUT 對 review/collection/skill/flag 等需 owner 操作） | S(6) | — | 📐 in-design — spec file 完成 2026-05-09 |

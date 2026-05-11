@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
+import io.github.samzhu.skillshub.shared.api.MarkdownSafeDeserializer;
 import io.github.samzhu.skillshub.shared.api.PlainTextDeserializer;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 
@@ -89,13 +90,14 @@ class RequestCommandController {
     }
 
     /**
-     * S161b'：{@code title} 為短標題、純文字 — 走 {@link PlainTextDeserializer} silently
-     * strip HTML markup。{@code description} 屬「多行 markdown 安全 subset」場景，需 OWASP
-     * {@code HtmlPolicyBuilder.allowElements(...)} allowlist policy（S161b'' 範疇），本
-     * tick 不動。
+     * S161：{@code title} 為短標題、純文字 — 走 {@link PlainTextDeserializer} silently
+     * strip HTML markup。{@code description} 屬「多行 markdown 安全 subset」— 走
+     * {@link MarkdownSafeDeserializer} 用 OWASP {@code HtmlPolicyBuilder} allowlist
+     * 保留 {@code <p>}/{@code <strong>}/{@code <a href>} 等合法 markdown 元素，
+     * silently strip {@code <script>}/{@code <iframe>}/event handlers/{@code javascript:} URL。
      */
     record CreateRequestBody(
             @JsonDeserialize(using = PlainTextDeserializer.class) String title,
-            String description) {}
+            @JsonDeserialize(using = MarkdownSafeDeserializer.class) String description) {}
     record FulfillBody(String skillId) {}
 }

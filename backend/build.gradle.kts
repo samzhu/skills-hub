@@ -65,6 +65,10 @@ dependencies {
 	implementation("org.springframework.modulith:spring-modulith-starter-core")
 	// Modulith Event Publication Registry (transactional outbox)
 	implementation("org.springframework.modulith:spring-modulith-starter-jdbc")
+	// S161b''：markdown safe subset sanitize — OWASP HtmlPolicyBuilder allowlist
+	// （plain-text DTOs 走純 regex PlainTextDeserializer，request.description 需要保留
+	// 合法 markdown tag，必須走 allowlist 而非 strip-all）
+	implementation("com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20240325.1")
 	// 多 Cloud Run instance @Scheduled retry 互斥
 	implementation("net.javacrumbs.shedlock:shedlock-spring:${property("shedlockVersion")}")
 	implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:${property("shedlockVersion")}")

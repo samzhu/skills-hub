@@ -300,6 +300,58 @@ deploy 後：
 
 ---
 
+## 6.9 Phase 5 結果（2026-05-12）— S161b'' markdown allowlist 收尾
+
+### Ship 範圍 — S161 全 8 個 AC 收尾
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-5 | `request.description` 保留 markdown safe subset (`<p>`/`<strong>`/`<em>`/`<ul>`/`<a>` 等)，strip `<script>` | ✅ PASS — 11 case 涵蓋段落/強調/列表/code/blockquote/h1-h3/link/script/iframe/object/event handler/style |
+| AC-6 | `<a href="javascript:...">` URL 被擋（OWASP allowStandardUrlProtocols）| ✅ PASS |
+
+### S161 全 8 AC 收尾
+
+| AC | 內容 | Ship | Commit |
+|---|---|---|---|
+| AC-1 | review.content `<script>` strip | ✅ | 3ca6778 |
+| AC-2 | review.content `<img onerror>` strip | ✅ | 3ca6778 |
+| AC-3 | flag.description strip | ✅ | 0af2883 |
+| AC-4 | request.title strip / collection.name+description strip | ✅ | 0af2883 + 47a4506 |
+| AC-5 | request.description markdown allowlist | ✅ | 本 tick |
+| AC-6 | javascript: URL 擋 | ✅ | 本 tick |
+| AC-7 | V19 backfill 既存 stored XSS payload | ✅ | 46eee1e |
+| AC-8 | GraalVM native image 支援 | ✅ | OWASP pure Java + 反射輕量；regex deserializer 純 JDK；無 native build 顧慮 |
+
+**S161 為原 5-spec 第二個 fully shipped（pair with S163）。**
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `backend/build.gradle.kts` | 加 `owasp-java-html-sanitizer:20240325.1` dep（之前 Phase 1 評估後移除；Phase 5 markdown allowlist 真需要） |
+| `backend/.../shared/api/MarkdownSafeDeserializer.java`（**新檔**）| OWASP `HtmlPolicyBuilder` allowlist policy；涵蓋 markdown 常見元素 + standard URL protocols；不在 policy 內的 tag/attr/protocol 全 silently strip |
+| `backend/.../community/RequestCommandController.java` | `CreateRequestBody.description` 加 `@JsonDeserialize(using=MarkdownSafeDeserializer.class)` |
+| `backend/.../shared/api/MarkdownSafeDeserializerTest.java`（**新檔**）| 11 test cases — markdown preserve / script strip / iframe-object-embed strip / event handler attr strip / inline style strip / javascript: URL block / null handling |
+| `backend/.../shared/api/PlainTextDeserializerIntegrationTest.java` | 既有 request DTO case 更新：description 從「保留待 S161b''」改 markdown allowlist 行為驗證 |
+
+### 設計權衡 — OWASP entity-encode 副作用 acceptable for markdown
+
+S161 Phase 1 棄用 OWASP 純文字 strip 因為 entity-encode 破繁中（`！` → `&#xff01;`）。本 Phase 5 重新採用 OWASP 因為：
+- markdown 場景下 `&amp;` 等 entity 本來就合理（合法 HTML entity reference）
+- frontend 若用 markdown renderer，entity 自動 decode 回字符
+- 對 stored XSS 是縱深防禦（多一層 safe-by-default）
+
+### 驗證指令
+
+```bash
+./gradlew test --tests "*MarkdownSafeDeserializerTest"            # 11/11 PASS
+./gradlew test --tests "*PlainTextDeserializerIntegrationTest"     # 5/5 PASS（含 request.description 改 allowlist 驗證）
+./gradlew test --tests "io.github.samzhu.skillshub.community.*"     # 全包無 regression
+# 合計 79 tests PASS（含 shared.api + community）
+```
+
+---
+
 ## 6.8 Phase 4 結果（2026-05-12）— S161b' partial：request.title
 
 ### Ship 範圍
