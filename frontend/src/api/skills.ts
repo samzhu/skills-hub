@@ -284,6 +284,26 @@ export function fetchCollection(id: string): Promise<CollectionDetail> {
   return apiFetch<CollectionDetail>(`/collections/${id}`)
 }
 
+/**
+ * S164 — PUT /api/v1/collections/{id} 改 name / description / category / skillIds（整段覆蓋）。
+ * 非 owner → 403；不存在 → 404；skillIds 含非 PUBLISHED → 400。
+ */
+export function updateCollection(
+  id: string,
+  body: CreateCollectionRequest,
+): Promise<void> {
+  return apiFetchVoid(`/collections/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+/** S164 — DELETE /api/v1/collections/{id}。非 owner → 403；不存在 → 404；204 success。 */
+export function deleteCollection(id: string): Promise<void> {
+  return apiFetchVoid(`/collections/${id}`, { method: 'DELETE' })
+}
+
 export function createCollection(body: CreateCollectionRequest): Promise<{ id: string }> {
   return apiFetch<{ id: string }>('/collections', {
     method: 'POST',

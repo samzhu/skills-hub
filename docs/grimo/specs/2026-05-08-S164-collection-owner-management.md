@@ -193,6 +193,55 @@ deploy 後：
 
 ---
 
+## 5.4 Frontend Phase 1 結果（2026-05-12）— S164b modal + action bar 收尾 S164 全 8 ACs
+
+### Ship 範圍
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-7 | Frontend owner 可見 [編輯][刪除] action buttons；非 owner 不顯 | ✅ PASS — CollectionDetailPage.test 2 new cases 守 owner / non-owner 行為 |
+| AC-8 | confirm dialog（window.confirm）「確定刪除集合『X』？此動作無法復原」+ DELETE → redirect /collections | ✅ PASS — onDeleteClick 走 window.confirm + deleteCollection mutation + navigate('/collections') onSuccess |
+| AC-1 補強 | EditCollectionModal 預填 name/description/category/skillIds + 整段覆蓋（包含 skillIds） | ✅ PASS — EditCollectionModal.test 6 cases (prefill / disabled-unchanged / submit-payload / skillIds-overwrite / cancel / name-blank disabled) |
+
+### S150 dependency 狀態釐清
+
+Spec 原寫「S150 ✅ ship 前提」— 實際 codebase 已含 `CollectionDetailPage.tsx` + 既驗 6/6 tests，本 tick 入手前先 grep + run test 確認 S150 functional ship。roadmap status 之前漏更新為 ✅，本 tick 同 commit 補正（housekeeping）。
+
+### S164 spec 全部 8 ACs ✅
+
+| AC | 內容 | Ship Commit |
+|---|---|---|
+| AC-1 | owner update → 200 + event | 8fbee3d (backend) + 本 tick (frontend) |
+| AC-2 | 非 owner update → 403 | 8fbee3d |
+| AC-3 | owner delete → 204 + event | 8fbee3d (backend) + 本 tick (frontend wire-up) |
+| AC-4 | 非 owner delete → 403 | 8fbee3d |
+| AC-5 | 刪 collection 不影響內含 skill | 8fbee3d (service.delete 只動 collection table) |
+| AC-6 | skillIds 整段覆蓋 | 8fbee3d (aggregate) + 本 tick (modal) |
+| AC-7 | owner 可見 action buttons | 本 tick |
+| AC-8 | confirm dialog + redirect + 自動 refresh | 本 tick |
+
+**S164 為原 5-spec 第四個 fully shipped。**
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `frontend/src/api/skills.ts` | 加 `updateCollection(id, body)` + `deleteCollection(id)` helpers |
+| `frontend/src/components/EditCollectionModal.tsx`（**新檔**）| Mirror EditSkillModal pattern；prefill 4 個欄位含 skillIds textarea 一行一個 UUID；trim+empty 驗證；unchanged disable submit；invalidate ['collection',id] + ['collections'] |
+| `frontend/src/pages/CollectionDetailPage.tsx` | 加 `isOwner` check + `editOpen` state + EditCollectionModal render + 2 action buttons + window.confirm + deleteMutation 含 redirect to /collections + error display |
+| `frontend/src/components/EditCollectionModal.test.tsx`（**新檔**）| 6 cases — prefill / disabled-unchanged / submit-payload / skillIds-overwrite / cancel / blank-name disabled |
+| `frontend/src/pages/CollectionDetailPage.test.tsx` | 加 2 cases — owner action buttons 顯示 / 非 owner 不顯 |
+
+### 驗證指令
+
+```bash
+cd frontend && npm run typecheck                            # 0 errors
+cd frontend && npm test -- --run EditCollectionModal CollectionDetailPage  # 14/14 PASS
+cd frontend && npm test -- --run                            # 395/395 全 suite PASS 無 regression
+```
+
+---
+
 ## 5.3 Backend Phase 1 結果（2026-05-12）
 
 ### Ship 範圍

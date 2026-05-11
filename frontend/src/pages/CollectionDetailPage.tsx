@@ -1,17 +1,42 @@
-import { Link, useParams } from 'react-router'
+import { useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Boxes } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AppShell } from '@/components/AppShell'
 import { EmptyState } from '@/components/EmptyState'
 import { InstallButton } from '@/components/InstallButton'
 import { RiskBadge } from '@/components/RiskBadge'
 import { IconTile } from '@/components/IconTile'
+import { EditCollectionModal } from '@/components/EditCollectionModal'
 import { useCollection } from '@/hooks/useCollection'
-import type { CollectionSkillSummary } from '@/api/skills'
+import { useMe } from '@/hooks/useMe'
+import { deleteCollection, type CollectionSkillSummary } from '@/api/skills'
+import { localizeApiError } from '@/lib/api-error-messages'
 
-/** S150 — /collections/:id detail page */
+/** S150 — /collections/:id detail page；S164b — owner-only edit / delete 操作列。 */
 export function CollectionDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { data: collection, isLoading, isError } = useCollection(id)
+  const { data: me } = useMe()
+  const [editOpen, setEditOpen] = useState(false)
+
+  const isOwner = !!collection && !!me && collection.ownerId === me.sub
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteCollection(collection!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] })
+      navigate('/collections')
+    },
+  })
+
+  const onDeleteClick = () => {
+    if (!collection) return
+    if (!window.confirm(`確定刪除集合「${collection.name}」？此動作無法復原。`)) return
+    deleteMutation.mutate()
+  }
 
   if (isLoading) {
     return (
@@ -61,10 +86,41 @@ export function CollectionDetailPage() {
             </p>
           )}
         </div>
-        <div className="shrink-0">
+        <div className="flex shrink-0 items-start gap-2">
+          {isOwner && (
+            <>
+              <button
+                type="button"
+                data-testid="edit-collection-btn"
+                onClick={() => setEditOpen(true)}
+                className="rounded-md border border-border px-3 py-1.5 text-[13px] hover:bg-muted"
+              >
+                編輯
+              </button>
+              <button
+                type="button"
+                data-testid="delete-collection-btn"
+                onClick={onDeleteClick}
+                disabled={deleteMutation.isPending}
+                className="rounded-md border border-red-700/40 px-3 py-1.5 text-[13px] text-red-400 hover:bg-red-950/30 disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? '刪除中...' : '刪除'}
+              </button>
+            </>
+          )}
           <InstallButton collectionId={collection.id} skillCount={collection.skills.length} />
         </div>
       </div>
+
+      {deleteMutation.isError && (
+        <p className="mb-3 text-[12px] text-red-500">
+          刪除失敗：{localizeApiError(deleteMutation.error)}
+        </p>
+      )}
+
+      {editOpen && (
+        <EditCollectionModal collection={collection} onClose={() => setEditOpen(false)} />
+      )}
 
       {/* Skill list */}
       {collection.skills.length === 0 ? (

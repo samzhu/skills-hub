@@ -103,4 +103,24 @@ describe('CollectionDetailPage', () => {
     renderPage()
     await waitFor(() => screen.getByText('此集合目前無技能。'))
   })
+
+  it('S164 AC-7: owner (me.sub === ownerId) 顯示 [編輯][刪除] action buttons', async () => {
+    // me + collection 都用 alice → isOwner = true
+    renderPage()
+    await waitFor(() => screen.getByTestId('edit-collection-btn'))
+    expect(screen.getByTestId('edit-collection-btn').textContent).toBe('編輯')
+    expect(screen.getByTestId('delete-collection-btn').textContent).toBe('刪除')
+  })
+
+  it('S164 AC-7: 非 owner（me.sub !== ownerId）不顯 action buttons', async () => {
+    collectionResponse = {
+      ok: true,
+      status: 200,
+      json: async () => ({ ...sampleDetail, ownerId: 'bob' }),  // 與 mock me.sub=alice 不符
+    } as Response
+    renderPage()
+    await waitFor(() => screen.getByText('Security Audit Pack'))
+    expect(screen.queryByTestId('edit-collection-btn')).toBeNull()
+    expect(screen.queryByTestId('delete-collection-btn')).toBeNull()
+  })
 })

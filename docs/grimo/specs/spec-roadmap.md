@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-12（S160 全 9 ACs PASS — 原 5-spec 第三個 fully shipped；CsrfChainTest 用 @TestPropertySource + @WebMvcTest(CspReportController) 模擬 CSRF chain reject + roundtrip 完整驗證）
+> 最後更新：2026-05-12（S164 全 8 ACs PASS — 原 5-spec 第四個 fully shipped；EditCollectionModal + action bar + window.confirm + redirect 套全；附帶補正 S150 stale roadmap status；395/395 全 vitest 無 regression）
 
 ## 使用說明
 
@@ -85,7 +85,7 @@
 | S148d | Modulith allowed-targets 補 — `score → security` 跨 module 引用 SecurityFinding 未在 allowed targets 列表（S148c 解環後浮現） | XS(2) | — | ✅ v4.39.0 — security.scan 加 @NamedInterface("scan") + score allowedDependencies 加 "security :: scan"；processTestAot Modulith 驗證階段通過 |
 | S148e | processTestAot duplicate cacheManager bean — TestDataControllerTest$CacheStubConfig vs WebMvcSliceTestBase$AotStubBeans 重複定義（S148c+d 解後浮現） | XS(2) | — | ✅ v4.40.0 — 移除 TestDataControllerTest 本地 CacheStubConfig；processTestAot BUILD SUCCESSFUL 預設流程恢復 |
 | S149 | Cloud Run 結構化日誌改善研究（JSON format + log levels + trace ID） | META(research) | — | 📋 planned |
-| S150 | Collection Detail Page（/collections/:id — 技能清單 + 逐一預覽）| S(7) | S096f2 ✅ | 📋 planned |
+| S150 | Collection Detail Page（/collections/:id — 技能清單 + 逐一預覽）| S(7) | S096f2 ✅ | ✅ shipped — CollectionDetailPage.tsx + useCollection hook + 6/6 tests（roadmap status 漏更新，2026-05-12 補正）|
 | S151 | Quality Score 訊息一致性修正（hero card "評分計算中" vs. 品質 tab "此版本尚未評分"） | XS(2) | S135b ✅ | ✅ v4.37.0 — QualityTabV2「此版本尚未評分」改「評分計算中，請稍後重新整理」對齊 hero/badge 風格；12/12 PASS |
 | S152 | SPA fallback for unknown routes（未知 URL → React NotFoundPage，移除 allowlist drift）| S(6) | — | ✅ v4.26.0 — 8/8 PASS（catchall pattern 取代 14 條 allowlist + /api/ early-return） |
 | S153 | Skill detail 404 UX — 統一 400/403/404 顯「找不到此技能」（移除誤導 retry 提示）| XS(3) | — | ✅ v4.24.0 — 9/9 vitest PASS（isUnviewable 擴展涵蓋 400/403/404） |
@@ -119,8 +119,8 @@
 | S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) → 三段 ship | S144 ✅ | ✅ **shipped 2026-05-12 — 全部 8 ACs PASS**（backend 136564d + EditSkillModal fbce208 + visibility toggle 本 tick）|
 | S163b | Skill owner frontend — EditSkillModal（AC-7）+ PageHeader 編輯 button | XS(3) | S163 ✅ | ✅ shipped 2026-05-12 fbce208 |
 | S163b' | Skill visibility toggle UX — PageHeader [轉為私人]/[公開分享] button | XS(2) | S163b ✅ | ✅ shipped 2026-05-12 — VisibilityToggleButton 自包 grants query；27/27 vitest PASS；374/374 全 suite 無 regression |
-| S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) → backend XS(3) | S150 ✅ ship 前提 | 🚧 backend ship 2026-05-12（PUT+DELETE + 2 events + auth check；6/8 ACs PASS）；frontend AC-7/8 拆 S164b（依 S150）|
-| S164b | Collection owner frontend — EditCollectionModal + CollectionDetailPage action bar + CollectionCard kebab menu | S(4) | S164 ✅ + S150 ✅ | 📋 planned — AC-7/8 from S164 |
+| S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) → 兩段 ship | S150 ✅ | ✅ **shipped 2026-05-12 — 全部 8 ACs PASS**（backend 8fbee3d + frontend modal+action bar 本 tick）；原 5-spec 第四個 fully shipped |
+| S164b | Collection owner frontend — EditCollectionModal + CollectionDetailPage action bar | XS(3) | S164 ✅ + S150 ✅ | ✅ shipped 2026-05-12 — 14/14 vitest PASS；395/395 全 suite 無 regression |
 | S165 | Jackson `@JsonView` prod hotfix — `JsonMapperBuilderCustomizer` 顯式 enable `DEFAULT_VIEW_INCLUSION` | XS(2) | S158 ✅ + S166a ✅ | ✅ v4.41.0 — bean + diagnostic test + dev-standards rule |
 | S166 | META Spring AOT bean registration sweep — verify-all.sh 全綠（S148e 後 processTestAot 解封首次跑揭露 ~30 fail） | META | S148e ✅ | ✅ v4.41.0 — sub-spec a 已 ship；b/c 改判定無真實 cluster（V01 全綠後消失）|
 | S166a | 拆 cache 基礎設施（`@EnableCaching` + S114b ACL cache + Caffeine dep） — 一次解 cluster A ~10 個 AOT context-load fail | S(5) | — | ✅ v4.41.0 — cache infra 全拆；MVP 不需，未來 reintroduce 走 S2XX-cache |
