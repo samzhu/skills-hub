@@ -209,3 +209,117 @@ describe('MySkillsPage — S144 delete skill UX', () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('刪除失敗：沒有權限執行此操作。'))
   })
 })
+
+describe('MySkillsPage — S145 subscription management tab', () => {
+  const me = {
+    userId: 'u_alice0',
+    handle: 'alice',
+    sub: 'alice',
+    name: 'Alice',
+    email: 'alice@example.com',
+    picture: null,
+    roles: ['user'],
+    groups: [],
+    companyId: null,
+    deptId: null,
+    scope: '',
+  }
+
+  const setSubscriptionFetchMock = (subscriptions: unknown[]) => {
+    let currentSubscriptions = [...subscriptions] as any[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/api/v1/me/flags-summary')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ openCount: 0 }) } as Response)
+      }
+      if (url.endsWith('/api/v1/me')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(me) } as Response)
+      }
+      if (url.includes('/api/v1/me/subscriptions/details')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(currentSubscriptions) } as Response)
+      }
+      if (url.includes('/api/v1/me/subscriptions')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(currentSubscriptions.map((s: any) => s.skillId)) } as Response)
+      }
+      if (url.endsWith('/api/v1/skills/skill-1/subscribe') && init?.method === 'DELETE') {
+        currentSubscriptions = currentSubscriptions.filter((s: any) => s.skillId !== 'skill-1')
+        return Promise.resolve({ ok: true, status: 204 } as Response)
+      }
+      if (url.includes('/api/v1/skills')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [], page: { number: 0, size: 200, totalPages: 0, totalElements: 0 } }) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) } as Response)
+    })
+  }
+
+  it('AC-S145-1: 訂閱 tab 顯示 skill card 欄位', async () => {
+    setSubscriptionFetchMock([
+      {
+        skillId: 'skill-1',
+        skillName: 'deep-research',
+        author: 'u_author1',
+        authorDisplayName: 'Sam Zhu',
+        latestVersion: '1.2.0',
+        riskLevel: 'LOW',
+        status: 'PUBLISHED',
+        subscribedAt: '2026-05-08T10:15:30Z',
+      },
+      {
+        skillId: 'skill-2',
+        skillName: 'docker-helper',
+        author: 'u_author2',
+        authorDisplayName: 'Docker Author',
+        latestVersion: '2.0.0',
+        riskLevel: 'MEDIUM',
+        status: 'PUBLISHED',
+        subscribedAt: '2026-05-07T10:15:30Z',
+      },
+    ])
+
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: /訂閱/ }))
+
+    expect(await screen.findByText('deep-research')).toBeInTheDocument()
+    expect(screen.getByText('docker-helper')).toBeInTheDocument()
+    expect(screen.getByText('Sam Zhu')).toBeInTheDocument()
+    expect(screen.getByText('v1.2.0')).toBeInTheDocument()
+    expect(screen.getAllByText('低風險')[0]).toBeInTheDocument()
+    expect(screen.getByText(/2026-05-08/)).toBeInTheDocument()
+  })
+
+  it('AC-S145-3: 點取消訂閱後呼叫 DELETE、移除 card、顯示 toast', async () => {
+    setSubscriptionFetchMock([
+      {
+        skillId: 'skill-1',
+        skillName: 'deep-research',
+        author: 'u_author1',
+        authorDisplayName: 'Sam Zhu',
+        latestVersion: '1.2.0',
+        riskLevel: 'LOW',
+        status: 'PUBLISHED',
+        subscribedAt: '2026-05-08T10:15:30Z',
+      },
+    ])
+
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: /訂閱/ }))
+    expect(await screen.findByText('deep-research')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '取消訂閱 deep-research' }))
+
+    await waitFor(() => expect(screen.queryByText('deep-research')).not.toBeInTheDocument())
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/v1/skills/skill-1/subscribe', { method: 'DELETE' })
+    const { toast } = await import('sonner')
+    expect(toast.success).toHaveBeenCalledWith('已取消訂閱')
+  })
+
+  it('AC-S145-4: 無訂閱時顯示 empty state 和前往瀏覽', async () => {
+    setSubscriptionFetchMock([])
+
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: /訂閱/ }))
+
+    expect(await screen.findByText('尚未訂閱任何技能')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '前往瀏覽' })).toHaveAttribute('href', '/')
+  })
+})

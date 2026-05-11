@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-11（v4.49.0 ship — S168 Round 2 fix；Approach B → C pivot；primitive boolean → Boolean wrapper field per JobRunr PR #1501）
+> 最後更新：2026-05-11（v4.52.0 ship — S145 subscription management tab；platform notification inbox only）
 
 ## 使用說明
 
@@ -67,6 +67,7 @@
 | v4.16.0 | S098c3 (file-list diff) | ✅ shipped — GET /file-list-diff + FileListDiffPanel |
 | v4.50.0 | S154b (Author display identity — frontend) | ✅ shipped 2026-05-11 |
 | v4.51.0 | S144 (Skill delete) | ✅ shipped 2026-05-11 |
+| v4.52.0 | S145 (Subscription management tab) | ✅ shipped 2026-05-11 |
 
 ---
 
@@ -75,7 +76,6 @@
 | SpecID | 標題 | 點數 | 相依 | 狀態 |
 |--------|------|------|------|------|
 | S143 | `/docs` canonical entry → `/docs/overview`（含 nav 對齊）| XS(2) | — | ✅ v4.23.0 — 4/4 vitest PASS（Navigate replace + nav 對齊） |
-| S145 | 訂閱管理頁面（我的技能 → 訂閱 tab） | S(6) | S125b ✅ | 📋 planned |
 | S146 | 掃描器補強 — GitHub Actions Unpinned Dependency 偵測（`@master/@main/@HEAD`） | XS(3) | S147 research | ⏸ deferred — 等 S147 完成再規劃 |
 | S147 | 掃描器語意分析缺口研究（W011/E004/W009/W013 vs. Snyk agent-scan） | META(research) | — | ⏸ deferred — 暫緩，等研究啟動時機 |
 | S148 | Bug — GraalVM native image AOT reflection 涵蓋不足（JudgeResponse 部分） | S(5) | — | ✅ v4.25.0 — 4/4 JudgeResponse deserialize PASS（@RegisterReflectionForBinding + catch(Error) 防 outbox 無限重試） |
@@ -212,6 +212,7 @@
 | SpecID | 標題 | 點數 | 版本 |
 |--------|------|------|------|
 | S144 | Skill delete | S(9) | v4.51.0 |
+| S145 | 訂閱管理頁面 | S(8) | v4.52.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

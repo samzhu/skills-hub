@@ -1,5 +1,33 @@
 # Changelog
 
+## [v4.52.0] — S145 訂閱管理頁面（2026-05-11）
+
+### Added
+
+- **Backend subscription details API** — `GET /api/v1/me/subscriptions/details` returns current-user subscription rows with skill name, author display name, latest version, risk level, status, and subscribed timestamp.
+- **MySkills subscription tab** — `/my-skills` now has a 「訂閱」 tab that lists subscribed skills, links each row to skill detail, and supports `取消訂閱`.
+- **Subscription cache support** — frontend `useMySubscriptionDetails()` reads the details endpoint; subscribe/unsubscribe mutations invalidate both the existing id-list cache and the new details cache.
+
+### Changed
+
+- **Empty-body subscription commands** — `subscribeSkill()` and `unsubscribeSkill()` now use `apiFetchVoid()` so 201/204 empty responses do not attempt JSON parsing.
+- **Existing subscribed-state contract preserved** — `GET /api/v1/me/subscriptions` still returns `string[]` for SkillDetail star/toggle state.
+- **Notification scope clarified** — S145 manages platform notification inbox subscriptions only; no email/SMTP sending was added.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01/V03/V04/V05/V06/V07/V08a/V08b all PASS; V02 INFO line coverage 82.9%; exit=0.
+- Targeted backend：`./gradlew test --tests "*SkillSubscriptionServiceTest" --tests "*SkillSubscriptionControllerTest"` PASS.
+- Targeted frontend：`npm test -- --run src/hooks/useSubscription.test.tsx src/pages/MySkillsPage.test.tsx` PASS — 15/15 tests.
+- Independent QA subagent：PASS，no blocking findings.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-08-S145-subscription-management.md` → `docs/grimo/specs/archive/`
+- spec-roadmap.md S145 row moved from Backlog to Shipped as `v4.52.0`.
+
+---
+
 ## [v4.51.0] — S144 Skill delete（2026-05-11）
 
 ### Added

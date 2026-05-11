@@ -1,4 +1,5 @@
-import { apiFetch } from './client'
+import { apiFetch, apiFetchVoid } from './client'
+import type { RiskLevel, SkillStatus } from '@/types/skill'
 
 /**
  * S125c — SkillSubscription HTTP helpers（對齊 S125b backend endpoints）。
@@ -14,13 +15,13 @@ import { apiFetch } from './client'
  */
 
 export function subscribeSkill(skillId: string): Promise<void> {
-  return apiFetch<void>(`/skills/${encodeURIComponent(skillId)}/subscribe`, {
+  return apiFetchVoid(`/skills/${encodeURIComponent(skillId)}/subscribe`, {
     method: 'POST',
   })
 }
 
 export function unsubscribeSkill(skillId: string): Promise<void> {
-  return apiFetch<void>(`/skills/${encodeURIComponent(skillId)}/subscribe`, {
+  return apiFetchVoid(`/skills/${encodeURIComponent(skillId)}/subscribe`, {
     method: 'DELETE',
   })
 }
@@ -28,4 +29,21 @@ export function unsubscribeSkill(skillId: string): Promise<void> {
 /** 回當前 user 訂閱的所有 skillId list（順序由 DB 決定）。 */
 export function fetchMySubscriptions(): Promise<string[]> {
   return apiFetch<string[]>('/me/subscriptions')
+}
+
+/** S145 — 我的訂閱管理列表每列需要的 skill 摘要。 */
+export interface SubscriptionSummary {
+  skillId: string
+  skillName: string
+  author: string
+  authorDisplayName: string | null
+  latestVersion: string | null
+  riskLevel: RiskLevel | null
+  status: SkillStatus
+  subscribedAt: string
+}
+
+/** 回當前 user 訂閱的所有 skill summary rows，供「我的技能 / 訂閱」tab 使用。 */
+export function fetchMySubscriptionDetails(): Promise<SubscriptionSummary[]> {
+  return apiFetch<SubscriptionSummary[]>('/me/subscriptions/details')
 }

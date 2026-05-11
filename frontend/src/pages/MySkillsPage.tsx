@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, Eye, MoreVertical, Trash2 } from 'lucide-react'
+import { ArrowRight, BellOff, Eye, MoreVertical, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AppShell } from '@/components/AppShell'
 import { MetricCard } from '@/components/MetricCard'
@@ -17,6 +17,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useSkillList } from '@/hooks/useSkillList'
 import { useSkillStats } from '@/hooks/useSkillStats'
 import { useFlagsSummary } from '@/hooks/useFlagsSummary'
+import { useMySubscriptionDetails, useUnsubscribeSkill } from '@/hooks/useSubscription'
+import type { SubscriptionSummary } from '@/api/subscriptions'
 import type { Skill } from '@/types/skill'
 
 /**
@@ -53,7 +55,9 @@ export function MySkillsPage() {
   })
   // S112-T04: 待處理回報 — me 已 loaded 才查（避免 anonymous 拒接）；放早 return 前以對齊 Rules of Hooks
   const { data: flagsSummary } = useFlagsSummary(!!author)
-  const [tab, setTab] = useState<'all' | 'PUBLISHED' | 'DRAFT' | 'SUSPENDED'>('all')
+  const { data: subscriptionDetails, isLoading: subscriptionsLoading } = useMySubscriptionDetails()
+  const unsubscribeSkill = useUnsubscribeSkill()
+  const [tab, setTab] = useState<'all' | 'PUBLISHED' | 'DRAFT' | 'SUSPENDED' | 'SUBSCRIPTIONS'>('all')
   const [pendingDelete, setPendingDelete] = useState<Skill | null>(null)
   const deleteMutation = useMutation({
     mutationFn: (skillId: string) => deleteSkill(skillId),
@@ -107,6 +111,23 @@ export function MySkillsPage() {
 
   const allSkills = skillsPage?.content ?? []
   const filteredSkills = tab === 'all' ? allSkills : allSkills.filter((s) => s.status === tab)
+  const subscriptionRows = subscriptionDetails ?? []
+  const unsubscribeFromList = (skillId: string) => {
+    unsubscribeSkill.mutate(skillId, {
+      onSuccess: () => {
+        queryClient.setQueryData<SubscriptionSummary[]>(['my-subscriptions', 'details'], (old) =>
+          old?.filter((s) => s.skillId !== skillId) ?? old,
+        )
+        queryClient.setQueryData<string[]>(['my-subscriptions'], (old) =>
+          old?.filter((id) => id !== skillId) ?? old,
+        )
+        toast.success('已取消訂閱')
+      },
+      onError: (err) => {
+        toast.error(`取消訂閱失敗：${localizeApiError(err)}`)
+      },
+    })
+  }
 
   // Metric calculations
   const total = allSkills.length
@@ -157,8 +178,33 @@ export function MySkillsPage() {
         />
       </div>
 
-      {/* Empty state when 0 skills (use S094c invite tone) */}
-      {total === 0 ? (
+      {/* Tabs */}
+      <div className="mb-3 flex flex-wrap gap-2">
+        <TabPill active={tab === 'all'} onClick={() => setTab('all')}>
+          全部 ({total})
+        </TabPill>
+        <TabPill active={tab === 'PUBLISHED'} onClick={() => setTab('PUBLISHED')}>
+          已發布 ({published})
+        </TabPill>
+        <TabPill active={tab === 'DRAFT'} onClick={() => setTab('DRAFT')}>
+          草稿 ({drafts})
+        </TabPill>
+        <TabPill active={tab === 'SUSPENDED'} onClick={() => setTab('SUSPENDED')}>
+          已停用 ({suspended})
+        </TabPill>
+        <TabPill active={tab === 'SUBSCRIPTIONS'} onClick={() => setTab('SUBSCRIPTIONS')}>
+          訂閱 ({subscriptionRows.length})
+        </TabPill>
+      </div>
+
+      {tab === 'SUBSCRIPTIONS' ? (
+        <SubscriptionList
+          rows={subscriptionRows}
+          isLoading={subscriptionsLoading}
+          isUnsubscribing={unsubscribeSkill.isPending}
+          onUnsubscribe={unsubscribeFromList}
+        />
+      ) : total === 0 ? (
         <EmptyState
           tone="invite"
           headline="你還沒有發布過技能。"
@@ -171,23 +217,6 @@ export function MySkillsPage() {
         />
       ) : (
         <>
-          {/* Tabs */}
-          <div className="mb-3 flex flex-wrap gap-2">
-            <TabPill active={tab === 'all'} onClick={() => setTab('all')}>
-              全部 ({total})
-            </TabPill>
-            <TabPill active={tab === 'PUBLISHED'} onClick={() => setTab('PUBLISHED')}>
-              已發布 ({published})
-            </TabPill>
-            <TabPill active={tab === 'DRAFT'} onClick={() => setTab('DRAFT')}>
-              草稿 ({drafts})
-            </TabPill>
-            <TabPill active={tab === 'SUSPENDED'} onClick={() => setTab('SUSPENDED')}>
-              已停用 ({suspended})
-            </TabPill>
-          </div>
-
-          {/* Skill list — table-style rows */}
           <div className="overflow-hidden rounded-lg border border-border bg-card">
             {filteredSkills.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -243,6 +272,86 @@ export function MySkillsPage() {
         </div>
       )}
     </AppShell>
+  )
+}
+
+function SubscriptionList({
+  rows,
+  isLoading,
+  isUnsubscribing,
+  onUnsubscribe,
+}: {
+  rows: SubscriptionSummary[]
+  isLoading: boolean
+  isUnsubscribing: boolean
+  onUnsubscribe: (skillId: string) => void
+}) {
+  if (isLoading) {
+    return <div className="py-8 text-center text-sm text-muted-foreground">載入訂閱中...</div>
+  }
+  if (rows.length === 0) {
+    return (
+      <EmptyState
+        tone="invite"
+        headline="尚未訂閱任何技能"
+        sub="前往瀏覽找到有興趣的技能後點「訂閱」，未來有新版本時會收到通知。"
+        primaryAction={{ label: '前往瀏覽', href: '/' }}
+      />
+    )
+  }
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
+      {rows.map((row, i) => (
+        <SubscriptionRow
+          key={row.skillId}
+          row={row}
+          isLast={i === rows.length - 1}
+          isPending={isUnsubscribing}
+          onUnsubscribe={() => onUnsubscribe(row.skillId)}
+        />
+      ))}
+    </div>
+  )
+}
+
+function SubscriptionRow({
+  row,
+  isLast,
+  isPending,
+  onUnsubscribe,
+}: {
+  row: SubscriptionSummary
+  isLast: boolean
+  isPending: boolean
+  onUnsubscribe: () => void
+}) {
+  return (
+    <div className={'flex items-center gap-3 px-4 py-3 hover:bg-muted/30 ' + (isLast ? '' : 'border-b border-border')}>
+      <IconTile name={row.skillName} category="Subscription" size="sm" />
+      <Link to={`/skills/${row.skillId}`} className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="truncate text-[13px] font-medium">{row.skillName}</span>
+          <RiskBadge level={row.riskLevel} />
+          <span className="rounded-sm bg-[#171719] px-2 py-0.5 font-mono text-[11px]">
+            v{row.latestVersion ?? '—'}
+          </span>
+        </div>
+        <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
+          <span>{row.authorDisplayName ?? row.author}</span>
+          <span> · 訂閱於 {row.subscribedAt.slice(0, 10)}</span>
+        </p>
+      </Link>
+      <button
+        type="button"
+        aria-label={`取消訂閱 ${row.skillName}`}
+        onClick={onUnsubscribe}
+        disabled={isPending}
+        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-border px-3 text-[12px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-60"
+      >
+        <BellOff className="h-3.5 w-3.5" />
+        取消訂閱
+      </button>
+    </div>
   )
 }
 

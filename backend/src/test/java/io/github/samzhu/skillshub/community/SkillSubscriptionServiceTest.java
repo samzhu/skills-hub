@@ -21,6 +21,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 import io.github.samzhu.skillshub.shared.security.CurrentUser;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+import io.github.samzhu.skillshub.shared.security.User;
+import io.github.samzhu.skillshub.shared.security.UserRepository;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
@@ -42,6 +44,9 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
     @Autowired
     private SkillRepository skillRepo;
 
+    @Autowired
+    private UserRepository userRepo;
+
     @MockitoBean
     private CurrentUserProvider currentUserProvider;
 
@@ -51,6 +56,7 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
     void setUp() {
         repo.deleteAll();
         skillRepo.deleteAll();
+        userRepo.deleteAll();
         // seed PUBLIC skill 給 subscribe 路徑用
         skillId = UUID.randomUUID().toString();
         var now = Instant.now();
@@ -59,6 +65,20 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
                 "alice", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now,
                 List.of("user:alice:read", "user:alice:write", "user:alice:delete", "public:*:read"),
                 null));
+    }
+
+    private String seedSkill(String name, String authorId, String authorName, String latestVersion, String riskLevel) {
+        var id = UUID.randomUUID().toString();
+        var now = Instant.now();
+        userRepo.save(User.createNew(authorId, "google", authorId + "-sub", authorId + "@example.com",
+                authorName, authorId.replace("u_", ""), null, now));
+        skillRepo.save(Skill.fromRow(
+                id, name, "summary fixture", authorId, "DevOps", latestVersion, null,
+                "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
+        if (riskLevel != null) {
+            skillRepo.updateRiskLevel(id, riskLevel, now);
+        }
+        return id;
     }
 
     private void asUser(String userId) {
@@ -147,5 +167,40 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
 
         var mySubs = service.findSubscriptionsOfCurrentUser();
         assertThat(mySubs).containsExactlyInAnyOrder(skillId, skill2);
+    }
+
+    @Test
+    @DisplayName("AC-S145-2: details list 只回當前 user 訂閱摘要，含 card 欄位")
+    void findSubscriptionDetailsOfCurrentUser_filtersAndReturnsSummary() {
+        var deepResearch = seedSkill("deep-research", "u_author1", "Sam Zhu", "1.2.0", "LOW");
+        var dockerHelper = seedSkill("docker-helper", "u_author2", "Docker Author", "2.0.0", "MEDIUM");
+
+        asUser("alice");
+        service.subscribe(deepResearch);
+        asUser("bob");
+        service.subscribe(dockerHelper);
+
+        asUser("alice");
+        var details = service.findSubscriptionDetailsOfCurrentUser();
+
+        assertThat(details).singleElement().satisfies(summary -> {
+            assertThat(summary.skillId()).isEqualTo(deepResearch);
+            assertThat(summary.skillName()).isEqualTo("deep-research");
+            assertThat(summary.author()).isEqualTo("u_author1");
+            assertThat(summary.authorDisplayName()).isEqualTo("Sam Zhu");
+            assertThat(summary.latestVersion()).isEqualTo("1.2.0");
+            assertThat(summary.riskLevel()).isEqualTo("LOW");
+            assertThat(summary.status()).isEqualTo("PUBLISHED");
+            assertThat(summary.subscribedAt()).isNotNull();
+        });
+    }
+
+    @Test
+    @DisplayName("AC-S145-5: existing id-list contract remains string skillId list")
+    void findSubscriptionsOfCurrentUser_stillReturnsOnlySkillIds() {
+        asUser("alice");
+        service.subscribe(skillId);
+
+        assertThat(service.findSubscriptionsOfCurrentUser()).containsExactly(skillId);
     }
 }

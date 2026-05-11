@@ -1,11 +1,15 @@
 package io.github.samzhu.skillshub.community;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.samzhu.skillshub.shared.security.DisplayNameResolver;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
@@ -29,14 +33,29 @@ public class SkillSubscriptionService {
     private final SkillSubscriptionRepository repo;
     private final SkillRepository skillRepo;
     private final CurrentUserProvider users;
+    private final NamedParameterJdbcTemplate jdbc;
 
     public SkillSubscriptionService(SkillSubscriptionRepository repo,
                                     SkillRepository skillRepo,
-                                    CurrentUserProvider users) {
+                                    CurrentUserProvider users,
+                                    NamedParameterJdbcTemplate jdbc) {
         this.repo = repo;
         this.skillRepo = skillRepo;
         this.users = users;
+        this.jdbc = jdbc;
     }
+
+    /** S145 — current user's subscription management row. */
+    public record SkillSubscriptionSummary(
+            String skillId,
+            String skillName,
+            String author,
+            String authorDisplayName,
+            String latestVersion,
+            String riskLevel,
+            String status,
+            Instant subscribedAt
+    ) {}
 
     /**
      * 當前 user 訂閱指定 skill。idempotent — 重複訂閱 noop。
@@ -90,5 +109,57 @@ public class SkillSubscriptionService {
         return repo.findBySubscriberId(users.userId()).stream()
                 .map(SkillSubscription::getSkillId)
                 .toList();
+    }
+
+    /**
+     * 找當前 user 訂閱的 skill 摘要 — S145「我的技能 / 訂閱」tab 使用。
+     */
+    @Transactional(readOnly = true)
+    public List<SkillSubscriptionSummary> findSubscriptionDetailsOfCurrentUser() {
+        var params = new MapSqlParameterSource("subscriberId", users.userId());
+        return jdbc.query("""
+                SELECT ss.skill_id,
+                       ss.created_at AS subscribed_at,
+                       s.name AS skill_name,
+                       s.author,
+                       s.author_name_snapshot,
+                       s.latest_version,
+                       s.risk_level,
+                       s.status,
+                       u.name AS user_name,
+                       u.email AS user_email,
+                       u.handle AS user_handle
+                FROM skill_subscriptions ss
+                JOIN skills s ON s.id = ss.skill_id
+                LEFT JOIN users u ON u.id = s.author
+                WHERE ss.subscriber_id = :subscriberId
+                ORDER BY ss.created_at DESC
+                """, params, (rs, rowNum) -> {
+            var author = rs.getString("author");
+            var displayName = rs.getString("user_name") != null || rs.getString("user_email") != null
+                    || rs.getString("user_handle") != null
+                    ? DisplayNameResolver.resolve(
+                            rs.getString("user_name"),
+                            null,
+                            null,
+                            rs.getString("user_email"),
+                            rs.getString("user_handle"),
+                            author)
+                    : firstNonBlank(rs.getString("author_name_snapshot"), author);
+            var subscribedAt = rs.getTimestamp("subscribed_at").toInstant();
+            return new SkillSubscriptionSummary(
+                    rs.getString("skill_id"),
+                    rs.getString("skill_name"),
+                    author,
+                    displayName,
+                    rs.getString("latest_version"),
+                    rs.getString("risk_level"),
+                    rs.getString("status"),
+                    subscribedAt);
+        });
+    }
+
+    private static String firstNonBlank(String primary, String fallback) {
+        return primary != null && !primary.isBlank() ? primary : fallback;
     }
 }

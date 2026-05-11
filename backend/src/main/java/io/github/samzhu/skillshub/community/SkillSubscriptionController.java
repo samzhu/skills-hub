@@ -72,4 +72,12 @@ class SkillSubscriptionController {
     List<String> mySubscriptions() {
         return service.findSubscriptionsOfCurrentUser();
     }
+
+    /**
+     * AC-S145-2 — 列當前 user 訂閱的 skill 摘要，供「我的技能 / 訂閱」管理 tab 使用。
+     */
+    @GetMapping("/api/v1/me/subscriptions/details")
+    List<SkillSubscriptionService.SkillSubscriptionSummary> mySubscriptionDetails() {
+        return service.findSubscriptionDetailsOfCurrentUser();
+    }
 }

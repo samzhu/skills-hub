@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  fetchMySubscriptionDetails,
   fetchMySubscriptions,
   subscribeSkill,
   unsubscribeSkill,
 } from '@/api/subscriptions'
+import type { SubscriptionSummary } from '@/api/subscriptions'
 
 /**
  * S125c — 當前 user 訂閱的所有 skillId list（用於 SkillDetail subscribe button state）。
@@ -19,6 +21,16 @@ export function useMySubscriptions() {
   return useQuery<string[]>({
     queryKey: ['my-subscriptions'],
     queryFn: fetchMySubscriptions,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  })
+}
+
+/** S145 — 當前 user 訂閱管理列表的 skill summary rows。 */
+export function useMySubscriptionDetails() {
+  return useQuery<SubscriptionSummary[]>({
+    queryKey: ['my-subscriptions', 'details'],
+    queryFn: fetchMySubscriptionDetails,
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
   })
@@ -48,6 +60,7 @@ export function useSubscribeSkill() {
     mutationFn: (skillId) => subscribeSkill(skillId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['my-subscriptions'] })
+      qc.invalidateQueries({ queryKey: ['my-subscriptions', 'details'] })
     },
   })
 }
@@ -59,6 +72,7 @@ export function useUnsubscribeSkill() {
     mutationFn: (skillId) => unsubscribeSkill(skillId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['my-subscriptions'] })
+      qc.invalidateQueries({ queryKey: ['my-subscriptions', 'details'] })
     },
   })
 }
