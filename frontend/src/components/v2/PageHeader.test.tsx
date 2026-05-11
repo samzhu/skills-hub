@@ -114,6 +114,41 @@ describe('PageHeader', () => {
     expect(link.getAttribute('href')).toBe('mailto:alice@example.com')
   })
 
+  it('S163b: 非 owner → 不顯 [編輯] button', () => {
+    setupMocks()
+    renderHeader(baseSkill, false)
+    expect(screen.queryByTestId('edit-skill-btn')).toBeNull()
+  })
+
+  it('S163b: owner + onEditClick 有傳 → 顯 [編輯] button + click 觸發 callback', () => {
+    setupMocks()
+    const onEditClick = vi.fn()
+    render(
+      <MemoryRouter>
+        <PageHeader
+          skill={baseSkill}
+          isOwner={true}
+          activeTab="overview"
+          onTabChange={vi.fn()}
+          scores={null}
+          report={null}
+          stats={[]}
+          onEditClick={onEditClick}
+        />
+      </MemoryRouter>,
+    )
+    const btn = screen.getByTestId('edit-skill-btn')
+    expect(btn.textContent).toBe('編輯')
+    fireEvent.click(btn)
+    expect(onEditClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('S163b: owner 但 onEditClick 未傳 → 不顯 [編輯] button（防漏接 parent prop）', () => {
+    setupMocks()
+    renderHeader(baseSkill, true)
+    expect(screen.queryByTestId('edit-skill-btn')).toBeNull()
+  })
+
   it('regression (S142a-T06 prod-bug): download-cta click invokes onDownload prop', () => {
     setupMocks()
     const onDownload = vi.fn()

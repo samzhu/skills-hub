@@ -75,6 +75,22 @@ export function deleteSkill(id: string): Promise<void> {
 }
 
 /**
+ * S163 — PUT /api/v1/skills/{id} 改 description / category。
+ * name / version 在 backend DTO surface 不接受（@JsonIgnoreProperties），送也會被丟。
+ * 兩欄位都允許 null 表示「本次不動該欄位」；EditSkillModal 永遠帶兩欄位故無歧義。
+ */
+export function updateSkill(
+  id: string,
+  body: { description?: string | null; category?: string | null }
+): Promise<void> {
+  return apiFetchVoid(`/skills/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+/**
  * S096c — 依 (author, name) canonical route 取得 Skill (per ADR-003).
  * `/skills/:author/:name` 為 v2 canonical；`/skills/:id` 仍為永久 alias。
  */

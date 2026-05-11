@@ -10,6 +10,7 @@ import { FlagsList } from '@/components/FlagsList'
 import { ReviewsPanel } from '@/components/ReviewsPanel'
 import { MarkdownActionMenu } from '@/components/MarkdownActionMenu'
 import { ShareModal } from '@/components/ShareModal'
+import { EditSkillModal } from '@/components/EditSkillModal'
 import { useSkill, useSkillByAuthorAndName } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
 import { useMe } from '@/hooks/useMe'
@@ -70,6 +71,7 @@ export function SkillDetailPage() {
 
   const [activeTab, setActiveTab] = useState('skill-md')
   const [shareOpen, setShareOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const isOwner = !!skill && !!me && skill.ownerId === me.sub
 
   if (isLoading) {
@@ -133,9 +135,11 @@ export function SkillDetailPage() {
           window.location.href = `/api/v1/skills/${skill.id}/download`
         }}
         onShareClick={() => setShareOpen(true)}
+        onEditClick={() => setEditOpen(true)}
       />
 
       {shareOpen && <ShareModal skillId={skill.id} onClose={() => setShareOpen(false)} />}
+      {editOpen && <EditSkillModal skill={skill} onClose={() => setEditOpen(false)} />}
 
       {/* S087 — SUSPENDED callout */}
       {skill.status === 'SUSPENDED' && (

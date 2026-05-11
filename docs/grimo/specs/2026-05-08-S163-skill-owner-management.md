@@ -227,6 +227,46 @@ deploy 後：
 
 ---
 
+## 5.4 Frontend Phase 1 結果（2026-05-12）— S163b 部分套用
+
+### Ship 範圍
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-7 | EditSkillModal 預填當前 description / category；submit 後 success + close + refetch | ✅ PASS（vitest 6 cases）|
+| AC-7 補強 | name + version 不在 modal surface；UI 顯示提示「不可在此編輯」 | ✅ PASS |
+| 部分 AC-1 | 改 description → PUT 帶 {description, category} payload | ✅ PASS（updateSkill mock 驗 params）|
+
+### Defer 至 S163b'（visibility toggle UX）
+
+| AC | 內容 | 為何 defer |
+|---|---|---|
+| AC-4 | [轉為私人] button → DELETE public:* grant | 走既有 /grants API；獨立 UX 分支 + grant lookup logic |
+| AC-5 | 私人 skill 對非 owner 403 | 既有 ACL backend 行為，純驗證 |
+| AC-6 | [公開分享] button → POST public:* VIEWER grant | 同 AC-4 |
+| AC-8 | 已下載 client 不受 private 切換影響 | 純行為驗證（registry 非 DRM） |
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `frontend/src/api/skills.ts` | 加 `updateSkill(id, {description, category})` helper — PUT /skills/{id} |
+| `frontend/src/components/EditSkillModal.tsx`（**新檔**）| Mirror CreateCollectionModal pattern；prefill skill 當前值；trim+empty 驗證；unchanged disable submit |
+| `frontend/src/components/v2/PageHeader.tsx` | 加 `onEditClick?: () => void` prop；owner-only `[編輯]` button（mirror 既有 `[分享]` pattern） |
+| `frontend/src/pages/SkillDetailPage.tsx` | useState editOpen + EditSkillModal render + 傳 onEditClick prop |
+| `frontend/src/components/EditSkillModal.test.tsx`（**新檔**）| 6 vitest cases — prefill / disabled-when-unchanged / submit-with-new-value / blank-rejects / cancel / immutable-fields hint |
+| `frontend/src/components/v2/PageHeader.test.tsx` | 加 3 cases — 非 owner 不顯 / owner+onEditClick render + click / owner-無-onEditClick 不顯（防漏接 parent prop） |
+
+### 驗證指令
+
+```bash
+cd frontend && npm run typecheck      # 0 errors
+cd frontend && npm test -- --run EditSkillModal PageHeader   # 19/19 PASS
+cd frontend && npm test -- --run SkillDetailPage              # 9/9 PASS（無 regression）
+```
+
+---
+
 ## 5.3 Backend Phase 1 結果（2026-05-12）
 
 ### Ship 範圍

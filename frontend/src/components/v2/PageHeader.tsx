@@ -24,6 +24,8 @@ interface Props {
   stats: number[]
   onDownload?: () => void
   onShareClick?: () => void
+  /** S163b — owner-only [編輯] button click handler；undefined 時不 render button。 */
+  onEditClick?: () => void
 }
 
 /** Star (subscribe) toggle button — lucide Star icon, uses subscription hooks. */
@@ -101,7 +103,7 @@ function relativeTime(iso: string): string {
  * Includes SkillInfo / Actions / HeroMetricsRow / StatStrip.
  * Tab-bar and body grid are rendered by the parent page.
  */
-export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, report, stats, onDownload, onShareClick }: Props) {
+export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, report, stats, onDownload, onShareClick, onEditClick }: Props) {
   const skillScore = scores?.skillScore ?? null
 
   return (
@@ -164,6 +166,17 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
 
         {/* Right: actions */}
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'flex-start' }}>
+          {isOwner && onEditClick && (
+            <button
+              type="button"
+              aria-label="編輯技能"
+              data-testid="edit-skill-btn"
+              onClick={onEditClick}
+              style={{ padding: '8px 14px', fontSize: 13, background: 'rgba(255,255,255,0.06)', border: '0.5px solid var(--line-2, rgba(255,255,255,0.12))', borderRadius: 8, cursor: 'pointer' }}
+            >
+              編輯
+            </button>
+          )}
           {isOwner && onShareClick && (
             <button
               type="button"
