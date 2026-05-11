@@ -348,6 +348,46 @@ deploy 後：
 - **WAF / GCP Cloud Armor**: 規則設定
 - **Audit log**: auth failure / privilege escalation 嘗試紀錄
 
+## 7.7 Phase 3 結果（2026-05-12）— S160b' frontend apiFetch CSRF wiring
+
+### Ship 範圍
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-3 | SPA cookie-based session 流程 — apiFetch 自動讀 XSRF-TOKEN cookie + 帶 X-XSRF-TOKEN header（mutation methods） | ✅ PASS — `withCsrfHeader` helper 13/13 cases PASS（含 POST/PUT/PATCH/DELETE 注入 + GET 跳過 + 無 cookie no-op + caller 自訂 header 不覆蓋）|
+
+### 設計
+
+- 抽 `readCookie(name)` / `isMutation(method)` / `withCsrfHeader(init)` 純函數 helpers 從 production code export 給 vitest 直接驗（不需 mock fetch）
+- mutation HTTP method (POST/PUT/DELETE/PATCH) 才注入 X-XSRF-TOKEN header；safe methods (GET/HEAD/OPTIONS) skip — 對齊 Spring Security CSRF chain 行為
+- cookie 不存在 → 不加 header（backend default `csrf().enabled=false` 不檢查 token，no-op 通過）
+- cookie 存在 → 自動 round-trip（backend `csrf.enabled=true` toggle ON 後立刻 functional）
+- caller 已自訂 `X-XSRF-TOKEN` header → 不覆蓋（不破 power-user 自帶 token 用法）
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `frontend/src/api/client.ts` | 加 `readCookie` / `isMutation` / `withCsrfHeader` helpers；`apiFetch` 與 `apiFetchVoid` 在 `fetch(...)` 前走 `withCsrfHeader(init)`；export `__test = {...}` 供 vitest |
+| `frontend/src/api/client.test.ts`（**新檔**）| 13 cases — readCookie 4 cases / isMutation 2 cases / withCsrfHeader 7 cases（POST 注入 / GET skip / 無 cookie no-op / caller override / 既有 headers 保留 / DELETE / init undefined） |
+
+### Defer 至 S160b''（CSP report endpoint）
+
+| AC | 內容 | 為何 defer |
+|---|---|---|
+| AC-1 | cookie session POST 無 token → 403 整合驗證 | 需 OAuth2 Login + cookie session 完整 e2e — production 真實啟用 csrf.enabled=true 後實際驗證 |
+| AC-8 | CSP report endpoint | 無 log consumer 配套（如 ELK / Cloud Logging filter），純後端 stub 無實際值 |
+
+### 驗證指令
+
+```bash
+cd frontend && npm run typecheck                # 0 errors
+cd frontend && npm test -- --run client.test    # 13/13 PASS
+cd frontend && npm test -- --run                # 387/387 全 suite PASS 無 regression
+```
+
+---
+
 ## 7.6 Phase 2 結果（2026-05-12）— S160b CSRF infrastructure（feature-flag）
 
 ### Ship 範圍
