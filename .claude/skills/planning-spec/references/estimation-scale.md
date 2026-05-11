@@ -156,8 +156,21 @@ monsters" [11], and IFPUG FPA's **GSC14 (Facilitate Change)** [2].
 
 ## Usage Notes
 
-- **Score before grill, re-score after.** Initial estimate from roadmap
-  may shift after grill reveals hidden complexity or simplifies scope.
+- **Three scoring moments**:
+  1. **Initial estimate** — from roadmap, before grill (rough)
+  2. **Re-score after grill** — `/planning-spec` may shift score after
+     grill reveals hidden complexity or simplifies scope
+  3. **Final re-score at ship** — `/shipping-release` re-scores against
+     actual implementation evidence (Round-N pivots, scope creep / shrink,
+     test complexity actually needed). Final score lands on
+     `spec-roadmap.md` 點數 column; initial estimate stays in spec §2 as
+     historical record. See `shipping-release/SKILL.md` § Re-score size.
+- **Why re-score at ship matters:** The roadmap is the project's ground
+  truth on spec size distribution. Stale initial estimates hide systematic
+  underestimation patterns. Future planners use this data to calibrate
+  scoring on new specs — recurring bucket shifts (e.g., M-shipping-as-L
+  due to GraalVM AOT pitfalls per `debugging-playbook.md`) surface as
+  signal not noise.
 - **When in doubt, score higher.** Per McConnell [5], underestimation
   is the most common estimation failure mode. Overestimation just
   means more design rigor, which is cheap.

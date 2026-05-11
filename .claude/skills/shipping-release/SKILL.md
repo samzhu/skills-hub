@@ -17,7 +17,7 @@ allowed-tools:
   - Edit
 metadata:
   author: samzhu
-  version: 1.1.0
+  version: 1.2.0
   category: workflow-automation
   pattern: sequential-orchestration
 ---
@@ -80,9 +80,10 @@ AC passed. If no section 7 or any AC failed:
 - [ ] Clean up: archive/delete PoC directories if any
 - [ ] Commit: clear message referencing spec ID
 - [ ] Doc sync: update product & design docs to reflect new reality
+- [ ] Re-score: actual size per estimation-scale.md (6 dimensions); record in spec §7
 - [ ] Archive: move completed spec to archive
 - [ ] Changelog: update docs/grimo/CHANGELOG.md
-- [ ] Status: spec-roadmap.md → ✅
+- [ ] Status: spec-roadmap.md → ✅ (use re-scored size, NOT initial estimate)
 - [ ] Tag: version tag if milestone complete
 ```
 
@@ -150,6 +151,50 @@ rm -rf poc/<spec-id>/
 
 **Verify clean state** — after the three steps, `git status` must show no untracked files under `docs/grimo/tasks/` or `poc/` for this spec.
 
+### Re-score size (per estimation-scale.md)
+
+Initial spec estimate is a guess made before implementation. Actual size
+is now known. **Re-score on the 6 dimensions** per
+`.claude/skills/planning-spec/references/estimation-scale.md`:
+
+1. Tech risk · 2. Uncertainty · 3. Dependencies · 4. Scope · 5. Testing · 6. Reversibility
+
+Walk each dimension with the implementation evidence:
+- Did tech risk land higher (research / POC failed initial premise, pivot
+  required) or lower (API "just worked")?
+- Did scope creep (extra files / module touched) or shrink (smaller diff
+  than planned)?
+- Did testing complexity escalate (needed Testcontainers / Docker /
+  multi-instance) or simplify (pure JUnit sufficed)?
+- Other dimensions similarly.
+
+Record in spec §7 a `### Final Size Re-score` sub-section:
+
+```markdown
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---|---|---|
+| Tech risk | 2 | 3 | Required Round 2 pivot — Round 1 fix (converter) was dead code per Spring source ClassUtils.isAssignable short-circuit |
+| Uncertainty | 1 | 2 | 1 hidden grill question only surfaced post-POC |
+| Dependencies | 1 | 1 | unchanged |
+| Scope | 2 | 3 | +3 files vs plan (regression test + dead-code removal + field type sweep) |
+| Testing | 2 | 2 | unchanged |
+| Reversibility | 1 | 1 | unchanged |
+| **Total** | **9 / S** | **12 / M** | Bucket shift S→M; root cause: Round 2 pivot |
+```
+
+**Use the actual total for the spec-roadmap 點數 column** (next step).
+Initial estimate stays in spec §2 as historical record but is overridden
+by §7 re-score.
+
+**Why this matters:** The roadmap is the project's ground truth on
+spec size distribution. Stale initial estimates hide systematic
+underestimation patterns. Future planners use this data to calibrate
+their own scoring on new specs — if M-shaped specs keep shipping as
+L due to a recurring blind spot (e.g., GraalVM AOT pitfalls per
+debugging-playbook.md), re-scoring surfaces the pattern.
+
 ### Update spec-roadmap.md
 
 The roadmap is a lean index — SpecID / 標題 / 點數 / 相依 / 狀態 columns only.
@@ -165,7 +210,12 @@ Detail lives in the spec file (now archived); never put notes back into the road
 3. If the spec was in the `## 📝 待辦清單`, remove that checkbox entry.
 4. If the spec was in the `## 🏁 Milestones` table, update that row's 狀態 to `✅` (or remove the row if the milestone version is now fully shipped).
 
-**Fields:** SpecID · short title (≤ 40 chars) · 點數 · 版本 (from the git tag you just created, or `—` for patch-level sub-specs)
+**Fields:** SpecID · short title (≤ 40 chars) · **點數 (re-scored from §7, NOT initial estimate)** · 版本 (from the git tag you just created, or `—` for patch-level sub-specs)
+
+**Bucket shifted?** If re-scored size crosses a bucket boundary (e.g.,
+XS→S, M→L), use the new bucket label. Format: `S(11)` shows both bucket
+and total. Initial→Actual delta (if non-trivial) goes in §7 only, not
+the roadmap.
 
 ### CHANGELOG
 

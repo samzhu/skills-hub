@@ -56,6 +56,7 @@ IMPORTANT: Follow these in every session.
 | `docs/grimo/tasks/` | **Temporary** BDD task files; only exist between `/planning-tasks` and Phase 3; deleted on ship |
 | `docs/grimo/CHANGELOG.md` | What shipped + when (appended by `/shipping-release`) |
 | `docs/grimo/adr/ADR-NNN-<slug>.md` | In-development decisions that extend or contradict PRD |
+| `docs/grimo/debugging-playbook.md` | Symptom-indexed root-cause catalog — 跨 spec native/AOT pitfall family；新 family 在 `/shipping-release` 時 append（規則見檔尾「維護規則」段）|
 
 
 ## Where things live
