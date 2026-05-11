@@ -65,14 +65,7 @@ public class JdbcConfiguration extends AbstractJdbcConfiguration {
                 // S016: ACL 用 List<String> ↔ JSONB array converter（與 Map converter 並列；
                 // Spring Data JDBC 依 generic 型別參數區分路由，不會衝突）
                 new StringListJsonbConverter.Writing(objectMapper),
-                new StringListJsonbConverter.Reading(objectMapper),
-                // S168: GraalVM SubstrateVM MethodHandle adaptation 在 native image 下把
-                // BOOLEAN column 讀回的 Boolean 值 corrupt 成 Integer（oracle/graal#5672），
-                // AOT-generated entity accessor 灌進 primitive boolean field 拋 IAE。本
-                // converter 在 mapping pipeline 中於 accessor 前攔截 → 把 Integer 轉回
-                // Boolean 給 accessor，繞過 GraalVM bug。Scope 全域，自動涵蓋所有 entity 的
-                // primitive boolean field。詳 spec S168。
-                new IntegerToBooleanConverter()
+                new StringListJsonbConverter.Reading(objectMapper)
         );
     }
 
@@ -115,39 +108,6 @@ public class JdbcConfiguration extends AbstractJdbcConfiguration {
      * <p>null / 空字串 PGobject value 還原為 {@link Map#of()}（不可變空 Map），
      * 避免下游 NPE。
      */
-    /**
-     * S168 — GraalVM native image MethodHandle adaptation workaround。
-     *
-     * <p>在 native image runtime 下，PostgreSQL JDBC driver 從 BOOLEAN column 取回的
-     * Boolean 值，經 GraalVM SubstrateVM 的 MethodHandle adapter chain 適配
-     * {@code (Object, Object)V → (Entity, boolean)V} 時被 corrupt 成 Integer
-     * （見 <a href="https://github.com/oracle/graal/issues/5672">oracle/graal#5672</a>）。
-     * Spring AOT-generated 的 entity accessor（如 {@code User__Accessor}）拿到 Integer
-     * 灌進 primitive {@code boolean} field 時 {@code UnsafeBooleanFieldAccessorImpl.set()}
-     * 會拋 {@code IllegalArgumentException}。
-     *
-     * <p>本 converter 註冊在 {@link #userConverters()}，於 Spring Data JDBC mapping pipeline
-     * 中**先於** AOT accessor 執行 — 把 Integer 轉回 Boolean，accessor 收到正確型別不再炸。
-     * Scope 為全域 type-pair {@code (Integer, Boolean)}，自動涵蓋所有 entity 的 primitive
-     * {@code boolean} field（包含 {@link io.github.samzhu.skillshub.shared.security.User#contactEmailPublic}
-     * 與 {@code NotificationPreference} 的 4 個 boolean fields）。
-     *
-     * <p>同 stacktrace 在
-     * <a href="https://github.com/spring-projects/spring-data-relational/issues/2186">spring-data-relational#2186</a>
-     * 已被 Spring 團隊判定為 GraalVM 上游 bug；本 workaround 待上游 fix 後可拔
-     * （追蹤 checkpoint 見 development-standards.md）。
-     */
-    @ReadingConverter
-    public static final class IntegerToBooleanConverter implements Converter<Integer, Boolean> {
-
-        @Override
-        public Boolean convert(Integer source) {
-            // null-safe：未來 nullable BOOLEAN column 走同 type-pair 不炸 NPE；
-            // non-zero=true 對齊 SQL/C 慣例（雖然 PG BOOLEAN 只會給 0/1，但保留通用性）。
-            return source != null && source != 0;
-        }
-    }
-
     @ReadingConverter
     public static final class PGobjectToMapConverter implements Converter<PGobject, Map<String, Object>> {
 

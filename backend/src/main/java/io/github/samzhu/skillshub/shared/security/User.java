@@ -59,8 +59,17 @@ public class User implements Persistable<String> {
     @Nullable
     private String avatarUrl;
 
+    /**
+     * S168 — wrapper {@link Boolean} (not primitive {@code boolean}) 規避
+     * <a href="https://github.com/oracle/graal/issues/5672">oracle/graal#5672</a>
+     * GraalVM SubstrateVM MethodHandle adaptation bug — primitive boolean field 的
+     * AOT-generated setter 會在 unboxing adapter 階段 corrupt Boolean → Integer
+     * 拋 IAE；wrapper 走 {@code UnsafeObjectFieldAccessor} 純 reference cast 不踩 bug。
+     * Per JobRunr PR #1501 production-shipped fix。DB 端為 NOT NULL DEFAULT FALSE，
+     * 讀回必有值，getter auto-unbox 安全。
+     */
     @Column("contact_email_public")
-    private boolean contactEmailPublic;
+    private Boolean contactEmailPublic;
 
     @Column("created_at")
     private Instant createdAt;

@@ -28,14 +28,17 @@ public class NotificationPreference {
     @Id
     @Column("user_id")
     private String userId;
+    // S168 — wrapper Boolean (not primitive boolean) 規避 oracle/graal#5672 GraalVM
+    // SubstrateVM MethodHandle adaptation bug。DB 端 4 column 皆 NOT NULL DEFAULT FALSE
+    // (V11 migration)，讀回必有值，getter auto-unbox 安全。詳 User.contactEmailPublic Javadoc。
     @Column("flags_enabled")
-    private boolean flagsEnabled;
+    private Boolean flagsEnabled;
     @Column("reviews_enabled")
-    private boolean reviewsEnabled;
+    private Boolean reviewsEnabled;
     @Column("requests_enabled")
-    private boolean requestsEnabled;
+    private Boolean requestsEnabled;
     @Column("versions_enabled")
-    private boolean versionsEnabled;
+    private Boolean versionsEnabled;
     @Column("updated_at")
     private Instant updatedAt;
     @Version

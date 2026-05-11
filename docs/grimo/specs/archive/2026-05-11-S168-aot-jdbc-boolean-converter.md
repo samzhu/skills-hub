@@ -1,7 +1,9 @@
-# S168: GraalVM native image — JDBC Boolean read converter workaround
+# S168: GraalVM native image — Boolean wrapper field workaround for primitive boolean readback
 
-> Spec: S168 | Size: S(9) | Status: ✅ Done (AC-4 ⏳ pending manual deploy)
+> Spec: S168 | Size: S(9) → M(11) | Status: ✅ Done (Round 2 — Approach C ship; AC-4 ⏳ Round 2 manual deploy 待跑)
 > Date: 2026-05-11
+
+⚠️ **Round 1 (v4.48.0) Approach B (`@ReadingConverter Converter<Integer, Boolean>`) 已 ship 但 prod 重現同 stacktrace — fix 沒生效**。Root cause 重新分析後 pivot 至 Approach C（field type primitive `boolean` → wrapper `Boolean`），per JobRunr PR #1501 production-shipped fix 同 stacktrace 同 root cause。詳 §2.8 (Round 2 pivot retrospective) + §7 Round 2 段。
 
 ---
 
@@ -9,7 +11,7 @@
 
 線上 LAB 登入後 `/browse` 頁面顯示「載入技能失敗，請重新整理頁面」。Cloud Run 跑的是 GraalVM native image，從 `users.contact_email_public`（PostgreSQL `BOOLEAN`）讀回 row 時，GraalVM SubstrateVM 的 MethodHandle adaptation 把 Boolean 偷換成 Integer，Spring AOT-generated `User__Accessor.setProperty()` 把 Integer 灌進 primitive `boolean` field 拋 `IllegalArgumentException`，被 `GlobalExceptionHandler` 接成 400 → 前端顯示「載入失敗」。
 
-本 spec 在 `JdbcConfiguration.userConverters()` 註冊一個 `@ReadingConverter Converter<Integer, Boolean>`，讓 Spring Data JDBC mapping pipeline 在 AOT accessor **之前**把 Integer → Boolean，繞過 GraalVM bug。Scope 全域 — 同步順便防 `NotificationPreference` 4 個 boolean field 的同類 latent bug。
+**Round 2 final approach (Approach C)**：把 `User.contactEmailPublic` 與 `NotificationPreference` 4 個 boolean field 從 primitive `boolean` 改為 wrapper `Boolean`。AOT-generated entity setter 從 `(Entity, boolean)V` 變 `(Entity, Boolean)V` — SubstrateVM 不需 unboxing adapter（純 reference cast），走 `UnsafeObjectFieldAccessorImpl` 不踩 primitive accessor 的 corrupt path。同步拔掉 Round 1 ship 的 dead `IntegerToBooleanConverter`（per Spring source 證實 `ClassUtils.isAssignable(boolean.class, Boolean.class)` 短路 conversion service，converter 從未被 prod path 呼叫）。
 
 ---
 
@@ -110,48 +112,80 @@ Spring Data JDBC 4.x 官方文件：
 
 **追蹤頻率**：依 development-standards.md 新增的 review checkpoint — 每次升 Spring Boot / GraalVM 版本時 reviewer 必查上述 issues 狀態。
 
+### 2.8 Round 2 pivot — Approach B 失敗 → Approach C（real fix）
+
+**Round 1 (v4.48.0 ship) failure**：
+
+部署到 Cloud Run 後 `/browse` 同樣 400「載入技能失敗」，revision `skillshub-00018-czg` log 03:44:29 stacktrace **完全相同**，IAE on `User.contactEmailPublic`：
+
+```
+at UnsafeBooleanFieldAccessorImpl.set:95
+at User__Accessor_irgfaq.setProperty(Unknown Source)
+at ConvertingPropertyAccessor.setProperty:62  ← 有經過，但短路了
+at MappingRelationalConverter.readProperties:592
+at UserRepositoryImpl__AotRepository.findByOauthProviderAndSub:46
+```
+
+**Root cause re-analysis（3 個 research agent 獨立確認）**：
+
+1. **Spring source 短路**（`ConvertingPropertyAccessor.java:106-112`）：
+   ```java
+   private <S> S convertIfNecessary(@Nullable Object source, Class<S> type) {
+       return (S) (source == null ? null
+           : ClassUtils.isAssignable(type, source.getClass()) ? source     // ← 短路
+           : conversionService.convert(source, type));
+   }
+   ```
+   `ClassUtils.isAssignable(boolean.class, Boolean.class)` 返回 `true`（Spring 視 primitive/wrapper 為 assignable）→ 短路返回原 Boolean，**conversion service 從未被呼叫** → `IntegerToBooleanConverter` 是 dead code。
+
+2. **JVM test false-positive**：Round 1 的 test `whenIntegerInBooleanColumn_ConverterRecoversBoolean_User` **手動餵 Integer** 到 `RowDocument`，那條測試路徑與 prod 完全無關（prod path 從 JDBC 讀回的是 Boolean，不是 Integer）。Test PASS 證明的事情跟 production 場景脫鉤。
+
+3. **真正修法（JobRunr PR #1501 shipped fix 同 stacktrace 同根因）**：把 primitive `boolean` field 改為 wrapper `Boolean` field：
+   - AOT-generated `unreflectSetter` 對 `private Boolean field` 產生 `(User, Boolean)V` MethodHandle
+   - SubstrateVM 純 reference-reference cast 無 unboxing adapter
+   - 走 `UnsafeObjectFieldAccessorImpl.set()`（line 100-113）只查 `field.getType().isInstance(value)` → Boolean.class.isInstance(Boolean.TRUE) = true → 通過
+   - `UnsafeBooleanFieldAccessorImpl` corrupt path 從 bytecode 層面被切掉
+
+**Round 2 changes**：
+
+| File | Change |
+|---|---|
+| `User.java:63` | `private boolean contactEmailPublic` → `private Boolean contactEmailPublic` + Javadoc 註明 oracle/graal#5672 + JobRunr PR #1501 |
+| `NotificationPreference.java:32-38` | 4 個 `boolean` → `Boolean`（`flagsEnabled` / `reviewsEnabled` / `requestsEnabled` / `versionsEnabled`）+ inline comment |
+| `JdbcConfiguration.java` | 拔 `IntegerToBooleanConverter` inner class + 從 `userConverters()` list 移除（dead code per Spring source 證實） |
+| `JdbcConfigurationConverterTest.java` | 重寫：拔 AC-1 converter logic test 與 AC-2/AC-3 false-PASS integration tests；改為 reflection-based field-type assertion regression guard（assert field type 為 `Boolean.class`，防未來 PR 改回 primitive） |
+
+**Round 1 → 2 教訓**（Pattern rule 寫進下次參考）：
+
+> **Rule**: research agent 給「approach X 是正解」結論時，如果 verdict 立論基於某個 Spring/library 內部呼叫鏈（例：「converter 會在 X 之前攔截」），**要追到 source code 那條呼叫鏈的短路條件**（`isAssignable` / `instanceof` / null check 等），不要只看 issue 標題 + API 名稱。Round 1 採信 agent #1「register converter 在 AOT accessor 之前攔截」結論，但沒讀 `ConvertingPropertyAccessor` 內部的 `ClassUtils.isAssignable` 短路 → fix 對著錯路徑做 → JVM test 手動餵 Integer 證明的事情跟 prod 路徑無關 → ship fail。
+
+> **Rule**: JVM mode test PASS ≠ native runtime PASS。bug 只在 GraalVM SubstrateVM runtime 才出現的場景，**JVM test 必須能 reproduce 同 stacktrace**（不是憑空餵 mocked input 驗證）才算 ground 在真實 path。否則 test 是 false-positive。
+
 ---
 
 ## 3. SBE Acceptance Criteria
 
-**AC-1: Converter 邏輯正確**
+**~~AC-1: Converter 邏輯正確~~** ⛔ **dropped (Round 2)** — `IntegerToBooleanConverter` 已從 codebase 拔除，Round 1 false-positive 證明 converter 永不被 prod path 呼叫，無存在意義。
+
+**AC-2: `User.contactEmailPublic` field 必為 Boolean wrapper（防 GraalVM oracle/graal#5672 重現）**
 
 ```
-Given IntegerToBooleanConverter instance
-When  convert(0), convert(1), convert(null), convert(2)
-Then  回傳 false, true, false, true（null-safe；non-zero=true；0=false）
+Given codebase 含 io.github.samzhu.skillshub.shared.security.User class
+When  reflection 取 contactEmailPublic field type
+Then  field.getType() == Boolean.class（**不可** == boolean.class）
 ```
 
-**AC-2: User entity — Integer 輸入模擬 GraalVM bug，converter pipeline 攔截後正確讀出**
+理由：未來 PR 改回 primitive `boolean` 會在 GraalVM native image runtime 重現 IAE（`UnsafeBooleanFieldAccessorImpl.set` corrupt path）。Reflection assertion 是 build-time regression guard，未來 reviewer 看 test name `userContactEmailPublic_mustBeBooleanWrapper` 一秒看出在防什麼上游 bug。
+
+**AC-3: `NotificationPreference` 4 個 boolean column field 必為 Boolean wrapper（同上規避）**
 
 ```
-Given Spring 載入 JdbcConfiguration + MappingJdbcConverter bean
-And   合成一個 Row（in-memory），contact_email_public 欄位值設 Integer(0)
-And   其他必填欄位用合法值（id="u_test01" / oauth_provider="google" / sub="t" / email="t@t" / handle="t" / created_at / last_seen_at）
-When  MappingJdbcConverter.read(Row, User.class)
-Then  不拋 IllegalArgumentException
-And   user.isContactEmailPublic() == false
-
-Given 同上 setup
-And   contact_email_public 欄位值設 Integer(1)
-When  MappingJdbcConverter.read(Row, User.class)
-Then  不拋 IllegalArgumentException
-And   user.isContactEmailPublic() == true
+Given codebase 含 io.github.samzhu.skillshub.notification.NotificationPreference class
+When  reflection 取 flagsEnabled / reviewsEnabled / requestsEnabled / versionsEnabled 4 個 field type
+Then  4 個 field.getType() 皆 == Boolean.class
 ```
 
-理由：直接 ground 在 oracle/graal#5672 stacktrace 的 `Integer to boolean field` corrupt 場景。同 test 含括「converter 邏輯」+「converter 有掛進 pipeline」+「Spring Data JDBC mapping 真的走 converter」三層 regression 防護，未來 reviewer 看 test name `whenIntegerInBooleanColumn_ConverterRecoversBoolean` 一秒看出在防什麼。
-
-**AC-3: 全域涵蓋驗證 — NotificationPreference 同樣 Integer 輸入也被攔下**
-
-```
-Given Spring 載入 JdbcConfiguration + MappingJdbcConverter bean
-And   合成一個 Row，4 個 boolean column 設 Integer 任意組合（如 1/0/0/1）
-When  MappingJdbcConverter.read(Row, NotificationPreference.class)
-Then  不拋 IAE
-And   4 個 boolean getter 回傳對應 true/false/false/true
-```
-
-證明 converter scope 真的 global、未來新 entity 加 primitive boolean 自動受保護。
+證明 GraalVM bug 防護 scope 涵蓋多 entity，未來 spec 新加 entity 時也應遵循同 pattern。
 
 **AC-4: Manual deploy 驗收 — `/browse` 不再「載入技能失敗」**
 
@@ -182,10 +216,10 @@ Then  含「查 oracle/graal#5672 + spring-data-relational#2186 狀態，若 fix
 
 **驗收命令**：
 
-- AC-1/2/3：`cd backend && ./gradlew test --tests "*JdbcConfigurationConverterTest*"`（converter unit + 2 個 entity simulation tests 同檔）
+- AC-2/3：`cd backend && ./gradlew test --tests "*JdbcConfigurationConverterTest*"`（2 個 reflection-based field-type assertion tests 同檔）
 - 整體：`./scripts/verify-all.sh`（V01-V08 gate）
-- AC-4：手動 deploy + 截圖 Network 200 / 頁面有 skill 列表 / log 無 stacktrace（3 截圖貼進 spec §7 result）
-- AC-5/6：`grep` architecture.md / development-standards.md 確認字串
+- AC-4：手動 deploy + 截圖 Network 200 / 頁面有 skill 列表 / log 無 stacktrace（3 截圖貼進 spec §7 result）— **Round 2 必跑**
+- AC-5/6：`grep` architecture.md / development-standards.md 確認字串（Round 1 已 ship 不變）
 
 ---
 
@@ -475,4 +509,89 @@ class SomeConverterTest extends RepositorySliceTestBase {
 - [MINOR] §5 File Plan and §6 T02 still reference `@SpringBootTest(classes = JdbcConfiguration.class)` — the actual implementation uses `RepositorySliceTestBase`. §7 Key Finding #4 documents the change and claims "§6 task plan 已 reflect 此選擇" which is not fully accurate (§6 T02 text was not updated). The implementation itself is correct and stronger (real Spring context vs. sliced context). No functional impact.
 
 **Recommendation**: ship
+
+---
+
+## 7.5 Round 2 — Post-ship Bug + Approach C Fix
+
+### Post-ship bug discovery
+
+**Date**: 2026-05-11
+**Trigger**: User manual test on LAB after Round 1 v4.48.0 deploy
+**Cloud Run revision**: `skillshub-00018-czg` (含 Round 1 commit aad2dc6)
+**Symptom**: 同 Round 1 完全相同 — `/browse` 回 400「載入技能失敗，請重新整理頁面」
+**Stacktrace** (`gcloud logging read` 03:44:29.082)：
+
+```
+java.lang.IllegalArgumentException: Can not set boolean field 
+  io.github.samzhu.skillshub.shared.security.User.contactEmailPublic to java.lang.Integer
+  at UnsafeBooleanFieldAccessorImpl.set:95
+  at User__Accessor_irgfaq.setProperty(Unknown Source)
+  at ConvertingPropertyAccessor.setProperty:62  ← 有經過但短路
+  at MappingRelationalConverter.readProperties:592
+  at UserRepositoryImpl__AotRepository.findByOauthProviderAndSub:46
+  ... 完全同 Round 1 ship 前 stacktrace ...
+```
+
+→ Round 1 fix 沒生效，IntegerToBooleanConverter 是 dead code。
+
+### Root cause re-analysis (root-cause-debugging skill + 3 research agents)
+
+**真根因（3 lines of evidence cross-cited）**：
+
+1. **Spring Data source 短路**（`spring-data-commons/ConvertingPropertyAccessor.java:106-112`）：
+   `ClassUtils.isAssignable(boolean.class, Boolean.class) = true` → conversion service **never invoked** for Boolean → boolean primitive readback path → IntegerToBooleanConverter dormant。
+
+2. **JVM test 是 false-positive**：Round 1 test 手動餵 Integer 到 RowDocument，那條 conversion path 跟 prod 完全脫鉤（prod path source 是 Boolean，不是 Integer）。Test PASS 證明的東西跟「production 是否修好」無關。Regression detection 反向驗證也是同人造路徑 — 也只證明「拔掉手動 Integer → 找不到 converter」，跟 prod 路徑無關。
+
+3. **GraalVM source 證實 fix 機制**：
+   - `UnsafeBooleanFieldAccessorImpl.set(Field, Object)` 顯式 `instanceof Boolean` check，非 Boolean 拋 IAE
+   - `UnsafeObjectFieldAccessorImpl.set(Field, Object)` 只查 `field.getType().isInstance(value)`，wrapper Boolean field 收 Boolean value 通過
+   - AOT-generated `unreflectSetter` 對 `private boolean field` 產生 `(User, boolean)V` MethodHandle → SubstrateVM 加 unboxing adapter（corrupt 點）
+   - 對 `private Boolean field` 產生 `(User, Boolean)V` 純 reference cast → 無 unboxing → 不踩 corrupt path
+
+**Production-shipped precedent**（不是純理論）：[JobRunr PR #1501](https://github.com/jobrunr/jobrunr/pull/1501) 完全同 stacktrace 同根因，1 行 `private boolean → private Boolean` shipped in v8.5.0。
+
+### Round 2 changes
+
+| File | Round 2 change |
+|---|---|
+| `User.java:62-72` | `private boolean contactEmailPublic` → `private Boolean contactEmailPublic` + Javadoc cite oracle/graal#5672 + JobRunr PR #1501 |
+| `NotificationPreference.java:31-38` | 4 個 `boolean` → `Boolean` (`flagsEnabled` / `reviewsEnabled` / `requestsEnabled` / `versionsEnabled`) + inline comment |
+| `JdbcConfiguration.java` | **拔** `IntegerToBooleanConverter` inner class + 從 `userConverters()` 移除（dead code per Spring source 短路證實） |
+| `JdbcConfigurationConverterTest.java` | 重寫：拔 Round 1 的 4 個 false-positive tests；改為 2 個 reflection-based field-type assertion regression guards（assert User.contactEmailPublic + NotificationPreference 4 fields 皆為 Boolean.class）|
+
+### Round 2 verification
+
+| Check | Result | Detail |
+|---|---|---|
+| `./gradlew compileJava compileTestJava` | ✅ exit 0 | wrapper 改動 + getter auto-unbox 無 ripple |
+| `./gradlew test --tests "*JdbcConfigurationConverterTest*"` | ✅ 2/2 PASS | AC-2 + AC-3 reflection assertions 0.071s 全綠 |
+| `./gradlew bootBuildImage` (本機 Paketo native-image build) | ✅ BUILD SUCCESSFUL 2m 46s | 302 MB native image 產出 — 跟 prod 同 build path |
+| `verify-all.sh` (V01-V07 全 suite + V08a processAot) | ✅ exit 0 | Counts: PASS=7, FAIL=0, SKIP=1（V08b SKIP_NATIVE=1，已 manual bootBuildImage 證實 PASS） |
+| AC-4 manual deploy `/browse` | ⏳ Pending Round 2 deploy | Round 2 ship 後重驗 |
+
+### Round 2 Honest assessment of remaining risk
+
+- ✅ Source code 證實機制（Spring 短路 + GraalVM accessor 行為）
+- ✅ JobRunr PR #1501 production-shipped fix 同 stacktrace 同根因
+- ✅ AOT-generated bytecode 從 `(Entity, boolean)V` 變 `(Entity, Boolean)V` — 走完全不同 GraalVM accessor 路徑
+- ⚠️ **未在 native runtime 直接 reproduce 驗證**：local docker run 試了但 hit 多個 unrelated infra issues（GenAI api-key + storage path AccessDenied + OAuth callback 等），跟 fix 本身無關。User 同意 Option B：信任 evidence chain ship；若再 fail 同 stacktrace = fix 仍錯（極低機率，因機制已 ground 在 source + production proof），失敗模式可控（已知失敗）
+
+### Round 2 lessons learned (寫進 §2.8 + future spec reference)
+
+1. **Research agent verdict 採信前必讀短路條件**：agent 給「approach X 在 Y 之前攔截」結論時，要追到 source code 看 Y 之前是否有 `isAssignable` / `instanceof` / null check 等短路 — 不能只看 issue 標題 + API 名稱。Round 1 漏這步直接踩雷。
+2. **JVM mode test 對 native runtime bug 是 false-positive 高風險區**：bug 只在 native runtime 出現的場景，JVM test 必須能 reproduce **同 stacktrace**才 ground 在真實 path。憑空餵 mock input 證明 converter 工作，跟 prod 是否修好無關。
+3. **「Test PASS = ship-ready」反例**：本 spec Round 1 是 723 全 suite green + 4/4 targeted PASS + QA subagent PASS，仍然 ship 一個 dead-code fix。Test infrastructure 信心不等於 production fix 信心 — 必須額外驗證 fix 機制真的 ground 在 prod path。
+
+### Round 2 AC Results
+
+| AC | Round 1 result | Round 2 result | Notes |
+|---|---|---|---|
+| AC-1 | ✅ PASS (Round 1) | ⛔ Dropped | Converter 已拔，AC 不適用 |
+| AC-2 | ✅ PASS (Round 1, false-positive) → ⛔ Invalidated by Round 2 root-cause re-analysis | ✅ PASS (Round 2) | New: reflection field-type assertion (`User.contactEmailPublic.getType() == Boolean.class`) |
+| AC-3 | ✅ PASS (Round 1, false-positive) → ⛔ Invalidated | ✅ PASS (Round 2) | New: 4 NotificationPreference field-type assertions |
+| AC-4 | ⏳ Pending → ❌ Failed (Round 1 ship 後重現同 stacktrace) | ⏳ Pending Round 2 ship | manual deploy 必須跑 |
+| AC-5 | ✅ PASS (Round 1) | ✅ PASS (unchanged) | architecture.md 已對齊 native image |
+| AC-6 | ✅ PASS (Round 1) | ✅ PASS (unchanged) | development-standards.md Upstream Tracking 已加 |
 

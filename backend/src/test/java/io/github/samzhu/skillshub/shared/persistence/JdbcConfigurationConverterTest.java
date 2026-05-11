@@ -2,121 +2,76 @@ package io.github.samzhu.skillshub.shared.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Instant;
-import java.util.Map;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.jdbc.core.convert.JdbcConverter;
-import org.springframework.data.relational.domain.RowDocument;
 
 import io.github.samzhu.skillshub.notification.NotificationPreference;
 import io.github.samzhu.skillshub.shared.security.User;
 
 /**
- * S168 — Spring Data JDBC custom converter regression tests for the GraalVM
- * native image MethodHandle adaptation workaround.
+ * S168 — Regression guard：所有持久化 boolean column 的 entity field 必須宣告為
+ * wrapper {@link Boolean}，**不可**改回 primitive {@code boolean}。
  *
- * <p>Each test corresponds to one acceptance criterion in the spec:
- * <ul>
- *   <li>AC-1 — pure converter logic</li>
- *   <li>AC-2 — User entity {@code Integer→boolean} read pipeline regression</li>
- *   <li>AC-3 — NotificationPreference 4-boolean field read pipeline regression
- *       (proves global converter scope)</li>
- * </ul>
+ * <h2>背景</h2>
  *
- * <p>AC-2 / AC-3 模擬 GraalVM SubstrateVM MethodHandle adaptation 把 Boolean
- * column 值 corrupt 成 Integer 的場景：手動建構 {@link RowDocument} 把
- * boolean column 餵 {@code Integer.valueOf(0)} / {@code Integer.valueOf(1)}，
- * 透過 {@link JdbcConverter#read(Class, RowDocument)} 走完整 mapping pipeline，
- * 驗證 {@link JdbcConfiguration.IntegerToBooleanConverter} 在 AOT-generated
- * accessor 之前攔截，entity 收到正確 boolean 值不拋 IAE。
+ * <p>GraalVM SubstrateVM MethodHandle adaptation bug（
+ * <a href="https://github.com/oracle/graal/issues/5672">oracle/graal#5672</a> /
+ * <a href="https://github.com/spring-projects/spring-data-relational/issues/2186">spring-data-relational#2186</a> /
+ * <a href="https://github.com/spring-projects/spring-data-mongodb/issues/5101">spring-data-mongodb#5101</a>）
+ * — 在 native image runtime 下，{@link org.springframework.data.mapping.model.ConvertingPropertyAccessor#setProperty}
+ * 對 {@code source=Boolean / target=boolean(primitive)} pair 走 {@code ClassUtils.isAssignable}
+ * 短路，conversion service 不被呼叫；Boolean 直接傳給 AOT-generated entity accessor
+ * （{@code User__Accessor}），其 MethodHandle 適配 {@code (Object,Object)V → (Entity,boolean)V}
+ * 在 unboxing adapter 階段 corrupt Boolean → Integer，{@code UnsafeBooleanFieldAccessorImpl.set}
+ * 看到 Integer 灌進 primitive boolean field 拋 {@link IllegalArgumentException}。
  *
- * <p>Test extends {@link RepositorySliceTestBase} 以拿 Spring 真實組裝的
- * {@code JdbcConverter} bean（含全部 user converters）；context cache 與其他
- * REPO slice 共用，不額外觸發 Testcontainers 啟動成本。
+ * <p>修法：宣告 wrapper {@link Boolean} field 後，AOT setter 變 {@code (Entity,Boolean)V} 純
+ * reference cast 無 unboxing → 走 {@code UnsafeObjectFieldAccessorImpl.set}（只查
+ * {@code field.getType().isInstance(value)}）→ 不踩 GraalVM bug。Per JobRunr PR #1501
+ * production-shipped fix（v8.5.0；同 stacktrace 同根因）。
  *
- * @see JdbcConfiguration.IntegerToBooleanConverter
- * @see <a href="https://github.com/oracle/graal/issues/5672">oracle/graal#5672</a>
- * @see <a href="https://github.com/spring-projects/spring-data-relational/issues/2186">spring-data-relational#2186</a>
+ * <h2>Test 策略</h2>
+ *
+ * <p>Field-type assertion：用 reflection 確認所有受影響欄位的宣告型別為 {@code Boolean.class}
+ * （非 {@code boolean.class}）。本 test 是 regression guard — 未來 PR 不小心改回 primitive
+ * 立即被抓，避免 native image deploy 重炸。**不**直接驗證 GraalVM runtime 行為（需
+ * {@code nativeRun} 才能 true reproduce；本 spec ship 前以 local nativeCompile + 手動驗
+ * `/browse` 收尾）。
+ *
+ * @see User#contactEmailPublic
+ * @see NotificationPreference#flagsEnabled
+ * @see <a href="https://github.com/jobrunr/jobrunr/pull/1501">JobRunr PR #1501 — primitive boolean → boxed Boolean</a>
  */
-class JdbcConfigurationConverterTest extends RepositorySliceTestBase {
-
-    @Autowired
-    private JdbcConverter jdbcConverter;
+class JdbcConfigurationConverterTest {
 
     @Test
-    @DisplayName("AC-1: IntegerToBooleanConverter null-safe Integer→Boolean conversion")
-    @Tag("AC-1")
-    void integerToBooleanConverter_nullSafe_zeroFalse_nonZeroTrue() {
-        var converter = new JdbcConfiguration.IntegerToBooleanConverter();
-
-        assertThat(converter.convert(0)).as("0 → false").isFalse();
-        assertThat(converter.convert(1)).as("1 → true").isTrue();
-        assertThat(converter.convert(null)).as("null → false (null-safe)").isFalse();
-        assertThat(converter.convert(2)).as("non-zero → true").isTrue();
-        assertThat(converter.convert(-1)).as("negative non-zero → true").isTrue();
-    }
-
-    @Test
-    @DisplayName("AC-2: User entity 在 GraalVM Integer→Boolean corrupt input 下仍正確讀回 (false)")
+    @DisplayName("AC-2: User.contactEmailPublic 必為 Boolean wrapper（非 primitive）防 GraalVM oracle/graal#5672 重現")
     @Tag("AC-2")
-    void whenIntegerInBooleanColumn_ConverterRecoversBoolean_User_false() {
-        // 模擬 GraalVM corrupt input：contact_email_public 應為 Boolean.FALSE，被 corrupt 為 Integer(0)
-        var doc = userRowDoc(Integer.valueOf(0));
+    void userContactEmailPublic_mustBeBooleanWrapper() throws NoSuchFieldException {
+        var field = User.class.getDeclaredField("contactEmailPublic");
 
-        User user = jdbcConverter.read(User.class, doc);
-
-        assertThat(user.isContactEmailPublic())
-                .as("Integer(0) → boolean false（converter 攔截，無 IAE）").isFalse();
+        assertThat(field.getType())
+                .as("User.contactEmailPublic 必須是 Boolean (wrapper)。"
+                        + "改回 primitive boolean 會在 GraalVM native image runtime 重現 IAE — "
+                        + "詳 oracle/graal#5672 + JobRunr PR #1501。")
+                .isEqualTo(Boolean.class);
     }
 
     @Test
-    @DisplayName("AC-2: User entity 在 GraalVM Integer→Boolean corrupt input 下仍正確讀回 (true)")
-    @Tag("AC-2")
-    void whenIntegerInBooleanColumn_ConverterRecoversBoolean_User_true() {
-        var doc = userRowDoc(Integer.valueOf(1));
-
-        User user = jdbcConverter.read(User.class, doc);
-
-        assertThat(user.isContactEmailPublic())
-                .as("Integer(1) → boolean true（converter 攔截，無 IAE）").isTrue();
-    }
-
-    @Test
-    @DisplayName("AC-3: NotificationPreference 4 個 boolean field 同樣被 converter 涵蓋（global scope）")
+    @DisplayName("AC-3: NotificationPreference 4 個 boolean column 必為 Boolean wrapper（同上規避）")
     @Tag("AC-3")
-    void whenIntegerInBooleanColumn_ConverterRecoversBoolean_NotificationPreference() {
-        // 4 boolean 設不同 0/1 組合，證明每個 field 都各自走 converter
-        var doc = new RowDocument(Map.of(
-                "user_id", "u_test01",
-                "flags_enabled", Integer.valueOf(1),
-                "reviews_enabled", Integer.valueOf(0),
-                "requests_enabled", Integer.valueOf(0),
-                "versions_enabled", Integer.valueOf(1),
-                "updated_at", Instant.EPOCH,
-                "version", Long.valueOf(0)));
+    void notificationPreferenceBooleans_mustBeBooleanWrapper() throws NoSuchFieldException {
+        var fields = new String[] {
+                "flagsEnabled", "reviewsEnabled", "requestsEnabled", "versionsEnabled"
+        };
 
-        NotificationPreference pref = jdbcConverter.read(NotificationPreference.class, doc);
-
-        assertThat(pref.isEnabled("flags")).as("flags_enabled Integer(1) → true").isTrue();
-        assertThat(pref.isEnabled("reviews")).as("reviews_enabled Integer(0) → false").isFalse();
-        assertThat(pref.isEnabled("requests")).as("requests_enabled Integer(0) → false").isFalse();
-        assertThat(pref.isEnabled("versions")).as("versions_enabled Integer(1) → true").isTrue();
-    }
-
-    /** 建構 User RowDocument — 共用 helper，只變動 contact_email_public 一欄。 */
-    private static RowDocument userRowDoc(Object contactEmailPublicValue) {
-        return new RowDocument(Map.of(
-                "id", "u_test01",
-                "oauth_provider", "google",
-                "sub", "test-sub",
-                "email", "test@example.com",
-                "handle", "tester",
-                "contact_email_public", contactEmailPublicValue,
-                "created_at", Instant.EPOCH,
-                "last_seen_at", Instant.EPOCH));
+        for (var fieldName : fields) {
+            var field = NotificationPreference.class.getDeclaredField(fieldName);
+            assertThat(field.getType())
+                    .as("NotificationPreference." + fieldName + " 必須是 Boolean (wrapper)。"
+                            + "詳 oracle/graal#5672 + JobRunr PR #1501。")
+                    .isEqualTo(Boolean.class);
+        }
     }
 }

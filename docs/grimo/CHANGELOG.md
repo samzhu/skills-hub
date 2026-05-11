@@ -1,5 +1,40 @@
 # Changelog
 
+## [v4.49.0] — S168 Round 2 — Boolean wrapper field fix（取代 v4.48.0 dead converter；2026-05-11）
+
+> Round 2 fix — v4.48.0 ship 的 `IntegerToBooleanConverter` 經 Cloud Run revision `skillshub-00018-czg` 驗證**未生效**（同 stacktrace 重現）。Root cause re-analysis 確認 Spring Data `ConvertingPropertyAccessor.convertIfNecessary` (`spring-data-commons/...:106-112`) 對 `Boolean → boolean(primitive)` 走 `ClassUtils.isAssignable` 短路，conversion service **從未被呼叫** → Round 1 converter 是 dead code。改採 Approach C（per [JobRunr PR #1501](https://github.com/jobrunr/jobrunr/pull/1501) production-shipped fix 同 stacktrace）：將受影響 entity primitive `boolean` field 全改為 wrapper `Boolean`，AOT-generated setter 從 `(Entity, boolean)V` 變 `(Entity, Boolean)V`，SubstrateVM 純 reference cast 無 unboxing adapter → 走 `UnsafeObjectFieldAccessor` 不踩 GraalVM oracle/graal#5672 corrupt path。
+
+### Change
+
+- **`User.contactEmailPublic`** (`shared/security/User.java:62`) — primitive `boolean` → wrapper `Boolean`；Javadoc 註明 oracle/graal#5672 + JobRunr PR #1501 reference；DB column 為 NOT NULL DEFAULT FALSE，getter `isContactEmailPublic()` auto-unbox 安全。
+- **`NotificationPreference`** 4 個 boolean field (`flagsEnabled` / `reviewsEnabled` / `requestsEnabled` / `versionsEnabled`) — primitive → Boolean wrapper；同安全考量。
+- **`JdbcConfiguration.IntegerToBooleanConverter`** — **拔除**（dead code per Spring source 短路證實；Round 1 ship 的 v4.48.0 added，Round 2 confirmed never invoked）。
+- **`JdbcConfigurationConverterTest`** — 重寫為 2 個 reflection-based field-type assertion regression guards（assert `User.contactEmailPublic` + `NotificationPreference` 4 fields 皆為 `Boolean.class`）；拔 Round 1 的 4 個 false-positive integration tests。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/archive/2026-05-11-S168-aot-jdbc-boolean-converter.md` 保留 in archive；§2.8 + §7.5 加入 Round 2 retrospective（pivot rationale + post-ship bug + 新 evidence chain + lessons learned）
+- spec-roadmap.md S168 row 狀態 ✅ v4.48.0 → ✅ v4.49.0；點數 S(9) → M(11)（含 Round 2 root-cause re-analysis + fix + retro 成本）
+
+### Verification
+
+- `./gradlew test`：tests=723 → 722（拔 Round 1 false-positive 後 2 tests；新加 2 reflection assertions 同檔；net 數差因 Round 1 4 個 false-positive 被拔換成 Round 2 2 個 reflection-only assert，see archive spec §7.5 Round 2 verification table）
+- `JdbcConfigurationConverterTest`：2/2 PASS (AC-2/AC-3 reflection field-type assertion)
+- `verify-all.sh`（SKIP_NATIVE=1，V08b 已 manual `bootBuildImage` 驗 BUILD SUCCESSFUL 2m 46s 產 302MB native image）：PASS=7 / FAIL=0 / SKIP=1；exit=0
+- AC-4 manual deploy 驗收：⏳ pending — Round 2 ship 後開 https://skillshub-644359853825.asia-east1.run.app/browse 重驗
+
+### Lessons learned（寫入 spec §2.8 + §7.5）
+
+1. **Research agent verdict 採信前必讀短路條件** — agent 給「approach X 在 Y 之前攔截」結論時，要追到 source code 看 Y 之前是否有 `isAssignable` / `instanceof` / null check 短路。Round 1 漏這步直接踩雷。
+2. **JVM mode test 對 native runtime bug 是 false-positive 高風險區** — bug 只在 native runtime 出現的場景，JVM test 必須能 reproduce **同 stacktrace**才算 ground 在真實 path。憑空餵 mock input 證明 converter 工作，跟 prod 是否修好無關。
+3. **「Test PASS = ship-ready」反例** — Round 1 是 723 全 suite green + 4/4 targeted PASS + QA subagent PASS 仍 ship dead-code fix。Test infrastructure 信心 ≠ production fix 信心；必須額外驗 fix 機制 ground 在 prod path。
+
+### Tracking
+
+oracle/graal#5672 上游 GraalVM SubstrateVM bug 仍 open；本 workaround 需等 GraalVM 修後評估還原為 primitive boolean。追蹤 checkpoint 見 `development-standards.md § Upstream Issue Tracking`（Round 1 已加入，Round 2 不變）。
+
+---
+
 ## [v4.48.0] — GraalVM native image JDBC Boolean read converter workaround（S168；2026-05-11）
 
 > Production hotfix：Cloud Run native image 登入 `/browse` 後所有頁面顯示「載入技能失敗」— GraalVM SubstrateVM MethodHandle adaptation 在 native runtime 把 BOOLEAN column 讀回的 Boolean 值 corrupt 成 Integer，Spring AOT-generated entity accessor 灌進 primitive `boolean` field 拋 IAE。Spring Data JDBC 4.x 註冊 `@ReadingConverter Converter<Integer, Boolean>` 在 mapping pipeline 攔截，繞過 GraalVM bug。Scope 全域 — 順便防 `NotificationPreference` 4 boolean field 同類 latent bug。
