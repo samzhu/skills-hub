@@ -1,6 +1,6 @@
 # S163: Skill Owner Management — Update Metadata + Visibility Toggle
 
-> Spec: S163 | Size: S(5) | Status: 📐 in-design
+> Spec: S163 | Size: S(5) → backend trim XS(3) | Status: 🚧 backend impl 完成 2026-05-12（PUT endpoint ship；frontend EditSkillModal + visibility toggle UX defer 至 S163b）
 > Date: 2026-05-08（修訂 2026-05-08 — 移除 suspend / unsuspend，per user 反饋「平台是 registry 不是 runtime」）
 > Origin: deployment audit 2026-05-08（LAB）— `PUT /api/v1/skills/{id}` 回 405 Method Not Allowed。Owner 只能透過重新上傳整個 zip 改 metadata，無法 mid-version 編輯描述 / 分類。
 
@@ -224,6 +224,46 @@ deploy 後：
 - [ ] [公開分享] 恢復可見
 - [ ] 非 owner 操作 → 403
 - [ ] PUT name / version → 400
+
+---
+
+## 5.3 Backend Phase 1 結果（2026-05-12）
+
+### Ship 範圍
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-1 | owner PUT /skills/{id} body={description:"new"} → 200 + service captor 收到 cmd | ✅ PASS |
+| AC-2 | 非 owner (write permission denied) PUT → 403 Forbidden + service never called | ✅ PASS |
+| AC-3 | PUT body 含 {name, version} → Jackson silently drop；service 收到 cmd 兩欄皆 null（自然不變 aggregate）| ✅ PASS |
+
+### Defer 至 S163b（frontend + visibility toggle UX）
+
+| AC | 內容 | 為何 defer |
+|---|---|---|
+| AC-4 | 切換為私人（DELETE public:* grant 透過既有 API）| 純前端 PageHeader 加 toggle button；reuse 既有 `/grants` API |
+| AC-5 | 私人 skill 對非 owner 403 | 既有 ACL 行為，純驗證 |
+| AC-6 | 重新公開（POST public:* VIEWER grant）| 純前端 toggle |
+| AC-7 | EditSkillModal 預填當前值 + submit | 新前端 component；S163b 範疇 |
+| AC-8 | 已下載 client 不受 private 切換影響 | 純行為驗證 |
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `backend/.../skill/domain/SkillUpdatedEvent.java`（**新檔**）| record (skillId, description, category, updatedBy, updatedAt) — listeners 接 search projection / audit / subscription |
+| `backend/.../skill/command/UpdateSkillCommand.java`（**新檔**）| record (description, category) + @JsonIgnoreProperties(ignoreUnknown=true) |
+| `backend/.../skill/domain/Skill.java` | 加 `update(UpdateSkillCommand, updatedBy)` 充血方法（validate + trim + length cap + no-op skip + registerEvent）|
+| `backend/.../skill/command/SkillCommandService.java` | 加 `updateSkill(id, cmd, updatedBy)` 3-line orchestration |
+| `backend/.../skill/command/SkillCommandController.java` | 加 `PUT /api/v1/skills/{id}` + `@PreAuthorize("hasPermission(#id, 'Skill', 'write')")` |
+| `backend/.../skill/command/SkillUpdateControllerTest.java`（**新檔**）| 3 ACs (AC-1/2/3) via WebMvcSliceTestBase |
+
+### 驗證指令
+
+```bash
+./gradlew test --tests "*SkillUpdateControllerTest"                       # 3/3 PASS
+./gradlew test --tests "io.github.samzhu.skillshub.skill.command.*"        # 40/40 PASS（無 regression）
+```
 
 ---
 

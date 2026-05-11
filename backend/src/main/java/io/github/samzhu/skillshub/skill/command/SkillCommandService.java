@@ -243,6 +243,22 @@ public class SkillCommandService {
 		skillVersionRepo.save(SkillVersion.publish(cmd));
 	}
 
+	/**
+	 * S163 — owner 改 description / category。3-line orchestration（load → mutate → save）：
+	 * aggregate 端 validate + registerEvent，service 不重複 logic。
+	 */
+	@Transactional
+	public void updateSkill(String skillId, UpdateSkillCommand cmd, String updatedBy) {
+		var skill = skillRepo.findById(skillId)
+				.orElseThrow(() -> new NoSuchElementException("Skill not found: " + skillId));
+		skill.update(cmd, updatedBy);
+		skillRepo.save(skill);
+		log.atInfo()
+				.addKeyValue("skillId", skillId)
+				.addKeyValue("updatedBy", updatedBy)
+				.log("Skill update 完成");
+	}
+
 	@Transactional
 	public void suspend(SuspendCommand cmd) {
 		var skill = skillRepo.findById(cmd.skillId())

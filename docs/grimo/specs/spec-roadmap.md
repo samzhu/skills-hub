@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-12（S160 Phase 1 backend ship — 4 security headers PASS；CSRF + frontend 拆出 S160b backlog）
+> 最後更新：2026-05-12（S163 backend ship — PUT /skills/{id} 3 ACs PASS；frontend modal + visibility toggle 拆 S163b）
 
 ## 使用說明
 
@@ -109,7 +109,8 @@
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |
 | S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S162c | API consistency — ownership 拒絕 409→403 sweep（DELETE/PUT 對 review/collection/skill/flag 等需 owner 操作） | S(6) | — | 📐 in-design — spec file 完成 2026-05-09 |
-| S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) | S144 ✅ | 📐 in-design — spec file 完成 2026-05-12（PUT /skills/{id} 改 metadata + ShareSkillModal 快捷 toggle；8 ACs）|
+| S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) → backend XS(3) | S144 ✅ | 🚧 backend ship 2026-05-12（PUT /skills/{id} + AC-1/2/3 PASS）；frontend EditSkillModal + toggle UX 拆 S163b |
+| S163b | Skill owner frontend — EditSkillModal + PageHeader 公開/私人 toggle button (reuse existing /grants API) | S(4) | S163 ✅ | 📋 planned — AC-4/5/6/7/8 from S163 |
 | S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) | S150 ✅ ship 前提 | 📐 in-design — spec file 完成 2026-05-12（PUT/DELETE /collections/{id} + EditCollectionModal；8 ACs）|
 | S165 | Jackson `@JsonView` prod hotfix — `JsonMapperBuilderCustomizer` 顯式 enable `DEFAULT_VIEW_INCLUSION` | XS(2) | S158 ✅ + S166a ✅ | ✅ v4.41.0 — bean + diagnostic test + dev-standards rule |
 | S166 | META Spring AOT bean registration sweep — verify-all.sh 全綠（S148e 後 processTestAot 解封首次跑揭露 ~30 fail） | META | S148e ✅ | ✅ v4.41.0 — sub-spec a 已 ship；b/c 改判定無真實 cluster（V01 全綠後消失）|

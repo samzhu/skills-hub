@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonView;
 import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
 import io.github.samzhu.skillshub.skill.command.ReactivateCommand;
 import io.github.samzhu.skillshub.skill.command.SuspendCommand;
+import io.github.samzhu.skillshub.skill.command.UpdateSkillCommand;
 
 /**
  * Skill Aggregate Root — Spring Data JDBC 充血聚合（state-based；per ADR-002 Phase 2）。
@@ -346,6 +347,49 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         }
         this.updatedAt = Instant.now();
         registerEvent(new SkillVersionPublishedFromAggregate(id, version));
+    }
+
+    /**
+     * S163 — owner 改 description / category。name / version 不可改（DTO surface 已過濾）。
+     *
+     * <p>cmd 任一欄位 null 表示本次不動。trim 後落地；blank 視為「想清空」reject（mirror create）。
+     * 超出 length cap 比照 {@link #create} 同上限 reject。同 description / category 一字未動則
+     * skip event（避免每次 EditSkillModal click「儲存」都炸 listener）。
+     */
+    public void update(UpdateSkillCommand cmd, String updatedBy) {
+        if (cmd == null) {
+            throw new IllegalArgumentException("UpdateSkillCommand must not be null");
+        }
+        boolean changed = false;
+        if (cmd.description() != null) {
+            var desc = cmd.description().trim();
+            if (desc.isEmpty()) {
+                throw new IllegalArgumentException("Skill description must not be blank");
+            }
+            if (desc.length() > DESCRIPTION_MAX) {
+                throw new IllegalArgumentException(
+                        "Skill description exceeds " + DESCRIPTION_MAX + " characters (got: " + desc.length() + ")");
+            }
+            if (!desc.equals(this.description)) {
+                this.description = desc;
+                changed = true;
+            }
+        }
+        if (cmd.category() != null) {
+            var cat = cmd.category().trim();
+            if (cat.isEmpty()) {
+                throw new IllegalArgumentException("Skill category must not be blank");
+            }
+            if (!cat.equals(this.category)) {
+                this.category = cat;
+                changed = true;
+            }
+        }
+        if (!changed) {
+            return;
+        }
+        this.updatedAt = Instant.now();
+        registerEvent(new SkillUpdatedEvent(id, this.description, this.category, updatedBy, this.updatedAt));
     }
 
     /**

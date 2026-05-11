@@ -160,6 +160,23 @@ public class SkillCommandController {
 	}
 
 	/**
+	 * S163：owner update skill metadata（description / category）。
+	 *
+	 * <p>name / version 不在 {@link UpdateSkillCommand} DTO surface，Jackson 預設 ignore unknown
+	 * fields → 送 {@code {name, version}} 進來自動丟掉，aggregate 對應欄位不變。
+	 *
+	 * <p>權限：caller 須對該 skill 具 {@code write} 權限（S016 RBAC，OWNER role 自動帶）。
+	 *
+	 * @return 200 OK
+	 */
+	@PutMapping("/{id}")
+	@PreAuthorize("hasPermission(#id, 'Skill', 'write')")
+	ResponseEntity<Void> update(@PathVariable String id, @RequestBody UpdateSkillCommand cmd) {
+		commandService.updateSkill(id, cmd, currentUserProvider.userId());
+		return ResponseEntity.ok().build();
+	}
+
+	/**
 	 * S018：停用 skill — 將 PUBLISHED skill 轉至 SUSPENDED 狀態。
 	 *
 	 * <p>{@code @PreAuthorize("hasPermission(#id, 'Skill', 'suspend')")} 守門：呼叫者
