@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
 import io.github.samzhu.skillshub.review.domain.Review;
+import io.github.samzhu.skillshub.shared.api.PlainTextDeserializer;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 
 /**
@@ -66,8 +69,15 @@ class ReviewController {
                 .toList();
     }
 
-    /** Request body for POST endpoint. */
-    record CreateReviewRequest(int rating, String content) {}
+    /**
+     * Request body for POST endpoint.
+     *
+     * <p>S161：{@code content} 走 {@link PlainTextDeserializer} silently strip HTML markup
+     * （防 stored XSS — 即使前端某天改用 react-markdown + rehypeRaw 也擋住）。
+     */
+    record CreateReviewRequest(
+            int rating,
+            @JsonDeserialize(using = PlainTextDeserializer.class) String content) {}
 
     /** Response DTO — 不直接洩漏 aggregate 內部 mutation method。 */
     record ReviewResponse(

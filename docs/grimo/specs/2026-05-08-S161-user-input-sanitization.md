@@ -1,6 +1,6 @@
 # S161: User Input Sanitization — Review / Flag / Request 文字欄位 XSS 防禦
 
-> Spec: S161 | Size: S(6) | Status: 📐 in-design
+> Spec: S161 | Size: S(6) → Phase 1 XS(3) | Status: 🚧 Phase 1 ship 2026-05-12（review.content + PlainTextDeserializer 基礎設施完成；其餘 3 DTO + markdown allowlist + V20 backfill 拆 S161b/c）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— 實測 `POST /api/v1/skills/{id}/reviews body={rating:5, content:'<script>alert("xss")</script>'}` 直接 201 created；`GET /reviews` 回的 `content` 仍是 raw payload。React frontend 預設 escape 擋住 inline render，但 backend 完全不過濾 — 任何下游改 markdown render / CLI / 外部 API consumer 立即被攻擊。
 
@@ -297,6 +297,59 @@ deploy 後：
 | Markdown allowlist 誤 strip 合法 markdown | unit test 涵蓋 `# heading`、`[link]`、`**bold**`、`<inline>code</inline>`、code block 等 — 確保不破 |
 | Backfill SQL regex 對 description（含 markdown）危險 | 拆兩 path：plain text 欄位（review/flag/title）走 SQL regex；markdown 欄位（description）走 app-level Java 跑 |
 | 既有 stored XSS payload（前 audit 寫的）未被掃 | V20 migration backfill 時順手；spec implementer 跑前 query 看數量 |
+
+---
+
+## 6.5 Phase 1 結果（2026-05-12）
+
+### Ship 範圍 — review.content 一個 DTO 作為 PoC
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-1 | `<script>alert(1)</script>hello` → `hello`（script 連內容一起 strip）| ✅ PASS |
+| AC-2 | `<img src=x onerror=alert(1)>` → `""`（self-closing tag + onerror 全 strip）| ✅ PASS |
+| 加碼 | `<style>...</style>` 連內容 strip | ✅ PASS |
+| 加碼 | inline tag (`<b>bold</b>`) → 留文字 `bold` | ✅ PASS |
+| 加碼 | 繁中 / 全形標點 (`！`) / `a < b` 字符不 encode | ✅ PASS |
+| 加碼 | null → null（不轉空字串）| ✅ PASS |
+
+### Defer 至 S161b/c
+
+| AC | 內容 | 為何 defer |
+|---|---|---|
+| AC-3 | flag.detail 同 sanitize | 套用其餘 3 DTO（flag/request/collection）屬同 pattern 機械式套用 — S161b 範疇 |
+| AC-4 | request.title plain text | 同上 |
+| AC-5 | request.description 保留 markdown safe subset | 需 OWASP markdown allowlist policy；獨立 design — S161b |
+| AC-6 | javascript: URL 被擋 | 屬 markdown allowlist 範疇 — S161b |
+| AC-7 | 既存 stored XSS payload backfill | V20 Flyway migration — S161c（LAB demo data 無 XSS payload 急迫性低） |
+| AC-8 | GraalVM native image 支援 | 純 regex 實作無反射依賴，AOT 預期 OK；下次 deploy 自然驗 |
+
+### 設計轉折 — OWASP library 棄用換 regex
+
+Spec §2.3 原選 `owasp-java-html-sanitizer`，但實測：
+- 把 `！` (U+FF01 全形驚嘆號) encode 成 `&#xff01;` → 破繁中 user 內容
+- 把 `a < b` 中的 `<` encode 成 `&lt;` → 用 escape-for-safe-render 邏輯處理 strip-for-safe-store 場景
+
+改成簡單 regex 兩 pass：
+1. `SCRIPT_OR_STYLE` pattern 先 match 整段 `<script>...</script>` / `<style>...</style>`（含內容）strip
+2. `HTML_TAG` pattern match 任何 `<...>` strip
+
+不 encode 字符；繁中 / emoji / 非 tag 用法（如 `a < b`）完全保留。OWASP dep 暫**不**加入 build；待 S161b markdown allowlist（需 OWASP `HtmlPolicyBuilder.allowElements(...)`）時再加。
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `backend/.../shared/api/PlainTextDeserializer.java`（**新檔**）| Jackson custom deserializer；regex 兩 pass strip；放 `shared.api` 因 review module 已 allowed 此 NamedInterface |
+| `backend/.../review/ReviewController.java` | `CreateReviewRequest.content` 加 `@JsonDeserialize(using=PlainTextDeserializer.class)` |
+| `backend/.../shared/api/PlainTextDeserializerTest.java`（**新檔**）| 8 cases — XSS strip / 純文字保留 / 字符 `<` 保留 / null 處理 / script+style 連內容 strip |
+
+### 驗證指令
+
+```bash
+./gradlew test --tests "*PlainTextDeserializerTest"                     # 8/8 PASS
+./gradlew test --tests "*PlainTextDeserializerTest" --tests "*review.*"  # 18/18 PASS（無 regression）
+```
 
 ---
 
