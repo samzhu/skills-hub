@@ -91,10 +91,10 @@ run_skip_if "V04" "cd frontend && npm test" \
   "[ ! -d '${REPO_ROOT}/frontend/node_modules' ]" \
   "(cd '${REPO_ROOT}/frontend' && npm test)"
 
-# V05: frontend npm lint
-run_skip_if "V05" "cd frontend && npm run lint" \
+# V05: frontend npm run verify (lint + typecheck)
+run_skip_if "V05" "cd frontend && npm run verify" \
   "[ ! -d '${REPO_ROOT}/frontend/node_modules' ]" \
-  "(cd '${REPO_ROOT}/frontend' && npm run lint)"
+  "(cd '${REPO_ROOT}/frontend' && npm run verify)"
 
 # V06: frontend coverage gate (S022) — vitest threshold lines:80 → exit 1 if below
 # include whitelist 鎖定有對應 test 的 source 檔（漸進加入 gate；spec §2.1 #2）

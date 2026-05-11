@@ -65,7 +65,7 @@ Spring Modulith 的 `ApplicationModules.verify()` 確保：
 | V02 | parse `backend/build/reports/jacoco/test/jacocoTestReport.csv` (awk LINE_MISSED + LINE_COVERED) | INFO（顯示用） | CSV 不存在 | 顯示 LINE coverage %；非 gate（gate 由 V03 負責）|
 | V03 | `./gradlew jacocoTestCoverageVerification` | CRITICAL | task 未註冊（S019 未 ship 之歷史環境） | Threshold 在 `build.gradle.kts` 為 single source；`./gradlew check` 同 gate |
 | V04 | `cd frontend && npm test` | CRITICAL | `frontend/node_modules` 不存在 | Vitest run；frontend test gate |
-| V05 | `cd frontend && npm run lint` | CRITICAL | `frontend/node_modules` 不存在 | ESLint；frontend lint gate |
+| V05 | `cd frontend && npm run verify` | CRITICAL | `frontend/node_modules` 不存在 | ESLint `--max-warnings 0` + `tsc -b`；frontend lint + typecheck gate（debt cleanup 9536680 + cloudbuild.yaml frontend-build step 同步執行）|
 | V06 | `cd frontend && npm test -- --coverage` | CRITICAL | `frontend/node_modules` 不存在 | vitest `coverage.thresholds.lines: 80` gate；text reporter inline 印 coverage table 到 stdout；`coverage.include` whitelist 鎖定有對應 test 的 source 檔（漸進加入 gate）；S022 落地 |
 | V07 | `cd e2e && npx playwright test --grep @happy-path` | CRITICAL | `e2e/node_modules` 不存在 / `e2e/playwright.config.ts` 不存在 | Playwright happy-path E2E gate；by `/playwright-expert` skill；artefacts → `e2e/test-results/` + `e2e/playwright-report/`（gitignored，managed block by `ensure-latest.sh`）；trace `on-first-retry`（official default per playwright.dev/docs/ci-intro）；本機看 `npx playwright show-trace <trace.zip>` 或拖到 trace.playwright.dev；CI 用 `actions/upload-artifact@v5` + `if: ${{ !cancelled() }}` 上傳 |
 | V08a | `./gradlew processAot` | CRITICAL | — | AOT-bake-time smoke（~30s）；抓 S158 類 prod-only bug（Jackson default-view-inclusion）；不依 Docker / GraalVM；V07 已跑 processAot 故 cache hit |
