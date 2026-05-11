@@ -24,7 +24,6 @@ const renderPage = () => {
 // S132: MySkillsPage 加 page-level auth gate（!author / meError → EmptyState 登入提示）後，
 // 既有 zh-TW label compliance 測試需 mock fetch 讓 /me 回 valid sub（保留 metric labels 出現）
 const setAuthedFetchMock = () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
     if (url.includes('/api/v1/me/flags-summary')) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ openCount: 0 }) } as Response)
@@ -73,7 +72,6 @@ describe('MySkillsPage — S110 zh-TW label compliance', () => {
 
   it('AC-S132-1: 未登入（fetch 失敗）→ EmptyState「請先登入後查看自己發布的技能」', async () => {
     // Override default fetch mock for this test only — simulate auth failure
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/v1/me')) {
         return Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({ error: 'unauthorized' }) } as Response)
@@ -92,7 +90,6 @@ describe('MySkillsPage — S110 zh-TW label compliance', () => {
 
 describe('MySkillsPage — Flags wiring (S112-T04)', () => {
   it('S112 AC-3: 待處理回報 MetricCard 顯示 useFlagsSummary openCount', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/v1/me/flags-summary')) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ openCount: 2 }) } as Response)
@@ -143,7 +140,6 @@ describe('MySkillsPage — S144 delete skill UX', () => {
   }
 
   const setSkillsFetchMock = (deleteResponse: Response) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes('/api/v1/me/flags-summary')) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ openCount: 0 }) } as Response)
@@ -227,7 +223,6 @@ describe('MySkillsPage — S145 subscription management tab', () => {
 
   const setSubscriptionFetchMock = (subscriptions: unknown[]) => {
     let currentSubscriptions = [...subscriptions] as any[]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes('/api/v1/me/flags-summary')) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ openCount: 0 }) } as Response)

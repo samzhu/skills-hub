@@ -16,7 +16,7 @@ import { AppShell } from './AppShell'
  *   - 其他 → 預設 200 {count}
  */
 const setupFetch = (count: number, authenticated: boolean) => {
-  global.fetch = vi.fn().mockImplementation((url: string | URL) => {
+  globalThis.fetch = vi.fn().mockImplementation((url: string | URL) => {
     const u = url.toString()
     if (u.includes('/api/v1/me')) {
       return Promise.resolve(

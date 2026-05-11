@@ -29,6 +29,7 @@ const mockScores: SkillScores = {
     },
   },
   total: 91,
+  skillScore: null,
 }
 
 describe('QualityTab', () => {

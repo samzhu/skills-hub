@@ -86,7 +86,6 @@ beforeEach(() => {
 
 describe('RequestBoardPage (S096g2-T04)', () => {
   it('AC-15: 3 requests → 3 row + CTA 啟用 + S103 spec ID leak invariant', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/v1/requests') && !url.includes('/vote')) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(sampleRequests) } as Response)
@@ -114,7 +113,6 @@ describe('RequestBoardPage (S096g2-T04)', () => {
   })
 
   it('AC-16: 點 CTA 開 modal → fill+submit → POST /requests', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes('/api/v1/requests') && init?.method === 'POST') {
         return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ id: 'new-r' }) } as Response)
@@ -146,7 +144,6 @@ describe('RequestBoardPage (S096g2-T04)', () => {
     fireEvent.click(screen.getByRole('button', { name: '送出' }))
 
     await waitFor(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const calls = ((globalThis as any).fetch as ReturnType<typeof vi.fn>).mock.calls
       const postCall = calls.find((c) => c[1]?.method === 'POST' && c[0].endsWith('/requests'))
       expect(postCall).toBeDefined()
@@ -156,7 +153,6 @@ describe('RequestBoardPage (S096g2-T04)', () => {
   })
 
   it('AC-17: 點 vote 按鈕 → POST toggle + count 更新為 server 值', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url.includes('/vote') && init?.method === 'POST') {
         return Promise.resolve({
@@ -185,7 +181,6 @@ describe('RequestBoardPage (S096g2-T04)', () => {
     fireEvent.click(screen.getByRole('button', { name: '投票' }))
 
     await waitFor(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const calls = ((globalThis as any).fetch as ReturnType<typeof vi.fn>).mock.calls
       const postCall = calls.find((c) => c[1]?.method === 'POST' && c[0].includes('/vote'))
       expect(postCall).toBeDefined()

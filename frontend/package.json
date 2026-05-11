@@ -8,7 +8,8 @@
     "build": "vite build",
     "typecheck": "tsc -b",
     "build:strict": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
+    "verify": "npm run lint && npm run typecheck",
     "preview": "vite preview",
     "test": "vitest run"
   },

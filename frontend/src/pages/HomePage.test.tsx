@@ -35,8 +35,7 @@ const renderPage = () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  // 同 codebase pattern：直接 stub global.fetch (與既有 SkillDetailPage.test.tsx 一致)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // 同 codebase pattern：直接 stub globalThis.fetch (與既有 SkillDetailPage.test.tsx 一致)
   ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
     if (url.includes('/api/v1/skills')) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(mockSkillsPage) } as Response)
@@ -62,7 +61,6 @@ describe('HomePage — S104 filter-active 0-hits UX', () => {
     await waitFor(() => {
       expect(screen.getByText('sk1')).toBeInTheDocument()
     })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fetchMock = (globalThis as any).fetch as ReturnType<typeof vi.fn>
     const skillsCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/api/v1/skills'))
     expect(skillsCalls.length).toBeGreaterThan(0)
@@ -122,7 +120,6 @@ describe('HomePage — S104 filter-active 0-hits UX', () => {
       expect(screen.getByText(/第 1 \/ 6 頁/)).toBeInTheDocument()
     })
     // 確認 fetch 用 page=0
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fetchMock = (globalThis as any).fetch as ReturnType<typeof vi.fn>
     const lastCall = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/api/v1/skills')).at(-1)
     expect(String(lastCall?.[0])).toContain('page=0')
@@ -152,7 +149,6 @@ describe('HomePage — S104 filter-active 0-hits UX', () => {
       content: [deletedSkill, survivor],
       page: { number: 0, size: 20, totalElements: 2, totalPages: 1 },
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/v1/skills')) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(page) } as Response)

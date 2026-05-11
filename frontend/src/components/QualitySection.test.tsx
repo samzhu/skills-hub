@@ -13,6 +13,7 @@ const mockScores: SkillScores = {
   implementation: { totalScore: 85,  dimensions: {} },
   activation:     { totalScore: 92,  dimensions: {} },
   total: 91,
+  skillScore: null,
 }
 
 describe('QualitySection', () => {

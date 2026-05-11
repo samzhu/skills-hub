@@ -15,7 +15,7 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  global.fetch = vi.fn().mockResolvedValue({
+  globalThis.fetch = vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
     json: () => Promise.resolve([{ id: 'v1', skillId: 'skill-1', version: '1.0.0', fileSize: 1024, publishedAt: '2026-04-01T00:00:00Z' }]),
@@ -26,7 +26,7 @@ describe('useVersions', () => {
   it('AC-1: empty skillId → query disabled (no fetch)', async () => {
     renderHook(() => useVersions(''), { wrapper })
     await new Promise((r) => setTimeout(r, 0))
-    expect(global.fetch).not.toHaveBeenCalled()
+    expect(globalThis.fetch).not.toHaveBeenCalled()
   })
 
   it('AC-2: valid skillId → fetch invoked + data resolved', async () => {
@@ -34,7 +34,7 @@ describe('useVersions', () => {
     await waitFor(() => {
       expect(result.current.data?.length).toBe(1)
     })
-    expect(global.fetch).toHaveBeenCalledTimes(1)
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 
   it('AC-3: query key includes skillId for cache isolation', async () => {
@@ -43,6 +43,6 @@ describe('useVersions', () => {
     await waitFor(() => expect(r1.current.data).toBeDefined())
     await waitFor(() => expect(r2.current.data).toBeDefined())
     // 兩個 distinct skillId 各自 cache key 觸發 2 次 fetch
-    expect(global.fetch).toHaveBeenCalledTimes(2)
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2)
   })
 })

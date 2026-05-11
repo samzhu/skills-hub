@@ -27,7 +27,7 @@ function setupMocks(subscribed = false) {
     user: { sub: 'bob', email: 'bob@x.com', name: 'Bob' },
     login: vi.fn(),
     logout: vi.fn(),
-  } as ReturnType<typeof useAuthModule.useAuth>)
+  } as unknown as ReturnType<typeof useAuthModule.useAuth>)
   mockSubscription.useIsSubscribed.mockReturnValue(subscribed)
   mockSubscription.useSubscribeSkill.mockReturnValue({ mutate: vi.fn() } as any)
   mockSubscription.useUnsubscribeSkill.mockReturnValue({ mutate: vi.fn() } as any)

@@ -78,6 +78,7 @@ const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
         id: newId, name: body.name, description: body.description ?? '',
         skillCount: body.skillIds?.length ?? 0, installCount: 0,
         category: body.category, createdAt: '2026-05-03T10:00:00Z',
+        maxRiskLevel: null,
       },
     ]
     return { ok: true, status: 201, json: async () => ({ id: newId }) } as Response
@@ -99,7 +100,7 @@ beforeEach(() => {
     installResponse: { downloadUrls: ['/api/v1/skills/sk-1/download', '/api/v1/skills/sk-2/download', '/api/v1/skills/sk-3/download'] },
   }
   fetchMock.mockClear()
-  global.fetch = fetchMock as unknown as typeof fetch
+  globalThis.fetch = fetchMock as unknown as typeof fetch
 })
 
 const renderPage = () => {

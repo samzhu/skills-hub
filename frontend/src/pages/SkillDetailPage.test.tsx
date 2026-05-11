@@ -33,7 +33,7 @@ beforeEach(() => {
 
 describe('SkillDetailPage — error paths (ledger Round 1.4)', () => {
   it('AC-1: 404 not-found shows specific 找不到此技能 message', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 404,
       json: () => Promise.resolve({ error: 'NotFound', message: 'Skill not found' }),
@@ -47,7 +47,7 @@ describe('SkillDetailPage — error paths (ledger Round 1.4)', () => {
   })
 
   it('AC-2: 500 server error shows generic error + retry hint', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
       json: () => Promise.resolve({ error: 'Internal', message: 'boom' }),
@@ -60,7 +60,7 @@ describe('SkillDetailPage — error paths (ledger Round 1.4)', () => {
   })
 
   it('AC-3 (S102): error state shows 返回列表 link to /browse', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 404,
       json: () => Promise.resolve({}),
@@ -75,7 +75,7 @@ describe('SkillDetailPage — error paths (ledger Round 1.4)', () => {
   // S153: 400 (格式錯誤 ID) 與 403 (ACL 拒讀) 對 user 都是「找不到此技能」
   // 不再顯示誤導性的 retry 提示。404 行為由上方既有 AC-1 覆蓋。
   it('S153 AC-1: 400 VALIDATION_ERROR (格式錯誤) shows 找不到此技能 (no retry hint)', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 400,
       json: () =>
@@ -89,7 +89,7 @@ describe('SkillDetailPage — error paths (ledger Round 1.4)', () => {
   })
 
   it('S153 AC-2: 403 Access Denied shows 找不到此技能 (no retry hint)', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 403,
       json: () =>
@@ -137,7 +137,7 @@ function isSkillSubPath(u: string): boolean {
 
 /** Route-aware fetch mock: skill endpoint returns fixture; other APIs return safe defaults */
 function mockFetchForSkill(skill: ReturnType<typeof skillFixture>) {
-  global.fetch = vi.fn().mockImplementation((url: string) => {
+  globalThis.fetch = vi.fn().mockImplementation((url: string) => {
     const u = typeof url === 'string' ? url : String(url)
     if (u.includes(`/skills/${skill.id}`) && !isSkillSubPath(u)) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(skill) } as Response)
@@ -187,7 +187,7 @@ describe('SkillDetailPage — S114a AC-11 share button visibility', () => {
     skill: ReturnType<typeof skillFixture>,
     meSub: string,
   ) {
-    global.fetch = vi.fn().mockImplementation((url: string) => {
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
       const u = typeof url === 'string' ? url : String(url)
       if (u.endsWith('/me')) {
         return Promise.resolve({

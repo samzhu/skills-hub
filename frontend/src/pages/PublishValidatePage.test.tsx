@@ -13,7 +13,19 @@ import { PublishValidatePage } from './PublishValidatePage'
  * 是否觸發。
  */
 
-const skillScanning = {
+const skillScanning: {
+  id: string
+  name: string
+  author: string
+  description: string
+  category: string
+  riskLevel: string | null
+  status: string
+  downloadCount: number
+  latestVersion: string
+  createdAt: string
+  updatedAt: string
+} = {
   id: 'skill-1',
   name: 'date-formatter',
   author: 'team-a',
@@ -33,7 +45,7 @@ const skillDone = {
 }
 
 const renderWith = (search: string, skill: typeof skillScanning) => {
-  global.fetch = vi.fn().mockResolvedValue({
+  globalThis.fetch = vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
     json: () => Promise.resolve(skill),

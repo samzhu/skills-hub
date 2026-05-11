@@ -31,7 +31,7 @@ afterEach(() => {
 
 describe('useAuth — S139 fetchMe + login/logout', () => {
   it('AC-1: fetchMe 200 → status="authenticated" + user payload', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       json: () =>
@@ -52,7 +52,7 @@ describe('useAuth — S139 fetchMe + login/logout', () => {
   })
 
   it('AC-1 / AC-7: fetchMe 401 → status="anonymous"（不 throw）', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
       json: () => Promise.resolve({ error: 'unauthorized' }),
@@ -63,7 +63,7 @@ describe('useAuth — S139 fetchMe + login/logout', () => {
   })
 
   it('AC-3: login(returnTo) 拼 /oauth2/authorization/skillshub?returnTo=<encoded>', () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
       json: () => Promise.resolve({}),
@@ -95,7 +95,7 @@ describe('useAuth — S139 fetchMe + login/logout', () => {
   })
 
   it('AC-3: login() 無參數時用 current pathname + search', () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
       json: () => Promise.resolve({}),
@@ -127,7 +127,7 @@ describe('useAuth — S139 fetchMe + login/logout', () => {
 
   it('AC-5: logout() POST /logout 後 reload', async () => {
     let postLogoutCalled = false
-    global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       if (url === '/logout' && init?.method === 'POST') {
         postLogoutCalled = true
         return Promise.resolve({ ok: true, status: 200 } as Response)

@@ -21,7 +21,7 @@ const EXT_LANG: Record<string, string> = {
   dockerfile: 'Dockerfile',
 }
 
-export function getLangLabel(filename: string): string {
+function getLangLabel(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase() ?? ''
   return EXT_LANG[ext] ?? (ext.toUpperCase() || 'Text')
 }

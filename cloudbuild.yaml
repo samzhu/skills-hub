@@ -50,6 +50,7 @@ steps:
       - -ceu
       - |
         npm ci
+        npm run verify
         npm run build
 
   # 2. Copy frontend dist → backend static dir（清掉舊內容避免殘留）

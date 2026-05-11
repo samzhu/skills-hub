@@ -10,7 +10,7 @@ const mockWrite = vi.fn().mockResolvedValue(undefined)
 beforeEach(() => {
   vi.clearAllMocks()
 
-  global.fetch = vi.fn().mockResolvedValue({
+  globalThis.fetch = vi.fn().mockResolvedValue({
     ok: true,
     text: () => Promise.resolve(FIXTURE),
   } as Response)
@@ -22,7 +22,7 @@ beforeEach(() => {
       this._items = items
     }
   }
-  global.ClipboardItem = MockClipboardItem as unknown as typeof ClipboardItem
+  globalThis.ClipboardItem = MockClipboardItem as unknown as typeof ClipboardItem
 
   Object.defineProperty(navigator, 'clipboard', {
     value: { write: mockWrite },
@@ -57,12 +57,12 @@ describe('useCopySkillMarkdown', () => {
     // Second copy should NOT call fetch again
     await act(async () => { await result.current.copy() })
 
-    expect(global.fetch).not.toHaveBeenCalled()
+    expect(globalThis.fetch).not.toHaveBeenCalled()
     expect(mockWrite).toHaveBeenCalledOnce()
   })
 
   it('prefetch() populates cache silently and does not throw on fetch error', async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 403 } as Response)
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false, status: 403 } as Response)
     const { result } = renderHook(() => useCopySkillMarkdown(SKILL_ID))
 
     await act(async () => { result.current.prefetch() })

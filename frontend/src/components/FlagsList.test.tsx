@@ -28,7 +28,6 @@ beforeEach(() => {
 
 describe('FlagsList (S112-T03)', () => {
   it('S112 AC-1: 0 flags 顯示 EmptyState', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -41,7 +40,6 @@ describe('FlagsList (S112-T03)', () => {
   })
 
   it('S098e3 AC-9: 不論 0 或 N flags 都顯「回報問題」CTA', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -54,7 +52,6 @@ describe('FlagsList (S112-T03)', () => {
   })
 
   it('S098e3 AC-10: 點 CTA 開 modal → 選 type + 填 desc + Submit 觸發 POST', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       // AuthGatedButton 需要 useAuth authenticated，mock /me 回已登入 user
       if (url.includes('/api/v1/me')) {
@@ -85,7 +82,6 @@ describe('FlagsList (S112-T03)', () => {
     fireEvent.click(screen.getByRole('button', { name: '送出' }))
 
     await waitFor(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const calls = ((globalThis as any).fetch as ReturnType<typeof vi.fn>).mock.calls
       const postCall = calls.find((c) => c[1]?.method === 'POST')
       expect(postCall).toBeDefined()
@@ -95,7 +91,6 @@ describe('FlagsList (S112-T03)', () => {
   })
 
   it('S112 AC-2: >0 flags 渲染 list with type/status pill', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,

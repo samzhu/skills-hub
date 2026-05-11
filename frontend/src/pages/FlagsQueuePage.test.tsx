@@ -32,7 +32,6 @@ beforeEach(() => {
 
 describe('FlagsQueuePage (S098e3-T04)', () => {
   it('S098e3 AC-11: list OPEN flags 含「標為已處理」/「駁回」buttons', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/flags?status=OPEN')) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([
@@ -74,7 +73,6 @@ describe('FlagsQueuePage (S098e3-T04)', () => {
   })
 
   it('S098e3 AC-12: 點 Resolve 觸發 PATCH status=RESOLVED', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       // S139: 既有 AC-12 假設 authenticated（lazy gate 通過才能 PATCH）
       if (url.includes('/api/v1/me')) {
@@ -102,7 +100,6 @@ describe('FlagsQueuePage (S098e3-T04)', () => {
 
     // PATCH 應觸發到 /api/v1/skills/sk-1/flags/f1
     await waitFor(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const calls = ((globalThis as any).fetch as ReturnType<typeof vi.fn>).mock.calls
       const patchCall = calls.find((c) => c[1]?.method === 'PATCH')
       expect(patchCall).toBeDefined()

@@ -27,19 +27,16 @@ function setupMocks(grants: SkillGrant[]) {
   mockedUseGrants.mockReturnValue({
     data: grants,
     isLoading: false,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any)
   mockedUseCreateGrant.mockReturnValue({
     mutate: vi.fn(),
     isPending: false,
     isError: false,
     error: null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any)
   mockedUseRevokeGrant.mockReturnValue({
     mutate: vi.fn(),
     isPending: false,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any)
 }
 

@@ -16,7 +16,7 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  global.fetch = vi.fn().mockResolvedValue({
+  globalThis.fetch = vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
     json: () => Promise.resolve([
@@ -32,7 +32,7 @@ describe('useCategories', () => {
     await waitFor(() => {
       expect(result.current.data?.length).toBe(2)
     })
-    expect(global.fetch).toHaveBeenCalledTimes(1)
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 
   it('AC-2: data shape 對齊 CategoryCount{name, count}', async () => {
@@ -46,7 +46,7 @@ describe('useCategories', () => {
   })
 
   it('AC-3: error response surfaces via isError state', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
       json: () => Promise.resolve({ error: 'Internal' }),

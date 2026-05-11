@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { validateFrontmatter, PublishPage } from './PublishPage'
+import { PublishPage } from './PublishPage'
+import { validateFrontmatter } from './PublishPage.utils'
 import * as useMeModule from '@/hooks/useMe'
 import * as useAuthModule from '@/hooks/useAuth'
 
@@ -123,7 +124,6 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
       isLoading: false,
       isError: false,
       error: null,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
     mockUseAuth.mockReturnValue({
       status: 'authenticated',
@@ -165,7 +165,6 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
       }
       return { ok: true, status: 200, json: async () => ({}) } as Response
     })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(globalThis as any).fetch = fetchSpy
 
     renderPublishPage()

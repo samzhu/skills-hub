@@ -68,7 +68,7 @@ const fileListDiffJson = {
 }
 
 beforeEach(() => {
-  global.fetch = vi.fn().mockImplementation((url: string) => {
+  globalThis.fetch = vi.fn().mockImplementation((url: string) => {
     if (url.includes('/file-list-diff')) {
       return Promise.resolve({
         ok: true,
@@ -150,7 +150,7 @@ describe('VersionDiffPage — S098c', () => {
   })
 
   it('AC-3-legacy: insufficient versions shows fallback message', async () => {
-    global.fetch = vi.fn().mockImplementation((url: string) => {
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
       if (url.endsWith('/versions')) {
         return Promise.resolve({
           ok: true,

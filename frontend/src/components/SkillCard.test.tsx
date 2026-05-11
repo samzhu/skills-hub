@@ -14,8 +14,16 @@ const mockSkill: Skill = {
   riskLevel: 'LOW',
   status: 'PUBLISHED',
   downloadCount: 42,
+  averageRating: 0,
+  reviewCount: 0,
   createdAt: '2026-04-01T00:00:00Z',
   updatedAt: '2026-04-20T00:00:00Z',
+  verified: true,
+  latestVersionPublishedAt: '2026-04-20T00:00:00Z',
+  license: null,
+  compatibility: [],
+  versionCount: 1,
+  openFlagCount: 0,
 }
 
 describe('AC-2: SkillCard 渲染', () => {

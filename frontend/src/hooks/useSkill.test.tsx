@@ -17,7 +17,7 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  global.fetch = vi.fn().mockResolvedValue({
+  globalThis.fetch = vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
     json: () => Promise.resolve({ id: 'skill-1', name: 'mock' }),
@@ -29,7 +29,7 @@ describe('useSkill', () => {
     renderHook(() => useSkill(''), { wrapper })
     // give event loop time to flush
     await new Promise((r) => setTimeout(r, 0))
-    expect(global.fetch).not.toHaveBeenCalled()
+    expect(globalThis.fetch).not.toHaveBeenCalled()
   })
 
   it('AC-2: valid id → query enabled, fetch invoked', async () => {
@@ -37,7 +37,7 @@ describe('useSkill', () => {
     await waitFor(() => {
       expect(result.current.data).toEqual({ id: 'skill-1', name: 'mock' })
     })
-    expect(global.fetch).toHaveBeenCalledTimes(1)
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -45,13 +45,13 @@ describe('useSkillByAuthorAndName — S096c canonical route', () => {
   it('AC-1: missing author → query disabled', async () => {
     renderHook(() => useSkillByAuthorAndName(undefined, 'date-formatter'), { wrapper })
     await new Promise((r) => setTimeout(r, 0))
-    expect(global.fetch).not.toHaveBeenCalled()
+    expect(globalThis.fetch).not.toHaveBeenCalled()
   })
 
   it('AC-2: missing name → query disabled', async () => {
     renderHook(() => useSkillByAuthorAndName('team-a', undefined), { wrapper })
     await new Promise((r) => setTimeout(r, 0))
-    expect(global.fetch).not.toHaveBeenCalled()
+    expect(globalThis.fetch).not.toHaveBeenCalled()
   })
 
   it('AC-3: both present → query enabled, fetch invoked', async () => {
@@ -62,6 +62,6 @@ describe('useSkillByAuthorAndName — S096c canonical route', () => {
     await waitFor(() => {
       expect(result.current.data).toBeDefined()
     })
-    expect(global.fetch).toHaveBeenCalledTimes(1)
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
   })
 })

@@ -16,7 +16,18 @@ import { NotificationsPage } from './NotificationsPage'
  * - DELETE /notifications/{id} → ok
  */
 
-const sampleNotifs = [
+interface SampleNotif {
+  id: string
+  category: string
+  title: string
+  body: string | null
+  skillId: string
+  refEventId: string
+  readAt: string | null
+  createdAt: string
+}
+
+const sampleNotifs: SampleNotif[] = [
   {
     id: 'n1', category: 'flags', title: '你的技能 X 被標記回報（spam）',
     body: '重複內容', skillId: 'sk-1', refEventId: 'sk-1:spam',
@@ -124,7 +135,7 @@ beforeEach(() => {
     postedPreferences: [],
   }
   fetchMock.mockClear()
-  global.fetch = fetchMock as unknown as typeof fetch
+  globalThis.fetch = fetchMock as unknown as typeof fetch
 })
 
 const renderPage = () => {

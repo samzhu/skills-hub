@@ -20,9 +20,17 @@ const skill = (riskLevel: RiskLevel | null, id: string): Skill => ({
   riskLevel,
   status: 'PUBLISHED',
   downloadCount: 0,
+  averageRating: 0,
+  reviewCount: 0,
   latestVersion: '1.0.0',
   createdAt: '2026-04-01T00:00:00Z',
   updatedAt: '2026-04-01T00:00:00Z',
+  verified: false,
+  latestVersionPublishedAt: null,
+  license: null,
+  compatibility: [],
+  versionCount: 1,
+  openFlagCount: 0,
 })
 
 describe('RiskFilterSidebar — S098d2', () => {

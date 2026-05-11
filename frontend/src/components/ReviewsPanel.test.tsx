@@ -33,6 +33,12 @@ const skillFixture: Skill = {
   reviewCount: 3,
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
+  verified: true,
+  latestVersionPublishedAt: '2026-01-01T00:00:00Z',
+  license: null,
+  compatibility: [],
+  versionCount: 1,
+  openFlagCount: 0,
 }
 
 const renderPanel = (skill: Skill = skillFixture, currentUserId = 'alice') => {
@@ -45,7 +51,6 @@ const renderPanel = (skill: Skill = skillFixture, currentUserId = 'alice') => {
 }
 
 function mockFetchByUrl(reviewsResponse: unknown[], authed = true) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
     if (url.includes('/api/v1/me')) {
       if (authed) {
@@ -71,7 +76,7 @@ beforeEach(() => {
     user: { sub: 'alice', email: 'alice@example.com' },
     login: vi.fn(),
     logout: vi.fn(),
-  } as ReturnType<typeof useAuthModule.useAuth>)
+  } as unknown as ReturnType<typeof useAuthModule.useAuth>)
 })
 
 describe('ReviewsPanel (S098e2-T04)', () => {
@@ -159,7 +164,6 @@ describe('ReviewsPanel (S098e2-T04)', () => {
 
     // POST request 應觸發 — 驗 fetch mock 收到 POST
     await waitFor(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const calls = ((globalThis as any).fetch as ReturnType<typeof vi.fn>).mock.calls
       const postCall = calls.find((c) => c[1]?.method === 'POST')
       expect(postCall).toBeDefined()

@@ -41,7 +41,7 @@ const fetchMock = vi.fn(async (url: string) => {
 beforeEach(() => {
   fetchMock.mockClear()
   collectionResponse = { ok: true, status: 200, json: async () => sampleDetail } as Response
-  global.fetch = fetchMock as unknown as typeof fetch
+  globalThis.fetch = fetchMock as unknown as typeof fetch
 })
 
 function renderPage(id = 'c1') {

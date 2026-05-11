@@ -22,7 +22,7 @@ describe('AuthGatedButton — S139 AC-3 lazy gate', () => {
       status: 'anonymous',
       login: loginSpy,
       logout: vi.fn(),
-    } as ReturnType<typeof useAuthModule.useAuth>)
+    } as unknown as ReturnType<typeof useAuthModule.useAuth>)
 
     render(<AuthGatedButton onClick={onClickSpy}>Submit</AuthGatedButton>)
     fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
@@ -39,7 +39,7 @@ describe('AuthGatedButton — S139 AC-3 lazy gate', () => {
       user: { sub: 'alice', email: 'alice@example.com', name: 'Alice' },
       login: loginSpy,
       logout: vi.fn(),
-    } as ReturnType<typeof useAuthModule.useAuth>)
+    } as unknown as ReturnType<typeof useAuthModule.useAuth>)
 
     render(<AuthGatedButton onClick={onClickSpy}>Upload</AuthGatedButton>)
     fireEvent.click(screen.getByRole('button', { name: 'Upload' }))
@@ -55,7 +55,7 @@ describe('AuthGatedButton — S139 AC-3 lazy gate', () => {
       status: 'loading',
       login: loginSpy,
       logout: vi.fn(),
-    } as ReturnType<typeof useAuthModule.useAuth>)
+    } as unknown as ReturnType<typeof useAuthModule.useAuth>)
 
     render(<AuthGatedButton onClick={onClickSpy}>Submit</AuthGatedButton>)
     fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
@@ -69,7 +69,7 @@ describe('AuthGatedButton — S139 AC-3 lazy gate', () => {
       status: 'anonymous',
       login: vi.fn(),
       logout: vi.fn(),
-    } as ReturnType<typeof useAuthModule.useAuth>)
+    } as unknown as ReturnType<typeof useAuthModule.useAuth>)
 
     render(
       <AuthGatedButton
