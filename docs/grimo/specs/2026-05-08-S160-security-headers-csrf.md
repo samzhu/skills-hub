@@ -348,6 +348,59 @@ deploy 後：
 - **WAF / GCP Cloud Armor**: 規則設定
 - **Audit log**: auth failure / privilege escalation 嘗試紀錄
 
+## 7.9 Phase 5 結果（2026-05-12）— S160b''' AC-1 CSRF chain rejection — S160 全 9 ACs 收尾
+
+### Ship 範圍
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-1 | csrf.enabled=true + 無 Bearer + 無 CSRF token POST → 403 | ✅ PASS — CsrfChainTest 走 @TestPropertySource + @WebMvcTest(CspReportController)；CSRF chain reject confirmed |
+| AC-1 補強 | 帶 valid CSRF token（via MockMvc `.with(csrf())`）→ 204 round-trip | ✅ PASS |
+
+### 為何選 CspReportController 做測試 target
+
+- 是 permitAll path（不需 auth gate）→ CSRF chain 是唯一擋住點 → 結果 unambiguous
+- 已有 POST endpoint 接 raw body + 204（pattern 簡單）
+- AdminController 是 GET-only 且 auth-gated，POST 會被 405/401 蓋掉 CSRF 行為
+
+### Production 真實 cookie session 對比
+
+MockMvc 走的 path 與 production 真實 cookie session 流程不完全等同（無真實 browser cookie jar / 無 oauth2Login redirect）。但 Spring Security CSRF filter chain 內部行為一致：
+- 無 token → reject 403
+- `.with(csrf())` 模擬 valid token → 通過
+
+Production 上線 cookie session 後若需端到端驗證，加 Playwright E2E 走 OAuth login + form mutation（拆未來 sub-spec，非 cron tick scope）。
+
+### S160 spec 全部 9 ACs ✅
+
+| AC | 內容 | Ship Commit |
+|---|---|---|
+| AC-1 | cookie session POST 無 token → 403 | 本 tick |
+| AC-2 | Bearer JWT route exempt | 7449b06 |
+| AC-3 | SPA cookie-based session 流程 | 686fda0 |
+| AC-4 | CSP Report-Only 啟用（含 report-uri）| 5acfd17 + fec5ccc |
+| AC-5 | HSTS 一年強制 | 5acfd17 |
+| AC-6 | Referrer-Policy strict-origin | 5acfd17 |
+| AC-7 | Permissions-Policy deny | 5acfd17 |
+| AC-8 | CSP report endpoint | fec5ccc |
+| AC-9 | 既有 X-Frame-Options / X-Content-Type-Options 不退化 | 5acfd17 |
+
+**S160 為原 5-spec 第三個 fully shipped。**
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `backend/.../shared/api/CsrfChainTest.java`（**新檔**）| 2 cases — anonymous POST 無 token → 403 / 有 token → 204；@WebMvcTest(CspReportController) + @TestPropertySource csrf.enabled=true；放 shared.api package 取得 CspReportController package-private 存取 |
+
+### 驗證指令
+
+```bash
+./gradlew test --tests "*CsrfChainTest"   # 2/2 PASS — AC-1 confirmed
+```
+
+---
+
 ## 7.8 Phase 4 結果（2026-05-12）— S160b''-AC8 CSP report endpoint
 
 ### Ship 範圍
