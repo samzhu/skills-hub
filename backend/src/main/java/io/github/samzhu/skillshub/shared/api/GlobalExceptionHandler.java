@@ -85,10 +85,7 @@ public class GlobalExceptionHandler {
 	 */
 	@ExceptionHandler(IllegalArgumentException.class)
 	ResponseEntity<ErrorResponse> handleValidationError(IllegalArgumentException ex) {
-		log.atWarn()
-				.addKeyValue("errorCode", "VALIDATION_ERROR")
-				.addKeyValue("message", ex.getMessage())
-				.log("Validation error occurred");
+		log.warn("Validation error occurred: errorCode=VALIDATION_ERROR, message={}", ex.getMessage(), ex);
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(new ErrorResponse("VALIDATION_ERROR", ex.getMessage(), Instant.now()));
 	}
@@ -496,10 +493,7 @@ public class GlobalExceptionHandler {
 	 */
 	@ExceptionHandler(DuplicateKeyException.class)
 	ResponseEntity<ErrorResponse> handleDuplicateKey(DuplicateKeyException ex) {
-		log.atWarn()
-				.addKeyValue("errorCode", "DUPLICATE_RESOURCE")
-				.addKeyValue("rawMessage", ex.getMessage())
-				.log("Duplicate key violation");
+		log.warn("Duplicate key violation: errorCode=DUPLICATE_RESOURCE, rawMessage={}", ex.getMessage(), ex);
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(new ErrorResponse("DUPLICATE_RESOURCE",
 						"A resource with the same identifier already exists",
