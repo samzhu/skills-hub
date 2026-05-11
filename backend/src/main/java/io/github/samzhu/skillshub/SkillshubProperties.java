@@ -133,7 +133,26 @@ public record SkillshubProperties(
     public record Security(
             @DefaultValue OAuth oauth,
             @DefaultValue Lab lab,
-            @DefaultValue Cors cors) {}
+            @DefaultValue Cors cors,
+            @DefaultValue Csrf csrf) {}
+
+    /**
+     * S160b：CSRF 開關（feature flag 模式）。
+     *
+     * <p>預設 {@code false} — 沿用 CLAUDE.md「Feature First, Security Later」MVP 立場，
+     * 既有 SPA mutation 端點全部 stateless API（JWT bearer + LAB filter）對 cookie-based
+     * CSRF 不必要。Production 上線 cookie session 路徑（如 OAuth2 Login chain）後，env
+     * var {@code SKILLSHUB_SECURITY_CSRF_ENABLED=true} 顯式啟用：
+     * <ul>
+     *   <li>backend SecurityConfig 走 {@code CookieCsrfTokenRepository.withHttpOnlyFalse()}
+     *       — Spring 自動寫 {@code XSRF-TOKEN} cookie，前端讀後送 {@code X-XSRF-TOKEN} header</li>
+     *   <li>Bearer JWT 路徑 exempt（stateless，無 cookie 自動 attach 風險）</li>
+     * </ul>
+     *
+     * <p>Frontend apiFetch 同步配合（讀 cookie + 帶 header）拆 S160b' 獨立 ship — 等
+     * backend infrastructure ready 後再啟動 frontend 工作。
+     */
+    public record Csrf(@DefaultValue("false") boolean enabled) {}
 
     /**
      * @param enabled OAuth2 Resource Server 是否啟用；預設 {@code true}（fail-secure）。

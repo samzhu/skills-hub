@@ -279,6 +279,7 @@ class CurrentUserProviderTest {
                 new SkillshubProperties.Security(
                         new SkillshubProperties.OAuth(true, new SkillshubProperties.OAuth.Login(false)),
                         new SkillshubProperties.Lab(labUserId),
-                        new SkillshubProperties.Cors(java.util.List.of(), false)));
+                        new SkillshubProperties.Cors(java.util.List.of(), false),
+                        new SkillshubProperties.Csrf(false)));
     }
 }

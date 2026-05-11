@@ -69,6 +69,7 @@ class SearchConfigTest {
                 new SkillshubProperties.Security(
                         new SkillshubProperties.OAuth(true, new SkillshubProperties.OAuth.Login(false)),
                         new SkillshubProperties.Lab("lab-user"),
-                        new SkillshubProperties.Cors(java.util.List.of(), false)));
+                        new SkillshubProperties.Cors(java.util.List.of(), false),
+                        new SkillshubProperties.Csrf(false)));
     }
 }

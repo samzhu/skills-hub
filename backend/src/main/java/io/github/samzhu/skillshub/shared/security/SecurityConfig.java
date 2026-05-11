@@ -15,7 +15,9 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
@@ -100,6 +102,15 @@ class SecurityConfig {
 
     SecurityConfig(SkillshubProperties props) {
         this.props = props;
+    }
+
+    /**
+     * S160b：Bearer JWT 路徑判定 — stateless 認證無 cookie auto-attach 風險，
+     * CSRF token 對此 path 不必要。
+     */
+    private static boolean isBearerAuth(HttpServletRequest req) {
+        String auth = req.getHeader("Authorization");
+        return auth != null && auth.startsWith("Bearer ");
     }
 
     /**
@@ -227,7 +238,18 @@ class SecurityConfig {
                     new LabSecurityFilter(props.security().lab().userId()),
                     UsernamePasswordAuthenticationFilter.class);
         }
-        http.csrf(AbstractHttpConfigurer::disable);
+        // S160b：CSRF feature-flag。預設 false 維持「Feature First, Security Later」MVP 既驗
+        // 行為；env var SKILLSHUB_SECURITY_CSRF_ENABLED=true 啟用後走 cookie-based CSRF +
+        // Bearer JWT exempt（stateless API 無 cookie attach 風險）。Frontend apiFetch 配合
+        // 拆 S160b'。
+        if (props.security().csrf().enabled()) {
+            http.csrf(csrf -> csrf
+                    .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                    .ignoringRequestMatchers(SecurityConfig::isBearerAuth));
+            log.info("CSRF enabled — cookie XSRF-TOKEN + Bearer JWT path exempt");
+        } else {
+            http.csrf(AbstractHttpConfigurer::disable);
+        }
         // S139 diagnostic — 接上 custom AccessDeniedHandler 紀錄 403 時的 Authentication
         // 細節（class / authenticated / principal / authorities）。確認 root cause 後可
         // 移除此行，回到 Spring Security 預設 handler 行為（同樣 403，只是無細節 log）。

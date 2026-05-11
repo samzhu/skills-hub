@@ -348,6 +348,50 @@ deploy 後：
 - **WAF / GCP Cloud Armor**: 規則設定
 - **Audit log**: auth failure / privilege escalation 嘗試紀錄
 
+## 7.6 Phase 2 結果（2026-05-12）— S160b CSRF infrastructure（feature-flag）
+
+### Ship 範圍
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-2 | Bearer JWT POST exempt（{@code ignoringRequestMatchers}）| ✅ PASS — CsrfFlagTest 走 `@TestPropertySource("skillshub.security.csrf.enabled=true")` 驗 Bearer 路徑通過 CSRF chain |
+| AC-1 infrastructure 就緒 | `skillshub.security.csrf.enabled=true` 時走 `CookieCsrfTokenRepository.withHttpOnlyFalse()` | ✅ 啟用後 Spring 自動寫 XSRF-TOKEN cookie；frontend 配合 ship S160b' |
+
+### Defer 至 S160b'（frontend apiFetch 配合）
+
+| AC | 內容 | 為何 defer |
+|---|---|---|
+| AC-1 | cookie session POST 無 token → 403 | 整合測試 scope，需走完整 oauth2Login + cookie 流程 — 拆 S160b'' integration test |
+| AC-3 | SPA cookie-based session 流程 | 需 frontend `api/csrf.ts` helper + apiFetch 讀 cookie + 帶 X-XSRF-TOKEN — 拆 S160b' |
+| AC-8 | CSP report endpoint | 純後端但無 consumer，留下次 logging 改善 |
+
+### 設計：feature-flag 模式安全 rollout
+
+預設 `skillshub.security.csrf.enabled=false` 維持 CLAUDE.md「Feature First, Security Later」MVP 立場；既有 SPA mutation 端點全 stateless API（JWT bearer + LAB filter）對 cookie-based CSRF 不必要。
+
+Production 上線 cookie session 路徑（如 OAuth2 Login chain）後，env var `SKILLSHUB_SECURITY_CSRF_ENABLED=true` 顯式啟用：
+- SecurityConfig 走 `CookieCsrfTokenRepository.withHttpOnlyFalse()` — Spring 自動寫 `XSRF-TOKEN` cookie
+- Bearer JWT 路徑 exempt（per `isBearerAuth` static helper）
+- frontend apiFetch 須同步配合（S160b'）
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `backend/.../SkillshubProperties.java` | `Security` record 加 `Csrf csrf` 第 4 個欄位（default `enabled=false`）|
+| `backend/.../shared/security/SecurityConfig.java` | 加 `isBearerAuth(req)` static helper + CSRF chain branch on flag；啟用走 `CookieCsrfTokenRepository.withHttpOnlyFalse()` + `ignoringRequestMatchers(SecurityConfig::isBearerAuth)`；預設 `csrf().disable()` |
+| `backend/.../shared/security/CsrfFlagTest.java`（**新檔**）| `@TestPropertySource csrf.enabled=true` 驗 Bearer POST exempt 不被 CSRF 擋下 |
+| 3 既有測試 `SkillshubProperties.Security` 4 個 ctor arg | ScannerAiConfigTest / SearchConfigTest / CurrentUserProviderTest 補 `new Csrf(false)` 第 4 arg |
+
+### 驗證指令
+
+```bash
+./gradlew test --tests "*CsrfFlagTest"                                  # 1/1 PASS
+./gradlew test --tests "io.github.samzhu.skillshub.shared.security.*"   # 92/92 PASS（無 regression）
+```
+
+---
+
 ## 7.5 Phase 1 implementation 結果（2026-05-12）
 
 ### 7.5.1 Ship 範圍（本 tick）

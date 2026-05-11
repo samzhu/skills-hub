@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-12（S161 全 8 ACs PASS — 原 5-spec 第二個 fully shipped；MarkdownSafeDeserializer 用 OWASP HtmlPolicyBuilder allowlist 保留 markdown 安全 subset；79/0 tests PASS）
+> 最後更新：2026-05-12（S160b CSRF infrastructure feature-flag ship — backend Csrf 屬性 + SecurityConfig branch + Bearer exempt；default OFF 安全 rollout；frontend apiFetch + CSP report endpoint 拆 S160b'/b''）
 
 ## 使用說明
 
@@ -103,8 +103,10 @@
 | S159b | Category storage normalize — V19 lowercase migration + CHECK constraint + frontend `capitalize` | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S159c | `?tag=` filter 實作 — controller param + repo `findByTag()` + frontend filter chip | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S159d | Pageable 非法值拒收 — `page < 0` / `size <= 0` / `size > 100` → 400 | XS(2) | — | ✅ v4.44.0 — `PageableValidationInterceptor` + handler；13+1+11+2 unit tests PASS |
-| S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) → Phase 1 S(5) | — | 🚧 Phase 1 ship 2026-05-12（4 headers + 5 ACs PASS / 5 = AC-4/5/6/7/9）；CSRF + frontend coordination defer 至 S160b |
-| S160b | CSRF re-enable + frontend apiFetch X-XSRF-TOKEN + CSP report endpoint | S(5) | S160 ✅ | 📋 planned — AC-1/2/3/8 from S160 |
+| S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) → 兩段 ship | — | 🚧 Phase 1+2 ship 2026-05-12（4 headers + CSRF infrastructure feature-flag；AC-2/4/5/6/7/9 PASS）；frontend apiFetch + CSP report endpoint 待 S160b' |
+| S160b | CSRF infrastructure feature-flag — backend SecurityConfig branch + Bearer JWT exempt（default OFF）| XS(2) | S160 ✅ | ✅ shipped 2026-05-12 — CsrfFlagTest 驗 Bearer exempt；92/92 shared.security PASS |
+| S160b' | Frontend apiFetch X-XSRF-TOKEN + cookie session integration test | S(4) | S160b ✅ | 📋 planned — AC-1/3 from S160；待 production 上線 cookie session 路徑後啟用 |
+| S160b'' | CSP report endpoint + log analytics consumer | XS(2) | — | 📋 planned — AC-8 from S160 |
 | S161 | User input sanitization — Review / Flag / Request 文字欄位 XSS strip + backfill | S(6) → 五段 ship | — | ✅ **shipped 2026-05-12 — 全部 8 ACs PASS**（plain-text 7 欄位 + markdown allowlist + V19 backfill；原 5-spec 第二個 fully shipped） |
 | S161b | Apply PlainTextDeserializer 至 flag + collection DTOs | XS(2) | S161 ✅ | ✅ shipped 2026-05-12 0af2883 |
 | S161b' | Request DTO — title plain-text 套用 | XS(1) | S161 ✅ | ✅ shipped 2026-05-12 47a4506 |
