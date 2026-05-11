@@ -96,6 +96,26 @@ class PlainTextDeserializerIntegrationTest {
 
     @Test
     @Tag("AC-4")
+    @DisplayName("AC-4: RequestCommandController.CreateRequestBody.title strip HTML（title 為短標題，純文字）；description 保留待 S161b'' markdown allowlist")
+    void requestTitleStripsXssButDescriptionUntouched() throws Exception {
+        var dtoClass = innerRecord(
+                Class.forName("io.github.samzhu.skillshub.community.RequestCommandController"),
+                "CreateRequestBody");
+
+        // title 含 HTML → strip；description 含 HTML → 保留（待 S161b'' markdown allowlist）
+        var json = """
+                {"title":"<b>Bold</b><script>x</script>Need a skill",
+                 "description":"<p>multi-line</p><strong>info</strong>"}
+                """;
+        var dto = MAPPER.readValue(json, dtoClass);
+
+        assertThat(getStringField(dto, "title")).isEqualTo("BoldNeed a skill");
+        // description 暫不動 — 等 S161b'' OWASP HtmlPolicyBuilder 接管 markdown safe subset
+        assertThat(getStringField(dto, "description")).contains("<p>");
+    }
+
+    @Test
+    @Tag("AC-4")
     @DisplayName("AC-4: UpdateCollectionBody name + description 同樣 strip")
     void updateCollectionNameAndDescriptionStripXss() throws Exception {
         var dtoClass = innerRecord(

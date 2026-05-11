@@ -300,6 +300,37 @@ deploy 後：
 
 ---
 
+## 6.8 Phase 4 結果（2026-05-12）— S161b' partial：request.title
+
+### Ship 範圍
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-4 (部分) | `RequestCommandController.CreateRequestBody.title` 走 PlainTextDeserializer strip HTML | ✅ PASS — `<b>Bold</b><script>x</script>Need a skill` → `BoldNeed a skill` |
+
+### Defer 至 S161b''（OWASP markdown allowlist）
+
+| AC | 內容 | 為何 defer |
+|---|---|---|
+| AC-5 | `CreateRequestBody.description` 保留 markdown safe subset | description 為「多行 markdown」場景，需 OWASP `HtmlPolicyBuilder.allowElements("p","br","strong","em","ul","ol","li","code","pre","blockquote","a","h1","h2","h3").allowAttributes("href").onElements("a").allowStandardUrlProtocols()` 政策，與 PlainTextDeserializer 機制不同（不是 strip 而是 allowlist sanitize）|
+| AC-6 | `javascript:` URL 擋 | 同上 — 屬 markdown allowlist 範疇 |
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `backend/.../community/RequestCommandController.java` | `CreateRequestBody.title` 加 `@JsonDeserialize(using=PlainTextDeserializer.class)`；javadoc 注 description 待 S161b'' OWASP allowlist |
+| `backend/.../shared/api/PlainTextDeserializerIntegrationTest.java` | 加 1 case 驗 request.title strip + description **不動**（守護「title strip / description 保留 markdown」設計意圖）|
+
+### 驗證指令
+
+```bash
+./gradlew test --tests "*PlainTextDeserializerIntegrationTest"   # 5/5 PASS（含 request.title 新 case）
+./gradlew test --tests "io.github.samzhu.skillshub.community.*"   # 全包無 regression
+```
+
+---
+
 ## 6.7 Phase 3 結果（2026-05-12）— S161c V19 backfill
 
 ### Ship 範圍
