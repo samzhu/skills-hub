@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-12（S163b partial ship — EditSkillModal + PageHeader 編輯 button + updateSkill helper；S163 AC-7 PASS；visibility toggle 拆 S163b'）
+> 最後更新：2026-05-12（S163 全 8 ACs PASS — 原 5-spec 第一個 fully shipped；VisibilityToggleButton 自包 grants query；374/374 vitest PASS）
 
 ## 使用說明
 
@@ -112,9 +112,9 @@
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |
 | S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S162c | API consistency — ownership 拒絕 409→403 sweep（DELETE/PUT 對 review/collection/skill/flag 等需 owner 操作） | S(6) | — | 📐 in-design — spec file 完成 2026-05-09 |
-| S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) → backend XS(3) | S144 ✅ | 🚧 backend ship 2026-05-12（PUT /skills/{id} + AC-1/2/3 PASS）；frontend EditSkillModal + toggle UX 拆 S163b |
-| S163b | Skill owner frontend — EditSkillModal（AC-7）+ PageHeader 編輯 button；visibility toggle 拆 S163b' | XS(3) | S163 ✅ | 🚧 partial ship 2026-05-12（EditSkillModal + 編輯 button + updateSkill helper；19/19 vitest PASS） |
-| S163b' | Skill visibility toggle UX — PageHeader [轉為私人]/[公開分享] button 走既有 /grants API | XS(2) | S163b ✅ | 📋 planned — AC-4/5/6/8 from S163 |
+| S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) → 三段 ship | S144 ✅ | ✅ **shipped 2026-05-12 — 全部 8 ACs PASS**（backend 136564d + EditSkillModal fbce208 + visibility toggle 本 tick）|
+| S163b | Skill owner frontend — EditSkillModal（AC-7）+ PageHeader 編輯 button | XS(3) | S163 ✅ | ✅ shipped 2026-05-12 fbce208 |
+| S163b' | Skill visibility toggle UX — PageHeader [轉為私人]/[公開分享] button | XS(2) | S163b ✅ | ✅ shipped 2026-05-12 — VisibilityToggleButton 自包 grants query；27/27 vitest PASS；374/374 全 suite 無 regression |
 | S164 | Collection owner management — PUT update + DELETE（OPTIONS 確認完全無 mutation methods）| S(5) → backend XS(3) | S150 ✅ ship 前提 | 🚧 backend ship 2026-05-12（PUT+DELETE + 2 events + auth check；6/8 ACs PASS）；frontend AC-7/8 拆 S164b（依 S150）|
 | S164b | Collection owner frontend — EditCollectionModal + CollectionDetailPage action bar + CollectionCard kebab menu | S(4) | S164 ✅ + S150 ✅ | 📋 planned — AC-7/8 from S164 |
 | S165 | Jackson `@JsonView` prod hotfix — `JsonMapperBuilderCustomizer` 顯式 enable `DEFAULT_VIEW_INCLUSION` | XS(2) | S158 ✅ + S166a ✅ | ✅ v4.41.0 — bean + diagnostic test + dev-standards rule |

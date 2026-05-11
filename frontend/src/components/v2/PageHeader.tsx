@@ -11,6 +11,7 @@ import {
   useSubscribeSkill,
   useUnsubscribeSkill,
 } from '@/hooks/useSubscription'
+import { VisibilityToggleButton } from '@/components/VisibilityToggleButton'
 import { HeroMetricsRow } from './HeroMetricsRow'
 import { StatStrip } from './StatStrip'
 
@@ -177,6 +178,7 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
               編輯
             </button>
           )}
+          {isOwner && <VisibilityToggleButton skillId={skill.id} />}
           {isOwner && onShareClick && (
             <button
               type="button"

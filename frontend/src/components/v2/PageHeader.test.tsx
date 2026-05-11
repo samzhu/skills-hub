@@ -1,13 +1,20 @@
 import { render, screen, fireEvent } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi } from 'vitest'
 import { MemoryRouter } from 'react-router'
 import { PageHeader } from './PageHeader'
 import type { Skill } from '@/types/skill'
 import * as subscriptionHooks from '@/hooks/useSubscription'
 import * as useAuthModule from '@/hooks/useAuth'
+import * as grantsApi from '@/api/grants'
 
 vi.mock('@/hooks/useSubscription')
 vi.mock('@/hooks/useAuth')
+vi.mock('@/api/grants', async () => {
+  const actual = await vi.importActual<typeof import('@/api/grants')>('@/api/grants')
+  return { ...actual, fetchGrants: vi.fn().mockResolvedValue([]) }
+})
+void grantsApi // ensure import not tree-shaken
 
 const mockSubscription = vi.mocked(subscriptionHooks)
 const mockUseAuth = vi.mocked(useAuthModule.useAuth)
@@ -33,20 +40,26 @@ function setupMocks(subscribed = false) {
   mockSubscription.useUnsubscribeSkill.mockReturnValue({ mutate: vi.fn() } as any)
 }
 
-const renderHeader = (skill = baseSkill, isOwner = false) =>
-  render(
-    <MemoryRouter>
-      <PageHeader
-        skill={skill}
-        isOwner={isOwner}
-        activeTab="overview"
-        onTabChange={vi.fn()}
-        scores={null}
-        report={null}
-        stats={[]}
-      />
-    </MemoryRouter>,
+const renderHeader = (skill = baseSkill, isOwner = false) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <PageHeader
+          skill={skill}
+          isOwner={isOwner}
+          activeTab="overview"
+          onTabChange={vi.fn()}
+          scores={null}
+          report={null}
+          stats={[]}
+        />
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
+}
 
 describe('PageHeader', () => {
   it('AC-S142a-1: verified=true → shows verified-pill', () => {
@@ -123,19 +136,24 @@ describe('PageHeader', () => {
   it('S163b: owner + onEditClick 有傳 → 顯 [編輯] button + click 觸發 callback', () => {
     setupMocks()
     const onEditClick = vi.fn()
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
     render(
-      <MemoryRouter>
-        <PageHeader
-          skill={baseSkill}
-          isOwner={true}
-          activeTab="overview"
-          onTabChange={vi.fn()}
-          scores={null}
-          report={null}
-          stats={[]}
-          onEditClick={onEditClick}
-        />
-      </MemoryRouter>,
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <PageHeader
+            skill={baseSkill}
+            isOwner={true}
+            activeTab="overview"
+            onTabChange={vi.fn()}
+            scores={null}
+            report={null}
+            stats={[]}
+            onEditClick={onEditClick}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
     )
     const btn = screen.getByTestId('edit-skill-btn')
     expect(btn.textContent).toBe('編輯')
@@ -152,19 +170,24 @@ describe('PageHeader', () => {
   it('regression (S142a-T06 prod-bug): download-cta click invokes onDownload prop', () => {
     setupMocks()
     const onDownload = vi.fn()
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
     render(
-      <MemoryRouter>
-        <PageHeader
-          skill={baseSkill}
-          isOwner={false}
-          activeTab="skill-md"
-          onTabChange={vi.fn()}
-          scores={null}
-          report={null}
-          stats={[]}
-          onDownload={onDownload}
-        />
-      </MemoryRouter>,
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <PageHeader
+            skill={baseSkill}
+            isOwner={false}
+            activeTab="skill-md"
+            onTabChange={vi.fn()}
+            scores={null}
+            report={null}
+            stats={[]}
+            onDownload={onDownload}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
     )
     fireEvent.click(screen.getByTestId('download-cta'))
     // 守 onClick wiring：S142a-T06 ship 時這個 button 接 onClick={onDownload} 但 parent (SkillDetailPage)

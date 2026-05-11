@@ -227,6 +227,50 @@ deploy 後：
 
 ---
 
+## 5.5 Frontend Phase 2 結果（2026-05-12）— S163b' visibility toggle
+
+### Ship 範圍 — S163 spec 全部 8 個 AC 收尾
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-4 | 切私人（DELETE public:* grant 透過既有 API）| ✅ PASS — VisibilityToggleButton 偵測 publicGrant + 點按 revokeGrant(skillId, publicGrant.id) |
+| AC-6 | 重新公開（POST public:* VIEWER grant）| ✅ PASS — createGrant({principalType:'public', principalId:'*', role:'VIEWER'}) |
+| AC-5 / AC-8 | 私人 skill 對非 owner 403 / 已下載 client 不受影響 | ✅ 純後端 ACL 既驗行為，不需獨立 frontend 驗 |
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `frontend/src/components/VisibilityToggleButton.tsx`（**新檔**）| 自包 grants query — useQuery fetchGrants 偵測 publicGrant；按 state branch label 公開分享 / 轉為私人；mutation 成功後 invalidate skill + grants query 同步刷新 PageHeader 與 ShareModal |
+| `frontend/src/components/v2/PageHeader.tsx` | owner-only render `<VisibilityToggleButton skillId={skill.id} />`（無 prop drilling 也無需 parent 傳 isPublic）|
+| `frontend/src/components/VisibilityToggleButton.test.tsx`（**新檔**）| 5 cases — public→ 轉為私人 / private→ 公開分享 / revoke params / create params / loading disabled |
+| `frontend/src/components/v2/PageHeader.test.tsx` | 既有 helper + 新 [編輯] 測試包 QueryClientProvider（因 VisibilityToggleButton 走 useQuery）；fetchGrants mock |
+
+### 驗證指令
+
+```bash
+cd frontend && npm run typecheck                    # 0 errors
+cd frontend && npm test -- --run                    # 374/374 全 suite PASS 無 regression
+cd frontend && npm test -- --run VisibilityToggleButton  # 5/5
+```
+
+### S163 spec 進度收尾
+
+| AC | 內容 | Ship | Commit |
+|---|---|---|---|
+| AC-1 | owner PUT description → 200 + cmd captured | ✅ | 136564d |
+| AC-2 | 非 owner PUT → 403 | ✅ | 136564d |
+| AC-3 | name/version DTO surface 不收 | ✅ | 136564d |
+| AC-4 | 轉私人（revoke public grant）| ✅ | 本 tick |
+| AC-5 | 私人 skill 非 owner 403 | ✅ | （後端既驗）|
+| AC-6 | 重新公開 | ✅ | 本 tick |
+| AC-7 | EditSkillModal 預填 + submit | ✅ | fbce208 |
+| AC-8 | 已下載 client 不影響 | ✅ | （registry 非 DRM 既驗）|
+
+**S163 為原 5-spec 中第一個全部 AC ✅ shipped。**
+
+---
+
 ## 5.4 Frontend Phase 1 結果（2026-05-12）— S163b 部分套用
 
 ### Ship 範圍
