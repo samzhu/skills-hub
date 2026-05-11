@@ -300,6 +300,41 @@ deploy 後：
 
 ---
 
+## 6.7 Phase 3 結果（2026-05-12）— S161c V19 backfill
+
+### Ship 範圍
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-7 | `V19__sanitize_existing_user_text.sql` Flyway migration | ✅ ship — Testcontainers 啟動驗證 SQL syntax + 4 個 UPDATE 跑通 |
+
+### 涵蓋欄位（與 PlainTextDeserializer 套用點 1:1 對齊）
+
+| Table.column | 處理 | 邊界 |
+|---|---|---|
+| `reviews.content` | 雙 pass strip（script/style 連內容 + tag）| NOT NULL + CHECK len ≥ 1 → 空字串退化 placeholder `[redacted by S161c: original review content was HTML-only]` |
+| `flags.description` | 雙 pass strip | nullable → 空字串退化 NULL |
+| `collections.name` | 雙 pass strip | NOT NULL → 空字串退化 `[redacted collection name]` |
+| `collections.description` | 雙 pass strip | nullable → 空字串退化 NULL |
+
+### 不涵蓋
+
+- `requests.title` / `requests.description` — markdown 結構 SQL regex 會破合法 inline tag；屬 S161b' 範疇
+- `skills.description` / `skills.name` — owner-published 受 SKILL.md validator 約束，非 user free-form
+
+### 冪等性
+
+`WHERE content ~ '<[a-zA-Z/]'` 只 match HTML-tag-shape；strip 後該 pattern 不再 match → 重跑 0 row。Flyway 預設不重跑已 applied migration，但本 SQL 也支援人工 reset 重跑場景。
+
+### 驗證指令
+
+```bash
+./gradlew test --tests "io.github.samzhu.skillshub.review.*" --tests "io.github.samzhu.skillshub.community.*"
+# Testcontainers 啟動會跑全部 V*.sql 含 V19；BUILD SUCCESSFUL 代表 syntax 正確、四個 UPDATE 跑得通
+```
+
+---
+
 ## 6.6 Phase 2 結果（2026-05-12）— S161b 部分套用
 
 ### Ship 範圍 — 3 個 DTO 對齊 PlainTextDeserializer

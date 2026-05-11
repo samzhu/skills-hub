@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-12（S161b partial ship — PlainTextDeserializer 套到 flag + collection 5 個欄位；附帶 fix RiskAssessmentIntegrationTest S157 LlmJudge always-on regression）
+> 最後更新：2026-05-12（S161c ship — V19 backfill SQL strip reviews/flags/collections 4 欄位既存 HTML payload；Testcontainers 啟動驗證 syntax + run-through）
 
 ## 使用說明
 
@@ -108,7 +108,7 @@
 | S161 | User input sanitization — Review / Flag / Request 文字欄位 XSS strip + backfill | S(6) → Phase 1 XS(3) | — | 🚧 Phase 1 ship 2026-05-12（PlainTextDeserializer + review.content；regex 取代 OWASP 避 entity encode 破繁中；8/8 PASS）|
 | S161b | Apply PlainTextDeserializer 至 flag + collection DTOs（completed）；request DTO + markdown allowlist 拆 S161b' | XS(2) | S161 ✅ | 🚧 partial ship 2026-05-12（flag.description + collection.name/description PASS；附帶 fix RiskAssessmentIntegrationTest S157 regression）|
 | S161b' | Request DTO + markdown safe subset (OWASP HtmlPolicyBuilder) | S(4) | S161 ✅ | 📋 planned — AC-5/6 from S161 |
-| S161c | V20 Flyway migration backfill 既存 stored XSS payload | XS(2) | S161 ✅ | 📋 planned — AC-7 from S161 |
+| S161c | V19 Flyway migration backfill 既存 stored XSS payload | XS(2) | S161 ✅ | ✅ shipped 2026-05-12 — V19 cover reviews/flags/collections 4 個欄位；Testcontainers 啟動驗證；雙 pass strip + placeholder 退化保 NOT NULL/CHECK 邊界 |
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |
 | S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S162c | API consistency — ownership 拒絕 409→403 sweep（DELETE/PUT 對 review/collection/skill/flag 等需 owner 操作） | S(6) | — | 📐 in-design — spec file 完成 2026-05-09 |
