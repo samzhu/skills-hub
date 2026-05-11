@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-11（v4.47.0 ship — S154 author display identity backend；platform user_id 解耦 OAuth sub）
+> 最後更新：2026-05-11（v4.48.0 ship — S168 GraalVM native image JDBC Boolean read converter workaround；繞 oracle/graal#5672 MethodHandle adaptation bug；修 LAB /browse「載入技能失敗」400）
 
 ## 使用說明
 
@@ -117,6 +117,7 @@
 | S166d | AOT-doc cleanup — README/CONTRIBUTING/qa-strategy/architecture/ADR-007/playwright-expert/`e2e/playwright.config.ts` 移 `-x processAot` 殘留 | XS(1) | S166a ✅ | ✅ v4.41.0 — micro-spec ship 同 v4.41.0 |
 | S167 | 移除 deprecated `/api/v1/skills/{id}/acl` HTTP layer — controller + test + frontend doc + S016/E2E test 對齊 `/grants` shape | XS(2) | S114a ✅ + v4.41.0 deprecation log | ✅ v4.42.0 — HTTP 層拿掉；dead code 留 S167b |
 | S167b | dead-code 清理 — `SkillCommandService.grantAcl/revokeAcl` + `Skill.grantAcl/revokeAcl` + `SkillAclGrantedEvent/Revoked` + `SkillAclQueryService` + `AuditEventListener` 對應 handlers + 4 個 unit test | S(5) | S167 ✅ | ✅ v4.45.0 — 8 整檔 + 3 production + 3 test 修改；36/36 PASS；S154 backend sequencing 鋪路 |
+| S168 | GraalVM native image — JDBC Boolean read converter workaround（`@ReadingConverter Converter<Integer, Boolean>` via `userConverters()` 繞 oracle/graal#5672 MethodHandle adaptation bug；fix `User.contactEmailPublic` 讀回 IAE → 全域順便防 NotificationPreference 4 boolean latent；含 architecture.md 修正 production deploy mode 描述 + dev-standards 上游追蹤 checkpoint） | S(9) | S154 ✅ | ✅ v4.48.0 — 4 tasks PASS / 723 test suite + verify-all 8/8 CRITICAL green / regression detection 反向驗證 ✅；AC-4 manual deploy 待 ship 後驗收 |
 | S2XX-cache | 未來 re-introduce ACL eval cache（profiling-driven，明確 SLA 觸發） | — | production traffic 起來 | ⏸ deferred |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |

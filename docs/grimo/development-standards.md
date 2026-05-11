@@ -245,5 +245,19 @@ void serializesCorrectly() throws Exception {
 
 - Build: `./gradlew build`（含前端 build + 後端 build + test）
 - Container: `./gradlew bootBuildImage` 或 Dockerfile
-- Deploy target: GCP Cloud Run
+- Deploy target: GCP Cloud Run（GraalVM native image，per architecture.md GraalVM AOT Strategy 段）
 - CI pipeline: build → test → container build → deploy
+
+## Upstream Issue Tracking
+
+升 Spring Boot / GraalVM / Spring Data JDBC 版本前 reviewer 必查以下上游 issue 狀態，fixed 後評估拔對應 in-repo workaround。
+
+| Upstream issue | Workaround in repo | 移除條件 |
+|---|---|---|
+| [oracle/graal#5672 GR-45258](https://github.com/oracle/graal/issues/5672) — SubstrateVM MethodHandle adaptation 把 BOOLEAN column 讀回的 Boolean corrupt 成 Integer | `JdbcConfiguration.IntegerToBooleanConverter`（S168） | issue closed + GraalVM release notes 列入 fixed version；升 GraalVM 後寫 native test 直讀 `users.contact_email_public` 不 corrupt → 拔 converter + 該段 architecture.md 表格 |
+| [spring-data-relational#2186](https://github.com/spring-projects/spring-data-relational/issues/2186) — 同 stacktrace 已被 Spring 認定 external project | 同上 converter | issue reopened 或 Spring 接手 in-framework workaround → 改用官方方案 |
+| [CycloneDX/cyclonedx-gradle-plugin#821](https://github.com/CycloneDX/cyclonedx-gradle-plugin/issues/821) — cyclonedx-bom 3.2.4 vs nativeCompile task graph 衝突 | `build.gradle.kts` line 12 plugin 註解；無 SBOM 產出 | 上游 4.x release（issue 解）→ reactivate S148f spec |
+
+**檢查時機**：(a) 每次 dependency bump PR；(b) 每月例行 dependency review；(c) 出現 unexpected production failure 時優先查相關上游 issue 是否已關。
+
+**檢查方法**：`gh issue view oracle/graal#5672 --json state,closedAt,labels` 或瀏覽器開連結；若狀態變 closed → 開新 spec 拔 workaround。

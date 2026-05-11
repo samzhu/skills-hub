@@ -567,16 +567,23 @@ npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer
 
 > Source: S148b POC v4 (2026-05-09) — `nativeCompile` BUILD SUCCESSFUL in 3m 17s 出 223 MB native binary，證實 reflection metadata 完整度足夠。本段記錄目前 AOT 編譯機制現況與啟用 native production deploy 的升級路徑。
 
-### (a) Production deploy mode：JVM buildpack（非 native-image）
+### (a) Production deploy mode：GraalVM native image
 
-目前 production 走 **Paketo JVM buildpack**（`./gradlew bootBuildImage` 預設行為），不是 native-image。但 GraalVM 工具鏈完整可用：
+Production 跑 **GraalVM native image**（Paketo `paketo-buildpacks/native-image` buildpack 自動觸發 — `org.graalvm.buildtools.native` 0.11.5 plugin 在 META-INF 寫入 GraalVM metadata 後 Paketo `noble-java-tiny` order group 優先選 `java-native-image` buildpack；`cloudbuild.yaml` E2_HIGHCPU_32 + 32GB heap 即為配合 native compile 之配置）。Cloud Run image 為 ELF executable，cold start 顯著低於 JVM mode。
 
 ```bash
-cd backend && ./gradlew nativeCompile               # 手動產 native binary（POC v4 驗 3m 17s）
-ls backend/build/native/nativeCompile/skillshub      # 223 MB ELF executable，啟動 Spring Boot 4.0.6 banner 正常
+cd backend && ./gradlew nativeCompile               # 手動產 native binary（local 約 3m）
+ls backend/build/native/nativeCompile/skillshub      # ~223 MB ELF executable
 ```
 
-切換到 native production deploy 的觸發條件見 (e)。
+**已知 native image 限制 + workaround**：
+
+| Bug 來源 | 現況 | 我們的處置 |
+|---|---|---|
+| [oracle/graal#5672 GR-45258](https://github.com/oracle/graal/issues/5672) — SubstrateVM MethodHandle adaptation 把 BOOLEAN column 讀回的 Boolean corrupt 成 Integer，AOT-generated entity accessor 灌進 primitive `boolean` field 拋 IAE | 上游 open，無 fix release | **S168** — `JdbcConfiguration.IntegerToBooleanConverter`（@ReadingConverter）在 Spring Data JDBC mapping pipeline 攔截 Integer → Boolean，繞過 GraalVM bug；scope 全域 entity primitive boolean field |
+| [spring-data-relational#2186](https://github.com/spring-projects/spring-data-relational/issues/2186) | duplicate of MongoDB #5101，Spring 認定 GraalVM 上游 bug | 同上 — 等上游修後可拔 workaround（追蹤 checkpoint 見 development-standards.md「Upstream Issue Tracking」段） |
+
+降回 JVM buildpack 的條件見 (e)。
 
 ### (b) AOT processing 啟用機制
 
@@ -624,24 +631,23 @@ V3+（plugin 整個註解）     : ✅ 通過
 
 追蹤：**S148f ⏸ deferred**（spec 仍在 backlog，等觸發條件之一）。
 
-### (e) 未來啟用 native production deploy 觸發條件
+### (e) 降回 JVM buildpack 的條件（目前不適用）
 
-升級路徑（依序滿足）：
+Production 已在 native image。降回 JVM buildpack 只在以下情境會考慮：
 
-1. **S148f** ship — cyclonedx 衝突修復，恢復 plugin
-2. **Cloud Build pipeline 切 BP_NATIVE_IMAGE=true** — Paketo `noble-java-tiny` order group `java-native-image` 已含必要 buildpack，metadata 存在即觸發 native compile chain；目前 `cloudbuild.yaml` 預設走 JVM buildpack
-3. **評估邊際效益** — 目前 JVM mode + AOT cache 已 cold start ~0.5s；切 native binary（cold start 進一步壓低 + 記憶體佔用降）vs build time 成本（local 3 分鐘、CI 25–35 分鐘 cold cache）。**邊際效益待評估**，不主動切換
+1. GraalVM upstream regression 大量 reflection metadata 漏 — 短期 hotfix 路徑（CI 改 `BP_NATIVE_IMAGE=false` 或註解 `org.graalvm.buildtools.native` plugin），補完 metadata 後切回
+2. native compile time（local ~3 分鐘 / CI 25–35 分鐘 cold cache）成為 dev velocity 瓶頸 — 評估 trade-off
 
-啟用 `nativeTest` 進 nightly CI 屬獨立議題（與 (c) 的 build-time fast-fail 重疊涵蓋率，ROI 待 native production deploy 上線後再評估）。
+`nativeTest` 進 nightly CI 仍未啟（ROI 待評估；目前 (c) build-time `-PexactReachability=true` fast-fail 涵蓋率夠 MVP 階段）。
 
 ### Reviewer 自檢
 
 讀完本段應能回答：
 
-- 「目前 production 跑 native 還是 JVM？」 → JVM（Paketo JVM buildpack）。Native 工具鏈完整但未啟用 production deploy。
-- 「誰的 reflection metadata 是手動加 vs auto-register？」 → 手動：`ScoreNativeConfig.java` 用 `@RegisterReflectionForBinding(JudgeResponse.class)`（S148 v4.25.0 ship）。其餘走 Spring Boot 4 auto-registration + `org.graalvm.buildtools.native` plugin scan。
+- 「目前 production 跑 native 還是 JVM？」 → **GraalVM native image**（`org.graalvm.buildtools.native` plugin metadata 觸發 Paketo `paketo-buildpacks/native-image` buildpack 自動選擇）。
+- 「誰的 reflection metadata 是手動加 vs auto-register？」 → 手動：`ScoreNativeConfig.java` 用 `@RegisterReflectionForBinding(JudgeResponse.class)`（S148 v4.25.0）。其餘走 Spring Boot 4 auto-registration + `org.graalvm.buildtools.native` plugin scan。
 - 「想跑 native compile 怎麼跑？fast-fail 怎麼開？」 → `./gradlew nativeCompile`（一般），`-PexactReachability=true` 加上去開 fast-fail。
-- 「為何不直接切 native production deploy？」 → S148f cyclonedx 衝突未修 + JVM cold start 已達 ~0.5s 邊際效益不高。
+- 「native image 已知會踩什麼 GraalVM bug？我們怎麼處理？」 → BOOLEAN column 讀回 MethodHandle adaptation 把 Boolean corrupt 成 Integer（oracle/graal#5672）— S168 註冊 `IntegerToBooleanConverter` 全域攔截。新加 entity 的 primitive boolean field 自動受保護，但需在升 Spring Boot / GraalVM 版本時查上游 issue 狀態（development-standards.md「Upstream Issue Tracking」段）。
 
 ---
 

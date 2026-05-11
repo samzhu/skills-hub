@@ -1,5 +1,40 @@
 # Changelog
 
+## [v4.48.0] — GraalVM native image JDBC Boolean read converter workaround（S168；2026-05-11）
+
+> Production hotfix：Cloud Run native image 登入 `/browse` 後所有頁面顯示「載入技能失敗」— GraalVM SubstrateVM MethodHandle adaptation 在 native runtime 把 BOOLEAN column 讀回的 Boolean 值 corrupt 成 Integer，Spring AOT-generated entity accessor 灌進 primitive `boolean` field 拋 IAE。Spring Data JDBC 4.x 註冊 `@ReadingConverter Converter<Integer, Boolean>` 在 mapping pipeline 攔截，繞過 GraalVM bug。Scope 全域 — 順便防 `NotificationPreference` 4 boolean field 同類 latent bug。
+>
+> Stacktrace from Cloud Run revision `skillshub-00017-pzc` (2026-05-11 02:03:58)；root cause 為 [oracle/graal#5672 GR-45258](https://github.com/oracle/graal/issues/5672)（GraalVM 上游 bug，open；duplicate of [spring-data-relational#2186](https://github.com/spring-projects/spring-data-relational/issues/2186) Spring 認 external project）。
+
+### Add
+
+- **`JdbcConfiguration.IntegerToBooleanConverter`** — `@ReadingConverter` static inner class 實作 `Converter<Integer, Boolean>`；`source != null && source != 0` null-safe；註冊到 `userConverters()` 第 5 項。Scope 全域 entity primitive boolean field（type-pair (Integer, Boolean) HashMap lookup 在 mapping pipeline 對所有 entity 一致觸發）。
+- **`JdbcConfigurationConverterTest`** — extends `RepositorySliceTestBase` 拿 `JdbcConverter` bean；4 個 @Test 用 `RowDocument(Map.of(..., "contact_email_public", Integer.valueOf(0/1)))` 模擬 GraalVM corrupt input：(1) AC-1 converter 邏輯 5 case；(2-3) AC-2 User entity Integer→Boolean 兩 case (false/true)；(4) AC-3 NotificationPreference 4 boolean fields。Regression detection 反向驗證：暫拔 converter → 3 fail with `ConverterNotFoundException`，restore → 4/4 PASS。
+- **`development-standards.md` § Upstream Issue Tracking** — 新段含 3-row 表（oracle/graal#5672 / spring-data-relational#2186 / cyclonedx#821）標 workaround in repo + 移除條件；檢查時機（dependency bump PR / 月例 review / production failure）+ `gh issue view` 範例命令。
+
+### Change
+
+- **`architecture.md` § GraalVM AOT Strategy** — (a) Production deploy mode 描述從「JVM buildpack（非 native-image）」改為「GraalVM native image（Paketo native-image buildpack 自動觸發）」對齊 Cloud Run 實況；(a) 段加 Known native image 限制 + workaround 表（指向 oracle/graal#5672 + S168）；(e) 從「升級路徑」改為「降回 JVM 路徑（目前不適用）」；Reviewer 自檢 Q1 答案改 native + 新加 Q4 native bug + workaround。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-11-S168-aot-jdbc-boolean-converter.md` → archive
+- 4 個 task file（T01 ~ T04）已於 `/planning-tasks` Phase 4 清除
+- spec-roadmap.md S168 狀態 ⏳ Done → ✅ v4.48.0
+
+### Verification
+
+- `./gradlew test`：tests=723 failures=0 errors=0（含 4 個新增 `JdbcConfigurationConverterTest`）
+- `verify-all.sh`：8/8 CRITICAL PASS（V01-V08b；含 V08b `bootBuildImage` native image build；2026-05-11 03:28）
+- 獨立 QA subagent：PASS（2 minor non-blocking findings：§5 file plan + §6 task plan 描述 test infra 與實作不對齊；in-place fix 對齊 actual `RepositorySliceTestBase` 路徑）
+- AC-4 manual deploy 驗收：⏳ pending — ship 後開 https://skillshub-644359853825.asia-east1.run.app/browse 確認「載入技能失敗」訊息消失，3 截圖（頁面 / Network 200 / Cloud Run log 無 IAE）後本 row 改 ✅
+
+### Tracking
+
+未來上游修 `oracle/graal#5672` 後可拔 `IntegerToBooleanConverter` — 追蹤 checkpoint 見 `development-standards.md § Upstream Issue Tracking`。
+
+---
+
 ## [v4.47.0] — Author display identity backend（S154；2026-05-11）
 
 > Backend foundation for displaying readable author identity instead of raw OAuth sub. 建立 `users` 表把 OAuth `sub` 跟平台 `user_id` 解耦；既存 `skills.author` / `owner_id` / `acl_entries` 全切到 `user_id`；API 回傳 `authorDisplayName / Handle / Email-conditional`；順手修「caller 偽造 author」漏洞。
