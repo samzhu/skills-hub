@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
+import io.github.samzhu.skillshub.shared.api.PlainTextDeserializer;
+
 /**
  * S096f2-T02 — Collection command endpoints（per spec §4.1）。
  *
@@ -69,9 +73,23 @@ class CollectionCommandController {
         return ResponseEntity.noContent().build();
     }
 
-    record CreateCollectionBody(String name, String description, String category, List<String> skillIds) {}
+    /**
+     * S161b：{@code name} / {@code description} 走 {@link PlainTextDeserializer} silently
+     * strip HTML markup。{@code category} 為 controlled enum-like 值（前端走 select），
+     * {@code skillIds} 為 ID 字串 list，不需 sanitize。
+     */
+    record CreateCollectionBody(
+            @JsonDeserialize(using = PlainTextDeserializer.class) String name,
+            @JsonDeserialize(using = PlainTextDeserializer.class) String description,
+            String category,
+            List<String> skillIds) {}
 
-    record UpdateCollectionBody(String name, String description, String category, List<String> skillIds) {}
+    /** S161b：mirror CreateCollectionBody — name / description 同樣 strip HTML。 */
+    record UpdateCollectionBody(
+            @JsonDeserialize(using = PlainTextDeserializer.class) String name,
+            @JsonDeserialize(using = PlainTextDeserializer.class) String description,
+            String category,
+            List<String> skillIds) {}
 
     record InstallResponse(List<String> downloadUrls) {}
 }

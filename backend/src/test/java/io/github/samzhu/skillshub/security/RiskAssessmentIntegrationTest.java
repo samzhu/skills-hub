@@ -178,17 +178,21 @@ class RiskAssessmentIntegrationTest {
 							.isEqualTo("https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.json");
 
 					// runs[]：每個啟用引擎一個 run。
-					// LLM 關閉的情況下目前 7 engines：
+					// S157 後 llm-judge 改為 always-registered（不論 api-key 是否存在）；缺 api-key
+					// 走 graceful skip 路徑：emit 一筆 toolExecutionNotification「LLM judge disabled
+					// (engine off or api-key absent)」+ 0 findings。故 LAB / unit test 環境下出 8 engines：
 					//   pattern, secret, metadata, meta（基礎四 engine）
 					//   dep-vuln, prompt-injection, resource-dos（後續擴充）
+					//   llm-judge（S157 後 always-present，無 api-key 時 0 findings + skip notice）
 					var runs = (List<Map<String, Object>>) sarif.get("runs");
-					assertThat(runs).hasSize(7);
+					assertThat(runs).hasSize(8);
 					assertThat(runs)
 							.extracting(r -> ((Map<String, Object>) r.get("tool")).get("driver"))
 							.extracting(d -> (String) ((Map<String, Object>) d).get("name"))
 							.containsExactlyInAnyOrder(
 									"pattern", "secret", "metadata", "meta",
-									"dep-vuln", "prompt-injection", "resource-dos");
+									"dep-vuln", "prompt-injection", "resource-dos",
+									"llm-judge");
 
 					// scannedAt 是合法時間戳（JSONB 序列化為 ISO-8601 字串）
 					assertThat(riskAssessment.get("scannedAt"))

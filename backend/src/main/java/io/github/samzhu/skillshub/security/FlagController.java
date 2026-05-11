@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
+import io.github.samzhu.skillshub.shared.api.PlainTextDeserializer;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 
 /**
@@ -84,10 +87,15 @@ public class FlagController {
 	/**
 	 * 建立 Flag 的請求本體結構。
 	 *
+	 * <p>S161b：{@code description} 走 {@link PlainTextDeserializer} silently strip HTML markup
+	 * （防 stored XSS — 即使審核者 UI 改用 markdown renderer 也擋住）。
+	 *
 	 * @param type        舉報類型代碼
-	 * @param description 舉報原因說明
+	 * @param description 舉報原因說明（會被 strip HTML tag）
 	 */
-	record CreateFlagRequest(String type, String description) {}
+	record CreateFlagRequest(
+			String type,
+			@JsonDeserialize(using = PlainTextDeserializer.class) String description) {}
 
 	/** S098e3：PATCH body — 目標 status name（必為 RESOLVED 或 DISMISSED）。 */
 	record UpdateFlagStatusRequest(String status) {}

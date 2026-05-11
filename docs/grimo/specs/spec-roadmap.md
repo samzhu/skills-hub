@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-12（S164 backend ship — PUT/DELETE collection 6/8 ACs PASS；frontend AC-7/8 拆 S164b；原 5-spec 全 backend ship 達成）
+> 最後更新：2026-05-12（S161b partial ship — PlainTextDeserializer 套到 flag + collection 5 個欄位；附帶 fix RiskAssessmentIntegrationTest S157 LlmJudge always-on regression）
 
 ## 使用說明
 
@@ -106,7 +106,8 @@
 | S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) → Phase 1 S(5) | — | 🚧 Phase 1 ship 2026-05-12（4 headers + 5 ACs PASS / 5 = AC-4/5/6/7/9）；CSRF + frontend coordination defer 至 S160b |
 | S160b | CSRF re-enable + frontend apiFetch X-XSRF-TOKEN + CSP report endpoint | S(5) | S160 ✅ | 📋 planned — AC-1/2/3/8 from S160 |
 | S161 | User input sanitization — Review / Flag / Request 文字欄位 XSS strip + backfill | S(6) → Phase 1 XS(3) | — | 🚧 Phase 1 ship 2026-05-12（PlainTextDeserializer + review.content；regex 取代 OWASP 避 entity encode 破繁中；8/8 PASS）|
-| S161b | Apply PlainTextDeserializer 至 flag/request/collection DTO + request.description markdown allowlist (OWASP HtmlPolicyBuilder) | S(4) | S161 ✅ | 📋 planned — AC-3/4/5/6 from S161 |
+| S161b | Apply PlainTextDeserializer 至 flag + collection DTOs（completed）；request DTO + markdown allowlist 拆 S161b' | XS(2) | S161 ✅ | 🚧 partial ship 2026-05-12（flag.description + collection.name/description PASS；附帶 fix RiskAssessmentIntegrationTest S157 regression）|
+| S161b' | Request DTO + markdown safe subset (OWASP HtmlPolicyBuilder) | S(4) | S161 ✅ | 📋 planned — AC-5/6 from S161 |
 | S161c | V20 Flyway migration backfill 既存 stored XSS payload | XS(2) | S161 ✅ | 📋 planned — AC-7 from S161 |
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |
 | S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |

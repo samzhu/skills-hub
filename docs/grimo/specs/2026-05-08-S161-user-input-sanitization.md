@@ -300,6 +300,40 @@ deploy 後：
 
 ---
 
+## 6.6 Phase 2 結果（2026-05-12）— S161b 部分套用
+
+### Ship 範圍 — 3 個 DTO 對齊 PlainTextDeserializer
+
+| AC | DTO 欄位 | 狀態 |
+|---|---|---|
+| AC-3 | `FlagController.CreateFlagRequest.description` | ✅ PASS — `<script>` strip + 繁中保留 |
+| AC-4 | `CollectionCommandController.CreateCollectionBody.name + description` | ✅ PASS — `<b>` / `<script>` strip |
+| AC-4 | `CollectionCommandController.UpdateCollectionBody.name + description` | ✅ PASS — `<img onerror>` / `<style>` 連內容 strip |
+
+### Defer 至 S161b'（Request 模組 + markdown allowlist）
+
+- Request DTO（title plain-text + description markdown safe subset）— 需 OWASP `HtmlPolicyBuilder.allowElements(...)` 拉 dep；獨立 design tick
+- V20 backfill SQL → S161c
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `backend/.../security/FlagController.java` | `CreateFlagRequest.description` 加 `@JsonDeserialize(using=PlainTextDeserializer.class)` |
+| `backend/.../community/CollectionCommandController.java` | `CreateCollectionBody.name+description` + `UpdateCollectionBody.name+description` 同樣加 annotation |
+| `backend/.../shared/api/PlainTextDeserializerIntegrationTest.java`（**新檔**）| reflection-based 走 ObjectMapper roundtrip 驗 3 DTOs sanitization wired；setAccessible(true) 對 package-private inner record 取值 |
+| `backend/.../security/RiskAssessmentIntegrationTest.java`（**附帶 fix**）| S157 LlmJudge 改 always-on 後 runs 從 7 變 8（多 llm-judge engine emit「disabled」notice）— 對應 assertion 從 7 改 8；非 S161b 本身但 S157 commit 漏 catch 此 integration test |
+
+### 驗證指令
+
+```bash
+./gradlew test --tests "*PlainTextDeserializerIntegrationTest"            # 4/4 PASS
+./gradlew test --tests "*RiskAssessmentIntegrationTest"                    # S157 regression fix PASS
+./gradlew test --tests "io.github.samzhu.skillshub.security.*" --tests "io.github.samzhu.skillshub.community.*"  # 全包 PASS
+```
+
+---
+
 ## 6.5 Phase 1 結果（2026-05-12）
 
 ### Ship 範圍 — review.content 一個 DTO 作為 PoC
