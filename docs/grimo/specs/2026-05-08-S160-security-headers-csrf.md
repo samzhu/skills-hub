@@ -348,6 +348,56 @@ deploy 後：
 - **WAF / GCP Cloud Armor**: 規則設定
 - **Audit log**: auth failure / privilege escalation 嘗試紀錄
 
+## 7.8 Phase 4 結果（2026-05-12）— S160b''-AC8 CSP report endpoint
+
+### Ship 範圍
+
+| AC | 內容 | 狀態 |
+|---|---|---|
+| AC-8 | CSP violation 接收端 — POST /api/v1/csp-report → 204 + WARN log capture violation | ✅ PASS — 接 3 種 Content-Type（application/csp-report、application/json、application/reports+json）滿足新舊 browser API |
+| AC-4 補強 | CSP header 含 `report-uri /api/v1/csp-report` directive | ✅ PASS — browser CSP violation 時自動 POST 到本端點 |
+
+### 設計
+
+- raw String body（非 typed record）— CSP-Violation spec 各 browser 略有差異（Chrome / Firefox / Safari + 新版 Reporting API group format），嚴格 typed 會排除部分 report；log 完整 captures 給離線分析
+- 3 種 Content-Type allowlist：
+  - `application/csp-report`（標準 W3C CSP-1.0/2.0 違規 body）
+  - `application/json`（舊 Chrome / 一般 fetch）
+  - `application/reports+json`（新版 Reporting API group format）
+- 結構化 log 加 `event=csp_violation` key — 未來串接 ELK / Cloud Logging filter grep 即用
+
+### 改動檔案
+
+| File | 變動 |
+|---|---|
+| `backend/.../shared/security/SecurityConfig.java` | `CSP_REPORT_ONLY` constant 末尾加 `; report-uri /api/v1/csp-report` directive |
+| `backend/.../shared/api/CspReportController.java`（**新檔**）| `@PostMapping(/api/v1/csp-report)` + `@ResponseStatus(NO_CONTENT)` + raw String body + 結構化 WARN log |
+| `backend/.../shared/api/CspReportControllerTest.java`（**新檔**）| 4 cases — 3 種 Content-Type 接收 + CSP header report-uri directive 驗 |
+
+### 驗證指令
+
+```bash
+./gradlew test --tests "*CspReportControllerTest" --tests "*SecurityHeadersTest"  # 9/9 PASS
+```
+
+### S160 spec 進度收尾
+
+| AC | 內容 | Ship |
+|---|---|---|
+| AC-1 | cookie session POST 無 token → 403 | ⏸ defer integration test — 待 production 啟用 cookie session 後實際驗 |
+| AC-2 | Bearer JWT route exempt | ✅ 7449b06 |
+| AC-3 | SPA cookie-based session 流程 | ✅ 686fda0 |
+| AC-4 | CSP Report-Only 啟用（含 report-uri）| ✅ 5acfd17 + 本 tick |
+| AC-5 | HSTS 一年強制 | ✅ 5acfd17 |
+| AC-6 | Referrer-Policy strict-origin | ✅ 5acfd17 |
+| AC-7 | Permissions-Policy deny | ✅ 5acfd17 |
+| AC-8 | CSP report endpoint | ✅ 本 tick |
+| AC-9 | 既有 X-Frame-Options / X-Content-Type-Options 不退化 | ✅ 5acfd17 |
+
+**S160 8/9 ACs PASS**；剩 AC-1 是 integration test 需 production 真實 cookie session 路徑驗證，code-side 路徑已完整（feature flag toggle ON 即運作）。
+
+---
+
 ## 7.7 Phase 3 結果（2026-05-12）— S160b' frontend apiFetch CSRF wiring
 
 ### Ship 範圍

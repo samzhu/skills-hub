@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-12（S160b' frontend apiFetch CSRF wiring ship — withCsrfHeader 自動讀 cookie 注入 header；S160 7/9 ACs PASS；剩 AC-1 integration + AC-8 CSP report endpoint 拆 S160b''）
+> 最後更新：2026-05-12（S160b''-AC8 CSP report endpoint ship — 3 種 Content-Type allowlist + report-uri directive；S160 8/9 ACs PASS；剩 AC-1 cookie session integration 待 production 啟用後驗）
 
 ## 使用說明
 
@@ -103,10 +103,11 @@
 | S159b | Category storage normalize — V19 lowercase migration + CHECK constraint + frontend `capitalize` | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S159c | `?tag=` filter 實作 — controller param + repo `findByTag()` + frontend filter chip | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S159d | Pageable 非法值拒收 — `page < 0` / `size <= 0` / `size > 100` → 400 | XS(2) | — | ✅ v4.44.0 — `PageableValidationInterceptor` + handler；13+1+11+2 unit tests PASS |
-| S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) → 三段 ship | — | 🚧 Phase 1+2+3 ship 2026-05-12（4 headers + CSRF infra + frontend apiFetch；AC-2/3/4/5/6/7/9 PASS = 7/9）；AC-1 integration / AC-8 CSP report 拆 S160b'' |
+| S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) → 四段 ship | — | 🚧 Phase 1-4 ship 2026-05-12（headers + CSRF infra + frontend + CSP report endpoint；8/9 ACs PASS）；AC-1 cookie session integration test 待 production 啟用後實 deploy 驗 |
 | S160b | CSRF infrastructure feature-flag — backend SecurityConfig branch + Bearer JWT exempt（default OFF）| XS(2) | S160 ✅ | ✅ shipped 2026-05-12 — CsrfFlagTest 驗 Bearer exempt；92/92 shared.security PASS |
 | S160b' | Frontend apiFetch X-XSRF-TOKEN auto-inject | XS(2) | S160b ✅ | ✅ shipped 2026-05-12 — withCsrfHeader helper 13/13 PASS；mutation methods 自動 round-trip；387/387 全 vitest 無 regression |
-| S160b'' | CSP report endpoint + cookie session AC-1 integration test | S(3) | S160b' ✅ | 📋 planned — AC-1/8 from S160；待 production 上線 cookie session 路徑後啟動 |
+| S160b'' | CSP report endpoint POST /api/v1/csp-report | XS(2) | S160b' ✅ | ✅ shipped 2026-05-12 — 接 3 種 Content-Type；CSP_REPORT_ONLY constant 加 report-uri directive；4/4 tests PASS |
+| S160b''' | Cookie session AC-1 integration test（CSRF token round-trip via real OAuth login flow） | S(3) | S160 production 啟用 csrf.enabled=true 後 | 📋 planned — AC-1 from S160；待 production 上線 cookie session 路徑後啟動 |
 | S161 | User input sanitization — Review / Flag / Request 文字欄位 XSS strip + backfill | S(6) → 五段 ship | — | ✅ **shipped 2026-05-12 — 全部 8 ACs PASS**（plain-text 7 欄位 + markdown allowlist + V19 backfill；原 5-spec 第二個 fully shipped） |
 | S161b | Apply PlainTextDeserializer 至 flag + collection DTOs | XS(2) | S161 ✅ | ✅ shipped 2026-05-12 0af2883 |
 | S161b' | Request DTO — title plain-text 套用 | XS(1) | S161 ✅ | ✅ shipped 2026-05-12 47a4506 |

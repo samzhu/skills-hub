@@ -92,7 +92,9 @@ class SecurityConfig {
             + "connect-src 'self'; "
             + "frame-ancestors 'none'; "
             + "base-uri 'self'; "
-            + "form-action 'self'";
+            + "form-action 'self'; "
+            // S160b''：browser CSP-Violation 自動 POST 至本路徑；CspReportController 接 204 + WARN log
+            + "report-uri /api/v1/csp-report";
 
     /** S160 Phase 1：Permissions-Policy — deny camera / mic / geolocation；interest-cohort 反 FLoC 隱私訊號。 */
     private static final String PERMISSIONS_POLICY =
