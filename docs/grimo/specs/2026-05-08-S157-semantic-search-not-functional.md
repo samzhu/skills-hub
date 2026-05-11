@@ -1,205 +1,381 @@
 # S157: Semantic Search Not Functional in LAB — Hero Feature 實質失靈
 
-> Spec: S157 | Size: M(8) | Status: 📐 in-design
-> Date: 2026-05-08
-> Origin: deployment audit 2026-05-08（LAB）— 平台主打「語意搜尋」hero feature，但實測 `/search?q=terraform` 對名稱明確含 `terraform` 的 skill 回 0 results。深掘：`/api/v1/search/intent` 回 fallback `{summary: query, concepts: []}`，per `frontend/src/api/search.ts` 註解，這代表 **LLM 未接 / 不可用**；連帶 query embedding 無法生成 → vector search 永遠空集合。
+> Spec: S157 | Size: M(8) → S(6) — root cause 鎖定（2026-05-11 研究），fix pattern 同 QualityJudgeConfig (S135a) proven precedent | Status: 📐 in-design
+> Date: 2026-05-08（origin）/ 2026-05-11（root cause 鎖定）
+> Origin: deployment audit 2026-05-08（LAB）— 平台主打「語意搜尋」hero feature 但 LAB 實測 `/search?q=terraform` 對名稱含 `terraform` 的 skill 回 0 results；連帶 `/api/v1/search/intent` 回 fallback `{"summary":"terraform","concepts":[]}`。
 
 ---
 
 ## 1. Goal
 
-讓「語意搜尋」在 LAB 環境**真的能用**：搜「terraform」找到 `auditing-terraform-...`、搜「容器部署」找到 docker / k8s 類 skill。
+讓「語意搜尋」在 LAB 環境真的能用：搜「terraform」找到 `auditing-terraform-...`、搜「容器部署」找到 docker / k8s 類 skill；同時 `/api/v1/search/intent` 回真實 LLM 解析的中文 summary + 英文 concept tags（不再 echo query）。
 
-**為什麼重要：**
-- LandingPage hero 文案「在每個 AI 程式助理之間探索、發佈、治理 SKILL.md bundle」+ analytics page 顯「語意搜尋 — 自然語言描述需求，由 Gemini embedding + pgvector 比對技能 description」— **賣點明確指向 semantic search**
-- /docs/semantic-search 整篇都在解釋此功能
-- `/search?q=...` UI 完整（fallback CTA、撰寫技巧 link、graceful copy）但**沒實質結果**
-- User 第一次登入跑去搜 → 0 結果 → 對平台價值打問號
+**為什麼重要：** LandingPage hero + `/docs/semantic-search` 都明確標榜「Gemini embedding + pgvector」是核心差異化；UI 完整但 LAB 永遠 0 結果 → user 首次體驗對平台價值打問號。
 
-**非目標：**
-- 不重做語意搜尋 UI（已完整）
-- 不調整 score threshold tuning（先讓功能 work，tuning 留 polish spec）
-- 不解 GraalVM JudgeResponse reflection issue（屬 S148）
+**非目標：** 不重做語意搜尋 UI；不調整 cosine threshold tuning（先讓功能 work）；不重複處理 S148 已 ship 的 `JudgeResponse` reflection hint。
 
 ---
 
-## 2. Root Cause Analysis
+## 2. Root Cause — Validated
 
-### 2.1 觀察到的症狀
+### 2.1 一句話
 
-```
-GET /api/v1/search/semantic?q=terraform        → 200 []
-GET /api/v1/search/semantic?q=test             → 200 []
-POST /api/v1/search/intent  body={query:'terraform'}
-                                                → 200 {"summary":"terraform","concepts":[]}
-```
+LAB 跑的是 **GraalVM native image**。Spring AOT 在 **build time** 評估 `@ConditionalOnProperty(name="skillshub.genai.api-key")`，那個時間點 api-key 還沒注入（runtime 才從 Secret Manager 透過 `${sm@...}` placeholder 拉），AOT 把「bean 不要建」這個決定 baked 進 native binary。Runtime 即使 env var 已 resolve，bean factory 也沒辦法再造出 bean，fallback 路徑（NoOp embedder + `Optional<ChatClient>` empty）接管。
 
-`concepts: []` 是 frontend / backend 共識 fallback signal — per `frontend/src/api/search.ts:21`：
-> When LLM is unavailable, backend graceful-fallbacks to `{summary: query, concepts: []}`.
+跟 S148（reflection metadata）/ S168（Boolean wrapper）同屬「runtime-only 資訊被 AOT freeze 在 build time」家族 bug，不同切面。
 
-→ **LLM 沒接**。
+### 2.2 證據鏈（5 個獨立 validated signal）
 
-### 2.2 假設樹（待驗證）
+1. **LAB 確實是 native image**：
+   - `cloudbuild.yaml:79-97` step 3 跑 `bootBuildImage`；`org.graalvm.buildtools.native` 0.11.5 plugin 在 `META-INF/native-image/` 寫 metadata，Paketo `noble-java-tiny` order group 自動選 `java-native-image` buildpack（per `architecture.md:566-572`）
+   - LAB Cloud Run revision `skillshub-00019-wvz` startup log：`Starting AOT-processed SkillshubApplication ... Started in 5.497 seconds`（native ~5s；JVM bootJar 典型 30-90s）+ working dir `cnb in /workspace`（Paketo CNB user）
 
-```
-A. LAB profile 沒設 Gemini API key
-   → ChatClient bean 失敗 fallback → empty concepts
-B. Gemini 接好但 vector_store 沒 backfill
-   → 每次 publish 該觸發 embedding 寫入 pgvector，
-     但若沒實際跑 → vector search 永遠 0 row 可比
-C. Cosine similarity threshold 太高（如 > 0.8）
-   → 即使有 embedding，3 筆 skill 都被 reject
-D. SkillshubPgVectorStore 自訂實作有 bug（per architecture
-   doc，本平台 extends Spring AI AbstractObservationVectorStore
-   寫了一個 pgvector wrapper）
-```
+2. **api-key 確實有寫進 Secret Manager 並 runtime resolve OK**：
+   - `gcloud secrets versions list skillshub-genai-api-key --project=cfh-vibe-lab` → `1 enabled 2026-05-06`
+   - `service.yaml:116` env var `skillshub.genai.api-key=${sm@skillshub-genai-api-key}` 接線正確
+   - 同 revision `QualityJudgeConfig` 14:30:06.241 log 顯示 `Initialising quality judge ChatModel (API key mode, model=GEMINI_2_5_FLASH)` — runtime sm@ 已 resolve 到真 key
 
-### 2.3 驗證方式（spec implementer 第 1 步）
+3. **同 property 兩個 bean 行為分歧**（startup log 直接對比）：
+   ```
+   14:30:06.241  INFO  QualityJudgeConfig   : Initialising quality judge ChatModel (API key mode, model=GEMINI_2_5_FLASH)
+   14:30:06.259  WARN  SearchConfig         : No EmbeddingModel configured — semantic search disabled. Set skillshub.genai.api-key to enable.
+   14:30:06.261  INFO  SearchIntentService  : SearchIntent: LLM ChatClient unavailable — running in fallback mode (echo query, no concepts)
+   ```
+   QualityJudgeConfig 拿到、SearchConfig 跟 ScannerAiConfig 拿不到 — 差別不在 runtime property 值，**只在 condition 寫法**。
 
-不確定哪個是 root cause，spec 不寫死「就是 A」。要求 implementer 先做 5 分鐘診斷：
+4. **`QualityJudgeConfig.java:17-23` Javadoc 已紀錄此 bug 與修法**：
+   > 「不再對 `skillshub.genai.api-key` 做 build-time 條件 — Spring AOT 會在 build time 評估 `@ConditionalOnProperty`，CI/AOT 階段 api-key 缺席會把整個 bean 從 baked context 排除……改由 factory method runtime 觸發時讀取 api-key（沒設則 client builder 失敗，fail-fast）。」
+   
+   S135a (v3.14.0) ship 時已踩過這坑修過一次；S157 是同坑在 `search` + `security.scan` 兩個 module 沒被修。
 
-1. `gcloud logging read` 找 ChatClient / Gemini / embedding 相關 ERROR/WARN
-2. `psql` 查 `vector_store` 表有幾 row（有 → embedding 有寫；無 → publish flow 沒生 embedding）
-3. 查 `application-lab.yaml` / Cloud Run 環境變數有沒有 `GOOGLE_API_KEY` / `spring.ai.google.genai.api-key`
-4. 跑一次 publish（任意 skill）看 backend log 是否出現 embedding insert SQL
+5. **直打 LAB endpoint 重現症狀，完美對應 fallback 程式碼路徑**：
+   - `POST /api/v1/search/intent {"query":"terraform"}` → `{"summary":"terraform","concepts":[]}` ← `SearchIntentService.java:42-43, 56-58` chatClient.isEmpty() fallback
+   - `GET /api/v1/search/semantic?q=terraform` → `[]` ← NoOpEmbeddingModel 回 768 維零向量 → cosine 距離永遠 1 > maxDistance 0.7（`SemanticSearchService:55, 94`）→ 全 row 被 SQL `WHERE distance < ?` filter 掉
 
-這 4 步應能在 5–10 分鐘鎖定 A/B/C/D 哪一個（或多個）。
-
-### 2.4 修法（依診斷結果分支）
-
-| 根因 | 修法 |
-|------|------|
-| A. Gemini API key 缺 | LAB profile 加 `spring.ai.google.genai.api-key` 配置；GCP Secret Manager 取 key（per architecture doc 用 `${sm@...}`）|
-| B. Embedding 沒 backfill | 跑 backfill job（`SkillVersionPublishedEvent` async listener 觸發 — 確認 listener 註冊；對既有 3 筆 skill 手動觸發 re-embed）|
-| C. Score threshold 太高 | 調整 `SkillshubPgVectorStore` 預設 cosine threshold（如 0.5 / 0.6） |
-| D. PgVectorStore impl bug | 看 `SkillshubPgVectorStore` 的 `doSimilaritySearch()` 邏輯，補測試 |
-
-預期：**A + B 同時成立** 機率最高（LAB 沒設 key + 沒 key 就連 publish-time embedding 也失敗）。
-
----
-
-## 3. Acceptance Criteria
+### 2.3 AOT bake-out 機制
 
 ```
-AC-1: 語意搜尋對「明顯命中」的字回 ≥ 1 結果
-  Given 平台有 skill「auditing-terraform-infrastructure-for-security」
-  When 使用者搜 q=terraform
-  Then /api/v1/search/semantic?q=terraform 回 ≥ 1 結果
-  And 結果第一筆 score > 0.5 且 skillId 對應 auditing-terraform-...
+Build time (Cloud Build container, CI 無 Secret Manager access)
+├── ./gradlew bootBuildImage -Pspring.profiles.active=gcp,aot,lab
+├── processAot task
+│   ├── Spring 評估 @Conditional* annotations 對應 BeanDefinition
+│   │   ├── Environment.getProperty("skillshub.genai.api-key") 來源：
+│   │   │   ├── application*.yaml — 全文無此 key 字面值（grep 確認）
+│   │   │   ├── CI env var — 無（CI 容器無 sm@ resolver）
+│   │   │   └── → null
+│   │   └── @ConditionalOnProperty(name="skillshub.genai.api-key") → false
+│   └── BeanDefinition 排除 googleGenAiEmbeddingModel / scannerChatModel / scannerChatClient
+└── 產出 native binary 內含 baked BeanFactory；其餘永久排除
 
-AC-2: 中文 query 也能命中英文 skill description
-  Given 同上 skill（description 英文「Auditing Terraform...」）
-  When 使用者搜 q=「Terraform 安全稽核」
-  Then 回 ≥ 1 結果且 skillId 對應該 skill
-
-AC-3: Intent endpoint 回真實 concepts
-  Given /api/v1/search/intent body={query:'terraform 部署'}
-  When LLM 接通
-  Then concepts.length > 0（如 ['terraform','deployment','infrastructure']）
-  And summary 是中文 1-sentence 改寫過的描述
-  And 不再回 fallback shape {summary: query, concepts: []}
-
-AC-4: vector_store 表有對應 row
-  Given 平台 3 筆 skill 都已 publish
-  When SQL: SELECT count(*) FROM vector_store
-  Then ≥ 3（每個 skill version 至少 1 row embedding）
-
-AC-5: 新 publish skill 自動觸發 embedding
-  Given 任何人 publish 一筆新 skill
-  When SkillVersionPublishedEvent 觸發 async listener
-  Then ≤ 30 秒內 vector_store 出現對應 row
-  And 後續搜尋能命中此 skill
-
-AC-6: Frontend graceful fallback 文案保留
-  Given 真實有 0 命中（query 太抽象，no match）
-  When 頁面 render
-  Then 仍顯示既有「這個描述還沒有匹配的技能」+ 3 個 CTA
-  Note: 不改 frontend；只測 backend 真的有 result 時 frontend
-        會 render 結果而非 fallback empty state
+Runtime (Cloud Run, 容器啟動)
+├── native ELF 執行
+├── env var skillshub.genai.api-key=${sm@skillshub-genai-api-key} 注入
+├── spring-cloud-gcp 啟動時 resolve sm@ → 真 API key string ← QualityJudgeConfig 證實此步成功
+├── @Conditional* 已 freeze（baked BeanDefinition 不再重評估）
+└── 三個 bean 永遠不存在 → @ConditionalOnMissingBean fallback (NoOp) 接管
+                       → Optional<ChatClient> 永遠 empty
 ```
 
-驗證指令：
-- `cd backend && ./gradlew test`（per qa-strategy.md；新增 `SemanticSearchIntegrationTest` 走 Testcontainers + pgvector）
-- 手動 LAB：deploy 後跑 AC-1/2 真實 query 確認
+### 2.4 ScannerAiConfig 不只 api-key 條件壞 — `EngineEnabled` 也 bake-out
 
----
-
-## 4. Files to Change
-
-依診斷結果分支：
-
-### 必動
-
-| 檔案 | 變動 |
-|------|------|
-| `backend/src/main/resources/application-lab.yaml` | 加 `spring.ai.google.genai.api-key=${sm@gemini-api-key}` 等配置 |
-| Cloud Run lab service config | GCP Secret Manager 加 `gemini-api-key` secret + service account 授權 |
-
-### 可能動（依診斷）
-
-| 檔案 | 變動 |
-|------|------|
-| `backend/src/main/java/.../skill/event/SkillVersionPublishedListener.java` | 確認 embedding 寫入 listener 已註冊；缺則加 |
-| `backend/src/main/java/.../search/SkillshubPgVectorStore.java` | 調 cosine threshold；或修 doSimilaritySearch bug |
-| `backend/src/main/java/.../search/EmbeddingBackfillJob.java`（新增） | 對既有 skill backfill embedding（含 idempotent guard）|
-
-### Test
-
-| 檔案 | 變動 |
-|------|------|
-| `backend/src/test/java/.../search/SemanticSearchIntegrationTest.java` | 新增 — Testcontainers postgres+pgvector，publish skill → assert vector_store row → assert search 命中 |
-
----
-
-## 5. Test Plan
-
-### 5.1 自動化（gradlew test + Testcontainers）
+`ScannerAiConfig.LlmEnabledCondition` 是 `AllNestedConditions(EngineEnabled, ApiKeyPresent)`，兩個 nested 都要 true bean 才建：
 
 ```java
-@SpringBootTest
-@Testcontainers
-class SemanticSearchIntegrationTest {
+@ConditionalOnProperty(name = "skillshub.scanner.engines.llm.enabled", havingValue = "true")
+static class EngineEnabled {}   // ← 沒 matchIfMissing
+```
 
-    // pgvector container
-    // mock Gemini embedding API → return deterministic vector
+`@DefaultValue("true")` 在 `SkillshubProperties.Engine.enabled` 只影響 `@ConfigurationProperties` 綁定後的 record value，**不會寫進 Environment property source**。AOT 階段 `Environment.getProperty("skillshub.scanner.engines.llm.enabled")` 看到的還是 null → false → bean 排除。
 
-    @Test
-    void publishSkill_thenSemanticSearch_returnsHit() {
-        // 1. publish skill「terraform-tool」
-        // 2. wait async listener → vector_store row created
-        // 3. semantic search q="terraform" → assert hit
+對比 QualityJudgeConfig 的 working condition：
+```java
+@ConditionalOnProperty(name = "skillshub.quality.judge.enabled", matchIfMissing = true)
+```
+明確 `matchIfMissing=true`，**且** `application.yaml:161` 顯式設 `skillshub.quality.judge.enabled: true` 雙重保險。
+
+→ S157 修 ScannerAiConfig 必須同時處理兩個 condition（不能只動 api-key 那條）。
+
+### 2.5 Latent S148-twin — `LlmIntentOutput` record 缺 reflection metadata
+
+Bean wiring 修好後 ChatClient 真會打到 Gemini。下個會炸的點：
+
+```java
+// SearchIntentService.java:60, 75
+var converter = new BeanOutputConverter<>(LlmIntentOutput.class);
+var parsed = converter.convert(raw);  // ← Jackson 反射 getRecordComponents() on LlmIntentOutput record
+```
+
+`LlmIntentOutput`（line 90）是 record，跟 S148 修掉的 `JudgeResponse` 完全同 BeanOutputConverter pattern。全 codebase grep `@RegisterReflectionForBinding`：
+
+```
+backend/.../score/ScoreNativeConfig.java   # S148 ship — JudgeResponse + DimensionScore
+```
+
+**只一個 file**，`LlmIntentOutput` 沒被涵蓋 → native runtime 必丟 `UnsupportedFeatureError: Record components not available for record class ...LlmIntentOutput`。`UnsupportedFeatureError extends Error`，**不會**被 `SearchIntentService.compute()` line 82 的 `catch (Exception e)` 接 — 會 propagate 成 500。
+
+現在沒看到症狀因為 ChatClient 根本沒接到，BeanOutputConverter 路徑沒走到。Bean fix ship 完此 latent 必爆 → **同 spec 一併處理**。
+
+### 2.6 同家族 bug 比較表
+
+| Spec | Native 失敗點 | Fix pattern | Ship |
+|---|---|---|---|
+| S148 | `Class.getRecordComponents()` 對 `JudgeResponse` 沒 reflection metadata → `UnsupportedFeatureError` | `@RegisterReflectionForBinding` | v4.25.0 |
+| S168 | `UnsafeBooleanFieldAccessorImpl` Boolean→Integer corrupt → IAE | primitive `boolean` → wrapper `Boolean` | v4.49.0 |
+| **S157** | **Spring AOT build-time `@ConditionalOnProperty` bake-out → runtime bean factory 無法建 bean** + latent: `LlmIntentOutput` record 缺 hint | **condition 改 runtime factory body check (mirror QualityJudgeConfig);** 補 `@RegisterReflectionForBinding(LlmIntentOutput.class)` | TBD |
+
+### 2.7 Confidence Classification
+
+| 結論 | Confidence | 證據 |
+|---|---|---|
+| LAB 跑 native image | **Validated** | cloudbuild.yaml + architecture.md + Cloud Run log AOT-processed marker |
+| api-key 在 Secret Manager 已就位、runtime resolve OK | **Validated** | gcloud + QualityJudgeConfig 同 revision runtime init log |
+| `@ConditionalOnProperty(api-key)` AOT bake-out | **Validated** | QualityJudgeConfig Javadoc + log 對比 + Spring AOT 官方行為 |
+| `EngineEnabled` 也 bake-out（無 matchIfMissing）| **Validated** | source 對比 + AOT yaml 無此 key + 同機制 |
+| `LlmIntentOutput` 缺 hint 將在 native runtime 炸 | **Validated** | grep 全 codebase 僅 1 file 有此 annotation；API pattern 與 S148 一模一樣 |
+| `vector_store` 既有 row 是零向量（NoOp 寫的）| **Hypothesis** | NoOp 自 2026-05-06 起 active；ship 後 re-publish 3 筆驗證即可 |
+| cosine threshold 0.3 太嚴 | Not the root cause | bean 修好前 query embedding 永遠零；threshold tuning 屬 polish spec |
+
+---
+
+## 3. Approach — Mirror QualityJudgeConfig (S135a) 已 ship 的 pattern
+
+### 3.1 為何選此 approach
+
+- (a) QualityJudgeConfig 在 LAB native runtime 已驗證可用（log 直接證據）
+- (b) S135a Javadoc 已紀錄理由，與 Spring 官方 AOT 文件一致
+- (c) 改動範圍小、無新依賴、reviewer 一秒看出在做什麼
+
+不選的 approach：
+
+| Alternative | 不選原因 |
+|---|---|
+| AOT yaml 內塞 stub api-key（S139 OAuth2 client 同模式）| api-key 是機敏；且實際 runtime 仍需要拿 sm@ value，沒解決真實機制 |
+| spring-cloud-gcp 在 AOT 階段 resolve sm@ | CI 無 GCP creds，不可能 |
+| 改 lazy bean | Spring lazy 不解 AOT bake-out — baked 決定永久排除 |
+
+### 3.2 SearchConfig 改寫（F1）
+
+合併 2 個 @Bean 為單一 `embeddingModel` factory：
+
+```java
+@Bean
+EmbeddingModel embeddingModel(SkillshubProperties props) {
+    var apiKey = props.genai().apiKey();
+    if (apiKey == null || apiKey.isBlank()) {
+        log.warn("No skillshub.genai.api-key configured — semantic search disabled (NoOp)");
+        return new NoOpEmbeddingModel();
     }
+    log.info("Initialising GoogleGenAiTextEmbeddingModel (Manual Config, API key mode)");
+    var connectionDetails = GoogleGenAiEmbeddingConnectionDetails.builder().apiKey(apiKey).build();
+    var options = GoogleGenAiTextEmbeddingOptions.builder()
+            .model(props.genai().model())
+            .dimensions(props.genai().dimensions())
+            .build();
+    return new GoogleGenAiTextEmbeddingModel(connectionDetails, options);
+}
+// NoOpEmbeddingModel inner class 保留
+```
 
-    @Test
-    void searchUnrelatedQuery_returnsEmpty() {
-        // q="quantum mechanics" → empty (verifies threshold not too low)
+關鍵變動：移除 `@ConditionalOnProperty(name="skillshub.genai.api-key")` + `@ConditionalOnMissingBean`，body 內 branch real / NoOp。Runtime SkillshubProperties 已 resolve sm@（per §2.2 evidence #2）。
+
+### 3.3 ScannerAiConfig 改寫（F2）
+
+合併 `scannerChatModel` + `scannerChatClient` 為單一 factory，移除整個 `LlmEnabledCondition` inner class：
+
+```java
+@Bean
+ChatClient scannerChatClient(SkillshubProperties props) {
+    if (!props.scanner().engines().llm().enabled() || isBlank(props.genai().apiKey())) {
+        log.info("Scanner LLM disabled or api-key absent — ChatClient not registered");
+        return null;  // Spring @Bean returning null → 視為 absent → Optional<ChatClient> empty
     }
+    var client = Client.builder().apiKey(props.genai().apiKey()).build();
+    var chatModel = GoogleGenAiChatModel.builder()
+            .genAiClient(client)
+            .defaultOptions(GoogleGenAiChatOptions.builder()
+                    .model(GoogleGenAiChatModel.ChatModel.GEMINI_2_5_FLASH)
+                    .temperature(0.0)
+                    .build())
+            .build();
+    return ChatClient.create(chatModel);
 }
 ```
 
-### 5.2 手動 LAB
+關鍵：
+- 拿掉 `@Conditional(LlmEnabledCondition.class)`（兩個 nested 都 bake-out）
+- 合併 `scannerChatModel` 為 local var — `GoogleGenAiChatModel` 不需獨立 bean（grep 確認 `ScannerAiConfig` 是唯一 consumer）
+- `return null` 為 Spring 官方支援寫法（Spring Framework Reference: 「If a @Bean method returns null, Spring registers a null bean...」），`LlmJudge` 既有 `Optional<ChatClient>` 接，empty 時 graceful 跳過
+- 連帶刪掉 `LlmEnabledCondition` inner class
 
-deploy 後：
-- [ ] `curl /api/v1/search/intent -d '{"query":"terraform"}'` → concepts.length > 0
-- [ ] `/search?q=terraform` UI → 顯 result card（不再 0 results empty state）
-- [ ] `/search?q=容器部署` → 中文也能 work
-- [ ] publish 一筆新 skill → 30 秒內 search 該 skill 名稱可命中
-- [ ] `psql -c "select count(*) from vector_store"` → ≥ 3
+### 3.4 LlmIntentOutput AOT reflection hint（F3）
+
+新增 `search/SearchNativeConfig.java`，exact same pattern as `ScoreNativeConfig`：
+
+```java
+@Configuration(proxyBeanMethods = false)
+@RegisterReflectionForBinding({SearchIntentService.LlmIntentOutput.class})
+class SearchNativeConfig {
+    // 僅供 AOT hint 來源，無 bean 宣告
+}
+```
+
+只列 `LlmIntentOutput`，不列 `IntentResponse`：後者由 controller 序列化回應，Spring Boot 4 對 `@RestController` response body 已自動 traverse；前者是 `BeanOutputConverter` 反序列化目標，**Spring AI 不自動 register**（per S148 §2.3 確認）。`LlmIntentOutput` 內含 `String summary, List<String> concepts` — Spring framework 對 nested record / `List<String>` 自動 traverse（per S148 §3.1）。
+
+### 3.5 既有 vector_store 零向量 row backfill（F4）
+
+不寫獨立 backfill job。修復 deploy 後手動 re-publish LAB 3 筆 skill：
+- `SearchProjection.onVersionPublished` listener 走 delete-then-add → ON CONFLICT DO UPDATE 覆蓋舊零向量 row（per `SkillshubPgVectorStore.INSERT_SQL`）
+- 3 筆量極小；production 若 publish 流量大可未來開 spec
+
+### 3.6 Regression guards（F5）
+
+防未來 PR 把 build-time condition 加回去 / 移除 reflection hint — mirror S168 reflection-based AC 寫法（per `S168 AC-2/AC-3` 已 ship 證明的 pattern）。詳 §4 AC-5/AC-6。
 
 ---
 
-## 6. 風險與注意
+## 4. SBE Acceptance Criteria
+
+```
+AC-1: 「terraform」query 命中對應 skill
+  Given 平台 LAB 部署修復版本後，3 筆 skill 已 re-publish
+  When  GET /api/v1/search/semantic?q=terraform
+  Then  HTTP 200, response array length ≥ 1
+  And   第一筆 result.skillId 對應 auditing-terraform-infrastructure-for-security
+  And   第一筆 result.score ≥ 0.3
+
+AC-2: 中文 query 也能命中英文 description
+  Given 同上 LAB 部署狀態
+  When  GET /api/v1/search/semantic?q=Terraform 安全稽核
+  Then  HTTP 200, response array length ≥ 1
+
+AC-3: Intent endpoint 回真實 concepts（不再 echo fallback）
+  Given LAB 部署修復版本
+  When  POST /api/v1/search/intent body {"query":"terraform 部署"}
+  Then  response.concepts.length > 0（如 ["terraform","deployment","infrastructure"]）
+  And   response.summary 不等於 query（LLM 確實回了改寫過的中文 summary）
+
+AC-4: Cloud Run startup log 不再警告 LLM bean 缺席
+  Given LAB 部署修復版本後第一次 cold start
+  When  gcloud logging read 取該 revision startup 30 秒範圍
+  Then  log 不出現 "No EmbeddingModel configured"
+  And   log 不出現 "SearchIntent: LLM ChatClient unavailable"
+  And   log 包含 "Initialising GoogleGenAiTextEmbeddingModel"
+
+AC-5: SearchConfig.embeddingModel 上不含 @ConditionalOnProperty(api-key)（regression guard）
+  Given codebase 含 SearchConfig.embeddingModel @Bean factory method
+  When  reflection 取該 method 的 annotations
+  Then  不存在 @ConditionalOnProperty(name="skillshub.genai.api-key")
+  Note  防未來 PR 把 condition 加回 — mirror S168 reflection-based AC
+
+AC-6: ScannerAiConfig.scannerChatClient 上不含 @Conditional 系列 build-time gate
+  Given codebase 含 ScannerAiConfig.scannerChatClient @Bean factory method
+  When  reflection 取該 method 的 annotations
+  Then  不存在 @ConditionalOnProperty / @ConditionalOnExpression / @Conditional
+  Note  防未來 PR 把 build-time condition 加回 — bake-out 再來一次
+
+AC-7: LlmIntentOutput record 已被 @RegisterReflectionForBinding 涵蓋
+  Given codebase 含 search/SearchNativeConfig
+  When  reflection 取 @RegisterReflectionForBinding.classes() array
+  Then  array 包含 SearchIntentService.LlmIntentOutput.class
+  Note  防未來移除此 hint 後 LAB native runtime 重現 S148-twin
+
+AC-8: Frontend graceful fallback 文案不退化（hostage check）
+  Given 真實有 0 命中（query 太抽象，no match）
+  When  /search?q=xyzqqqzzz 頁面 render
+  Then  仍顯既有「這個描述還沒有匹配的技能」+ CTA
+  Note  只測 backend fix 後 frontend 正確 render real result 而非 fallback empty state
+```
+
+驗證指令：
+- 自動化：`cd backend && ./gradlew test`（per qa-strategy.md V01）
+- LAB 手動：deploy 後直打 endpoint 跑 AC-1～AC-4（指令詳 §6.2）
+
+---
+
+## 5. Files to Change
+
+| File | 變動 |
+|---|---|
+| `backend/.../search/SearchConfig.java` | F1：合併 2 個 @Bean 為單一 `embeddingModel` factory；移除 `@ConditionalOnProperty(api-key)` + `@ConditionalOnMissingBean`；body 內 branch real / NoOp |
+| `backend/.../security/scan/ScannerAiConfig.java` | F2：移除 `@Conditional(LlmEnabledCondition.class)` × 2；移除 `LlmEnabledCondition` inner class；合併為單一 `scannerChatClient` factory；body 內 check `engines.llm.enabled` && `apiKey`；缺則 return null |
+| `backend/.../search/SearchNativeConfig.java`（**新增**）| F3：`@RegisterReflectionForBinding({SearchIntentService.LlmIntentOutput.class})` mirror ScoreNativeConfig |
+| `backend/.../security/scan/ScannerAiConfigTest.java` | 既有 4 種 condition 組合測試已不適用 — 改測 `scannerChatClient` factory 對 `engines.llm.enabled` × `apiKey` 4 種組合的回傳行為（null vs 真 ChatClient）|
+| `backend/.../search/SearchConfigRegressionTest.java`（**新增**）| AC-5/AC-7：reflection assertion — `SearchConfig.embeddingModel` annotation set 不含 `@ConditionalOnProperty`；`SearchNativeConfig` `@RegisterReflectionForBinding.classes()` 包含 `LlmIntentOutput.class` |
+| `backend/.../security/scan/ScannerAiConfigRegressionTest.java`（**新增 OR 併 ScannerAiConfigTest**）| AC-6：reflection assertion — `ScannerAiConfig.scannerChatClient` annotation set 不含 `@ConditionalOnProperty / @ConditionalOnExpression / @Conditional` |
+| `backend/.../search/SemanticSearchIntegrationTest.java`（**新增**）| Testcontainers + pgvector + deterministic stub embedder：publish skill → assert vector_store row → assert similaritySearch 命中 |
+
+不動的 file：`application-lab.yaml`、`application-aot.yaml`、`service.yaml`、frontend。
+
+---
+
+## 6. Test Plan
+
+### 6.1 自動化
+
+```bash
+./gradlew test                                  # 全 backend
+./gradlew test --tests "*SearchConfigRegression*"     # AC-5/AC-7
+./gradlew test --tests "*ScannerAiConfig*"             # AC-6 + 4 種組合
+./gradlew test --tests "*SemanticSearchIntegration*"  # AC-1 hermetic
+```
+
+`SemanticSearchIntegrationTest` 設計（per S168 retro 教訓「JVM test PASS ≠ native runtime PASS」）：
+- pgvector container 真連 DB（不能用 H2 mock — vector ops 走 pgvector operator）
+- deterministic stub embedder（per `E2EEmbeddingConfig` 已驗證 pattern；不打 Gemini）
+- publish skill → wait async listener → SELECT vector_store row → similaritySearch
+- 走真實 ApplicationContext，**不**單獨 unit test EmbeddingModel bean wiring（必須讓 @Bean factory 真跑過一次）
+
+### 6.2 手動 LAB 驗證（per S168 AC-4 pattern）
+
+deploy 修復版本後依序：
+
+```bash
+# 1. Intent endpoint 真實 concepts
+curl -sS -X POST https://skillshub-644359853825.asia-east1.run.app/api/v1/search/intent \
+  -H "Content-Type: application/json" -d '{"query":"terraform"}'
+# expect: concepts.length > 0
+
+# 2. Semantic search 英文 / 中文 query
+curl -sS 'https://skillshub-644359853825.asia-east1.run.app/api/v1/search/semantic?q=terraform'
+curl -sS 'https://skillshub-644359853825.asia-east1.run.app/api/v1/search/semantic?q=容器部署'
+# expect: each ≥ 1 result
+
+# 3. Startup log 確認
+gcloud logging read 'resource.type=cloud_run_revision AND resource.labels.service_name=skillshub
+  AND (textPayload:"No EmbeddingModel" OR textPayload:"ChatClient unavailable"
+       OR textPayload:"Initialising GoogleGenAiTextEmbeddingModel")' \
+  --project=cfh-vibe-lab --limit=10 --freshness=1h --format="value(textPayload)"
+# expect: 0 筆 fallback WARN；≥ 1 筆 Initialising
+
+# 4. Re-publish 3 筆 skill（手動，PublishPage 或 SQL DELETE FROM vector_store + UI re-upload）
+#    之後 5 分鐘內第 2 步 search 都應命中
+
+# 5.（可選）vector_store row 確認非零向量 — Cloud Console SQL Studio：
+#    SELECT count(*),
+#           sum(CASE WHEN embedding::text LIKE '%[0,0,0%' THEN 1 ELSE 0 END) AS zero_rows
+#    FROM vector_store;
+#    expect: count(*) = 3, zero_rows = 0
+```
+
+---
+
+## 7. 風險與注意
 
 | 風險 | 緩解 |
-|------|------|
-| Gemini API quota 用爆 | LAB 環境 throughput 低；正式上線前評估 quota；或加 rate limit on /search/* endpoints |
-| Embedding cost（每 publish 都打 Gemini）| 監控 cost；考慮 batch embedding 或 cheaper model（gemini-embedding-001 比 chat 便宜 100x） |
-| 搜尋結果 score threshold tuning | 留 polish spec；先 work 為主，threshold 預設 0.5（pgvector cosine distance < 0.5 = 接受） |
-| 已 publish 的舊 skill 沒 embedding | backfill job 跑一次；之後新 publish 自動接 listener |
+|---|---|
+| Spring @Bean return null 偶見 reviewer 質疑寫法 | 引 Spring Framework Reference (Core / IoC Container / @Bean §「Returning null from a @Bean Method」) 為官方支援；同模式既有 LAB QualityJudgeConfig 用 throw fail-fast 不 return null — 若 reviewer 強烈反對改用 `@ConditionalOnProperty(engines.llm.enabled, matchIfMissing=true)` + factory throw if api-key blank（cost 仍 < 1hr） |
+| Gemini API quota / cost | LAB throughput 低；單 search 兩次 API call（intent LLM + query embedding）；evaluation 後可加 rate limit 或 batch — 留 polish |
+| 既有 NoOp 期間寫的零向量 row | deploy 後 re-publish 3 筆即可，`onVersionPublished` delete-then-add 自動覆蓋 |
+| cosine threshold 0.3 對某些 query 仍嫌嚴 | 留 future polish spec；first ship 先確認功能 work；S140 e2e profile 已 override 為 0.0 證明設計可配 |
+| `@RegisterReflectionForBinding` 對 nested record / List<String> 是否傳遞 | S148 v4.25.0 ship 已驗證 Spring framework 自動 traverse nested record；`LlmIntentOutput` 內 `List<String>` 走 Jackson primitive path 不需額外 hint |
 
 ---
 
-## 7. 相關 spec
+## 8. 相關 spec / 參考資料
 
-- **S148**（GraalVM JudgeResponse reflection）— 不同 root cause（reflection metadata vs LLM config），但同屬「LAB AI features 沒 work」群；可同 sprint 處理
-- **/docs/semantic-search**（既有 docs 頁）— 解釋此 feature；本 spec ship 後此頁內容真實可驗
+- **S135a (v3.14.0)** — `QualityJudgeConfig` 是本 spec fix pattern 直接來源
+- **S148 (v4.25.0)** — `@RegisterReflectionForBinding(JudgeResponse.class)`；S148 §2.3「為何 JVM 模式沒問題」是本 spec §2.3 機制解釋直接 precedent
+- **S168 (v4.49.0)** — 「JVM test PASS ≠ native runtime PASS」教訓直接 inform §6.1 integration test 設計；reflection-based regression guard pattern inform AC-5～AC-7
+- **S148b (v4.46.0)** — GraalVM AOT 驗證機制；`-PexactReachability=true` flag 可選 deploy-day 啟用 catch 未來 missing hint
+- **architecture.md §GraalVM AOT Strategy** (`line 566+`) — production deploy mode 為 native image，本 spec §2 ground truth
+- **/docs/semantic-search** — 既有 docs 頁；本 spec ship 後此頁內容真實可驗
