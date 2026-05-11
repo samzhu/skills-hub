@@ -23,6 +23,9 @@ import io.github.samzhu.skillshub.shared.api.NotSkillOwnerException;
 import io.github.samzhu.skillshub.shared.api.OwnerAlreadyExistsException;
 import io.github.samzhu.skillshub.shared.security.CurrentUser;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+import io.github.samzhu.skillshub.shared.security.User;
+import io.github.samzhu.skillshub.shared.security.UserRepository;
+import io.github.samzhu.skillshub.shared.security.UserResolver;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.security.events.SkillGrantedEvent;
@@ -46,6 +49,8 @@ class SkillGrantServiceTest {
     private SkillGrantRepository grantRepo;
     private ApplicationEventPublisher events;
     private CurrentUserProvider users;
+    private UserResolver userResolver;
+    private UserRepository userRepo;
     private SkillGrantService service;
 
     @BeforeEach
@@ -54,7 +59,14 @@ class SkillGrantServiceTest {
         grantRepo = mock(SkillGrantRepository.class);
         events = mock(ApplicationEventPublisher.class);
         users = mock(CurrentUserProvider.class);
-        service = new SkillGrantService(skillRepo, grantRepo, events, users);
+        userResolver = mock(UserResolver.class);
+        userRepo = mock(UserRepository.class);
+        // S154b T04 — ctor 擴 UserResolver + UserRepository 供 grant resolve + listGrants enrich。
+        // 既有 AC-2/AC-4/AC-5 test 預設「principalId 已是 user_id」場景：stub resolver
+        // 回 same value 維持 backward compatibility。
+        when(userResolver.resolveByEmailHandleOrId(anyString())).thenAnswer(
+                inv -> Optional.of((String) inv.getArgument(0)));
+        service = new SkillGrantService(skillRepo, grantRepo, events, users, userResolver, userRepo);
     }
 
     @Test
@@ -150,6 +162,95 @@ class SkillGrantServiceTest {
 
         assertThatThrownBy(() -> service.revoke(skillId, "missing"))
                 .isInstanceOf(GrantNotFoundException.class);
+    }
+
+    @Test
+    @Tag("AC-9")
+    @DisplayName("AC-9 (S154b T04): grant 接收 email → UserResolver 解析成 user_id 寫入 ACL")
+    void grant_acceptsEmail_resolvesToUserId() {
+        var skillId = "skill-1";
+        var skill = mockSkillWithOwner(skillId, "u_alice0");
+        when(users.current()).thenReturn(CurrentUser.synthetic("u_alice0", java.util.List.of(), java.util.List.of(), null));
+        when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
+        when(grantRepo.existsBySkillIdAndRole(skillId, "OWNER")).thenReturn(false);
+        // bob 用 email 申請；resolver 解析到 u_bob000
+        when(userResolver.resolveByEmailHandleOrId("bob@example.com")).thenReturn(Optional.of("u_bob000"));
+
+        var req = new SkillGrantService.GrantRequest("user", "bob@example.com", Role.VIEWER);
+        service.grant(skillId, req);
+
+        // SkillGrant.principalId 應為 resolved user_id，而非 raw email
+        var captor = org.mockito.ArgumentCaptor.forClass(SkillGrant.class);
+        verify(grantRepo).save(captor.capture());
+        assertThat(captor.getValue().getPrincipalId()).isEqualTo("u_bob000");
+        assertThat(captor.getValue().getPrincipalType()).isEqualTo("user");
+    }
+
+    @Test
+    @Tag("AC-9")
+    @DisplayName("AC-9 (S154b T04): grant 接收 handle → UserResolver 解析成 user_id 寫入 ACL")
+    void grant_acceptsHandle_resolvesToUserId() {
+        var skillId = "skill-1";
+        var skill = mockSkillWithOwner(skillId, "u_alice0");
+        when(users.current()).thenReturn(CurrentUser.synthetic("u_alice0", java.util.List.of(), java.util.List.of(), null));
+        when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
+        when(grantRepo.existsBySkillIdAndRole(skillId, "OWNER")).thenReturn(false);
+        when(userResolver.resolveByEmailHandleOrId("bob")).thenReturn(Optional.of("u_bob000"));
+
+        var req = new SkillGrantService.GrantRequest("user", "bob", Role.VIEWER);
+        service.grant(skillId, req);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(SkillGrant.class);
+        verify(grantRepo).save(captor.capture());
+        assertThat(captor.getValue().getPrincipalId()).isEqualTo("u_bob000");
+    }
+
+    @Test
+    @Tag("AC-9")
+    @DisplayName("AC-9 (S154b T04): public principal 不走 resolver，原樣寫入 \"*\"")
+    void grant_publicSkipsResolver() {
+        var skillId = "skill-1";
+        var skill = mockSkillWithOwner(skillId, "u_alice0");
+        when(users.current()).thenReturn(CurrentUser.synthetic("u_alice0", java.util.List.of(), java.util.List.of(), null));
+        when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
+        when(grantRepo.existsBySkillIdAndRole(skillId, "OWNER")).thenReturn(false);
+
+        var req = new SkillGrantService.GrantRequest("public", "*", Role.VIEWER);
+        service.grant(skillId, req);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(SkillGrant.class);
+        verify(grantRepo).save(captor.capture());
+        assertThat(captor.getValue().getPrincipalId()).isEqualTo("*");
+        // resolver 不該被呼叫於 public principal
+        verify(userResolver, never()).resolveByEmailHandleOrId(anyString());
+    }
+
+    @Test
+    @Tag("AC-6")
+    @DisplayName("AC-6 (S154b T04): listGrants user principal enrich displayName + handle")
+    void listGrants_enrichesUserPrincipal() {
+        var skillId = "skill-1";
+        var userGrant = SkillGrant.create(skillId, "user", "u_alice0", Role.OWNER, "u_alice0");
+        var publicGrant = SkillGrant.create(skillId, "public", "*", Role.VIEWER, "u_alice0");
+        when(grantRepo.findBySkillId(skillId)).thenReturn(java.util.List.of(userGrant, publicGrant));
+
+        var alice = mock(User.class);
+        when(alice.getId()).thenReturn("u_alice0");
+        when(alice.getName()).thenReturn("Alice Chen");
+        when(alice.getEmail()).thenReturn("alice@example.com");
+        when(alice.getHandle()).thenReturn("alice");
+        when(userRepo.findById("u_alice0")).thenReturn(Optional.of(alice));
+
+        var result = service.listGrants(skillId);
+
+        assertThat(result).hasSize(2);
+        var userRow = result.stream().filter(g -> "user".equals(g.getPrincipalType())).findFirst().orElseThrow();
+        assertThat(userRow.getDisplayName()).isEqualTo("Alice Chen");
+        assertThat(userRow.getHandle()).isEqualTo("alice");
+        // public row 不 enrich — displayName / handle 保持 null
+        var publicRow = result.stream().filter(g -> "public".equals(g.getPrincipalType())).findFirst().orElseThrow();
+        assertThat(publicRow.getDisplayName()).isNull();
+        assertThat(publicRow.getHandle()).isNull();
     }
 
     /** Build a minimal Skill stub with the given ownerId via reflection. */

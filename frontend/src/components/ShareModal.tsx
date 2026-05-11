@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { useGrants, useCreateGrant, useRevokeGrant } from '@/hooks/useGrants'
 import type { SkillGrant } from '@/api/grants'
 import { localizeApiError } from '@/lib/api-error-messages'
+import { getDisplayName } from '@/lib/displayName'
 
 /**
  * S114a — ACL 分享管理 Modal。
@@ -20,8 +21,13 @@ export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () 
 
   const isPublicGrant = principalType === 'public'
   const resolvedPrincipalId = isPublicGrant ? '*' : principalId.trim()
+  // S154b — 已 public:*:read 偵測：若 grants 含 principalType='public' && principalId='*'
+  // → 不允許再加 public grant（duplicate；backend 也會回 conflict）。對 UI disable + 告知。
+  const isAlreadyPublic = grants.some(
+    (g) => g.principalType === 'public' && g.principalId === '*',
+  )
   const canSubmit =
-    (isPublicGrant || resolvedPrincipalId.length > 0) &&
+    (isPublicGrant ? !isAlreadyPublic : resolvedPrincipalId.length > 0) &&
     !createGrant.isPending
 
   function handleSubmit() {
@@ -68,7 +74,9 @@ export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () 
                   className="flex items-center justify-between rounded-md border border-border px-3 py-1.5 text-[13px]"
                 >
                   <span>
-                    <span className="font-medium">{g.principalType}:{g.principalId}</span>
+                    {/* S154b — user principal 走 getDisplayName 5-layer fallback；
+                        public 維持「所有人（public）」固定 label，避免顯 raw "*" */}
+                    <span className="font-medium">{principalLabel(g)}</span>
                     <span className="ml-2 text-muted-foreground">{g.role}</span>
                   </span>
                   {/* OWNER grants cannot be removed via UI */}
@@ -92,25 +100,48 @@ export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () 
         <div className="mb-4">
           <p className="mb-2 text-[12px] text-muted-foreground">新增分享（VIEWER）</p>
           <div className="mb-2 flex gap-2">
-            {(['user', 'group', 'company', 'public'] as const).map((t) => (
-              <label key={t} className="flex cursor-pointer items-center gap-1 text-[12px]">
-                <input
-                  type="radio"
-                  name="principalType"
-                  value={t}
-                  checked={principalType === t}
-                  onChange={() => setPrincipalType(t)}
-                />
-                {t}
-              </label>
-            ))}
+            {/* S154b — MVP 階段無 organization model，移除 group / company radio
+                （AC-7）；保留 user / public 二擇一即足。 */}
+            {(['user', 'public'] as const).map((t) => {
+              const isPublicOption = t === 'public'
+              const disabled = isPublicOption && isAlreadyPublic
+              return (
+                <label
+                  key={t}
+                  className={
+                    'flex cursor-pointer items-center gap-1 text-[12px] ' +
+                    (disabled ? 'opacity-50 cursor-not-allowed' : '')
+                  }
+                  title={disabled ? '此技能已公開' : undefined}
+                >
+                  <input
+                    type="radio"
+                    name="principalType"
+                    value={t}
+                    checked={principalType === t}
+                    onChange={() => setPrincipalType(t)}
+                    disabled={disabled}
+                  />
+                  {t}
+                </label>
+              )
+            })}
           </div>
+          {/* S154b — 已 public 時 inline 文案告知（搭配 radio disabled）。tooltip
+              藉 title 屬性留給 hover 場景；無 hover 也要看得到狀態。 */}
+          {isAlreadyPublic && (
+            <p className="mb-2 text-[11.5px] text-muted-foreground">
+              此技能已公開瀏覽，無需再加 public 分享。
+            </p>
+          )}
           <input
             type="text"
             value={isPublicGrant ? '*' : principalId}
             onChange={(e) => setPrincipalId(e.target.value)}
             disabled={isPublicGrant}
-            placeholder={isPublicGrant ? '所有人（public:*）' : '輸入 ID…'}
+            // S154b — placeholder 改友善版（AC-9）；backend `UserResolver.resolveByEmailHandleOrId`
+            // 接收 email / handle / user_id 三種；submit 時 backend 轉成 user_id 寫入 ACL。
+            placeholder={isPublicGrant ? '所有人（public:*）' : '輸入使用者 email 或 handle'}
             className="w-full rounded-md border border-border bg-background p-2 text-[13px] disabled:opacity-50"
           />
         </div>
@@ -141,4 +172,26 @@ export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () 
       </div>
     </div>
   )
+}
+
+/**
+ * S154b — grants list row 顯示 label。
+ *
+ * <ul>
+ *   <li>{@code public} principal → 固定「所有人（public）」，不顯 raw "*"</li>
+ *   <li>{@code user} principal → 走 `getDisplayName` 5-layer fallback；backend enrich 後
+ *       有 displayName/handle，無 enrich（舊資料）fallback 顯 raw user_id</li>
+ *   <li>其他（group/company legacy 資料） → fallback `type:id` 維持向下相容</li>
+ * </ul>
+ */
+function principalLabel(g: SkillGrant): string {
+  if (g.principalType === 'public') return '所有人（public）'
+  if (g.principalType === 'user') {
+    return getDisplayName({
+      author: g.principalId,
+      authorDisplayName: g.displayName,
+      authorHandle: g.handle,
+    })
+  }
+  return `${g.principalType}:${g.principalId}`
 }

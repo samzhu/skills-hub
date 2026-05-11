@@ -15,6 +15,10 @@ export interface SkillGrant {
   role: 'OWNER' | 'VIEWER'
   grantedBy: string
   grantedAt: string
+  /** S154b — backend enrich：principalType=user 時 LEFT JOIN users 取 5-layer fallback displayName。 */
+  displayName?: string | null
+  /** S154b — backend enrich：principalType=user 時 users.handle 直取。 */
+  handle?: string | null
 }
 
 export interface CreateGrantRequest {

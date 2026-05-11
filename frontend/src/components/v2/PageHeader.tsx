@@ -1,4 +1,5 @@
 import type { Skill } from '@/types/skill'
+import { getDisplayName } from '@/lib/displayName'
 import type { SkillScores } from '@/api/scores'
 import type { SecurityReport } from '@/api/security'
 import { IconTile } from '@/components/IconTile'
@@ -137,7 +138,21 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
             </p>
             {/* Meta row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
-              <span>作者：{skill.author}</span>
+              <span>作者：{getDisplayName(skill)}</span>
+              {/* S154b — 聯絡作者 mailto link；只在作者 contact_email_public=true 時 backend
+                  enrichAuthorIdentity expose authorEmail（隱私 opt-in）。empty → 不 render，
+                  避免「按鈕點下去開空白 mailto」誤導。 */}
+              {skill.authorEmail && (
+                <>
+                  <span>·</span>
+                  <a
+                    href={`mailto:${skill.authorEmail}`}
+                    style={{ color: 'var(--ink-3, rgba(238,236,234,0.4))', textDecoration: 'underline' }}
+                  >
+                    聯絡作者
+                  </a>
+                </>
+              )}
               {skill.license && <><span>·</span><span>{skill.license}</span></>}
               <span>·</span>
               <span>更新於 {relativeTime(skill.updatedAt)}</span>

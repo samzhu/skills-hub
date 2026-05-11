@@ -1,18 +1,24 @@
 /**
- * S139 — auth API client.
+ * S139 / S154b — auth API client.
  *
- * `fetchMe()` 對接 backend `GET /api/v1/me`。Spec §4.1 AuthUser shape 含
- * email/name/picture（Google id_token claims）；目前 backend MeController 只回
- * sub/roles/groups/companyId/deptId/scope（per S027 / S134），尚未擴 OIDC profile
- * claims。本 type 內 email/name/picture 設 optional，frontend 容錯：
- *   - picture 缺 → AuthArea avatar fallback 字母（email 或 sub 首字母）
- *   - email 缺 → dropdown 顯示 sub
- *   - name 缺 → 不阻擋登入 UX
+ * `fetchMe()` 對接 backend `GET /api/v1/me`。S154 backend 已擴 response 從 6 → 11 keys
+ * （加 `userId / handle`），本 type 對齊 backend `MeController.java` 11-key response。
+ *
+ *   - userId — S154 platform user_id (`u_<6hex>`)；author/owner_id 一律用此值
+ *   - handle — S154 user-facing slug；ShareSkillModal + URL 路徑用
+ *   - sub    — OAuth provider raw subject；**永遠不直接顯給 user**，前端 `getDisplayName`
+ *              priority chain 把它擋掉
+ *   - email/name/picture — OIDC standard claims；optional 容錯
  *
  * 401（未登入）由 fetchMe 攔截，return null（不 throw）— 符合 spec §4.1
  * "200 → AuthUser | 401 → null" 約定。其他 status 仍 throw。
  */
 export interface AuthUser {
+  /** S154 — platform user_id；author/owner_id/ACL principal 全用此值。 */
+  userId: string
+  /** S154 — user-facing slug。 */
+  handle: string
+  /** OAuth provider raw subject；不直接顯給 user。 */
   sub: string
   email?: string
   name?: string

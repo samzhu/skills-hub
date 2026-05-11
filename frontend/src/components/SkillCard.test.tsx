@@ -56,6 +56,20 @@ describe('AC-2: SkillCard 渲染', () => {
     expect(screen.getByText('87% 相符')).toBeInTheDocument()
   })
 
+  it('AC-1: 顯示 authorDisplayName 而非 raw author user_id (S154b)', () => {
+    // 模擬 S154 backend 回 enriched author 欄位
+    renderCard({
+      ...mockSkill,
+      author: 'u_a3f9c1',
+      authorDisplayName: 'Alice Chen',
+      authorHandle: 'alice',
+    })
+    // S154b §2.3：getDisplayName 五層 fallback priority 1 → authorDisplayName
+    expect(screen.getByText('Alice Chen')).toBeInTheDocument()
+    // 不顯示 raw user_id（user 看不懂的 platform 識別）
+    expect(screen.queryByText('u_a3f9c1')).not.toBeInTheDocument()
+  })
+
   it('條件 score badge — 不傳 score 不顯示相符 badge', () => {
     renderCard(mockSkill)
     expect(screen.queryByText(/% 相符/)).not.toBeInTheDocument()

@@ -34,8 +34,14 @@ export interface Skill {
   name: string
   /** 技能功能描述 */
   description: string
-  /** 作者名稱 */
+  /** S154 — platform user_id (`u_<6hex>`)；對應 backend `Skill.author` 欄位。**不直接顯給 user**，走 `getDisplayName(skill)` 取人類可讀名。 */
   author: string
+  /** S154b — backend live-join 算出的 author display name（5-layer fallback）；nullable 表示 backend 也找不到（user 已刪等 edge case）。 */
+  authorDisplayName?: string | null
+  /** S154b — author handle slug（user-facing）；用於 install command + `/users/{handle}` 等 URL；nullable 表示 backend 沒對應 user row。 */
+  authorHandle?: string | null
+  /** S154b — author email；**僅在** `contact_email_public=true` 時 backend 回此值，否則 backend 端 strip 為 null。前端 conditional `<mailto:>` button 用。 */
+  authorEmail?: string | null
   /** 技能分類（如 DevOps、AI、Testing） */
   category: string
   /** 最新版本號（SemVer），尚未發佈任何版本時為 null */

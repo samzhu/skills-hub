@@ -28,7 +28,7 @@ const setAuthedFetchMock = () => {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ openCount: 0 }) } as Response)
     }
     if (url.includes('/api/v1/me')) {
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ sub: 'alice', roles: ['user'], groups: [], companyId: null, deptId: null, scope: '' }) } as Response)
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ userId: 'u_alice0', handle: 'alice', sub: 'alice', name: 'Alice', email: 'alice@example.com', picture: null, roles: ['user'], groups: [], companyId: null, deptId: null, scope: '' }) } as Response)
     }
     if (url.includes('/api/v1/skills')) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [], page: { number: 0, size: 200, totalPages: 0, totalElements: 0 } }) } as Response)
@@ -96,7 +96,7 @@ describe('MySkillsPage — Flags wiring (S112-T04)', () => {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ openCount: 2 }) } as Response)
       }
       if (url.includes('/api/v1/me')) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ sub: 'alice', roles: ['user'], groups: [], companyId: null, deptId: null, scope: '' }) } as Response)
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ userId: 'u_alice0', handle: 'alice', sub: 'alice', name: 'Alice', email: 'alice@example.com', picture: null, roles: ['user'], groups: [], companyId: null, deptId: null, scope: '' }) } as Response)
       }
       if (url.includes('/api/v1/skills')) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [], page: { number: 0, size: 200, totalPages: 0, totalElements: 0 } }) } as Response)

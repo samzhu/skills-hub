@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { uploadSkill, type Visibility } from '@/api/skills'
 import { useMe } from '@/hooks/useMe'
 import { useAuth } from '@/hooks/useAuth'
+import { getDisplayName } from '@/lib/displayName'
 import { localizeApiError } from '@/lib/api-error-messages'
 import { ApiError } from '@/api/client'
 import { MiniMarkdown } from '@/lib/mini-markdown'
@@ -78,14 +79,11 @@ export function PublishPage() {
   const [showPreview, setShowPreview] = useState(false)
   // 預填 1.0.0 作為首次發佈的慣例起始版本
   const [version, setVersion] = useState('1.0.0')
-  // S100c: author 自動 prefill 從 /me.sub；user 仍可改（如 team override / publish-on-behalf）。
-  // Per React 19 docs「Adjusting some state when a prop changes」— 不用 useEffect+setState sync，
-  // 改用 derive-in-render：authorEdit === null 表 user 未編輯，回傳 me.sub；非 null 表已編輯（含清空）。
+  // S154b — author 改為 read-only display。Backend §S154 §2.5 forge fix drop @RequestParam("author")
+  // 後 server 一律從 currentUserProvider.userId() 取，caller body silent ignored。原 S100c team
+  // override / publish-on-behalf 需求已 user-confirmed 廢除（都是自己上傳）。
   const { data: me } = useMe()
   const auth = useAuth()
-  const [authorEdit, setAuthorEdit] = useState<string | null>(null)
-  const author = authorEdit ?? me?.sub ?? ''
-  const authorTouched = authorEdit !== null
   const [category, setCategory] = useState('')
   // S116: visibility radio — default PUBLIC 對齊 v3.x 既有行為
   const [visibility, setVisibility] = useState<Visibility>('PUBLIC')
@@ -99,7 +97,7 @@ export function PublishPage() {
         ? new File([skillMdText], 'SKILL.md', { type: 'text/markdown' })
         : file
       if (!submitFile) throw new Error('請選取檔案或貼上 SKILL.md 內容')
-      return uploadSkill(submitFile, version, author, category, visibility)
+      return uploadSkill(submitFile, version, category, visibility)
     },
     onSuccess: (data) => {
       navigate(`/publish/validate?id=${data.id}`)
@@ -244,21 +242,25 @@ export function PublishPage() {
               </div>
             </div>
 
+            {/* S154b — 作者欄位 read-only display；server 從 auth context 取 author，UI 不該誤導
+                 user 以為可改。priority chain：name → email → handle → userId（5-layer fallback
+                 對齊 SkillCard / AuthArea 等元件）。 */}
             <div>
-              <label htmlFor="publish-author" className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">作者</label>
-              <Input
-                id="publish-author"
-                value={author}
-                onChange={(e) => setAuthorEdit(e.target.value)}
-                placeholder={me?.sub ?? 'your-name'}
-                required
-                maxLength={255}
-              />
-              {me?.sub && !authorTouched && author === me.sub && (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  已自動填入你的識別 <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">{me.sub}</code> — 可改為團隊或代發名稱
-                </p>
-              )}
+              <span className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">作者</span>
+              <div
+                data-testid="publish-author-display"
+                className="flex items-center gap-2 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm"
+              >
+                <span>{getDisplayName({
+                  author: me?.userId ?? '',
+                  authorDisplayName: me?.name,
+                  authorEmail: me?.email,
+                  authorHandle: me?.handle,
+                })}</span>
+                {me?.handle && (
+                  <span className="font-mono text-[11px] text-muted-foreground">@{me.handle}</span>
+                )}
+              </div>
             </div>
 
             {/* S116: visibility radio — public/private toggle (GitHub 概念) */}

@@ -65,6 +65,7 @@
 | v4.6.0 | S099c (cross-marketplace validation) | ✅ shipped — tools/cross-validate.py 41 skills |
 | v4.7.0 | S099d (LLM description quality audit) | ✅ shipped — tools/quality-audit.py 5-dim rubric |
 | v4.16.0 | S098c3 (file-list diff) | ✅ shipped — GET /file-list-diff + FileListDiffPanel |
+| v4.50.0 | S154b (Author display identity — frontend) | ✅ shipped 2026-05-11 |
 
 ---
 
@@ -73,7 +74,7 @@
 | SpecID | 標題 | 點數 | 相依 | 狀態 |
 |--------|------|------|------|------|
 | S143 | `/docs` canonical entry → `/docs/overview`（含 nav 對齊）| XS(2) | — | ✅ v4.23.0 — 4/4 vitest PASS（Navigate replace + nav 對齊） |
-| S144 | Skill 刪除功能（DELETE API + 前端確認 dialog） | S(7) | — | 📋 planned |
+| S144 | Skill 刪除功能（DELETE API + 前端確認 dialog） | S(9) | — | ⏳ Dev |
 | S145 | 訂閱管理頁面（我的技能 → 訂閱 tab） | S(6) | S125b ✅ | 📋 planned |
 | S146 | 掃描器補強 — GitHub Actions Unpinned Dependency 偵測（`@master/@main/@HEAD`） | XS(3) | S147 research | ⏸ deferred — 等 S147 完成再規劃 |
 | S147 | 掃描器語意分析缺口研究（W011/E004/W009/W013 vs. Snyk agent-scan） | META(research) | — | ⏸ deferred — 暫緩，等研究啟動時機 |
@@ -89,7 +90,7 @@
 | S152 | SPA fallback for unknown routes（未知 URL → React NotFoundPage，移除 allowlist drift）| S(6) | — | ✅ v4.26.0 — 8/8 PASS（catchall pattern 取代 14 條 allowlist + /api/ early-return） |
 | S153 | Skill detail 404 UX — 統一 400/403/404 顯「找不到此技能」（移除誤導 retry 提示）| XS(3) | — | ✅ v4.24.0 — 9/9 vitest PASS（isUnviewable 擴展涵蓋 400/403/404） |
 | S154 | Author display identity (backend) — platform user_id 解耦 OAuth sub；`users` 表 + skills.author/owner_id/acl_entries 全切 user_id；CurrentUserProvider refactor；Command forgery fix；Query LEFT JOIN | M(12) | — | ✅ v4.47.0 — 6 tasks T01-T06 ship；DelegatingPermissionEvaluator 對齊 platform user_id；TestUserSeed fixture pattern；719/0/7（含 T06 re-enable 8 RBAC tests）|
-| S154b | Author display identity (frontend) — getDisplayName helper + 9 component sweep + ShareSkillModal 4-polish | S(9) | S154 ✅ | 📐 in-design — 拆自 S154 backend/frontend split |
+| S154b | Author display identity (frontend) — getDisplayName helper + 10 component sweep（Phase 0 加 PublishPage author 改 read-only） + useMe CurrentUser interface 對齊 S154 11-key response + ShareSkillModal 4-polish | S(9) → S(11) | S154 ✅ | ✅ v4.50.0 — 5 tasks T01-T05 ship；frontend 350/350 + backend 725/725；10/10 AC PASS；defensive empty fallback in AuthArea + SkillGrantService trust-or-resolve（`startsWith("u_")`）+ PublishPage author read-only |
 | S155 | Deployment audit polish — 7 個 LAB 小 UX 問題（footer link / auth-debug / publish-failed / 文案 / 偏好 modal / CLI dropdown 死 UI）| S(7) | — | ✅ v4.27.0 + v4.28.0 + v4.29.0 + v4.30.0 + v4.31.0 — 6/6 in-scope items shipped；#6 拆出 S155b（sort tab needs-reverify-in-LAB）|
 | S155b | Sort tab active highlight LAB reverify | XS(2) | — | ⛔ cancelled 2026-05-09 — 程式碼掃描確認無 bug：HomePage.tsx:217 `isOn = sortMode === mode` derived state，無 secondary state 可漂移；click handler line 222 `setSortMode + setPage(0)` 同 batch；auditor 觀察解釋為 stale cached bundle pre-commit `6211734` |
 | S156 | List clickability + Analytics hero card 修正 | S(5) | — | ✅ v4.32.0 — #1 historical (S100e) + #3 hero card removed；#2 拆 S156b |

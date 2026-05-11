@@ -1,5 +1,49 @@
 # Changelog
 
+## [v4.50.0] — S154b Author Display Identity (frontend)（2026-05-11）
+
+> S154 backend 已 expose `authorDisplayName / authorHandle / authorEmail` 4 個 enriched 欄位；本 spec 在前端 10 個元件渲染出來，並修 ShareSkillModal 4 個 UX bug + PublishPage 「作者」欄位改 read-only display（user-reported：原 input 仍顯 OAuth sub raw 21 位 `116549129985546340268` 且可改但 backend silent ignore）。
+
+### Added
+
+- **`frontend/src/lib/displayName.ts`** — `getDisplayName(obj)` helper 統一 5-layer fallback (`authorDisplayName → email local-part → handle → user_id`)，所有元件 import 使用；單元測試 6 cases。
+- **`frontend/src/components/v2/PageHeader.tsx`** — 條件式「聯絡作者」`mailto:` link（only when `skill.authorEmail` 存在 / `users.contact_email_public=true` 才 expose）。
+- **Backend ACL enrich** — `SkillGrantService.listGrants()` 對 `principalType=user` 走 LEFT JOIN `users` + `DisplayNameResolver` 5-layer fallback，補 transient `displayName`/`handle` 給 ShareModal list row 用。
+- **Backend ACL grant resolve** — `SkillGrantService.grant()` 加 trust-or-resolve 分支：`u_` 前綴直接 trust（registry semantics：ACL 可預先 grant 給未登入 user_id），否則走 `UserResolver.resolveByEmailHandleOrId()` 解析 email/handle → user_id。
+
+### Changed
+
+- **PublishPage 「作者」欄位** — 從 `<Input>` 改 read-only display div（`getDisplayName({author: me.userId, ...})` + handle chip `@{me.handle}`）；移除「已自動填入你的識別 ... 可改為團隊或代發名稱」誤導文字；`uploadSkill()` signature drop `author: string` 參數 + FormData 不再送 author（對齊 S154 backend `@RequestParam("author")` 已 drop 的 silent-ignore semantics）。
+- **ShareSkillModal**（`frontend/src/components/ShareModal.tsx`）4 polish — (a) list row 顯 `Alice Chen` displayName 不再顯 raw `user:111161306011023995106 OWNER`；(b) radio 移除 `group / company`（MVP 無 organization model），只剩 `user / public`；(c) 已 `public:*:read` 時 public radio disabled + 文案「此技能已公開瀏覽，無需再加 public 分享」；(d) placeholder 改「輸入使用者 email 或 handle」（從原 raw「輸入 ID...」），backend 用 UserResolver 解析。
+- **AuthArea profile dropdown** — priority chain `name ?? email ?? handle ?? userId` + defensive `?? ''` + `(label || '?').charAt(0)` fallback（防 unit test mock 不完整時 NPE；production handle NOT NULL 永遠不會走到）。
+- **SkillCard / InstallCard / MySkillsPage** — 全改 `getDisplayName` helper，徹底擺脫 raw user_id 顯示。
+- **`api/auth.ts` AuthUser 擴 11 keys** — 對齊 S154 backend MeController response shape（userId / handle / sub / email / name / roles / groups / companyId / deptId / scope / picture）。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-09-S154b-author-display-frontend.md` → `docs/grimo/specs/archive/`
+- spec-roadmap.md S154b row 狀態 `⏳ Plan` → ✅ v4.50.0
+
+### Verification
+
+- `cd frontend && npm test -- --run`：**350/350 PASS**（+10 new tests from T01-T05）
+- `cd backend && ./gradlew test`：**725/725 PASS**（+4 new tests from T04 SkillGrantServiceTest）
+- E2E integration seam：existing `SkillsHubAuthE2ETest` (S120 ACL grant E2E) PASS — 新增的 trust-or-resolve branch + listGrants enrich 都跑通真實 Spring DI + PostgreSQL
+- `scripts/verify-all.sh`：見 ship 時間點 V08b native image build 結果
+
+### AC Results
+
+10/10 PASS — AC-1 display sweep / AC-2 InstallCard handle / AC-3 AuthArea priority chain / AC-4+5 contact button conditional / AC-6 ACL list enrich / AC-7 radio user+public only / AC-8 public disabled / AC-9 email-handle resolve + placeholder / AC-10 PublishPage read-only.
+
+### QA Subagent Review
+
+PASS with 3 MINOR findings (no blockers, all cosmetic doc drift):
+- "5-layer" label in `displayName.ts` docstring — code has 4 layers (5th is AuthArea defensive `?? ''`)
+- AC-3 email-fallback test path covered via `displayName.test.ts` but not separately tagged in `AuthArea.test.tsx`
+- §5.1 vs §7 cross-reference: `AppShell.test.tsx` (plan) vs `AuthArea.test.tsx` (actual; AppShell renders AuthArea, 同物件)
+
+---
+
 ## [v4.49.0] — S168 Round 2 — Boolean wrapper field fix（取代 v4.48.0 dead converter；2026-05-11）
 
 > Round 2 fix — v4.48.0 ship 的 `IntegerToBooleanConverter` 經 Cloud Run revision `skillshub-00018-czg` 驗證**未生效**（同 stacktrace 重現）。Root cause re-analysis 確認 Spring Data `ConvertingPropertyAccessor.convertIfNecessary` (`spring-data-commons/...:106-112`) 對 `Boolean → boolean(primitive)` 走 `ClassUtils.isAssignable` 短路，conversion service **從未被呼叫** → Round 1 converter 是 dead code。改採 Approach C（per [JobRunr PR #1501](https://github.com/jobrunr/jobrunr/pull/1501) production-shipped fix 同 stacktrace）：將受影響 entity primitive `boolean` field 全改為 wrapper `Boolean`，AOT-generated setter 從 `(Entity, boolean)V` 變 `(Entity, Boolean)V`，SubstrateVM 純 reference cast 無 unboxing adapter → 走 `UnsafeObjectFieldAccessor` 不踩 GraalVM oracle/graal#5672 corrupt path。

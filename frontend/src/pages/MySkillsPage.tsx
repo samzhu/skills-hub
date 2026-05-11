@@ -37,7 +37,9 @@ import type { Skill } from '@/types/skill'
 export function MySkillsPage() {
   const { data: me, isLoading: meLoading, isError: meError } = useMe()
   const auth = useAuth()
-  const author = me?.sub
+  // S154b — 用 platform userId 作 author filter（S154 backend `skills.author` 已切 user_id；
+  // 過去用 me.sub 是 S094a 寫的，未對齊 S154 ship 後的 schema）。
+  const author = me?.userId
   // S132: page-level auth gate 在 useSkillList 之後 render 路徑早 return；query 仍會跑但 result
   // 不被使用（page 顯 EmptyState 時 skillsPage 不參與 render）— 對齊 React Hook 順序固定原則
   const { data: skillsPage, isLoading: skillsLoading } = useSkillList({
@@ -97,7 +99,7 @@ export function MySkillsPage() {
       {/* Hero */}
       <div className="mb-6">
         <p className="text-[12px] text-muted-foreground">
-          以 <span className="font-mono text-foreground">{me?.name ?? me?.email ?? author}</span> 身份發布
+          以 <span className="font-mono text-foreground">{me?.name ?? me?.email ?? me?.handle ?? author}</span> 身份發布
         </p>
         <div className="mt-1 flex items-end justify-between gap-4">
           <h1 className="text-[22px] font-semibold tracking-tight">

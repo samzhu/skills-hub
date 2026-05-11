@@ -55,7 +55,9 @@ describe('AuthArea — S139 header right slot', () => {
     mockUseAuth.mockReturnValue({
       status: 'authenticated',
       user: {
-        sub: 'alice',
+        userId: 'u_a3f9c1',
+        handle: 'alice',
+        sub: 'alice-sub',
         email: 'alice@example.com',
         name: 'Alice',
         picture: 'https://example.com/alice.png',
@@ -81,7 +83,9 @@ describe('AuthArea — S139 header right slot', () => {
     mockUseAuth.mockReturnValue({
       status: 'authenticated',
       user: {
-        sub: 'bob',
+        userId: 'u_b3c4d5',
+        handle: 'bob',
+        sub: 'bob-sub',
         email: 'bob@example.com',
         name: 'Bob',
       },
@@ -90,8 +94,34 @@ describe('AuthArea — S139 header right slot', () => {
     } as ReturnType<typeof useAuthModule.useAuth>)
 
     renderAuthArea()
-    // 沒 picture 時 avatar 顯示 'B'（email 首字母大寫）或 'b'（fallback）
+    // 沒 picture 時 avatar 顯示 'B'（name 首字母大寫）
     const trigger = screen.getByRole('button', { name: /開啟使用者選單/i })
     expect(trigger.textContent?.toUpperCase()).toContain('B')
   })
+
+  it('AC-3: priority chain fallback — name/email 缺時走 handle / userId (S154b)', () => {
+    // 模擬 backend 回來 user 無 name 也無 email（OIDC claim 缺）
+    mockUseAuth.mockReturnValue({
+      status: 'authenticated',
+      user: {
+        userId: 'u_c5d6e7',
+        handle: 'carol',
+        sub: 'carol-sub',
+        // name / email / picture intentionally omitted
+      },
+      login: vi.fn(),
+      logout: vi.fn(),
+    } as ReturnType<typeof useAuthModule.useAuth>)
+
+    renderAuthArea()
+    const trigger = screen.getByRole('button', { name: /開啟使用者選單/i })
+    // displayLabel = handle 'carol' → fallbackChar 'C'
+    expect(trigger.textContent?.toUpperCase()).toContain('C')
+    // **永遠不該**顯示 raw sub 'carol-sub' 的首字母
+    // (此 case 因 handle 在 fallback chain 早於 sub，sub 永不被讀；assertion 用 handle char)
+  })
+
 })
+
+// NOTE：priority chain 「全缺 fallback userId」case 理論上 backend 不會送出（handle 為
+// VARCHAR(64) UNIQUE NOT NULL，slugify 保證非空），unit test 不模擬該不可能 input。

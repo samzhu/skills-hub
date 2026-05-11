@@ -328,17 +328,17 @@ export function fetchCategories(): Promise<CategoryCount[]> {
  */
 export type Visibility = 'PUBLIC' | 'PRIVATE'
 
+// S154b — drop author parameter；backend §S154 §2.5 forge fix 後 server 一律從 auth context
+// 取 author（caller body silent ignored），前端不再送以對齊 authoritative ownership semantics。
 export async function uploadSkill(
   file: File,
   version: string,
-  author: string,
   category: string,
   visibility: Visibility = 'PUBLIC',
 ): Promise<{ id: string }> {
   const form = new FormData()
   form.append('file', file)
   form.append('version', version)
-  form.append('author', author)
   form.append('category', category)
   form.append('visibility', visibility)
   const res = await fetch('/api/v1/skills/upload', { method: 'POST', body: form })

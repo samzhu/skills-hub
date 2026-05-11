@@ -19,6 +19,22 @@ describe('InstallCard', () => {
     expect(screen.getByText('skills-hub install alice/my-skill')).toBeTruthy()
   })
 
+  it('AC-2: 使用 authorHandle 為 install command segment（不用 raw user_id）', () => {
+    // S154 backend 提供 authorHandle；install command 應走 user-facing slug
+    const skillWithHandle = { ...baseSkill, author: 'u_a3f9c1', authorHandle: 'alice' }
+    render(<MemoryRouter><InstallCard skill={skillWithHandle} /></MemoryRouter>)
+    expect(screen.getByText('skills-hub install alice/my-skill')).toBeTruthy()
+    // 不該出現 raw user_id segment
+    expect(screen.queryByText(/skills-hub install u_a3f9c1/)).toBeNull()
+  })
+
+  it('AC-2: handle 缺時 fallback 用 user_id（不顯 raw sub）', () => {
+    // Edge case：user row 無 handle（極罕見）→ fallback user_id
+    const skillNoHandle = { ...baseSkill, author: 'u_a3f9c1', authorHandle: null }
+    render(<MemoryRouter><InstallCard skill={skillNoHandle} /></MemoryRouter>)
+    expect(screen.getByText('skills-hub install u_a3f9c1/my-skill')).toBeTruthy()
+  })
+
   it('AC-S142a-16: copy button calls clipboard.writeText', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })

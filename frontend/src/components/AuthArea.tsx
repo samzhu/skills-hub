@@ -41,9 +41,12 @@ export function AuthArea() {
 
   // authenticated
   const { user } = auth
-  // avatar fallback 首字母：name → email → sub 順序取首字
-  const fallbackChar = (user.name ?? user.email ?? user.sub).charAt(0).toUpperCase()
-  const displayLabel = user.name ?? user.email ?? user.sub
+  // S154b priority chain：name → email → handle → userId（**永遠不顯 raw sub**；handle/userId
+  // 為 S154 backend 擴的 platform identity，displayLabel 與 fallbackChar 都對齊同 priority）。
+  // 末層 `?? ''` 防全 priority chain 都 falsy 時 charAt(0) NPE（理論上不會發生 — backend
+  // 強制 handle/userId NOT NULL — 但加 defensive 保 unit test mock 不完整時不炸）。
+  const displayLabel = user.name ?? user.email ?? user.handle ?? user.userId ?? ''
+  const fallbackChar = (displayLabel || '?').charAt(0).toUpperCase()
 
   return (
     <DropdownMenu>

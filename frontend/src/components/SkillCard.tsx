@@ -3,6 +3,7 @@ import { Download } from 'lucide-react'
 import { RiskBadge } from './RiskBadge'
 import { IconTile } from './IconTile'
 import { BeamFrame } from './BeamFrame'
+import { getDisplayName } from '@/lib/displayName'
 import type { Skill } from '@/types/skill'
 
 /**
@@ -36,7 +37,7 @@ export function SkillCard({ skill, score, featured }: { skill: Skill; score?: nu
             <IconTile name={skill.name} category={skill.category} size="md" />
             <div className="min-w-0">
               <h3 className="m-0 truncate text-[13px] font-medium">{skill.name}</h3>
-              <p className="mt-px font-mono text-[11px] text-muted-foreground">{skill.author}</p>
+              <p className="mt-px font-mono text-[11px] text-muted-foreground">{getDisplayName(skill)}</p>
             </div>
           </div>
           <RiskBadge level={skill.riskLevel} />

@@ -8,7 +8,8 @@ interface Props {
 
 export function InstallCard({ skill }: Props) {
   const [copied, setCopied] = useState(false)
-  const cmd = `skills-hub install ${skill.author}/${skill.name}`
+  // S154b — 走 user-facing handle slug；handle 缺 fallback user_id（永不顯 raw OAuth sub）
+  const cmd = `skills-hub install ${skill.authorHandle ?? skill.author}/${skill.name}`
 
   function handleCopy() {
     navigator.clipboard.writeText(cmd).then(() => {

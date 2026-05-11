@@ -99,6 +99,21 @@ describe('PageHeader', () => {
     expect(screen.queryByTestId('download-cta')).toBeNull()
   })
 
+  it('AC-4 (S154b): skill.authorEmail 不存在 → 無「聯絡作者」mailto link', () => {
+    setupMocks()
+    // baseSkill 預設無 authorEmail field
+    renderHeader()
+    expect(screen.queryByRole('link', { name: '聯絡作者' })).toBeNull()
+  })
+
+  it('AC-5 (S154b): skill.authorEmail 存在 → mailto:{email} link 渲染', () => {
+    setupMocks()
+    renderHeader({ ...baseSkill, authorEmail: 'alice@example.com' })
+    const link = screen.getByRole('link', { name: '聯絡作者' })
+    expect(link).toBeTruthy()
+    expect(link.getAttribute('href')).toBe('mailto:alice@example.com')
+  })
+
   it('regression (S142a-T06 prod-bug): download-cta click invokes onDownload prop', () => {
     setupMocks()
     const onDownload = vi.fn()
