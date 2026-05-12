@@ -1535,3 +1535,37 @@ API 404 設值 error 故觸發此 catch-all。UX 可接受（不誤導；有 err
 
 ### Tick 111 Summary
 - Round 64: 20 checks / **0 bugs — negative deep-link 全部有保護**
+
+---
+
+## Tick 130 — Mode B Round 65（User-Visible String Compliance），2026-05-12
+
+> 上 18 個 ticks（cron `c9ca6c4a`）shipped 7 個 sub-spec 把原 5-spec（S157/S160/S161/S163/S164）推到 4/5 fully shipped。本 round 靜態 grep audit 在 4 個新檔（EditSkillModal / EditCollectionModal / VisibilityToggleButton / CollectionDetailPage 修改）找 user-visible 不一致 / spec ID leak / 硬編碼英文 / 無 aria-label 等問題。
+
+### 涵蓋
+
+| # | 類別 | Case | Result | Notes |
+|---|------|------|--------|-------|
+| 65.1 | 正例 | EditSkillModal `aria-label="編輯技能"` 存在 | ✅ | dialog role + 中文 aria-label |
+| 65.2 | 正例 | EditCollectionModal `aria-label="編輯集合"` 存在 | ✅ | 同 65.1 一致 |
+| 65.3 | 正例 | VisibilityToggleButton `data-testid="visibility-toggle"` + `aria-label`（loading 與 active 兩態都有）| ✅ | loading 態 aria-label="讀取中" / active 態 dynamic「轉為私人」or「公開分享」 |
+| 65.4 | 反例 | 4 個新檔 grep `S[0-9]{3}` spec ID 漏到 user-visible | ✅ | 全部出現於 javadoc / 註解 / `<p>` 不包含 — 0 leak |
+| 65.5 | 反例 | 4 個新檔 grep `TODO / FIXME / XXX` placeholder | ✅ | 0 個 |
+| 65.6 | 正例 | EditSkillModal labels 全 zh-TW（描述/分類/取消/儲存/儲存中.../送出失敗）| ✅ | i18n compliant |
+| 65.7 | 正例 | EditCollectionModal labels 全 zh-TW（名稱/說明/分類/技能 ID 清單/取消/儲存）| ✅ | i18n compliant |
+| 65.8 | 正例 | CollectionDetailPage [編輯][刪除][刪除中...] zh-TW | ✅ | |
+| 65.9 | 正例 | window.confirm 訊息 zh-TW「確定刪除集合『X』？此動作無法復原」| ✅ | per spec AC-8 文案 |
+| 65.10 | 觀察 | 全 codebase 既有 modal 都**無** Esc-to-close handler（CreateCollectionModal / ShareModal / EditSkillModal / EditCollectionModal 等）| OBSERVE — 全 codebase 一致缺，個別 modal 加會破一致性；屬未來統一 polish 範疇 |
+
+**0 bugs found。**
+
+### 觀察
+
+- **Esc-to-close 統一缺**：全 codebase modal 都靠 [取消] button + outside-click overlay 關閉，無 keyboard Escape handler。屬可用性 polish，但既有 6+ modal 一致缺，獨改新 modal 會破一致性。記錄為 future polish 候選（S2XX-modal-keyboard-a11y）。
+- **無 toast lib**：codebase pattern 是 modal close + page refetch 自然 visual feedback；無 inline success/error toast。EditSkillModal / EditCollectionModal 走相同 pattern。屬設計選擇而非缺陷。
+- spec ID 字面值（S163b / S163b' / S164b / S150）只出現在 javadoc / 註解 — 0 個 leak 到 user-visible UI text。
+
+### Round 65 Summary
+
+- Tick 130: 10 checks / **0 bugs**。Mode B 0-bug 連續 1 round；下次 tick 換 cut 軸（候選：interactive state consistency on owner-management flow / component-context alignment on PageHeader cross-skill-vs-collection）。
+
