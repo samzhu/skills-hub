@@ -68,17 +68,17 @@ export async function seedDownloadEvents(
 // Canonical fixture profiles — tag tests with `@profile-<name>` per
 // playwright-expert/references/fixtures-patterns.md state taxonomy.
 //
-// Each profile resets first, then seeds canonical data and returns
-// any handles the test needs (skill ids etc).
+// S168: 拿掉 profile.* 內 resetAll —— auto-fixture `resetState` 已先跑（line 122）。
+// 雙 reset + 內含 event drain wait 會吃掉 Playwright 30s test budget。
+// Tests 仍可顯式 `await resetAll(request)` 後再 seed（如需多階段測試）。
 export const profiles = {
   /** No data — first-time UX, empty-state assertions. */
-  async empty(req: APIRequestContext): Promise<void> {
-    await resetAll(req);
+  async empty(_req: APIRequestContext): Promise<void> {
+    // auto-fixture resetState 已 reset；nothing to do
   },
 
   /** One published skill — minimal positive case (detail / download / quality score). */
   async single(req: APIRequestContext): Promise<{ skillId: string }> {
-    await resetAll(req);
     const skillId = await seedSkill(req, {
       name: 'docker-compose-helper',
       description: 'Helper skill for orchestrating docker-compose dev stacks.',
@@ -91,7 +91,7 @@ export const profiles = {
 
   /** 10 mixed skills across DevOps / Testing / Docs / DataOps — paged list, search, semantic ranking. */
   async paged(req: APIRequestContext): Promise<{ skillIds: string[] }> {
-    await resetAll(req);
+    // auto-fixture resetState 已 reset；直接 seed
     // Curated mix balances PRD P1 keyword search ("docker") + P5 semantic search
     // (隨機 cosine 排序但跨 reload 一致；spec §3 AC-5 only verifies determinism, not semantic quality)
     const seeds: SkillSeed[] = [

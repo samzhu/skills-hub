@@ -2,14 +2,14 @@
 //
 // /search?q=... 路由 → SearchResultsPage → useSemanticSearch hook → backend
 // SemanticSearchService → vector_store cosine search。E2E profile：
-//   1) E2EEmbeddingConfig.@Primary stub embedder 取代 noOp / Google bean
-//   2) skillshub.search.semantic-similarity-threshold = 0.0 override 預設 0.3
-//      （Spring AI 2.0.0-M5 強制 [0,1]；threshold=0.0 = 接受 cosine ≥ 0；stub
-//       random ±0.1 統計上 ~半數通過，AC-5 只驗 ≥1 結果 + reload 順序 deterministic）
+//   1) E2EEmbeddingConfig.@Primary word-overlap stub embedder（S168 升級）
+//   2) skillshub.search.semantic-similarity-threshold = 0.1（過濾雜訊但保留 overlap）
 //
-// **AC-5 不驗 semantic 質量** — POC 證實 Random(hashCode) 排序與人類直覺相反
-// （docker 對「容器/部署」query cosine 最低 -0.058 / junit 最高 +0.034）。
-// 只驗：① semantic 路由觸發 ② 結果非空 ③ 跨 reload 順序 deterministic。
+// **AC-5 不驗 semantic 質量** — 只驗：① semantic 路由觸發 ② 結果非空 ③ 跨 reload
+// 順序 deterministic。query 用英文 NL（"images and containers in CI"），跟 paged
+// seed 描述（docker-cleaner "Prunes dangling images and containers." / pytest-runner
+// "Runs pytest with coverage in CI." 等）有 token overlap → stub cosine 通過 0.1
+// threshold；Chinese query 需走 production Gemini，LAB 部署驗證。
 
 import { test, expect, profiles } from './_fixtures';
 
@@ -27,8 +27,8 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
 
     let firstOrderNames: string[] = [];
 
-    await test.step('When user opens /search with natural-language query "我想把應用部署到容器環境"', async () => {
-      const query = encodeURIComponent('我想把應用部署到容器環境');
+    await test.step('When user opens /search with natural-language query "images and containers in CI"', async () => {
+      const query = encodeURIComponent('images and containers in CI');
       await page.goto(`/search?q=${query}`);
 
       // 等 semantic search 結果出現（resultsLoading 結束）；non-empty list

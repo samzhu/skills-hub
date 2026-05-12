@@ -18,12 +18,19 @@ import org.springframework.context.annotation.Profile;
 /**
  * S140 — {@code e2e} profile 專用 deterministic stub {@link EmbeddingModel}。
  *
- * <p><b>POC source</b>：{@code poc/S140/StubEmbeddingPoc.java}（2026-05-07）— H1 determinism /
- * H2 separation / H3 stable ranking 全 PASS（cosine 範圍 0.09，足夠分離不 tie）。
+ * <p>S168 升級：原 {@code Random(input.hashCode())} 純亂數 → 改為 <b>word-overlap biased</b> —
+ * 拆解 input 的 alphanumeric token，每 token 對 {@code hashCode % dim} 加固定 boost。
+ * 同 token 的 doc/query 在該 slot 對齊 → cosine 顯著正；不同 token → cosine 接近 0
+ * （由小 random noise 主導）。這讓 keyword query 對 keyword-命中的 doc 可分離出來，
+ * 同時保留 deterministic + cross-reload 一致性（POC 既驗）。
  *
- * <p><b>關鍵 caveat</b>：{@code Random(input.hashCode())} 產生 unit-normed 768-dim vector 是
- * <b>deterministic 但非 semantic</b> — query「容器/部署」對 docker 排序不會比對 junit 高。E2E 只驗
- * deterministic 排序 + UI 渲染，不驗 semantic 質量；真 Gemini 排序質量由 LAB 部署人工驗證。
+ * <p>對 e2e tests：
+ * <ul>
+ *   <li>AC-1 「docker」query → 3 docker-* skill cosine 高，其他低 → threshold 0.15
+ *       篩出 3 → "找到 3 個相關技能" 對齊 expect</li>
+ *   <li>AC-5 中文 query「容器環境」→ 跟 English doc tokens 無 overlap → cosine 全低 →
+ *       semantic 回空 → HomePage fallback 到 keyword OR AC-5 改用英文 query</li>
+ * </ul>
  *
  * <p><b>結構決策</b>：用 {@code @Primary} bean 而非獨立 {@code @ConditionalOnMissingBean} —
  * {@link io.github.samzhu.skillshub.search.SearchConfig} 既有 {@code noOpEmbeddingModel} 已用
@@ -74,11 +81,18 @@ class E2EEmbeddingConfig {
         }
 
         private float[] embedString(String input) {
-            // input.hashCode() 同字串 → 同 seed → 同 vector — Java spec 保證 String.hashCode 跨 JVM 一致
+            // 小 random noise base — input.hashCode() 同字串 → 同 vector（Java spec 保證）。
             var rng = new Random(input.hashCode());
             var vec = new float[dim];
             for (int i = 0; i < dim; i++) {
-                vec[i] = rng.nextFloat() * 2 - 1;
+                vec[i] = (rng.nextFloat() * 2 - 1) * 0.05f;
+            }
+            // Word-overlap boost — 每個 alphanumeric token（length ≥ 2）在 hashCode % dim 加 1.0。
+            // 同 token 的 doc/query 在該 slot 對齊 → cosine 顯著正；無 overlap → cosine ≈ 0。
+            for (var token : input.toLowerCase().split("[^a-z0-9]+")) {
+                if (token.length() < 2) continue;
+                int idx = Math.floorMod(token.hashCode(), dim);
+                vec[idx] += 1.0f;
             }
             return normalize(vec);
         }

@@ -76,18 +76,20 @@ class TestDataController {
 
     @PostMapping("/reset")
     ResponseEntity<Map<String, Object>> reset() {
+        // S168: TRUNCATE 拿 AccessExclusiveLock vs AFTER_COMMIT async listener
+        // (ScanOrchestrator UPDATE skills 等) 持 RowExclusiveLock 互鎖。原 retry-5×200ms
+        // (~6s) 撐不過 LLM judge phase (>1s 即觸發 PG deadlock_timeout，且 listener 多輪
+        // 重試持續產生事件)。改先 poll event_publication.completion_date 排空 →
+        // Modulith outbox 完成 marker = 所有 listener 已 commit 釋放 row lock，
+        // TRUNCATE 安全進場。retry 留 residual race 兜底。production 不啟此路徑。
+        waitForEventDrain(15_000L);
+
         // 單次 TRUNCATE multi-table — PG 內部處理 FK 依賴順序，比逐張呼叫安全；
         // RESTART IDENTITY 重置 sequence；CASCADE 兜底任何漏列的 FK target
         var sql = "TRUNCATE TABLE " + String.join(", ", RESET_ALLOWLIST)
                 + " RESTART IDENTITY CASCADE";
         Map<String, Object> noParams = Map.of();
 
-        // S140-T09: TRUNCATE 拿 AccessExclusiveLock 與 AFTER_COMMIT async listener
-        // (Modulith outbox dispatcher) 寫 projection (RowShareLock) 互鎖 →
-        // PG deadlock_timeout 預設 1s。前一 test 累積的 listener queue 排空前
-        // 直接 TRUNCATE 必死。retry 5 次 + 200ms backoff（5 × ~1.2s ≈ 6s 上限），
-        // 足以涵蓋 10 skill seed 的所有 listener (search/audit/ACL/notification ×
-        // 平均 100ms async)。production 不啟此路徑。
         org.springframework.dao.PessimisticLockingFailureException last = null;
         for (int attempt = 0; attempt < 5; attempt++) {
             try {
@@ -165,6 +167,28 @@ class TestDataController {
                 .addKeyValue("daysAgo", req.daysAgo())
                 .log("E2E seed download events complete");
         return ResponseEntity.ok(Map.of("count", req.count()));
+    }
+
+    /**
+     * Poll Modulith {@code event_publication.completion_date IS NULL} 直到 0 或 timeout。
+     * 等所有 AFTER_COMMIT async listener 跑完 commit → 釋放 row lock，後續 TRUNCATE 不撞鎖。
+     */
+    private void waitForEventDrain(long maxWaitMs) {
+        long deadline = System.currentTimeMillis() + maxWaitMs;
+        Map<String, Object> noParams = Map.of();
+        while (System.currentTimeMillis() < deadline) {
+            Integer pending = jdbc.queryForObject(
+                    "SELECT count(*)::int FROM event_publication WHERE completion_date IS NULL",
+                    noParams, Integer.class);
+            if (pending == null || pending == 0) return;
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+        log.warn("Event publication drain timed out after {}ms — proceeding to TRUNCATE with retry", maxWaitMs);
     }
 
     /** 自動合成 minimal SKILL.md — agentskills.io frontmatter 必填欄位 (name/description/author/version) 皆有。 */

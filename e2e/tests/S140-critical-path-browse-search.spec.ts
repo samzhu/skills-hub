@@ -1,10 +1,10 @@
 // S140 critical-path E2E — AC-1 (PRD P1: Browse + keyword search).
 //
-// Backend stub embedder（per S140 §4.3）回傳 cosine ≈ ±0.1，遠低於
-// SemanticSearchService.SIMILARITY_THRESHOLD = 0.3，故所有 query 在 e2e
-// profile 下 semantic 結果為空 → HomePage isSemanticMode = false → 自動
-// fallback 到關鍵字模式（useSkillList ?keyword=）。本 AC 因此驗 keyword
-// path 的 ILIKE name/description 命中行為。
+// S168 升級後：E2EEmbeddingConfig stub 為 word-overlap biased（同 token →
+// cosine 顯著正，無 overlap → 隨機 ±0.05）；e2e threshold=0.1。query "docker"
+// 對 3 個 docker-* skill cosine ≈ 0.2 通過 threshold，其他 7 個被篩掉 →
+// HomePage isSemanticMode = true → 顯示「找到 3 個相關技能」(regex 接受 keyword
+// 與 semantic 兩種計數文字)。
 
 import { test, expect, profiles } from './_fixtures';
 
