@@ -1,7 +1,15 @@
 #!/bin/bash
+# S157 — 用真實 Gemini API 算 5 個 ClawHub 真實 skill + 3 個 query 的 768-d 向量，
+# 輸出 /tmp/fixture-output.json 供 embedding_fixture_to_sql.py 轉成 SQL + Java fixture。
+#
+# 半年或 model 升級時 refresh：
+#   KEY=$(grep '^skillshub.genai.api-key=' backend/config/application-secrets.properties | cut -d= -f2-)
+#   bash tools/fetch_embedding_fixture.sh "$KEY"
+#   python3 tools/embedding_fixture_to_sql.py
 set -euo pipefail
 KEY="$1"
 ENDPOINT="https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=$KEY"
+OUT="/tmp/fixture-output.json"
 
 fetch() {
   local text="$1"
@@ -11,10 +19,10 @@ fetch() {
     | jq -c '.embedding.values'
 }
 
-> fixture-output.json
-echo '{"documents":[' > fixture-output.json
+echo '{"documents":[' > "$OUT"
 
-# Doc corpus
+# 5 真實 ClawHub / OpenClaw skills（來源：github.com/VoltAgent/awesome-openclaw-skills）
+# 選 3 跟 query 對應 + 2 distractor（語意明顯不同領域）
 declare -a IDS=(
   "11111111-1111-1111-1111-100000000001"
   "11111111-1111-1111-1111-100000000002"
@@ -23,42 +31,42 @@ declare -a IDS=(
   "11111111-1111-1111-1111-100000000005"
 )
 declare -a NAMES=(
-  "docker-compose-helper"
-  "terraform-security-audit"
-  "react-component-scaffold"
-  "csv-data-cleaner"
-  "langchain-agent-builder"
+  "agent-browser"
+  "agentic-devops"
+  "agent-skills-audit"
+  "duckdb-en"
+  "agent-memory-ultimate"
 )
 declare -a CATS=(
+  "Automation"
   "DevOps"
   "Security"
-  "Frontend"
-  "DataOps"
-  "AI"
+  "Data"
+  "Productivity"
 )
 declare -a TEXTS=(
-  "Helper skill for orchestrating multi-container Docker Compose dev stacks with service health checks and auto-reload."
-  "Static analysis tool that audits Terraform infrastructure-as-code for AWS / GCP security misconfigurations and IAM least-privilege violations."
-  "Frontend code generator that scaffolds React component boilerplate with TypeScript props, Tailwind styles, and vitest test files."
-  "Tabular data cleanup tool: deduplicates rows, fixes encoding, normalizes date formats, and exports cleaned CSV / Parquet."
-  "Framework helper for composing LangChain agents with tool calls, retry policies, and conversation memory."
+  "A fast Rust-based headless browser automation CLI for agents — form filling, screenshot capture, DOM traversal, and web scraping workflows for automated testing and data extraction."
+  "Production-grade agent DevOps toolkit covering Docker container management, process supervision, log analysis, and health monitoring for deploying and operating agent systems at scale."
+  "Two-pass multidisciplinary code audit led by a tie-breaker lead, combining security vulnerability review, performance bottleneck detection, UX evaluation, and developer experience checks."
+  "DuckDB CLI specialist for SQL analysis and data processing — complex queries, aggregations, joins, and analytics on local CSV / Parquet datasets without external dependencies."
+  "Production-ready persistent memory system for agents — daily logs, sleep consolidation, SQLite plus FTS5 retrieval, and importers for WhatsApp, ChatGPT, and VCF contact data."
 )
 
 FIRST=1
 for i in 0 1 2 3 4; do
   vec=$(fetch "${TEXTS[$i]}")
-  if [ "$FIRST" -eq 0 ]; then echo ',' >> fixture-output.json; fi
+  if [ "$FIRST" -eq 0 ]; then echo ',' >> "$OUT"; fi
   FIRST=0
   jq -n --arg id "${IDS[$i]}" --arg name "${NAMES[$i]}" --arg cat "${CATS[$i]}" --arg text "${TEXTS[$i]}" --argjson vec "$vec" \
-    '{id:$id, name:$name, category:$cat, text:$text, embedding:$vec}' >> fixture-output.json
+    '{id:$id, name:$name, category:$cat, text:$text, embedding:$vec}' >> "$OUT"
 done
 
-echo '],"queries":[' >> fixture-output.json
+echo '],"queries":[' >> "$OUT"
 
 declare -a QTEXTS=(
-  "container orchestration"
-  "infrastructure security audit"
-  "frontend component generator"
+  "browser automation and web scraping"
+  "container deployment and process management"
+  "code security review"
 )
 declare -a QEXPECTED=(
   "11111111-1111-1111-1111-100000000001"
@@ -69,13 +77,12 @@ declare -a QEXPECTED=(
 FIRST=1
 for i in 0 1 2; do
   vec=$(fetch "${QTEXTS[$i]}")
-  if [ "$FIRST" -eq 0 ]; then echo ',' >> fixture-output.json; fi
+  if [ "$FIRST" -eq 0 ]; then echo ',' >> "$OUT"; fi
   FIRST=0
   jq -n --arg text "${QTEXTS[$i]}" --arg expect "${QEXPECTED[$i]}" --argjson vec "$vec" \
-    '{text:$text, expectId:$expect, embedding:$vec}' >> fixture-output.json
+    '{text:$text, expectId:$expect, embedding:$vec}' >> "$OUT"
 done
-echo ']}' >> fixture-output.json
+echo ']}' >> "$OUT"
 
-# Validate output JSON
-jq -e '.documents|length, .queries|length' fixture-output.json
-echo "OK"
+jq -e '[(.documents|length), (.queries|length)]' "$OUT"
+echo "OK: wrote $OUT"

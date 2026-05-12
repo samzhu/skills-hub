@@ -33,12 +33,13 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
  *
  * <p>**為什麼存在**：既有 {@link SemanticSearchIntegrationTest} 用 fixed-seed random vector
  * （{@code TestcontainersConfiguration.mockEmbeddingModel}）— cosine ≈ 1.0 對 doc/query 同
- * 函式 generate，**不能驗 cross-semantic ranking**（"container orchestration" 該排到 docker
- * skill 不是 react skill）。Production 用真 Gemini 算的 768-d 向量帶語意；random vector 沒帶。
+ * 函式 generate，**不能驗 cross-semantic ranking**（"browser automation" 該排到 agent-browser
+ * 不是 agent-memory）。Production 用真 Gemini 算的 768-d 向量帶語意；random vector 沒帶。
  *
- * <p>本 IT 用 SQL fixture（{@code search/embedding-fixture.sql}）含 5 個不同領域 skill 的
- * **real Gemini 向量**，配 3 個 pre-embed query 向量（{@link EmbeddingFixture#QUERIES}），
- * 在 Testcontainers pgvector 跑真實 cosine 排序，驗 cross-semantic ranking 不退化。
+ * <p>本 IT 用 SQL fixture（{@code search/embedding-fixture.sql}）含 5 個來自 ClawHub
+ * (github.com/VoltAgent/awesome-openclaw-skills) 真實 agent skill 的 **real Gemini 向量**，
+ * 配 3 個 pre-embed query 向量（{@link EmbeddingFixture#QUERIES}），在 Testcontainers
+ * pgvector 跑真實 cosine 排序，驗 cross-semantic ranking 不退化。
  *
  * <p>**為什麼不每次跑都打 Gemini**：fixture 在 git；test 用 fixture-based {@link EmbeddingModel}
  * 走 lookup 不打 API；只在 model 升級或半年 maintenance 才 refresh（refresh 程序見
@@ -96,23 +97,23 @@ class SemanticSearchRealFixtureIT {
 
     @Test
     @Tag("AC-real-1")
-    @DisplayName("AC-real-1: query 'container orchestration' → top match docker-compose-helper")
-    void containerQueryRanksDockerTop() {
-        assertTopMatch("container orchestration");
+    @DisplayName("AC-real-1: query 'browser automation and web scraping' → top match agent-browser")
+    void browserAutomationQueryRanksAgentBrowserTop() {
+        assertTopMatch("browser automation and web scraping");
     }
 
     @Test
     @Tag("AC-real-2")
-    @DisplayName("AC-real-2: query 'infrastructure security audit' → top match terraform-security-audit")
-    void securityAuditQueryRanksTerraformTop() {
-        assertTopMatch("infrastructure security audit");
+    @DisplayName("AC-real-2: query 'container deployment and process management' → top match agentic-devops")
+    void containerDeploymentQueryRanksAgenticDevopsTop() {
+        assertTopMatch("container deployment and process management");
     }
 
     @Test
     @Tag("AC-real-3")
-    @DisplayName("AC-real-3: query 'frontend component generator' → top match react-component-scaffold")
-    void frontendQueryRanksReactTop() {
-        assertTopMatch("frontend component generator");
+    @DisplayName("AC-real-3: query 'code security review' → top match agent-skills-audit")
+    void securityReviewQueryRanksAgentSkillsAuditTop() {
+        assertTopMatch("code security review");
     }
 
     @Test
