@@ -1,8 +1,11 @@
 # S160: Security Headers + CSRF — pre-production hardening 清單
 
-> Spec: S160 | Size: M(8) → Phase 1 trim S(5) | Status: 🚧 Phase 1 backend impl 完成 2026-05-12（headers ship；CSRF + CSP report endpoint defer 至 S160b）
+> Spec: S160 | Size: M(8) → 五段 ship | Status: ✅ shipped 2026-05-12 — 全 9 AC PASS（原 5-spec 第三個 fully shipped）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— 實測 LAB env 缺 4 項標準 web security baseline：CSRF 關閉（POST 不需 token）、CSP missing、HSTS missing、Referrer-Policy missing。X-Frame-Options 與 X-Content-Type-Options 已設好。
+> Ship commits: 5acfd17 (S160 Phase 1 headers) + 7449b06 (S160b CSRF infra) + 686fda0 (S160b' frontend X-XSRF-TOKEN auto-inject) + fec5ccc (S160b'' CSP report endpoint) + ab6d182 (S160b''' AC-1 CSRF chain rejection)
+> Sub-specs: S160b ✅ + S160b' ✅ + S160b'' ✅ + S160b''' ✅
+> 全 9 AC 收尾 table 詳見 §7.9
 
 ---
 

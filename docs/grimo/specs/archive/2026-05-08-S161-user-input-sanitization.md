@@ -1,8 +1,25 @@
 # S161: User Input Sanitization — Review / Flag / Request 文字欄位 XSS 防禦
 
-> Spec: S161 | Size: S(6) → Phase 1 XS(3) | Status: 🚧 Phase 1 ship 2026-05-12（review.content + PlainTextDeserializer 基礎設施完成；其餘 3 DTO + markdown allowlist + V20 backfill 拆 S161b/c）
+> Spec: S161 | Size: S(6) → 五段 ship | Status: ✅ shipped 2026-05-12 — 全 8 AC PASS（原 5-spec 第二個 fully shipped）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— 實測 `POST /api/v1/skills/{id}/reviews body={rating:5, content:'<script>alert("xss")</script>'}` 直接 201 created；`GET /reviews` 回的 `content` 仍是 raw payload。React frontend 預設 escape 擋住 inline render，但 backend 完全不過濾 — 任何下游改 markdown render / CLI / 外部 API consumer 立即被攻擊。
+> Ship commits: 3ca6778 (AC-1/2 review.content) + 0af2883 (AC-3/4 flag + collection) + 47a4506 (AC-4 request.title) + 46eee1e (AC-7 V19 backfill) + be228d7 (AC-5/6 markdown allowlist)
+> Sub-specs: S161b ✅ + S161b' ✅ + S161b'' ✅ + S161c ✅
+
+## Ship Summary — 全 8 AC PASS
+
+| AC | 內容 | Commit |
+|---|---|---|
+| AC-1 | review.content `<script>` strip | 3ca6778 |
+| AC-2 | review.content `<img onerror>` strip | 3ca6778 |
+| AC-3 | flag.description strip | 0af2883 |
+| AC-4 | request.title / collection.name+description strip | 0af2883 + 47a4506 |
+| AC-5 | request.description markdown safe subset preserved | be228d7 |
+| AC-6 | `javascript:` URL 擋（OWASP allowStandardUrlProtocols）| be228d7 |
+| AC-7 | V19 Flyway backfill 既存 stored XSS payload | 46eee1e |
+| AC-8 | GraalVM native image 相容（OWASP pure Java + regex deserializer 純 JDK；無反射顧慮）| 自然符合 |
+
+詳細 ship 紀錄見下方 §6.5～§6.9 各 Phase。
 
 ---
 

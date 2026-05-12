@@ -1,8 +1,11 @@
 # S150 — Collection Detail Page (`/collections/:id`)
 
-**Status:** 📋 Planned  
-**Estimate:** S (7 pts)  
-**Depends on:** S096f2 ✅
+> Spec: S150 | Size: S(7) | Status: ✅ shipped 2026-05-08
+> Date: 2026-05-08
+> Depends on: S096f2 ✅
+> Ship commit: `73dd9d1 feat(collections): S150 — /collections/:id detail page`
+> Files: `CollectionDetailPage.tsx` + `CollectionDetailPage.test.tsx` (6/6 PASS) + `useCollection.ts` hook + `App.tsx` route + `CollectionsPage.tsx` (CollectionCard → Link)
+> Follow-ups shipped: S164 (PUT/DELETE backend, 8fbee3d) + S164b (EditCollectionModal + action bar, 7906206)
 
 ---
 

@@ -1,8 +1,11 @@
 # S163: Skill Owner Management — Update Metadata + Visibility Toggle
 
-> Spec: S163 | Size: S(5) → backend trim XS(3) | Status: 🚧 backend impl 完成 2026-05-12（PUT endpoint ship；frontend EditSkillModal + visibility toggle UX defer 至 S163b）
+> Spec: S163 | Size: S(5) → 三段 ship | Status: ✅ shipped 2026-05-12 — 全 8 AC PASS
 > Date: 2026-05-08（修訂 2026-05-08 — 移除 suspend / unsuspend，per user 反饋「平台是 registry 不是 runtime」）
 > Origin: deployment audit 2026-05-08（LAB）— `PUT /api/v1/skills/{id}` 回 405 Method Not Allowed。Owner 只能透過重新上傳整個 zip 改 metadata，無法 mid-version 編輯描述 / 分類。
+> Ship commits: 136564d (S163 backend PUT) + fbce208 (S163b EditSkillModal) + 90a02e9 (S163b' visibility toggle button)
+> Sub-specs: S163b ✅ + S163b' ✅
+> 全 8 AC 收尾 table 詳見 §5.5
 
 ---
 

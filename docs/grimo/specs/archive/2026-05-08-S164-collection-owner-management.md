@@ -1,8 +1,11 @@
 # S164: Collection Owner Management — Update / Delete
 
-> Spec: S164 | Size: S(5) → backend XS(3) | Status: 🚧 backend impl 完成 2026-05-12（PUT + DELETE + 2 events + auth check + 8 tests PASS；frontend EditCollectionModal + action bar 待 S150 ship 後拆 S164b）
+> Spec: S164 | Size: S(5) → 兩段 ship | Status: ✅ shipped 2026-05-12 — 全 8 AC PASS（原 5-spec 第四個 fully shipped）
 > Date: 2026-05-08
 > Origin: deployment audit 2026-05-08（LAB）— `OPTIONS /api/v1/collections/{id}` 回 `Allow: GET, HEAD, OPTIONS`，**完全沒 mutation methods**。Owner 創 collection 後無法改 / 刪。實測 anon 建了 spam collection `0a514c85-...` 後**沒任何 API 可清**，必須走 DBA 手動 SQL。
+> Ship commits: 8fbee3d (S164 backend PUT + DELETE) + 7906206 (S164b EditCollectionModal + action bar)
+> Sub-specs: S164b ✅
+> 全 8 AC 收尾 table 詳見 §5.4
 
 ---
 
