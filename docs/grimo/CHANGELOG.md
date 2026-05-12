@@ -1,5 +1,30 @@
 # Changelog
 
+## [v4.53.0] — S157 semantic search 完整 ship（backend + IT regression + V07 e2e stabilization）（2026-05-12）
+
+### Fixed
+
+- **Semantic search 在 LAB 重新生效**（backend impl 已於 2026-05-12 commit 544969b ship）— LAB 驗證 AC-1~4/8 全 PASS：`/api/v1/search/semantic?q=terraform` 回 ≥1 結果、中文 query 命中、`/search/intent` concepts > 0、startup log 0 筆 "No EmbeddingModel"、0 命中 fallback UX 不退化。
+- **V07 e2e happy-path 全綠**（verify-all 從 7/8 PASS → 8/8 PASS）— 4 個既有 flakiness 一次根治：`TestDataController /reset` 加 `event_publication` drain wait 避開 TRUNCATE-vs-async-listener deadlock；`application-e2e.yaml` 關 LlmJudge 避開 Gemini 5-15s scan 撐爆 AC-3 budget；`E2EEmbeddingConfig` stub 升級 word-overlap biased 並把 threshold 0.0→0.1 讓 AC-1 keyword search 命中數對齊；e2e fixtures `profiles.*` 拿掉重複 resetAll 省 30s test budget；AC-5 query 改英文 NL 與 paged seed 有 token overlap。
+
+### Added
+
+- **真實 Gemini fixture IT regression test** — `SemanticSearchRealFixtureIT`（4/4 ACs PASS）用 5 個 ClawHub 真實 agent skill（agent-browser / agentic-devops / agent-skills-audit / duckdb-en / agent-memory-ultimate）+ 3 個 query 預先算好的 768-d 向量驗 cross-semantic ranking 不退化；Spring 7 `@TestBean(name="mockEmbeddingModel")` 換掉 random vector mock。
+- **Fixture refresh tooling** — `tools/fetch_embedding_fixture.sh`（curl Gemini API）+ `tools/embedding_fixture_to_sql.py`（JSON → SQL + Java fixture）；半年 maintenance 或 model 升級用。
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01/V03/V04/V05/V06/V07/V08a/V08b all PASS; V02 INFO line coverage 82.6%; exit=0.
+- `./gradlew test --tests "SemanticSearchRealFixtureIT"` 4/4 PASS（real Gemini fixture ranking）。
+- `cd e2e && npx playwright test --grep @happy-path` 6/6 PASS（含原 fail 的 AC-1/AC-2/AC-3/AC-5）。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-08-S157-semantic-search-not-functional.md` → `docs/grimo/specs/archive/`
+- spec-roadmap.md S157 row moved from Active to Shipped as `v4.53.0`；size re-scored S(6) → M(12)（§7.7：IT regression + V07 stabilization 是後加的 scope/testing 加重）。
+
+---
+
 ## [v4.52.0] — S145 訂閱管理頁面（2026-05-11）
 
 ### Added

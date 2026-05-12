@@ -394,15 +394,17 @@ search + security.scan 全包      ALL PASS
 
 `./gradlew test --tests "io.github.samzhu.skillshub.search.*" --tests "io.github.samzhu.skillshub.security.scan.*"` BUILD SUCCESSFUL（1m 48s）
 
-### 7.3 待驗證 AC（LAB deploy 後）
+### 7.3 LAB 驗證 AC（2026-05-12 已驗）
 
-| AC | 內容 | 驗證指令 |
+User 確認 LAB deploy 後 AC-1~4/8 全 PASS（"S157 LAB已驗證成功"）：
+
+| AC | 內容 | LAB 驗證結果 |
 |---|---|---|
-| AC-1 | terraform 搜尋命中 | `curl /api/v1/search/semantic?q=terraform` ≥ 1 結果 |
-| AC-2 | 中文 query 命中 | `curl '?q=Terraform 安全稽核'` ≥ 1 結果 |
-| AC-3 | intent 真實 concepts | `POST /search/intent {"query":"terraform 部署"}` concepts.length > 0 |
-| AC-4 | startup log 不警告 | `gcloud logging read` 0 筆 "No EmbeddingModel" |
-| AC-8 | 0 命中時 fallback UX 不退化 | `/search?q=xyzqqqzzz` 顯既有空狀態 CTA |
+| AC-1 | terraform 搜尋命中 | ✅ `/api/v1/search/semantic?q=terraform` 回 ≥ 1 結果 |
+| AC-2 | 中文 query 命中 | ✅ `?q=Terraform 安全稽核` 回 ≥ 1 結果 |
+| AC-3 | intent 真實 concepts | ✅ `POST /search/intent` concepts > 0 |
+| AC-4 | startup log 不警告 | ✅ 0 筆 "No EmbeddingModel" |
+| AC-8 | 0 命中 fallback UX | ✅ 空狀態 CTA 顯示 |
 
 ### 7.4 不變數（regression guard）
 
@@ -412,6 +414,62 @@ AC-5/6/7 寫成 reflection-based test — 未來任何 PR：
 - 把 `LlmIntentOutput.class` 從 `SearchNativeConfig` `@RegisterReflectionForBinding` 拿掉 → 紅
 
 防覆轍 S148 / S157 / S168 同 family bug。
+
+### 7.5 真實 Gemini fixture 整合測試（2026-05-12 跟拍補）
+
+問題：S157 backend ship 後 LAB 才驗 AC-1~4/8，**JVM 本機沒 cross-semantic ranking 自動驗證**。
+既有 `SemanticSearchIntegrationTest` 用 fixed-seed random vector（同函式 doc/query → cosine ≈ 1.0），
+不能抓「query "browser automation" 該排到 agent-browser 不是 agent-memory」這類語意排序退化。
+
+修法：預先 curl 真實 Gemini API 算 5 個 ClawHub agent skill + 3 個 query 的 768-d 向量 → SQL fixture + Java map，
+進 git；test 用 fixture-lookup EmbeddingModel 不打 API，只在半年 maintenance refresh：
+
+- `tools/fetch_embedding_fixture.sh` — Gemini API key + curl 算 5 doc + 3 query embedding → `/tmp/fixture-output.json`
+- `tools/embedding_fixture_to_sql.py` — JSON → `embedding-fixture.sql` (INSERT vector_store) + `EmbeddingFixture.java` (Map<query, float[768]>)
+- `SemanticSearchRealFixtureIT` — Spring 7 `@TestBean(name="mockEmbeddingModel")` 換掉 `TestcontainersConfiguration.mockEmbeddingModel`，避開 dual-@Primary；4/4 ACs PASS：
+
+| AC | Query | Top match | Status |
+|---|---|---|---|
+| AC-real-1 | "browser automation and web scraping" | agent-browser | ✅ |
+| AC-real-2 | "container deployment and process management" | agentic-devops | ✅ |
+| AC-real-3 | "code security review" | agent-skills-audit | ✅ |
+| AC-real-4 | vector_store schema 5 rows × 768-d | — | ✅ |
+
+5 個 doc + 3 query 都是 ClawHub (github.com/VoltAgent/awesome-openclaw-skills) 真實 agent skill 內容。
+
+Refresh 程序見 `EmbeddingFixture.java` javadoc（model 升級或半年）。
+
+### 7.6 e2e V07 stabilization（2026-05-12 配套）
+
+S157 IT 補完後跑 verify-all 發現 V07 既有 e2e flakiness（從未綠過的 happy-path race），
+拖住 ship gate。一次根治 4 個互相疊加 bug，verify-all 從 7/8 PASS → 8/8 PASS：
+
+1. **`TestDataController /reset` 30s timeout**：retry-5×200ms 撐不過 LLM judge phase；改 reset 前先 poll `event_publication.completion_date IS NULL` 排空（15s budget），等 AFTER_COMMIT async listener commit 完釋放 row lock，TRUNCATE 安全進場。
+2. **AC-3 publish 30s timeout**：e2e profile 沒關 LlmJudge → 真打 Gemini 5-15s/scan 撐爆。`application-e2e.yaml` 加 `skillshub.scanner.engines.llm.enabled=false`，pattern scanner 100ms 即產 NONE/LOW risk_level。
+3. **AC-1「找到 3 個」assertion fail**：`E2EEmbeddingConfig` stub 升級 word-overlap biased（每 token 在 `hashCode % dim` 加 +1 boost + 小 noise）；threshold 0.0 → 0.1；AC-1 query "docker" 對 3 個 docker-* skill 命中、其他 7 個被篩。
+4. **profiles.* 重複 resetAll**：拿掉 `profiles.empty/single/paged` 內 resetAll，trust auto-fixture（省 30s budget 內的雙 drain wait）；AC-5 query 改英文 NL 與 paged seed 有 token overlap（中文 query 留 LAB Gemini 驗）。
+
+| Verify Step | Before | After |
+|---|---|---|
+| V01 backend test | PASS | PASS |
+| V03 coverage | PASS | PASS |
+| V04-V06 frontend | PASS | PASS |
+| **V07 e2e happy-path** | **FAIL (2-3 tests)** | **PASS (6/6)** |
+| V08a processAot | PASS | PASS |
+| V08b nativeBuild | PASS | PASS |
+| Verdict | ❌ 1 FAIL | ✅ 8/8 |
+
+### 7.7 Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---|---|---|
+| Tech risk | 2 | 2 | Mirror QualityJudgeConfig 既有 pattern；core fix 無意外 |
+| Uncertainty | 2 | 2 | 規格清楚；後續 IT + V07 為 follow-up 新 scope，非原 spec uncertainty |
+| Dependencies | 1 | 1 | unchanged |
+| Scope | 1 | 3 | 4 backend files + 4 test infra files (tools/ + EmbeddingFixture + IT) + 6 V07 e2e fix files = ~14 files |
+| Testing | 2 | 3 | 19 unit tests + 4-AC IT (real Gemini fixture) + Testcontainers pgvector + 6 e2e fix |
+| Reversibility | 1 | 1 | unchanged |
+| **Total** | **6 / XS→S** | **12 / M** | Bucket shift S→M；root cause: §7.5 IT regression（原 spec §6.1 註 defer 屬獨立 sub-spec）+ §7.6 V07 e2e stabilization（out-of-scope unblock ship gate） |
 
 ---
 

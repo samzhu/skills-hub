@@ -95,7 +95,7 @@
 | S155b | Sort tab active highlight LAB reverify | XS(2) | — | ⛔ cancelled 2026-05-09 — 程式碼掃描確認無 bug：HomePage.tsx:217 `isOn = sortMode === mode` derived state，無 secondary state 可漂移；click handler line 222 `setSortMode + setPage(0)` 同 batch；auditor 觀察解釋為 stale cached bundle pre-commit `6211734` |
 | S156 | List clickability + Analytics hero card 修正 | S(5) | — | ✅ v4.32.0 — #1 historical (S100e) + #3 hero card removed；#2 拆 S156b |
 | S156b | RequestDetailPage 新 page（描述 + 7 actions + 留言 simple list）+ hook + route — `/requests/:id` | M(8) | S156 ✅ | 📐 in-design — spec file 完成 2026-05-09 |
-| S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | M(8) → S(6) | — | 🚧 backend impl 完成 2026-05-12（4 files：SearchConfig / ScannerAiConfig / LlmJudge / SearchNativeConfig；19 tests PASS 含 AC-5/6/7 reflection guard；待 LAB deploy 驗 AC-1/2/3/4/8）|
+| S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | S(6) → M(12) | — | ✅ v4.53.0 — backend impl (544969b) + LAB AC-1~4/8 全 PASS + `SemanticSearchRealFixtureIT` 真實 Gemini fixture 4/4 ACs PASS (cross-semantic ranking regression) + V07 e2e stabilization (4 個既有 flakiness 一次根治；verify-all 8/8 PASS) |
 | S158 | API response privacy hardening — list 移除 aclEntries / ownerId | S(5) | — | ✅ v4.33.0 — list endpoint 隱藏 aclEntries+ownerId（@JsonView）；detail owner-conditional 拆 S158b |
 | S158b | Detail viewer permissions — viewerPermissions backend-computed + aclEntries 全 strip (CQRS 內化) + /grants owner-only authz | M(8) | S158 ✅ | 📐 in-design — spec file 完成 2026-05-09 |
 | S159 | Skill query API hardening — META 拆 S159a/b/c/d | META | — | 📋 partial — S159a (v4.43.0) + S159d (v4.44.0) ✅ ship；S159b/c backlog |

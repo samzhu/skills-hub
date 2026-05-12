@@ -452,7 +452,7 @@ CI（Cloud Build trigger: push to main）— S132
 
 `e2e/` 為獨立 Playwright workspace（與 `backend/` / `frontend/` 並列 repo root），不屬任一側。`playwright-expert` skill 統一管理 BOOTSTRAP / DESIGN / VERIFY 三個流程節點，跨 skill 透過 `e2e/results/evidence.json` 契約檔互通。
 
-S140 ship 後 V07（`--grep @happy-path`）入帶 6 支 critical-path spec（PRD P1-P6 + Quality Score），對應 `skill.testsupport` backend 三個 fixture seeding endpoint（per Pattern 1 / fixtures-patterns.md）。`backend/src/main/resources/application-e2e.yaml` 提供 e2e 行為配置（`oauth.enabled=false` LAB mode + `semantic-similarity-threshold=0.0` 接受 stub embedder cosine + `testsupport.E2EEmbeddingConfig` 的 deterministic 768-dim stub `EmbeddingModel` `@Primary`）。Cloud Build 不啟用 e2e profile（per S132 §8 baked profile），production binary 完全不含 testsupport bean / e2e yaml。
+S140 ship 後 V07（`--grep @happy-path`）入帶 6 支 critical-path spec（PRD P1-P6 + Quality Score），對應 `skill.testsupport` backend 三個 fixture seeding endpoint（per Pattern 1 / fixtures-patterns.md）。`backend/src/main/resources/application-e2e.yaml` 提供 e2e 行為配置：`oauth.enabled=false` LAB mode + `scanner.engines.llm.enabled=false` 關 LlmJudge 避開 Gemini 5-15s scan（per S157 §7.6）+ `semantic-similarity-threshold=0.1` 過濾雜訊但保留 word-overlap signal + `testsupport.E2EEmbeddingConfig` word-overlap biased 768-dim stub `EmbeddingModel` `@Primary`（同 token doc/query → cosine ≈ 0.2；無 overlap → ±0.05 random noise）。`TestDataController /reset` 先 poll `event_publication.completion_date IS NULL` 排空（15s budget）等 AFTER_COMMIT listener 釋 row lock 再 TRUNCATE，避開 deadlock。Cloud Build 不啟用 e2e profile（per S132 §8 baked profile），production binary 完全不含 testsupport bean / e2e yaml。
 
 ```
 e2e/
