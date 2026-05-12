@@ -247,7 +247,7 @@ class SkillshubPgVectorStoreAclSearchTest {
             var now = Instant.now();
             skillRepo.save(Skill.fromRow(
                     skillId, "vec-acl-search-" + skillId.substring(0, 8),
-                    "T2 ACL search fixture", owner, "Testing",
+                    "T2 ACL search fixture", owner, "testing",
                     null, null, "PUBLISHED", 0L, now, now, List.of(), null));
 
             // 寫 vector_store row 帶 acl_entries（用 SkillshubPgVectorStore writer 路徑）

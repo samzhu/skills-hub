@@ -6,6 +6,7 @@ import { AppShell } from '@/components/AppShell'
 import { ErrorState } from '@/components/ErrorState'
 import { fetchSkillById } from '@/api/skills'
 import { useBundleInfo } from '@/hooks/useBundleInfo'
+import { categoryLabel } from '@/lib/text'
 import type { Skill } from '@/types/skill'
 
 /**
@@ -104,7 +105,7 @@ export function PublishValidatePage() {
               <p className="text-[11px] text-muted-foreground">
                 <span className="font-mono">v{skill.latestVersion ?? '—'}</span>
                 <span className="mx-1.5 text-[#5E5B55]">·</span>
-                <span>{skill.category}</span>
+                <span>{categoryLabel(skill)}</span>
                 {bundleInfo && (
                   <>
                     <span className="mx-1.5 text-[#5E5B55]">·</span>

@@ -57,7 +57,7 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
     @Tag("AC-5")
     @DisplayName("AC-5: existsBySkillIdAndVersion 命中與不命中")
     void existsBySkillIdAndVersion() {
-        var skill = Skill.create(new CreateSkillCommand("exists-test", "desc", "alice", "DevOps"));
+        var skill = Skill.create(new CreateSkillCommand("exists-test", "desc", "alice", "devops"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
                 skill.getId(), "1.0.0", "gs://b/exists/1.0.0.zip", 100, 0, Map.of()));
@@ -73,7 +73,7 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
     @Tag("AC-5")
     @DisplayName("AC-5: findBySkillIdOrderByPublishedAtDesc 依 publishedAt 降序")
     void findBySkillIdOrderByPublishedAtDesc() throws InterruptedException {
-        var skill = Skill.create(new CreateSkillCommand("desc-order", "desc", "alice", "DevOps"));
+        var skill = Skill.create(new CreateSkillCommand("desc-order", "desc", "alice", "devops"));
         helper.save(skill);
 
         var sv1 = SkillVersion.publish(new PublishVersionCommand(
@@ -103,7 +103,7 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
     @Tag("AC-5")
     @DisplayName("AC-5: findBySkillIdAndVersion 命中與不命中")
     void findBySkillIdAndVersion() {
-        var skill = Skill.create(new CreateSkillCommand("find-test", "desc", "alice", "DevOps"));
+        var skill = Skill.create(new CreateSkillCommand("find-test", "desc", "alice", "devops"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
                 skill.getId(), "1.0.0", "gs://b/find/1.0.0.zip", 100, 0, Map.of()));
@@ -121,7 +121,7 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
     @Tag("AC-7")
     @DisplayName("AC-7 partial: DB UNIQUE (skill_id, version) constraint 兜底重複寫入")
     void uniqueConstraintRejectsDuplicateInsert() {
-        var skill = Skill.create(new CreateSkillCommand("uniq-test", "desc", "alice", "DevOps"));
+        var skill = Skill.create(new CreateSkillCommand("uniq-test", "desc", "alice", "devops"));
         skill.recordVersionPublished("1.0.0");
         var sv1 = SkillVersion.publish(new PublishVersionCommand(
                 skill.getId(), "1.0.0", "gs://b/uniq/1.0.0.zip", 100, 0, Map.of()));
@@ -144,7 +144,7 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
     @Tag("AC-5")
     @DisplayName("AC-5: attachRiskAssessment + save UPDATE risk_assessment column")
     void attachRiskAssessmentUpdatesColumn() {
-        var skill = Skill.create(new CreateSkillCommand("risk-test", "desc", "alice", "DevOps"));
+        var skill = Skill.create(new CreateSkillCommand("risk-test", "desc", "alice", "devops"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
                 skill.getId(), "1.0.0", "gs://b/risk/1.0.0.zip", 100, 0, Map.of()));
@@ -170,7 +170,7 @@ class SkillVersionRepositoryTest extends RepositorySliceTestBase {
     @Tag("AC-5")
     @DisplayName("AC-5: hasRiskAssessmentFromEvent JSONB query 命中與不命中")
     void hasRiskAssessmentFromEvent() {
-        var skill = Skill.create(new CreateSkillCommand("idem-test", "desc", "alice", "DevOps"));
+        var skill = Skill.create(new CreateSkillCommand("idem-test", "desc", "alice", "devops"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
                 skill.getId(), "1.0.0", "gs://b/idem/1.0.0.zip", 100, 0, Map.of()));

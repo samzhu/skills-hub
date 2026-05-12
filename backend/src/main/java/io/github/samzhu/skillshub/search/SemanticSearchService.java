@@ -142,7 +142,7 @@ class SemanticSearchService {
                     getString(meta, "skillId"),
                     getString(meta, "name"),
                     getString(meta, "description"),
-                    "", "", null, null, 0L, score
+                    "", "", null, null, null, 0L, score
             );
         }
         return new SemanticSearchResult(
@@ -151,6 +151,7 @@ class SemanticSearchService {
                 skill.getDescription(),
                 skill.getAuthor(),
                 skill.getCategory(),
+                skill.getCategoryDisplay(),  // S159b Round 2 — dual-write display value
                 skill.getLatestVersion(),
                 skill.getRiskLevel(),
                 skill.getDownloadCount(),

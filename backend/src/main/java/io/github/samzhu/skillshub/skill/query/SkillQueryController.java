@@ -148,7 +148,10 @@ public class SkillQueryController {
 			@PageableDefault(size = 20) Pageable pageable) {
 		// S159d: page<0 / size<=0 / size>100 已由 PageableValidationInterceptor 在 preHandle
 		// 階段 fail-fast（resolver 會 silent clamp，故 controller 端檢查抓不到，須前移）
-		return queryService.search(keyword, category, author, pageable);
+		// S159b: caller `?category=Testing` 起手 lowercase — DB row 已 V20 lowercase 化，
+		// 若不接住大寫 query 會 0 hit（false negative）。null 維持 null（不過濾）。
+		var normalizedCategory = category == null ? null : category.trim().toLowerCase();
+		return queryService.search(keyword, normalizedCategory, author, pageable);
 	}
 
 	/**

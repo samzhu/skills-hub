@@ -49,14 +49,14 @@ class CollectionControllerTest extends WebMvcSliceTestBase {
     @Tag("AC-1")
     @DisplayName("AC-1: POST /collections happy → 201 + {id}")
     void create_returns201() throws Exception {
-        Mockito.when(service.create(ArgumentMatchers.eq("DevOps"), ArgumentMatchers.any(),
-                        ArgumentMatchers.eq("DevOps"), ArgumentMatchers.eq(List.of("sk-1", "sk-2"))))
+        Mockito.when(service.create(ArgumentMatchers.eq("devops"), ArgumentMatchers.any(),
+                        ArgumentMatchers.eq("devops"), ArgumentMatchers.eq(List.of("sk-1", "sk-2"))))
                 .thenReturn("col-123");
 
         mockMvc.perform(post("/api/v1/collections")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"DevOps","description":"k8s","category":"DevOps","skillIds":["sk-1","sk-2"]}
+                                {"name":"devops","description":"k8s","category":"devops","skillIds":["sk-1","sk-2"]}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value("col-123"));
@@ -101,13 +101,13 @@ class CollectionControllerTest extends WebMvcSliceTestBase {
     @Tag("AC-5")
     @DisplayName("AC-5: GET /collections → 200 + array shape；category query param 路由")
     void list_returnsArray() throws Exception {
-        var c = makeCollection("DevOps Pack", "DevOps");
-        Mockito.when(service.list(ArgumentMatchers.eq("DevOps"))).thenReturn(List.of(c));
+        var c = makeCollection("DevOps Pack", "devops");
+        Mockito.when(service.list(ArgumentMatchers.eq("devops"))).thenReturn(List.of(c));
 
-        mockMvc.perform(get("/api/v1/collections").param("category", "DevOps"))
+        mockMvc.perform(get("/api/v1/collections").param("category", "devops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("DevOps Pack"))
-                .andExpect(jsonPath("$[0].category").value("DevOps"))
+                .andExpect(jsonPath("$[0].category").value("devops"))
                 .andExpect(jsonPath("$[0].skillCount").value(1))
                 // S118: rename installs → installCount 對齊 CollectionDetail 既驗
                 .andExpect(jsonPath("$[0].installCount").value(0));

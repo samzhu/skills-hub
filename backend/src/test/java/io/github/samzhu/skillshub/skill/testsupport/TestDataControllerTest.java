@@ -93,7 +93,7 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
                     "name": "docker-helper",
                     "description": "Docker compose helper skill",
                     "author": "alice",
-                    "category": "DevOps",
+                    "category": "devops",
                     "version": "1.0.0"
                 }
                 """;
@@ -105,7 +105,7 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
             .andExpect(jsonPath("$.id").value(fakeId));
 
         verify(skillCommandService, times(1)).uploadSkill(
-            any(byte[].class), eq("1.0.0"), eq("alice"), eq("DevOps"), eq(Visibility.PUBLIC));
+            any(byte[].class), eq("1.0.0"), eq("alice"), eq("devops"), eq(Visibility.PUBLIC));
     }
 
     @Test
@@ -121,7 +121,7 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
                     "name": "test-skill",
                     "description": "desc",
                     "author": "bob",
-                    "category": "Testing"
+                    "category": "testing"
                 }
                 """;
 
@@ -131,7 +131,7 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
             .andExpect(status().isOk());
 
         verify(skillCommandService).uploadSkill(
-            any(byte[].class), eq("1.0.0"), eq("bob"), eq("Testing"), eq(Visibility.PUBLIC));
+            any(byte[].class), eq("1.0.0"), eq("bob"), eq("testing"), eq(Visibility.PUBLIC));
     }
 
     @Test

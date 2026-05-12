@@ -99,7 +99,7 @@ class SemanticSearchIntegrationTest {
         // S059: status 改 PUBLISHED — semantic search SQL 加 JOIN skills WHERE status='PUBLISHED'
         skillRepo.save(Skill.fromRow(
                 TEST_DOC_ID, "docker-compose-helper", "管理 Docker Compose 多容器部署",
-                "sam", "DevOps", "1.0.0", "LOW", "PUBLISHED", 0L, now, now,
+                "sam", "devops", "1.0.0", "LOW", "PUBLISHED", 0L, now, now,
                 List.of(), null));
 
         // S017：TestRestTemplate 不帶 JWT → CurrentUserProvider fallback (labUserId="lab-user", ["admin"], [])
@@ -118,7 +118,7 @@ class SemanticSearchIntegrationTest {
                                 "name", "docker-compose-helper",
                                 "description", "管理 Docker Compose 多容器部署",
                                 "author", "sam",
-                                "category", "DevOps",
+                                "category", "devops",
                                 "downloadCount", 0L))
                         .build()));
 
@@ -136,7 +136,7 @@ class SemanticSearchIntegrationTest {
         assertThat(result.get().name()).isEqualTo("docker-compose-helper");
         assertThat(result.get().description()).isEqualTo("管理 Docker Compose 多容器部署");
         assertThat(result.get().author()).isEqualTo("sam");
-        assertThat(result.get().category()).isEqualTo("DevOps");
+        assertThat(result.get().category()).isEqualTo("devops");
         // score = 1 - cosine distance；fixed-seed embeddings → distance ≈ 0 → score ≈ 1.0
         assertThat(result.get().score()).isGreaterThan(0.0);
     }
@@ -244,7 +244,7 @@ class SemanticSearchIntegrationTest {
         var now = Instant.now();
         skillRepo.save(Skill.fromRow(
                 skillId, name + "-" + skillId.substring(0, 8),
-                "S017 ACL E2E test fixture", owner, "Testing",
+                "S017 ACL E2E test fixture", owner, "testing",
                 "1.0.0", "LOW", "PUBLISHED", 0L, now, now, List.of(), null));
 
         SkillshubPgVectorStore.builder(jdbc, embeddingModel)
@@ -260,7 +260,7 @@ class SemanticSearchIntegrationTest {
                                 "name", name,
                                 "description", "S017 ACL E2E test",
                                 "author", owner,
-                                "category", "Testing"))
+                                "category", "testing"))
                         .build()));
 
         // 確認 acl_entries 已寫入

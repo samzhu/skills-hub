@@ -215,7 +215,7 @@ class SkillPermissionStrategyTest {
                 "acl-test-" + id.substring(0, 8),
                 "test description",
                 "test-author",
-                "Testing",
+                "testing",
                 null, null,
                 "DRAFT",
                 0L,

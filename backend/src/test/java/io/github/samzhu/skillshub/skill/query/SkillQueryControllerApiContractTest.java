@@ -80,7 +80,7 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
     void apiContractRegression_findById() throws Exception {
         // S126: @PathVariable UUID id — 需用合法 UUID 格式避免 MethodArgumentTypeMismatchException 400
         var skillId = UUID.randomUUID().toString();
-        var fixture = Skill.fromRow(skillId, "contract-test", "fixture", "alice", "DevOps",
+        var fixture = Skill.fromRow(skillId, "contract-test", "fixture", "alice", "devops",
                 null, null, "DRAFT", 0L, Instant.now(), Instant.now(),
                 List.of("user:alice:read", "user:alice:write", "user:alice:delete"), null);
         Mockito.when(skillQueryService.findById(skillId)).thenReturn(fixture);
@@ -91,7 +91,7 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
                 .andExpect(jsonPath("$.name").exists())
                 .andExpect(jsonPath("$.description").exists())
                 .andExpect(jsonPath("$.author").value("alice"))
-                .andExpect(jsonPath("$.category").value("DevOps"))
+                .andExpect(jsonPath("$.category").value("devops"))
                 .andExpect(jsonPath("$.status").value("DRAFT"))
                 .andExpect(jsonPath("$.downloadCount").value(0))
                 .andExpect(jsonPath("$.createdAt").exists())
@@ -110,21 +110,70 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
     @Tag("AC-11")
     void apiContractRegression_search() throws Exception {
         var skillId = "search-" + uniqueSuffix();
-        var fixture = Skill.fromRow(skillId, "search-test", "fixture", "alice", "Testing",
+        var fixture = Skill.fromRow(skillId, "search-test", "fixture", "alice", "testing",
                 null, null, "DRAFT", 0L, Instant.now(), Instant.now(),
                 List.of(), null);
         Page<Skill> page = new PageImpl<>(List.of(fixture));
         Mockito.when(skillQueryService.search(
-                        ArgumentMatchers.isNull(), ArgumentMatchers.eq("Testing"),
+                        ArgumentMatchers.isNull(), ArgumentMatchers.eq("testing"),
                         ArgumentMatchers.isNull(), ArgumentMatchers.any())).thenReturn(page);
 
-        mockMvc.perform(get("/api/v1/skills").param("category", "Testing"))
+        mockMvc.perform(get("/api/v1/skills").param("category", "testing"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')]").exists())
                 .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].version").doesNotExist())
                 .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].name").exists())
                 .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].status").exists());
+    }
+
+    @Test
+    @DisplayName("S159b AC-4: GET /skills?category=Testing controller 起手 lowercase → service 收到 'testing'")
+    @Tag("AC-4")
+    void s159b_searchCategoryParam_lowercasedBeforeServiceCall() throws Exception {
+        // Mockito stub 僅在 service 收到 lowercase "testing" 時回 page；若 controller 沒 normalize
+        // service 收到的會是 "Testing"，stub 不匹配 → 回 null → NPE / 500，test fail
+        var skillId = "ac4-" + uniqueSuffix();
+        var fixture = Skill.fromRow(skillId, "ac4-search", "fixture", "alice", "testing",
+                null, null, "PUBLISHED", 0L, Instant.now(), Instant.now(),
+                List.of("public:*:read"), null);
+        Mockito.when(skillQueryService.search(
+                        ArgumentMatchers.isNull(), ArgumentMatchers.eq("testing"),
+                        ArgumentMatchers.isNull(), ArgumentMatchers.any()))
+                .thenReturn(new PageImpl<>(List.of(fixture)));
+
+        // Caller 送大寫 "Testing"；controller normalize 後 service 端拿到 "testing" → stub 命中
+        mockMvc.perform(get("/api/v1/skills").param("category", "Testing"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')]").exists());
+
+        // Captor 驗 service 接到 normalize 後的值
+        var captor = org.mockito.ArgumentCaptor.forClass(String.class);
+        Mockito.verify(skillQueryService).search(
+                ArgumentMatchers.isNull(), captor.capture(),
+                ArgumentMatchers.isNull(), ArgumentMatchers.any());
+        org.assertj.core.api.Assertions.assertThat(captor.getValue())
+                .as("controller 須 trim + toLowerCase 後傳 service")
+                .isEqualTo("testing");
+    }
+
+    @Test
+    @DisplayName("S159b AC-4: ?category= 帶 leading/trailing space + 大寫 → trim + lowercase")
+    @Tag("AC-4")
+    void s159b_searchCategoryParam_trimmedAndLowercased() throws Exception {
+        Mockito.when(skillQueryService.search(
+                        ArgumentMatchers.isNull(), ArgumentMatchers.eq("devops"),
+                        ArgumentMatchers.isNull(), ArgumentMatchers.any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/skills").param("category", "  DEVOPS  "))
+                .andExpect(status().isOk());
+
+        var captor = org.mockito.ArgumentCaptor.forClass(String.class);
+        Mockito.verify(skillQueryService).search(
+                ArgumentMatchers.isNull(), captor.capture(),
+                ArgumentMatchers.isNull(), ArgumentMatchers.any());
+        org.assertj.core.api.Assertions.assertThat(captor.getValue()).isEqualTo("devops");
     }
 
     private static String uniqueSuffix() {

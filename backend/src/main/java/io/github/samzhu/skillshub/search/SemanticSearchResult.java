@@ -11,11 +11,12 @@ package io.github.samzhu.skillshub.search;
  * @param name          技能名稱
  * @param description   技能功能描述
  * @param author        作者名稱
- * @param category      技能分類（如 DevOps、Testing）
- * @param latestVersion 最新發布版本（SemVer），尚未發布時為 {@code null}
- * @param riskLevel     安全評估等級（LOW/MEDIUM/HIGH），尚未評估時為 {@code null}
- * @param downloadCount 累計下載次數
- * @param score         與查詢的語意相似度（0.0–1.0）
+ * @param category        技能分類 canonical lowercase（如 "devops"、"testing"；search/filter key）
+ * @param categoryDisplay S159b Round 2 — 分類 display 名稱保留原 CamelCase（如 "DevOps"），nullable
+ * @param latestVersion   最新發布版本（SemVer），尚未發布時為 {@code null}
+ * @param riskLevel       安全評估等級（LOW/MEDIUM/HIGH），尚未評估時為 {@code null}
+ * @param downloadCount   累計下載次數
+ * @param score           與查詢的語意相似度（0.0–1.0）
  */
 public record SemanticSearchResult(
         String id,
@@ -23,6 +24,7 @@ public record SemanticSearchResult(
         String description,
         String author,
         String category,
+        String categoryDisplay,
         String latestVersion,
         String riskLevel,
         long downloadCount,

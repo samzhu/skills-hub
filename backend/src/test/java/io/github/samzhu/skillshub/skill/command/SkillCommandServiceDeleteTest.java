@@ -110,7 +110,7 @@ class SkillCommandServiceDeleteTest extends RepositorySliceTestBase {
 
     private String seedPublishedSkillWithTwoVersions() {
         var skillId = commandService.createSkill(
-                new CreateSkillCommand("delete-service", "Delete service fixture", "alice", "DevOps"));
+                new CreateSkillCommand("delete-service", "Delete service fixture", "alice", "devops"));
         commandService.publishVersion(new PublishVersionCommand(
                 skillId, "1.0.0", "skills/%s/1.0.0/skill.zip".formatted(skillId), 100, 1, Map.of()));
         commandService.publishVersion(new PublishVersionCommand(

@@ -218,7 +218,7 @@ class FileBrowserServiceTest {
 	/** 建 minimal Skill aggregate with given status — 用 fromRow factory 繞過 invariant 檢查。 */
 	private static Skill skillWithStatus(String id, String status) {
 		return Skill.fromRow(
-				id, "name-" + id, "desc", "alice", "Testing",
+				id, "name-" + id, "desc", "alice", "testing",
 				null, null, status, 0L,
 				Instant.now(), Instant.now(),
 				List.of(), null);

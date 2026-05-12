@@ -49,7 +49,7 @@ class SkillUploadAuthTest extends WebMvcSliceTestBase {
                 .file(new MockMultipartFile("file", "v.zip", "application/zip", new byte[]{1, 2, 3}))
                 .param("version", "1.0.0")
                 .param("author", "alice")
-                .param("category", "DevOps"))
+                .param("category", "devops"))
             .andExpect(status().isUnauthorized());
     }
 

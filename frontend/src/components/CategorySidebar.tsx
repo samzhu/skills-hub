@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { capitalize } from '@/lib/text'
 import type { CategoryCount } from '@/types/skill'
 
 /** CategorySidebar 的 props 定義 */
@@ -49,7 +50,7 @@ export function CategorySidebar({ categories, selected, onSelect }: CategorySide
             selected === cat.name ? 'bg-accent font-medium' : 'hover:bg-accent/50'
           )}
         >
-          <span>{cat.name}</span>
+          <span>{capitalize(cat.name)}</span>
           <span className="text-xs text-muted-foreground">{cat.count}</span>
         </button>
       ))}

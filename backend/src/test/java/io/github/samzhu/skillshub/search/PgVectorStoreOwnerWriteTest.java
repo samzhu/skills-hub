@@ -58,7 +58,7 @@ class PgVectorStoreOwnerWriteTest extends RepositorySliceTestBase {
         var skillId = UUID.randomUUID().toString();
         var now = Instant.now();
         skillRepo.save(Skill.fromRow(
-                skillId, "test-skill", "tests 6-col single INSERT", "qa-author", "Testing",
+                skillId, "test-skill", "tests 6-col single INSERT", "qa-author", "testing",
                 null, null, "DRAFT", 0L, now, now, List.of(), null)); // S016 aclEntries
 
         // Act：用 builder 直接寫入
@@ -92,7 +92,7 @@ class PgVectorStoreOwnerWriteTest extends RepositorySliceTestBase {
         var skillId = UUID.randomUUID().toString();
         var now = Instant.now();
         skillRepo.save(Skill.fromRow(
-                skillId, "preserve-skill", "tests COALESCE preservation", "qa-author", "Testing",
+                skillId, "preserve-skill", "tests COALESCE preservation", "qa-author", "testing",
                 null, null, "DRAFT", 0L, now, now, List.of(), null)); // S016 aclEntries
 
         // 第 1 次寫入：帶 owner

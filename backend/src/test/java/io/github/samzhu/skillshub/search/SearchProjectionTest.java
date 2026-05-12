@@ -69,7 +69,7 @@ class SearchProjectionTest {
         skillId = UUID.randomUUID().toString();
         skillName = "docker-helper-" + UUID.randomUUID();
         // S025b T02：MODULE slice 不載 skill module beans，FK 前置改 raw JdbcTemplate INSERT。
-        seedSkillRow(skillId, skillName, "管理 Docker 容器", "sam", "DevOps");
+        seedSkillRow(skillId, skillName, "管理 Docker 容器", "sam", "devops");
     }
 
     private void seedSkillRow(String id, String name, String description,
@@ -87,7 +87,7 @@ class SearchProjectionTest {
     @DisplayName("AC-3: SkillCreatedEvent → vector_store row 含正確 metadata + owner + skill_id")
     @Tag("AC-3")
     void onSkillCreated_writesRowWithMetadataOwnerAndSkillId(Scenario scenario) {
-        var event = new SkillCreatedEvent(skillId, skillName, "管理 Docker 容器", "sam", "DevOps");
+        var event = new SkillCreatedEvent(skillId, skillName, "管理 Docker 容器", "sam", "devops");
 
         scenario.publish(event)
                 .andWaitForStateChange(() -> rowOrNull(skillId))
@@ -104,14 +104,14 @@ class SearchProjectionTest {
     @Tag("AC-4")
     void onVersionPublished_deletesAndReWritesWithFrontmatter(Scenario scenario) {
         // 先用 SkillCreatedEvent seed 一筆初版（async）— Scenario.publish 等 async 完成
-        scenario.publish(new SkillCreatedEvent(skillId, skillName, "舊描述", "sam", "DevOps"))
+        scenario.publish(new SkillCreatedEvent(skillId, skillName, "舊描述", "sam", "devops"))
                 .andWaitForStateChange(() -> rowOrNull(skillId));
 
         var frontmatter = Map.<String, Object>of(
                 "name", skillName,
                 "description", "新版：管理 Docker 容器與 Compose",
                 "author", "sam",
-                "category", "DevOps");
+                "category", "devops");
         var event = SkillVersionPublishedEvent.of(
                 skillId, "2.0.0", "skills/" + skillId + "/2.0.0.zip", 1024L, frontmatter, List.of());
 
@@ -143,13 +143,13 @@ class SearchProjectionTest {
     void onSkillCreated_multipleSkillsHaveIndependentOwnerState(Scenario scenario) {
         var skillId2 = UUID.randomUUID().toString();
         var skillName2 = "k8s-helper-" + UUID.randomUUID();
-        seedSkillRow(skillId2, skillName2, "管理 K8s", "jane", "DevOps");
+        seedSkillRow(skillId2, skillName2, "管理 K8s", "jane", "devops");
 
-        scenario.publish(new SkillCreatedEvent(skillId, skillName, "...", "sam", "DevOps"))
+        scenario.publish(new SkillCreatedEvent(skillId, skillName, "...", "sam", "devops"))
                 .andWaitForStateChange(() -> ownerOrNull(skillId))
                 .andVerify(owner -> assertThat(owner).isEqualTo("sam"));
 
-        scenario.publish(new SkillCreatedEvent(skillId2, skillName2, "...", "jane", "DevOps"))
+        scenario.publish(new SkillCreatedEvent(skillId2, skillName2, "...", "jane", "devops"))
                 .andWaitForStateChange(() -> ownerOrNull(skillId2))
                 .andVerify(owner -> assertThat(owner).isEqualTo("jane"));
 
@@ -164,7 +164,7 @@ class SearchProjectionTest {
     @Tag("AC-S033")
     void onSkillSuspended_deletesVectorStoreRow(Scenario scenario) {
         // Phase 1: 先有一筆 vector_store row（via SkillCreatedEvent）
-        scenario.publish(new SkillCreatedEvent(skillId, skillName, "管理 Docker 容器", "sam", "DevOps"))
+        scenario.publish(new SkillCreatedEvent(skillId, skillName, "管理 Docker 容器", "sam", "devops"))
                 .andWaitForStateChange(() -> rowOrNull(skillId));
 
         // Phase 2: publish SkillSuspendedEvent → 等 row 被刪

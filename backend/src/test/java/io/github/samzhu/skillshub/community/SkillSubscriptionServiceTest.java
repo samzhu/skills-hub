@@ -62,7 +62,7 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
         var now = Instant.now();
         skillRepo.save(Skill.fromRow(
                 skillId, "demo-skill", "demo for subscription test",
-                "alice", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now,
+                "alice", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now,
                 List.of("user:alice:read", "user:alice:write", "user:alice:delete", "public:*:read"),
                 null));
     }
@@ -73,7 +73,7 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
         userRepo.save(User.createNew(authorId, "google", authorId + "-sub", authorId + "@example.com",
                 authorName, authorId.replace("u_", ""), null, now));
         skillRepo.save(Skill.fromRow(
-                id, name, "summary fixture", authorId, "DevOps", latestVersion, null,
+                id, name, "summary fixture", authorId, "devops", latestVersion, null,
                 "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
         if (riskLevel != null) {
             skillRepo.updateRiskLevel(id, riskLevel, now);
@@ -158,7 +158,7 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
         var skill2 = UUID.randomUUID().toString();
         var now = Instant.now();
         skillRepo.save(Skill.fromRow(
-                skill2, "another-skill", "second skill", "alice", "DevOps", "1.0.0",
+                skill2, "another-skill", "second skill", "alice", "devops", "1.0.0",
                 null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
 
         asUser("bob");

@@ -6,6 +6,7 @@ import { AppShell } from '@/components/AppShell'
 import { ErrorState } from '@/components/ErrorState'
 import { RiskBadge } from '@/components/RiskBadge'
 import { fetchSkillById } from '@/api/skills'
+import { categoryLabel } from '@/lib/text'
 import type { Skill } from '@/types/skill'
 
 /**
@@ -103,7 +104,7 @@ export function PublishReviewPage() {
               <p className="mt-2 text-[13px] text-muted-foreground">{skill.description}</p>
               <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-[12px]">
                 <Field label="作者" value={skill.author} />
-                <Field label="分類" value={skill.category} />
+                <Field label="分類" value={categoryLabel(skill)} />
                 <Field label="版本" value={`v${skill.latestVersion ?? '—'}`} mono />
                 <Field label="狀態" value={skill.status} />
               </dl>

@@ -70,13 +70,13 @@ class SkillSearchTest extends RepositorySliceTestBase {
         // S121: acl_entries 加 *:read（PUBLIC 語意）— ACL filter 啟用後須含此 pseudo-principal 才對 anonymous/admin 可見
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "docker-helper", "Docker compose helper",
-                "sam", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
+                "sam", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "k8s-deploy", "Kubernetes deployment skill",
-                "jane", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
+                "jane", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "test-runner", "Run unit tests automatically",
-                "bob", "Testing", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
+                "bob", "testing", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
     }
 
     @Test
@@ -91,16 +91,16 @@ class SkillSearchTest extends RepositorySliceTestBase {
     @Test
     @DisplayName("AC-2: 按分類篩選技能 — category=DevOps returns 2 skills")
     void categoryFilter() {
-        var page = queryService.search(null, "DevOps", null, PageRequest.of(0, 20));
+        var page = queryService.search(null, "devops", null, PageRequest.of(0, 20));
 
         assertThat(page.getContent()).hasSize(2);
-        assertThat(page.getContent()).allMatch(s -> "DevOps".equals(s.getCategory()));
+        assertThat(page.getContent()).allMatch(s -> "devops".equals(s.getCategory()));
     }
 
     @Test
     @DisplayName("AC-3: 關鍵字 + 分類組合篩選 — keyword=deploy & category=DevOps")
     void keywordAndCategoryCombo() {
-        var page = queryService.search("deploy", "DevOps", null, PageRequest.of(0, 20));
+        var page = queryService.search("deploy", "devops", null, PageRequest.of(0, 20));
 
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getContent().getFirst().getName()).isEqualTo("k8s-deploy");
@@ -112,18 +112,18 @@ class SkillSearchTest extends RepositorySliceTestBase {
         var categories = queryService.getCategoryCounts();
 
         assertThat(categories).isNotEmpty();
-        assertThat(categories).anyMatch(c -> "DevOps".equals(c.name()) && c.count() == 2);
-        assertThat(categories).anyMatch(c -> "Testing".equals(c.name()) && c.count() == 1);
+        assertThat(categories).anyMatch(c -> "devops".equals(c.name()) && c.count() == 2);
+        assertThat(categories).anyMatch(c -> "testing".equals(c.name()) && c.count() == 1);
     }
 
     @Test
     @DisplayName("AC-S043: keyword 搜尋 category 名（DevOps）→ 命中該分類所有 skill")
     void keywordSearchMatchesCategory() {
-        // fixture 含 2 個 DevOps + 1 個 Testing；keyword="DevOps" 應匹配 2 個（含 category match）
-        var page = queryService.search("DevOps", null, null, PageRequest.of(0, 20));
+        // fixture 含 2 個 DevOps + 1 個 Testing；keyword="devops" 應匹配 2 個（含 category match）
+        var page = queryService.search("devops", null, null, PageRequest.of(0, 20));
 
         assertThat(page.getContent()).hasSize(2);
-        assertThat(page.getContent()).allMatch(s -> "DevOps".equals(s.getCategory()));
+        assertThat(page.getContent()).allMatch(s -> "devops".equals(s.getCategory()));
     }
 
     @Test
@@ -163,10 +163,10 @@ class SkillSearchTest extends RepositorySliceTestBase {
         // 此 AC 驗 author-mode 不過濾 status，acl_entries 維持 PUBLIC 語意確保 list 命中
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "sam-draft-skill", "draft for sam",
-                "sam", "DevOps", null, null, "DRAFT", 0L, now, now, List.of("public:*:read"), null));
+                "sam", "devops", null, null, "DRAFT", 0L, now, now, List.of("public:*:read"), null));
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "sam-suspended-skill", "suspended for sam",
-                "sam", "DevOps", "1.0.0", null, "SUSPENDED", 0L, now, now, List.of("public:*:read"), null));
+                "sam", "devops", "1.0.0", null, "SUSPENDED", 0L, now, now, List.of("public:*:read"), null));
 
         var page = queryService.search(null, null, "sam", PageRequest.of(0, 20));
         // 1 PUBLISHED + 1 DRAFT + 1 SUSPENDED = 3 (S094a 跳過 PUBLISHED filter for author view)
@@ -179,7 +179,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
         var now = Instant.now();
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "private-secret-skill", "owned by alice (private)",
-                "alice", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now,
+                "alice", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now,
                 List.of("user:alice:read", "user:alice:write", "user:alice:delete"), null));
         // user=bob 不是 alice / 非 admin / 對 private-secret-skill 沒 grant：expand 出
         // [user:bob:read, *:read] — 無一命中該 skill 的 acl_entries
@@ -200,7 +200,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
         var now = Instant.now();
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "private-shared-with-bob", "owned by alice, granted to bob",
-                "alice", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now,
+                "alice", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now,
                 List.of("user:alice:read", "user:alice:write", "user:bob:read"), null));
         // user=bob expand 後含 user:bob:read — 命中該 skill acl_entries
         when(currentUserProvider.current())
@@ -220,7 +220,7 @@ class SkillSearchTest extends RepositorySliceTestBase {
         var skillId = UUID.randomUUID().toString();
         skillRepo.save(Skill.fromRow(
                 skillId, "rated-skill-x", "rated 4.5 from 2 reviews",
-                "alice", "DevOps", "1.0.0", null, "PUBLISHED", 0L, now, now,
+                "alice", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now,
                 List.of("public:*:read"), null));
         // average_rating / review_count 為 @ReadOnlyProperty — 走 raw SQL UPDATE 模擬
         // SkillRatingService.refresh projection 寫入路徑（per S098e2 既驗）

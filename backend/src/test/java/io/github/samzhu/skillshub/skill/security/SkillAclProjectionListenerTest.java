@@ -165,7 +165,7 @@ class SkillAclProjectionListenerTest {
         jdbc.update("""
                 INSERT INTO skills (id, name, description, author, category, status,
                     download_count, created_at, updated_at, owner_id)
-                VALUES (?, ?, 'test', ?, 'Test', 'PUBLISHED', 0, ?, ?, ?)""",
+                VALUES (?, ?, 'test', ?, 'test', 'PUBLISHED', 0, ?, ?, ?)""",
                 id, "test-skill-" + id.substring(0, 8), author, now, now, author);
     }
 

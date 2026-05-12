@@ -60,7 +60,7 @@ class SkillQueryServiceTest {
     @DisplayName("AC-S142b-1: PUBLISHED + riskLevel=LOW + 3 versions → verified=true + all 6 fields populated")
     @Tag("AC-S142b-1")
     void findById_publishedWithRiskLevel_returnsVerifiedTrueAndAllFields() {
-        var skill = Skill.fromRow(ID, "test-skill", "desc", "alice", "DevOps",
+        var skill = Skill.fromRow(ID, "test-skill", "desc", "alice", "devops",
                 "1.2.0", "LOW", "PUBLISHED", 0L, Instant.now(), Instant.now(), List.of(), null);
 
         var frontmatter = Map.<String, Object>of(
@@ -88,7 +88,7 @@ class SkillQueryServiceTest {
     @DisplayName("AC-S142b-2: DRAFT + riskLevel=null + 0 versions → verified=false + empty fields")
     @Tag("AC-S142b-2")
     void findById_draftNoVersions_returnsVerifiedFalseAndEmptyFields() {
-        var skill = Skill.fromRow(ID, "test-skill", "desc", "alice", "DevOps",
+        var skill = Skill.fromRow(ID, "test-skill", "desc", "alice", "devops",
                 null, null, "DRAFT", 0L, Instant.now(), Instant.now(), List.of(), null);
 
         when(skillRepo.findById(ID)).thenReturn(Optional.of(skill));
@@ -109,7 +109,7 @@ class SkillQueryServiceTest {
     @DisplayName("AC-S142b-3: SUSPENDED (status != PUBLISHED) → verified=false even with riskLevel")
     @Tag("AC-S142b-3")
     void findById_suspended_returnsVerifiedFalse() {
-        var skill = Skill.fromRow(ID, "test-skill", "desc", "alice", "DevOps",
+        var skill = Skill.fromRow(ID, "test-skill", "desc", "alice", "devops",
                 "1.0.0", "LOW", "SUSPENDED", 0L, Instant.now(), Instant.now(), List.of(), null);
 
         var v1 = SkillVersion.publish(new PublishVersionCommand(ID, "1.0.0", "path", 100L, 2, Map.of()));
@@ -128,7 +128,7 @@ class SkillQueryServiceTest {
     @DisplayName("AC-S142b-1: openFlagCount reflects actual open flags count")
     @Tag("AC-S142b-1")
     void findById_withOpenFlags_returnsOpenFlagCount() {
-        var skill = Skill.fromRow(ID, "test-skill", "desc", "alice", "DevOps",
+        var skill = Skill.fromRow(ID, "test-skill", "desc", "alice", "devops",
                 "1.0.0", "LOW", "PUBLISHED", 0L, Instant.now(), Instant.now(), List.of(), null);
 
         when(skillRepo.findById(ID)).thenReturn(Optional.of(skill));

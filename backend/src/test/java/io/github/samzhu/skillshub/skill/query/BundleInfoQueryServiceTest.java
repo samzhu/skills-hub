@@ -120,7 +120,7 @@ class BundleInfoQueryServiceTest {
         jdbc.update("""
                 INSERT INTO skills (id, name, description, author, category, status, latest_version,
                                     download_count, created_at, updated_at, owner_id)
-                VALUES (?, ?, '測試 skill', 'alice', 'Test', ?, ?, 0, ?, ?, 'alice')
+                VALUES (?, ?, '測試 skill', 'alice', 'test', ?, ?, 0, ?, ?, 'alice')
                 """,
                 id, name, status, latestVersion,
                 java.sql.Timestamp.from(Instant.now()),
@@ -133,7 +133,7 @@ class BundleInfoQueryServiceTest {
         jdbc.update("""
                 INSERT INTO skills (id, name, description, author, category, status,
                                     download_count, created_at, updated_at, owner_id)
-                VALUES (?, ?, '測試 skill', 'alice', 'Test', ?, 0, ?, ?, 'alice')
+                VALUES (?, ?, '測試 skill', 'alice', 'test', ?, 0, ?, ?, 'alice')
                 """,
                 id, name, status,
                 java.sql.Timestamp.from(Instant.now()),

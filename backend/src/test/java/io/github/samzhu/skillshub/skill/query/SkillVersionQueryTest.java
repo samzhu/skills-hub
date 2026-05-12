@@ -50,7 +50,7 @@ class SkillVersionQueryTest extends RepositorySliceTestBase {
     @DisplayName("AC-5: 取得版本歷史 — findVersionsBySkillId returns sorted by publishedAt DESC")
     void getVersionHistory() throws InterruptedException {
         var skillId = commandService.createSkill(
-                new CreateSkillCommand("version-query-skill", "Test", "tester", "Testing"));
+                new CreateSkillCommand("version-query-skill", "Test", "tester", "testing"));
 
         commandService.publishVersion(new PublishVersionCommand(
                 skillId, "1.0.0", "gs://bucket/" + skillId + "/1.0.0.zip", 100L, 0, Map.of()));

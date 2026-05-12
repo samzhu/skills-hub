@@ -124,7 +124,7 @@ class V2MigrationTest {
                 .addValue("name", "acl-backfill-skill-" + skillId.substring(0, 8))
                 .addValue("desc", "test")
                 .addValue("author", "alice")
-                .addValue("cat", "Testing")
+                .addValue("cat", "testing")
                 .addValue("ts", java.sql.Timestamp.from(now)));
 
         // 再跑 V2 backfill SQL（idempotent — WHERE acl_entries='[]'::jsonb 條件確保不重複）

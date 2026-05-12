@@ -125,7 +125,7 @@ class S016EndToEndSmokeTest {
                                 .file(new MockMultipartFile("file", "v.zip", "application/zip", zipBytes))
                                 .param("version", "1.0.0")
                                 .param("author", "alice")
-                                .param("category", "Testing")
+                                .param("category", "testing")
                                 .with(jwtFor("alice", List.of())))
                                 .andExpect(status().isCreated())
                                 .andReturn();
@@ -232,7 +232,7 @@ class S016EndToEndSmokeTest {
                 .file(new MockMultipartFile("file", "v.zip", "application/zip", initialZip))
                 .param("version", "1.0.0")
                 .param("author", "alice")
-                .param("category", "Testing")
+                .param("category", "testing")
                 .with(jwtFor("alice", List.of())))
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -263,7 +263,7 @@ class S016EndToEndSmokeTest {
     void postThenGetSkill_jsonRoundTrip() throws Exception {
         // S154-T06: body 內偽造的 author=ignored；server 從 JWT sub "tester" → upsert 找到 TESTER_ID
         var commandJson = """
-                {"name":"test-skill","description":"A test skill","author":"tester","category":"Testing"}
+                {"name":"test-skill","description":"A test skill","author":"tester","category":"testing"}
                 """;
         var postResp = mockMvc.perform(post("/api/v1/skills")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -282,7 +282,10 @@ class S016EndToEndSmokeTest {
                 .andExpect(jsonPath("$.description").value("A test skill"))
                 // S154-T04 forgery fix：caller body 的 "tester" 被 server override 為平台 user_id
                 .andExpect(jsonPath("$.author").value(TestUserSeed.TESTER_ID))
-                .andExpect(jsonPath("$.category").value("Testing"))
+                // S159b: API caller 帶 "testing"，aggregate write-side `.toLowerCase()` 後存 DB
+                // 為 "testing"，read-back response 反映 stored 值。Frontend `capitalize()` helper
+                // 在 display 層復原首字母大寫（per S159b T02）。
+                .andExpect(jsonPath("$.category").value("testing"))
                 .andExpect(jsonPath("$.status").value("DRAFT"))
                 .andExpect(jsonPath("$.createdAt").exists());
     }
@@ -303,7 +306,7 @@ class S016EndToEndSmokeTest {
                                 .file(new MockMultipartFile("file", "test.zip", "application/zip", zip))
                                 .param("version", "1.0.0")
                                 .param("author", "sam")
-                                .param("category", "DevOps")
+                                .param("category", "devops")
                                 .with(jwtFor("sam", List.of())))
                                 .andExpect(status().isCreated())
                                 .andReturn();
@@ -339,7 +342,7 @@ class S016EndToEndSmokeTest {
                 .file(new MockMultipartFile("file", "bad.zip", "application/zip", zip))
                 .param("version", "1.0.0")
                 .param("author", "sam")
-                .param("category", "DevOps")
+                .param("category", "devops")
                 .with(jwtFor("sam", List.of())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
@@ -358,7 +361,7 @@ class S016EndToEndSmokeTest {
                 .file(new MockMultipartFile("file", "v1.zip", "application/zip", zipV1))
                 .param("version", "1.0.0")
                 .param("author", "sam")
-                .param("category", "DevOps")
+                .param("category", "devops")
                 .with(jwtFor("sam", List.of())))
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -403,7 +406,7 @@ class S016EndToEndSmokeTest {
                 .file(new MockMultipartFile("file", "init.zip", "application/zip", zip))
                 .param("version", "1.0.0")
                 .param("author", "sam")
-                .param("category", "DevOps")
+                .param("category", "devops")
                 .with(jwtFor("sam", List.of())))
                 .andExpect(status().isCreated())
                 .andReturn();
@@ -526,7 +529,7 @@ class S016EndToEndSmokeTest {
                 .file(new MockMultipartFile("file", "skill.zip", "application/zip", zip))
                 .param("version", version)
                 .param("author", "tester")
-                .param("category", "Testing")
+                .param("category", "testing")
                 .with(jwtFor("tester", List.of())))
                 .andExpect(status().isCreated())
                 .andReturn();

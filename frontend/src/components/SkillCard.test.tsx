@@ -59,6 +59,20 @@ describe('AC-2: SkillCard 渲染', () => {
     expect(link).toHaveAttribute('href', '/skills/skill-001')
   })
 
+  it('S159b AC-5: lowercase category 顯示時首字母大寫（"testing" → "Testing"）', () => {
+    // DB V20 後 skills.category 一律 lowercase；UI 透過 capitalize helper 還原 display
+    renderCard({ ...mockSkill, category: 'testing' })
+    expect(screen.getByText('Testing')).toBeInTheDocument()
+    expect(screen.queryByText('testing')).not.toBeInTheDocument()
+  })
+
+  it('S159b Round 2 AC-R2-5: 優先用 categoryDisplay 保留原 CamelCase（"DevOps"）', () => {
+    // V21 dual-column 後 backend 回 categoryDisplay 原 case；frontend 直接顯示，不再 lossy capitalize
+    renderCard({ ...mockSkill, category: 'devops', categoryDisplay: 'DevOps' })
+    expect(screen.getByText('DevOps')).toBeInTheDocument()
+    expect(screen.queryByText('Devops')).not.toBeInTheDocument()  // 確認沒走 fallback
+  })
+
   it('條件 score badge — 傳入 score 顯示「XX% 相符」', () => {
     renderCard(mockSkill, 0.873)
     expect(screen.getByText('87% 相符')).toBeInTheDocument()

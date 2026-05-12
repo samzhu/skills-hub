@@ -1,5 +1,6 @@
 import type { Skill } from '@/types/skill'
 import { getDisplayName } from '@/lib/displayName'
+import { categoryLabel } from '@/lib/text'
 import type { SkillScores } from '@/api/scores'
 import type { SecurityReport } from '@/api/security'
 import { IconTile } from '@/components/IconTile'
@@ -160,7 +161,7 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
               <span>·</span>
               <span>更新於 {relativeTime(skill.updatedAt)}</span>
               <span>·</span>
-              <span>{skill.category}</span>
+              <span>{categoryLabel(skill)}</span>
             </div>
           </div>
         </div>

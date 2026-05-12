@@ -135,11 +135,11 @@ class SkillsHubAuthE2ETest {
     void e2e_authAclDownloadFlow() {
 
         // ── AC-2: A 上傳 public skill ─────────────────────────────────────────
-        var publicId = uploadSkill(tokenA, "auth-e2e-public", "1.0.0", "dev-042", "DevOps", "PUBLIC");
+        var publicId = uploadSkill(tokenA, "auth-e2e-public", "1.0.0", "dev-042", "devops", "PUBLIC");
         assertThat(publicId).as("AC-2: public skill ID").isNotBlank();
 
         // ── AC-3: A 上傳 private skill ────────────────────────────────────────
-        var privateId = uploadSkill(tokenA, "auth-e2e-private", "1.0.0", "dev-042", "DevOps", "PRIVATE");
+        var privateId = uploadSkill(tokenA, "auth-e2e-private", "1.0.0", "dev-042", "devops", "PRIVATE");
         assertThat(privateId).as("AC-3: private skill ID").isNotBlank();
 
         // ── AC-4: anonymous list 只看 public ─────────────────────────────────

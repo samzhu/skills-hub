@@ -62,12 +62,12 @@ class SearchProjectionAclWriteTest {
         jdbc.update("""
                 INSERT INTO skills (id, name, description, author, category, status, download_count,
                                     created_at, updated_at, acl_entries, owner_id)
-                VALUES (?, ?, 'search projection ACL write fixture', 'alice', 'Testing',
+                VALUES (?, ?, 'search projection ACL write fixture', 'alice', 'testing',
                         'DRAFT', 0, ?, ?, '[]'::jsonb, 'alice')
                 """, skillId, name, ts, ts);
 
         scenario.publish(new SkillCreatedEvent(skillId, name,
-                        "search projection ACL write fixture", "alice", "Testing"))
+                        "search projection ACL write fixture", "alice", "testing"))
                 .andWaitForStateChange(() -> aclJsonOrNull(skillId))
                 .andVerify(aclJson -> assertThat(aclJson).contains("user:alice:read"));
     }

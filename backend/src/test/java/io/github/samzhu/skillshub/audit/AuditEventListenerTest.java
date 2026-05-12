@@ -58,7 +58,7 @@ class AuditEventListenerTest {
     void skillCreated_writesAuditRow(Scenario scenario) {
         var skillId = newId();
 
-        scenario.publish(new SkillCreatedEvent(skillId, "demo", "demo desc", "alice", "DevOps"))
+        scenario.publish(new SkillCreatedEvent(skillId, "demo", "demo desc", "alice", "devops"))
                 .andWaitForStateChange(() -> firstRowOrNull(skillId))
                 .andVerify(row -> {
                     assertThat(row.eventType()).isEqualTo("SkillCreated");
@@ -72,7 +72,7 @@ class AuditEventListenerTest {
     @Tag("AC-10")
     void skillCreated_idempotentOnRepublish(Scenario scenario) {
         var skillId = newId();
-        var event = new SkillCreatedEvent(skillId, "demo", "demo desc", "alice", "DevOps");
+        var event = new SkillCreatedEvent(skillId, "demo", "demo desc", "alice", "devops");
 
         // 三次獨立 TX publish，模擬 outbox retry；audit listener 透過 deterministic UUID
         // (UUID.nameUUIDFromBytes(dedupKey)) + ON CONFLICT DO NOTHING 確保只寫 1 row。

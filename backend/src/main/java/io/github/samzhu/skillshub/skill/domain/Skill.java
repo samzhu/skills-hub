@@ -76,6 +76,14 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     private String author;
     private String category;
     /**
+     * S159b Round 2 — 保留原始 CamelCase（"DevOps" / "DataOps"）給 UI display；
+     * {@link #category} 仍是 lowercase canonical（V20 CHECK enforce）給 search 用。
+     * Nullable — V21 schema 允許 null（舊資料 backfill 後可能仍 null；frontend 走
+     * `categoryDisplay ?? capitalize(category)` fallback）。
+     */
+    @Column("category_display")
+    private String categoryDisplay;
+    /**
      * S154 — publish/republish 時 freeze 的 author 顯示名稱（從 {@code CurrentUserProvider.current().name()}
      * 取得；後續 user 改名 {@link #author} 對應 user 改名時，已 publish 的 snapshot 不變）。Nullable —
      * V18 schema {@code author_name_snapshot VARCHAR(255) NULLABLE}；無 OIDC name claim 時可為 null
@@ -193,12 +201,15 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
             throw new IllegalArgumentException(
                     "Skill description exceeds " + DESCRIPTION_MAX + " characters (got: " + description.length() + ")");
         }
-        // S042: category trim；非 null 但 blank → reject（mirror S041 author）；null 允許（schema 允許）
-        var category = cmd.category() == null ? null : cmd.category().trim();
-        if (category != null && category.isEmpty()) {
+        // S042 trim + S159b lowercase：DB V20 加 CHECK constraint，category 必須 lowercase；
+        // null 允許；非 null 但 blank → reject（mirror S041 author）
+        // S159b Round 2 — 同時保留 categoryDisplay（trim 但不 lowercase）給 UI display
+        var rawCategory = cmd.category() == null ? null : cmd.category().trim();
+        if (rawCategory != null && rawCategory.isEmpty()) {
             throw new IllegalArgumentException(
                     "Skill category must not be blank (got: " + cmd.category() + ")");
         }
+        var category = rawCategory == null ? null : rawCategory.toLowerCase();
         var skill = new Skill();
         skill.id = UUID.randomUUID().toString();
         skill.name = name;
@@ -206,6 +217,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         skill.author = author;
         skill.authorNameSnapshot = cmd.authorNameSnapshot();  // S154 — nullable；test fixture 常傳 null
         skill.category = category;
+        skill.categoryDisplay = rawCategory;  // S159b Round 2 — trim 但不 lowercase，給 UI display 保留原 case
         skill.status = SkillStatus.DRAFT;
         skill.latestVersion = null;
         skill.riskLevel = null;
@@ -277,9 +289,24 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * S119 — 15-arg full row factory 含 review rating projection（averageRating / reviewCount）。
      * SkillQueryService.search() raw JDBC SQL SELECT 兩 column 後走此 factory；既有 single-skill
      * findById 走 Spring Data JDBC auto-load 不經此 path。
+     *
+     * <p>S159b Round 2：本 15-arg overload 不收 categoryDisplay → delegate 16-arg 設 null；
+     * fallback 由 frontend 處理（categoryDisplay ?? capitalize(category)）。新 caller 應走 16-arg。
      */
     public static Skill fromRow(String id, String name, String description, String author, String category,
             String latestVersion, String riskLevel, String status, long downloadCount,
+            Instant createdAt, Instant updatedAt, List<String> aclEntries, Long version,
+            double averageRating, long reviewCount) {
+        return fromRow(id, name, description, author, category, null, latestVersion, riskLevel, status,
+                downloadCount, createdAt, updatedAt, aclEntries, version, averageRating, reviewCount);
+    }
+
+    /**
+     * S159b Round 2 — 16-arg full row factory 多帶 categoryDisplay（原 CamelCase 保留）。
+     * `SkillQueryService.mapSkillRow` 走此 overload，SELECT 含 category_display column。
+     */
+    public static Skill fromRow(String id, String name, String description, String author, String category,
+            String categoryDisplay, String latestVersion, String riskLevel, String status, long downloadCount,
             Instant createdAt, Instant updatedAt, List<String> aclEntries, Long version,
             double averageRating, long reviewCount) {
         var skill = new Skill();
@@ -288,6 +315,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         skill.description = description;
         skill.author = author;
         skill.category = category;
+        skill.categoryDisplay = categoryDisplay;
         skill.latestVersion = latestVersion;
         skill.riskLevel = riskLevel;
         skill.status = status == null ? null : SkillStatus.valueOf(status);
@@ -376,12 +404,20 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
             }
         }
         if (cmd.category() != null) {
-            var cat = cmd.category().trim();
-            if (cat.isEmpty()) {
+            // S042 trim + S159b lowercase — 對齊 create()；V20 CHECK 要求 lowercase
+            // S159b Round 2 — 同時 dual-write categoryDisplay 保留原 case
+            var rawCat = cmd.category().trim();
+            if (rawCat.isEmpty()) {
                 throw new IllegalArgumentException("Skill category must not be blank");
             }
+            var cat = rawCat.toLowerCase();
             if (!cat.equals(this.category)) {
                 this.category = cat;
+                this.categoryDisplay = rawCat;
+                changed = true;
+            } else if (!rawCat.equals(this.categoryDisplay)) {
+                // canonical category 沒變但 display case 有改（"DevOps" → "devops" input → 仍 update display）
+                this.categoryDisplay = rawCat;
                 changed = true;
             }
         }
@@ -455,6 +491,8 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     public String getDescription() { return description; }
     public String getAuthor() { return author; }
     public String getCategory() { return category; }
+    /** S159b Round 2 — UI display name 保留原 CamelCase（"DevOps"）；nullable，fallback 由 frontend 處理。 */
+    public String getCategoryDisplay() { return categoryDisplay; }
     /** S154 — publish 時 freeze 的 author 顯示名稱；null 為合法（無 OIDC name claim 場景）。*/
     @org.jspecify.annotations.Nullable
     public String getAuthorNameSnapshot() { return authorNameSnapshot; }

@@ -1,5 +1,33 @@
 # Changelog
 
+## [v4.54.0] — S159b Category storage normalize（V20 lowercase + V21 dual-column display）（2026-05-12）
+
+### Added
+
+- **`skills.category` 統一 lowercase 儲存（V20 migration）+ CHECK constraint** — query `?category=Testing` 與 `?category=testing` 同義；DB 拒收任何大寫直 INSERT。aggregate `Skill.create()` / `update()` 入 store 前 `.trim().toLowerCase()`；`SkillQueryController` `?category=` param 起手 normalize（controller-level backwards-compat）。
+- **`skills.category_display` 欄位（V21 migration）保留原 CamelCase** — `Skill.create()` / `update()` dual-write：`category="devops"` + `categoryDisplay="DevOps"`，display 端不再 lossy。既有 row backfill 走 `initcap(category)` lossy best-effort（dev/LAB row 數低、prod 暫無真用戶）。
+- **`SemanticSearchResult` DTO + `SemanticSearchService.toResult()` 帶 `skill.getCategoryDisplay()`** — semantic search 路徑（HomePage `?q=docker` 走 vector store）的獨立 DTO，Round 2 V07 hermetic E2E 才暴露的 cross-DTO data plumbing gap。
+- **Frontend `categoryLabel(skill)` helper + 5 站點 sweep**（SkillCard / v2/PageHeader / PublishReviewPage / PublishValidatePage / CollectionDetailPage）— `skill.categoryDisplay ?? capitalize(skill.category)` fallback chain；CategorySidebar 維持 `capitalize(cat.name)`（categories aggregate query 沒 display column）。
+
+### Fixed
+
+- **`getByText('DevOps')` Playwright assertion 從 fail → 6/6 PASS** — Round 1 設計（單欄 lowercase + frontend `capitalize`）導致 `"DevOps"` → `"devops"` → `"Devops"` UX regression。Round 2 dual-column 修復；V07 hermetic E2E gate 是 lossy normalize 的最後一道閘。
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01/V03/V04/V05/V06/V07/V08a all PASS；V02 INFO line coverage 83.0%；V08b SKIP（SKIP_NATIVE=1 dev opt-out）；exit=0。
+- Backend：**808 tests PASS**（baseline 803 + 5 S159b 新測試：V21MigrationTest 3 + AC-R2-2/R2-3 aggregate 2）。
+- Frontend：**403 tests PASS**（baseline 395 + 8 S159b 新測試：capitalize 4 + categoryLabel 2 + SkillCard R2 1 + SkillCard AC-5 1）。
+- Playwright `@happy-path` 6/6 PASS（含 S140 `docker-compose-helper` card 上的 `"DevOps"` 文字 assertion）。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-09-S159b-category-normalize.md` → `docs/grimo/specs/archive/`
+- spec-roadmap.md S159b row → Shipped as `v4.54.0`；size re-scored S(8) → M(15)（§7.5e）：Round 2 pivot + scope expansion（2 migrations + ~40 fixture sweep + cross-DTO plumbing）。
+- **Key lesson recorded：** hermetic E2E gate (V07) 是 lossy normalize + cross-DTO data contract 的最後一道防線；unit test 全綠 + QA subagent PASS 仍可能漏掉 cross-component plumbing。
+
+---
+
 ## [v4.53.0] — S157 semantic search 完整 ship（backend + IT regression + V07 e2e stabilization）（2026-05-12）
 
 ### Fixed

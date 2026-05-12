@@ -4,6 +4,7 @@ import { RiskBadge } from './RiskBadge'
 import { IconTile } from './IconTile'
 import { BeamFrame } from './BeamFrame'
 import { getDisplayName } from '@/lib/displayName'
+import { categoryLabel } from '@/lib/text'
 import type { Skill } from '@/types/skill'
 
 /**
@@ -51,7 +52,7 @@ export function SkillCard({ skill, score, featured }: { skill: Skill; score?: nu
         {/* foot row */}
         <div className="flex items-center justify-between text-[11px] text-muted-foreground">
           <div className="flex items-center gap-3">
-            <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-foreground">{skill.category}</span>
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-foreground">{categoryLabel(skill)}</span>
             {/* S028: DRAFT/SUSPENDED 顯示 status pill；S060 truthy guard。 */}
             {skill.status && skill.status !== 'PUBLISHED' && (
               <span

@@ -223,7 +223,7 @@ class RiskAssessmentIntegrationTest {
 		});
 		body.add("version", "1.0.0");
 		body.add("author", "tester");
-		body.add("category", "Testing");
+		body.add("category", "testing");
 		var headers = new HttpHeaders();
 		headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 

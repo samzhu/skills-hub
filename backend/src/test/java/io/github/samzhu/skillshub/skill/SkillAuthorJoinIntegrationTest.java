@@ -27,7 +27,7 @@ class SkillAuthorJoinIntegrationTest {
     void initialPublishFreezesAuthorNameSnapshot() {
         // Alice publish skill (CurrentUserProvider.name() = "Alice Chen")
         var cmd = new CreateSkillCommand("docker-helper", "test description",
-                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen");
+                "u_alice1", "devops", Visibility.PUBLIC, "Alice Chen");
         var skill = Skill.create(cmd);
 
         skill.recordVersionPublished("1.0.0", "Alice Chen");
@@ -43,7 +43,7 @@ class SkillAuthorJoinIntegrationTest {
     void republishRefreshesAuthorNameSnapshot() {
         // 既有 skill snapshot="Alice Chen"
         var cmd = new CreateSkillCommand("docker-helper", "test description",
-                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen");
+                "u_alice1", "devops", Visibility.PUBLIC, "Alice Chen");
         var skill = Skill.create(cmd);
         skill.recordVersionPublished("1.0.0", "Alice Chen");
         assertThat(skill.getAuthorNameSnapshot()).isEqualTo("Alice Chen");
@@ -61,7 +61,7 @@ class SkillAuthorJoinIntegrationTest {
     @Tag("AC-5")
     void republishWithNullSnapshotKeepsExistingValue() {
         var cmd = new CreateSkillCommand("docker-helper", "test description",
-                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen");
+                "u_alice1", "devops", Visibility.PUBLIC, "Alice Chen");
         var skill = Skill.create(cmd);
         skill.recordVersionPublished("1.0.0", "Alice Chen");
 
@@ -78,7 +78,7 @@ class SkillAuthorJoinIntegrationTest {
     @Tag("AC-5")
     void singleArgOverloadDoesNotTouchSnapshot() {
         var cmd = new CreateSkillCommand("docker-helper", "test description",
-                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen");
+                "u_alice1", "devops", Visibility.PUBLIC, "Alice Chen");
         var skill = Skill.create(cmd);
         skill.recordVersionPublished("1.0.0", "Alice Chen");
 
@@ -95,7 +95,7 @@ class SkillAuthorJoinIntegrationTest {
     @Tag("AC-6")
     void withAuthorIdentityHidesEmailWhenContactEmailPublicFalse() {
         var skill = Skill.create(new CreateSkillCommand("docker-helper", "test",
-                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen"));
+                "u_alice1", "devops", Visibility.PUBLIC, "Alice Chen"));
 
         // Service enrichAuthorIdentity 對 contact_email_public=false 傳 email=null
         skill.withAuthorIdentity("Alice Chen", "alice", null);
@@ -110,7 +110,7 @@ class SkillAuthorJoinIntegrationTest {
     @Tag("AC-6")
     void withAuthorIdentityExposesEmailWhenPublic() {
         var skill = Skill.create(new CreateSkillCommand("docker-helper", "test",
-                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen"));
+                "u_alice1", "devops", Visibility.PUBLIC, "Alice Chen"));
 
         skill.withAuthorIdentity("Alice Chen", "alice", "alice@example.com");
 
@@ -122,7 +122,7 @@ class SkillAuthorJoinIntegrationTest {
     @Tag("AC-6")
     void withAuthorIdentityFallbackToSnapshotWhenUserRowMissing() {
         var skill = Skill.create(new CreateSkillCommand("docker-helper", "test",
-                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen"));
+                "u_alice1", "devops", Visibility.PUBLIC, "Alice Chen"));
 
         // Service 端 userRepo.findById 回 empty → 走 snapshot fallback path
         skill.withAuthorIdentity(skill.getAuthorNameSnapshot(), null, null);
@@ -139,7 +139,7 @@ class SkillAuthorJoinIntegrationTest {
     @Tag("AC-6")
     void authorIdentityFieldsDefaultNullWhenNotEnriched() {
         var skill = Skill.create(new CreateSkillCommand("docker-helper", "test",
-                "u_alice1", "DevOps", Visibility.PUBLIC, "Alice Chen"));
+                "u_alice1", "devops", Visibility.PUBLIC, "Alice Chen"));
 
         assertThat(skill.getAuthorDisplayName()).isNull();
         assertThat(skill.getAuthorHandle()).isNull();
@@ -151,7 +151,7 @@ class SkillAuthorJoinIntegrationTest {
     @Tag("AC-5")
     void createWithNullSnapshotResultsInNullField() {
         var cmd = new CreateSkillCommand("docker-helper", "test description",
-                "u_alice1", "DevOps", Visibility.PUBLIC, null);
+                "u_alice1", "devops", Visibility.PUBLIC, null);
         var skill = Skill.create(cmd);
 
         assertThat(skill.getAuthorNameSnapshot())

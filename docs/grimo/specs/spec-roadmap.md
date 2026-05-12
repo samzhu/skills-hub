@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-12（S164 全 8 ACs PASS — 原 5-spec 第四個 fully shipped；EditCollectionModal + action bar + window.confirm + redirect 套全；附帶補正 S150 stale roadmap status；395/395 全 vitest 無 regression）
+> 最後更新：2026-05-12（S159b v4.54.0 ship — V20 lowercase + V21 dual-column category_display；V07 hermetic E2E gate 抓到 Round 1 lossy normalize bug，Round 2 dual-column pivot 修；verify-all 全綠：backend 808 + frontend 403 + Playwright 6/6）
 
 ## 使用說明
 
@@ -98,9 +98,9 @@
 | S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | S(6) → M(12) | — | ✅ v4.53.0 — backend impl (544969b) + LAB AC-1~4/8 全 PASS + `SemanticSearchRealFixtureIT` 真實 Gemini fixture 4/4 ACs PASS (cross-semantic ranking regression) + V07 e2e stabilization (4 個既有 flakiness 一次根治；verify-all 8/8 PASS) |
 | S158 | API response privacy hardening — list 移除 aclEntries / ownerId | S(5) | — | ✅ v4.33.0 — list endpoint 隱藏 aclEntries+ownerId（@JsonView）；detail owner-conditional 拆 S158b |
 | S158b | Detail viewer permissions — viewerPermissions backend-computed + aclEntries 全 strip (CQRS 內化) + /grants owner-only authz | M(8) | S158 ✅ | 📐 in-design — spec file 完成 2026-05-09 |
-| S159 | Skill query API hardening — META 拆 S159a/b/c/d | META | — | 📋 partial — S159a (v4.43.0) + S159d (v4.44.0) ✅ ship；S159b/c backlog |
+| S159 | Skill query API hardening — META 拆 S159a/b/c/d | META | — | 📋 partial — S159a (v4.43.0) + S159d (v4.44.0) + S159b (v4.54.0) ✅ ship；S159c backlog |
 | S159a | Unknown query param 拒收（SkillQuery / categories 端點 fail-fast 400） | XS(3) | — | ✅ v4.43.0 — interceptor + handler；11+1+2 unit tests PASS |
-| S159b | Category storage normalize — V19 lowercase migration + CHECK constraint + frontend `capitalize` | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
+| S159b | Category storage normalize — V20 lowercase + V21 dual-column display | M(15) | v4.54.0 | ✅ shipped 2026-05-12 — Round 2 ship 含 V07 hermetic gate bug fix（dual-column 保留 CamelCase）|
 | S159c | `?tag=` filter 實作 — controller param + repo `findByTag()` + frontend filter chip | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
 | S159d | Pageable 非法值拒收 — `page < 0` / `size <= 0` / `size > 100` → 400 | XS(2) | — | ✅ v4.44.0 — `PageableValidationInterceptor` + handler；13+1+11+2 unit tests PASS |
 | S160 | Security headers + CSRF — CSP / HSTS / Referrer-Policy / Permissions-Policy + CSRF re-enable | M(8) → 五段 ship | — | ✅ **shipped 2026-05-12 — 全部 9 ACs PASS**（headers + CSRF infra + frontend apiFetch + CSP report endpoint + AC-1 integration test）；原 5-spec 第三個 fully shipped |

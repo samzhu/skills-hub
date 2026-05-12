@@ -224,7 +224,7 @@ public class SkillQueryService {
 		// projection 後此 list endpoint 漏 update SELECT；single GET findById 走 Spring Data
 		// JDBC auto-load 已含真值，本 fix 補齊 list path 一致性。
 		var sql = new StringBuilder("""
-				SELECT id, name, description, author, category,
+				SELECT id, name, description, author, category, category_display,
 				       latest_version, risk_level, status, download_count,
 				       created_at, updated_at, acl_entries, version,
 				       average_rating, review_count
@@ -331,12 +331,14 @@ public class SkillQueryService {
 		Long version = versionVal == null ? null : ((Number) versionVal).longValue();
 		// S119: average_rating + review_count 兩 column 同 SELECT 一起讀；avg 為 nullable 時 (no review)
 		// rs.getDouble 回 0.0；count 為 NOT NULL DEFAULT 0 安全
+		// S159b Round 2 — 走 16-arg overload 多帶 category_display 保留原 case
 		return Skill.fromRow(
 				rs.getString("id"),
 				rs.getString("name"),
 				rs.getString("description"),
 				rs.getString("author"),
 				rs.getString("category"),
+				rs.getString("category_display"),
 				rs.getString("latest_version"),
 				rs.getString("risk_level"),
 				rs.getString("status"),

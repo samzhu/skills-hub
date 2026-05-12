@@ -40,7 +40,7 @@ class SkillCommandServiceTest extends RepositorySliceTestBase {
     @Test
     @DisplayName("AC-1: createSkill 寫入 skills 表 — name/description/author/category 對齊 command")
     void createSkill_writesAggregateState() {
-        var command = new CreateSkillCommand("docker-helper", "Docker compose helper", "sam", "DevOps");
+        var command = new CreateSkillCommand("docker-helper", "Docker compose helper", "sam", "devops");
 
         var skillId = commandService.createSkill(command);
 
@@ -48,7 +48,7 @@ class SkillCommandServiceTest extends RepositorySliceTestBase {
         assertThat(skill.getName()).isEqualTo("docker-helper");
         assertThat(skill.getDescription()).isEqualTo("Docker compose helper");
         assertThat(skill.getAuthor()).isEqualTo("sam");
-        assertThat(skill.getCategory()).isEqualTo("DevOps");
+        assertThat(skill.getCategory()).isEqualTo("devops");
         assertThat(skill.getStatus()).isEqualTo(SkillStatus.DRAFT);
     }
 
@@ -56,7 +56,7 @@ class SkillCommandServiceTest extends RepositorySliceTestBase {
     @DisplayName("AC-5: publishVersion 寫入 skill_versions 表 — version + storagePath 對齊 command")
     void publishVersion_writesVersionRow() {
         var skillId = commandService.createSkill(
-                new CreateSkillCommand("k8s-deploy", "K8s deployment skill", "jane", "DevOps"));
+                new CreateSkillCommand("k8s-deploy", "K8s deployment skill", "jane", "devops"));
 
         commandService.publishVersion(
                 new PublishVersionCommand(skillId, "1.0.0", "gs://bucket/k8s-deploy/1.0.0.zip", 0, 0, java.util.Map.of()));

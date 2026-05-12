@@ -118,7 +118,7 @@ class SkillshubPgVectorStoreAclTest extends RepositorySliceTestBase {
         var now = Instant.now();
         skillRepo.save(Skill.fromRow(
                 skillId, "vec-acl-" + skillId.substring(0, 8),
-                "vector_store ACL test fixture", "alice", "Testing",
+                "vector_store ACL test fixture", "alice", "testing",
                 null, null, "DRAFT", 0L, now, now, List.of(), null));
         return skillId;
     }

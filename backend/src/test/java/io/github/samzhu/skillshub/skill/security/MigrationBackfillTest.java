@@ -164,7 +164,7 @@ class MigrationBackfillTest extends RepositorySliceTestBase {
                 " VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?::timestamptz, ?::timestamptz, ?::jsonb, ?)",
                 id, "mbt-" + author + "-" + id.substring(0, 6),
                 "Migration backfill test fixture", author,
-                "Testing", "1.0.0", "LOW", "PUBLISHED",
+                "testing", "1.0.0", "LOW", "PUBLISHED",
                 now, now, aclEntries, author);
         return id;
     }

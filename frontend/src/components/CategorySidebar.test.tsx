@@ -13,12 +13,13 @@ const cats = [
 ]
 
 describe('CategorySidebar', () => {
-  it('AC-1: renders 全部 button + each category', () => {
+  it('AC-1: renders 全部 button + each category（S159b: lowercase fixture → capitalize display）', () => {
     render(<CategorySidebar categories={cats} selected={null} onSelect={vi.fn()} />)
     expect(screen.getByText('全部')).toBeInTheDocument()
-    expect(screen.getByText('devops')).toBeInTheDocument()
-    expect(screen.getByText('testing')).toBeInTheDocument()
-    expect(screen.getByText('security')).toBeInTheDocument()
+    // DB V20 後 cat.name 是 lowercase；display 透過 capitalize helper 還原
+    expect(screen.getByText('Devops')).toBeInTheDocument()
+    expect(screen.getByText('Testing')).toBeInTheDocument()
+    expect(screen.getByText('Security')).toBeInTheDocument()
   })
 
   it('AC-2: 全部 count = sum of all category counts', () => {
@@ -29,7 +30,7 @@ describe('CategorySidebar', () => {
 
   it('AC-3: each category renders its own count', () => {
     render(<CategorySidebar categories={cats} selected={null} onSelect={vi.fn()} />)
-    const devopsBtn = screen.getByText('devops').closest('button')
+    const devopsBtn = screen.getByText('Devops').closest('button')
     expect(devopsBtn?.textContent).toContain('12')
   })
 
@@ -42,7 +43,7 @@ describe('CategorySidebar', () => {
 
   it('AC-5: selected=cat name → that cat active', () => {
     render(<CategorySidebar categories={cats} selected="testing" onSelect={vi.fn()} />)
-    const testingBtn = screen.getByText('testing').closest('button')
+    const testingBtn = screen.getByText('Testing').closest('button')
     expect(testingBtn?.className).toContain('bg-accent')
   })
 
@@ -53,10 +54,10 @@ describe('CategorySidebar', () => {
     expect(onSelect).toHaveBeenCalledWith(null)
   })
 
-  it('AC-7: click on category → onSelect(name)', () => {
+  it('AC-7: click on category → onSelect(name) — callback 仍收 raw lowercase 值', () => {
     const onSelect = vi.fn()
     render(<CategorySidebar categories={cats} selected={null} onSelect={onSelect} />)
-    fireEvent.click(screen.getByText('security'))
-    expect(onSelect).toHaveBeenCalledWith('security')
+    fireEvent.click(screen.getByText('Security'))
+    expect(onSelect).toHaveBeenCalledWith('security')  // callback 收 cat.name 原值（lowercase）
   })
 })

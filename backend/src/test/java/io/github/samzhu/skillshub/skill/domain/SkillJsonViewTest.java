@@ -45,7 +45,7 @@ class SkillJsonViewTest {
                 "test-skill",
                 "Test description for view serialization.",
                 "alice",
-                "Testing"));
+                "testing"));
         // create() 已 seed 4 條 ACL（owner read/write/delete + public:*:read）+ ownerId="alice"
         return skill;
     }

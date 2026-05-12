@@ -12,6 +12,7 @@ import { EditCollectionModal } from '@/components/EditCollectionModal'
 import { useCollection } from '@/hooks/useCollection'
 import { useMe } from '@/hooks/useMe'
 import { deleteCollection, type CollectionSkillSummary } from '@/api/skills'
+import { categoryLabel } from '@/lib/text'
 import { localizeApiError } from '@/lib/api-error-messages'
 
 /** S150 — /collections/:id detail page；S164b — owner-only edit / delete 操作列。 */
@@ -166,7 +167,7 @@ function SkillRow({ skill, isLast }: { skill: CollectionSkillSummary; isLast: bo
           {skill.latestVersion ? `v${skill.latestVersion}` : '—'}
         </p>
       </div>
-      <span className="text-[11px] text-muted-foreground">{skill.category}</span>
+      <span className="text-[11px] text-muted-foreground">{categoryLabel(skill)}</span>
     </Link>
   )
 }

@@ -234,7 +234,7 @@ class RequestServiceTest {
         var id = UUID.randomUUID().toString();
         jdbc.update("""
                 INSERT INTO skills (id, name, description, author, category, status, download_count, created_at, updated_at, owner_id)
-                VALUES (?, ?, '測試 skill', ?, 'Test', ?, 0, ?, ?, ?)
+                VALUES (?, ?, '測試 skill', ?, 'test', ?, 0, ?, ?, ?)
                 """,
                 id, "skill-" + id.substring(0, 8), author, status,
                 java.sql.Timestamp.from(Instant.now()),

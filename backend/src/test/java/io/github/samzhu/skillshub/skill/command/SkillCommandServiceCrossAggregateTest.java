@@ -79,7 +79,7 @@ class SkillCommandServiceCrossAggregateTest {
     @Tag("AC-1")
     @DisplayName("AC-1: V6 migration adds skills.version BIGINT NOT NULL DEFAULT 0")
     void v6MigrationAddsVersionColumn() {
-        var skill = Skill.create(new CreateSkillCommand("v6-test", "test", "alice", "DevOps"));
+        var skill = Skill.create(new CreateSkillCommand("v6-test", "test", "alice", "devops"));
         helper.save(skill);
 
         Long version = jdbc.queryForObject(
@@ -91,7 +91,7 @@ class SkillCommandServiceCrossAggregateTest {
     @Tag("AC-3")
     @DisplayName("AC-3 + POC: cross-aggregate save 觸發 @DomainEvents publish 至 Modulith outbox（同 TX）")
     void crossAggregateSavePublishesToOutbox() {
-        var skill = Skill.create(new CreateSkillCommand("cross-tx-skill", "POC test", "alice", "DevOps"));
+        var skill = Skill.create(new CreateSkillCommand("cross-tx-skill", "POC test", "alice", "devops"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
                 skill.getId(), "1.0.0", "gs://bucket/cross-tx/1.0.0.zip", 100, 0,
@@ -161,7 +161,7 @@ class SkillCommandServiceCrossAggregateTest {
     @Tag("AC-3")
     @DisplayName("AC-3 extended: 業務 TX rollback → event_publication 同 rollback（outbox 安全性 contract）")
     void txRollbackRollsBackPublication() {
-        var skill = Skill.create(new CreateSkillCommand("rollback-skill", "rollback test", "alice", "DevOps"));
+        var skill = Skill.create(new CreateSkillCommand("rollback-skill", "rollback test", "alice", "devops"));
         skill.recordVersionPublished("1.0.0");
         var sv = SkillVersion.publish(new PublishVersionCommand(
                 skill.getId(), "1.0.0", "gs://bucket/rollback/1.0.0.zip", 100, 0, Map.of()));

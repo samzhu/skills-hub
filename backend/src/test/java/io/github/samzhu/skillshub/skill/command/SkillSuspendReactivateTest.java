@@ -100,7 +100,7 @@ class SkillSuspendReactivateTest {
     void suspendDraftSkill_throwsAndDoesNotPersist() {
         var skillId = commandService.createSkill(
                 new CreateSkillCommand("draft-suspend-" + uniqueSuffix(),
-                        "DRAFT skill", "owner", "Testing"));
+                        "DRAFT skill", "owner", "testing"));
         assertThat(loadSkill(skillId).getStatus()).isEqualTo(SkillStatus.DRAFT);
 
         assertThatThrownBy(() -> commandService.suspend(
@@ -136,7 +136,7 @@ class SkillSuspendReactivateTest {
     private String createPublishedSkill() {
         var skillId = commandService.createSkill(
                 new CreateSkillCommand("published-" + uniqueSuffix(),
-                        "test fixture", "owner", "Testing"));
+                        "test fixture", "owner", "testing"));
         commandService.publishVersion(new PublishVersionCommand(
                 skillId, "1.0.0", "gs://bucket/p", 0L, 0, Map.of()));
         return skillId;

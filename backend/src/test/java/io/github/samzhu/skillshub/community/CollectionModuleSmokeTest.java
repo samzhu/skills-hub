@@ -63,12 +63,12 @@ class CollectionModuleSmokeTest {
     @DisplayName("Collection.create + save → INSERT collection + N collection_skills with position 0..n")
     void create_persist_roundTrip() {
         var c = Collection.create("DevOps Starter", "k8s tooling pack",
-                "DevOps", "alice", List.of("sk-1", "sk-2", "sk-3"));
+                "devops", "alice", List.of("sk-1", "sk-2", "sk-3"));
         var saved = repo.save(c);
 
         var loaded = repo.findById(saved.getId()).orElseThrow();
         assertThat(loaded.getName()).isEqualTo("DevOps Starter");
-        assertThat(loaded.getCategory()).isEqualTo("DevOps");
+        assertThat(loaded.getCategory()).isEqualTo("devops");
         assertThat(loaded.getOwnerId()).isEqualTo("alice");
         assertThat(loaded.getInstallCount()).isZero();
         assertThat(loaded.getCreatedAt()).isNotNull();
@@ -137,7 +137,7 @@ class CollectionModuleSmokeTest {
     @Test
     @DisplayName("CollectionRepository.findAllByCategoryOrderByCreatedAtDesc — category filter + sort")
     void list_categoryFilter() throws InterruptedException {
-        repo.save(Collection.create("DevOps Pack", null, "DevOps", "alice", List.of("sk-1")));
+        repo.save(Collection.create("DevOps Pack", null, "devops", "alice", List.of("sk-1")));
         Thread.sleep(5);
         repo.save(Collection.create("Frontend Pack", null, "Frontend", "alice", List.of("sk-2")));
         Thread.sleep(5);
@@ -207,7 +207,7 @@ class CollectionModuleSmokeTest {
         var id = UUID.randomUUID().toString();
         jdbc.update("""
                 INSERT INTO skills (id, name, description, author, category, status, download_count, created_at, updated_at, owner_id)
-                VALUES (?, ?, '測試 skill', ?, 'Test', ?, 0, ?, ?, ?)
+                VALUES (?, ?, '測試 skill', ?, 'test', ?, 0, ?, ?, ?)
                 """,
                 id, "skill-" + id.substring(0, 8), author, status,
                 java.sql.Timestamp.from(Instant.now()),

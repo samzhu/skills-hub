@@ -70,12 +70,12 @@ class CollectionServiceTest {
         var sk2 = insertSkill("alice", "PUBLISHED");
         var sk3 = insertSkill("alice", "PUBLISHED");
 
-        var id = service.create("DevOps Starter", "k8s tooling", "DevOps",
+        var id = service.create("DevOps Starter", "k8s tooling", "devops",
                 List.of(sk1, sk2, sk3));
 
         var c = repo.findById(id).orElseThrow();
         assertThat(c.getName()).isEqualTo("DevOps Starter");
-        assertThat(c.getCategory()).isEqualTo("DevOps");
+        assertThat(c.getCategory()).isEqualTo("devops");
         assertThat(c.getOwnerId()).isEqualTo("alice");
         assertThat(c.getInstallCount()).isZero();
         assertThat(c.skillIds()).containsExactly(sk1, sk2, sk3);
@@ -152,7 +152,7 @@ class CollectionServiceTest {
     @DisplayName("AC-5: list 預設 createdAt desc + category filter")
     void list_defaultAndFilter() throws InterruptedException {
         var sk1 = insertSkill("alice", "PUBLISHED");
-        service.create("DevOps Pack", null, "DevOps", List.of(sk1));
+        service.create("DevOps Pack", null, "devops", List.of(sk1));
         Thread.sleep(5);
         var fePack = service.create("Frontend Pack", null, "Frontend", List.of(sk1));
         Thread.sleep(5);
@@ -198,7 +198,7 @@ class CollectionServiceTest {
         var id = UUID.randomUUID().toString();
         jdbc.update("""
                 INSERT INTO skills (id, name, description, author, category, status, download_count, created_at, updated_at, owner_id)
-                VALUES (?, ?, '測試 skill', ?, 'Test', ?, 0, ?, ?, ?)
+                VALUES (?, ?, '測試 skill', ?, 'test', ?, 0, ?, ?, ?)
                 """,
                 id, "skill-" + id.substring(0, 8), author, status,
                 java.sql.Timestamp.from(Instant.now()),

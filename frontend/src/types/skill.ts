@@ -42,8 +42,10 @@ export interface Skill {
   authorHandle?: string | null
   /** S154b — author email；**僅在** `contact_email_public=true` 時 backend 回此值，否則 backend 端 strip 為 null。前端 conditional `<mailto:>` button 用。 */
   authorEmail?: string | null
-  /** 技能分類（如 DevOps、AI、Testing） */
+  /** 技能分類 canonical 值（lowercase；V20 起 DB 一律 lowercase 存）— 用於 search/filter key。 */
   category: string
+  /** S159b Round 2 — 分類 display 名稱（保留原 CamelCase 如 "DevOps"）；舊資料可能 null，UI 用 `categoryLabel(skill)` 取（fallback `capitalize(category)`）。 */
+  categoryDisplay?: string | null
   /** 最新版本號（SemVer），尚未發佈任何版本時為 null */
   latestVersion: string | null
   /** 風險評估結果；尚未評估時為 null */
@@ -122,8 +124,10 @@ export interface SemanticSearchResult {
   description: string
   /** 作者名稱 */
   author: string
-  /** 技能分類 */
+  /** 技能分類 canonical lowercase（V20 起 lowercase）— search/filter key */
   category: string
+  /** S159b Round 2 — 分類 display 名稱保留原 CamelCase；舊資料 null，UI 用 `categoryLabel(...)` fallback */
+  categoryDisplay?: string | null
   /** 最新版本號；尚未發佈任何版本時為 null */
   latestVersion: string | null
   /** 風險評估等級；尚未評估時為 null */

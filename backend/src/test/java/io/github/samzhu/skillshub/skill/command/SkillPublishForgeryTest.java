@@ -72,7 +72,7 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
         mockMvc.perform(multipart("/api/v1/skills/upload")
                         .file(fakeZip)
                         .param("version", "1.0.0")
-                        .param("category", "Testing")
+                        .param("category", "testing")
                         .with(jwt().jwt(j -> j.subject("bob-google-sub"))))
                 .andExpect(status().isCreated());
 
@@ -81,7 +81,7 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
         var snapshotCaptor = ArgumentCaptor.forClass(String.class);
         Mockito.verify(skillCommandService).uploadSkill(
                 ArgumentMatchers.any(), ArgumentMatchers.eq("1.0.0"),
-                authorCaptor.capture(), ArgumentMatchers.eq("Testing"),
+                authorCaptor.capture(), ArgumentMatchers.eq("testing"),
                 ArgumentMatchers.any(), snapshotCaptor.capture());
 
         assertThat(authorCaptor.getValue())
@@ -110,7 +110,7 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
                         .file(fakeZip)
                         .param("version", "1.0.0")
                         .param("author", "u_alice_xx")  // 偽造！server 應 ignore
-                        .param("category", "Testing")
+                        .param("category", "testing")
                         .with(jwt().jwt(j -> j.subject("bob-google-sub"))))
                 .andExpect(status().isCreated());
 
@@ -143,7 +143,7 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
                   "name": "test-skill",
                   "description": "test",
                   "author": "u_alice_xx",
-                  "category": "Testing",
+                  "category": "testing",
                   "visibility": "PUBLIC",
                   "authorNameSnapshot": "Alice Chen"
                 }""";
