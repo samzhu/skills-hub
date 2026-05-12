@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { updateCollection, type CollectionDetail } from '@/api/skills'
 import { localizeApiError } from '@/lib/api-error-messages'
 
@@ -43,7 +44,11 @@ export function EditCollectionModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collection', collection.id] })
       queryClient.invalidateQueries({ queryKey: ['collections'] })
+      toast.success('集合已更新')
       onClose()
+    },
+    onError: (err) => {
+      toast.error(`更新失敗：${localizeApiError(err)}`)
     },
   })
 

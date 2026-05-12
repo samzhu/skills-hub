@@ -1569,3 +1569,39 @@ API 404 設值 error 故觸發此 catch-all。UX 可接受（不誤導；有 err
 
 - Tick 130: 10 checks / **0 bugs**。Mode B 0-bug 連續 1 round；下次 tick 換 cut 軸（候選：interactive state consistency on owner-management flow / component-context alignment on PageHeader cross-skill-vs-collection）。
 
+---
+
+## Tick 131 — Mode B Round 66（Component-Context Alignment: Skill vs Collection owner UX），2026-05-12
+
+> Cut 軸切換 — 比對 Skill owner-management UX 跟 Collection owner-management UX 一致性。
+
+### 涵蓋
+
+| # | 類別 | Case | Result | Spec |
+|---|------|------|--------|------|
+| 66.1 | 比對 | Skill delete UI 位置（MySkillsPage row [刪除] button） vs Collection delete UI 位置（CollectionDetailPage header [刪除] button）| OBSERVE — Skill 在列表 row，Collection 在 detail header；不同 mental model | — |
+| 66.2 | **Bug X** | Skill delete 走 `toast.success('技能已刪除')` + `toast.error(...)`（MySkillsPage:71,74）；**Collection delete 走 silent navigate + inline `<p>`**（CollectionDetailPage 修前）| **BUG** — 不一致 UX，silent delete jarring；codebase 已有 sonner toast lib | 本 tick fix |
+| 66.3 | **Bug X 延伸** | EditSkillModal + EditCollectionModal submit error 都只有 inline `<p>` 顯 — modal 一關掉錯誤訊息消失，但 mutation 真的 fail 過 | **BUG** — 補 toast.success / toast.error 對齊 MySkillsPage pattern | 本 tick fix |
+| 66.4 | 比對 | Owner 識別都用 `me.sub === skill/collection.ownerId` pattern | ✅ 一致 | — |
+| 66.5 | 比對 | EditSkillModal vs EditCollectionModal `aria-label` + dialog role + prefill + unchanged-disable submit 4 個設計點 | ✅ 完全 mirror | S163b / S164b 既驗 |
+| 66.6 | 比對 | Skill visibility toggle（VisibilityToggleButton）vs Collection visibility — Collection 無此概念（任何人有 collectionId 都可訪問） | ✅ 不同 domain semantic，合理 | — |
+| 66.7 | 比對 | Skill 沒有 CollectionDetailPage 那樣的 [刪除] action button — 必須到 MySkillsPage 才能刪 | OBSERVE — 設計不對稱但非 bug；S163 spec design 也未要求 [刪除] in SkillDetailPage（只要 [編輯] + visibility toggle）| — |
+
+### Bug X 修復（本 tick）
+
+**問題**：collection delete + skill update + collection update 三條 mutation 都欠 toast 反饋，與 MySkillsPage skill delete 既驗 pattern 不一致。
+
+**Fix**：
+- `CollectionDetailPage.tsx`: delete mutation 加 `toast.success('集合已刪除')` + `toast.error(\`刪除失敗：\${localizeApiError(err)}\`)`；移除 inline `<p>` (toast 自動 dismiss 比 inline 殘留好)
+- `EditSkillModal.tsx`: update mutation 加 `toast.success('技能已更新')` + `toast.error(...)` —inline error 保留（modal 內立即回饋）
+- `EditCollectionModal.tsx`: 同上加 `toast.success('集合已更新')` + `toast.error(...)`
+
+```
+全 vitest: 395/395 PASS（無 regression）
+typecheck: 0 errors
+```
+
+### Round 66 Summary
+
+- Tick 131: 7 checks / **1 bug found + fixed inline**（Bug X — toast 不一致 across 3 mutations；修復對齊 MySkillsPage sonner pattern）。下次 tick 換 cut 軸（候選：interactive state consistency on owner flow / negative deep-link with edit modal / form validation feedback timing）。
+

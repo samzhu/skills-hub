@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Boxes } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { AppShell } from '@/components/AppShell'
 import { EmptyState } from '@/components/EmptyState'
 import { InstallButton } from '@/components/InstallButton'
@@ -26,9 +27,15 @@ export function CollectionDetailPage() {
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteCollection(collection!.id),
+    // 對齊 MySkillsPage skill delete pattern（S144 ship 已驗證）：success / error 都用 toast
+    // 而非 silent navigate / inline <p>。Codebase 既有 sonner toast lib，避免不一致 UX。
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collections'] })
+      toast.success('集合已刪除')
       navigate('/collections')
+    },
+    onError: (err) => {
+      toast.error(`刪除失敗：${localizeApiError(err)}`)
     },
   })
 
@@ -112,11 +119,7 @@ export function CollectionDetailPage() {
         </div>
       </div>
 
-      {deleteMutation.isError && (
-        <p className="mb-3 text-[12px] text-red-500">
-          刪除失敗：{localizeApiError(deleteMutation.error)}
-        </p>
-      )}
+      {/* error 走 toast 不需 inline <p>；toast 自動 dismiss，比 inline 殘留訊息 UX 好 */}
 
       {editOpen && (
         <EditCollectionModal collection={collection} onClose={() => setEditOpen(false)} />

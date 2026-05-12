@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { updateSkill } from '@/api/skills'
 import { localizeApiError } from '@/lib/api-error-messages'
 import type { Skill } from '@/types/skill'
@@ -37,7 +38,12 @@ export function EditSkillModal({
       // SkillDetailPage 用兩種 key 取 skill：by id (`/skills/:id`) + by author/name canonical
       queryClient.invalidateQueries({ queryKey: ['skill', skill.id] })
       queryClient.invalidateQueries({ queryKey: ['skills'] })
+      toast.success('技能已更新')
       onClose()
+    },
+    onError: (err) => {
+      // inline error 仍保留（modal 內看得到立即回饋）；toast 補一份避免關掉 modal 後沒提示
+      toast.error(`更新失敗：${localizeApiError(err)}`)
     },
   })
 
