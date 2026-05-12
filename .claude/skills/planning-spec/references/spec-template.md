@@ -7,6 +7,7 @@ File: `docs/grimo/specs/YYYY-MM-DD-<spec-id>-<topic>.md`
 
 > Spec: <spec-id> | Size: XS/S/M(N) | Status: ⏳ Design
 > Date: YYYY-MM-DD
+> Traces to: PRD §X.Y / ADR-NNN / spec-roadmap row <spec-id>
 
 ---
 
@@ -23,12 +24,27 @@ File: `docs/grimo/specs/YYYY-MM-DD-<spec-id>-<topic>.md`
 
 ## 3. SBE Acceptance Criteria
 
-AC-1: [title]
-Given [precondition]
-When  [action]
-Then  [expected result]
+| AC | Priority | Verify | Title |
+|----|----------|--------|-------|
+| AC-1 | Must | Test | [short title] |
+| AC-2 | Should | Demo | ... |
 
-AC-2: ...
+**AC-1: [title]**
+- Given [precondition with explicit state / input bounds / fixture]
+- When  [action / trigger]
+- Then  [externally observable outcome — HTTP status, DB row, UI string]
+
+**AC-2: ...**
+
+### NFR coverage
+
+| Category | Covered by | Or N/A reason |
+|---|---|---|
+| Performance | AC-N | — |
+| Security | — | N/A — <reason> |
+| Reliability | AC-N | — |
+| Usability | — | N/A — <reason> |
+| Maintainability | AC-N | — |
 
 ## 4. Interface / API Design
 

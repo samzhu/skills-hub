@@ -22,7 +22,7 @@ allowed-tools:
   - WebSearch
 metadata:
   author: samzhu
-  version: 3.0.0
+  version: 3.1.0
   category: workflow-automation
   pattern: iterative-refinement
 ---
@@ -134,7 +134,15 @@ Phase 3 — Clarify + Design (user interaction)
 - [ ] Confirm — present comparison table, get user's choice
 - [ ] Re-estimate — re-score after grill; size may have changed
 - [ ] Design — interfaces, data flow, file plan
+- [ ] NFR sweep — walk 5 ISO 25010-derived categories (Performance,
+      Security, Reliability, Usability, Maintainability). For each: add
+      an AC that quantifies the requirement, OR record `N/A — <reason>`
+      in §3. Default-skipping is forbidden (see "NFR coverage sweep"
+      below).
 - [ ] Document — write spec file
+- [ ] AC well-formedness check — run the 5-property checklist (Singular,
+      Unambiguous, Implementation-free, Verifiable, Bounded) against
+      every AC in §3 before handoff. See "AC well-formedness check" below.
 - [ ] Review — user reviews spec before handoff
 ```
 
@@ -307,6 +315,38 @@ Typical form:
 If this spec genuinely needs verification the standard pipeline cannot provide, DO NOT fork per-spec tooling. Escalate to /planning-project to extend the project-level pipeline so every future spec benefits.
 
 **AC naming contract.** When writing §3 ACs, use the format declared in the QA strategy doc. Tests and task files reference ACs by the same id so the ecosystem test runner can correlate them.
+
+### NFR coverage sweep (before writing §3)
+
+Before writing §3 ACs, walk these 5 categories (derived from ISO 25010). For each, EITHER add an AC that quantifies the requirement, OR record `N/A — <one-line reason>` in §3's NFR coverage table. **Silent skipping is forbidden — explicit N/A is OK.**
+
+| Category | Trigger questions | When N/A is legitimate |
+|---|---|---|
+| **Performance** | Response time / throughput / payload size target? p95 / QPS budget? | Internal one-shot CLI, no concurrency, no SLO |
+| **Security** | Touches user input / auth tokens / PII / file uploads / SQL / shell? Inputs validated? Outputs escaped? | Pure compute, no I/O boundary, no external input |
+| **Reliability** | Failure mode? Retry / idempotency / transaction boundary? Partial-failure behavior? | Single in-memory call, fail-fast acceptable |
+| **Usability** | i18n? a11y (keyboard / screen reader)? Error messages user-readable? | Backend internal API, no end-user surface |
+| **Maintainability** | Structured log fields? Metric / trace span? Config externalised vs baked in? | One-line constant, no runtime configurability needed |
+
+**Why this gate exists.** Functional ACs cover the happy path. NFRs only become visible at production time when something breaks — by then the spec is shipped and retrofitting takes another spec. The sweep forces explicit consideration in design.
+
+**Anti-pattern:** spec §3 contains 5 functional ACs (upload / list / delete / etc.) but no latency target, no input-size limit, no failure-mode behavior, no log field. After ship, production hits a 50MB upload and the response hangs because the spec never bounded payload size. The NFR sweep would have surfaced this as either AC-N "reject uploads > 10MB with 413" or explicit `N/A — payload size enforced by web server config`.
+
+### AC well-formedness check (mandatory before handoff)
+
+Every AC in §3 MUST pass these 5 properties (IEEE 29148 well-formed requirement qualities, distilled for SBE format):
+
+1. **Singular** — one Given/When/Then triple = one behavior. Don't chain unrelated cases with `and`. Two behaviors → two ACs.
+2. **Unambiguous** — two readers must agree on what passes. Forbidden vague verbs: "correctly handle", "properly process", "appropriately respond", "良好", "適當". Replace with a measurable outcome (HTTP status code, response body shape, DB row state, UI string).
+3. **Implementation-free** — Then describes externally observable behavior, not internal class/method names. ✅ `Then response is 409 Conflict with body {"error": "duplicate"}` ❌ `Then SkillService.validate() throws DuplicateSkillException`.
+4. **Verifiable** — confirmable by Test, Demonstration, or Inspection (column declared in the AC table). If none of the three can verify it, the AC is mis-specified.
+5. **Bounded** — Given lists preconditions explicitly: state, input range, fixture. ✅ `Given a skill with name length ≤ 64 and SKILL.md frontmatter passing yaml.safe_load` ❌ `Given a valid skill`.
+
+**Anti-patterns this check catches:**
+
+- `AC-1: 系統正確處理 skill upload` → fails Singular + Unambiguous + Verifiable. Split into AC-1 happy path, AC-2 oversize file, AC-3 invalid SKILL.md — each with concrete G/W/T.
+- `AC-5: 效能良好` → fails Unambiguous + Verifiable. Rewrite: `AC-5: GET /api/v1/skills returns p95 ≤ 200ms under 100 concurrent requests (k6 fixture)`.
+- `AC-7: Calls SkillRepository.save() with the validated entity` → fails Implementation-free. Rewrite to observable outcome: `Then a row exists in skills with name=<input.name>, status='draft', created_at within 1s of request`.
 
 ## Doc Sync — after design decisions
 
