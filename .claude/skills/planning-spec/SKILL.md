@@ -81,6 +81,20 @@ Phase 1 — Context (no user interaction)
       into the newer) or marking the older as superseded. Do NOT scan
       archived specs — those are shipped and final.
       Exit criterion: zero unresolved overlapping active specs.
+
+      **Supersede action — MUST archive the superseded spec file in the
+      same step (do NOT defer to shipping-release):**
+      1. Update superseded spec file's header: status `⛔ superseded YYYY-MM-DD
+         — 取代為 **SNNN**` + add a `Superseded By: SNNN — <one-line rationale>`
+         line referencing the new spec file path.
+      2. Update roadmap row: status column `⛔ superseded YYYY-MM-DD — 取代為
+         SNNN（<one-line rationale>）`. Keep the row in the Active table; do
+         NOT delete (history matters).
+      3. **Move the superseded spec file to `docs/grimo/specs/archive/`** —
+         superseded specs are terminal (no further work); leaving them in
+         `specs/` pollutes the in-progress index. `git mv` so the rename is
+         a single commit hunk.
+      4. Commit message: `docs(specs): supersede SNNN-old by SNNN-new + archive`.
 - [ ] Scan existing research — check for prior research notes, competitive analysis, or prior spec findings related to this spec's topic. Re-research is the most expensive form of waste.
 - [ ] Re-sync PRD — scan the PRD for product-level decisions that constrain this spec. Verify the spec's goal aligns with the product's positioning (e.g., "manage X" vs "replace X" vs "bridge X and Y").
 - [ ] Inspect current state — list the project directory; diff against what the last planning step recorded.

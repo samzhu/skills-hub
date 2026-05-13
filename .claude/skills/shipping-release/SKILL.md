@@ -151,6 +151,20 @@ rm -rf poc/<spec-id>/
 
 **Verify clean state** — after the three steps, `git status` must show no untracked files under `docs/grimo/tasks/` or `poc/` for this spec.
 
+**4. Sweep stranded superseded specs:** scan `docs/grimo/specs/` for any
+spec file whose status header contains `⛔ superseded` — these are
+terminal (no further work) and should not pollute the in-progress
+index. Move them to `docs/grimo/specs/archive/` in the same commit.
+
+```bash
+# 找出沒搬走的 superseded spec
+grep -l '⛔ superseded' docs/grimo/specs/*.md 2>/dev/null \
+  | xargs -I{} git mv {} docs/grimo/specs/archive/
+```
+
+`/planning-spec` 的 supersede 流程已負責 archive 新標記的 superseded
+spec；本 step 是 sweep 流程的補網（catch 歷史遺留 / 跨 session 漏搬）。
+
 ### Re-score size (per estimation-scale.md)
 
 Initial spec estimate is a guess made before implementation. Actual size
