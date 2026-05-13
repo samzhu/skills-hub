@@ -9,19 +9,19 @@
 
 ## 1. Goal
 
-Alice 在 Skill Detail 分享 skill 時，只選「Bob = 可編輯」「雲端部門 = 可檢視」或「公開 = 可檢視」；後端把這些 role grant 寫進 `skill_grants`，再由 Spring Modulith listener 非同步更新 `skills.acl_entries` 與 `vector_store.acl_entries`。S170 先把人所屬的公司、部門、跨公司團隊打平成 `user_acl_principals`；S169 讀取這些 principal keys，放進 SQL 做 ACL 過濾。
+Alice 在 Skill Detail 分享 skill 時，只選「Bob = 可編輯」「雲端部門 = 可檢視」或「公開 = 可檢視」；後端把這些 role grant 寫進 `skill_grants`，再由 Spring Modulith listener 非同步更新 `skills.acl_entries` 與 `vector_store.acl_entries`。S170 的 `PrincipalContextService` 用目前平台 userId 查 `group_members` + `group_closure`，產生 `user:<id>` 與 `group:<id>` principal keys；S169 讀取這些 principal keys，放進 SQL 做 ACL 過濾。
 
 ```text
 Write side: 人類管理 role
   skill_grants:
     user:bob              EDITOR
-    group:dept_cloud   VIEWER
+    group:g_d4e5f6        VIEWER
 
 Projection: 系統執行用 ACL
   acl_entries:
     user:bob:read
     user:bob:write
-    group:dept_cloud:read
+    group:g_d4e5f6:read
 
 Read side: SQL 先過濾再分頁/排序
   skills.acl_entries       ??| :aclPatterns
@@ -60,21 +60,21 @@ API/UI:
 | Approach | Chosen | Rationale |
 |----------|--------|-----------|
 | A: 每次查詢 join `skill_grants` 判斷權限 | no | list/search 分頁和 semantic search 都會變重；已違背 S016/S017/S121 的 JSONB GIN 熱路徑。 |
-| B: role grants + S170 principal context + materialized ACL projections + SQL ACL filter | yes | 人管理 role 和 Group；系統查 `acl_entries` + `user_acl_principals`；分頁 total 在 DB ACL filter 後計算。 |
+| B: role grants + S170 principal context + materialized ACL projections + SQL ACL filter | yes | 人管理 role 和 Group；系統查 `acl_entries`，principal context 由 S170 服務即時查平台 DB 產生；分頁 total 在 DB ACL filter 後計算。 |
 | C: 前端自己用 `/me` + ownerId 算按鈕 | no | S154 後 `sub` 不是平台 user id；且前端不該複製 role/permission matrix。 |
 
 ### 2.2 Principal Contract from S170
 
-S170 提供 `user_acl_principals` 與 `PrincipalContextService`。S169 只要求以下契約：
+S170 提供 `PrincipalContextService`。S169 只要求以下契約：
 
 ```text
 current user Bob:
   user:u_bob
-  group:dept_cloud
-  group:company_acme
+  group:g_d4e5f6
+  group:g_a1b2c3
 ```
 
-S169 不知道 `dept_cloud` 是 Department、Company、Team 還是 Other；它只看 principal key 字串。分享 UI 搜尋 Group 時也用 S170 的 search API 回 `principalKey = group:<id>`。
+S169 不知道 `g_d4e5f6` 是 Department、Company、Team 還是 Other；它只看 principal key 字串。分享 UI 搜尋 Group 時也用 S170 的 search API 回 `principalKey = group:<id>`。`group:<id>` 的 `<id>` 是 `groups.id`，格式由 S170 定義為 `g_<6hex>`；`group:` 是 ACL namespace，不是 id prefix。
 
 ### 2.3 Role Matrix
 
@@ -103,7 +103,7 @@ var aclClause = " AND acl_entries ??| :aclPatterns ";
 
 `??|` 是 pgJDBC escape 後送到 PostgreSQL 的 `?|` JSONB operator；`SqlParameterValue(Types.ARRAY, ...)` 避免 Spring 把 `String[]` 展成 IN-list。
 
-### 2.5 Skill ACL Projection Flow
+### 2.5 Skill ACL Principal Context Flow
 
 ```text
 POST /api/v1/skills/{id}/grants
@@ -171,7 +171,7 @@ Service code may use `AccessDeniedException` or domain-specific forbidden except
 
 | Source | Finding |
 |--------|---------|
-| `docs/grimo/specs/2026-05-13-S170-group-tree-principal-model.md` | S170 owns Group tree, memberships, and `user_acl_principals`; S169 consumes only `principalKey` strings. |
+| `docs/grimo/specs/2026-05-13-S170-group-tree-principal-model.md` | S170 owns Group tree, memberships, and `PrincipalContextService`; S169 consumes only `principalKey` strings. |
 | `docs/grimo/specs/archive/2026-05-04-S121-list-acl-filter.md` | List pagination must filter ACL in SQL before page count; method security does not protect list queries. |
 | `docs/grimo/specs/archive/2026-04-29-S017-acl-aware-semantic-search.md` | Semantic search already uses ACL patterns + `vector_store.acl_entries ??| ?::text[]`; S169 keeps that shape. |
 | `docs/grimo/adr/ADR-001-postgresql-migration.md` | PostgreSQL + pgvector can combine JSONB ACL filtering and vector ordering in one SQL path; this was a core migration driver. |
@@ -200,14 +200,14 @@ And does not include `user:<bobUserId>:delete`
 
 AC-3: Grant Group Viewer updates skills and vector ACL
 Given Alice owns skill S with vector rows
-And S170 provides principal key `group:dept_cloud`
-When Alice grants `group:dept_cloud VIEWER`
-Then `skills.acl_entries` and `vector_store.acl_entries` both include `group:dept_cloud:read`
+And S170 provides principal key `group:g_d4e5f6`
+When Alice grants `group:g_d4e5f6 VIEWER`
+Then `skills.acl_entries` and `vector_store.acl_entries` both include `group:g_d4e5f6:read`
 And both tables have the same ACL entry set for S
 
 AC-4: Semantic search respects Group ACL
-Given S170 projects Bob's principals including `group:dept_cloud`
-And Charlie's principals do not include `group:dept_cloud`
+Given S170 `PrincipalContextService` returns Bob's principals including `group:g_d4e5f6`
+And Charlie's principals do not include `group:g_d4e5f6`
 When Bob searches for content from S
 Then Bob can see S
 When Charlie searches the same query
@@ -233,7 +233,7 @@ And `canShare=false`
 And `canManageGrants=false`
 
 AC-8: Detail returns Group viewerPermissions
-Given Bob can read S through `group:dept_cloud VIEWER`
+Given Bob can read S through `group:g_d4e5f6 VIEWER`
 When Bob GET `/api/v1/skills/{S}`
 Then `canView=true`, `canDownload=true`
 And `canEdit=false`, `canDelete=false`, `canShare=false`
@@ -344,6 +344,7 @@ GET /api/v1/skills/{id}
 POST   /api/v1/skills/{id}/grants
 DELETE /api/v1/skills/{id}/grants/{grantId}
 GET    /api/v1/skills/{id}/grants
+GET    /api/v1/share-targets?q=cloud
 
 Grant principal input: user | group | public
 Grant role input: VIEWER | EDITOR
@@ -354,9 +355,10 @@ OWNER remains system-seeded / migration-owned; UI does not expose owner transfer
 
 | File | Action | Description |
 |------|--------|-------------|
-| `backend/src/main/resources/db/migration/V23__skill_grants_editor_group.sql` | new | Extend `skill_grants.role` to `OWNER/EDITOR/VIEWER`; extend principal type to `group`. |
+| `backend/src/main/resources/db/migration/V23__skill_grants_editor_role.sql` | new | Extend `skill_grants.role` to `OWNER/EDITOR/VIEWER`; `group` principal type already exists since V16. |
 | `backend/src/main/java/io/github/samzhu/skillshub/skill/security/Role.java` | modify | Add `EDITOR` and role matrix. |
 | `backend/src/main/java/io/github/samzhu/skillshub/skill/security/SkillAclProjectionListener.java` | modify | Rebuild `skills.acl_entries` and `vector_store.acl_entries`; use ObjectMapper for JSON. |
+| `backend/src/main/java/io/github/samzhu/skillshub/skill/security/ShareTargetController.java` | new | Search user candidates plus S170 Group candidates for Share modal. |
 | `backend/src/main/java/io/github/samzhu/skillshub/skill/query/SkillAclReadEvaluator.java` | new | SQL evaluator for read/write/delete patterns. |
 | `backend/src/main/java/io/github/samzhu/skillshub/skill/query/ViewerPermissions.java` | new | Detail action contract. |
 | `backend/src/main/java/io/github/samzhu/skillshub/skill/query/ViewerPermissionService.java` | new | Compute permissions from ownerId + SQL evaluator. |
@@ -381,6 +383,7 @@ OWNER remains system-seeded / migration-owned; UI does not expose owner transfer
 | `backend/src/test/java/.../skill/query/SkillDetailViewerPermissionsTest.java` | AC-6, AC-7, AC-8 |
 | `backend/src/test/java/.../skill/query/SkillResponsePrivacyTest.java` | AC-9 |
 | `backend/src/test/java/.../skill/security/SkillGrantControllerAuthzTest.java` | AC-10 |
+| `backend/src/test/java/.../skill/security/ShareTargetControllerTest.java` | AC-13 |
 | `backend/src/test/java/.../skill/command/SkillCommandControllerSecurityTest.java` | AC-11, AC-12 |
 | `backend/src/test/java/.../shared/api/GlobalExceptionHandlerTest.java` | AC-15 |
 | `frontend/src/pages/SkillDetailPage.test.tsx` | AC-14 |

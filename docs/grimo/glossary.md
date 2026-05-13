@@ -14,8 +14,8 @@
 | 集團 | Organization | `Org` | 組織層級最頂層 |
 | 公司 | Company | `Company` | 集團下的子公司 |
 | 部門 | Department | `Department` | 公司下的部門，可多層巢狀 |
-| 群組 | Group | `Group` | S170 起，Company / Department / Team / Other 都是同一種可掛人、可掛子群組的樹狀 Group；分享時投影成 `group:<id>:<permission>` ACL entry |
-| 群組 Principal | Group Principal | `group:<id>` | S170 起，`user_acl_principals` 裡的扁平字串；使用者被放進子群組時會同時得到該群組與所有父群組 principal |
+| 群組 | Group | `Group` | S170 起，Company / Department / Team / Other 都是同一種可掛人、可掛子群組的樹狀 Group；分享時由 `PrincipalContextService` 產生 `group:<id>` principal，再展開成 `group:<id>:<permission>` ACL entry |
+| 群組 Principal | Group Principal | `group:<id>` | S170 起，`PrincipalContextService` 裡的扁平字串；使用者被放進子群組時會同時得到該群組與所有父群組 principal |
 | 協作群組 | Collaboration Group | `Group(kind=TEAM)` | S170 起，跨公司、跨部門的彈性群組不另建獨立表，使用 `Group` 搭配 display-only `TEAM` kind 表示；可 root，也可放在任何群組下 |
 | 戰情室 | War Room | `WarRoom` | 臨時性的跨組織協作空間 |
 | 合作專案 | Collaborative Project | `Project` | 跨部門/跨公司的專案組合空間 |
