@@ -1,6 +1,6 @@
 # S148f: cyclonedx-bom 3.2.4 nativeCompile 衝突修復 — 還原 SBOM 生成 + 不擋 native build
 
-> Spec: S148f | Size: XS(3) — 可能因 plugin upgrade 結果漲 S | Status: ⏸ Deferred (2026-05-10)
+> Spec: S148f | Size: XS(3) — 可能因 plugin upgrade 結果漲 S | Status: 🗄️ Archived 2026-05-13（先不處理）｜原 ⏸ Deferred 2026-05-10；reactivate 觸發條件見下方第一段
 > Date: 2026-05-09
 > Origin: S148b POC v1+v2 失敗發現 — cyclonedx-bom 3.2.4 plugin 與 Gradle 9.4.1 nativeCompile task graph 互衝
 > Depends On: S148b ✅（POC workaround 在位）
