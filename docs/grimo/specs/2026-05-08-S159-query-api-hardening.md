@@ -7,7 +7,7 @@
 > **Trim 拆分（2026-05-09）**：原 S(6) 含 4 個獨立 cut（§2.1 category storage normalize / §2.2 tag filter / §2.2b pageable validation / §2.3 unknown query param 拒收），cron-loop 一 tick wall budget 不夠。拆為 sub-specs：
 > - **S159a**（XS3）— Unknown query param 拒收（§2.3）— ✅ ship 2026-05-09 v4.43.0
 > - **S159b**（S5）— Category storage normalize（§2.1，含 V19 migration）— 📋 backlog
-> - **S159c**（S5）— Tag filter 實作（§2.2）— 📋 backlog
+> - **S159c**（S5）— Tag filter 實作（§2.2）— ⛔ cancelled 2026-05-13（planning-tasks Phase 0 cross-check 發現 skill 無 tags 欄位、前端無 tag chip UI；§2.2 origin observation 誤判）
 > - **S159d**（XS2）— Pageable 非法值拒收（§2.2b）— 📋 backlog
 >
 > 本 doc 保留為 master design 供 S159b/c/d 寫子 spec 時引用（§2.1/§2.2/§2.2b 設計細節保有效）。
