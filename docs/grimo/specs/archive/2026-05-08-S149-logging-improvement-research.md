@@ -1,8 +1,10 @@
 # S149: Cloud Run 結構化日誌改善研究
 
-> Spec: S149 | Size: META(research) | Status: 📋 planned
+> Spec: S149 | Size: META(research) | Status: ⛔ cancelled 2026-05-13 — 暫不處理（MVP 階段優先功能開發；日誌可觀測性 noise/missing trace ID 痛感未阻塞當前 critical path）
 > Date: 2026-05-08
 > Origin: site audit 2026-05-08 — `gcloud logging read` 診斷 503 bug 時發現：LAB 生產環境的日誌為純文字格式（Cloud Logging 無法解析 severity）、Spring framework DEBUG 日誌淹沒應用層訊息、缺少請求關聯 ID，業務事件無 structured logging；需研究最佳實踐再決定實作 sub-spec。
+>
+> **Cancel rationale**（2026-05-13）：MVP feature-first，平台日誌已可用（`gcloud logging read` 仍能診斷 issue）；結構化 / trace ID 屬可觀測性 polish，非當前 critical path blocker。Origin 痛感（503 診斷困難）已透過個案修補解決，未累積成 ship 阻塞。若未來生產流量增加或多人協作 debug 噪音升高再重新立 spec。本研究筆記（§2 現況、§3 RQ、§4-§5 參考資料、§6 sub-spec 草稿）保留於 archive 供未來引用。
 
 ---
 

@@ -84,7 +84,7 @@
 | S148c | Modulith cycle 修復 — `shared.api.GlobalExceptionHandler` ↔ `skill.validation` 雙向相依（拖垮 processTestAot） | S(5) | — | ✅ v4.38.0 — SkillValidationException + ValidationFinding 移至 shared.api 解環；compile 通過；shared↔skill cycle violation 消失 |
 | S148d | Modulith allowed-targets 補 — `score → security` 跨 module 引用 SecurityFinding 未在 allowed targets 列表（S148c 解環後浮現） | XS(2) | — | ✅ v4.39.0 — security.scan 加 @NamedInterface("scan") + score allowedDependencies 加 "security :: scan"；processTestAot Modulith 驗證階段通過 |
 | S148e | processTestAot duplicate cacheManager bean — TestDataControllerTest$CacheStubConfig vs WebMvcSliceTestBase$AotStubBeans 重複定義（S148c+d 解後浮現） | XS(2) | — | ✅ v4.40.0 — 移除 TestDataControllerTest 本地 CacheStubConfig；processTestAot BUILD SUCCESSFUL 預設流程恢復 |
-| S149 | Cloud Run 結構化日誌改善研究（JSON format + log levels + trace ID） | META(research) | — | 📋 planned |
+| S149 | Cloud Run 結構化日誌改善研究（JSON format + log levels + trace ID） | META(research) | — | ⛔ cancelled 2026-05-13 — MVP feature-first，日誌可觀測性 polish 非當前 critical path；spec file 移至 `specs/archive/` |
 | S150 | Collection Detail Page（/collections/:id — 技能清單 + 逐一預覽）| S(7) | S096f2 ✅ | ✅ shipped — CollectionDetailPage.tsx + useCollection hook + 6/6 tests（roadmap status 漏更新，2026-05-12 補正）|
 | S151 | Quality Score 訊息一致性修正（hero card "評分計算中" vs. 品質 tab "此版本尚未評分"） | XS(2) | S135b ✅ | ✅ v4.37.0 — QualityTabV2「此版本尚未評分」改「評分計算中，請稍後重新整理」對齊 hero/badge 風格；12/12 PASS |
 | S152 | SPA fallback for unknown routes（未知 URL → React NotFoundPage，移除 allowlist drift）| S(6) | — | ✅ v4.26.0 — 8/8 PASS（catchall pattern 取代 14 條 allowlist + /api/ early-return） |
