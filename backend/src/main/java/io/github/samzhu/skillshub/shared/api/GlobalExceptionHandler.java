@@ -186,12 +186,12 @@ public class GlobalExceptionHandler {
 				.body(new ErrorResponse("REQUEST_NOT_FOUND", ex.getMessage(), Instant.now()));
 	}
 
-	/** S096g2 AC-9/AC-11 — release/fulfill requester 非 claimer → 403 not_request_claimer。 */
-	@ExceptionHandler(NotRequestClaimerException.class)
-	ResponseEntity<ErrorResponse> handleNotClaimer(NotRequestClaimerException ex) {
-		log.atWarn().addKeyValue("errorCode", "NOT_REQUEST_CLAIMER").log("Request operation forbidden");
-		return ResponseEntity.status(HttpStatus.FORBIDDEN)
-				.body(new ErrorResponse("NOT_REQUEST_CLAIMER", ex.getMessage(), Instant.now()));
+	/** S156c — Comment id 不存在或已 soft-deleted → 404 comment_not_found。 */
+	@ExceptionHandler(CommentNotFoundException.class)
+	ResponseEntity<ErrorResponse> handleCommentNotFound(CommentNotFoundException ex) {
+		log.atWarn().addKeyValue("errorCode", "COMMENT_NOT_FOUND").log("Comment not found");
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ErrorResponse("COMMENT_NOT_FOUND", ex.getMessage(), Instant.now()));
 	}
 
 	/** S096f2-T02 AC-8 — Collection id 不存在 → 404 collection_not_found。 */

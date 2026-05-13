@@ -18,7 +18,11 @@ import io.github.samzhu.skillshub.shared.api.RequestNotFoundException;
 /**
  * S096g2-T02 — RequestVoteService toggle 行為驗證（Testcontainers）。
  *
- * <p>涵蓋 AC-5（toggle on）+ AC-6（toggle off 重複 POST）+ negative。
+ * <p>涵蓋 S096g2 AC-5（toggle on）+ AC-6（toggle off 重複 POST）+ negative。
+ *
+ * <p><b>S156c AC-3 anchor</b>：voting-board pivot 拆 claim/release/fulfill machinery 後，
+ * vote toggle 是僅存的 mutation flow；本檔的 {@code voteToggle_fullCycle_postPivot} 為
+ * 對應「voting-board pivot 後 vote 仍 work」regression 驗證的單一集中點。
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -93,6 +97,34 @@ class RequestVoteServiceTest {
     void toggle_notFound_throws() {
         assertThatThrownBy(() -> voteService.toggle("non-existent-uuid", "bob"))
                 .isInstanceOf(RequestNotFoundException.class);
+    }
+
+    @Test
+    @Tag("AC-3")
+    @DisplayName("S156c AC-3 regression: voting-board pivot 後 vote toggle 完整 on→off→on cycle 仍 work")
+    void voteToggle_fullCycle_postPivot() {
+        var id = requestService.createRequest("regression target", "x", "alice");
+
+        // on
+        var step1 = voteService.toggle(id, "bob");
+        assertThat(step1.voted()).isTrue();
+        assertThat(step1.voteCount()).isEqualTo(1L);
+
+        // off
+        var step2 = voteService.toggle(id, "bob");
+        assertThat(step2.voted()).isFalse();
+        assertThat(step2.voteCount()).isZero();
+
+        // 第三次 toggle 再 on — 驗 PostgreSQL ON CONFLICT DO NOTHING + DELETE-then-INSERT
+        // 來回切換不會卡死
+        var step3 = voteService.toggle(id, "bob");
+        assertThat(step3.voted()).isTrue();
+        assertThat(step3.voteCount()).isEqualTo(1L);
+
+        // 換另一個 user 同一 request — voteCount 累加 (S156c 拆 status column 後 row 仍正常 INSERT)
+        var step4 = voteService.toggle(id, "carol");
+        assertThat(step4.voted()).isTrue();
+        assertThat(step4.voteCount()).isEqualTo(2L);
     }
 
     @Test

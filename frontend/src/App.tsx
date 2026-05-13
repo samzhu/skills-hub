@@ -20,6 +20,7 @@ import { MySkillsPage } from './pages/MySkillsPage'
 import { SearchResultsPage } from './pages/SearchResultsPage'
 import { LandingPage } from './pages/LandingPage'
 import { RequestBoardPage } from './pages/RequestBoardPage'
+import { RequestDetailPage } from './pages/RequestDetailPage'
 import { CollectionsPage } from './pages/CollectionsPage'
 import { CollectionDetailPage } from './pages/CollectionDetailPage'
 import { NotificationsPage } from './pages/NotificationsPage'
@@ -55,8 +56,10 @@ function App() {
       <Route path="/my-skills" element={<MySkillsPage />} />
       {/* S098e3-T04: reviewer queue — list OPEN flags + Resolve/Dismiss */}
       <Route path="/flags" element={<FlagsQueuePage />} />
-      {/* S096g1: Request Board stub — read-only list；voting/claim 留 S096g2 */}
+      {/* S096g1 → S156c: Request Board (voting-board pivot) */}
       <Route path="/requests" element={<RequestBoardPage />} />
+      {/* S156c: Request detail page — description + comments + delete */}
+      <Route path="/requests/:id" element={<RequestDetailPage />} />
       {/* S096f1: Collections stub — read-only list；install/create 留 S096f2 */}
       <Route path="/collections" element={<CollectionsPage />} />
       {/* S150: collection detail — shows skills inside a collection */}

@@ -47,9 +47,6 @@ const sampleRequests = [
     title: 'k8s autoscaler skill',
     description: '需要 k8s HPA 自動建議',
     requesterId: 'alice',
-    status: 'OPEN' as const,
-    claimerId: null,
-    fulfilledSkillId: null,
     voteCount: 12,
     createdAt: '2026-05-03T10:00:00Z',
     updatedAt: '2026-05-03T10:00:00Z',
@@ -59,9 +56,6 @@ const sampleRequests = [
     title: 'terraform plan summarizer',
     description: '解析 plan 輸出',
     requesterId: 'bob',
-    status: 'OPEN' as const,
-    claimerId: null,
-    fulfilledSkillId: null,
     voteCount: 5,
     createdAt: '2026-05-02T10:00:00Z',
     updatedAt: '2026-05-02T10:00:00Z',
@@ -71,9 +65,6 @@ const sampleRequests = [
     title: 'sql linter',
     description: 'PostgreSQL 風格檢查',
     requesterId: 'carol',
-    status: 'IN_PROGRESS' as const,
-    claimerId: 'dave',
-    fulfilledSkillId: null,
     voteCount: 3,
     createdAt: '2026-05-01T10:00:00Z',
     updatedAt: '2026-05-01T10:00:00Z',
@@ -150,6 +141,23 @@ describe('RequestBoardPage (S096g2-T04)', () => {
       expect(postCall![1].body).toContain('"title":"docker compose linter"')
       expect(postCall![1].body).toContain('"description":"檢查 compose.yaml 結構"')
     })
+  })
+
+  it('S156c AC-10: card title 是 <Link to="/requests/:id">', async () => {
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/v1/requests') && !url.includes('/vote')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(sampleRequests) } as Response)
+      }
+      if (url.includes('/api/v1/me')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(meResponse) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ count: 0 }) } as Response)
+    })
+
+    renderPage()
+
+    const titleLink = await waitFor(() => screen.getByRole('link', { name: 'k8s autoscaler skill' }))
+    expect(titleLink).toHaveAttribute('href', '/requests/r1')
   })
 
   it('AC-17: 點 vote 按鈕 → POST toggle + count 更新為 server 值', async () => {

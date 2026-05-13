@@ -26,8 +26,9 @@ IMPORTANT: Follow these in every session.
   3. **抽象主述詞禁當 lead** —「supply chain audit」「downstream consumer」「lock-in」「blocker」「strategic」「approach comparison」用前必先翻成「跑 X command 會看到 Y」。
   4. **不要生活化比喻**（櫃子 / 搬家 / 加固鐵片 / 買保險 / 鎖頭 / 抽屜 / 紅綠燈 等 analogy 全禁）。User 想知道的是「按鈕按下去 DB 多一筆什麼」。
   5. **每個選項 3 件事**：(a) 改哪個 file:line / 加什麼 command (b) 跑出實際行為（command output / file 內容 / UI 變化）(c) 一句話成本（時間 / 風險）。
+  6. **QA / test / ship 報告白話化** — 不對 user 講「regression test / dedicated test / polish-level / compile-time guarantee / integration seam / code coverage / smoke test / golden path / happy path」這類測試圈或 workflow 圈術語。每個 finding 改說「跑什麼 command 會看到什麼結果」/「不寫測試會出什麼 bug」/「修了哪個 file:line 之後 user 點什麼按鈕會看到什麼差別」。 ✅「AC-2 沒對應的測試檔。但 RequestCommandController 把 `@PostMapping("/claim")` method 整個砍了 → Spring 啟動時根本不註冊這條路徑 → 對它發 POST 一定 404；不寫測試不會出 bug。」 ❌「AC-2 has no dedicated regression test — 但 compile-time guarantee。」
 
-  **「聽不懂」/「白話一點」/「重講」= 硬訊號 — 整題從新的實體 lead 重寫**（不是改一個詞、不是換個比喻、不是縮短句子）。適用所有 grill / proposal / option presentation / cross-domain explanation。
+  **「聽不懂」/「白話一點」/「重講」= 硬訊號 — 整題從新的實體 lead 重寫**（不是改一個詞、不是換個比喻、不是縮短句子）。適用所有 grill / proposal / option presentation / cross-domain explanation / QA finding / ship summary。
 
 > Cron-loop 操作層面的 3 條原則（Loop-Hint-Verify / Spec-Only-Handoff / No-Spec-Means-E2E）寫在 `.claude/loop.md`，不重複於此。
 

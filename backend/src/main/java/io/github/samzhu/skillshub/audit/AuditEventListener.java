@@ -15,6 +15,9 @@ import org.springframework.stereotype.Component;
 
 import tools.jackson.databind.ObjectMapper;
 
+import io.github.samzhu.skillshub.community.events.RequestCommentedEvent;
+import io.github.samzhu.skillshub.community.events.RequestPostedEvent;
+import io.github.samzhu.skillshub.community.events.RequestVotedEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillDeletedEvent;
@@ -49,24 +52,30 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedFromAggregat
  * 第二筆遇 {@code (aggregate_id, sequence)} UNIQUE 衝突 → Spring Modulith 自動 retry，
  * 第二輪讀 MAX 遞增 → 順利寫入。
  *
- * <p><b>8 個訂閱事件對應</b>（S167b 後；移除 SkillAclGrantedEvent / SkillAclRevokedEvent —
- * 改由 {@code SkillGrantService} → {@code skill_grants} 表 + {@code SkillAclProjectionListener}
- * 重建 {@code skills.acl_entries} 投影；新流程 audit log 追蹤待 follow-up spec）：
+ * <p><b>11 個訂閱事件對應</b>（S156c T03 後；8 個 Skill events + 3 個 Request events）：
  * <table>
- *   <caption>event type ↔ event_type column ↔ dedupKey 構成</caption>
- *   <tr><th>Event class</th><th>event_type</th><th>dedupKey 構成</th></tr>
- *   <tr><td>SkillCreatedEvent</td><td>SkillCreated</td><td>aggregateId（一 skill 一筆）</td></tr>
- *   <tr><td>SkillVersionPublishedEvent</td><td>SkillVersionPublished</td><td>sourceEventId（事件自帶 UUID）</td></tr>
- *   <tr><td>SkillVersionPublishedFromAggregate</td><td>SkillStateAdvancedToPublished</td><td>aggregateId+version</td></tr>
- *   <tr><td>SkillDownloadedEvent</td><td>SkillDownloaded</td><td>eventId（事件自帶 UUID）</td></tr>
- *   <tr><td>SkillSuspendedEvent</td><td>SkillSuspended</td><td>aggregateId+suspendedBy+reason</td></tr>
- *   <tr><td>SkillReactivatedEvent</td><td>SkillReactivated</td><td>aggregateId+reason</td></tr>
- *   <tr><td>SkillRiskAssessedEvent</td><td>SkillRiskAssessed</td><td>skillId+version+level</td></tr>
- *   <tr><td>SkillDeletedEvent</td><td>SkillDeleted</td><td>aggregateId（一 skill 一筆刪除 audit）</td></tr>
+ *   <caption>event type ↔ event_type column ↔ aggregate_type ↔ dedupKey 構成</caption>
+ *   <tr><th>Event class</th><th>event_type</th><th>aggregate_type</th><th>dedupKey 構成</th></tr>
+ *   <tr><td>SkillCreatedEvent</td><td>SkillCreated</td><td>Skill</td><td>aggregateId（一 skill 一筆）</td></tr>
+ *   <tr><td>SkillVersionPublishedEvent</td><td>SkillVersionPublished</td><td>Skill</td><td>sourceEventId（事件自帶 UUID）</td></tr>
+ *   <tr><td>SkillVersionPublishedFromAggregate</td><td>SkillStateAdvancedToPublished</td><td>Skill</td><td>aggregateId+version</td></tr>
+ *   <tr><td>SkillDownloadedEvent</td><td>SkillDownloaded</td><td>Skill</td><td>eventId（事件自帶 UUID）</td></tr>
+ *   <tr><td>SkillSuspendedEvent</td><td>SkillSuspended</td><td>Skill</td><td>aggregateId+suspendedBy+reason</td></tr>
+ *   <tr><td>SkillReactivatedEvent</td><td>SkillReactivated</td><td>Skill</td><td>aggregateId+reason</td></tr>
+ *   <tr><td>SkillRiskAssessedEvent</td><td>SkillRiskAssessed</td><td>Skill</td><td>skillId+version+level</td></tr>
+ *   <tr><td>SkillDeletedEvent</td><td>SkillDeleted</td><td>Skill</td><td>aggregateId（一 skill 一筆刪除 audit）</td></tr>
+ *   <tr><td>RequestPostedEvent</td><td>RequestPosted</td><td>Request</td><td>requestId（1 request 1 筆）</td></tr>
+ *   <tr><td>RequestVotedEvent</td><td>RequestVoted</td><td>Request</td><td>eventId（事件自帶 UUID；toggle 可重複）</td></tr>
+ *   <tr><td>RequestCommentedEvent</td><td>RequestCommented</td><td>Request</td><td>commentId（1 comment 1 筆）</td></tr>
  * </table>
  *
  * <p>業務不變量已在 aggregate 端阻止「同內容重複觸發」（state machine），故 content-based dedupKey
- * 對 retry 場景安全；唯一例外為 SkillDownloaded（用戶可重複下載），故依賴事件自帶的 {@code eventId}。
+ * 對 retry 場景安全；唯一例外為 SkillDownloaded / RequestVoted（用戶可重複下載 / 反覆 toggle），
+ * 故依賴事件自帶的 {@code eventId}。
+ *
+ * <p><b>S156c 永存原則（per spec §2.8）</b>：Request hard delete 會 CASCADE 移除 {@code requests}
+ * + {@code request_comments} row，但 {@code domain_events} 對應 row 仍在（ES 不可變）— 滿足
+ * 「事件朔源都有保存 event」需求，emergency 可走 events replay 還原 aggregate state。
  *
  * @see DomainEventRepository#saveAuditIdempotent
  * @see <a href="../../../../../../../../../docs/grimo/adr/ADR-002-skill-aggregate-state-based.md">ADR-002</a>
@@ -77,6 +86,7 @@ public class AuditEventListener {
 
     private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
     private static final String SKILL_AGGREGATE_TYPE = "Skill";
+    private static final String REQUEST_AGGREGATE_TYPE = "Request";
 
     private final DomainEventRepository eventRepo;
     private final NamedParameterJdbcTemplate jdbc;
@@ -163,8 +173,51 @@ public class AuditEventListener {
                 dedupKey("SkillDeleted", event.aggregateId()));
     }
 
+    // ─── S156c T03 — Request events (per spec §2.8 ES 永存) ─────────────────────
+
+    /** S156c — Request 建立 audit；dedupKey = requestId（1 request 1 筆）。 */
+    @ApplicationModuleListener
+    void on(RequestPostedEvent event) {
+        var payload = Map.<String, Object>of(
+                "title", event.title(),
+                "requesterId", event.requesterId());
+        recordAudit(event.requestId(), REQUEST_AGGREGATE_TYPE, "RequestPosted", payload,
+                dedupKey("RequestPosted", event.requestId()));
+    }
+
     /**
-     * 統一 audit 寫入路徑。
+     * S156c — Request vote toggle audit；dedupKey = eventId UUID（toggle 可重複；mirror
+     * SkillDownloaded 事件自帶 UUID pattern；每次 vote 寫 1 筆 audit row）。
+     */
+    @ApplicationModuleListener
+    void on(RequestVotedEvent event) {
+        var payload = Map.<String, Object>of(
+                "userId", event.userId(),
+                "voted", event.voted(),
+                "voteCount", event.voteCount());
+        recordAudit(event.requestId(), REQUEST_AGGREGATE_TYPE, "RequestVoted", payload,
+                dedupKey("RequestVoted", event.eventId().toString()));
+    }
+
+    /** S156c — Request comment 建立 audit；dedupKey = commentId（1 comment 1 筆）。 */
+    @ApplicationModuleListener
+    void on(RequestCommentedEvent event) {
+        var payload = Map.<String, Object>of(
+                "commentId", event.commentId(),
+                "authorId", event.authorId(),
+                "content", event.content());
+        recordAudit(event.requestId(), REQUEST_AGGREGATE_TYPE, "RequestCommented", payload,
+                dedupKey("RequestCommented", event.commentId()));
+    }
+
+    /** Skill aggregate 預設路徑（8 個既有 Skill listener 用）— 對齊 S024 既驗 pattern。 */
+    private void recordAudit(String aggregateId, String eventType,
+            Map<String, Object> payload, String dedupKey) {
+        recordAudit(aggregateId, SKILL_AGGREGATE_TYPE, eventType, payload, dedupKey);
+    }
+
+    /**
+     * 統一 audit 寫入路徑（S156c T03 加 aggregateType param 支援 Request events）。
      * <ol>
      *   <li>先以 {@code pg_advisory_xact_lock} 在獨立 SQL 取得 per-aggregate 序列化鎖
      *       — 同 aggregate 上其他 listener 在此排隊；不同 aggregate 平行；
@@ -174,7 +227,7 @@ public class AuditEventListener {
      *       原子 SQL 計算下一 sequence + ON CONFLICT (id) DO NOTHING）</li>
      * </ol>
      */
-    private void recordAudit(String aggregateId, String eventType,
+    private void recordAudit(String aggregateId, String aggregateType, String eventType,
             Map<String, Object> payload, String dedupKey) {
         try {
             // Step 1: per-aggregate advisory lock（同 TX 持有至 commit）
@@ -185,11 +238,12 @@ public class AuditEventListener {
             // Step 2: idempotent INSERT（fresh statement snapshot 看到 lock holder 已 commit 的 row → MAX 正確遞增）
             var rowId = deterministicId(dedupKey);
             var payloadJson = objectMapper.writeValueAsString(payload);
-            int rows = eventRepo.saveAuditIdempotent(rowId, aggregateId, SKILL_AGGREGATE_TYPE,
+            int rows = eventRepo.saveAuditIdempotent(rowId, aggregateId, aggregateType,
                     eventType, payloadJson, Instant.now());
             log.atInfo()
                     .addKeyValue("eventType", eventType)
                     .addKeyValue("aggregateId", aggregateId)
+                    .addKeyValue("aggregateType", aggregateType)
                     .addKeyValue("rowsAffected", rows)
                     .log(rows == 1 ? "[audit] inserted" : "[audit] dedup-skip");
         } catch (RuntimeException e) {
@@ -197,6 +251,7 @@ public class AuditEventListener {
                     .setCause(e)
                     .addKeyValue("eventType", eventType)
                     .addKeyValue("aggregateId", aggregateId)
+                    .addKeyValue("aggregateType", aggregateType)
                     .log("[audit] write failed — Modulith 將自動 retry");
             // re-throw 讓 Modulith 將 publication 標 incomplete + 後續 retry
             throw e;

@@ -8,7 +8,7 @@ package io.github.samzhu.skillshub.shared.api;
  * (RFC 6750 Bearer error="invalid_token")。
  *
  * <p>取代既有 `jwt.getName()` 對 sub=null 的 NPE 路徑（500 錯誤 → 改 401）。
- * 對齊 RequestNotFoundException / NotRequestClaimerException naming convention。
+ * 對齊 RequestNotFoundException naming convention。
  */
 public class MissingJwtSubException extends RuntimeException {
     public MissingJwtSubException() {

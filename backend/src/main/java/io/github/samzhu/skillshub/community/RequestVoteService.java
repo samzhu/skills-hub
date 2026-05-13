@@ -2,6 +2,7 @@ package io.github.samzhu.skillshub.community;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -84,7 +85,10 @@ public class RequestVoteService {
                 Map.of("id", requestId), Long.class);
         long count = newCount == null ? 0L : newCount;
 
-        events.publishEvent(new RequestVotedEvent(requestId, userId, voted, count, Instant.now()));
+        // S156c T03 — eventId UUID 為 AuditEventListener dedupKey（mirror SkillDownloadedEvent pattern；
+        // 用戶可重複 toggle vote，每次寫 1 筆 audit row，UUID 確保 retry 安全）
+        events.publishEvent(new RequestVotedEvent(
+                UUID.randomUUID(), requestId, userId, voted, count, Instant.now()));
         return new VoteResult(voted, count);
     }
 

@@ -18,9 +18,17 @@ import io.github.samzhu.skillshub.shared.api.PlainTextDeserializer;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 
 /**
- * S096g2 — Request command endpoints（POST create / claim / fulfill；DELETE claim release / own request）。
+ * S096g2 → S156c — Request command endpoints。
  *
- * <p>Vote toggle endpoint 由 T02 RequestVoteService 加（{@code POST /{id}/vote}）。
+ * <p>S156c voting-board pivot：移除 {@code POST /{id}/claim} / {@code DELETE /{id}/claim} /
+ * {@code POST /{id}/fulfill} 三 endpoint（state machine 已拆）。剩餘 commands：
+ * <ul>
+ *   <li>{@code POST /api/v1/requests} — create</li>
+ *   <li>{@code POST /api/v1/requests/{id}/vote} — toggle vote</li>
+ *   <li>{@code DELETE /api/v1/requests/{id}} — delete own request</li>
+ * </ul>
+ *
+ * <p>Comment add/delete endpoints 由 T02 新增 {@code CommentController}。
  */
 @RestController
 @RequestMapping("/api/v1/requests")
@@ -51,37 +59,7 @@ class RequestCommandController {
         return ResponseEntity.ok(voteService.toggle(requestId, userId));
     }
 
-    /** AC-7/AC-8 — 認領；OPEN→IN_PROGRESS。 */
-    @PostMapping("/{requestId}/claim")
-    ResponseEntity<Map<String, String>> claim(@PathVariable String requestId) {
-        var userId = users.current().userId();
-        var request = service.claim(requestId, userId);
-        return ResponseEntity.ok(Map.of(
-                "claimer", request.getClaimerId(),
-                "status", request.getStatus()));
-    }
-
-    /** AC-9 — 釋放認領；IN_PROGRESS→OPEN（claimer-only）。 */
-    @DeleteMapping("/{requestId}/claim")
-    ResponseEntity<Void> release(@PathVariable String requestId) {
-        var userId = users.current().userId();
-        service.release(requestId, userId);
-        return ResponseEntity.noContent().build();
-    }
-
-    /** AC-10/AC-11/AC-12 — 完成；IN_PROGRESS→FULFILLED + 綁 PUBLISHED skillId。 */
-    @PostMapping("/{requestId}/fulfill")
-    ResponseEntity<Map<String, String>> fulfill(
-            @PathVariable String requestId,
-            @RequestBody FulfillBody body) {
-        var userId = users.current().userId();
-        var request = service.fulfill(requestId, userId, body.skillId());
-        return ResponseEntity.ok(Map.of(
-                "status", request.getStatus(),
-                "fulfilledSkillId", request.getFulfilledSkillId()));
-    }
-
-    /** AC-13 — 刪除 own OPEN request。 */
+    /** S156c AC-7 — 刪除 own request（無 status guard；CASCADE 刪 comments via V22 FK）。 */
     @DeleteMapping("/{requestId}")
     ResponseEntity<Void> delete(@PathVariable String requestId) {
         var userId = users.current().userId();
@@ -99,5 +77,4 @@ class RequestCommandController {
     record CreateRequestBody(
             @JsonDeserialize(using = PlainTextDeserializer.class) String title,
             @JsonDeserialize(using = MarkdownSafeDeserializer.class) String description) {}
-    record FulfillBody(String skillId) {}
 }

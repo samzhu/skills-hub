@@ -16,6 +16,9 @@ import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
 import org.springframework.modulith.test.Scenario;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.community.events.RequestCommentedEvent;
+import io.github.samzhu.skillshub.community.events.RequestPostedEvent;
+import io.github.samzhu.skillshub.community.events.RequestVotedEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEvent;
 import io.github.samzhu.skillshub.shared.events.DomainEventRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
@@ -200,6 +203,111 @@ class AuditEventListenerTest {
                             .containsEntry("name", "delete-service")
                             .containsEntry("deletedBy", "alice");
                 });
+    }
+
+    // ─── S156c T03 — Request audit listeners (per spec AC-12 ES 永存) ────────────
+
+    @Test
+    @DisplayName("AC-12: RequestPostedEvent → 1 audit row (type=RequestPosted, aggregateType=Request)；重投不疊加")
+    @Tag("AC-12")
+    void requestPosted_writesAuditRow(Scenario scenario) {
+        var requestId = newId();
+        var event = new RequestPostedEvent(requestId, "需要 k8s autoscaler", "alice", Instant.now());
+
+        scenario.stimulate((tx, pub) -> {
+                    tx.executeWithoutResult(s -> pub.publishEvent(event));
+                    tx.executeWithoutResult(s -> pub.publishEvent(event)); // dedup via requestId
+                })
+                .andWaitForStateChange(() -> firstRowOrNull(requestId))
+                .andVerify(row -> {
+                    var rows = auditRowsFor(requestId);
+                    assertThat(rows).hasSize(1);
+                    assertThat(rows.getFirst().eventType()).isEqualTo("RequestPosted");
+                    assertThat(rows.getFirst().aggregateType()).isEqualTo("Request");
+                    assertThat(rows.getFirst().payload())
+                            .containsEntry("title", "需要 k8s autoscaler")
+                            .containsEntry("requesterId", "alice");
+                });
+    }
+
+    @Test
+    @DisplayName("AC-12: 兩次 RequestVotedEvent（不同 eventId）→ 2 rows；重投同 eventId → 仍 1 row")
+    @Tag("AC-12")
+    void requestVoted_eachEventIdProducesNewRow(Scenario scenario) {
+        var requestId = newId();
+        var event1 = new RequestVotedEvent(UUID.randomUUID(), requestId, "alice", true, 1L, Instant.now());
+        var event2 = new RequestVotedEvent(UUID.randomUUID(), requestId, "bob", true, 2L, Instant.now());
+
+        scenario.stimulate((tx, pub) -> {
+                    tx.executeWithoutResult(s -> pub.publishEvent(event1));
+                    tx.executeWithoutResult(s -> pub.publishEvent(event2));
+                    tx.executeWithoutResult(s -> pub.publishEvent(event1)); // ON CONFLICT skip
+                })
+                .andWaitForStateChange(
+                        () -> voteRowsFor(requestId),
+                        rows -> rows.size() >= 2)
+                .andVerify(rows -> assertThat(rows).hasSize(2));
+    }
+
+    @Test
+    @DisplayName("AC-12: RequestCommentedEvent → 1 row（commentId dedupKey）；重投不疊加")
+    @Tag("AC-12")
+    void requestCommented_writesAuditRow(Scenario scenario) {
+        var requestId = newId();
+        var commentId = UUID.randomUUID().toString();
+        var event = new RequestCommentedEvent(commentId, requestId, "bob", "+1 我也要", Instant.now());
+
+        scenario.stimulate((tx, pub) -> {
+                    tx.executeWithoutResult(s -> pub.publishEvent(event));
+                    tx.executeWithoutResult(s -> pub.publishEvent(event)); // dedup via commentId
+                })
+                .andWaitForStateChange(() -> firstRowOrNull(requestId))
+                .andVerify(row -> {
+                    var rows = auditRowsFor(requestId).stream()
+                            .filter(e -> "RequestCommented".equals(e.eventType()))
+                            .toList();
+                    assertThat(rows).hasSize(1);
+                    assertThat(rows.getFirst().aggregateType()).isEqualTo("Request");
+                    assertThat(rows.getFirst().payload())
+                            .containsEntry("commentId", commentId)
+                            .containsEntry("authorId", "bob")
+                            .containsEntry("content", "+1 我也要");
+                });
+    }
+
+    @Test
+    @DisplayName("AC-12: Request 3 events 各觸發 1 次 → domain_events 3 rows + sequence 嚴格遞增")
+    @Tag("AC-12")
+    void requestThreeEvents_writeOrderedRows(Scenario scenario) {
+        var requestId = newId();
+        var commentId = UUID.randomUUID().toString();
+
+        scenario.stimulate((tx, pub) -> {
+                    tx.executeWithoutResult(s -> pub.publishEvent(
+                            new RequestPostedEvent(requestId, "title", "alice", Instant.now())));
+                    tx.executeWithoutResult(s -> pub.publishEvent(
+                            new RequestVotedEvent(UUID.randomUUID(), requestId, "bob", true, 1L, Instant.now())));
+                    tx.executeWithoutResult(s -> pub.publishEvent(
+                            new RequestCommentedEvent(commentId, requestId, "bob", "+1", Instant.now())));
+                })
+                .andWaitForStateChange(
+                        () -> auditRowsFor(requestId),
+                        rows -> rows.size() == 3)
+                .andVerify(rows -> {
+                    assertThat(rows).extracting(DomainEvent::eventType)
+                            .containsExactlyInAnyOrder("RequestPosted", "RequestVoted", "RequestCommented");
+                    // sequence 嚴格遞增（per shared.events.DomainEventRepository.saveAuditIdempotent
+                    // 的 MAX(sequence) + 1 邏輯 + advisory lock 序列化）
+                    var seqs = rows.stream().map(DomainEvent::sequence).sorted().toList();
+                    assertThat(seqs).isSorted();
+                    assertThat(seqs.get(2) - seqs.get(0)).isGreaterThanOrEqualTo(2L);
+                });
+    }
+
+    private List<DomainEvent> voteRowsFor(String aggregateId) {
+        return auditRowsFor(aggregateId).stream()
+                .filter(e -> "RequestVoted".equals(e.eventType()))
+                .toList();
     }
 
     private List<DomainEvent> auditRowsFor(String aggregateId) {

@@ -10,24 +10,25 @@ import org.springframework.stereotype.Component;
 
 import io.github.samzhu.skillshub.community.RequestRepository;
 import io.github.samzhu.skillshub.community.SkillSubscriptionService;
-import io.github.samzhu.skillshub.community.events.RequestClaimedEvent;
-import io.github.samzhu.skillshub.community.events.RequestFulfilledEvent;
+import io.github.samzhu.skillshub.community.events.RequestCommentedEvent;
 import io.github.samzhu.skillshub.review.domain.ReviewCreatedEvent;
 import io.github.samzhu.skillshub.security.SkillFlaggedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 
 /**
- * S096h2-T02 + S125b — Cross-module event projection 寫 notifications 表（per spec §4.4）。
+ * S096h2-T02 + S125b → S156c — Cross-module event projection 寫 notifications 表。
  *
- * <p>5 個 {@code @ApplicationModuleListener}（Modulith AFTER_COMMIT async + outbox redelivery
+ * <p>S156c voting-board pivot：移除 {@code onRequestClaimed} / {@code onRequestFulfilled}
+ * 兩 listener（claim/fulfill 機制已拆）；新增 {@code onRequestCommented} 通知 requester。
+ *
+ * <p>4 個 {@code @ApplicationModuleListener}（Modulith AFTER_COMMIT async + outbox redelivery
  * 保護）訂閱跨模組 domain events：
  * <ul>
  *   <li>{@link SkillFlaggedEvent}            → skill.author（owner）</li>
  *   <li>{@link ReviewCreatedEvent}           → skill.author</li>
- *   <li>{@link RequestClaimedEvent}          → request.requester_id</li>
- *   <li>{@link RequestFulfilledEvent}        → request.requester_id</li>
  *   <li>{@link SkillVersionPublishedEvent}   → SkillSubscription.findSubscribersOf（S125b）</li>
+ *   <li>{@link RequestCommentedEvent}        → request.requester_id（S156c；skip self-comment）</li>
  * </ul>
  *
  * <p><b>Idempotency</b>：UNIQUE(recipient_id, ref_event_id, category) constraint 守護
@@ -35,8 +36,8 @@ import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
  * 但不重拋（per spec §4.4 範本）。每事件的 ref_event_id 由 deterministic 從 payload
  * 派生（見各 method JavaDoc）— 同 payload 二次重送 → 同 ref_event_id → DB 攔截。
  *
- * <p><b>Self-action skip</b>：對 ReviewCreated / RequestClaimed，當 actor == recipient
- * 時 skip notification（user 不通知自己；spec §4.4 範本明示）。
+ * <p><b>Self-action skip</b>：對 ReviewCreated，當 actor == recipient 時 skip notification
+ * （user 不通知自己；spec §4.4 範本明示）。
  *
  * <p><b>Preferences gate</b>：每事件先查 {@link NotificationPreferenceRepository}：
  * 無 row → 預設 ON；有 row 對應 category boolean false → skip。
@@ -106,46 +107,6 @@ public class NotificationProjectionListener {
     }
 
     /**
-     * S096h2 AC-3 — Request 被認領通知 requester（skip 自我 claim）。
-     * {@code ref_event_id = requestId + ":" + claimerId + ":claim"}：同 user 重複 claim 同 request
-     * 走 idempotency dedupe；release-then-reclaim by 同人也 dedupe（合理 — 同事件重發）；
-     * release-then-reclaim by 不同人 → 不同 claimerId → 新 ref_event_id → 新 notification。
-     */
-    @ApplicationModuleListener
-    public void onRequestClaimed(RequestClaimedEvent e) {
-        var req = requestRepo.findById(e.requestId()).orElse(null);
-        if (req == null) return;
-        var requesterId = req.getRequesterId();
-        if (requesterId == null || requesterId.isBlank()) return;
-        if (Objects.equals(requesterId, e.claimerId())) return; // skip 自己 claim 自己 request
-        if (!isCategoryEnabled(requesterId, "requests")) return;
-
-        var refEventId = e.requestId() + ":" + e.claimerId() + ":claim";
-        var title = e.claimerId() + " 認領了你發起的需求 " + req.getTitle();
-        save(requesterId, "requests", title, null, null, refEventId);
-    }
-
-    /**
-     * S096h2 AC-4 — Request 完成通知 requester。
-     * {@code ref_event_id = requestId + ":fulfill"}：fulfill 為 terminal state，每 request 至多 1 次。
-     * 若 fulfilledSkillId 對應的 skill 還在，title 含 skill name 增 UX。
-     */
-    @ApplicationModuleListener
-    public void onRequestFulfilled(RequestFulfilledEvent e) {
-        var req = requestRepo.findById(e.requestId()).orElse(null);
-        if (req == null) return;
-        var requesterId = req.getRequesterId();
-        if (requesterId == null || requesterId.isBlank()) return;
-        if (!isCategoryEnabled(requesterId, "requests")) return;
-
-        var skill = skillRepo.findById(e.fulfilledSkillId()).orElse(null);
-        var title = "你發起的需求 " + req.getTitle() + " 已完成"
-                + (skill != null ? "（skill: " + skill.getName() + "）" : "");
-        var refEventId = e.requestId() + ":fulfill";
-        save(requesterId, "requests", title, null, e.fulfilledSkillId(), refEventId);
-    }
-
-    /**
      * S125b — Skill 新版發布通知所有訂閱者（PRD §285-§291 P9 SBE scenario 1）。
      *
      * <p>{@code ref_event_id = skillId + ":" + version}：每個 (skill, version) 組合至多 1 次通知；
@@ -177,6 +138,29 @@ public class NotificationProjectionListener {
             if (!isCategoryEnabled(subscriberId, "versions")) continue;
             save(subscriberId, "versions", title, null, e.aggregateId(), refEventId);
         }
+    }
+
+    /**
+     * S156c AC-5 — Request comment 通知 requester（skip 自我 comment）。
+     *
+     * <p>{@code ref_event_id = commentId}：comment id 為 UUID v4，自然 unique → 1 comment
+     * 至多 1 notification；outbox redelivery 由 UNIQUE(recipient_id, ref_event_id, category)
+     * 攔截。對齊 onReviewCreated 既驗 self-action skip pattern。
+     */
+    @ApplicationModuleListener
+    public void onRequestCommented(RequestCommentedEvent e) {
+        var req = requestRepo.findById(e.requestId()).orElse(null);
+        if (req == null) {
+            log.debug("RequestCommented listener: request {} not found, skip", e.requestId());
+            return;
+        }
+        var requesterId = req.getRequesterId();
+        if (requesterId == null || requesterId.isBlank()) return;
+        if (Objects.equals(requesterId, e.authorId())) return; // skip 自己 comment 自己 request
+        if (!isCategoryEnabled(requesterId, "requests")) return;
+
+        var title = e.authorId() + " 在你的需求「" + req.getTitle() + "」留言";
+        save(requesterId, "requests", title, e.content(), null, e.commentId());
     }
 
     private boolean isCategoryEnabled(String userId, String category) {

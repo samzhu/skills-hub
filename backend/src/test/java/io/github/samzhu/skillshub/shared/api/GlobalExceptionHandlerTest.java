@@ -245,15 +245,6 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("S096g2 NotRequestClaimerException → 403 NOT_REQUEST_CLAIMER")
-    void notRequestClaimerReturns403() {
-        ResponseEntity<ErrorResponse> response = handler.handleNotClaimer(
-                new NotRequestClaimerException());
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(response.getBody().error()).isEqualTo("NOT_REQUEST_CLAIMER");
-    }
-
-    @Test
     @DisplayName("S096f2 CollectionNotFoundException → 404 COLLECTION_NOT_FOUND")
     void collectionNotFoundReturns404() {
         ResponseEntity<ErrorResponse> response = handler.handleCollectionNotFound(

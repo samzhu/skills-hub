@@ -1,9 +1,10 @@
 # S156b: RequestDetailPage — `/requests/:id` 完整 detail + 7 個 actions + 留言
 
-> Spec: S156b | Size: M(8) | Status: 📐 in-design
+> Spec: S156b | Size: M(8) | Status: ⛔ superseded 2026-05-12 — 取代為 **S156c**
 > Date: 2026-05-09
 > Origin: 拆自 S156（v4.32.0 — List clickability + Analytics hero card）；S156 #1 + #3 ✅，本 spec 處理 #2「RequestDetailPage 新 page」
 > Depends On: S156 ✅, S096g2 ✅ (Request Board full feature)
+> Superseded By: S156c — voting-board pivot；本 spec 7-actions 設計（含 downvote / close / unclaim alias / fulfill UI）與 S096g2 既有 toggle vote + release endpoint 設計衝突，且 user 確認 claim/fulfill 機制要整批拆除。詳 `2026-05-12-S156c-request-voting-board.md`。
 
 ---
 

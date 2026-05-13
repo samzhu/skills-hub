@@ -117,45 +117,81 @@ export function fetchBundleInfo(id: string): Promise<BundleInfo> {
 }
 
 /**
- * S096g2 — Request Board read model (對齊 backend RequestQueryController.RequestResponse).
+ * S096g2 → S156c — Request Board read model（voting-board pivot 後對齊 backend
+ * RequestQueryController.RequestResponse）。
  *
  * Vote count 由 backend `request_votes` 表 atomic SQL 維護（mirror Skill downloadCount
  * S077 pattern）；frontend 收到的 `voteCount` 為 strong-consistent 即時值，無需 client 累計。
  *
- * `claimerId` / `fulfilledSkillId`：state-driven UX gate 用 — null 即未認領 / 未完成。
+ * S156c 移除 `status` / `claimerId` / `fulfilledSkillId` 三 field — claim/fulfill 機制已拆。
  */
 export interface SkillRequest {
   id: string
   title: string
   description: string
   requesterId: string
-  status: 'OPEN' | 'IN_PROGRESS' | 'FULFILLED'
-  claimerId: string | null
-  fulfilledSkillId: string | null
   voteCount: number
   createdAt: string
   updatedAt: string
 }
 
 /**
- * S096g2 — Request list 支援 status filter + sort（per AC-3/AC-4）。
- * Backend：`GET /api/v1/requests?status=&sort=`；皆 optional。
+ * S156c — Request list 支援 sort param（`?status=` 已隨 voting-board pivot 移除）。
+ * Backend：`GET /api/v1/requests?sort=votes|created`；optional。
  */
 export interface RequestsQuery {
-  status?: SkillRequest['status']
   sort?: 'votes' | 'created'
 }
 
 export function fetchRequests(opts?: RequestsQuery): Promise<SkillRequest[]> {
   const params = new URLSearchParams()
-  if (opts?.status) params.set('status', opts.status)
   if (opts?.sort) params.set('sort', opts.sort)
   const qs = params.toString()
   return apiFetch<SkillRequest[]>(qs ? `/requests?${qs}` : '/requests')
 }
 
-export function fetchRequest(id: string): Promise<SkillRequest> {
-  return apiFetch<SkillRequest>(`/requests/${id}`)
+/**
+ * S156c — single Request detail response（GET /requests/{id}）含 comments + canDelete。
+ *
+ * `canDelete` 由 backend 計算：requester 視角 true、非 requester / 未登入 false。
+ * Frontend 只讀，不重複實作 ownership 邏輯。
+ */
+export interface RequestComment {
+  id: string
+  authorId: string
+  content: string
+  createdAt: string
+}
+
+export interface RequestDetail extends SkillRequest {
+  comments: RequestComment[]
+  canDelete: boolean
+}
+
+export function fetchRequest(id: string): Promise<RequestDetail> {
+  return apiFetch<RequestDetail>(`/requests/${id}`)
+}
+
+export interface CommentBody {
+  content: string
+}
+
+export function postComment(requestId: string, body: CommentBody): Promise<{ id: string }> {
+  return apiFetch<{ id: string }>(`/requests/${requestId}/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+}
+
+export async function deleteComment(requestId: string, commentId: string): Promise<void> {
+  // backend 回 204；走原生 fetch 因 apiFetch 預期 JSON
+  const res = await fetch(`/api/v1/requests/${requestId}/comments/${commentId}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    const b = body as { message?: string; error?: string }
+    throw new ApiError(res.status, b.message ?? `Delete comment failed: ${res.status}`, b.error)
+  }
 }
 
 export interface CreateRequestBody {
@@ -185,40 +221,8 @@ export function toggleVote(requestId: string): Promise<VoteResult> {
   return apiFetch<VoteResult>(`/requests/${requestId}/vote`, { method: 'POST' })
 }
 
-export interface ClaimResult {
-  claimer: string
-  status: 'IN_PROGRESS'
-}
-
-export function claimRequest(requestId: string): Promise<ClaimResult> {
-  return apiFetch<ClaimResult>(`/requests/${requestId}/claim`, { method: 'POST' })
-}
-
-export async function releaseClaim(requestId: string): Promise<void> {
-  // backend 回 204 no content；apiFetch 預期 JSON 反序列化會 throw — 改走原生 fetch
-  const res = await fetch(`/api/v1/requests/${requestId}/claim`, { method: 'DELETE' })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    const b = body as { message?: string; error?: string }
-    throw new ApiError(res.status, b.message ?? `Release failed: ${res.status}`, b.error)
-  }
-}
-
-export interface FulfillResult {
-  status: 'FULFILLED'
-  fulfilledSkillId: string
-}
-
-export function fulfillRequest(requestId: string, skillId: string): Promise<FulfillResult> {
-  return apiFetch<FulfillResult>(`/requests/${requestId}/fulfill`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ skillId }),
-  })
-}
-
 export async function deleteRequest(requestId: string): Promise<void> {
-  // backend 回 204；走原生 fetch 同 releaseClaim
+  // backend 回 204；走原生 fetch 因 apiFetch 預期 JSON
   const res = await fetch(`/api/v1/requests/${requestId}`, { method: 'DELETE' })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))

@@ -1,5 +1,38 @@
 # Changelog
 
+## [v4.55.0] — S156c Request 簡化為投票需求板 + Detail Page + Comments（2026-05-12）
+
+### Changed (Breaking)
+
+- **Request 從「post → claim → fulfill」改為「post → vote / comment」投票需求板** — voting-board pivot；MVP 階段沒人用 claim/fulfill 機制，留著就是技術債。`Request` aggregate 從 5 method 縮到 2 個（create + addComment），state machine 拆除，3 events（RequestClaimed / RequestReleased / RequestFulfilled）+ 3 endpoints（POST/DELETE /claim + POST /fulfill）+ 1 exception（NotRequestClaimerException）+ frontend `RequestActionBar` component 全砍。
+- **V22 migration drop columns** — `requests.status` / `claimer_id` / `fulfilled_skill_id` + `idx_requests_status` index 拆掉（user 確認 DB 可清，無 backfill 需求）。
+
+### Added
+
+- **Comment 機制** — V22 加 `request_comments` table（含 `version` for @Version pattern + `ON DELETE CASCADE` FK）；`RequestComment` entity + `RequestCommentRepository` + `RequestCommentedEvent` + `Request.addComment()` 充血 method + `CommentService` 3-line orchestration + `CommentController`（POST `/comments` + DELETE owner-only soft delete）+ `CommentNotFoundException` (404)。
+- **`RequestDetailPage` `/requests/:id`** — title / requester / 日期 / vote button / description / comments list (ASC) / comment form / delete request button (canDelete)；frontend hooks `useRequestDetail` / `usePostComment` / `useDeleteComment` / `useDeleteRequest` + components `CommentList` / `CommentForm`。
+- **GET `/requests/{id}` 改回 `RequestDetailResponse`** — 含 `comments[]` + backend-computed `canDelete`（anon → false）。
+- **AuditEventListener Request 3 event 整合** — `onRequestPosted` / `onRequestVoted` / `onRequestCommented` 寫入 `domain_events` 永存；`RequestVotedEvent` 加 `eventId UUID` field 解 dedupKey collision（mirror SkillDownloadedEvent pattern）；`recordAudit` 重構支援 aggregateType param。對應 spec AC-12 ES 永存原則 — request hard delete 後 `domain_events` 對應 row 仍在。
+- **NotificationProjectionListener.onRequestCommented** — comment 通知 requester（self-comment skip）。
+- **AC-7 status code 對齊 403** — `RequestService.deleteRequest` 從 `IllegalStateException`（→ 409）改 `AccessDeniedException`（→ 403）對齊 spec。
+- **CLAUDE.md Plain-Language 第 6 條**：QA / test / ship 報告白話化規則。
+
+### Removed
+
+- 3 events: `RequestClaimedEvent` / `RequestReleasedEvent` / `RequestFulfilledEvent`
+- 3 endpoints: `POST /requests/{id}/claim` / `DELETE /requests/{id}/claim` / `POST /requests/{id}/fulfill`
+- 1 exception: `NotRequestClaimerException`
+- Frontend: `RequestActionBar` component + 3 api function (`claimRequest` / `unclaimRequest` / `fulfillRequest`) + `releaseClaim` + `SkillRequest` 移除 `status` / `claimerId` / `fulfilledSkillId` 三 field
+- NotificationProjectionListener: `onRequestClaimed` / `onRequestFulfilled`
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01/V03/V04/V05/V06/V07/V08a/V08b 全 PASS；V02 INFO LINE coverage 83.3%；exit=0。
+- Backend：3m 19s 全綠（含新加 4 個 case：3 RetiredEndpointsTest + 1 AC-3 集中 anchor）。
+- Frontend：410 tests PASS（baseline 403 + 7 新：RequestDetailPage 6 + RequestBoardPage AC-10 Link）。
+- Modulith `processTestAot`：BUILD SUCCESSFUL（audit + notification 新增的 `community :: events` deps 通過）。
+- QA subagent: PASS（2 個 MINOR 在 §7.10 補完，§7.9 標 RESOLVED）。
+
 ## [v4.54.0] — S159b Category storage normalize（V20 lowercase + V21 dual-column display）（2026-05-12）
 
 ### Added

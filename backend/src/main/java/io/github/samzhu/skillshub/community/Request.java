@@ -13,28 +13,24 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import io.github.samzhu.skillshub.community.events.RequestClaimedEvent;
-import io.github.samzhu.skillshub.community.events.RequestFulfilledEvent;
+import io.github.samzhu.skillshub.community.events.RequestCommentedEvent;
 import io.github.samzhu.skillshub.community.events.RequestPostedEvent;
-import io.github.samzhu.skillshub.community.events.RequestReleasedEvent;
-import io.github.samzhu.skillshub.shared.api.NotRequestClaimerException;
 
 /**
- * S096g2 — Request aggregate root（Spring Data JDBC state-based 充血聚合）。
+ * S096g2 → S156c — Request aggregate root（Spring Data JDBC state-based 充血聚合）。
  *
- * <p>對齊 ADR-002 canonical pattern + Skill aggregate 範本：透過 factory + 充血方法
- * 修改 state + registerEvent；service 端 3-line orchestration `repo.save()` 觸發
- * `@DomainEvents` 自動 publish 至 Modulith outbox（同 TX）。
+ * <p>S156c voting-board pivot：拆除 claim/release/fulfill 機制（含 status / claimerId /
+ * fulfilledSkillId 三 fields）；aggregate 只保留 {@link #create} factory。Comment 機制
+ * 由 T02 新增 {@code addComment} 充血 method。詳 spec
+ * {@code docs/grimo/specs/2026-05-12-S156c-request-voting-board.md} §2.2 / §2.3。
  *
- * <p>State machine（OPEN ⇄ IN_PROGRESS → FULFILLED）：
- * <ul>
- *   <li>{@link #claim} OPEN → IN_PROGRESS</li>
- *   <li>{@link #release} IN_PROGRESS → OPEN（claimer 比對）</li>
- *   <li>{@link #fulfill} IN_PROGRESS → FULFILLED（claimer 比對 + 綁 PUBLISHED skill）</li>
- * </ul>
+ * <p>對齊 ADR-002 canonical pattern：透過 factory + 充血方法 + registerEvent；service 端
+ * 3-line orchestration {@code repo.save()} 觸發 {@code @DomainEvents} 自動 publish 至
+ * Modulith outbox（同 TX）。
  *
- * <p>{@code voteCount} 為 {@link ReadOnlyProperty} — T02 RequestVoteService 走 raw SQL atomic
- * UPDATE 維護（mirror Skill downloadCount S077 pattern）；aggregate save 不覆蓋並發 increment。
+ * <p>{@code voteCount} 為 {@link ReadOnlyProperty} — {@link RequestVoteService} 走 raw SQL
+ * atomic UPDATE 維護（mirror Skill downloadCount S077 pattern）；aggregate save 不覆蓋
+ * 並發 increment。
  */
 @Table("requests")
 public class Request extends AbstractAggregateRoot<Request> {
@@ -48,11 +44,6 @@ public class Request extends AbstractAggregateRoot<Request> {
     private String description;
     @Column("requester_id")
     private String requesterId;
-    private String status; // OPEN / IN_PROGRESS / FULFILLED
-    @Column("claimer_id")
-    private String claimerId;
-    @Column("fulfilled_skill_id")
-    private String fulfilledSkillId;
     @ReadOnlyProperty
     @Column("vote_count")
     private long voteCount;
@@ -67,7 +58,7 @@ public class Request extends AbstractAggregateRoot<Request> {
     @PersistenceCreator
     private Request() {}
 
-    /** S096g2 AC-1/AC-2 — 建立新 Request；status=OPEN, vote_count=0；註冊 RequestPostedEvent。 */
+    /** S096g2 AC-1/AC-2 — 建立新 Request；vote_count=0；註冊 RequestPostedEvent。 */
     public static Request create(String title, String description, String requesterId) {
         if (title == null || title.isBlank()) {
             throw new IllegalArgumentException("title_required");
@@ -94,9 +85,6 @@ public class Request extends AbstractAggregateRoot<Request> {
         r.title = trimmedTitle;
         r.description = trimmedDesc;
         r.requesterId = requesterId.trim();
-        r.status = "OPEN";
-        r.claimerId = null;
-        r.fulfilledSkillId = null;
         r.voteCount = 0;
         r.createdAt = Instant.now();
         r.updatedAt = r.createdAt;
@@ -105,62 +93,32 @@ public class Request extends AbstractAggregateRoot<Request> {
         return r;
     }
 
-    /** S096g2 AC-7/AC-8 — 認領 OPEN→IN_PROGRESS；非 OPEN 拋 IllegalStateException → 409。 */
-    public void claim(String userId) {
-        if (!"OPEN".equals(status)) {
-            throw new IllegalStateException("request_already_claimed: status=" + status);
+    /**
+     * S156c AC-5 — 註冊 {@link RequestCommentedEvent}（outbox publish 由 repo.save 觸發）；
+     * comment row 由 {@link CommentService} 同 TX 寫入 {@code request_comments} 表（CommentService
+     * 端先 insert RequestComment row 再 repo.save(request) 確保 event 與 row 同 TX）。
+     *
+     * <p>不持有 comment list — 對齊 Skill aggregate 不持有 download history pattern（read-side
+     * projection 走 {@link RequestCommentRepository#findByRequestIdAndDeletedAtIsNullOrderByCreatedAtAsc}）。
+     */
+    public void addComment(String commentId, String authorId, String content) {
+        if (commentId == null || commentId.isBlank()) {
+            throw new IllegalArgumentException("commentId is required");
         }
-        this.status = "IN_PROGRESS";
-        this.claimerId = userId;
+        if (authorId == null || authorId.isBlank()) {
+            throw new IllegalArgumentException("authorId is required");
+        }
+        if (content == null || content.isBlank()) {
+            throw new IllegalArgumentException("content_required");
+        }
         this.updatedAt = Instant.now();
-        registerEvent(new RequestClaimedEvent(id, userId, updatedAt));
-    }
-
-    /** S096g2 AC-9 — 釋放認領 IN_PROGRESS→OPEN；非 IN_PROGRESS 拋 IllegalStateException；非 claimer 拋 NotRequestClaimerException。 */
-    public void release(String userId) {
-        if (!"IN_PROGRESS".equals(status)) {
-            throw new IllegalStateException("not_in_progress: status=" + status);
-        }
-        if (!userId.equals(claimerId)) {
-            throw new NotRequestClaimerException();
-        }
-        this.status = "OPEN";
-        this.claimerId = null;
-        this.updatedAt = Instant.now();
-        registerEvent(new RequestReleasedEvent(id, userId, updatedAt));
-    }
-
-    /** S096g2 AC-10/AC-11 — 完成 IN_PROGRESS→FULFILLED；綁 PUBLISHED skillId。 */
-    public void fulfill(String userId, String publishedSkillId) {
-        if (!"IN_PROGRESS".equals(status)) {
-            throw new IllegalStateException("not_in_progress: status=" + status);
-        }
-        if (!userId.equals(claimerId)) {
-            throw new NotRequestClaimerException();
-        }
-        if (publishedSkillId == null || publishedSkillId.isBlank()) {
-            throw new IllegalArgumentException("skillId is required");
-        }
-        this.status = "FULFILLED";
-        this.fulfilledSkillId = publishedSkillId;
-        this.updatedAt = Instant.now();
-        registerEvent(new RequestFulfilledEvent(id, userId, publishedSkillId, updatedAt));
-    }
-
-    /** S096g2 AC-13 — 只能 delete OWN OPEN（非 OPEN 拋 IllegalStateException → 409）；非 requester 由 service 層守。 */
-    public void assertDeletable() {
-        if (!"OPEN".equals(status)) {
-            throw new IllegalStateException("cannot_delete_active_request: status=" + status);
-        }
+        registerEvent(new RequestCommentedEvent(commentId, this.id, authorId, content, this.updatedAt));
     }
 
     public String getId() { return id; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }
     public String getRequesterId() { return requesterId; }
-    public String getStatus() { return status; }
-    public String getClaimerId() { return claimerId; }
-    public String getFulfilledSkillId() { return fulfilledSkillId; }
     public long getVoteCount() { return voteCount; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
