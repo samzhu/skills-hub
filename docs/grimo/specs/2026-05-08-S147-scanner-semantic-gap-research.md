@@ -72,7 +72,7 @@ Snyk agent-scan 使用 **hybrid 引擎**：
 
 | Snyk Code | Severity | 說明 | 我們的現況 |
 |-----------|----------|------|-----------|
-| W012 | High | Unpinned GitHub Actions (`@master/@main/@HEAD`) | ⬜ → **S146** 補 regex |
+| W012 | High | Unpinned GitHub Actions (`@master/@main/@HEAD`) | ⛔ 不做；S146 cancelled 2026-05-13 |
 | **W011** | Medium | Third-party content exposure（indirect prompt injection） | ⬜ 無規則 |
 | E004 | Critical | Prompt injection in skill instructions | ⚠️ 有 `PromptInjectionScanner`，覆蓋範圍未知 |
 | E005 | Critical | Suspicious download URL | ⬜ 無規則 |

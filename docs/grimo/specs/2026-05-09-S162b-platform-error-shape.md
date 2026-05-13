@@ -1,6 +1,6 @@
 # S162b: API consistency — 401/403 走平台 ErrorResponse shape
 
-> Spec: S162b | Size: S(5) | Status: 📐 in-design
+> Spec: S162b | Size: S(5) | Status: ⏸ deferred（2026-05-13 暫緩待研究）
 > Date: 2026-05-09
 > Origin: 拆自 S162 META — API consistency 補強；S162 v4.34/v4.35 ship 415/500，AC-1/2 (401/403) 拆出此 spec
 

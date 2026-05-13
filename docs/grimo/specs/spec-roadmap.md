@@ -76,7 +76,7 @@
 | SpecID | 標題 | 點數 | 相依 | 狀態 |
 |--------|------|------|------|------|
 | S143 | `/docs` canonical entry → `/docs/overview`（含 nav 對齊）| XS(2) | — | ✅ v4.23.0 — 4/4 vitest PASS（Navigate replace + nav 對齊） |
-| S146 | 掃描器補強 — GitHub Actions Unpinned Dependency 偵測（`@master/@main/@HEAD`） | XS(3) | S147 research | ⏸ deferred — 等 S147 完成再規劃 |
+| S146 | 掃描器補強 — GitHub Actions Unpinned Dependency 偵測（`@master/@main/@HEAD`） | XS(3) | S147 research | ⛔ cancelled 2026-05-13 — 不做；移除 spec file |
 | S147 | 掃描器語意分析缺口研究（W011/E004/W009/W013 vs. Snyk agent-scan） | META(research) | — | ⏸ deferred — 暫緩，等研究啟動時機 |
 | S148 | Bug — GraalVM native image AOT reflection 涵蓋不足（JudgeResponse 部分） | S(5) | — | ✅ v4.25.0 — 4/4 JudgeResponse deserialize PASS（@RegisterReflectionForBinding + catch(Error) 防 outbox 無限重試） |
 | S148b | GraalVM AOT 驗證機制 — POC reject H1（SkillshubProperties 無 bug）；`--exact-reachability-metadata` flag 已 ship；architecture.md 文件化 | XS(3) | — | ✅ v4.46.0 — architecture.md 加 GraalVM AOT Strategy 段（5 子段 + reviewer 4 自檢）|
@@ -115,7 +115,7 @@
 | S161b'' | Request.description markdown safe subset (OWASP HtmlPolicyBuilder allowlist) — javascript: URL 擋 | S(3) | S161b' ✅ | ✅ shipped 2026-05-12 — MarkdownSafeDeserializer + 11/11 cases PASS |
 | S161c | V19 Flyway migration backfill 既存 stored XSS payload | XS(2) | S161 ✅ | ✅ shipped 2026-05-12 46eee1e |
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |
-| S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📐 in-design — spec file 完成 2026-05-09；S169 可消費 final error shape |
+| S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | ⏸ deferred 2026-05-13 — 暫緩待研究；S169 先不消費 final error shape |
 | S162c | API consistency — ownership 409→403 split spec superseded | S(6) | — | ⛔ superseded 2026-05-13 — 整合進 S169；舊 spec 已移 archive，不作實作依據 |
 | S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) → 三段 ship | S144 ✅ | ✅ **shipped 2026-05-12 — 全部 8 ACs PASS**（backend 136564d + EditSkillModal fbce208 + visibility toggle 本 tick）|
 | S163b | Skill owner frontend — EditSkillModal（AC-7）+ PageHeader 編輯 button | XS(3) | S163 ✅ | ✅ shipped 2026-05-12 fbce208 |
