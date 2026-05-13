@@ -103,13 +103,48 @@ class GroupServiceTest extends RepositorySliceTestBase {
     }
 
     @Test
+    @Tag("AC-7")
+    @DisplayName("AC-7: moving a subtree rebuilds closure ancestors")
+    void moveGroup_rebuildsSubtreeClosureRows() {
+        var acmeId = service.createGroup(null, GroupKind.COMPANY, "Acme");
+        var cloudId = service.createGroup(acmeId, GroupKind.DEPARTMENT, "Cloud");
+        var platformId = service.createGroup(cloudId, GroupKind.TEAM, "Platform Team");
+        var globalId = service.createGroup(null, GroupKind.COMPANY, "Global");
+
+        service.moveGroup(cloudId, globalId);
+
+        assertThat(repo.findById(cloudId).orElseThrow().getParentId()).isEqualTo(globalId);
+        assertNoClosure(acmeId, cloudId);
+        assertNoClosure(acmeId, platformId);
+        assertClosure(globalId, cloudId, 1);
+        assertClosure(globalId, platformId, 2);
+        assertClosure(cloudId, platformId, 1);
+    }
+
+    @Test
+    @Tag("AC-11")
+    @DisplayName("AC-11: archiving a group archives the whole subtree")
+    void archiveGroup_archivesSubtree() {
+        var acmeId = service.createGroup(null, GroupKind.COMPANY, "Acme");
+        var cloudId = service.createGroup(acmeId, GroupKind.DEPARTMENT, "Cloud");
+        var platformId = service.createGroup(cloudId, GroupKind.TEAM, "Platform Team");
+
+        service.archiveGroup(cloudId);
+
+        assertThat(repo.findById(acmeId).orElseThrow().getStatus()).isEqualTo(GroupStatus.ACTIVE);
+        assertThat(repo.findById(cloudId).orElseThrow().getStatus()).isEqualTo(GroupStatus.ARCHIVED);
+        assertThat(repo.findById(platformId).orElseThrow().getStatus()).isEqualTo(GroupStatus.ARCHIVED);
+    }
+
+    @Test
     @Tag("AC-15")
     @DisplayName("AC-15: generated id collision retries before insert")
     void generatedIdCollisionRetries() {
         var serviceWithCollision = new GroupService(
                 repo,
                 jdbc,
-                new GroupIdGenerator(List.of("g_abc123", "g_abc123", "g_def456").iterator()::next));
+                new GroupIdGenerator(List.of("g_abc123", "g_abc123", "g_def456").iterator()::next),
+                event -> {});
 
         var first = serviceWithCollision.createGroup(null, GroupKind.COMPANY, "Acme");
         var second = serviceWithCollision.createGroup(null, GroupKind.COMPANY, "Global");
@@ -124,5 +159,13 @@ class GroupServiceTest extends RepositorySliceTestBase {
                 new MapSqlParameterSource().addValue("ancestor", ancestorId).addValue("descendant", descendantId),
                 Integer.class);
         assertThat(actual).isEqualTo(depth);
+    }
+
+    private void assertNoClosure(String ancestorId, String descendantId) {
+        var actual = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM group_closure WHERE ancestor_id = :ancestor AND descendant_id = :descendant",
+                new MapSqlParameterSource().addValue("ancestor", ancestorId).addValue("descendant", descendantId),
+                Integer.class);
+        assertThat(actual).isZero();
     }
 }

@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -32,11 +33,14 @@ public class GroupService {
     private final GroupRepository repo;
     private final NamedParameterJdbcTemplate jdbc;
     private final GroupIdGenerator ids;
+    private final ApplicationEventPublisher events;
 
-    public GroupService(GroupRepository repo, NamedParameterJdbcTemplate jdbc, GroupIdGenerator ids) {
+    public GroupService(GroupRepository repo, NamedParameterJdbcTemplate jdbc, GroupIdGenerator ids,
+                        ApplicationEventPublisher events) {
         this.repo = repo;
         this.jdbc = jdbc;
         this.ids = ids;
+        this.events = events;
     }
 
     /**
@@ -60,7 +64,7 @@ public class GroupService {
     }
 
     /**
-     * Moves one Group after checking cycle invariants; subtree closure rebuild lands in S170-T03.
+     * Moves one Group and rebuilds closure rows for the whole moved subtree.
      */
     @Transactional
     public void moveGroup(String groupId, @Nullable String newParentId) {
@@ -76,8 +80,41 @@ public class GroupService {
                     .log("Rejected group cycle");
             throw new IllegalStateException("group_cycle: cannot move a group under its descendant");
         }
+        var oldParentId = group.getParentId();
         group.moveTo(newParentId, Instant.now());
         repo.save(group);
+        rebuildSubtreeClosure(groupId, newParentId);
+        events.publishEvent(new GroupMovedEvent(groupId, oldParentId, newParentId, Instant.now()));
+        log.atInfo()
+                .addKeyValue("groupId", groupId)
+                .addKeyValue("oldParentId", oldParentId)
+                .addKeyValue("newParentId", newParentId)
+                .log("Group moved");
+    }
+
+    /**
+     * Archives one Group and all descendants; closure rows stay available for historical path lookup.
+     */
+    @Transactional
+    public void archiveGroup(String groupId) {
+        if (!repo.existsById(groupId)) {
+            throw new IllegalArgumentException("group_not_found: " + groupId);
+        }
+        var archived = jdbc.update("""
+                UPDATE groups
+                SET status = 'ARCHIVED',
+                    updated_at = NOW()
+                WHERE id IN (
+                    SELECT descendant_id
+                    FROM group_closure
+                    WHERE ancestor_id = :groupId
+                )
+                """, Map.of("groupId", groupId));
+        events.publishEvent(new GroupArchivedEvent(groupId, archived, Instant.now()));
+        log.atInfo()
+                .addKeyValue("groupId", groupId)
+                .addKeyValue("archivedCount", archived)
+                .log("Group subtree archived");
     }
 
     private String generateUniqueGroupId() {
@@ -120,6 +157,36 @@ public class GroupService {
                   AND descendant_id = :descendantId
                 """, params, Integer.class);
         return count != null && count > 0;
+    }
+
+    private void rebuildSubtreeClosure(String groupId, @Nullable String newParentId) {
+        // S170: keep subtree-internal closure rows, replace only external ancestors for moved descendants.
+        jdbc.update("""
+                DELETE FROM group_closure
+                WHERE descendant_id IN (
+                    SELECT descendant_id
+                    FROM group_closure
+                    WHERE ancestor_id = :groupId
+                )
+                  AND ancestor_id NOT IN (
+                    SELECT descendant_id
+                    FROM group_closure
+                    WHERE ancestor_id = :groupId
+                )
+                """, Map.of("groupId", groupId));
+        if (newParentId == null) {
+            return;
+        }
+        jdbc.update("""
+                INSERT INTO group_closure (ancestor_id, descendant_id, depth)
+                SELECT parent_path.ancestor_id,
+                       subtree.descendant_id,
+                       parent_path.depth + subtree.depth + 1
+                FROM group_closure parent_path
+                CROSS JOIN group_closure subtree
+                WHERE parent_path.descendant_id = :newParentId
+                  AND subtree.ancestor_id = :groupId
+                """, Map.of("newParentId", newParentId, "groupId", groupId));
     }
 
     /**

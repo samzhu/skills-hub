@@ -88,4 +88,30 @@ class PrincipalContextServiceTest extends RepositorySliceTestBase {
                         "group:" + cloudId,
                         "group:" + acmeId);
     }
+
+    @Test
+    @Tag("AC-7")
+    @Tag("AC-11")
+    @DisplayName("AC-7/AC-11: moved ancestors replace old ancestors and archived subtree is hidden")
+    void currentPrincipalKeys_followsMoveAndArchiveSemantics() {
+        var acmeId = groupService.createGroup(null, GroupKind.COMPANY, "Acme");
+        var cloudId = groupService.createGroup(acmeId, GroupKind.DEPARTMENT, "Cloud");
+        var platformTeamId = groupService.createGroup(cloudId, GroupKind.TEAM, "Platform Team");
+        var globalId = groupService.createGroup(null, GroupKind.COMPANY, "Global");
+        membershipService.addMember(platformTeamId, TestUserSeed.BOB_ID);
+
+        groupService.moveGroup(cloudId, globalId);
+
+        assertThat(principalContextService.currentPrincipalKeys())
+                .containsExactlyInAnyOrder(
+                        "user:" + TestUserSeed.BOB_ID,
+                        "group:" + platformTeamId,
+                        "group:" + cloudId,
+                        "group:" + globalId);
+
+        groupService.archiveGroup(cloudId);
+
+        assertThat(principalContextService.currentPrincipalKeys())
+                .containsExactly("user:" + TestUserSeed.BOB_ID);
+    }
 }

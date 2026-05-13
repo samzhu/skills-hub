@@ -56,9 +56,11 @@ public class PrincipalContextService {
         return jdbc.queryForList("""
                 SELECT DISTINCT 'group:' || c.ancestor_id
                 FROM group_members m
+                JOIN groups member_group ON member_group.id = m.group_id
                 JOIN group_closure c ON c.descendant_id = m.group_id
                 JOIN groups g ON g.id = c.ancestor_id
                 WHERE m.user_id = :userId
+                  AND member_group.status = 'ACTIVE'
                   AND g.status = 'ACTIVE'
                 """, new MapSqlParameterSource().addValue("userId", userId), String.class);
     }

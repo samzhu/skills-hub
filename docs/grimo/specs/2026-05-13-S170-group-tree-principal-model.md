@@ -630,3 +630,28 @@ Commands:
 RED result: FAIL — `compileTestJava` reported missing `GroupMembershipService` and `PrincipalContextService`.
 
 GREEN result: PASS — Gradle output ended with `BUILD SUCCESSFUL in 1m 47s`.
+
+### 7.3 T03 Move and Archive Semantics — PASS (2026-05-14)
+
+`GroupService.moveGroup(...)` now rebuilds `group_closure` for the moved subtree. Moving `Cloud` from `Acme` to `Global` removes `Acme -> Cloud/Platform Team` closure rows, adds `Global -> Cloud/Platform Team`, and keeps `Cloud -> Platform Team`.
+
+`GroupService.archiveGroup(...)` marks the selected Group and all descendants as `ARCHIVED`. `PrincipalContextService` now filters both direct membership Groups and ancestor Groups to `ACTIVE`, so Bob's membership in archived `Platform Team` no longer produces Group principals.
+
+`GroupServiceTest` verifies:
+
+- AC-7: moving `Cloud` under `Global` rebuilds closure rows and preserves subtree-internal rows.
+- AC-11: archiving `Cloud` archives `Cloud` and `Platform Team` while `Acme` stays active.
+
+`PrincipalContextServiceTest` verifies:
+
+- AC-7 / AC-11: Bob's principal set changes from `Acme` ancestors to `Global` ancestors after move, then drops all Group principals after `Cloud` is archived.
+
+Commands:
+
+```bash
+./gradlew test --tests "*GroupServiceTest" --tests "*PrincipalContextServiceTest"
+```
+
+RED result: FAIL — `compileTestJava` reported missing `GroupService.archiveGroup(String)`.
+
+GREEN result: PASS — Gradle output ended with `BUILD SUCCESSFUL in 1m 47s`.
