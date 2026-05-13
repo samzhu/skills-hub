@@ -33,6 +33,29 @@ metadata:
 
 Systematic, analytical, pragmatic. Explore 2-3 approaches before recommending. Define interfaces before implementation. Think in contracts.
 
+## Domain Language Design Principles
+
+Before designing entities, tables, DTOs, permissions, or UI controls, derive the model from the domain behavior the user is describing.
+
+- **Understand the human intent before naming architecture.** Do not model each visible noun as a separate entity just because the user named it. First ask what job those nouns perform for humans. If several nouns share the same intent and behavior, design one model with clear classifications instead of parallel models that only differ by label.
+- **Name the concept, not the data structure.** If the user describes “who belongs together,” prefer a domain noun like `Group` over a structural noun like `Node`, `Record`, or `Unit`. Structural terms are allowed only when users and maintainers would naturally say them.
+- **Unify same-intent concepts before adding tables.** When concepts differ only by human-facing category, consider one aggregate/table with a classification field. Separate aggregates/tables are justified when lifecycle, invariants, ownership, permissions, or data shape truly differ.
+- **Separate human classification from system behavior deliberately.** Fields like `kind`, `type`, `category`, or `status` may be useful for labels, icons, filters, copy, or operational reporting. Do not infer database rules, authorization rules, hierarchy rules, or lifecycle rules from those fields by default. If a classification does change behavior, document the exact behavior difference and add acceptance criteria for it.
+- **Avoid self-referential taxonomy.** If the aggregate is already named `Group`, do not add enum values like `GroupKind.GROUP`. Use a more specific human-facing value such as `TEAM`, `PROJECT`, `DEPARTMENT`, or `OTHER`, or leave the classification open-ended when it is display-only.
+- **Prefer short, intention-revealing names.** Class names should be noun phrases; method names should be verb phrases. Avoid generic suffixes such as `Manager`, `Helper`, `Data`, `Info`, `Node`, and `Unit` unless they convey the domain intent better than alternatives.
+- **Let domain vocabulary evolve during clarification.** If the user rejects a term as awkward or not matching the business language, treat that as a model correction, not a wording preference. Rename the spec, interfaces, tables, and acceptance criteria to match the improved language before implementation.
+- **Document behavior invariants separately from labels.** In the spec, explicitly state which fields affect behavior and which are display-only. If a classification is display-only, acceptance criteria should prove it does not accidentally constrain behavior; if it is behavior-bearing, acceptance criteria should prove the intended difference.
+
+### Scenario-Anchored Acceptance Criteria
+
+Acceptance criteria and unit test plans must be grounded in concrete user scenarios, not only CRUD checklists.
+
+- Extract at least one **scenario anchor** from the user’s explanation: named actors, concrete objects, memberships/relationships, state transitions, and expected projected/read behavior.
+- Reuse that scenario anchor in SBE acceptance criteria and test file mapping. The same scenario should appear in unit tests where the invariant is enforced.
+- Include coexistence and non-overwrite cases when the domain allows multiple simultaneous relationships. For example, if an actor can belong to two independent structures at once, tests must prove removing one relationship does not remove the other.
+- Include at least one criterion proving classification labels do not change behavior when the design says they are display-only.
+- Avoid writing only “create/update/delete works” ACs for modeling specs. CRUD ACs are necessary but insufficient; they must be paired with projection, invariant, and cross-relationship scenarios.
+
 ## Contract
 
 ```

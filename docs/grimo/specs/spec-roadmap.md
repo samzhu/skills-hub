@@ -97,8 +97,8 @@
 | S156b | RequestDetailPage 新 page（描述 + 7 actions + 留言 simple list）+ hook + route — `/requests/:id` | M(8) | S156 ✅ | ⛔ superseded 2026-05-12 — 取代為 S156c（voting-board pivot：砍 claim/fulfill 機制，簡化為「post + vote + comment」） |
 | S156c | Request 簡化為投票需求板 + Detail Page + Comments — 拆 S096g2 claim/release/fulfill machinery + 新增 comment 機制 + RequestDetailPage | M(12) | S156 ✅, S096g2 ✅ (拆) | ✅ v4.55.0 — 12/12 ACs PASS（含 §7.10 QA touchup：RetiredEndpointsTest + AC-3 集中 anchor）；verify-all.sh exit=0；backend 3m19s 綠 + frontend 410/410 + Modulith verify pass |
 | S157 | Semantic search not functional in LAB — Gemini config + embedding backfill + vector_store wiring | S(6) → M(12) | — | ✅ v4.53.0 — backend impl (544969b) + LAB AC-1~4/8 全 PASS + `SemanticSearchRealFixtureIT` 真實 Gemini fixture 4/4 ACs PASS (cross-semantic ranking regression) + V07 e2e stabilization (4 個既有 flakiness 一次根治；verify-all 8/8 PASS) |
-| S158 | API response privacy hardening — list 移除 aclEntries / ownerId | S(5) | — | ✅ v4.33.0 — list endpoint 隱藏 aclEntries+ownerId（@JsonView）；detail owner-conditional 拆 S158b |
-| S158b | Detail viewer permissions — viewerPermissions backend-computed + aclEntries 全 strip (CQRS 內化) + /grants owner-only authz | M(8) | S158 ✅ | 📐 in-design — spec file 完成 2026-05-09 |
+| S158 | API response privacy hardening — list 移除 aclEntries / ownerId | S(5) | — | ✅ v4.33.0 — list endpoint 隱藏 aclEntries+ownerId（@JsonView）；detail + 權限 contract 後續由 S169 接手 |
+| S158b | Detail viewer permissions — split spec superseded | M(8) | S158 ✅ | ⛔ superseded 2026-05-13 — 整合進 S169；舊 spec 已移 archive，不作實作依據 |
 | S159 | Skill query API hardening — META 拆 S159a/b/c/d | META | — | ✅ done — S159a (v4.43.0) + S159d (v4.44.0) + S159b (v4.54.0) ship；S159c ⛔ cancelled 2026-05-13（premise 錯誤）|
 | S159a | Unknown query param 拒收（SkillQuery / categories 端點 fail-fast 400） | XS(3) | — | ✅ v4.43.0 — interceptor + handler；11+1+2 unit tests PASS |
 | S159b | Category storage normalize — V20 lowercase + V21 dual-column display | M(15) | v4.54.0 | ✅ shipped 2026-05-12 — Round 2 ship 含 V07 hermetic gate bug fix（dual-column 保留 CamelCase）|
@@ -115,8 +115,8 @@
 | S161b'' | Request.description markdown safe subset (OWASP HtmlPolicyBuilder allowlist) — javascript: URL 擋 | S(3) | S161b' ✅ | ✅ shipped 2026-05-12 — MarkdownSafeDeserializer + 11/11 cases PASS |
 | S161c | V19 Flyway migration backfill 既存 stored XSS payload | XS(2) | S161 ✅ | ✅ shipped 2026-05-12 46eee1e |
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |
-| S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📐 in-design — spec file 完成 2026-05-09 |
-| S162c | API consistency — ownership 拒絕 409→403 sweep（DELETE/PUT 對 review/collection/skill/flag 等需 owner 操作） | S(6) | — | 📐 in-design — spec file 完成 2026-05-09 |
+| S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | 📐 in-design — spec file 完成 2026-05-09；S169 可消費 final error shape |
+| S162c | API consistency — ownership 409→403 split spec superseded | S(6) | — | ⛔ superseded 2026-05-13 — 整合進 S169；舊 spec 已移 archive，不作實作依據 |
 | S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) → 三段 ship | S144 ✅ | ✅ **shipped 2026-05-12 — 全部 8 ACs PASS**（backend 136564d + EditSkillModal fbce208 + visibility toggle 本 tick）|
 | S163b | Skill owner frontend — EditSkillModal（AC-7）+ PageHeader 編輯 button | XS(3) | S163 ✅ | ✅ shipped 2026-05-12 fbce208 |
 | S163b' | Skill visibility toggle UX — PageHeader [轉為私人]/[公開分享] button | XS(2) | S163b ✅ | ✅ shipped 2026-05-12 — VisibilityToggleButton 自包 grants query；27/27 vitest PASS；374/374 全 suite 無 regression |
@@ -131,6 +131,8 @@
 | S167 | 移除 deprecated `/api/v1/skills/{id}/acl` HTTP layer — controller + test + frontend doc + S016/E2E test 對齊 `/grants` shape | XS(2) | S114a ✅ + v4.41.0 deprecation log | ✅ v4.42.0 — HTTP 層拿掉；dead code 留 S167b |
 | S167b | dead-code 清理 — `SkillCommandService.grantAcl/revokeAcl` + `Skill.grantAcl/revokeAcl` + `SkillAclGrantedEvent/Revoked` + `SkillAclQueryService` + `AuditEventListener` 對應 handlers + 4 個 unit test | S(5) | S167 ✅ | ✅ v4.45.0 — 8 整檔 + 3 production + 3 test 修改；36/36 PASS；S154 backend sequencing 鋪路 |
 | S168 | GraalVM native image — Boolean wrapper field workaround for primitive boolean readback（per JobRunr PR #1501 production-shipped fix 同 stacktrace；繞 oracle/graal#5672 SubstrateVM MethodHandle adaptation bug；fix `User.contactEmailPublic` + `NotificationPreference` 4 boolean fields 同類 latent；含 architecture.md 修正 production deploy mode 描述 + dev-standards 上游追蹤 checkpoint） | S(9) → M(11) | S154 ✅ | ✅ v4.49.0 — Round 2 fix (Approach B→C pivot)：5 個 field primitive boolean → Boolean wrapper + 拔 dead converter；Round 1 v4.48.0 Approach B prod 失敗教訓詳 spec §2.8 + §7.5；verify-all PASS=7/FAIL=0；AC-4 manual deploy 待 Round 2 ship 後驗收 |
+| S169 | CQRS permission contract — role grants + ACL projections + viewer actions + 403 semantics | M(14) | S016 ✅, S017 ✅, S114a ✅, S121 ✅, S154 ✅, S158 ✅, S170 📐 | 📐 in-design — 消費 S170 的 `group:<id>` principal；後續權限實作只看 S169 |
+| S170 | Group tree principal model — Company / Department / Team 統一成可掛人與子群組的 Group | M(16) | S154 ✅ | 📐 in-design — S169 前置 spec；`kind` 只給人類辨識，DB 行為一律相同；先做 Group CRUD、成員、`user_acl_principals` 投影 |
 | S2XX-cache | 未來 re-introduce ACL eval cache（profiling-driven，明確 SLA 觸發） | — | production traffic 起來 | ⏸ deferred |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |

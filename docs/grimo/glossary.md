@@ -9,11 +9,14 @@
 | 管理者 | Admin | `Admin` | 管理平台設定、使用者、審核的角色 |
 | 風險等級 | Risk Level | `RiskLevel` | 技能的安全風險分級：NONE / LOW / MEDIUM / HIGH（per ADR-future S096c；NONE = 0 findings + no scripts + no allowed-tools） |
 | 風險評估 | Risk Assessment | `RiskAssessment` | 對技能內容的自動安全掃描與分級 |
-| 硬結構 | Hard Structure | `Organization` | 集團 → 公司 → 部門的固定組織層級樹 |
-| 軟結構 | Soft Structure | `Workspace` | 戰情室、合作專案等跨組織的彈性團隊空間 |
+| 硬結構 | Hard Structure | `Organization` | 集團 → 公司 → 部門的固定組織層級樹；S170 起在資料模型上同樣落到 `Group` |
+| 軟結構 | Soft Structure | `Workspace` | 戰情室、合作專案等跨組織的彈性團隊空間；S170 起在資料模型上同樣落到 `Group` |
 | 集團 | Organization | `Org` | 組織層級最頂層 |
 | 公司 | Company | `Company` | 集團下的子公司 |
 | 部門 | Department | `Department` | 公司下的部門，可多層巢狀 |
+| 群組 | Group | `Group` | S170 起，Company / Department / Team / Other 都是同一種可掛人、可掛子群組的樹狀 Group；分享時投影成 `group:<id>:<permission>` ACL entry |
+| 群組 Principal | Group Principal | `group:<id>` | S170 起，`user_acl_principals` 裡的扁平字串；使用者被放進子群組時會同時得到該群組與所有父群組 principal |
+| 協作群組 | Collaboration Group | `Group(kind=TEAM)` | S170 起，跨公司、跨部門的彈性群組不另建獨立表，使用 `Group` 搭配 display-only `TEAM` kind 表示；可 root，也可放在任何群組下 |
 | 戰情室 | War Room | `WarRoom` | 臨時性的跨組織協作空間 |
 | 合作專案 | Collaborative Project | `Project` | 跨部門/跨公司的專案組合空間 |
 | 語意搜尋 | Semantic Search | `SemanticSearch` | 用 AI embedding 做自然語言能力匹配的搜尋 |
@@ -48,3 +51,5 @@
 | OAuth 識別碼 | OAuth Sub | `sub` | OAuth provider 給的 raw subject identifier（Google: 21 位數字；GitHub: 數字 ID）；S154 起只在 `users.sub` 出現，**不**在業務表（`skills` / `acl_entries`）|
 | 顯示名快照 | Author Name Snapshot | `authorNameSnapshot` | S154 起，publish/republish 時 freeze 的作者 display name；user 帳號刪除後 fallback 顯示來源（per S154 §2.6） |
 | 顯示名解析鏈 | DisplayName Resolver | `DisplayNameResolver` | S154 起，五層 fallback：name → snapshot → email local-part → handle → user_id（per S154 §2.5）；frontend `lib/displayName.ts` 與 backend static helper 同邏輯 |
+| 權限角色 | Permission Role | `Role` | S169 起，使用者分享 skill 時只選角色（OWNER / EDITOR / VIEWER），系統再展開成 `read/write/delete` 權限；UI 不提供 raw operation checkbox |
+| 檢視者權限 | Viewer Permissions | `viewerPermissions` | S169 起，Skill detail API 由後端依當前 user 計算可做動作（canEdit/canDelete/canShare 等），frontend 按鈕只讀此欄位，不重做 ACL 判斷 |
