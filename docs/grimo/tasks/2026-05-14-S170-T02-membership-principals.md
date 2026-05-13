@@ -29,4 +29,40 @@ And removing `AI Enablement` does not remove the physical department principals
 - S170-T01
 
 ## Status
-pending
+PASS
+
+## Result
+
+Implemented direct Group membership and current principal context.
+
+Files changed:
+
+- `backend/src/main/java/io/github/samzhu/skillshub/org/GroupMembershipService.java`
+- `backend/src/main/java/io/github/samzhu/skillshub/org/UserAddedToGroupEvent.java`
+- `backend/src/main/java/io/github/samzhu/skillshub/org/UserRemovedFromGroupEvent.java`
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/security/PrincipalContextService.java`
+- `backend/src/test/java/io/github/samzhu/skillshub/org/GroupMembershipServiceTest.java`
+- `backend/src/test/java/io/github/samzhu/skillshub/org/PrincipalContextServiceTest.java`
+
+RED:
+
+```bash
+./gradlew test --tests "*GroupMembershipServiceTest" --tests "*PrincipalContextServiceTest"
+```
+
+Result: FAIL — `compileTestJava` failed because `GroupMembershipService` and `PrincipalContextService` did not exist.
+
+GREEN:
+
+```bash
+./gradlew test --tests "*GroupMembershipServiceTest" --tests "*PrincipalContextServiceTest"
+```
+
+Result: PASS — Gradle output ended with `BUILD SUCCESSFUL in 1m 47s`.
+
+Notes:
+
+- `GroupMembershipService.addMember(...)` writes one direct `group_members` row and publishes `UserAddedToGroupEvent` only when an insert happens.
+- `GroupMembershipService.removeMember(...)` deletes only the selected `(group_id, user_id)` row and publishes `UserRemovedFromGroupEvent` only when a row is removed.
+- `PrincipalContextService.currentPrincipalKeys()` returns `user:<id>` plus `group:<ancestorId>` rows by joining `group_members` to `group_closure` and filtering active ancestors.
+- The JDBC timestamp binding uses `Timestamp.from(Instant.now())`, matching the existing project rule that raw PostgreSQL JDBC does not infer `Instant` for `TIMESTAMPTZ`.

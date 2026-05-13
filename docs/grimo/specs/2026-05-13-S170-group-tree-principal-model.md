@@ -607,3 +607,26 @@ Commands:
 ```
 
 Result: PASS — Gradle output ended with `BUILD SUCCESSFUL in 1m 37s`.
+
+### 7.2 T02 Membership and Principal Context — PASS (2026-05-14)
+
+`GroupMembershipService` writes direct user-to-Group rows in `group_members` and publishes membership events. `PrincipalContextService` reads the current platform user id, joins `group_members` to `group_closure`, and returns user plus Group ancestor principals.
+
+`GroupMembershipServiceTest` verifies:
+
+- AC-3 / AC-4: Bob can belong to `Platform Team` and root TEAM `AI Enablement` at the same time.
+- AC-14: removing `AI Enablement` membership does not remove Bob from `Platform Team`.
+
+`PrincipalContextServiceTest` verifies:
+
+- AC-5 / AC-6 / AC-14: Bob receives `user:u_bob111`, direct Group principals, and physical ancestors; removing the root TEAM keeps physical department principals.
+
+Commands:
+
+```bash
+./gradlew test --tests "*GroupMembershipServiceTest" --tests "*PrincipalContextServiceTest"
+```
+
+RED result: FAIL — `compileTestJava` reported missing `GroupMembershipService` and `PrincipalContextService`.
+
+GREEN result: PASS — Gradle output ended with `BUILD SUCCESSFUL in 1m 47s`.
