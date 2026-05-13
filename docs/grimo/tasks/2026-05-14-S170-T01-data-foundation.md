@@ -10,7 +10,7 @@ Then `groups.parent_id` and `group_closure` contain the root, child, and self ro
 And duplicate sibling slug, cycle move, and duplicate generated id cases are rejected or retried as specified
 
 ## Target Files
-- `backend/src/main/resources/db/migration/V22__group_tree_principals.sql`
+- `backend/src/main/resources/db/migration/V23__group_tree_principals.sql`
 - `backend/src/main/java/io/github/samzhu/skillshub/org/GroupIdGenerator.java`
 - `backend/src/main/java/io/github/samzhu/skillshub/org/Group.java`
 - `backend/src/main/java/io/github/samzhu/skillshub/org/GroupKind.java`
@@ -30,3 +30,7 @@ And duplicate sibling slug, cycle move, and duplicate generated id cases are rej
 
 ## Status
 pending
+
+## Preflight
+
+- 2026-05-14: `rg --files backend/src/main/resources/db/migration` shows `V22__request_voting_board_simplification.sql` already exists from S156c. Use `V23__group_tree_principals.sql` for this task.

@@ -513,7 +513,7 @@ public record UserRemovedFromGroupEvent(String userId, String groupId) {}
 
 | File | Action | Description |
 |------|--------|-------------|
-| `backend/src/main/resources/db/migration/V22__group_tree_principals.sql` | new | Add `groups`, `group_closure`, `group_members`. |
+| `backend/src/main/resources/db/migration/V23__group_tree_principals.sql` | new | Add `groups`, `group_closure`, `group_members`; V22 is already used by S156c request voting-board simplification. |
 | `backend/src/main/java/io/github/samzhu/skillshub/org/GroupIdGenerator.java` | new | Generate `g_<6hex>` ids using the same short UID style as platform users. |
 | `backend/src/main/java/io/github/samzhu/skillshub/org/Group.java` | new | Rich aggregate for group fields and lifecycle. |
 | `backend/src/main/java/io/github/samzhu/skillshub/org/GroupKind.java` | new | `COMPANY`, `DEPARTMENT`, `TEAM`, `OTHER`; display-only kind. |
@@ -549,6 +549,8 @@ public record UserRemovedFromGroupEvent(String userId, String groupId) {}
 POC: not required. S170 uses PostgreSQL tables, Spring Data JDBC repositories, repository/service/controller patterns, and React page/component patterns already used in shipped specs. The only new design surface is the Group domain model itself; §3 AC-1 through AC-15 cover the behavior directly through backend tests and one frontend page test.
 
 ### 6.2 Execution Order
+
+Preflight 2026-05-14: `rg --files backend/src/main/resources/db/migration` shows `V22__request_voting_board_simplification.sql` already exists, so T01 must create `V23__group_tree_principals.sql` instead of the original draft `V22` file name.
 
 | Order | Task | AC | Depends On | Scope |
 |-------|------|----|------------|-------|
