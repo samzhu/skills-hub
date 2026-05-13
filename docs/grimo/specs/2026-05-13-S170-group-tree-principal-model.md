@@ -708,3 +708,21 @@ S170 now has all task-level ACs covered by targeted tests:
 | T05 frontend page | PASS | `npm test -- --run src/pages/GroupsPage.test.tsx src/App.test.tsx` |
 
 Temporary task files were consolidated into this §7 result section on 2026-05-14. The remaining work before `DONE` is an independent QA / ship pass.
+
+### 7.7 QA 出貨前驗證 — PASS (2026-05-14)
+
+本 tick 重新跑 S170 直接對應的測試，先把出貨前可重跑的 command 結果寫進 spec。
+
+Commands:
+
+```bash
+cd backend && ./gradlew test --tests "*GroupServiceTest" --tests "*GroupMembershipServiceTest" --tests "*PrincipalContextServiceTest" --tests "*GroupQueryControllerTest"
+cd frontend && npm test -- --run src/pages/GroupsPage.test.tsx src/App.test.tsx
+```
+
+結果：PASS。
+
+- Backend output 最後是 `BUILD SUCCESSFUL in 2m`；Gradle 也在同一輪跑了 `processTestAot`、`test`、`jacocoTestReport`。
+- Frontend output 顯示 `2 passed (2)` files、`5 passed (5)` tests。
+
+QA note：AC-1 到 AC-15 都已在 §7.1-§7.6 列出直接對應的自動測試。完整 release 還沒做；下一步仍需跑 `./scripts/verify-all.sh`，再更新 `docs/grimo/CHANGELOG.md`、`docs/grimo/specs/spec-roadmap.md`，最後把 spec 移到 archive。
