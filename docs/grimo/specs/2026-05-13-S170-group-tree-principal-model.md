@@ -761,3 +761,23 @@ cd frontend && npm test -- --run src/pages/GroupsPage.test.tsx src/App.test.tsx
 結果：PASS；`npm run verify` 跑完 lint 與 `tsc -b`，frontend S170 測試維持 `2 passed (2)` files、`5 passed (5)` tests。
 
 QA note：`./scripts/verify-all.sh` 需要下個 tick 重新整支跑一次；本 tick 只修掉 V05 blocker，尚未滿足 `shipping-release` 的 same-tick verify-all exit=0 precondition。
+
+### 7.9 Full Gate Rerun — PASS (2026-05-14)
+
+本 tick 重新跑完整 gate：
+
+```bash
+./scripts/verify-all.sh
+```
+
+結果：PASS；summary 顯示 `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS`，最後 verdict 是 `all CRITICAL passed; exit=0`。
+
+實際輸出重點：
+
+- V02 line coverage：83.7%（covered=4078 / total=4870）。
+- V05 已從 §7.8 的 `GroupTree.tsx` typecheck failure 修復為 PASS。
+- V07 Playwright happy-path PASS。
+- V08a `processAot` PASS。
+- V08b `bootBuildImage` PASS。
+
+QA note：S170 已滿足 same-tick `verify-all.sh` exit=0。完整 release 仍未執行，因目前 checkout 仍有非 S170 的未提交變更（`docs/grimo/specs/2026-05-08-S147-scanner-semantic-gap-research.md`、`docs/grimo/specs/spec-roadmap.md`、`.codex/`、`docs/grimo/tasks/`）；下一步需要在不混入 unrelated changes 的前提下執行 `shipping-release` 文件同步與 archive。
