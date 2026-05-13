@@ -726,3 +726,38 @@ cd frontend && npm test -- --run src/pages/GroupsPage.test.tsx src/App.test.tsx
 - Frontend output 顯示 `2 passed (2)` files、`5 passed (5)` tests。
 
 QA note：AC-1 到 AC-15 都已在 §7.1-§7.6 列出直接對應的自動測試。完整 release 還沒做；下一步仍需跑 `./scripts/verify-all.sh`，再更新 `docs/grimo/CHANGELOG.md`、`docs/grimo/specs/spec-roadmap.md`，最後把 spec 移到 archive。
+
+### 7.8 Full Gate Attempt — V05 fixed, rerun pending (2026-05-14)
+
+本 tick 跑完整 gate：
+
+```bash
+./scripts/verify-all.sh
+```
+
+結果：FAIL；summary 顯示 `V01=PASS V02=INFO V03=PASS V04=PASS V05=FAIL V06=PASS V07=PASS V08a=PASS V08b=PASS`，最後 verdict 是 `1 CRITICAL failure(s); exit=1`。
+
+V05 失敗 command 是：
+
+```bash
+cd frontend && npm run verify
+```
+
+實際錯誤：
+
+```text
+src/components/GroupTree.tsx(23,10): error TS2741: Property 'groups' is missing in type '{ key: string; group: GroupTreeNode; selectedId: string | null; onSelect: (group: GroupTreeNode) => void; depth: number; }' but required in type 'GroupTreeProps'.
+```
+
+修正：`frontend/src/components/GroupTree.tsx` 的 `GroupTreeItem` 只需要 `group`、`selectedId`、`onSelect`、`depth`，不需要 root `groups` prop；型別改成 `Omit<GroupTreeProps, 'groups'>`，並移除遞迴呼叫上多餘的 `groups={[]}`。
+
+修正後重跑：
+
+```bash
+cd frontend && npm run verify
+cd frontend && npm test -- --run src/pages/GroupsPage.test.tsx src/App.test.tsx
+```
+
+結果：PASS；`npm run verify` 跑完 lint 與 `tsc -b`，frontend S170 測試維持 `2 passed (2)` files、`5 passed (5)` tests。
+
+QA note：`./scripts/verify-all.sh` 需要下個 tick 重新整支跑一次；本 tick 只修掉 V05 blocker，尚未滿足 `shipping-release` 的 same-tick verify-all exit=0 precondition。

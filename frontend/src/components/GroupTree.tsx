@@ -31,7 +31,7 @@ function GroupTreeItem({
   selectedId,
   onSelect,
   depth,
-}: GroupTreeProps & { group: GroupTreeNode; depth: number }) {
+}: Omit<GroupTreeProps, 'groups'> & { group: GroupTreeNode; depth: number }) {
   const selected = group.id === selectedId
   return (
     <div>
@@ -53,7 +53,7 @@ function GroupTreeItem({
       {group.children.length > 0 && (
         <div className="mt-1 space-y-1">
           {group.children.map((child) => (
-            <GroupTreeItem key={child.id} group={child} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} groups={[]} />
+            <GroupTreeItem key={child.id} group={child} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} />
           ))}
         </div>
       )}
