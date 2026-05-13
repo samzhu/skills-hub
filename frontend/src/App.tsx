@@ -30,6 +30,7 @@ import { PublishValidatePage } from './pages/PublishValidatePage'
 import { VersionDiffPage } from './pages/VersionDiffPage'
 import { FlagsQueuePage } from './pages/FlagsQueuePage'
 import { AuthDebugPage } from './pages/AuthDebugPage'
+import { GroupsPage } from './pages/GroupsPage'
 
 function App() {
   return (
@@ -64,6 +65,8 @@ function App() {
       <Route path="/collections" element={<CollectionsPage />} />
       {/* S150: collection detail — shows skills inside a collection */}
       <Route path="/collections/:id" element={<CollectionDetailPage />} />
+      {/* S170: Group tree management */}
+      <Route path="/groups" element={<GroupsPage />} />
       {/* S096h1: Notifications stub — read-only list + bell badge in AppShell */}
       <Route path="/notifications" element={<NotificationsPage />} />
       {/* S094b: 語意搜尋結果頁 — split inline → dedicated route */}

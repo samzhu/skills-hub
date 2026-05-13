@@ -25,4 +25,9 @@ And all visible labels and buttons are zh-TW
 - S170-T04
 
 ## Status
-pending
+pass
+
+## Result
+- RED: `npm test -- --run src/pages/GroupsPage.test.tsx` 先失敗於 `Failed to resolve import "./GroupsPage"`，確認群組管理頁尚未存在。
+- GREEN: 新增 `/groups` route、`fetchGroupTree()` / `searchGroups()` API client、`GroupTree` 與 `GroupEditor`，管理者點選 `Cloud` 後可看到子群組控制、成員區塊、`group:<id>` principal 與 zh-TW 按鈕文案。
+- Verified: `npm test -- --run src/pages/GroupsPage.test.tsx src/App.test.tsx` → 2 files / 5 tests PASS。
