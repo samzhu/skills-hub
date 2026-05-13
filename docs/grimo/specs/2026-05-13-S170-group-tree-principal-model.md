@@ -1,6 +1,6 @@
 # S170: Group tree principal model
 
-> Spec: S170 | Size: M(16) | Status: 📐 in-design
+> Spec: S170 | Size: M(16) | Status: ⏳ implementation complete; QA/ship pending
 > Date: 2026-05-13
 > Origin: S169 前置 spec。Company / Department / 虛擬組織本質上都是「把人框在一起」的 Group；每個 Group 都可掛使用者，也可掛子 Group。
 > Depends On: S154 ✅
@@ -520,14 +520,13 @@ public record UserRemovedFromGroupEvent(String userId, String groupId) {}
 | `backend/src/main/java/io/github/samzhu/skillshub/org/GroupRepository.java` | new | Spring Data JDBC repository. |
 | `backend/src/main/java/io/github/samzhu/skillshub/org/GroupService.java` | new | Create/update/move/archive Groups and maintain closure table. |
 | `backend/src/main/java/io/github/samzhu/skillshub/org/GroupMembershipService.java` | new | Add/remove direct members and publish membership events. |
-| `backend/src/main/java/io/github/samzhu/skillshub/org/GroupController.java` | new | REST endpoints for tree CRUD and members. |
 | `backend/src/main/java/io/github/samzhu/skillshub/org/GroupQueryController.java` | new | Tree and search endpoints. |
 | `backend/src/main/java/io/github/samzhu/skillshub/shared/security/PrincipalContextService.java` | new | Returns `user:<id>` plus active Group ancestor principals by querying `group_members` + `group_closure`. |
-| `frontend/src/api/groups.ts` | new | Tree, CRUD, search, membership API client. |
-| `frontend/src/pages/GroupsPage.tsx` | new | `/settings/groups` tree management page. |
+| `frontend/src/api/groups.ts` | new | Tree and search API client. |
+| `frontend/src/pages/GroupsPage.tsx` | new | `/groups` tree management page. |
 | `frontend/src/components/GroupTree.tsx` | new | Nested tree component. |
 | `frontend/src/components/GroupEditor.tsx` | new | Group detail, child controls, member controls. |
-| `frontend/src/App.tsx` | modify | Add `/settings/groups` route. |
+| `frontend/src/App.tsx` | modify | Add `/groups` route. |
 | `docs/grimo/glossary.md` | modify | Add Group and group principal terms. |
 
 ### Test Files
@@ -557,8 +556,8 @@ Preflight 2026-05-14: `rg --files backend/src/main/resources/db/migration` shows
 | 1 | `2026-05-14-S170-T01-data-foundation.md` | AC-1, AC-2, AC-8, AC-12, AC-15 | none | Migration, id generator, Group aggregate/repository, closure self/ancestor rows, duplicate/cycle guards. |
 | 2 | `2026-05-14-S170-T02-membership-principals.md` | AC-3, AC-4, AC-5, AC-6, AC-14 | T01 | Direct membership service, membership events, `PrincipalContextService` direct + ancestor principal output. |
 | 3 | `2026-05-14-S170-T03-move-archive.md` | AC-7, AC-11 | T02 | Subtree move closure rebuild, archive subtree, remove archived subtree from active principal context. |
-| 4 | `2026-05-14-S170-T04-query-api.md` | AC-9, AC-10 | T03 | REST tree/search/member endpoints and principal-ready search response. |
-| 5 | `2026-05-14-S170-T05-frontend-groups-page.md` | AC-13 | T04 | `/settings/groups` UI, API client, tree/editor/member controls, zh-TW labels. |
+| 4 | `2026-05-14-S170-T04-query-api.md` | AC-9, AC-10 | T03 | REST tree/search endpoints and principal-ready search response. |
+| 5 | `2026-05-14-S170-T05-frontend-groups-page.md` | AC-13 | T04 | `/groups` UI, API client, tree/editor/member controls, zh-TW labels. |
 
 ### 6.3 Verification Chain
 
@@ -655,3 +654,57 @@ Commands:
 RED result: FAIL — `compileTestJava` reported missing `GroupService.archiveGroup(String)`.
 
 GREEN result: PASS — Gradle output ended with `BUILD SUCCESSFUL in 1m 47s`.
+
+### 7.4 T04 Group Tree and Search API — PASS (2026-05-14)
+
+`GroupQueryController` exposes the read-only surface S169 needs before group grants can be selected:
+
+- `GET /api/v1/groups/tree` returns active `groups` rows nested by `parent_id`.
+- `GET /api/v1/groups/search?q=...` returns `group:<id>` principal keys, root-to-leaf path labels, and direct member counts.
+
+`GroupQueryControllerTest` verifies:
+
+- AC-9: `Acme -> Cloud -> Platform Team` is returned as nested JSON.
+- AC-10: searching `cloud` returns `principalKey = group:<cloudId>` and path labels `["Acme", "Cloud"]`.
+
+Commands:
+
+```bash
+./gradlew test --tests "*GroupQueryControllerTest"
+```
+
+Result: PASS — Gradle output ended with `BUILD SUCCESSFUL in 1m 51s`.
+
+### 7.5 T05 Groups Management Frontend — PASS (2026-05-14)
+
+`frontend/src/pages/GroupsPage.tsx` adds `/groups` with a left-side tree and a selected Group panel. The page reads:
+
+- `GET /api/v1/groups/tree` for the nested tree.
+- `GET /api/v1/groups/search?q=<selected displayName>` for path labels and direct member count.
+
+`GroupsPage.test.tsx` verifies:
+
+- AC-13: selecting `Cloud` shows `Acme / Cloud`, `Principal：group:g_cloud1`, child Group controls, member controls, child row `Platform Team`, and zh-TW button labels `新增子群組`, `新增成員`, `封存群組`.
+- `App.test.tsx` stayed green after adding the `/groups` route.
+
+Commands:
+
+```bash
+npm test -- --run src/pages/GroupsPage.test.tsx src/App.test.tsx
+```
+
+Result: PASS — Vitest output reported `2 passed (2)` files and `5 passed (5)` tests.
+
+### 7.6 Implementation Summary
+
+S170 now has all task-level ACs covered by targeted tests:
+
+| Task | Status | Verification |
+|------|--------|--------------|
+| T01 data foundation | PASS | `./gradlew test --tests "*GroupServiceTest"` |
+| T02 membership principals | PASS | `./gradlew test --tests "*GroupMembershipServiceTest" --tests "*PrincipalContextServiceTest"` |
+| T03 move/archive | PASS | `./gradlew test --tests "*GroupServiceTest" --tests "*PrincipalContextServiceTest"` |
+| T04 query API | PASS | `./gradlew test --tests "*GroupQueryControllerTest"` |
+| T05 frontend page | PASS | `npm test -- --run src/pages/GroupsPage.test.tsx src/App.test.tsx` |
+
+Temporary task files were consolidated into this §7 result section on 2026-05-14. The remaining work before `DONE` is an independent QA / ship pass.
