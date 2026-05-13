@@ -587,3 +587,23 @@ Final verification after all tasks pass:
 Start with `docs/grimo/tasks/2026-05-14-S170-T01-data-foundation.md`.
 
 <!-- Section 7 added by /planning-tasks after implementation -->
+
+## 7. Results
+
+### 7.1 T01 Data Foundation — PASS (2026-05-14)
+
+`backend/src/main/resources/db/migration/V23__group_tree_principals.sql` creates `groups`, `group_closure`, and `group_members`. `GroupServiceTest` verifies:
+
+- AC-1 / AC-15: creating `Acme -> Cloud` writes `groups.parent_id`, self closure rows, ancestor closure row, and `g_<6hex>` ids.
+- AC-2: every `GroupKind` can have a child.
+- AC-8: moving a Group under its descendant throws `group_cycle` and leaves closure rows intact.
+- AC-12: duplicate sibling slug writes only one row and raises `DuplicateKeyException`.
+- AC-15: generated id collision retries before insert.
+
+Commands:
+
+```bash
+./gradlew test --tests "*GroupServiceTest"
+```
+
+Result: PASS — Gradle output ended with `BUILD SUCCESSFUL in 1m 37s`.
