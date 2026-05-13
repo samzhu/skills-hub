@@ -542,4 +542,46 @@ public record UserRemovedFromGroupEvent(String userId, String groupId) {}
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+### 6.1 POC Decision
+
+POC: not required. S170 uses PostgreSQL tables, Spring Data JDBC repositories, repository/service/controller patterns, and React page/component patterns already used in shipped specs. The only new design surface is the Group domain model itself; §3 AC-1 through AC-15 cover the behavior directly through backend tests and one frontend page test.
+
+### 6.2 Execution Order
+
+| Order | Task | AC | Depends On | Scope |
+|-------|------|----|------------|-------|
+| 1 | `2026-05-14-S170-T01-data-foundation.md` | AC-1, AC-2, AC-8, AC-12, AC-15 | none | Migration, id generator, Group aggregate/repository, closure self/ancestor rows, duplicate/cycle guards. |
+| 2 | `2026-05-14-S170-T02-membership-principals.md` | AC-3, AC-4, AC-5, AC-6, AC-14 | T01 | Direct membership service, membership events, `PrincipalContextService` direct + ancestor principal output. |
+| 3 | `2026-05-14-S170-T03-move-archive.md` | AC-7, AC-11 | T02 | Subtree move closure rebuild, archive subtree, remove archived subtree from active principal context. |
+| 4 | `2026-05-14-S170-T04-query-api.md` | AC-9, AC-10 | T03 | REST tree/search/member endpoints and principal-ready search response. |
+| 5 | `2026-05-14-S170-T05-frontend-groups-page.md` | AC-13 | T04 | `/settings/groups` UI, API client, tree/editor/member controls, zh-TW labels. |
+
+### 6.3 Verification Chain
+
+Run backend task tests from narrow to broad:
+
+```bash
+cd backend && ./gradlew test --tests "*GroupServiceTest"
+cd backend && ./gradlew test --tests "*GroupMembershipServiceTest" --tests "*PrincipalContextServiceTest"
+cd backend && ./gradlew test --tests "*GroupQueryControllerTest"
+```
+
+Run frontend task tests after T05:
+
+```bash
+cd frontend && npm test -- --run src/pages/GroupsPage.test.tsx
+```
+
+Final verification after all tasks pass:
+
+```bash
+./scripts/verify-all.sh
+```
+
+### 6.4 Next Task
+
+Start with `docs/grimo/tasks/2026-05-14-S170-T01-data-foundation.md`.
+
+<!-- Section 7 added by /planning-tasks after implementation -->
