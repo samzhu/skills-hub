@@ -1,9 +1,9 @@
 # S169: CQRS permission contract — role grants, ACL projections, viewer actions, 403 semantics
 
-> Spec: S169 | Size: M(14) | Status: 📐 in-design
+> Spec: S169 | Size: M(14) | Status: ⏳ Plan
 > Date: 2026-05-13
 > Origin: 整合權限讀寫分離、role-based sharing、`viewerPermissions`、ACL projection consistency、permission denial 403 semantics。S170 先提供 `group:<id>` principal model；S169 只消費該模型。
-> Depends On: S016 ✅, S017 ✅, S114a ✅, S121 ✅, S154 ✅, S158 ✅, S170 📐
+> Depends On: S016 ✅, S017 ✅, S114a ✅, S121 ✅, S154 ✅, S158 ✅, S170 ✅
 
 ---
 
@@ -391,4 +391,34 @@ OWNER remains system-seeded / migration-owned; UI does not expose owner transfer
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+### 6.1 Phase 0 Pre-Flight 結論
+
+- 已讀既有依據：S170（group principal model）、S121（SQL ACL 分頁）、S017（semantic search ACL）。
+- 設計一致性：S169 仍維持「人管理 role、系統查 materialized `acl_entries`」；符合 PRD 的 MVP 可交付優先與現有架構決策。
+- `POC: not required`：本 spec 不引入新套件或陌生 SDK，主路徑只消費已上線的 S170 principal contract 與既有 SQL ACL query pattern。
+
+### 6.2 任務拆解（Phase 2）
+
+| Task ID | Title | AC Coverage | Depends On |
+|---------|-------|-------------|------------|
+| T01 | Role matrix 與 ACL projection 同步 | AC-1, AC-2, AC-3 | none |
+| T02 | Group principal 搜尋 ACL 與 SQL 分頁一致性 | AC-4, AC-5 | T01 |
+| T03 | ViewerPermissions 合約與 detail 隱私欄位 | AC-6, AC-7, AC-8, AC-9 | T01, T02 |
+| T04 | grants owner-only 與 write/delete 權限邏輯 | AC-10, AC-11, AC-12 | T03 |
+| T05 | 403 與 409 語意分流 | AC-15 | T04 |
+| T06 | Share modal 角色化 UI 與 detail action gating | AC-13, AC-14 | T03, T04 |
+
+### 6.3 任務檔索引
+
+- `docs/grimo/tasks/2026-05-14-S169-T01-role-and-acl-projection.md`
+- `docs/grimo/tasks/2026-05-14-S169-T02-group-principal-search-and-list-filter.md`
+- `docs/grimo/tasks/2026-05-14-S169-T03-viewer-permissions-and-detail-privacy.md`
+- `docs/grimo/tasks/2026-05-14-S169-T04-grants-and-write-delete-authz.md`
+- `docs/grimo/tasks/2026-05-14-S169-T05-forbidden-vs-conflict-semantics.md`
+- `docs/grimo/tasks/2026-05-14-S169-T06-share-modal-and-detail-action-gating.md`
+
+---
+
+<!-- Section 7 added by /planning-tasks after implementation -->
