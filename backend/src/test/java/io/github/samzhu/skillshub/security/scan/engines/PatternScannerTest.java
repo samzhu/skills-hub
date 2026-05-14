@@ -29,6 +29,11 @@ class PatternScannerTest {
 		return new ScanContext("skill-1", "1.0.0", Map.of(), skillMd, scripts, List.of());
 	}
 
+	private static ScanContext ctxFiles(Map<String, String> packageFiles) {
+		return new ScanContext("skill-1", "1.0.0", Map.of(), "# SKILL.md",
+				Map.of(), packageFiles, List.copyOf(packageFiles.keySet()), List.of());
+	}
+
 	@Test
 	@DisplayName("AC-3.1: scripts/clean.sh 第 5 行 rm -rf + 第 8 行 pipe-to-shell 各觸發 1 finding")
 	@Tag("AC-3")
@@ -119,6 +124,17 @@ class PatternScannerTest {
 		assertThat(output.findings())
 				.anyMatch(f -> "SENSITIVE_PATH_AWS".equals(f.ruleId())
 						&& f.severity() == Severity.HIGH);
+	}
+
+	@Test
+	@DisplayName("AC-S147-PACKAGE-FILES: pattern scanner scans non-script package files")
+	@Tag("AC-S147-PACKAGE-FILES")
+	void scansNonScriptPackageFiles() {
+		var output = scanner.analyze(ctxFiles(Map.of("references/cleanup.md", "rm -rf /tmp/demo\n")));
+
+		assertThat(output.findings())
+				.anyMatch(f -> "DANGEROUS_COMMAND_RM_RF".equals(f.ruleId())
+						&& "references/cleanup.md".equals(f.filePath()));
 	}
 
 	@Test

@@ -2,7 +2,6 @@ package io.github.samzhu.skillshub.security.scan.engines;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -20,7 +19,7 @@ import io.github.samzhu.skillshub.security.scan.Severity;
  * S099e2 — OWASP LLM04 Model DoS 資源耗盡靜態 pattern 偵測引擎。
  *
  * <p>Skill scripts 若含無窮迴圈、大量記憶體配置或阻塞 I/O，執行時會耗盡 agent 資源。
- * 本引擎掃描 SKILL.md + scripts/*，偵測 3 個 HIGH（高置信度）+ 3 個 MEDIUM（中度可疑）pattern。
+ * 本引擎掃描 zip 內所有文字檔，偵測 3 個 HIGH（高置信度）+ 3 個 MEDIUM（中度可疑）pattern。
  *
  * <p>靜態掃描限制：無法偵測跨行組合的資源陷阱（如有 sleep 的 while true 是正常 polling）。
  * 語意分析部分由 LlmJudge 補充。
@@ -34,7 +33,6 @@ import io.github.samzhu.skillshub.security.scan.Severity;
 		matchIfMissing = true)
 public class ResourceDoSScanner implements SecurityAnalyzer {
 
-	private static final String SKILL_MD_PATH = "SKILL.md";
 	/** OWASP Agentic Security Top 10：AST04 = Resource Exhaustion。 */
 	private static final String OWASP_AST04 = "AST04";
 
@@ -95,10 +93,7 @@ public class ResourceDoSScanner implements SecurityAnalyzer {
 	public AnalysisOutput analyze(ScanContext context) {
 		var findings = new ArrayList<SecurityFinding>();
 
-		if (context.skillMd() != null && !context.skillMd().isEmpty()) {
-			scanFile(SKILL_MD_PATH, context.skillMd(), findings);
-		}
-		for (Map.Entry<String, String> entry : context.scripts().entrySet()) {
+		for (var entry : context.packageFiles().entrySet()) {
 			scanFile(entry.getKey(), entry.getValue(), findings);
 		}
 

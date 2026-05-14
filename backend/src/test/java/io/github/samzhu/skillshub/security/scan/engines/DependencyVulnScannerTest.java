@@ -39,6 +39,11 @@ class DependencyVulnScannerTest {
 		return new ScanContext("skill-1", "1.0.0", Map.of(), "# SKILL.md", scripts, List.of());
 	}
 
+	private static ScanContext ctxFiles(Map<String, String> packageFiles) {
+		return new ScanContext("skill-1", "1.0.0", Map.of(), "# SKILL.md",
+				Map.of(), packageFiles, List.copyOf(packageFiles.keySet()), List.of());
+	}
+
 	// ─────────────────────────────────────────────────────────────────────────
 	// requirements.txt parsing
 	// ─────────────────────────────────────────────────────────────────────────
@@ -105,6 +110,19 @@ class DependencyVulnScannerTest {
 
 		assertThat(output.findings()).isEmpty();
 		assertThat(output.notices()).isEmpty();
+	}
+
+	@Test
+	@DisplayName("AC-S147-PACKAGE-FILES: dependency scanner scans non-script package manifests")
+	@Tag("AC-S147-PACKAGE-FILES")
+	void scansNonScriptPackageManifests() {
+		var req = "requests==2.28.1\n";
+		when(mockOsvClient.querybatch(anyList()))
+				.thenReturn(List.of(List.of()));
+
+		scanner.analyze(ctxFiles(Map.of("references/requirements.txt", req)));
+
+		verify(mockOsvClient).querybatch(List.of("pkg:pypi/requests@2.28.1"));
 	}
 
 	@Test

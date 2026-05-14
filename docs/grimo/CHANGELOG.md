@@ -1,5 +1,31 @@
 # Changelog
 
+## [v4.59.0] — S147 Issue-code scanner architecture（2026-05-14）
+
+### Added
+
+- **Snyk-like issue-code scanner taxonomy** — 新增 `SkillIssueCode`、`IssueCategory`、`Confidence`、`IssueDetector` 與 `LlmIssueRule`，以 `E004/E005/E006/W007/W008/W009/W011/W012/W013/W014/W017/W018/W019/W020` 表達 skill package 風險。
+- **Zip 全文字檔掃描** — `PackageService.extractTextFiles` 會抽取 zip 內所有可 decode 的 UTF-8 文字檔，`ScanContext.packageFiles()` 供 static scanners、legacy scanners 與 `LlmJudge` 使用；binary / non-UTF-8 / 單檔超過 1 MiB 會跳過。
+- **Security report 新 contract** — `GET /api/v1/skills/{id}/security-report` 保留 legacy `checks`，並新增 `categories[]` 與 `findings[]`，每筆 finding 可帶 `issueCode`、`remediation`、`confidence`。
+- **Per-code detectors / rules** — static detectors 涵蓋 hardcoded secrets、可疑下載、系統服務修改、無法驗證依賴、惡意程式碼組合、prompt injection；semantic / declared-flow rules 由 `LlmJudge` 一次判斷 credential handling、金流、第三方內容、敏感資料、workspace 資料與 destructive capabilities。
+
+### Changed
+
+- **既有 scanners 改看整包文字內容** — `PatternScanner`、`SecretScanner`、`PromptInjectionScanner`、`ResourceDoSScanner`、`DependencyVulnScanner`、`MetaAnalyzer` 不再只依賴 `SKILL.md` / `scripts/`。
+- **Skill detail 安全性顯示改讀動態 categories/findings** — frontend `security.ts` type 與 `SecurityTab` / `SecurityHeroCard` 測試對齊新 report contract。
+
+### Verification
+
+- `SKIP_NATIVE=1 ./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 85.8%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=SKIP；`exit=0`。
+- Backend targeted tests：package text extraction、scan context package files、legacy scanners packageFiles sweep、S147 detectors/rules、`RiskAssessmentIntegrationTest`、`SecurityReportControllerTest` 全部 PASS。
+- Frontend：`npm test` **76 files / 432 tests PASS**；`CollectionsPage` 舊測試已改成現行「新增技能」dropdown flow。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-08-S147-scanner-semantic-gap-research.md` → `docs/grimo/specs/archive/2026-05-08-S147-scanner-semantic-gap-research.md`
+- `docs/grimo/tasks/2026-05-14-S147-*.md` 已刪除；`poc/S147/` 已刪除。
+- Final size re-score：L(16) → XL(17)，原因是掃描範圍改為 zip 內所有 UTF-8 文字檔，輸入模型、所有 package-content scanners、LLM prompt 與測試一起擴大。
+
 ## [v4.58.0] — S171 Spring AI M6 model abstraction cleanup（2026-05-14）
 
 ### Changed

@@ -132,7 +132,7 @@ public class MetaAnalyzer implements SecurityAnalyzer {
 	}
 
 	/**
-	 * 偵測「不透明意圖」：frontmatter 缺 description（agentskills.io 必填欄位）且 scripts 含外部 URL。
+	 * 偵測「不透明意圖」：frontmatter 缺 description（agentskills.io 必填欄位）且 package 文字檔含外部 URL。
 	 * 此 pattern 暗示作者刻意隱藏 skill 用途但又會連外網。
 	 */
 	private List<SecurityFinding> detectOpacity(ScanContext context) {
@@ -142,9 +142,9 @@ public class MetaAnalyzer implements SecurityAnalyzer {
 		boolean missingDescription = !(desc instanceof String s) || s.isBlank();
 		if (!missingDescription) return List.of();
 
-		// 檢查 scripts 中是否含外部 URL
+		// 檢查 package 文字檔中是否含外部 URL
 		boolean hasExternalUrl = false;
-		for (String content : context.scripts().values()) {
+		for (String content : context.packageFiles().values()) {
 			if (URL_PATTERN.matcher(content).find()) {
 				hasExternalUrl = true;
 				break;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { CollectionsPage } from './CollectionsPage'
@@ -37,6 +37,72 @@ const sampleCollections = [
   },
 ]
 
+const sampleSkills = [
+  {
+    id: 'sk-1',
+    name: 'audit-helper',
+    description: 'audit tools',
+    author: 'u_alice0',
+    category: 'Security',
+    status: 'PUBLISHED',
+    riskLevel: 'LOW',
+    latestVersion: '1.0.0',
+    downloadCount: 0,
+    averageRating: 0,
+    reviewCount: 0,
+    createdAt: '2026-05-01T00:00:00Z',
+    updatedAt: '2026-05-01T00:00:00Z',
+    verified: true,
+    latestVersionPublishedAt: '2026-05-01T00:00:00Z',
+    license: null,
+    compatibility: [],
+    versionCount: 1,
+    openFlagCount: 0,
+  },
+  {
+    id: 'sk-2',
+    name: 'scan-runner',
+    description: 'scan tools',
+    author: 'u_alice0',
+    category: 'Security',
+    status: 'PUBLISHED',
+    riskLevel: 'LOW',
+    latestVersion: '1.1.0',
+    downloadCount: 0,
+    averageRating: 0,
+    reviewCount: 0,
+    createdAt: '2026-05-01T00:00:00Z',
+    updatedAt: '2026-05-01T00:00:00Z',
+    verified: true,
+    latestVersionPublishedAt: '2026-05-01T00:00:00Z',
+    license: null,
+    compatibility: [],
+    versionCount: 1,
+    openFlagCount: 0,
+  },
+  {
+    id: 'sk-3',
+    name: 'policy-checker',
+    description: 'policy tools',
+    author: 'u_alice0',
+    category: 'Security',
+    status: 'PUBLISHED',
+    riskLevel: 'LOW',
+    latestVersion: '2.0.0',
+    downloadCount: 0,
+    averageRating: 0,
+    reviewCount: 0,
+    createdAt: '2026-05-01T00:00:00Z',
+    updatedAt: '2026-05-01T00:00:00Z',
+    verified: true,
+    latestVersionPublishedAt: '2026-05-01T00:00:00Z',
+    license: null,
+    compatibility: [],
+    versionCount: 1,
+    openFlagCount: 0,
+  },
+]
+
 interface FetchMockState {
   collections: typeof sampleCollections
   postedCreates: Array<{ name: string; description: string | null; category: string; skillIds: string[] }>
@@ -57,7 +123,19 @@ const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
   // S139: AuthArea / AuthGatedButton 透過 useAuth → fetchMe 探 /api/v1/me；
   // 預設 authenticated 維持既有 AC-10/11/12 點擊行為（lazy gate 通過）
   if (u.includes('/api/v1/me')) {
-    return { ok: true, status: 200, json: async () => ({ sub: 'alice', email: 'alice@example.com' }) } as Response
+    return { ok: true, status: 200, json: async () => ({ userId: 'u_alice0', sub: 'alice', email: 'alice@example.com' }) } as Response
+  }
+
+  // S172: 建立集合 modal 以作者自己的已發布技能 dropdown 取代舊 skill ID textarea。
+  if (u.includes('/api/v1/skills')) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        content: sampleSkills,
+        page: { number: 0, size: 100, totalPages: 1, totalElements: sampleSkills.length },
+      }),
+    } as Response
   }
 
   // POST /collections/{id}/install
@@ -133,14 +211,18 @@ describe('CollectionsPage — AC-10 CTA enable + AC-11 create + AC-12 install', 
     await waitFor(() => screen.getByText('DevOps Starter'))
 
     fireEvent.click(screen.getByRole('button', { name: /建立集合/ }))
-    await screen.findByRole('dialog', { name: '建立集合' })
+    const dialog = await screen.findByRole('dialog', { name: '建立集合' })
 
     fireEvent.change(screen.getByLabelText(/名稱/), { target: { value: 'Security Pack' } })
     fireEvent.change(screen.getByLabelText(/說明/), { target: { value: 'audit + scan tools' } })
     fireEvent.change(screen.getByLabelText(/分類/), { target: { value: 'Security' } })
-    fireEvent.change(screen.getByLabelText(/技能 ID/), { target: { value: 'sk-1\nsk-2\nsk-3' } })
+    const skillPicker = await screen.findByLabelText('新增技能')
+    for (const skill of sampleSkills) {
+      fireEvent.change(skillPicker, { target: { value: skill.id } })
+      fireEvent.click(screen.getByRole('button', { name: '新增' }))
+    }
 
-    fireEvent.click(screen.getByRole('button', { name: '送出' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: '建立集合' }))
 
     await waitFor(() => {
       expect(state.postedCreates).toHaveLength(1)

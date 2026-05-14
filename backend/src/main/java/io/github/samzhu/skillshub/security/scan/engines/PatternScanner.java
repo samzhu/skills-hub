@@ -2,7 +2,6 @@ package io.github.samzhu.skillshub.security.scan.engines;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,7 +16,7 @@ import io.github.samzhu.skillshub.security.scan.SecurityFinding;
 import io.github.samzhu.skillshub.security.scan.Severity;
 
 /**
- * Phase 1 靜態規則引擎 — 對 SKILL.md 與 scripts/* 各檔案逐行執行 regex 匹配，
+ * Phase 1 靜態規則引擎 — 對 zip 內所有文字檔逐行執行 regex 匹配，
  * 偵測危險指令、pipe-to-shell、敏感路徑存取等模式。
  *
  * <p>取代 S005 的 {@code RiskScanner}，差異：
@@ -42,8 +41,6 @@ import io.github.samzhu.skillshub.security.scan.Severity;
 public class PatternScanner implements SecurityAnalyzer {
 
 	/** SKILL.md 在掃描結果裡的標準 filePath 值。 */
-	private static final String SKILL_MD_PATH = "SKILL.md";
-
 	/** OWASP Agentic Skill Top 10：AST06 = "Unsafe Tool Invocation"。pattern engine 全部歸此類。 */
 	private static final String OWASP_AST06 = "AST06";
 
@@ -95,13 +92,7 @@ public class PatternScanner implements SecurityAnalyzer {
 	public AnalysisOutput analyze(ScanContext context) {
 		var findings = new ArrayList<SecurityFinding>();
 
-		// 掃 SKILL.md 全文（含 frontmatter delimiter；frontmatter 內若有 dangerous 也會被偵測）
-		if (context.skillMd() != null && !context.skillMd().isEmpty()) {
-			scanFile(SKILL_MD_PATH, context.skillMd(), findings);
-		}
-
-		// 掃 scripts/* 每個檔案
-		for (Map.Entry<String, String> entry : context.scripts().entrySet()) {
+		for (var entry : context.packageFiles().entrySet()) {
 			scanFile(entry.getKey(), entry.getValue(), findings);
 		}
 

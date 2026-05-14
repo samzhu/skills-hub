@@ -9,6 +9,7 @@ import java.util.SequencedSet;
 
 import org.springframework.stereotype.Component;
 
+import io.github.samzhu.skillshub.security.scan.IssueCategory;
 import io.github.samzhu.skillshub.security.scan.SecurityFinding;
 import io.github.samzhu.skillshub.security.scan.Severity;
 
@@ -33,6 +34,21 @@ public class SecurityCategoryMapper {
             if (cat != null) result.get(cat).add(f);
         }
         return result;
+    }
+
+    /** S147-T01：新版 issue-code finding 優先走 dynamic category；舊資料才 fallback 到 4-quad。 */
+    public IssueCategory categoryFor(SecurityFinding finding) {
+        if (finding.issueCode() != null) {
+            return finding.issueCode().category();
+        }
+        Category legacy = classify(finding);
+        if (legacy == null) return null;
+        return switch (legacy) {
+            case SHELL -> IssueCategory.DESTRUCTIVE_ACTIONS;
+            case PATHS -> IssueCategory.SENSITIVE_DATA;
+            case SECRETS -> IssueCategory.CREDENTIALS;
+            case DEPS -> IssueCategory.DOWNLOADS_DEPENDENCIES;
+        };
     }
 
     /** HIGH → FAIL; MEDIUM (no HIGH) → WARN; empty / all LOW → PASS */

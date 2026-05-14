@@ -30,7 +30,7 @@
 | 領域 | 模式 | Aggregate | 說明 |
 |------|------|-----------|------|
 | **skill（核心域）** | **Spring Data JDBC 充血聚合 + Modulith Outbox** | `Skill` / `SkillVersion`（獨立 aggregate） | S024 起轉向；`@Table` + `extends AbstractAggregateRoot` + `@Version` 樂觀鎖；`repo.save()` 透過 `@DomainEvents` 自動 publish events 至 outbox（同 TX） |
-| **security** | **Event-driven service** | 無 | 訂閱 `SkillVersionPublishedEvent` 觸發風險評估，透過 `SkillVersion.attachRiskAssessment` 回寫；S142b 加 `SecurityCategoryMapper`（4-quad partition / scoring）、`SecurityReportService` + `SecurityReportController`（GET /security-report） |
+| **security** | **Event-driven service** | 無 | 訂閱 `SkillVersionPublishedEvent` 觸發風險評估，透過 `SkillVersion.attachRiskAssessment` 回寫；S147 起 `ScanContext.packageFiles` 掃 zip 內所有 UTF-8 文字檔，`IssueDetector` / `LlmIssueRule` 產出 issue-code findings；`SecurityReportService` + `SecurityReportController` 回傳 legacy `checks` 與新 `categories/findings` |
 | **search** | **Read-side projection** | 無 | 消費 skill events 建構搜尋索引（keyword + semantic） |
 | **analytics** | **Read-side projection** | 無 | 消費 download events 建構統計數據 |
 | **audit** | **Cross-cutting listener** | 無 | 訂閱所有 7 個 Skill domain events 寫入 `domain_events` audit log（async + idempotent；S024 引入；S167b 移除 SkillAclGranted/Revoked 兩個 dead events） |
@@ -512,7 +512,7 @@ npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer
 | GET | `/api/v1/skills/{id}/versions/{ver}/download` | 下載指定版本 zip | storage |
 | GET | `/api/v1/skills/{id}/download` | 下載最新版本 zip | storage |
 | GET | `/api/v1/skills/{id}/risk` | 取得風險評估結果 | skill.query |
-| GET | `/api/v1/skills/{id}/security-report` | 取得 4-quad 安全報告（S142b） | security |
+| GET | `/api/v1/skills/{id}/security-report` | 取得安全報告：legacy checks + issue-code categories/findings（S147） | security |
 | GET | `/api/v1/skills/{id}/scores` | 取得品質評分（含 skillScore composite） | score |
 | GET | `/api/v1/skills/{id}/flags` | 取得回報列表 | skill.query |
 | POST | `/api/v1/search/semantic` | 語意搜尋（自然語言） | search |

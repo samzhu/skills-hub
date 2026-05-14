@@ -3,8 +3,13 @@ package io.github.samzhu.skillshub.storage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -20,6 +25,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class PackageService {
+
+	private static final int MAX_TEXT_FILE_BYTES = 1024 * 1024;
 
 	/**
 	 * S053：將上傳檔 normalize 為「SKILL.md 在根目錄」的標準 zip。
@@ -146,6 +153,72 @@ public class PackageService {
 			return 0;
 		}
 		return count;
+	}
+
+	/**
+	 * S147-W014：列出 zip 內所有非目錄 entry name，保留 root/nested 位置供 detector 判斷。
+	 *
+	 * @param zipBytes zip 壓縮檔的位元組陣列
+	 * @return 非目錄 entry 路徑；不是 zip 或讀取失敗時回空 list
+	 */
+	public List<String> listEntryNames(byte[] zipBytes) {
+		if (!isZipFile(zipBytes)) {
+			return List.of();
+		}
+		var names = new java.util.ArrayList<String>();
+		try (var zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
+			var entry = zis.getNextEntry();
+			while (entry != null) {
+				if (!entry.isDirectory()) {
+					names.add(entry.getName());
+				}
+				entry = zis.getNextEntry();
+			}
+		} catch (IOException e) {
+			return List.of();
+		}
+		return List.copyOf(names);
+	}
+
+	/**
+	 * S147-PACKAGE-FILES：解出 zip 內所有 UTF-8 文字檔，供 security detectors 掃整包內容。
+	 *
+	 * <p>binary / 非 UTF-8 / 單檔超過 1 MiB 的 entry 會被略過；scanner 只做文字分析，不執行任何檔案。
+	 *
+	 * @param zipBytes zip 壓縮檔的位元組陣列
+	 * @return 以路徑為 key、UTF-8 內容為 value 的有序 Map（依 zip 順序）
+	 * @throws IOException 讀取 zip 串流時發生 I/O 錯誤
+	 */
+	public Map<String, String> extractTextFiles(byte[] zipBytes) throws IOException {
+		if (!isZipFile(zipBytes)) {
+			return Map.of();
+		}
+		var files = new LinkedHashMap<String, String>();
+		try (var zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
+			var entry = zis.getNextEntry();
+			while (entry != null) {
+				if (!entry.isDirectory()) {
+					var entryName = entry.getName();
+					var bytes = zis.readNBytes(MAX_TEXT_FILE_BYTES + 1);
+					if (bytes.length <= MAX_TEXT_FILE_BYTES) {
+						decodeUtf8(bytes).ifPresent(content -> files.put(entryName, content));
+					}
+				}
+				entry = zis.getNextEntry();
+			}
+		}
+		return Collections.unmodifiableMap(new LinkedHashMap<>(files));
+	}
+
+	private java.util.Optional<String> decodeUtf8(byte[] bytes) {
+		var decoder = StandardCharsets.UTF_8.newDecoder()
+				.onMalformedInput(CodingErrorAction.REPORT)
+				.onUnmappableCharacter(CodingErrorAction.REPORT);
+		try {
+			return java.util.Optional.of(decoder.decode(ByteBuffer.wrap(bytes)).toString());
+		} catch (CharacterCodingException e) {
+			return java.util.Optional.empty();
+		}
 	}
 
 	/**

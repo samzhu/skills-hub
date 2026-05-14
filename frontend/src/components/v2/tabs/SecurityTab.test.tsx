@@ -13,6 +13,8 @@ const passReport: SecurityReport = {
     secrets: { status: 'PASS', detail: 'No hardcoded secrets' },
     deps:    { status: 'PASS', detail: 'No dependencies' },
   },
+  categories: [],
+  findings: [],
 }
 
 const warnReport: SecurityReport = {

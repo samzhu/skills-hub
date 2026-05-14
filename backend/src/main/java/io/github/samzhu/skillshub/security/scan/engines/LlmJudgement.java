@@ -3,9 +3,11 @@ package io.github.samzhu.skillshub.security.scan.engines;
 import java.util.List;
 
 import io.github.samzhu.skillshub.security.scan.AnalysisOutput;
+import io.github.samzhu.skillshub.security.scan.Confidence;
 import io.github.samzhu.skillshub.security.scan.ScanNotice;
 import io.github.samzhu.skillshub.security.scan.SecurityFinding;
 import io.github.samzhu.skillshub.security.scan.Severity;
+import io.github.samzhu.skillshub.security.scan.SkillIssueCode;
 
 /**
  * LlmJudge 期待 LLM 回傳的結構化 JSON schema —
@@ -31,16 +33,22 @@ public record LlmJudgement(
 	 * LLM 對單一風險的描述 — 一個 RiskClaim 對應 SARIF 中的一筆 result。
 	 *
 	 * @param ruleId   LLM 自訂的規則代碼（如 {@code "OBFUSCATED_INTENT"}），對應 SARIF result.ruleId
+	 * @param issueCode S147 issue code；必須對應 SkillIssueCode enum
 	 * @param severity 嚴重等級（HIGH/MEDIUM/LOW）
 	 * @param message  人類可讀的訊息
+	 * @param remediation 修法建議
+	 * @param confidence 判斷信心
 	 * @param filePath 可選：相對檔案路徑，定位風險來源
 	 * @param line     可選：行號（從 1 起算）
 	 * @param owaspAst 可選：OWASP AST 標籤（如 {@code "AST04"}）
 	 */
 	public record RiskClaim(
 			String ruleId,
+			SkillIssueCode issueCode,
 			Severity severity,
 			String message,
+			String remediation,
+			Confidence confidence,
 			String filePath,
 			Integer line,
 			String owaspAst
@@ -61,8 +69,11 @@ public record LlmJudgement(
 		var findings = safeClaims.stream()
 				.map(c -> new SecurityFinding(
 						c.ruleId(),
+						c.issueCode(),
 						c.severity(),
 						c.message(),
+						c.remediation(),
+						c.confidence(),
 						c.filePath(),
 						c.line(),
 						null,

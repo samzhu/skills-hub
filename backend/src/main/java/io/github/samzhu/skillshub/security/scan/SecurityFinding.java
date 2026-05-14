@@ -14,8 +14,11 @@ package io.github.samzhu.skillshub.security.scan;
  * </ul>
  *
  * @param ruleId    規則代碼，例如 {@code "DANGEROUS_COMMAND_RM_RF"}、{@code "GITHUB_PAT"}
+ * @param issueCode S147 issue code；舊 JSON 可為 {@code null}
  * @param severity  嚴重等級（HIGH/MEDIUM/LOW）
  * @param message   人類可讀的風險說明訊息
+ * @param remediation 修法建議；舊 JSON 可為 {@code null}
+ * @param confidence 判斷信心；舊 JSON 可為 {@code null}
  * @param filePath  發現風險的檔案路徑（相對於 skill zip 根目錄），整體類別為 {@code null}
  * @param line      行號（從 1 起算），整檔類別為 {@code null}
  * @param evidence  觸發匹配的字串（secret 類已遮罩），可為 {@code null}
@@ -28,11 +31,28 @@ package io.github.samzhu.skillshub.security.scan;
  */
 public record SecurityFinding(
 		String ruleId,
+		SkillIssueCode issueCode,
 		Severity severity,
 		String message,
+		String remediation,
+		Confidence confidence,
 		String filePath,
 		Integer line,
 		String evidence,
 		String analyzer,
 		String owaspAst
-) {}
+) {
+
+	/** Legacy constructor — keeps pre-S147 scanners and persisted JSON-compatible tests unchanged. */
+	public SecurityFinding(
+			String ruleId,
+			Severity severity,
+			String message,
+			String filePath,
+			Integer line,
+			String evidence,
+			String analyzer,
+			String owaspAst) {
+		this(ruleId, null, severity, message, null, null, filePath, line, evidence, analyzer, owaspAst);
+	}
+}

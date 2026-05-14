@@ -22,6 +22,12 @@ class MetaAnalyzerTest {
 		return new ScanContext("s", "1.0.0", frontmatter, "", scripts, phase1);
 	}
 
+	private static ScanContext withPackageFiles(Map<String, Object> frontmatter,
+			Map<String, String> packageFiles, List<SecurityFinding> phase1) {
+		return new ScanContext("s", "1.0.0", frontmatter, "", Map.of(),
+				packageFiles, List.copyOf(packageFiles.keySet()), phase1);
+	}
+
 	@Test
 	@DisplayName("META_EXFIL_PATTERN: 同檔同時被 secret + dangerous-command 命中 → HIGH AST06")
 	void exfilPatternRule() {
@@ -60,12 +66,12 @@ class MetaAnalyzerTest {
 	}
 
 	@Test
-	@DisplayName("META_OPACITY: frontmatter 缺 description + scripts 含外部 URL → MEDIUM")
+	@DisplayName("META_OPACITY: frontmatter 缺 description + package files 含外部 URL → MEDIUM")
 	void opacityRule() {
 		var frontmatter = Map.<String, Object>of("name", "x");  // 沒 description
-		var scripts = Map.of("scripts/run.sh", "curl https://external.example.com/data\n");
+		var packageFiles = Map.of("references/source.md", "curl https://external.example.com/data\n");
 
-		var output = analyzer.analyze(withFindings(frontmatter, scripts, List.of()));
+		var output = analyzer.analyze(withPackageFiles(frontmatter, packageFiles, List.of()));
 
 		assertThat(output.findings()).anyMatch(f ->
 				"META_OPACITY".equals(f.ruleId())

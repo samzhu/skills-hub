@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import io.github.samzhu.skillshub.security.scan.ScanNotice;
 import io.github.samzhu.skillshub.security.scan.SecurityAnalyzer;
 import io.github.samzhu.skillshub.security.scan.SecurityFinding;
 import io.github.samzhu.skillshub.security.scan.ScannerAiConfig;
+import io.github.samzhu.skillshub.security.scan.detectors.LlmIssueRule;
 
 /**
  * Phase 2 LLM 引擎 — 接收 Phase 1 的靜態 findings，請 Gemini 對 skill 整體做語意層判斷，
@@ -94,9 +96,16 @@ public class LlmJudge implements SecurityAnalyzer {
 			""";
 
 	private final Optional<ChatClient> chatClient;
+	private final List<LlmIssueRule> issueRules;
 
 	public LlmJudge(@Qualifier("scannerChatClient") Optional<ChatClient> chatClient) {
+		this(chatClient, List.of());
+	}
+
+	@Autowired
+	public LlmJudge(@Qualifier("scannerChatClient") Optional<ChatClient> chatClient, List<LlmIssueRule> issueRules) {
 		this.chatClient = chatClient;
+		this.issueRules = issueRules == null ? List.of() : List.copyOf(issueRules);
 		if (chatClient.isEmpty()) {
 			log.info("LlmJudge initialised in disabled mode (no ChatClient) — analyze() will return empty findings + notice");
 		}
@@ -137,7 +146,7 @@ public class LlmJudge implements SecurityAnalyzer {
 	}
 
 	/**
-	 * 組合 user prompt — 結構化呈現 Phase 1 摘要、frontmatter、SKILL.md、scripts，方便 LLM 推理。
+	 * 組合 user prompt — 結構化呈現 Phase 1 摘要、frontmatter、SKILL.md、package text files，方便 LLM 推理。
 	 * 為了控制 token 用量，content 部分均做長度截斷。
 	 */
 	private String buildUserPrompt(ScanContext ctx) {
@@ -149,20 +158,41 @@ public class LlmJudge implements SecurityAnalyzer {
 						+ ":" + (f.line() == null ? "?" : f.line()))
 				.collect(Collectors.joining(", ", "[", "]"));
 
-		var scriptsBlock = formatScripts(ctx.scripts());
+		var packageFilesBlock = formatPackageFiles(ctx.packageFiles());
 
 		return "Phase 1 findings: " + phase1Summary + "\n"
+				+ formatIssueRules()
 				+ "---FRONTMATTER---\n" + ctx.frontmatter() + "\n"
 				+ "---SKILL.MD---\n" + truncate(ctx.skillMd(), SKILL_MD_LIMIT) + "\n"
-				+ "---SCRIPTS---\n" + scriptsBlock;
+				+ "---PACKAGE FILES---\n" + packageFilesBlock;
 	}
 
 	/**
-	 * 把 scripts map 序列化為 LLM 可讀格式，每個檔案個別截斷，整體再次截斷以避免 prompt 爆量。
+	 * S147-T01：把 semantic issue definitions 放進同一次 LLM prompt，避免每個 issue code 各打一通。
 	 */
-	private String formatScripts(Map<String, String> scripts) {
+	private String formatIssueRules() {
+		if (issueRules.isEmpty()) {
+			return "";
+		}
+		var rules = issueRules.stream()
+				.map(rule -> "- " + rule.issueCode().code()
+						+ " (" + rule.category().label() + "): " + rule.rulePrompt()
+						+ "\n  Positive example: " + rule.positiveExample()
+						+ "\n  Negative example: " + rule.negativeExample())
+				.collect(Collectors.joining("\n"));
+		return """
+				---REGISTERED ISSUE-CODE RULES---
+				Only return issueCode values from the registered list.
+				%s
+				""".formatted(rules);
+	}
+
+	/**
+	 * 把 package file map 序列化為 LLM 可讀格式，每個檔案個別截斷，整體再次截斷以避免 prompt 爆量。
+	 */
+	private String formatPackageFiles(Map<String, String> packageFiles) {
 		var combined = new StringBuilder();
-		for (Map.Entry<String, String> e : scripts.entrySet()) {
+		for (Map.Entry<String, String> e : packageFiles.entrySet()) {
 			combined.append("=== ").append(e.getKey()).append(" ===\n");
 			combined.append(truncate(e.getValue(), SCRIPT_LIMIT)).append("\n");
 			if (combined.length() > SCRIPTS_TOTAL_LIMIT) {

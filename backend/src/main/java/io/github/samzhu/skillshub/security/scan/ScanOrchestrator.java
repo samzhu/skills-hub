@@ -158,18 +158,35 @@ class ScanOrchestrator {
 		}
 	}
 
-	/** 從 storage 下載 zip + 解壓出 SKILL.md / scripts，組成初始 ScanContext。 */
+	/** 從 storage 下載 zip + 解壓出 SKILL.md / scripts / package text files，組成初始 ScanContext。 */
 	private ScanContext buildContext(SkillVersionPublishedEvent event) throws Exception {
 		var zipBytes = storageService.download(event.storagePath());
 		var skillMd = packageService.extractSkillMd(zipBytes);
 		var scripts = packageService.extractScripts(zipBytes);
+		var packageFiles = packageService.extractTextFiles(zipBytes);
+		var packagePaths = packageService.listEntryNames(zipBytes);
 		return new ScanContext(
 				event.aggregateId(),
 				event.version(),
 				event.frontmatter(),
 				skillMd == null ? "" : skillMd,
 				scripts == null ? Map.of() : scripts,
+				packageFiles == null || packageFiles.isEmpty()
+						? fallbackPackageFiles(skillMd, scripts)
+						: packageFiles,
+				packagePaths,
 				List.of());
+	}
+
+	private Map<String, String> fallbackPackageFiles(String skillMd, Map<String, String> scripts) {
+		var files = new LinkedHashMap<String, String>();
+		if (skillMd != null && !skillMd.isEmpty()) {
+			files.put("SKILL.md", skillMd);
+		}
+		if (scripts != null) {
+			files.putAll(scripts);
+		}
+		return Map.copyOf(files);
 	}
 
 	private List<SecurityAnalyzer> byPhase(Phase phase) {

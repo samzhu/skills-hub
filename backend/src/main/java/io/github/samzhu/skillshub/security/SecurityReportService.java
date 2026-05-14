@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 
 import io.github.samzhu.skillshub.security.SecurityCategoryMapper.Category;
 import io.github.samzhu.skillshub.security.SecurityCategoryMapper.CheckStatus;
+import io.github.samzhu.skillshub.security.scan.IssueCategory;
 import io.github.samzhu.skillshub.security.scan.SecurityFinding;
+import io.github.samzhu.skillshub.security.scan.Severity;
 import io.github.samzhu.skillshub.shared.api.SecurityNotScannedException;
 import io.github.samzhu.skillshub.skill.domain.SkillVersion;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
@@ -71,6 +73,8 @@ public class SecurityReportService {
                 : version.getPublishedAt();
 
         Map<String, SecurityReportResponse.CheckDetail> checks = buildChecks(partitioned, categoryStatuses);
+        List<SecurityReportResponse.CategorySummary> categories = buildCategories(findings);
+        List<SecurityReportResponse.FindingSummary> findingSummaries = buildFindingSummaries(findings);
 
         return new SecurityReportResponse(
                 skillId,
@@ -80,7 +84,9 @@ public class SecurityReportService {
                 ENGINE_VERSION,
                 RULESET_VERSION,
                 overall,
-                checks);
+                checks,
+                categories,
+                findingSummaries);
     }
 
     private SkillVersion resolveVersion(String skillId, String versionId) {
@@ -114,5 +120,51 @@ public class SecurityReportService {
                     new SecurityReportResponse.CheckDetail(status.name(), detail));
         }
         return checks;
+    }
+
+    private List<SecurityReportResponse.CategorySummary> buildCategories(List<SecurityFinding> findings) {
+        Map<IssueCategory, List<SecurityFinding>> byCategory = new java.util.EnumMap<>(IssueCategory.class);
+        for (IssueCategory category : IssueCategory.values()) {
+            byCategory.put(category, new java.util.ArrayList<>());
+        }
+        for (SecurityFinding finding : findings) {
+            IssueCategory category = mapper.categoryFor(finding);
+            if (category != null) {
+                byCategory.get(category).add(finding);
+            }
+        }
+        return byCategory.entrySet().stream()
+                .map(entry -> {
+                    List<SecurityFinding> categoryFindings = entry.getValue();
+                    return new SecurityReportResponse.CategorySummary(
+                            entry.getKey().key(),
+                            entry.getKey().label(),
+                            mapper.computeStatus(categoryFindings).name(),
+                            categoryFindings.size(),
+                            highestSeverity(categoryFindings));
+                })
+                .toList();
+    }
+
+    private List<SecurityReportResponse.FindingSummary> buildFindingSummaries(List<SecurityFinding> findings) {
+        return findings.stream()
+                .map(finding -> new SecurityReportResponse.FindingSummary(
+                        finding.ruleId(),
+                        finding.issueCode() == null ? null : finding.issueCode().code(),
+                        finding.severity() == null ? null : finding.severity().name(),
+                        finding.message(),
+                        finding.remediation(),
+                        finding.confidence() == null ? null : finding.confidence().name(),
+                        finding.filePath(),
+                        finding.line(),
+                        finding.evidence()))
+                .toList();
+    }
+
+    private String highestSeverity(List<SecurityFinding> findings) {
+        if (findings == null || findings.isEmpty()) return null;
+        if (findings.stream().anyMatch(f -> f.severity() == Severity.HIGH)) return Severity.HIGH.name();
+        if (findings.stream().anyMatch(f -> f.severity() == Severity.MEDIUM)) return Severity.MEDIUM.name();
+        return Severity.LOW.name();
     }
 }

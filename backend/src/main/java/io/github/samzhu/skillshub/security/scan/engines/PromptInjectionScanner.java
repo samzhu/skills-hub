@@ -2,7 +2,6 @@ package io.github.samzhu.skillshub.security.scan.engines;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -32,7 +31,6 @@ import io.github.samzhu.skillshub.security.scan.Severity;
 		matchIfMissing = true)
 public class PromptInjectionScanner implements SecurityAnalyzer {
 
-	private static final String SKILL_MD_PATH = "SKILL.md";
 	private static final String OWASP_AST01 = "AST01";
 
 	/**
@@ -131,13 +129,7 @@ public class PromptInjectionScanner implements SecurityAnalyzer {
 	public AnalysisOutput analyze(ScanContext context) {
 		var findings = new ArrayList<SecurityFinding>();
 
-		// SKILL.md 全文（含 frontmatter delimiter）
-		if (context.skillMd() != null && !context.skillMd().isEmpty()) {
-			scanFile(SKILL_MD_PATH, context.skillMd(), findings);
-		}
-
-		// scripts/* — agent 可執行腳本，同樣需掃
-		for (Map.Entry<String, String> entry : context.scripts().entrySet()) {
+		for (var entry : context.packageFiles().entrySet()) {
 			scanFile(entry.getKey(), entry.getValue(), findings);
 		}
 

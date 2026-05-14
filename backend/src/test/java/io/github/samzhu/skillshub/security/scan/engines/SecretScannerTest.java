@@ -29,6 +29,11 @@ class SecretScannerTest {
 		return new ScanContext("skill-1", "1.0.0", Map.of(), skillMd, scripts, List.of());
 	}
 
+	private static ScanContext ctxFiles(Map<String, String> packageFiles) {
+		return new ScanContext("skill-1", "1.0.0", Map.of(), "# SKILL.md",
+				Map.of(), packageFiles, List.copyOf(packageFiles.keySet()), List.of());
+	}
+
 	@Test
 	@DisplayName("AC-4.1: GitHub PAT 在 scripts/deploy.sh 偵測 + evidence 已遮罩")
 	@Tag("AC-4")
@@ -118,6 +123,18 @@ class SecretScannerTest {
 		var output = scanner.analyze(ctx("# Hello\nThis is a clean readme.\n",
 				Map.of("scripts/run.sh", "#!/bin/bash\necho hello\n")));
 		assertThat(output.findings()).isEmpty();
+	}
+
+	@Test
+	@DisplayName("AC-S147-PACKAGE-FILES: secret scanner scans non-script package files")
+	@Tag("AC-S147-PACKAGE-FILES")
+	void scansNonScriptPackageFiles() {
+		var key = "AIza" + "x".repeat(35);
+		var output = scanner.analyze(ctxFiles(Map.of("references/config.md", "GOOGLE_API_KEY=" + key)));
+
+		assertThat(output.findings())
+				.anyMatch(f -> "GOOGLE_API_KEY".equals(f.ruleId())
+						&& "references/config.md".equals(f.filePath()));
 	}
 
 	@Test

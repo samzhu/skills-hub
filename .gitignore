@@ -21,6 +21,7 @@ docs/grimo/quality-audit-report.md
 
 # Git worktrees（per using-git-worktrees skill；路徑 policy: .worktrees/，避開 .claude/worktrees/）
 .worktrees/
+poc/
 
 # Local agent instructions/runtime artifacts
 .agents/

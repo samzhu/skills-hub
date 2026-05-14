@@ -7,9 +7,31 @@ export interface SecurityCheck {
   detail: string
 }
 
+/** S147-T01 — issue-code category summary returned by the new scanner contract. */
+export interface SecurityCategorySummary {
+  key: string
+  label: string
+  status: 'PASS' | 'WARN' | 'FAIL'
+  findingCount: number
+  highestSeverity: 'HIGH' | 'MEDIUM' | 'LOW' | null
+}
+
+/** S147-T01 — issue-code finding detail returned by the new scanner contract. */
+export interface SecurityFindingSummary {
+  ruleId: string
+  issueCode: string | null
+  severity: 'HIGH' | 'MEDIUM' | 'LOW' | null
+  message: string
+  remediation: string | null
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW' | null
+  filePath: string | null
+  line: number | null
+  evidence: string | null
+}
+
 /**
- * S142b §4.4 — GET /api/v1/skills/{id}/security-report 的回應 shape。
- * 4 quads: shell / paths / secrets / deps。
+ * S147-T01 — GET /api/v1/skills/{id}/security-report 的回應 shape。
+ * 新版 scanner 以 categories/findings 為主；checks 保留給既有 UI 相容。
  */
 export interface SecurityReport {
   skillId: string
@@ -26,6 +48,8 @@ export interface SecurityReport {
     secrets: SecurityCheck
     deps: SecurityCheck
   }
+  categories: SecurityCategorySummary[]
+  findings: SecurityFindingSummary[]
 }
 
 /**

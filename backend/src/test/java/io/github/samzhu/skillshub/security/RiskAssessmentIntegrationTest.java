@@ -165,6 +165,12 @@ class RiskAssessmentIntegrationTest {
 					assertThat(findings).hasSizeGreaterThanOrEqualTo(2);
 					assertThat(findings).extracting(d -> (String) d.get("analyzer"))
 							.contains("pattern", "secret");
+					assertThat(findings).anySatisfy(finding -> {
+						assertThat(finding.get("analyzer")).isEqualTo("W008");
+						assertThat(finding.get("issueCode")).isEqualTo("W008");
+						assertThat(finding.get("remediation")).isNotNull();
+						assertThat(finding.get("confidence")).isEqualTo("HIGH");
+					});
 					assertThat(findings).extracting(d -> (String) d.get("ruleId"))
 							.anyMatch(s -> s.startsWith("DANGEROUS_COMMAND") || s.startsWith("PIPE_TO_SHELL"));
 					assertThat(findings).extracting(d -> (String) d.get("ruleId"))
@@ -178,21 +184,15 @@ class RiskAssessmentIntegrationTest {
 							.isEqualTo("https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.json");
 
 					// runs[]：每個啟用引擎一個 run。
-					// S157 後 llm-judge 改為 always-registered（不論 api-key 是否存在）；缺 api-key
-					// 走 graceful skip 路徑：emit 一筆 toolExecutionNotification「LLM judge disabled
-					// (engine off or api-key absent)」+ 0 findings。故 LAB / unit test 環境下出 8 engines：
-					//   pattern, secret, metadata, meta（基礎四 engine）
-					//   dep-vuln, prompt-injection, resource-dos（後續擴充）
-					//   llm-judge（S157 後 always-present，無 api-key 時 0 findings + skip notice）
 					var runs = (List<Map<String, Object>>) sarif.get("runs");
-					assertThat(runs).hasSize(8);
 					assertThat(runs)
 							.extracting(r -> ((Map<String, Object>) r.get("tool")).get("driver"))
 							.extracting(d -> (String) ((Map<String, Object>) d).get("name"))
 							.containsExactlyInAnyOrder(
 									"pattern", "secret", "metadata", "meta",
 									"dep-vuln", "prompt-injection", "resource-dos",
-									"llm-judge");
+									"llm-judge",
+									"W008", "E006", "W014", "E004", "E005", "W013", "W012");
 
 					// scannedAt 是合法時間戳（JSONB 序列化為 ISO-8601 字串）
 					assertThat(riskAssessment.get("scannedAt"))

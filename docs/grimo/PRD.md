@@ -130,18 +130,18 @@ Scenario: 純 markdown skill 的風險評估
   Then 標記為「低風險」
   And 記錄評估結果（掃描項目 + 通過/未通過）
 
-Scenario: 含危險指令的 scripts
-  Given skill 的 scripts/ 中含有 `rm -rf`、`curl | bash`、或存取敏感路徑的指令
+Scenario: package 內含危險指令
+  Given skill zip 內任一文字檔含有 `rm -rf`、`curl | bash`、或存取敏感路徑的指令
   When 風險評估引擎掃描
   Then 標記為「高風險」
-  And 列出具體的危險項目及所在檔案/行號
+  And 列出 issue code、具體危險項目、所在檔案/行號與修法建議
   And skill 進入「待審核」狀態
 
-Scenario: 含外部依賴的 scripts
-  Given skill 的 scripts/ 中下載或引用外部 URL
+Scenario: 含外部依賴的 package
+  Given skill zip 內任一文字檔下載或引用外部 URL
   When 風險評估引擎掃描
-  Then 列出所有外部依賴 URL
-  And 根據依賴數量和來源信任度計算風險分數
+  Then 列出可疑下載網址或無法驗證的外部依賴 issue
+  And 根據 issue severity 計算風險等級
 ```
 
 ### P4 — 一鍵安裝（Web 下載） ✅ (S006)
@@ -453,14 +453,16 @@ Scenario: 全部已讀 + 偏好設定
 
 | 等級 | 條件 | 處理方式 |
 |------|------|----------|
-| **低風險** | 純 SKILL.md，無 scripts/、無外部引用 | 自動通過，直接上架 |
-| **中風險** | 含 scripts/ 但無危險模式、有限外部依賴 | 自動上架，標記風險等級 |
-| **高風險** | scripts/ 含危險指令（rm -rf、curl\|bash、敏感路徑存取）或大量外部依賴 | 標記高風險，進入待審核（MVP 先標記，人工審核流程在 Backlog） |
+| **低風險** | package 內無危險 issue；或只有低嚴重度 finding | 自動通過，直接上架 |
+| **中風險** | package 內有中嚴重度 issue，例如有限外部依賴或可疑資料流 | 自動上架，標記風險等級 |
+| **高風險** | package 內任一文字檔含高嚴重度 issue（prompt injection、惡意程式碼組合、系統服務修改、寫死 secret、敏感資料外送等） | 標記高風險，進入待審核（MVP 先標記，人工審核流程在 Backlog） |
 
 ### 自動掃描項目
+- zip 內所有 UTF-8 文字檔掃描（不只 `SKILL.md` 或 `scripts/`）
+- issue-code finding（E004/E005/E006/W007/W008/W009/W011/W012/W013/W014/W017/W018/W019/W020）
 - 危險 shell 指令檢測（rm -rf、chmod 777、curl\|bash 等）
 - 敏感路徑存取（/etc/、~/.ssh/、~/.aws/ 等）
-- 外部 URL 依賴列舉
+- 可疑下載網址與無法驗證的外部依賴
 - 敏感資料模式（API key、token、password patterns）
 - 檔案大小與數量異常檢測
 

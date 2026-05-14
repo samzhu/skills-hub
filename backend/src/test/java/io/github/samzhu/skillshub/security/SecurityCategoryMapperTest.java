@@ -5,10 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import io.github.samzhu.skillshub.security.SecurityCategoryMapper.Category;
 import io.github.samzhu.skillshub.security.SecurityCategoryMapper.CheckStatus;
+import io.github.samzhu.skillshub.security.scan.Confidence;
+import io.github.samzhu.skillshub.security.scan.IssueCategory;
+import io.github.samzhu.skillshub.security.scan.SkillIssueCode;
 import io.github.samzhu.skillshub.security.scan.SecurityFinding;
 import io.github.samzhu.skillshub.security.scan.Severity;
 
@@ -76,6 +80,26 @@ class SecurityCategoryMapperTest {
         assertThat(result.get(Category.PATHS)).isEmpty();
         assertThat(result.get(Category.SECRETS)).isEmpty();
         assertThat(result.get(Category.DEPS)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-S147-1: issueCode maps to dynamic category before legacy fallback")
+    void issueCodeMapsBeforeLegacyFallback() {
+        var f = new SecurityFinding(
+                "W007_REVEAL_TOKEN",
+                SkillIssueCode.W007,
+                Severity.HIGH,
+                "Skill asks the agent to print raw API tokens.",
+                "Never print raw credentials.",
+                Confidence.HIGH,
+                "SKILL.md",
+                9,
+                "print API key",
+                "llm-judge",
+                null);
+
+        assertThat(mapper.categoryFor(f)).isEqualTo(IssueCategory.CREDENTIALS);
+        assertThat(mapper.categoryFor(f).label()).isEqualTo("Credentials");
     }
 
     // ── computeStatus ────────────────────────────────────────────────────────

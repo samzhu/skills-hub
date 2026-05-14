@@ -44,6 +44,8 @@ const baseReport: SecurityReport = {
     secrets: { status: 'PASS', detail: 'OK' },
     deps:    { status: 'PASS', detail: 'OK' },
   },
+  categories: [],
+  findings: [],
 }
 
 function renderSidebar(activeTab = 'overview', overrides: Partial<Parameters<typeof Sidebar>[0]> = {}) {

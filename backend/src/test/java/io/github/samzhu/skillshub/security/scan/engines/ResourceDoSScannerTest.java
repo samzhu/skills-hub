@@ -21,6 +21,11 @@ class ResourceDoSScannerTest {
 		return new ScanContext("skill-1", "1.0.0", Map.of(), skillMd, scripts, List.of());
 	}
 
+	private static ScanContext ctxFiles(Map<String, String> packageFiles) {
+		return new ScanContext("skill-1", "1.0.0", Map.of(), "# SKILL.md",
+				Map.of(), packageFiles, List.copyOf(packageFiles.keySet()), List.of());
+	}
+
 	// ─────────────────────────────────────────────────────────────────────────
 	// HIGH patterns
 	// ─────────────────────────────────────────────────────────────────────────
@@ -151,6 +156,17 @@ class ResourceDoSScannerTest {
 
 		assertThat(output.findings()).isEmpty();
 		assertThat(output.notices()).isEmpty();
+	}
+
+	@Test
+	@DisplayName("AC-S147-PACKAGE-FILES: resource DoS scanner scans non-script package files")
+	@Tag("AC-S147-PACKAGE-FILES")
+	void scansNonScriptPackageFiles() {
+		var output = scanner.analyze(ctxFiles(Map.of("assets/loop.txt", "sleep infinity\n")));
+
+		assertThat(output.findings())
+				.anyMatch(f -> "SLEEP_OVERFLOW".equals(f.ruleId())
+						&& "assets/loop.txt".equals(f.filePath()));
 	}
 
 	// ─────────────────────────────────────────────────────────────────────────

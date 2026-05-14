@@ -26,7 +26,7 @@ import io.github.samzhu.skillshub.security.scan.Severity;
 /**
  * S099e3 — OWASP LLM05 Supply Chain Vulnerabilities 依賴漏洞掃描引擎。
  *
- * <p>解析 skill 腳本目錄中的 {@code requirements.txt}（pinned {@code ==}）與
+ * <p>解析 skill zip 內所有文字檔中的 {@code requirements.txt}（pinned {@code ==}）與
  * {@code package.json}（dependencies + devDependencies），批次查詢
  * <a href="https://api.osv.dev/v1/querybatch">OSV.dev /v1/querybatch</a>（免費、無 API key）；
  * 有漏洞的套件輸出 {@link SecurityFinding}，CVSS 分數映射 HIGH/MEDIUM/LOW。
@@ -75,7 +75,7 @@ public class DependencyVulnScanner implements SecurityAnalyzer {
 		// collect (purl → filePath) from all supported manifest files
 		var purlToFile = new LinkedHashMap<String, String>();
 
-		for (Map.Entry<String, String> entry : context.scripts().entrySet()) {
+		for (Map.Entry<String, String> entry : context.packageFiles().entrySet()) {
 			var path = entry.getKey();
 			var content = entry.getValue();
 			if (path.endsWith("requirements.txt")) {
