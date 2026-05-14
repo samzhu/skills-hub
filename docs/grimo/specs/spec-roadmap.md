@@ -77,7 +77,7 @@
 |--------|------|------|------|------|
 | S143 | `/docs` canonical entry → `/docs/overview`（含 nav 對齊）| XS(2) | — | ✅ v4.23.0 — 4/4 vitest PASS（Navigate replace + nav 對齊） |
 | S146 | 掃描器補強 — GitHub Actions Unpinned Dependency 偵測（`@master/@main/@HEAD`） | XS(3) | S147 research | ⛔ cancelled 2026-05-13 — 不做；移除 spec file |
-| S147 | 掃描器語意分析缺口研究（W011/E004/W009/W013 vs. Snyk agent-scan） | META(research) | — | ⏸ deferred — 暫緩，等研究啟動時機 |
+| S147 | 掃描器語意分析缺口研究（Snyk agent-scan issue-code adoption + detail security tab） | META(research) → M(6 tasks) | — | ⏳ Plan — POC first；T00/T03 確認後才進 production implementation |
 | S148 | Bug — GraalVM native image AOT reflection 涵蓋不足（JudgeResponse 部分） | S(5) | — | ✅ v4.25.0 — 4/4 JudgeResponse deserialize PASS（@RegisterReflectionForBinding + catch(Error) 防 outbox 無限重試） |
 | S148b | GraalVM AOT 驗證機制 — POC reject H1（SkillshubProperties 無 bug）；`--exact-reachability-metadata` flag 已 ship；architecture.md 文件化 | XS(3) | — | ✅ v4.46.0 — architecture.md 加 GraalVM AOT Strategy 段（5 子段 + reviewer 4 自檢）|
 | S148f | cyclonedx-bom 3.2.4 + nativeCompile 衝突修復 — 升 plugin 4.x / 換 SPDX / 隔離 task graph（POC 決定）；ship native production deploy 才會擋到 | XS(3) — POC 結果可漲 S | 上游修復 ＋ SBOM 消費者 ＋ native deploy 任一觸發 | 🗄️ archived 2026-05-13 — 原 ⏸ deferred 2026-05-10（POC H1 reject：cyclonedx 無 4.x；上游 issue #821 open 無修復）；spec file 移至 `specs/archive/`，reactivate 觸發條件不變 |
