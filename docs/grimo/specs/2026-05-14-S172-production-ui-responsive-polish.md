@@ -1,6 +1,6 @@
 # S172 — Production UI Responsive Polish
 
-Status: ⏳ Plan  
+Status: ✅ Done — local verification + production smoke PASS 2026-05-15；ready for `$verifying-quality` / `$shipping-release`  
 Date: 2026-05-14  
 Owner: Codex  
 Scope: Frontend UI / CSS polish only
@@ -414,4 +414,128 @@ POC: not required — S172 uses existing frontend components, React state, Tailw
 
 S172 is a browser/UI spec, so final verification must include Playwright. The E2E task uses the existing `e2e/tests/_fixtures.ts` seed helpers and `profiles.single(request)` pattern from S140; it must not rely on the production-only skill UUID observed during the Chrome audit. Missing stable labels or roles discovered while writing the E2E file become frontend fixes inside T01-T05, not brittle CSS selectors.
 
-Next: `$implementing-task S172` starts with T01.
+Next: `$verifying-quality S172` can add an independent QA section if required; then `$shipping-release` can archive S172 and update changelog/roadmap shipped rows.
+
+## 7. Implementation Results
+
+### 7.1 Task Results
+
+| Task | Result | Evidence |
+|---|---|---|
+| T01 | PASS | `SkillDetailPage` switches to one-column layout below `lg`; `Sidebar` uses stacked top divider below `lg`. |
+| T02 | PASS | `AppShell` compact nav exposes all 9 routes on narrow screens and closes after link click. |
+| T03 | PASS | `/browse` 0-result suggestions render as real link/button actions; old「切換到語意搜尋模式」copy removed. |
+| T04 | PASS | `/my-skills` lifecycle tabs use dark segmented styling; inactive tabs no longer include `bg-white`. |
+| T05 | PASS | `CreateCollectionModal` uses my published skill dropdown, add/remove selected list, and submits `skillIds` internally. |
+| T06 | PASS | `OverviewPage` tablet grid and Playwright `@responsive-polish` route checks passed. |
+
+Temporary task files were consolidated into this section and are removed after this update.
+
+### 7.2 Local Verification
+
+Run at `2026-05-14T16:07:59Z`:
+
+```text
+./scripts/verify-all.sh
+V01=PASS
+V02=INFO — LINE coverage = 85.8% (covered=4626 / total=5389)
+V03=PASS
+V04=PASS
+V05=PASS
+V06=PASS
+V07=PASS
+V08a=PASS
+V08b=PASS
+Verdict: ✅ all CRITICAL passed; exit=0
+```
+
+Targeted evidence already recorded by task files:
+
+```text
+cd frontend && npm test -- OverviewPage.test.tsx
+cd frontend && npm test -- MySkillsPage.test.tsx HeroMetricsRow.test.tsx SkillDetailPage.test.tsx Sidebar.test.tsx CreateCollectionModal.test.tsx
+cd e2e && npx playwright test --grep @responsive-polish
+```
+
+Observed task results:
+
+- `OverviewPage.test.tsx` PASS.
+- 8 frontend component test files / 64 tests PASS.
+- `@responsive-polish` Playwright suite PASS: 3 tests across 390, 768, 900, and 1440 widths for `/`, `/browse`, `/collections`, `/my-skills`, `/publish`, `/docs/overview`, and `/skills/{id}`.
+
+### 7.3 Production Smoke Evidence
+
+Chrome opened `https://skillshub-644359853825.asia-east1.run.app/` and audited `/browse`, `/collections`, `/my-skills`, `/publish`, and `/docs/overview` on the live Cloud Run service.
+
+Observed live UI:
+
+| URL | Result |
+|---|---|
+| `/` | Homepage rendered; console error/warn list was empty. |
+| `/browse` | Empty registry state rendered: `尚未有任何技能` and `發布第一個技能`; console error/warn list was empty. |
+| `/collections` | Empty collections state rendered; clicking「建立集合」opened the new modal with `新增技能`, `集合只能加入已發布技能`, `前往發布技能`, and `已選技能 0`; no `技能 ID 清單`, `UUID`, or `sk-1` text remained. |
+| `/my-skills` | Signed-in user state rendered metrics and lifecycle tabs: `全部0 / 已發布0 / 草稿0 / 已停用0 / 訂閱0`; console error/warn list was empty. |
+| `/publish` | Upload form rendered with `上傳檔案 / 貼上文本`, visibility controls, and publish button; console error/warn list was empty. |
+| `/docs/overview` | Docs overview rendered; console error/warn list was empty. |
+
+Production data caveat: live DB currently has `0 個技能 · 0 位發佈者`, so this smoke run could not exercise a real skill detail page, download button, or collection picker with selectable skill rows. Local Playwright `@responsive-polish` covers seeded `/skills/{id}` and modal selected-skill flows.
+
+### 7.4 Cloud Run / Cloud Build Evidence
+
+Commands run:
+
+```text
+gcloud run revisions list --service=skillshub --region=asia-east1 --project=cfh-vibe-lab --format=json --limit=5
+gcloud builds list --project=cfh-vibe-lab --limit=5 --format=json
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="skillshub" AND severity>=ERROR' --project=cfh-vibe-lab --freshness=2h --limit=20 --format=json
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="skillshub" AND resource.labels.revision_name="skillshub-00023-j5q" AND severity>=ERROR' --project=cfh-vibe-lab --freshness=90m --limit=20 --format=json
+```
+
+Evidence:
+
+| Item | Result |
+|---|---|
+| Latest Cloud Run revision | `skillshub-00023-j5q`, Ready=True, Active=True, created `2026-05-14T16:02:14Z`, healthy at `2026-05-14T16:02:42Z`. |
+| Latest app image | `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub@sha256:606de95e75c279f86b1638bfd61c0421691ca0079dea2d0625403789142d6a2d`. |
+| Latest Cloud Build | `f920b89a-dfc7-4daf-8786-bf0c5c888af8`, status `SUCCESS`, image tag `20260514-155200`, finished `2026-05-14T16:01:24Z`. |
+| Latest revision error logs | `[]` for `skillshub-00023-j5q` with `severity>=ERROR` over the last 90 minutes. |
+| Requests from this smoke run | `/collections`, `/api/v1/me`, `/api/v1/skills`, `/api/v1/notifications/unread-count` returned HTTP 200 in Cloud Run request logs. |
+
+The 2-hour service-wide error query still returned older `skillshub-00022-khz` entries before the `00023` deployment:
+
+- `LlmJudgement` native reflection error at `2026-05-14T15:44-15:46Z`.
+- `relation "shedlock" does not exist` at `2026-05-14T16:02:09Z` on retired revision `00022-khz`.
+
+Those errors did not appear on latest revision `00023-j5q` after deploy; latest `00023` logs show scheduled publication checks and user/API requests succeeding.
+
+### 7.5 AC Results
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC-S172-1 | PASS | Local `@responsive-polish` seeded `/skills/{id}` no-overflow checks passed. |
+| AC-S172-2 | PASS | `SkillDetailPage.test.tsx` + `Sidebar.test.tsx`; component classes show stacked sidebar below `lg`. |
+| AC-S172-3 | PASS | `AppShell.test.tsx`; compact nav exposes all route links. |
+| AC-S172-4 | PASS | `@responsive-polish` audited routes no-overflow checks passed. |
+| AC-S172-5 | PASS | `EmptyState.test.tsx`, `SkillCardGrid.test.tsx`, and live `/browse` no stale semantic-mode row. |
+| AC-S172-6 | PASS | `SkillCardGrid.test.tsx`; clear-query action exists and semantic-mode promise removed. |
+| AC-S172-7 | PASS | `OverviewPage.test.tsx` and live `/docs/overview` rendered without console errors. |
+| AC-S172-8 | PASS | `CreateCollectionModal.test.tsx`; live modal has title/copy/close-capable dialog shell. |
+| AC-S172-9 | PASS | Local modal tests prove dropdown add flow with seeded skills. |
+| AC-S172-10 | PASS | Live modal shows no-skill state `集合只能加入已發布技能` and `前往發布技能`; local tests assert disabled submit. |
+| AC-S172-11 | PASS | Local modal tests prove remove and reselect behavior. |
+| AC-S172-12 | PASS | Local modal tests assert `createCollection({ skillIds })` payload and no UUID textarea. |
+| AC-S172-13 | PASS | Local modal viewport classes + `@responsive-polish` dialog fit checks passed. |
+| AC-S172-14 | PASS | `MySkillsPage.test.tsx`; live `/my-skills` rendered segmented tabs with no console errors. |
+| AC-S172-15 | PASS | `MySkillsPage.test.tsx` focus/filter behavior + `@responsive-polish` mobile tab checks passed. |
+| AC-S172-16 | PASS | `cd e2e && npx playwright test --grep @responsive-polish` passed 3 tests. |
+
+### 7.6 QA Review
+
+Current tick re-ran the deterministic repository verification and production smoke checks directly. A separate `$verifying-quality S172` independent review is still appropriate before tagging/changelog/archive if the release process requires a fresh reviewer section, but no failing local command or latest-revision production error remains.
+
+### 7.7 Pending Verification
+
+| Item | Status | Command / next action |
+|---|---|---|
+| Live skill detail with non-empty production data | POST-RELEASE | Upload or seed one published skill in LAB, then revisit `/skills/{id}` in Chrome and confirm no body horizontal overflow. |
+| Independent QA section | Optional before ship | Run `$verifying-quality S172` if the release gate requires a separate QA reviewer note. |
