@@ -1,5 +1,32 @@
 # Changelog
 
+## [v4.61.0] — S172 Production UI responsive polish（2026-05-15）
+
+### Fixed
+
+- **Skill detail responsive layout** — `/skills/{id}` 在 390px、768px、900px、1440px 會改成可讀的單欄或雙欄版面，不再讓安裝卡和 sidebar 被推到畫面右側外面。
+- **Browse empty-state actions** — `/browse` 搜尋 0 筆時移除沒有實際動作的「切換到語意搜尋模式」建議，留下可點擊、可鍵盤操作的清除搜尋與導向動作。
+- **Docs tablet readability** — `/docs/overview` 在 tablet 寬度使用更保守的卡片欄數，避免 `NONE/LOW/MEDIUM/HIGH` 等文字被壓得難讀。
+
+### Changed
+
+- **AppShell compact navigation** — mobile/tablet header 提供 compact menu，9 個主要路由仍可進入，但不再擠成同一列。
+- **Collection create dialog** — 「建立集合」改成從「我的技能」下拉選單新增技能、可逐項移除，送出時才把選到的 skill id 傳給 `createCollection`；UI 不再要求使用者貼 UUID。
+- **My Skills lifecycle tabs** — `/my-skills` lifecycle filter 改成深色 segmented tabs，inactive tabs 不再使用 `bg-white`。
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 85.8%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`exit=0`。
+- S172 targeted evidence：8 個 frontend component test files / 64 tests PASS；`cd e2e && npx playwright test --grep @responsive-polish` PASS，覆蓋 `/`、`/browse`、`/collections`、`/my-skills`、`/publish`、`/docs/overview`、`/skills/{id}` 的 390/768/900/1440 viewport no-overflow checks。
+- Production smoke：latest revision `skillshub-00023-j5q` 上 `/`、`/browse`、`/collections`、`/my-skills`、`/publish`、`/docs/overview` 皆 rendered；console error/warn empty；latest revision `severity>=ERROR` query 為空。
+- Post-release follow-up：production DB 目前是 `0 個技能 · 0 位發佈者`；等 LAB 有一筆 published skill 後，重新開 `/skills/{id}` 確認 live detail page 也沒有 body horizontal overflow。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-14-S172-production-ui-responsive-polish.md` → `docs/grimo/specs/archive/2026-05-14-S172-production-ui-responsive-polish.md`
+- `docs/grimo/tasks/2026-05-14-S172-*.md` 已刪除。
+- Final size re-score：S(9) → S(9)，原因是 implementation scope 與原先 6 個 UI task plan 對齊，沒有新增 backend/data migration 風險。
+
 ## [v4.60.0] — S173 Production upload post-publish failures（2026-05-14）
 
 ### Fixed

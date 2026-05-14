@@ -1,6 +1,6 @@
 # S172 — Production UI Responsive Polish
 
-Status: ✅ QA PASS — local verification + production smoke PASS 2026-05-15；ready for `$shipping-release`  
+Status: ✅ Shipped — v4.61.0；local verification + production smoke PASS 2026-05-15
 Date: 2026-05-14  
 Owner: Codex  
 Scope: Frontend UI / CSS polish only
@@ -556,4 +556,35 @@ Scope note: this review was performed inline in the current Codex loop. Tool pol
 | Item | Status | Command / next action |
 |---|---|---|
 | Live skill detail with non-empty production data | POST-RELEASE | Upload or seed one published skill in LAB, then revisit `/skills/{id}` in Chrome and confirm no body horizontal overflow. |
-| Release archive / changelog | NEXT | Run `$shipping-release S172` to move the spec to archive, append changelog, and update roadmap shipped rows. |
+
+### 7.8 Shipping Release Gate
+
+Run at `2026-05-14T17:05:10Z` to `2026-05-14T17:17:23Z`:
+
+```text
+./scripts/verify-all.sh
+V01=PASS
+V02=INFO — LINE coverage = 85.8% (covered=4624 / total=5389)
+V03=PASS
+V04=PASS
+V05=PASS
+V06=PASS
+V07=PASS
+V08a=PASS
+V08b=PASS
+Verdict: ✅ all CRITICAL passed; exit=0
+```
+
+Shipping verdict: PASS. No local release command failed, and the only remaining item is production data-dependent live detail verification after a non-empty skill exists in LAB.
+
+### 7.9 Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 1 | Existing React, Tailwind, Vitest, and Playwright paths were reused; no new dependency or backend contract. |
+| Uncertainty | 2 | 2 | Production DB being empty kept live skill-detail validation as a post-release follow-up, but local seeded browser checks covered the behavior. |
+| Dependencies | 1 | 1 | S142a/S143/S096f2/S094a were already shipped and no new code-level dependency was introduced. |
+| Scope | 2 | 2 | Six focused UI tasks touched responsive layout, nav, empty states, modal selection, tabs, and docs card layout as planned. |
+| Testing | 2 | 2 | Component tests, `@responsive-polish` browser checks, happy-path Playwright, AOT, and native image build all ran. |
+| Reversibility | 1 | 1 | Changes are frontend/CSS/state-flow only and can be reverted without data migration. |
+| **Total** | **9 / S** | **9 / S** | Bucket unchanged. |
