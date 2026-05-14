@@ -14,15 +14,14 @@ import io.github.samzhu.skillshub.skill.security.events.SkillGrantedEvent;
 import io.github.samzhu.skillshub.skill.security.events.SkillRevokedEvent;
 
 /**
- * S114a — Materializes {@code skills.acl_entries} JSONB from the source-of-truth
- * {@code skill_grants} table.
+ * S114a/S169 — Materializes ACL JSONB from source-of-truth {@code skill_grants}.
  *
  * <p>Listens to three events:
  * <ul>
  *   <li>{@link SkillCreatedEvent} — auto-seeds an OWNER grant for the author,
  *       then rebuilds the ACL projection.</li>
- *   <li>{@link SkillGrantedEvent} — rebuilds the ACL projection for the skill.</li>
- *   <li>{@link SkillRevokedEvent} — rebuilds the ACL projection for the skill.</li>
+ *   <li>{@link SkillGrantedEvent} — rebuilds ACL projections for the skill.</li>
+ *   <li>{@link SkillRevokedEvent} — rebuilds ACL projections for the skill.</li>
  * </ul>
  *
  * <p>All three events are within the same {@code skill} Modulith module, so no
@@ -104,7 +103,7 @@ public class SkillAclProjectionListener {
     }
 
     /**
-     * Rebuild {@code skills.acl_entries} from all current grants for the skill.
+     * Rebuild ACL projections from all current grants for the skill.
      *
      * <p>Uses pg_advisory_xact_lock to serialize concurrent rebuilds for the same
      * skill, preventing lost-update race conditions when multiple grants fire within
@@ -127,9 +126,14 @@ public class SkillAclProjectionListener {
         var json = entries.stream()
                 .map(e -> "\"" + e + "\"")
                 .collect(java.util.stream.Collectors.joining(",", "[", "]"));
-        jdbc.update("UPDATE skills SET acl_entries = :acl::jsonb WHERE id = :id",
-                Map.of("id", skillId, "acl", json));
-        log.atInfo().addKeyValue("skillId", skillId).addKeyValue("entryCount", entries.size())
-                .log("ACL projection rebuilt");
+        var params = Map.of("id", skillId, "acl", json);
+        var skillRows = jdbc.update("UPDATE skills SET acl_entries = :acl::jsonb WHERE id = :id", params);
+        var vectorRows = jdbc.update("UPDATE vector_store SET acl_entries = :acl::jsonb WHERE skill_id = :id", params);
+        log.atInfo()
+                .addKeyValue("skillId", skillId)
+                .addKeyValue("entryCount", entries.size())
+                .addKeyValue("skillsRows", skillRows)
+                .addKeyValue("vectorRows", vectorRows)
+                .log("ACL projections rebuilt");
     }
 }
