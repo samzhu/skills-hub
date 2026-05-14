@@ -186,6 +186,43 @@ describe('SkillDetailPage — S133 MarkdownActionMenu visibility', () => {
   })
 })
 
+describe('SkillDetailPage — S172 responsive detail body', () => {
+  it('AC-S172-1: detail body uses responsive grid without fixed 232px sidebar on mobile', async () => {
+    const skill = skillFixture('PUBLISHED', 'skill-responsive-1')
+    mockFetchForSkill(skill)
+    renderPage('skill-responsive-1')
+
+    await waitFor(() => {
+      expect(screen.getByTestId('download-cta')).toBeInTheDocument()
+    })
+
+    const body = screen.getByTestId('skill-detail-body')
+    expect(body.className).toContain('grid-cols-1')
+    expect(body.className).toContain('lg:grid-cols-[minmax(0,1fr)_232px]')
+    expect(body).not.toHaveStyle({ gridTemplateColumns: '1fr 232px' })
+
+    const main = screen.getByTestId('skill-detail-main')
+    expect(main.className).toContain('min-w-0')
+  })
+
+  it('AC-S172-2: sidebar switches from left divider to stacked divider below lg', async () => {
+    const skill = skillFixture('PUBLISHED', 'skill-responsive-2')
+    mockFetchForSkill(skill)
+    renderPage('skill-responsive-2')
+
+    await waitFor(() => {
+      expect(screen.getByTestId('download-cta')).toBeInTheDocument()
+    })
+
+    const sidebar = screen.getByTestId('sidebar')
+    expect(sidebar.className).toContain('border-t')
+    expect(sidebar.className).toContain('pt-6')
+    expect(sidebar.className).toContain('lg:border-l')
+    expect(sidebar.className).toContain('lg:pl-[22px]')
+    expect(sidebar).not.toHaveStyle({ borderLeft: '0.5px solid var(--line, rgba(255,255,255,0.08))' })
+  })
+})
+
 /**
  * S114a AC-11 — 分享按鈕 owner-only visibility。
  *
