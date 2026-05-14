@@ -1,6 +1,6 @@
 # S172 — Production UI Responsive Polish
 
-Status: ✅ Done — local verification + production smoke PASS 2026-05-15；ready for `$verifying-quality` / `$shipping-release`  
+Status: ✅ QA PASS — local verification + production smoke PASS 2026-05-15；ready for `$shipping-release`  
 Date: 2026-05-14  
 Owner: Codex  
 Scope: Frontend UI / CSS polish only
@@ -531,11 +531,29 @@ Those errors did not appear on latest revision `00023-j5q` after deploy; latest 
 
 ### 7.6 QA Review
 
-Current tick re-ran the deterministic repository verification and production smoke checks directly. A separate `$verifying-quality S172` independent review is still appropriate before tagging/changelog/archive if the release process requires a fresh reviewer section, but no failing local command or latest-revision production error remains.
+Run at `2026-05-14T16:36:08Z` to `2026-05-14T16:48:32Z`:
+
+```text
+./scripts/verify-all.sh
+V01=PASS
+V02=INFO — LINE coverage = 85.8% (covered=4624 / total=5389)
+V03=PASS
+V04=PASS
+V05=PASS
+V06=PASS
+V07=PASS
+V08a=PASS
+V08b=PASS
+Verdict: ✅ all CRITICAL passed; exit=0
+```
+
+QA verdict: PASS. The S172 UI code has component tests for the task-level behavior, `@responsive-polish` browser checks for the audited routes and viewport widths, the standard happy-path browser suite still passes, and the native image build still completes. No blocking QA finding remains for local release.
+
+Scope note: this review was performed inline in the current Codex loop. Tool policy did not permit spawning a separate reviewer agent without an explicit user request; the review still followed the same evidence contract by reading the spec, roadmap, QA registry, changed files, AC-to-test anchors, and re-running the repository gate.
 
 ### 7.7 Pending Verification
 
 | Item | Status | Command / next action |
 |---|---|---|
 | Live skill detail with non-empty production data | POST-RELEASE | Upload or seed one published skill in LAB, then revisit `/skills/{id}` in Chrome and confirm no body horizontal overflow. |
-| Independent QA section | Optional before ship | Run `$verifying-quality S172` if the release gate requires a separate QA reviewer note. |
+| Release archive / changelog | NEXT | Run `$shipping-release S172` to move the spec to archive, append changelog, and update roadmap shipped rows. |
