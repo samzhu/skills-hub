@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-14（S169 v4.57.0 ship — CQRS permission contract；`verify-all.sh` 全綠；EDITOR role + group ACL + viewerPermissions 覆蓋）
+> 最後更新：2026-05-14（S171 v4.58.0 ship — Spring AI M6 model abstraction cleanup；`verify-all.sh` 全綠；ChatClient/ChatModel/EmbeddingModel 邊界完成）
 
 ## 使用說明
 
@@ -39,6 +39,7 @@
 | S141 | `/api/v1/me` Display Claims（補 email/name/picture pass-through，修 user-visible 顯示成 Google sub bug） | XS(7) | S139 ✅（v4.18.0）| ✅ v4.21.0 — 3/3 tests PASS (MeController OAuth + LAB 兩分支) |
 | S142a | SkillDetailPage v2 frontend rework | M-L(13-15) | S142b API contract | ✅ v4.22.0 — 318/318 Vitest PASS (6 tasks: T01 foundation + T02 hero + T03 tabs + T04 FileExplorer + T05 Sidebar + T06 page assembly); 0 TS production errors |
 | S142b | SkillDetailPage v2 backend supplement (SkillScore composite + SecurityReport 4-quad + Skill aggregate field projection) | S-M(8-10) | S135a ✅ | ✅ v4.1.0 — 41/41 tests PASS (21 SecurityCategoryMapper + 3 SecurityReport + 6 SkillScore + 5 QualityScore + 4 SkillQueryService + 2 APIContract) |
+| S172 | Production UI responsive polish（Skill detail sidebar no horizontal overflow；AppShell compact nav；Browse 0-result suggestions；CreateCollectionModal 用「我的技能」下拉新增/移除取代 UUID textarea；MySkills dark segmented tabs） | S(9) | S142a ✅, S143 ✅, S096f2 ✅, S094a ✅ | 📐 in-design — production Chrome audit 2026-05-14 |
 
 ---
 
@@ -70,6 +71,7 @@
 | v4.52.0 | S145 (Subscription management tab) | ✅ shipped 2026-05-11 |
 | v4.56.0 | S170 (Group tree principal model) | ✅ shipped 2026-05-14 — S170 all AC 1-15 PASS，`verify-all.sh` 全綠 |
 | v4.57.0 | S169 (CQRS permission contract) | ✅ shipped 2026-05-14 — S169 all AC 1-15 PASS，`verify-all.sh` 全綠 |
+| v4.58.0 | S171 (Spring AI M6 model abstraction cleanup) | ✅ shipped 2026-05-14 — S171 all AC 1-10 PASS，`verify-all.sh` 全綠 |
 
 ---
 
@@ -79,7 +81,7 @@
 |--------|------|------|------|------|
 | S143 | `/docs` canonical entry → `/docs/overview`（含 nav 對齊）| XS(2) | — | ✅ v4.23.0 — 4/4 vitest PASS（Navigate replace + nav 對齊） |
 | S146 | 掃描器補強 — GitHub Actions Unpinned Dependency 偵測（`@master/@main/@HEAD`） | XS(3) | S147 research | ⛔ cancelled 2026-05-13 — 不做；移除 spec file |
-| S147 | 掃描器語意分析缺口研究（Snyk agent-scan issue-code adoption + detail security tab） | META(research) → M(6 tasks) | — | ⏳ Plan — POC first；T00/T03 確認後才進 production implementation |
+| S147 | Issue-code scanner architecture（Snyk agent-scan taxonomy + per-code detectors + detail security tab） | L(16 tasks) | — | ⏳ Plan — 2026-05-14 重新規劃；每個檢測項目獨立 task + POC first |
 | S148 | Bug — GraalVM native image AOT reflection 涵蓋不足（JudgeResponse 部分） | S(5) | — | ✅ v4.25.0 — 4/4 JudgeResponse deserialize PASS（@RegisterReflectionForBinding + catch(Error) 防 outbox 無限重試） |
 | S148b | GraalVM AOT 驗證機制 — POC reject H1（SkillshubProperties 無 bug）；`--exact-reachability-metadata` flag 已 ship；architecture.md 文件化 | XS(3) | — | ✅ v4.46.0 — architecture.md 加 GraalVM AOT Strategy 段（5 子段 + reviewer 4 自檢）|
 | S148f | cyclonedx-bom 3.2.4 + nativeCompile 衝突修復 — 升 plugin 4.x / 換 SPDX / 隔離 task graph（POC 決定）；ship native production deploy 才會擋到 | XS(3) — POC 結果可漲 S | 上游修復 ＋ SBOM 消費者 ＋ native deploy 任一觸發 | 🗄️ archived 2026-05-13 — 原 ⏸ deferred 2026-05-10（POC H1 reject：cyclonedx 無 4.x；上游 issue #821 open 無修復）；spec file 移至 `specs/archive/`，reactivate 觸發條件不變 |
@@ -228,6 +230,7 @@
 | S144 | Skill delete | S(9) | v4.51.0 |
 | S145 | 訂閱管理頁面 | S(8) | v4.52.0 |
 | S169 | CQRS permission contract — role grants + ACL projections + viewer actions + 403 semantics | L(15) | v4.57.0 |
+| S171 | Spring AI M6 model abstraction cleanup | M(14) | v4.58.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

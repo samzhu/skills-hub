@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.converter.BeanOutputConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 /**
@@ -37,7 +38,7 @@ public class SearchIntentService {
 
     private final Optional<ChatClient> chatClient;
 
-    public SearchIntentService(Optional<ChatClient> chatClient) {
+    public SearchIntentService(@Qualifier("searchIntentChatClient") Optional<ChatClient> chatClient) {
         this.chatClient = chatClient;
         if (chatClient.isEmpty()) {
             log.info("SearchIntent: LLM ChatClient unavailable — running in fallback mode (echo query, no concepts)");

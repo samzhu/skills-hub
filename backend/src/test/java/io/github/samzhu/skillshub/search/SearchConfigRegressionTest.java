@@ -3,6 +3,8 @@ package io.github.samzhu.skillshub.search;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.annotation.Annotation;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -22,6 +24,57 @@ import io.github.samzhu.skillshub.security.scan.ScannerAiConfig;
  * 比 prose comment 抓得到 regression。
  */
 class SearchConfigRegressionTest {
+
+    @Test
+    @DisplayName("AC-S171-3: Google provider classes only appear in AiModelConfig")
+    void googleProviderClassesOnlyAppearInAiModelConfig() throws Exception {
+        var main = Path.of("src/main/java");
+        var hits = Files.walk(main)
+                .filter(path -> path.toString().endsWith(".java"))
+                .filter(path -> {
+                    try {
+                        var source = Files.readString(path);
+                        return source.contains("com.google.genai.Client")
+                                || source.contains("GoogleGenAiChatModel")
+                                || source.contains("GoogleGenAiChatOptions")
+                                || source.contains("GoogleGenAiTextEmbeddingModel")
+                                || source.contains("GoogleGenAiEmbeddingConnectionDetails")
+                                || source.contains("GoogleGenAiTextEmbeddingOptions");
+                    } catch (java.io.IOException e) {
+                        throw new java.io.UncheckedIOException(e);
+                    }
+                })
+                .map(path -> main.relativize(path).toString())
+                .toList();
+
+        assertThat(hits).containsExactly("io/github/samzhu/skillshub/shared/ai/AiModelConfig.java");
+    }
+
+    @Test
+    @DisplayName("AC-S171-8: search runtime classes only depend on EmbeddingModel")
+    void searchRuntimeClassesOnlyDependOnEmbeddingModel() throws Exception {
+        for (String file : java.util.List.of(
+                "src/main/java/io/github/samzhu/skillshub/search/SearchProjection.java",
+                "src/main/java/io/github/samzhu/skillshub/search/SemanticSearchService.java",
+                "src/main/java/io/github/samzhu/skillshub/search/SkillshubPgVectorStore.java")) {
+            var source = Files.readString(Path.of(file));
+            assertThat(source).contains("org.springframework.ai.embedding.EmbeddingModel");
+            assertThat(source).doesNotContain("GoogleGenAiTextEmbeddingModel");
+            assertThat(source).doesNotContain("GoogleGenAiEmbeddingConnectionDetails");
+            assertThat(source).doesNotContain("GoogleGenAiTextEmbeddingOptions");
+        }
+    }
+
+    @Test
+    @DisplayName("AC-S171-9: SkillshubPgVectorStore ACL SQL is unchanged by S171")
+    void skillshubPgVectorStoreAclSqlRemainsCustom() throws Exception {
+        var source = Files.readString(Path.of(
+                "src/main/java/io/github/samzhu/skillshub/search/SkillshubPgVectorStore.java"));
+
+        assertThat(source).contains("INSERT INTO vector_store (id, content, metadata, embedding, owner, skill_id, acl_entries)");
+        assertThat(source).contains("acl_entries ??| ?::text[]");
+        assertThat(source).contains("SkillshubPgVectorStore extends AbstractObservationVectorStore");
+    }
 
     @Test
     @DisplayName("AC-5: SearchConfig.embeddingModel 上不含 @ConditionalOnProperty(api-key)")

@@ -397,9 +397,15 @@ download_events (PK: id; FK → skills)
 
 ### Vector Store
 
-`vector_store` 由自寫 `SkillshubPgVectorStore extends AbstractObservationVectorStore`（Spring AI 2.0.0-M5 core artifact）控制；6 欄 atomic INSERT — `id` / `content` / `metadata` JSONB / `embedding` vector(768) / `owner` / `skill_id`；`owner` 為 S016 row-level ACL 鋪路；`ON CONFLICT (id) DO UPDATE` 冪等；HNSW 索引 + cosine distance（`embedding <=> query` operator）。
+`vector_store` 由自寫 `SkillshubPgVectorStore extends AbstractObservationVectorStore`（Spring AI 2.0.0-M6 core artifact）控制；7 欄 atomic INSERT — `id` / `content` / `metadata` JSONB / `embedding` vector(768) / `owner` / `skill_id` / `acl_entries`；`owner` / `skill_id` / `acl_entries` 支援 S016/S017 ACL-aware similarity search；`ON CONFLICT (id) DO UPDATE` 冪等；HNSW 索引 + cosine distance（`embedding <=> query` operator）。
 
 詳 S014 archived spec §4 + §2.1 決策 #2 / #12（再修訂 — 採 core artifact + 自寫子類，不用官方 starter 因其 4-欄 INSERT 不支援 owner 自訂欄位）。
+
+### AI Model Wiring
+
+Spring AI 2.0.0-M6 採 manual config。`shared.ai.AiModelConfig` 是唯一可直接使用 `com.google.genai.Client`、`GoogleGenAiChatModel`、`GoogleGenAiTextEmbeddingModel` 的 production config；`shared.ai` 以 Modulith `shared :: ai` named interface 對 search / security 開放相容 factory。provider builder 在這裡建立 concrete implementation，但 bean return type / runtime dependency 走 Spring AI 抽象：chat provider 是 `ChatModel`，use-case client 是具名 `ChatClient`（`qualityJudgeChatClient` / `scannerChatClient` / `searchIntentChatClient`），embedding provider 是 `EmbeddingModel`。
+
+Spring AI auto-config 保持關閉：base config 設 `spring.ai.model.chat=none`、`spring.ai.model.embedding.text=none`、`spring.ai.chat.client.enabled=false`。`SkillshubPgVectorStore` 不改成官方 `PgVectorStore`；它是專案 ACL schema / SQL 的客製 vector store，只消費 `EmbeddingModel` 產生向量。
 
 ---
 
@@ -528,7 +534,7 @@ npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer
 | `org.springframework.boot:spring-boot-starter-webmvc` | BOM | `org.springframework.web.bind.annotation.*` | yes (template) |
 | `org.springframework.boot:spring-boot-starter-data-jdbc` | BOM | `org.springframework.data.jdbc.*` | yes (S014) |
 | `org.springframework.boot:spring-boot-starter-jdbc` | BOM | `org.springframework.jdbc.core.*` | yes (S014) |
-| `org.springframework.ai:spring-ai-pgvector-store` | 2.0.0-M5 BOM | `org.springframework.ai.vectorstore.pgvector.*`（core artifact；自寫 `SkillshubPgVectorStore` 子類）| yes (S014) |
+| `org.springframework.ai:spring-ai-pgvector-store` | 2.0.0-M6 BOM | `org.springframework.ai.vectorstore.pgvector.*`（core artifact；自寫 `SkillshubPgVectorStore` 子類）| yes (S014 / S171) |
 | `org.springframework.boot:spring-boot-flyway` | BOM | — | yes (S014) |
 | `org.flywaydb:flyway-core` | BOM-managed | `org.flywaydb.core.*` | yes (S014) |
 | `org.flywaydb:flyway-database-postgresql` | runtime | — | yes (S014) |
@@ -536,8 +542,8 @@ npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer
 | `com.google.cloud:spring-cloud-gcp-starter` | 8.0.2 BOM | `com.google.cloud.spring.*` | yes (template) |
 | `com.google.cloud:spring-cloud-gcp-starter-storage` | 8.0.2 BOM | `com.google.cloud.storage.*` | yes (template) |
 | `com.google.cloud:google-cloud-vertexai` | 1.24.0 | `com.google.cloud.vertexai.*` | yes (Maven Central) |
-| `org.springframework.ai:spring-ai-*` | 2.0.0-M5 BOM | `org.springframework.ai.*` | yes (template) |
-| `org.springframework.ai:spring-ai-google-genai` | 2.0.0-M5 BOM | `org.springframework.ai.google.genai.*` (Gemini Chat + Embedding via Google AI Studio direct API; **not** Vertex AI) | yes (S007 / S010 / S135a) |
+| `org.springframework.ai:spring-ai-*` | 2.0.0-M6 BOM | `org.springframework.ai.*` | yes (S171 POC compile) |
+| `org.springframework.ai:spring-ai-google-genai` | 2.0.0-M6 BOM | `org.springframework.ai.google.genai.*` (Gemini Chat + Embedding via Google AI Studio direct API; **not** Vertex AI; provider classes only in `AiModelConfig`) | yes (S007 / S010 / S135a / S171) |
 | `org.springframework.modulith:spring-modulith-*` | 2.0.6 BOM | `org.springframework.modulith.*` | yes (template) |
 | `org.springframework.boot:spring-boot-starter-security-oauth2-resource-server` | BOM | `org.springframework.security.*` | yes (template) |
 | `org.springdoc:springdoc-openapi-starter-webmvc-ui` | 3.0.2 | `org.springdoc.*` | yes (template) |

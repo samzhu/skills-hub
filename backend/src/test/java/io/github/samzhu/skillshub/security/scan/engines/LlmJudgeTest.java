@@ -51,6 +51,19 @@ class LlmJudgeTest {
 	}
 
 	@Test
+	@DisplayName("AC-S171-5: LlmJudge returns disabled notice when scanner chat client is absent")
+	void disabledModeReturnsNotice() {
+		var judge = new LlmJudge(java.util.Optional.empty());
+
+		var output = judge.analyze(withPhase1(List.of(), "# md", Map.of()));
+
+		assertThat(output.findings()).isEmpty();
+		assertThat(output.notices()).hasSize(1);
+		assertThat(output.notices().get(0).source()).isEqualTo("llm-judge");
+		assertThat(output.notices().get(0).message()).contains("LLM judge disabled");
+	}
+
+	@Test
 	@DisplayName("AC-6.1: LLM user prompt 含 Phase 1 finding 的 ruleId + filePath:line")
 	@Tag("AC-6")
 	void promptIncludesPhase1Summary() {

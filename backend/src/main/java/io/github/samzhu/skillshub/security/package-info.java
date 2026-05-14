@@ -8,7 +8,7 @@
  * application event 造成循環依賴；保持「scanner 是 read model 的協作者，不是業務上游」設計）。
  */
 @org.springframework.modulith.ApplicationModule(
-    allowedDependencies = {"shared :: events", "shared :: api", "shared :: persistence",
+    allowedDependencies = {"shared :: events", "shared :: ai", "shared :: api", "shared :: persistence",
                            "shared :: security",
                            "skill :: domain", "skill :: query", "storage"}
 )

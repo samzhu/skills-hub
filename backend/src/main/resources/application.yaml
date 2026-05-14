@@ -64,6 +64,19 @@ spring:
     virtual:
       enabled: true
 
+  # ----- Spring AI Manual Configuration（S171）-----
+  # AiModelConfig 手動建立 ChatModel / ChatClient / EmbeddingModel beans。
+  # base config 明確關閉 model/client auto-config，避免 provider auto-created bean
+  # 與 runtime Secret Manager resolve / native AOT timing 混在一起。
+  ai:
+    model:
+      chat: none
+      embedding:
+        text: none
+    chat:
+      client:
+        enabled: false
+
   # ----- Spring Modulith Event Publication Registry (S023) -----
   # 啟用 transactional outbox：@ApplicationModuleListener 觸發時，event_publication 表
   # 在 publisher TX 內 INSERT；listener 在 AFTER_COMMIT 新 TX async 執行；失敗 row

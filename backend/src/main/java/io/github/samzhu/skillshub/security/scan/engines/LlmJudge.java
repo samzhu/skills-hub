@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import io.github.samzhu.skillshub.security.scan.AnalysisOutput;
@@ -94,7 +95,7 @@ public class LlmJudge implements SecurityAnalyzer {
 
 	private final Optional<ChatClient> chatClient;
 
-	public LlmJudge(Optional<ChatClient> chatClient) {
+	public LlmJudge(@Qualifier("scannerChatClient") Optional<ChatClient> chatClient) {
 		this.chatClient = chatClient;
 		if (chatClient.isEmpty()) {
 			log.info("LlmJudge initialised in disabled mode (no ChatClient) — analyze() will return empty findings + notice");

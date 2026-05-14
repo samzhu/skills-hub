@@ -30,7 +30,7 @@ repositories {
 	mavenCentral()
 }
 
-extra["springAiVersion"] = "2.0.0-M5"
+extra["springAiVersion"] = "2.0.0-M6"
 extra["springCloudGcpVersion"] = "8.0.2"
 extra["springCloudVersion"] = "2025.1.1"
 extra["springModulithVersion"] = "2.0.6"

@@ -19,13 +19,15 @@ class ModularityTests {
 	//                 + AsyncListenerConfig 後仍無模組邊界違規
 	//   - S024 AC-13：read-model 模組整組刪除 + AuditEventListener 移至獨立 audit module（避開
 	//                 shared → skill cycle）後仍綠；ApplicationModules.verify() 通過
+	//   - S171 AC-S171-10：shared.ai 以 "shared :: ai" named interface 開放給 search/security
 	@Test
-	@DisplayName("AC-3 / AC-14 / AC-11 / AC-12 / AC-13: Spring Modulith 結構驗證 — 含 S024 audit module + read-model 移除")
+	@DisplayName("AC-3 / AC-14 / AC-11 / AC-12 / AC-13 / AC-S171-10: Spring Modulith 結構驗證")
 	@Tag("AC-3")
 	@Tag("AC-14")
 	@Tag("AC-11")
 	@Tag("AC-12")
 	@Tag("AC-13")
+	@Tag("AC-S171-10")
 	void verifyModuleStructure() {
 		ApplicationModules.of(SkillshubApplication.class).verify();
 	}

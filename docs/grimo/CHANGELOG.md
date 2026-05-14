@@ -1,5 +1,30 @@
 # Changelog
 
+## [v4.58.0] — S171 Spring AI M6 model abstraction cleanup（2026-05-14）
+
+### Changed
+
+- **Spring AI 升級到 `2.0.0-M6`** — `backend/build.gradle.kts` 使用 M6 BOM，未 pin 單一 Spring AI artifact version。
+- **AI wiring 統一走 Spring AI 抽象** — `QualityJudge`、`LlmJudge`、`SearchIntentService` 改用具名 `ChatClient`；provider 邊界集中在 `ChatModel` / `EmbeddingModel`。
+- **Google GenAI provider code 收斂到 config** — `com.google.genai.Client`、`GoogleGenAiChatModel`、`GoogleGenAiTextEmbeddingModel` 只留在 `shared.ai.AiModelConfig`。
+- **Modulith AI boundary 明確化** — `shared.ai` 公開為 `shared :: ai` named interface，search/security 透過此邊界引用相容 factory，`processTestAot` 通過。
+
+### Unchanged
+
+- **`SkillshubPgVectorStore` ACL 客製 SQL 不動** — `vector_store` 7 欄、`acl_entries ??| ?::text[]`、per-request builder 都保留；S171 只調整模型抽象，不替換客製 vector store。
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 84.2%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`exit=0`。
+- Backend targeted tests：`AiModelConfigTest`、`QualityJudgeWiringTest`、`LlmJudgeTest`、`SearchIntentServiceTest`、`SearchConfigRegressionTest`、`SearchConfigTest`、`ModularityTests` 全部 PASS。
+- AOT：`cd backend && ./gradlew processTestAot` PASS。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-14-S171-spring-ai-m6-chatclient-unification.md` → `docs/grimo/specs/archive/2026-05-14-S171-spring-ai-m6-chatclient-unification.md`
+- S171 臨時 task files 已由 `$planning-tasks` 清除；spec-roadmap.md S171 移至 shipped table 與 `v4.58.0` milestone。
+- Final size re-score：S(11) → M(14)，原因是實作跨 score/search/security/shared module 邊界，並新增 `shared :: ai` Modulith named interface 與 AOT 驗證。
+
 ## [v4.57.0] — S169 CQRS permission contract（2026-05-14）
 
 ### Added

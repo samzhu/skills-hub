@@ -1,7 +1,6 @@
 package io.github.samzhu.skillshub.score.judge;
 
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 
 /**
  * S135a: LLM judge for SKILL.md quality evaluation — wraps Spring AI ChatClient.
@@ -21,8 +20,8 @@ public class QualityJudge {
         this.client = null;
     }
 
-    public QualityJudge(GoogleGenAiChatModel gemini) {
-        this.client = ChatClient.builder(gemini).build();
+    public QualityJudge(ChatClient client) {
+        this.client = client;
     }
 
     /**
