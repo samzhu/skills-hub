@@ -1,5 +1,29 @@
 # Changelog
 
+## [v4.56.0] — S170 Group tree principal model（2026-05-14）
+
+### Added
+
+- **組織群組模型上線** — 引入 `groups`、`group_members`、`group_closure`，支援 Company / Department / TEAM / OTHER 的同型樹狀群組，群組與子群組可自由組合且保留 `slug` 唯一約束與 `parent_id` 的層級順序規則。
+- **Principal context 擴充** — 新增 `PrincipalContextService` 與 `AclPrincipalExpander` 協作，輸出 `group:<id>` principal 陣列，供 S169 權限 ACL 查詢使用。
+- **群組前端頁面** — `/groups` 提供樹狀檢視、建立／編輯／刪除歸檔、成員加入移除與群組 principal 搜尋 API 整合，前端僅顯示關聯群組與 principal 名稱。
+
+### Fixed
+
+- **`group:<id>` 作用範圍一致性** — 實作同時支援 `user:u_...` 與群組 principal，不同 Group 與 `TEAM` 交集成員可同時出現在 `principal-context`，不會互相覆蓋。
+- **群組歸檔行為** — S170 規則下 `DELETE /api/v1/groups/{id}` 改為 archive subtree，並同步移除已歸檔群組在 `PrincipalContextService` 的可見 principal，避免權限沿用到已封存單位。
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 83.7%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`exit=0`。
+- Backend：`./gradlew test --tests "*GroupServiceTest" --tests "*GroupMembershipServiceTest" --tests "*PrincipalContextServiceTest" --tests "*GroupQueryControllerTest"`（PASS）。
+- Frontend：`npm test -- --run src/pages/GroupsPage.test.tsx src/App.test.tsx`（PASS）。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-13-S170-group-tree-principal-model.md` → `docs/grimo/specs/archive/2026-05-13-S170-group-tree-principal-model.md`
+- `docs/grimo/specs/spec-roadmap.md`：S170 轉入 milestones `v4.56.0`，S169 相依關聯更新為 `S170 ✅`，並移除 backlog 中 in-design 狀態。
+
 ## [v4.55.0] — S156c Request 簡化為投票需求板 + Detail Page + Comments（2026-05-12）
 
 ### Changed (Breaking)

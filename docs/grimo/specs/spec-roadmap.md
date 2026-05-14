@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-12（S159b v4.54.0 ship — V20 lowercase + V21 dual-column category_display；V07 hermetic E2E gate 抓到 Round 1 lossy normalize bug，Round 2 dual-column pivot 修；verify-all 全綠：backend 808 + frontend 403 + Playwright 6/6）
+> 最後更新：2026-05-14（S170 v4.56.0 ship — group tree principal model；`verify-all.sh` 全綠；group membership + closure table + principal context 覆蓋）
 
 ## 使用說明
 
@@ -68,6 +68,7 @@
 | v4.50.0 | S154b (Author display identity — frontend) | ✅ shipped 2026-05-11 |
 | v4.51.0 | S144 (Skill delete) | ✅ shipped 2026-05-11 |
 | v4.52.0 | S145 (Subscription management tab) | ✅ shipped 2026-05-11 |
+| v4.56.0 | S170 (Group tree principal model) | ✅ shipped 2026-05-14 — S170 all AC 1-15 PASS，`verify-all.sh` 全綠 |
 
 ---
 
@@ -131,8 +132,7 @@
 | S167 | 移除 deprecated `/api/v1/skills/{id}/acl` HTTP layer — controller + test + frontend doc + S016/E2E test 對齊 `/grants` shape | XS(2) | S114a ✅ + v4.41.0 deprecation log | ✅ v4.42.0 — HTTP 層拿掉；dead code 留 S167b |
 | S167b | dead-code 清理 — `SkillCommandService.grantAcl/revokeAcl` + `Skill.grantAcl/revokeAcl` + `SkillAclGrantedEvent/Revoked` + `SkillAclQueryService` + `AuditEventListener` 對應 handlers + 4 個 unit test | S(5) | S167 ✅ | ✅ v4.45.0 — 8 整檔 + 3 production + 3 test 修改；36/36 PASS；S154 backend sequencing 鋪路 |
 | S168 | GraalVM native image — Boolean wrapper field workaround for primitive boolean readback（per JobRunr PR #1501 production-shipped fix 同 stacktrace；繞 oracle/graal#5672 SubstrateVM MethodHandle adaptation bug；fix `User.contactEmailPublic` + `NotificationPreference` 4 boolean fields 同類 latent；含 architecture.md 修正 production deploy mode 描述 + dev-standards 上游追蹤 checkpoint） | S(9) → M(11) | S154 ✅ | ✅ v4.49.0 — Round 2 fix (Approach B→C pivot)：5 個 field primitive boolean → Boolean wrapper + 拔 dead converter；Round 1 v4.48.0 Approach B prod 失敗教訓詳 spec §2.8 + §7.5；verify-all PASS=7/FAIL=0；AC-4 manual deploy 待 Round 2 ship 後驗收 |
-| S169 | CQRS permission contract — role grants + ACL projections + viewer actions + 403 semantics | M(14) | S016 ✅, S017 ✅, S114a ✅, S121 ✅, S154 ✅, S158 ✅, S170 📐 | 📐 in-design — 消費 S170 的 `group:<id>` principal；後續權限實作只看 S169 |
-| S170 | Group tree principal model — Company / Department / Team 統一成可掛人與子群組的 Group | M(16) | S154 ✅ | 📐 in-design — S169 前置 spec；`kind` 只給人類辨識，DB 行為一律相同；先做 Group CRUD、成員、`PrincipalContextService` 查詢 |
+| S169 | CQRS permission contract — role grants + ACL projections + viewer actions + 403 semantics | M(14) | S016 ✅, S017 ✅, S114a ✅, S121 ✅, S154 ✅, S158 ✅, S170 ✅ | 📐 in-design — 消費 S170 的 `group:<id>` principal；後續權限實作只看 S169 |
 | S2XX-cache | 未來 re-introduce ACL eval cache（profiling-driven，明確 SLA 觸發） | — | production traffic 起來 | ⏸ deferred |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |
