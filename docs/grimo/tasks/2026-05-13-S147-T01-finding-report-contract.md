@@ -23,4 +23,4 @@ And existing four-key `checks` data remains present for backward compatibility
 - user confirmation after POC
 
 ## Status
-pending
+blocked（waiting user confirmation after T00 PASS）

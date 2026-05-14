@@ -18,4 +18,21 @@ And no production code under `backend/src/main` or `frontend/src` is changed by 
 - none
 
 ## Status
-pending
+PASS（2026-05-14）
+
+## Verification
+`node poc/S147/contract-poc.mjs`
+
+Output:
+
+```text
+S147 T00 POC PASS
+legacy checks: shell=FAIL, paths=PASS, secrets=WARN, deps=PASS
+dynamic categories: Credentials=FAIL, External Content=WARN, Sensitive Data=WARN
+detectors: HardcodedSecretDetector, ThirdPartyContentExposureDetector, SensitiveDataExposureDetector
+```
+
+## Notes
+- 舊 `ruleId + analyzer` finding 可繼續生成既有 `checks.shell/paths/secrets/deps`。
+- 新 finding 可同時輸出 `issueCode / remediation / confidence`，且保留 `ruleId`。
+- 下一步是 `S147-T01`，但依 task dependency 仍需 user confirm 才能進 production implementation。
