@@ -39,7 +39,7 @@
 | S141 | `/api/v1/me` Display Claims（補 email/name/picture pass-through，修 user-visible 顯示成 Google sub bug） | XS(7) | S139 ✅（v4.18.0）| ✅ v4.21.0 — 3/3 tests PASS (MeController OAuth + LAB 兩分支) |
 | S142a | SkillDetailPage v2 frontend rework | M-L(13-15) | S142b API contract | ✅ v4.22.0 — 318/318 Vitest PASS (6 tasks: T01 foundation + T02 hero + T03 tabs + T04 FileExplorer + T05 Sidebar + T06 page assembly); 0 TS production errors |
 | S142b | SkillDetailPage v2 backend supplement (SkillScore composite + SecurityReport 4-quad + Skill aggregate field projection) | S-M(8-10) | S135a ✅ | ✅ v4.1.0 — 41/41 tests PASS (21 SecurityCategoryMapper + 3 SecurityReport + 6 SkillScore + 5 QualityScore + 4 SkillQueryService + 2 APIContract) |
-| S172 | Production UI responsive polish（Skill detail sidebar no horizontal overflow；AppShell compact nav；Browse 0-result suggestions；CreateCollectionModal 用「我的技能」下拉新增/移除取代 UUID textarea；MySkills dark segmented tabs） | S(9) | S142a ✅, S143 ✅, S096f2 ✅, S094a ✅ | 📐 in-design — production Chrome audit 2026-05-14 |
+| S172 | Production UI responsive polish（Skill detail sidebar no horizontal overflow；AppShell compact nav；Browse 0-result suggestions；CreateCollectionModal 用「我的技能」下拉新增/移除取代 UUID textarea；MySkills dark segmented tabs） | S(9) | S142a ✅, S143 ✅, S096f2 ✅, S094a ✅ | ⏳ Dev — T01 started 2026-05-14；POC not required（existing frontend hooks/CSS + Playwright workspace） |
 
 ---
 
