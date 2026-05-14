@@ -10,10 +10,9 @@
 
 1. `AGENTS.md`（最高優先 repo 指令；若不存在，讀本次 thread 內的 AGENTS instructions）
 2. `.codex/loop.md`（本文件）
-3. `.claude/skills/references/workflow-guide.md`（workflow contract）
-4. `docs/grimo/PRD.md`
-5. `docs/grimo/specs/spec-roadmap.md`
-6. `docs/grimo/CHANGELOG.md`
+3. `docs/grimo/PRD.md`
+4. `docs/grimo/specs/spec-roadmap.md`
+5. `docs/grimo/CHANGELOG.md`
 
 需要判斷 spec / 架構 / 測試時，再讀：
 
@@ -132,7 +131,6 @@ XS / S spec 目標是一個 tick 內完成。M / L spec 若接近 wall budget：
 ```text
 This wake-up is one tick for this repository.
 Read AGENTS.md and .codex/loop.md first.
-Read .claude/skills/references/workflow-guide.md before choosing actions.
 Follow the decision tree.
 Use skill-first orchestration: planning-spec -> planning-tasks (hub) -> implementing-task (via planning-tasks) -> verifying-quality (via planning-tasks) -> shipping-release.
 Do not implement tasks directly when spec status is Design/Plan/Dev; invoke planning-tasks first.
