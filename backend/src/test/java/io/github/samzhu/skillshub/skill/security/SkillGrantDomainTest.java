@@ -39,6 +39,13 @@ class SkillGrantDomainTest extends RepositorySliceTestBase {
     }
 
     @Test
+    @DisplayName("AC-1: Role.EDITOR.permissions() 回 [read, write]")
+    @Tag("AC-1")
+    void editorRolePermissions() {
+        assertThat(Role.EDITOR.permissions()).containsExactly("read", "write");
+    }
+
+    @Test
     @DisplayName("AC-1: SkillGrant.create() 生成 UUID id + 正確 fields")
     @Tag("AC-1")
     void skillGrantCreate_setsAllFields() {
