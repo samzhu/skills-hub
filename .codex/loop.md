@@ -10,9 +10,10 @@
 
 1. `AGENTS.md`（最高優先 repo 指令；若不存在，讀本次 thread 內的 AGENTS instructions）
 2. `.codex/loop.md`（本文件）
-3. `docs/grimo/PRD.md`
-4. `docs/grimo/specs/spec-roadmap.md`
-5. `docs/grimo/CHANGELOG.md`
+3. `.claude/skills/references/workflow-guide.md`（workflow contract）
+4. `docs/grimo/PRD.md`
+5. `docs/grimo/specs/spec-roadmap.md`
+6. `docs/grimo/CHANGELOG.md`
 
 需要判斷 spec / 架構 / 測試時，再讀：
 
@@ -57,11 +58,13 @@ Codex App Automation 若提供 background worktree，優先使用 background wor
 
 從上到下判斷，遇到第一個 match 就停，只做該 unit：
 
-| # | 條件 | 動作 | Mode |
+| # | 條件 | 動作（skill-first） | Mode |
 |---|---|---|---|
-| 1 | `docs/grimo/specs/` 內有 active spec doc（📋 / 📐 / 🚧 / ⏸） | 推進該 spec | A |
-| 2 | roadmap 有 📋 sub-spec，但 `docs/grimo/specs/` 無對應 doc | 設計該 spec 的 §1-§5，commit，結束 tick | A Spec-Only |
-| 3 | 全部 spec doc 皆 designed / shipped | 跑 E2E + edge-case round | B |
+| 1 | roadmap 有 spec 但 `docs/grimo/specs/` 無對應 spec doc | 用 `/planning-spec S00N` 產出 §1-§5，commit，結束 tick | A Design |
+| 2 | spec 狀態為 `🔲` / `📐` / `⏳ Design` | 用 `/planning-tasks S00N` 執行 phase 0~2（必要時含 POC），至少產出 task plan 或 blocker commit | A Plan |
+| 3 | spec 狀態為 `⏳ Plan` / `⏳ Dev` | 用 `/planning-tasks S00N` 執行 phase 3 task loop（`/implementing-task` 由它呼叫） | A Dev |
+| 4 | spec 實作完成且 QA PASS（`✅ Done`）但尚未 ship | 用 `/shipping-release` 完成 ship（含 changelog/roadmap/archive/tag） | A Ship |
+| 5 | 全部 spec 都 shipped 或無可執行 spec | 跑 E2E + edge-case round | B |
 
 不要因為 backlog 暫空或 Mode B 連續 0 bug 就停止。只有 user 明確要求停止、automation 被刪除、或排程到期才停。
 
@@ -76,55 +79,16 @@ Codex App Automation 若提供 background worktree，優先使用 background wor
 3. Shared component extraction 優先於 reuse 它的 consumer。
 4. 平手時，選 scope 較小者。
 
-### Phase Checklist
+### Skill-First Rules
 
-每個 spec 以這 7 階段推進。tick wall budget 不足時，完成最近 atomic step、commit、標 WIP。
+每個 spec 仍遵守單一 tick 單位，但執行入口改為 workflow skills。
 
-#### PLAN
-
-- 讀 spec doc、相關 ADR、相關程式、既有測試。
-- 定義 minimum diff。
-- spec 至少有 3 個 Given-When-Then AC。
-- M / L scope 必須在 spec §2 寫 trim path：wall hit 時 defer 哪些內容。
-
-#### IMPLEMENT
-
-- 一個 spec 一個主要 commit；不要混入 unrelated refactor。
-- 改 public signature 前，先 grep production 和 test caller。
-- 既有 component / hook / utility 覆蓋 80% 以上需求時，優先 reuse。
-- 外部 service 可能不可用時，提供 graceful fallback，避免本地驗證直接卡死。
-- Source comment 只留 spec ID + 簡短提示；長 rationale 寫入 spec / ADR。
-
-#### VERIFY
-
-- 跑 touched files 對應的 targeted tests。
-- 跑必要 build / typecheck。
-- 用 curl、browser、或 unit-level invariant smoke-test public surface。
-- 若 logs 不足以定位 root cause，先加 log 再重測，不要靠猜。
-
-#### DOCUMENT
-
-- 更新 spec §1-§7，尤其 §7 Result 要寫實測 command 和結果。
-- 若有設計取捨、framework 機制、alternatives，寫在 spec / ADR，不寫長 source comment。
-
-#### PERSIST
-
-- 更新 `docs/grimo/CHANGELOG.md`。
-- 更新 `docs/grimo/specs/spec-roadmap.md`：status、版本、一行 highlight。
-- 完成的 spec 移到 `docs/grimo/specs/archive/`。
-
-#### COMMIT
-
-- 使用 conventional commit prefix：`feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`。
-- Subject 不超過 72 字。
-- Body 說明這個 commit 為什麼存在、trim rationale、實測 command 和結果。
-- 不要把 user unrelated changes 打包進 commit。
-
-#### SHIP
-
-- 若 `shipping-release` skill 可用，使用該 skill。
-- 若 skill 不可用，依 repo 文件執行 release steps；無法確認步驟時，停止並標 `BLOCKED`。
-- ship 完才算 `DONE`。若 push / tag / verify 失敗，先處理失敗；不要累積到下個 spec。
+- `planning-tasks is the hub`：除非是純 spec 設計（`/planning-spec`）或 ship（`/shipping-release`），不要直接手寫 task loop。
+- 當 spec 狀態是 `⏳ Design/Plan/Dev`，先跑 `/planning-tasks`，再做任何 coding edits。
+- `/implementing-task` 只可由 `/planning-tasks` 呼叫，不直接從 tick 入口呼叫。
+- Phase 4 QA 採 `/planning-tasks` 內建子代理 `/verifying-quality`；同一 tick 若 QA REJECT，先修同一 spec，不切換 spec。
+- tick wall budget 不足時，只收斂當前 phase 的最近 atomic step，commit 並標 `WIP` 或 `WALL-HIT`。
+- 一個 tick 只服務一個 spec；不跨 spec 混改。
 
 ## Mode B: E2E + Edge-Case Round
 
@@ -168,7 +132,10 @@ XS / S spec 目標是一個 tick 內完成。M / L spec 若接近 wall budget：
 ```text
 This wake-up is one tick for this repository.
 Read AGENTS.md and .codex/loop.md first.
+Read .claude/skills/references/workflow-guide.md before choosing actions.
 Follow the decision tree.
+Use skill-first orchestration: planning-spec -> planning-tasks (hub) -> implementing-task (via planning-tasks) -> verifying-quality (via planning-tasks) -> shipping-release.
+Do not implement tasks directly when spec status is Design/Plan/Dev; invoke planning-tasks first.
 Do exactly one unit of work.
 Commit at least one atomic result or blocker note.
 End with exactly one EXIT label.
