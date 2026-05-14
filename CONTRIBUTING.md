@@ -1,6 +1,6 @@
 # Contributing to Skills Hub
 
-> 給協作者 / 維運者的入手指南。完整 product spec + tech stack 細節在 [`CLAUDE.md`](./CLAUDE.md)。
+> 給協作者 / 維運者的入手指南。完整 product spec + tech stack 細節在 [`AGENTS.md`](./AGENTS.md) / [`CLAUDE.md`](./CLAUDE.md)。
 
 ## 流程簡介
 
@@ -14,11 +14,11 @@ Skills Hub 採 **spec-first ship pipeline**：每個 user-facing 變動先有一
     → /verifying-quality → /shipping-release
 ```
 
-詳見 [`.claude/skills/`](./.claude/skills/) 下的 skill 文件。
+Claude Code slash command 見 [`.claude/skills/`](./.claude/skills/)；Codex skill 觸發用 `$skill-name`，loop automation 詳見 [`.codex/loop.md`](./.codex/loop.md) 與 [`docs/grimo/codex-loop-automation.md`](./docs/grimo/codex-loop-automation.md)。
 
 ## 入手前必讀
 
-1. **[`CLAUDE.md`](./CLAUDE.md)** — Principles + tech stack + build commands。
+1. **[`AGENTS.md`](./AGENTS.md) / [`CLAUDE.md`](./CLAUDE.md)** — Principles + tech stack + build commands。
 2. **[`docs/grimo/PRD.md`](./docs/grimo/PRD.md)** — 產品定位 / Critical Path / MVP scope。
 3. **[`docs/grimo/architecture.md`](./docs/grimo/architecture.md)** — 框架版本鎖定 / module map / data flow。
 4. **[`docs/grimo/development-standards.md`](./docs/grimo/development-standards.md)** — 程式約定 / package layout / testing rules。

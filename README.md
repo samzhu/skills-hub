@@ -52,7 +52,9 @@ cd backend && ./gradlew bootBuildImage
 
 ```
 skills-hub/
-├── CLAUDE.md                          ← 開發者 priority instructions（最高優先）
+├── AGENTS.md                          ← Codex repo instructions
+├── CLAUDE.md                          ← Claude Code repo instructions
+├── .codex/loop.md                     ← Codex automation tick state machine
 ├── CONTRIBUTING.md                    ← 入手指南
 ├── backend/                           ← Spring Boot 後端
 │   ├── src/main/java/io/github/samzhu/skillshub/
@@ -80,12 +82,13 @@ skills-hub/
 
 | 想做什麼 | 看哪份 |
 |----------|--------|
-| 建立 / 修 / ship 新功能 | [`CLAUDE.md`](./CLAUDE.md) + [`CONTRIBUTING.md`](./CONTRIBUTING.md) |
+| 建立 / 修 / ship 新功能 | [`AGENTS.md`](./AGENTS.md) / [`CLAUDE.md`](./CLAUDE.md) + [`CONTRIBUTING.md`](./CONTRIBUTING.md) |
 | 了解產品定位 / Critical Path | [`docs/grimo/PRD.md`](./docs/grimo/PRD.md) |
 | 框架 / 模組架構 / data flow | [`docs/grimo/architecture.md`](./docs/grimo/architecture.md) |
 | 程式約定 / package layout / testing | [`docs/grimo/development-standards.md`](./docs/grimo/development-standards.md) |
 | 看現在 backlog / 哪些 spec 在跑 | [`docs/grimo/specs/spec-roadmap.md`](./docs/grimo/specs/spec-roadmap.md) |
-| 看 cron-bounded agent 工作流 | [`docs/grimo/adr/ADR-004-cron-bounded-agent-workflow.md`](./docs/grimo/adr/ADR-004-cron-bounded-agent-workflow.md) |
+| 看 Codex loop automation | [`docs/grimo/codex-loop-automation.md`](./docs/grimo/codex-loop-automation.md) |
+| 看 Claude cron-bounded agent 工作流 | [`docs/grimo/adr/ADR-004-cron-bounded-agent-workflow.md`](./docs/grimo/adr/ADR-004-cron-bounded-agent-workflow.md) |
 | Risk scanner 涵蓋什麼威脅 | `/docs/risk-scanner-scope`（dev server 起來後可看）+ [`docs/grimo/specs/2026-05-02-S099-trust-maturity-meta.md`](./docs/grimo/specs/2026-05-02-S099-trust-maturity-meta.md) |
 
 ## 目前狀態
