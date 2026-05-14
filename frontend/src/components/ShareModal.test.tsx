@@ -11,6 +11,7 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as useGrantsModule from '../hooks/useGrants'
 import { ShareModal } from './ShareModal'
 import type { SkillGrant } from '@/api/grants'
@@ -40,7 +41,14 @@ function setupMocks(grants: SkillGrant[]) {
   } as any)
 }
 
-const renderModal = () => render(<ShareModal skillId="sk_1" onClose={vi.fn()} />)
+const renderModal = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ShareModal skillId="sk_1" onClose={vi.fn()} />
+    </QueryClientProvider>,
+  )
+}
 
 describe('ShareModal — S154b T04 4 polish', () => {
   it('AC-6: enriched grant entry 顯 displayName 而非 raw user_id', () => {
@@ -63,15 +71,23 @@ describe('ShareModal — S154b T04 4 polish', () => {
     expect(screen.queryByText(/u_a3f9c1/)).toBeNull()
   })
 
-  it('AC-7: 新增分享 radio 只有 user / public，無 group / company', () => {
+  it('AC-7: 新增分享 radio 支援 user / group / public，無 company', () => {
     setupMocks([])
     renderModal()
-    // user / public 仍在
     expect(screen.getByRole('radio', { name: /user/i })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /group/i })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /public/i })).toBeInTheDocument()
-    // group / company 移除
-    expect(screen.queryByRole('radio', { name: /group/i })).toBeNull()
     expect(screen.queryByRole('radio', { name: /company/i })).toBeNull()
+  })
+
+  it('S169 AC-13: role picker only exposes 可檢視 / 可編輯, not raw read/write/delete', () => {
+    setupMocks([])
+    renderModal()
+    expect(screen.getByRole('radio', { name: '可檢視' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: '可編輯' })).toBeInTheDocument()
+    expect(screen.queryByText('read')).toBeNull()
+    expect(screen.queryByText('write')).toBeNull()
+    expect(screen.queryByText('delete')).toBeNull()
   })
 
   it('AC-8: 已 public:*:read 時 public radio disabled + tooltip', () => {

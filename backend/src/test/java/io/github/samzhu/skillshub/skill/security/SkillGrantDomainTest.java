@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 
@@ -23,6 +24,9 @@ class SkillGrantDomainTest extends RepositorySliceTestBase {
 
     @Autowired
     private SkillGrantRepository grantRepo;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     @Test
     @DisplayName("AC-1: Role.OWNER.permissions() 回 [read, write, delete]")
@@ -66,6 +70,27 @@ class SkillGrantDomainTest extends RepositorySliceTestBase {
     void skillGrantRepository_findBySkillId_callable() {
         var result = grantRepo.findBySkillId("non-existent-id");
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("S169 AC-1: Role.EDITOR grant 可存進 skill_grants")
+    @Tag("S169")
+    @Tag("AC-1")
+    void editorGrantCanBePersisted() {
+        jdbc.update("""
+                INSERT INTO skills (id, name, description, author, category, status,
+                    download_count, created_at, updated_at, owner_id)
+                VALUES ('skill-editor-grant', 'editor-grant', 'test', 'alice', 'test',
+                    'PUBLISHED', 0, NOW(), NOW(), 'alice')
+                ON CONFLICT (id) DO NOTHING
+                """);
+
+        var grant = grantRepo.save(SkillGrant.create(
+                "skill-editor-grant", "user", "bob", Role.EDITOR, "alice"));
+
+        assertThat(grantRepo.findBySkillId("skill-editor-grant"))
+                .extracting(SkillGrant::getRole)
+                .containsExactly("EDITOR");
     }
 
     @Test

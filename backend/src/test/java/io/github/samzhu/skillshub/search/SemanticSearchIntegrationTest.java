@@ -108,7 +108,7 @@ class SemanticSearchIntegrationTest {
         SkillshubPgVectorStore.builder(jdbc, embeddingModel)
                 .owner("integration-test-owner")
                 .skillId(TEST_DOC_ID)
-                .aclEntries(List.of("user:integration-test-owner:read", "role:admin:read"))
+                .aclEntries(List.of("user:integration-test-owner:read", "public:*:read"))
                 .build()
                 .add(List.of(Document.builder()
                         .id(TEST_DOC_ID)
@@ -179,12 +179,30 @@ class SemanticSearchIntegrationTest {
         var rowC = seedVectorWithAcl("dept",
                 List.of("user:dept-admin:read", "group:engineering:read"),
                 "engineering-only-tool");
+        seedActiveGroupMembership("engineering", TestUserSeed.CAROL_ID);
 
         mockMvc.perform(get("/api/v1/search/semantic")
                 .param("q", "engineering tool")
-                .with(jwtFor("carol", List.of("engineering"))))
+                .with(jwtFor("carol", List.of())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.id=='" + rowC + "')]").exists());
+    }
+
+    @Test
+    @DisplayName("S169 AC-4: Bob 透過 S170 group_members/group_closure principal 看到 group ACL skill")
+    @Tag("S169")
+    @Tag("AC-4")
+    void groupPrincipalContext_endToEnd() throws Exception {
+        var row = seedVectorWithAcl("dept",
+                List.of("group:g_d4e5f6:read"),
+                "s170-group-only-tool");
+        seedActiveGroupMembership("g_d4e5f6", TestUserSeed.BOB_ID);
+
+        mockMvc.perform(get("/api/v1/search/semantic")
+                .param("q", "group only")
+                .with(jwtFor("bob", List.of())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id=='" + row + "')]").exists());
     }
 
     @Test
@@ -270,5 +288,24 @@ class SemanticSearchIntegrationTest {
         assertThat(aclJson).contains(aclEntries.get(0));
 
         return skillId;
+    }
+
+    private void seedActiveGroupMembership(String groupId, String userId) {
+        jdbc.update("""
+                INSERT INTO groups (id, parent_id, kind, display_name, slug, status,
+                    sort_order, created_at, updated_at)
+                VALUES (?, NULL, 'TEAM', 'Group ' || ?, ?, 'ACTIVE', 0, NOW(), NOW())
+                ON CONFLICT (id) DO NOTHING
+                """, groupId, groupId, groupId);
+        jdbc.update("""
+                INSERT INTO group_closure (ancestor_id, descendant_id, depth)
+                VALUES (?, ?, 0)
+                ON CONFLICT DO NOTHING
+                """, groupId, groupId);
+        jdbc.update("""
+                INSERT INTO group_members (group_id, user_id, created_at)
+                VALUES (?, ?, NOW())
+                ON CONFLICT DO NOTHING
+                """, groupId, userId);
     }
 }

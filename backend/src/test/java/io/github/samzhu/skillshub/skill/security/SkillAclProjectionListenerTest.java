@@ -68,21 +68,25 @@ class SkillAclProjectionListenerTest {
 
     @Test
     @Tag("AC-2")
-    @DisplayName("AC-2: SkillGrantedEvent → acl_entries includes user:bob:read")
-    void onGranted_rebuildsAclWithNewEntry(Scenario scenario) {
+    @DisplayName("S169 AC-2: user EDITOR grant → skills/vector_store acl_entries contain read/write but not delete")
+    void onGranted_userEditor_rebuildsSkillsAndVectorAcl(Scenario scenario) {
         var skillId = UUID.randomUUID().toString();
         insertSkill(skillId, "alice");
         insertVectorRow(skillId, "alice");
 
         // seed OWNER grant for alice (normally done by AC-1 listener, here direct for isolation)
         grantRepo.save(SkillGrant.create(skillId, "user", "alice", Role.OWNER, "alice"));
-        var bobGrant = SkillGrant.create(skillId, "user", "bob", Role.VIEWER, "alice");
+        var bobGrant = SkillGrant.create(skillId, "user", "bob", Role.EDITOR, "alice");
         grantRepo.save(bobGrant);
 
         scenario.publish(new SkillGrantedEvent(skillId, bobGrant.getId()))
                 .andWaitAtMost(java.time.Duration.ofSeconds(5))
                 .andWaitForStateChange(() -> loadAclEntries(skillId))
-                .andVerify(entries -> assertThat(entries).contains("user:bob:read"));
+                .andVerify(entries -> {
+                    assertThat(entries).contains("user:bob:read", "user:bob:write");
+                    assertThat(entries).doesNotContain("user:bob:delete");
+                    assertThat(loadVectorAclEntries(skillId)).containsExactlyInAnyOrderElementsOf(entries);
+                });
     }
 
     @Test

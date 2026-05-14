@@ -230,8 +230,11 @@ class SkillGrantServiceTest {
     @DisplayName("AC-6 (S154b T04): listGrants user principal enrich displayName + handle")
     void listGrants_enrichesUserPrincipal() {
         var skillId = "skill-1";
+        var skill = mockSkillWithOwner(skillId, "u_alice0");
         var userGrant = SkillGrant.create(skillId, "user", "u_alice0", Role.OWNER, "u_alice0");
         var publicGrant = SkillGrant.create(skillId, "public", "*", Role.VIEWER, "u_alice0");
+        when(users.current()).thenReturn(CurrentUser.synthetic("u_alice0", java.util.List.of(), java.util.List.of(), null));
+        when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
         when(grantRepo.findBySkillId(skillId)).thenReturn(java.util.List.of(userGrant, publicGrant));
 
         var alice = mock(User.class);
@@ -251,6 +254,19 @@ class SkillGrantServiceTest {
         var publicRow = result.stream().filter(g -> "public".equals(g.getPrincipalType())).findFirst().orElseThrow();
         assertThat(publicRow.getDisplayName()).isNull();
         assertThat(publicRow.getHandle()).isNull();
+    }
+
+    @Test
+    @Tag("S169")
+    @DisplayName("S169 AC-10: non-owner listGrants → NotSkillOwnerException")
+    void listGrants_nonOwnerThrows() {
+        var skillId = "skill-1";
+        var skill = mockSkillWithOwner(skillId, "u_alice0");
+        when(users.current()).thenReturn(CurrentUser.synthetic("u_bob000", java.util.List.of(), java.util.List.of(), null));
+        when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
+
+        assertThatThrownBy(() -> service.listGrants(skillId))
+                .isInstanceOf(NotSkillOwnerException.class);
     }
 
     /** Build a minimal Skill stub with the given ownerId via reflection. */

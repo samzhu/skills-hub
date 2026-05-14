@@ -24,6 +24,16 @@ export interface ValidationFinding {
   hint: string | null
 }
 
+export interface ViewerPermissions {
+  isOwner: boolean
+  canView: boolean
+  canDownload: boolean
+  canEdit: boolean
+  canDelete: boolean
+  canShare: boolean
+  canManageGrants: boolean
+}
+
 /**
  * 技能讀取模型，對應後端 SkillReadModel 的 JSON 序列化結果。
  */
@@ -60,6 +70,8 @@ export interface Skill {
   reviewCount: number
   /** S114a — 技能擁有者的 userId（對應 ACL owner grant principal）。 */
   ownerId?: string
+  /** S169 — 後端以目前 viewer 視角算好的 detail action 權限。 */
+  viewerPermissions?: ViewerPermissions | null
   /** 建立時間（ISO 8601 UTC） */
   createdAt: string
   /** 最後更新時間（ISO 8601 UTC） */

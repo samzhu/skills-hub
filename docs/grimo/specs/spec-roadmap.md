@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-14（S170 v4.56.0 ship — group tree principal model；`verify-all.sh` 全綠；group membership + closure table + principal context 覆蓋）
+> 最後更新：2026-05-14（S169 v4.57.0 ship — CQRS permission contract；`verify-all.sh` 全綠；EDITOR role + group ACL + viewerPermissions 覆蓋）
 
 ## 使用說明
 
@@ -69,6 +69,7 @@
 | v4.51.0 | S144 (Skill delete) | ✅ shipped 2026-05-11 |
 | v4.52.0 | S145 (Subscription management tab) | ✅ shipped 2026-05-11 |
 | v4.56.0 | S170 (Group tree principal model) | ✅ shipped 2026-05-14 — S170 all AC 1-15 PASS，`verify-all.sh` 全綠 |
+| v4.57.0 | S169 (CQRS permission contract) | ✅ shipped 2026-05-14 — S169 all AC 1-15 PASS，`verify-all.sh` 全綠 |
 
 ---
 
@@ -132,7 +133,6 @@
 | S167 | 移除 deprecated `/api/v1/skills/{id}/acl` HTTP layer — controller + test + frontend doc + S016/E2E test 對齊 `/grants` shape | XS(2) | S114a ✅ + v4.41.0 deprecation log | ✅ v4.42.0 — HTTP 層拿掉；dead code 留 S167b |
 | S167b | dead-code 清理 — `SkillCommandService.grantAcl/revokeAcl` + `Skill.grantAcl/revokeAcl` + `SkillAclGrantedEvent/Revoked` + `SkillAclQueryService` + `AuditEventListener` 對應 handlers + 4 個 unit test | S(5) | S167 ✅ | ✅ v4.45.0 — 8 整檔 + 3 production + 3 test 修改；36/36 PASS；S154 backend sequencing 鋪路 |
 | S168 | GraalVM native image — Boolean wrapper field workaround for primitive boolean readback（per JobRunr PR #1501 production-shipped fix 同 stacktrace；繞 oracle/graal#5672 SubstrateVM MethodHandle adaptation bug；fix `User.contactEmailPublic` + `NotificationPreference` 4 boolean fields 同類 latent；含 architecture.md 修正 production deploy mode 描述 + dev-standards 上游追蹤 checkpoint） | S(9) → M(11) | S154 ✅ | ✅ v4.49.0 — Round 2 fix (Approach B→C pivot)：5 個 field primitive boolean → Boolean wrapper + 拔 dead converter；Round 1 v4.48.0 Approach B prod 失敗教訓詳 spec §2.8 + §7.5；verify-all PASS=7/FAIL=0；AC-4 manual deploy 待 Round 2 ship 後驗收 |
-| S169 | CQRS permission contract — role grants + ACL projections + viewer actions + 403 semantics | M(14) | S016 ✅, S017 ✅, S114a ✅, S121 ✅, S154 ✅, S158 ✅, S170 ✅ | ⏳ Plan — 已建立 Phase 2 task files（T01-T06）；下輪進 Phase 3 task loop |
 | S2XX-cache | 未來 re-introduce ACL eval cache（profiling-driven，明確 SLA 觸發） | — | production traffic 起來 | ⏸ deferred |
 | S096d6 | /publish/validate SSE pipeline events | M(8-10) | S098a2 | ⏸ deferred |
 | S096f3 | Collections risk filter polish | XS(3-4) | S096f2 ✅ | ✅ v4.12.0 — RiskFilterSidebar 泛化 + CollectionsPage filter |
@@ -227,6 +227,7 @@
 |--------|------|------|------|
 | S144 | Skill delete | S(9) | v4.51.0 |
 | S145 | 訂閱管理頁面 | S(8) | v4.52.0 |
+| S169 | CQRS permission contract — role grants + ACL projections + viewer actions + 403 semantics | L(15) | v4.57.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

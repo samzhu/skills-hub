@@ -72,7 +72,9 @@ export function SkillDetailPage() {
   const [activeTab, setActiveTab] = useState('skill-md')
   const [shareOpen, setShareOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
-  const isOwner = !!skill && !!me && skill.ownerId === me.sub
+  const permissions = skill?.viewerPermissions
+  const isOwner = permissions?.isOwner ?? (!!skill && !!me?.userId && skill.ownerId === me.userId)
+  const canEdit = permissions?.canEdit ?? isOwner
 
   if (isLoading) {
     return (
@@ -182,7 +184,7 @@ export function SkillDetailPage() {
 
             <TabsContent value="versions" className="mt-4">
               <VersionsTabV2 versions={versions ?? []} />
-              {isOwner && skill.status !== 'SUSPENDED' && <AddVersionForm skillId={id} />}
+              {canEdit && skill.status !== 'SUSPENDED' && <AddVersionForm skillId={id} />}
             </TabsContent>
 
             <TabsContent value="reviews" className="mt-4">

@@ -89,6 +89,13 @@ Command → Service.@Transactional method:
 > 投影。歷史 `domain_events` row（`event_type IN ('SkillAclGranted', 'SkillAclRevoked')`）保留不刪
 > （audit log 不可變）。
 
+> **S169 更新（2026-05-14 v4.57.0）**：`skill_grants.role` 支援 `OWNER` / `EDITOR` / `VIEWER`。
+> listener 會把 role grant 展成 `principal:verb` ACL entries，並同步寫入 `skills.acl_entries`
+> 與 `vector_store.acl_entries`。API 不輸出 `aclEntries`；Skill detail 改輸出 `viewerPermissions`
+> 給前端顯示編輯、刪除、分享、管理 grants 按鈕。多筆讀取與 semantic search 都先用 S170
+> `PrincipalContextService.currentPrincipalKeys()` 產生 `user:<id>` / `group:<id>` principal keys，
+> 再在 SQL JSONB ACL clause 過濾。
+
 ### Code Pattern
 
 ```java
@@ -98,7 +105,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     @Id private String id;
     @Version @JsonIgnore private Long version;       // 樂觀鎖；不 expose API JSON
     private SkillStatus status;
-    private List<String> aclEntries;                  // JSONB column
+    private List<String> aclEntries;                  // JSONB projection; @JsonIgnore in API
 
     public static Skill create(CreateSkillCommand cmd) {
         var skill = new Skill();

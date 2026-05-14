@@ -173,16 +173,20 @@ class S016EndToEndSmokeTest {
                     return current != null && current.contains("group:engineering:read") ? current : null;
                 });
 
-        // (3) carol via groups=engineering → 200 + 命中 group:engineering grant（role=VIEWER expand 為 read）
+        // (3) alice is the owner → 200 + can see group:engineering grant management data.
         mockMvc.perform(get("/api/v1/skills/" + skillId + "/grants")
-                .with(jwtFor("carol", List.of("engineering"))))
+                .with(jwtFor("alice", List.of())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.principalType=='group' && @.principalId=='engineering' && @.role=='VIEWER')]").exists());
 
-        // (4) bob 有 *:read public access → 200（S026 *:read 預設公開；S125b expandPrincipals 含 *:read）
+        // (4) carol has read via group grant and bob can read public skills, but grants are owner-only.
+        mockMvc.perform(get("/api/v1/skills/" + skillId + "/grants")
+                .with(jwtFor("carol", List.of("engineering"))))
+                .andExpect(status().isForbidden());
+
         mockMvc.perform(get("/api/v1/skills/" + skillId + "/grants")
                 .with(jwtFor("bob", List.of())))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
 
         // (5) alice revoke via new S114a /grants/{grantId} endpoint —
         // SkillRevokedEvent → onRevoked() → rebuildAcl() removes group:engineering:read

@@ -1,12 +1,11 @@
 package io.github.samzhu.skillshub.skill.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,9 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
-import io.github.samzhu.skillshub.shared.security.AclPrincipalExpander;
-import io.github.samzhu.skillshub.shared.security.CurrentUser;
-import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+import io.github.samzhu.skillshub.shared.security.PrincipalContextService;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
@@ -51,20 +48,18 @@ class SkillSearchTest extends RepositorySliceTestBase {
     private JdbcTemplate jdbcTemplate;
 
     @MockitoBean
-    private CurrentUserProvider currentUserProvider;
+    private PrincipalContextService principalContextService;
 
     @MockitoBean
-    private AclPrincipalExpander aclExpander;
+    private ViewerPermissionService viewerPermissionService;
 
     @BeforeEach
     void setUp() {
         skillRepo.deleteAll();
-        // 預設 stub：admin user + AclPrincipalExpander.expand 回傳含 *:read 的 patterns。
+        // 預設 stub：PrincipalContextService 回 user principal；query service 會自行補 public:*:read。
         // 既有 6 ACs fixture 走 PUBLIC 語意（acl_entries 含 *:read），通過 ?| 比對。
-        when(currentUserProvider.current())
-                .thenReturn(CurrentUser.synthetic("test-admin", List.of("admin"), List.of(), null));
-        when(aclExpander.expand(any(CurrentUser.class), eq("read")))
-                .thenReturn(List.of("user:test-admin:read", "role:admin:read", "public:*:read"));
+        when(principalContextService.currentPrincipalKeys())
+                .thenReturn(Set.of("user:test-admin"));
         var now = Instant.now();
         // S031: search/categories 過濾 status=PUBLISHED；fixture 改 PUBLISHED 對齊公開查詢預期
         // S121: acl_entries 加 *:read（PUBLIC 語意）— ACL filter 啟用後須含此 pseudo-principal 才對 anonymous/admin 可見
@@ -183,10 +178,8 @@ class SkillSearchTest extends RepositorySliceTestBase {
                 List.of("user:alice:read", "user:alice:write", "user:alice:delete"), null));
         // user=bob 不是 alice / 非 admin / 對 private-secret-skill 沒 grant：expand 出
         // [user:bob:read, *:read] — 無一命中該 skill 的 acl_entries
-        when(currentUserProvider.current())
-                .thenReturn(CurrentUser.synthetic("bob", List.of("viewer"), List.of(), null));
-        when(aclExpander.expand(any(CurrentUser.class), eq("read")))
-                .thenReturn(List.of("user:bob:read", "role:viewer:read", "public:*:read"));
+        when(principalContextService.currentPrincipalKeys())
+                .thenReturn(Set.of("user:bob"));
 
         var page = queryService.search(null, null, null, PageRequest.of(0, 20));
         assertThat(page.getContent()).extracting(Skill::getName)
@@ -203,14 +196,38 @@ class SkillSearchTest extends RepositorySliceTestBase {
                 "alice", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now,
                 List.of("user:alice:read", "user:alice:write", "user:bob:read"), null));
         // user=bob expand 後含 user:bob:read — 命中該 skill acl_entries
-        when(currentUserProvider.current())
-                .thenReturn(CurrentUser.synthetic("bob", List.of("viewer"), List.of(), null));
-        when(aclExpander.expand(any(CurrentUser.class), eq("read")))
-                .thenReturn(List.of("user:bob:read", "role:viewer:read", "public:*:read"));
+        when(principalContextService.currentPrincipalKeys())
+                .thenReturn(Set.of("user:bob"));
 
         var page = queryService.search(null, null, null, PageRequest.of(0, 20));
         assertThat(page.getContent()).extracting(Skill::getName)
                 .contains("private-shared-with-bob");
+    }
+
+    @Test
+    @DisplayName("S169 AC-5: page.totalElements 是 SQL ACL filter 後的筆數")
+    void pageTotalElementsReflectsSqlAclFilter() {
+        skillRepo.deleteAll();
+        var now = Instant.now();
+        for (int i = 0; i < 20; i++) {
+            skillRepo.save(Skill.fromRow(
+                    UUID.randomUUID().toString(), "public-skill-" + i, "public fixture",
+                    "alice", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now,
+                    List.of("public:*:read"), null));
+        }
+        skillRepo.save(Skill.fromRow(
+                UUID.randomUUID().toString(), "private-hidden-from-bob", "private fixture",
+                "alice", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now,
+                List.of("user:alice:read"), null));
+        when(principalContextService.currentPrincipalKeys())
+                .thenReturn(Set.of("user:bob"));
+
+        var page = queryService.search(null, null, null, PageRequest.of(0, 20));
+
+        assertThat(page.getContent()).hasSize(20);
+        assertThat(page.getTotalElements()).isEqualTo(20);
+        assertThat(page.getContent()).extracting(Skill::getName)
+                .doesNotContain("private-hidden-from-bob");
     }
 
     @Test

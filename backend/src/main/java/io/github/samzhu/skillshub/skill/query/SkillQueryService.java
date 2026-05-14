@@ -27,8 +27,7 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 import io.github.samzhu.skillshub.shared.api.SkillSuspendedException;
-import io.github.samzhu.skillshub.shared.security.AclPrincipalExpander;
-import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+import io.github.samzhu.skillshub.shared.security.PrincipalContextService;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
@@ -77,15 +76,16 @@ public class SkillQueryService {
 	private final StorageService storageService;
 	private final ObjectMapper objectMapper;
 	private final ApplicationEventPublisher eventPublisher;
-	private final CurrentUserProvider currentUserProvider;
-	private final AclPrincipalExpander aclExpander;
+	private final PrincipalContextService principalContextService;
+	private final ViewerPermissionService viewerPermissionService;
 	/** S154 — author identity enrichment (LEFT JOIN users) via post-fetch lookup。*/
 	private final io.github.samzhu.skillshub.shared.security.UserRepository userRepo;
 
 	public SkillQueryService(SkillRepository skillRepo, SkillVersionRepository skillVersionRepo,
 			NamedParameterJdbcTemplate jdbc, StorageService storageService,
 			ObjectMapper objectMapper, ApplicationEventPublisher eventPublisher,
-			CurrentUserProvider currentUserProvider, AclPrincipalExpander aclExpander,
+			PrincipalContextService principalContextService,
+			ViewerPermissionService viewerPermissionService,
 			io.github.samzhu.skillshub.shared.security.UserRepository userRepo) {
 		this.skillRepo = skillRepo;
 		this.skillVersionRepo = skillVersionRepo;
@@ -93,8 +93,8 @@ public class SkillQueryService {
 		this.storageService = storageService;
 		this.objectMapper = objectMapper;
 		this.eventPublisher = eventPublisher;
-		this.currentUserProvider = currentUserProvider;
-		this.aclExpander = aclExpander;
+		this.principalContextService = principalContextService;
+		this.viewerPermissionService = viewerPermissionService;
 		this.userRepo = userRepo;
 	}
 
@@ -137,7 +137,8 @@ public class SkillQueryService {
 				extractCompatibility(latest != null ? latest.getFrontmatter() : null),
 				versions.size(),
 				flagCount != null ? flagCount : 0L);
-		return enrichAuthorIdentity(skill);
+		return enrichAuthorIdentity(skill.withViewerPermissions(
+				viewerPermissionService.viewerPermissions(skill)));
 	}
 
 	/**
@@ -209,14 +210,14 @@ public class SkillQueryService {
 		var statusClause = authorMode
 				? " WHERE LOWER(author) = LOWER(:author) "
 				: " WHERE status = 'PUBLISHED' ";
-		// S121: row-level ACL filter — 補上 list endpoint 漏裝的 acl_entries 過濾。
+		// S121/S169: row-level ACL filter — 補上 list endpoint 漏裝的 acl_entries 過濾。
 		// S116 visibility (PUBLIC/PRIVATE) 仰賴 acl_entries 含 *:read 與否判斷可見性，
-		// list 必套此 clause 才會生效。expand("read") 對 read permission 自動加 *:read（S026），
+		// list 必套此 clause 才會生效。readPatterns 對 read permission 自動加 public:*:read（S026），
 		// PUBLIC skill (acl_entries 含 *:read) 對任何 user 可見；PRIVATE 僅 owner / 被 grant
-		// 的 principals / role / group 可見。對齊 S016 SkillPermissionStrategy 既驗 ??| ARRAY pattern。
+		// 的 user / group principal 可見。對齊 S016 SkillPermissionStrategy 既驗 ??| ARRAY pattern。
 		// Admin role 不在此處特殊化 — admin 若要看 PRIVATE skill 須走 grant；對齊既有 S016 設計
 		// （admin bypass 集中在 DelegatingPermissionEvaluator @PreAuthorize 路徑，CQRS read 路徑不另立例外）。
-		var aclPatterns = aclExpander.expand(currentUserProvider.current(), "read");
+		var aclPatterns = readPatterns(principalContextService.currentPrincipalKeys());
 		// S016: ?? escape 必要 — pgJDBC 仍會 parse ? 為 placeholder；?? → ? 後送 ?| operator
 		var aclClause = " AND acl_entries ??| :aclPatterns ";
 		// S119: SELECT 加 average_rating + review_count — list endpoint 過去缺此 2 column
@@ -280,6 +281,13 @@ public class SkillQueryService {
 				.log("技能搜尋完成");
 
 		return new PageImpl<>(enriched, pageable, total != null ? total : 0L);
+	}
+
+	private static List<String> readPatterns(Set<String> principalKeys) {
+		var patterns = principalKeys.stream().map(key -> key + ":read").toList();
+		var mutable = new ArrayList<>(patterns);
+		mutable.add("public:*:read");
+		return mutable;
 	}
 
 	/**

@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
  * S114a — REST endpoints for managing skill grants (RBAC ACL).
  *
  * <p>POST/DELETE require the actor to be authenticated; ownership is
- * verified inside {@link SkillGrantService}. GET requires read permission
- * on the skill via SpEL {@code @PreAuthorize} guard.
+ * verified inside {@link SkillGrantService}. GET first requires read permission
+ * on the skill, then the service enforces owner-only grants metadata access.
  *
  * @see SkillGrantService
  */
@@ -65,7 +65,7 @@ public class SkillGrantController {
     }
 
     /**
-     * List all grants for a skill — requires read permission.
+     * List all grants for a skill — requires read permission and owner identity.
      *
      * @param id skill id
      * @return 200 list of grant entries

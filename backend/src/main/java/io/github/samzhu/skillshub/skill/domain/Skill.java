@@ -22,6 +22,7 @@ import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
 import io.github.samzhu.skillshub.skill.command.ReactivateCommand;
 import io.github.samzhu.skillshub.skill.command.SuspendCommand;
 import io.github.samzhu.skillshub.skill.command.UpdateSkillCommand;
+import io.github.samzhu.skillshub.skill.query.ViewerPermissions;
 
 /**
  * Skill Aggregate Root — Spring Data JDBC 充血聚合（state-based；per ADR-002 Phase 2）。
@@ -58,11 +59,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * S158: Jackson @JsonView marker — 控制 list vs detail endpoint 序列化差異。
      *
      * <p>List view 不暴露 {@code aclEntries} / {@code ownerId} — internal authorization
-     * detail 不該對 list browser 公開（least-privilege response）；改 ACL 結構不變成
-     * breaking change。Detail extends List → owner 視角的 detail endpoint 仍可看到全部。
-     *
-     * <p>S158 #1 only: list view limitation；detail view 條件 owner-only 留 follow-up。
-     * 目前 detail endpoint 為 unrestricted Detail view（任何 viewer 看 aclEntries）。
+     * detail 不該對 list browser 公開（least-privilege response）。
      */
     public static final class Views {
         public interface List {}
@@ -124,8 +121,8 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     @org.springframework.data.annotation.ReadOnlyProperty
     @Column("review_count")
     private long reviewCount;
-    /** S158: aclEntries 僅 Detail view 暴露 — list endpoint 不洩漏 internal authorization 結構。 */
-    @JsonView(Views.Detail.class)
+    /** S169: aclEntries 只給 SQL 授權用，不出 API JSON；detail action 改看 viewerPermissions。 */
+    @JsonIgnore
     @Column("acl_entries")
     private List<String> aclEntries;
     /** S114a — owner_id maps to V16 schema column; derived from author at create time. */
@@ -149,6 +146,9 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     @Transient @org.jspecify.annotations.Nullable private String authorDisplayName;
     @Transient @org.jspecify.annotations.Nullable private String authorHandle;
     @Transient @org.jspecify.annotations.Nullable private String authorEmail;
+    @Transient
+    @JsonView(Views.Detail.class)
+    private ViewerPermissions viewerPermissions;
     @Version
     @JsonIgnore
     private Long version;
@@ -502,6 +502,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     public long getDownloadCount() { return downloadCount; }
     public double getAverageRating() { return averageRating; }
     public long getReviewCount() { return reviewCount; }
+    @JsonIgnore
     public List<String> getAclEntries() {
         return aclEntries == null ? List.of() : List.copyOf(aclEntries);
     }
@@ -523,6 +524,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     /** S154 — author email；只在 users.contact_email_public=true 時 set，否則 null（API 隱藏）。*/
     @org.jspecify.annotations.Nullable
     public String getAuthorEmail() { return authorEmail; }
+    public ViewerPermissions getViewerPermissions() { return viewerPermissions; }
 
     /**
      * S154 — populate author identity fields from users LEFT JOIN result（per AC-6）。
@@ -550,6 +552,11 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         this.compatibility = compatibility;
         this.versionCount = versionCount;
         this.openFlagCount = openFlagCount;
+        return this;
+    }
+
+    public Skill withViewerPermissions(ViewerPermissions viewerPermissions) {
+        this.viewerPermissions = viewerPermissions;
         return this;
     }
 

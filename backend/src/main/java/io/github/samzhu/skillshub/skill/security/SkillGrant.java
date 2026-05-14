@@ -40,7 +40,7 @@ public class SkillGrant implements Persistable<String> {
     @Column("principal_id")
     private String principalId;
 
-    // role stored as VARCHAR("OWNER"/"VIEWER") — enum name, not ordinal
+    // role stored as VARCHAR("OWNER"/"EDITOR"/"VIEWER") — enum name, not ordinal
     private String role;
 
     @Column("granted_by")
@@ -74,7 +74,7 @@ public class SkillGrant implements Persistable<String> {
      * @param skillId       target skill
      * @param principalType principal namespace: user / group / company / public
      * @param principalId   principal identifier within namespace
-     * @param role          access level (OWNER or VIEWER)
+     * @param role          access level (OWNER, EDITOR, or VIEWER)
      * @param grantedBy     user-id of the granting actor
      */
     public static SkillGrant create(String skillId, String principalType,

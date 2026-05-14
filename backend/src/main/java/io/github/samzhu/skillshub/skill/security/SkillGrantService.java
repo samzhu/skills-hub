@@ -31,8 +31,8 @@ import io.github.samzhu.skillshub.skill.security.events.SkillRevokedEvent;
  * the {@code skills.acl_entries} JSONB column.
  *
  * <p>Owner identity check is enforced at the service layer ({@code ownerId} comparison),
- * not at the {@code @PreAuthorize} level, so the controller only needs
- * {@code isAuthenticated()} guard.
+ * including grants list. Controller guards only authenticate/read the request; service decides
+ * whether the actor may manage grant metadata.
  *
  * @see SkillGrantRepository
  * @see SkillGrantController
@@ -161,6 +161,13 @@ public class SkillGrantService {
      * @return list of grants with display-name enrichment applied in-place
      */
     public List<SkillGrant> listGrants(String skillId) {
+        var actor = users.current().userId();
+        var skill = skillRepo.findById(skillId).orElseThrow(() -> new NoSuchElementException(skillId));
+        if (!actor.equals(skill.getOwnerId())) {
+            log.atWarn().addKeyValue("skillId", skillId).addKeyValue("actor", actor)
+                    .log("List grants denied: actor is not the skill owner");
+            throw new NotSkillOwnerException();
+        }
         var grants = grantRepo.findBySkillId(skillId);
         // Pattern align SkillQueryService.enrichAuthorIdentity — same DisplayNameResolver
         // 5-layer fallback chain；email expose policy 此處不需要（list 只給 owner 看，且

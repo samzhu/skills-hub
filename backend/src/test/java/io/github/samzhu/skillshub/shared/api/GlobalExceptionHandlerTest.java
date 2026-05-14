@@ -317,6 +317,24 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("S169 AC-15: permission denial 回 403，state conflict 維持 409")
+    void permissionDenialAndStateConflictStaySeparated() {
+        assertThat(handler.handleNotSkillOwner(new NotSkillOwnerException()).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(handler.handleCannotRevokeOwnOwner(new CannotRevokeOwnOwnerException()).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(handler.handleReviewForbidden(new ReviewForbiddenException("not_review_author")).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+
+        assertThat(handler.handleOwnerAlreadyExists(new OwnerAlreadyExistsException()).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(handler.handleStateConflict(new IllegalStateException("review_already_exists")).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(handler.handleDuplicateKey(new DuplicateKeyException("duplicate")).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
     @DisplayName("S142b SecurityNotScannedException → 404 SECURITY_NOT_SCANNED")
     void securityNotScannedReturns404() {
         ResponseEntity<ErrorResponse> response = handler.handleSecurityNotScanned(

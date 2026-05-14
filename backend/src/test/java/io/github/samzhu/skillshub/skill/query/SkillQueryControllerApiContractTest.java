@@ -96,11 +96,7 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
                 .andExpect(jsonPath("$.downloadCount").value(0))
                 .andExpect(jsonPath("$.createdAt").exists())
                 .andExpect(jsonPath("$.updatedAt").exists())
-                .andExpect(jsonPath("$.aclEntries").isArray())
-                // S016 owner ACL auto-seeded — alice 三條 read/write/delete
-                .andExpect(jsonPath("$.aclEntries[?(@ == 'user:alice:read')]").exists())
-                .andExpect(jsonPath("$.aclEntries[?(@ == 'user:alice:write')]").exists())
-                .andExpect(jsonPath("$.aclEntries[?(@ == 'user:alice:delete')]").exists())
+                .andExpect(jsonPath("$.aclEntries").doesNotExist())
                 // @Version internal optimistic lock 欄位不 expose
                 .andExpect(jsonPath("$.version").doesNotExist());
     }

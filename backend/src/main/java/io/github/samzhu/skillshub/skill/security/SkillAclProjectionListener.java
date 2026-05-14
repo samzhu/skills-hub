@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.skill.security;
 
 import java.lang.invoke.MethodHandles;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -12,6 +13,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import io.github.samzhu.skillshub.skill.domain.SkillCreatedEvent;
 import io.github.samzhu.skillshub.skill.security.events.SkillGrantedEvent;
 import io.github.samzhu.skillshub.skill.security.events.SkillRevokedEvent;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * S114a/S169 — Materializes ACL JSONB from source-of-truth {@code skill_grants}.
@@ -40,11 +42,14 @@ public class SkillAclProjectionListener {
 
     private final SkillGrantRepository grantRepo;
     private final NamedParameterJdbcTemplate jdbc;
+    private final ObjectMapper objectMapper;
 
     public SkillAclProjectionListener(SkillGrantRepository grantRepo,
-                                      NamedParameterJdbcTemplate jdbc) {
+                                      NamedParameterJdbcTemplate jdbc,
+                                      ObjectMapper objectMapper) {
         this.grantRepo = grantRepo;
         this.jdbc = jdbc;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -122,10 +127,7 @@ public class SkillAclProjectionListener {
                 .distinct()
                 .toList();
 
-        // build JSON array manually — entries only contain URL-safe chars (letters, digits, colons, *)
-        var json = entries.stream()
-                .map(e -> "\"" + e + "\"")
-                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+        var json = writeAclEntries(entries);
         var params = Map.of("id", skillId, "acl", json);
         var skillRows = jdbc.update("UPDATE skills SET acl_entries = :acl::jsonb WHERE id = :id", params);
         var vectorRows = jdbc.update("UPDATE vector_store SET acl_entries = :acl::jsonb WHERE skill_id = :id", params);
@@ -135,5 +137,14 @@ public class SkillAclProjectionListener {
                 .addKeyValue("skillsRows", skillRows)
                 .addKeyValue("vectorRows", vectorRows)
                 .log("ACL projections rebuilt");
+    }
+
+    private String writeAclEntries(List<String> entries) {
+        try {
+            return objectMapper.writeValueAsString(entries);
+        }
+        catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize ACL entries", e);
+        }
     }
 }

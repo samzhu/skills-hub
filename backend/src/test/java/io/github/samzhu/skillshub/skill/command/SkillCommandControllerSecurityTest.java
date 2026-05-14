@@ -3,6 +3,7 @@ package io.github.samzhu.skillshub.skill.command;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,6 +18,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -98,9 +100,43 @@ class SkillCommandControllerSecurityTest extends WebMvcSliceTestBase {
                 .with(jwt()
                         .jwt(j -> j.subject("bob")
                                 .claim("roles", List.of("user"))
-                                .claim("groups", List.<String>of()))
+                        .claim("groups", List.<String>of()))
                         .authorities(new SimpleGrantedAuthority("ROLE_user"))))
                 .andExpect(status().isForbidden());
+
+        Mockito.verify(skillCommandService, Mockito.never())
+                .addVersion(ArgumentMatchers.anyString(), ArgumentMatchers.any(byte[].class), ArgumentMatchers.anyString(),
+                        ArgumentMatchers.anyString());
+    }
+
+    @Test
+    @DisplayName("S169 AC-15: write 通過後版本重複 → 409 VERSION_EXISTS")
+    @Tag("S169-AC-15")
+    void authorizedDuplicateVersion_returns409() throws Exception {
+        var skillId = "test-skill-id";
+        Mockito.when(currentUserProvider.current()).thenReturn(
+                new io.github.samzhu.skillshub.shared.security.CurrentUser(
+                        "alice", "alice-sub", "Alice", "alice@example.com", "alice",
+                        List.of("user"), List.of(), null));
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq(skillId),
+                        ArgumentMatchers.eq("Skill"), ArgumentMatchers.eq("write")))
+                .thenReturn(true);
+        Mockito.doThrow(new VersionExistsException("Version 1.1.0 already exists"))
+                .when(skillCommandService)
+                .addVersion(ArgumentMatchers.eq(skillId), ArgumentMatchers.any(byte[].class),
+                        ArgumentMatchers.eq("1.1.0"), ArgumentMatchers.eq("Alice"));
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/v1/skills/" + skillId + "/versions")
+                .file(new MockMultipartFile("file", "v.zip", "application/zip", new byte[]{1, 2, 3}))
+                .param("version", "1.1.0")
+                .with(jwt()
+                        .jwt(j -> j.subject("alice")
+                                .claim("roles", List.of("user"))
+                                .claim("groups", List.<String>of()))
+                        .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("VERSION_EXISTS"));
     }
 
     @Test
@@ -145,6 +181,31 @@ class SkillCommandControllerSecurityTest extends WebMvcSliceTestBase {
 
         Mockito.verify(skillCommandService, Mockito.never())
                 .deleteSkill(ArgumentMatchers.anyString(), ArgumentMatchers.anyString());
+    }
+
+    @Test
+    @DisplayName("S169 AC-11: editor 有 write permission 可 PUT /skills/{id}")
+    @Tag("S169-AC-11")
+    void editorUpdate_returns200() throws Exception {
+        var skillId = "test-skill-id";
+        Mockito.when(currentUserProvider.userId()).thenReturn("bob");
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq(skillId),
+                        ArgumentMatchers.eq("Skill"), ArgumentMatchers.eq("write")))
+                .thenReturn(true);
+
+        mockMvc.perform(put("/api/v1/skills/" + skillId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"description\":\"updated by editor\",\"category\":\"devops\"}")
+                        .with(jwt()
+                                .jwt(j -> j.subject("bob")
+                                        .claim("roles", List.of("user"))
+                                        .claim("groups", List.<String>of()))
+                                .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+                .andExpect(status().isOk());
+
+        Mockito.verify(skillCommandService).updateSkill(
+                ArgumentMatchers.eq(skillId), ArgumentMatchers.any(UpdateSkillCommand.class), ArgumentMatchers.eq("bob"));
     }
 
     @Test

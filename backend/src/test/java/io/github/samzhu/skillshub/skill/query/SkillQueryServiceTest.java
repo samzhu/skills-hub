@@ -25,8 +25,7 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 
 import tools.jackson.databind.ObjectMapper;
 
-import io.github.samzhu.skillshub.shared.security.AclPrincipalExpander;
-import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+import io.github.samzhu.skillshub.shared.security.PrincipalContextService;
 import io.github.samzhu.skillshub.skill.command.PublishVersionCommand;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
@@ -46,8 +45,8 @@ class SkillQueryServiceTest {
     @Mock StorageService storageService;
     @Mock ObjectMapper objectMapper;
     @Mock ApplicationEventPublisher eventPublisher;
-    @Mock CurrentUserProvider currentUserProvider;
-    @Mock AclPrincipalExpander aclExpander;
+    @Mock PrincipalContextService principalContextService;
+    @Mock ViewerPermissionService viewerPermissionService;
     /** S154-T05: enrichAuthorIdentity 走 userRepo.findById；mock 預設返 empty → snapshot fallback path */
     @Mock io.github.samzhu.skillshub.shared.security.UserRepository userRepo;
 

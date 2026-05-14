@@ -18,7 +18,8 @@ import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
  *
  * <p>純 Jackson 單元測試；無 Spring context；快速；確保 list view 不洩漏
  * {@code aclEntries} / {@code ownerId} 兩個 internal authorization 欄位。
- * Detail view（含 list extends 關係）保留全部欄位。
+ * S169 後 {@code aclEntries} 不再出現在任何 API JSON；detail action 改由
+ * {@code viewerPermissions} 表達。
  *
  * <p>對應 spec §3 AC-1：list response 完全不出現 aclEntries / ownerId 字串。
  *
@@ -68,29 +69,25 @@ class SkillJsonViewTest {
     }
 
     @Test
-    @DisplayName("S158: detail view 包含完整 aclEntries + ownerId（既有 detail endpoint 行為不變）")
-    void detailViewIncludesAllFields() throws JsonProcessingException {
+    @DisplayName("S169 AC-9: detail view 不暴露 aclEntries，但保留 ownerId")
+    void detailViewExcludesAclEntries() throws JsonProcessingException {
         Skill skill = sampleSkill();
         ObjectWriter writer = MAPPER.writerWithView(Skill.Views.Detail.class);
 
         String json = writer.writeValueAsString(skill);
 
-        // Detail extends List → 公開欄位全部 + internal auth 欄位也露
-        assertThat(json).contains("\"aclEntries\"");
+        assertThat(json).doesNotContain("aclEntries");
         assertThat(json).contains("\"ownerId\":\"alice\"");
-        assertThat(json).contains("user:alice:read");
-        assertThat(json).contains("public:*:read");
     }
 
     @Test
-    @DisplayName("S158: 無 view 設定時 default-view-inclusion 行為 — 全欄位序列化")
-    void noViewIncludesAllFields() throws JsonProcessingException {
+    @DisplayName("S169 AC-9: 無 view 設定時也不暴露 aclEntries")
+    void noViewExcludesAclEntries() throws JsonProcessingException {
         Skill skill = sampleSkill();
 
         String json = MAPPER.writeValueAsString(skill);
 
-        // 不啟用 view 時所有欄位序列化（Spring Boot 預設行為一致）
-        assertThat(json).contains("\"aclEntries\"");
+        assertThat(json).doesNotContain("aclEntries");
         assertThat(json).contains("\"ownerId\"");
     }
 }

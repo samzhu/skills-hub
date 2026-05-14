@@ -12,7 +12,7 @@ export interface SkillGrant {
   id: string
   principalType: 'user' | 'group' | 'company' | 'public'
   principalId: string
-  role: 'OWNER' | 'VIEWER'
+  role: 'OWNER' | 'EDITOR' | 'VIEWER'
   grantedBy: string
   grantedAt: string
   /** S154b — backend enrich：principalType=user 時 LEFT JOIN users 取 5-layer fallback displayName。 */
@@ -22,10 +22,9 @@ export interface SkillGrant {
 }
 
 export interface CreateGrantRequest {
-  principalType: SkillGrant['principalType']
+  principalType: 'user' | 'group' | 'public'
   principalId: string
-  /** MVP: 只開放 VIEWER（OWNER one-per-skill 約束） */
-  role: 'VIEWER'
+  role: 'VIEWER' | 'EDITOR'
 }
 
 export function fetchGrants(skillId: string): Promise<SkillGrant[]> {

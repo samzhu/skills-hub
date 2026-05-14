@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useQuery } from '@tanstack/react-query'
 import { useGrants, useCreateGrant, useRevokeGrant } from '@/hooks/useGrants'
 import type { SkillGrant } from '@/api/grants'
+import { searchShareTargets } from '@/api/shareTargets'
 import { localizeApiError } from '@/lib/api-error-messages'
 import { getDisplayName } from '@/lib/displayName'
 
@@ -9,18 +11,24 @@ import { getDisplayName } from '@/lib/displayName'
  * S114a — ACL 分享管理 Modal。
  *
  * 顯示技能現有 grants 清單，並提供新增 VIEWER grant / 撤銷 grant 操作。
- * owner-only：呼叫端負責確認 `skill.ownerId === me.sub` 後再 render。
+ * owner-only：呼叫端以 detail API 的 `viewerPermissions.canManageGrants` 決定是否 render。
  */
 export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () => void }) {
   const { data: grants = [], isLoading } = useGrants(skillId)
   const createGrant = useCreateGrant(skillId)
   const revokeGrant = useRevokeGrant(skillId)
 
-  const [principalType, setPrincipalType] = useState<SkillGrant['principalType']>('user')
+  const [principalType, setPrincipalType] = useState<'user' | 'group' | 'public'>('user')
   const [principalId, setPrincipalId] = useState('')
+  const [role, setRole] = useState<'VIEWER' | 'EDITOR'>('VIEWER')
 
   const isPublicGrant = principalType === 'public'
   const resolvedPrincipalId = isPublicGrant ? '*' : principalId.trim()
+  const targetQuery = useQuery({
+    queryKey: ['share-targets', principalType, principalId],
+    queryFn: () => searchShareTargets(principalId),
+    enabled: principalType === 'group' && principalId.trim().length > 0,
+  })
   // S154b — 已 public:*:read 偵測：若 grants 含 principalType='public' && principalId='*'
   // → 不允許再加 public grant（duplicate；backend 也會回 conflict）。對 UI disable + 告知。
   const isAlreadyPublic = grants.some(
@@ -32,7 +40,7 @@ export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () 
 
   function handleSubmit() {
     createGrant.mutate(
-      { principalType, principalId: resolvedPrincipalId, role: 'VIEWER' },
+      { principalType, principalId: resolvedPrincipalId, role },
       {
         onSuccess: () => {
           setPrincipalId('')
@@ -98,11 +106,9 @@ export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () 
 
         {/* add grant form */}
         <div className="mb-4">
-          <p className="mb-2 text-[12px] text-muted-foreground">新增分享（VIEWER）</p>
+          <p className="mb-2 text-[12px] text-muted-foreground">新增分享</p>
           <div className="mb-2 flex gap-2">
-            {/* S154b — MVP 階段無 organization model，移除 group / company radio
-                （AC-7）；保留 user / public 二擇一即足。 */}
-            {(['user', 'public'] as const).map((t) => {
+            {(['user', 'group', 'public'] as const).map((t) => {
               const isPublicOption = t === 'public'
               const disabled = isPublicOption && isAlreadyPublic
               return (
@@ -122,10 +128,24 @@ export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () 
                     onChange={() => setPrincipalType(t)}
                     disabled={disabled}
                   />
-                  {t}
+                  {targetTypeLabel(t)}
                 </label>
               )
             })}
+          </div>
+          <div className="mb-2 flex gap-2">
+            {(['VIEWER', 'EDITOR'] as const).map((r) => (
+              <label key={r} className="flex cursor-pointer items-center gap-1 text-[12px]">
+                <input
+                  type="radio"
+                  name="grantRole"
+                  value={r}
+                  checked={role === r}
+                  onChange={() => setRole(r)}
+                />
+                {roleLabel(r)}
+              </label>
+            ))}
           </div>
           {/* S154b — 已 public 時 inline 文案告知（搭配 radio disabled）。tooltip
               藉 title 屬性留給 hover 場景；無 hover 也要看得到狀態。 */}
@@ -141,9 +161,25 @@ export function ShareModal({ skillId, onClose }: { skillId: string; onClose: () 
             disabled={isPublicGrant}
             // S154b — placeholder 改友善版（AC-9）；backend `UserResolver.resolveByEmailHandleOrId`
             // 接收 email / handle / user_id 三種；submit 時 backend 轉成 user_id 寫入 ACL。
-            placeholder={isPublicGrant ? '所有人（public:*）' : '輸入使用者 email 或 handle'}
+            placeholder={targetPlaceholder(principalType)}
             className="w-full rounded-md border border-border bg-background p-2 text-[13px] disabled:opacity-50"
           />
+          {principalType === 'group' && targetQuery.data && targetQuery.data.length > 0 && (
+            <ul className="mt-2 max-h-32 overflow-auto rounded-md border border-border">
+              {targetQuery.data.map((target) => (
+                <li key={target.principalId}>
+                  <button
+                    type="button"
+                    className="flex w-full flex-col px-2 py-1.5 text-left text-[12px] hover:bg-muted"
+                    onClick={() => setPrincipalId(target.principalId)}
+                  >
+                    <span>{target.label}</span>
+                    <span className="text-[11px] text-muted-foreground">{target.hint}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {createGrant.isError && (
@@ -193,5 +229,22 @@ function principalLabel(g: SkillGrant): string {
       authorHandle: g.handle,
     })
   }
+  if (g.principalType === 'group') return `群組：${g.principalId}`
   return `${g.principalType}:${g.principalId}`
+}
+
+function targetTypeLabel(t: 'user' | 'group' | 'public'): string {
+  if (t === 'user') return '人員 user'
+  if (t === 'group') return '群組 group'
+  return '所有人 public'
+}
+
+function roleLabel(role: 'VIEWER' | 'EDITOR'): string {
+  return role === 'VIEWER' ? '可檢視' : '可編輯'
+}
+
+function targetPlaceholder(t: 'user' | 'group' | 'public'): string {
+  if (t === 'public') return '所有人（public:*）'
+  if (t === 'group') return '搜尋群組名稱'
+  return '輸入使用者 email 或 handle'
 }

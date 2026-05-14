@@ -1,6 +1,6 @@
 # S169: CQRS permission contract — role grants, ACL projections, viewer actions, 403 semantics
 
-> Spec: S169 | Size: M(14) | Status: ⏳ Plan
+> Spec: S169 | Size: M(14) → L(15) | Status: ✅ Shipped in v4.57.0
 > Date: 2026-05-13
 > Origin: 整合權限讀寫分離、role-based sharing、`viewerPermissions`、ACL projection consistency、permission denial 403 semantics。S170 先提供 `group:<id>` principal model；S169 只消費該模型。
 > Depends On: S016 ✅, S017 ✅, S114a ✅, S121 ✅, S154 ✅, S158 ✅, S170 ✅
@@ -355,7 +355,7 @@ OWNER remains system-seeded / migration-owned; UI does not expose owner transfer
 
 | File | Action | Description |
 |------|--------|-------------|
-| `backend/src/main/resources/db/migration/V23__skill_grants_editor_role.sql` | new | Extend `skill_grants.role` to `OWNER/EDITOR/VIEWER`; `group` principal type already exists since V16. |
+| `backend/src/main/resources/db/migration/V24__skill_grants_editor_role.sql` | new | Extend `skill_grants.role` to `OWNER/EDITOR/VIEWER`; `group` principal type already exists since V16. |
 | `backend/src/main/java/io/github/samzhu/skillshub/skill/security/Role.java` | modify | Add `EDITOR` and role matrix. |
 | `backend/src/main/java/io/github/samzhu/skillshub/skill/security/SkillAclProjectionListener.java` | modify | Rebuild `skills.acl_entries` and `vector_store.acl_entries`; use ObjectMapper for JSON. |
 | `backend/src/main/java/io/github/samzhu/skillshub/skill/security/ShareTargetController.java` | new | Search user candidates plus S170 Group candidates for Share modal. |
@@ -422,3 +422,57 @@ OWNER remains system-seeded / migration-owned; UI does not expose owner transfer
 ---
 
 <!-- Section 7 added by /planning-tasks after implementation -->
+
+## 7. Results
+
+### 7.1 Task Results
+
+- T01 PASS — Role matrix and ACL projection support `OWNER` / `EDITOR` / `VIEWER`.
+- T02 PASS — Search/list use S170 principal context for group-aware ACL filtering before pagination.
+- T03 PASS — Detail API returns `viewerPermissions`; API JSON no longer exposes `aclEntries`.
+- T04 PASS — Grants list is owner-only; editor write is allowed; delete/share remain owner-only.
+- T05 PASS — Permission denials stay 403; state/version/duplicate conflicts stay 409.
+- T06 PASS — Frontend actions read `viewerPermissions`; Share modal supports user/group/public targets and VIEWER/EDITOR roles.
+
+### 7.2 QA Gate
+
+```bash
+./scripts/verify-all.sh
+```
+
+Result: `V01=PASS V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS`, `FAIL=0`, `SKIP=0`, exit=0.
+
+Coverage info: `LINE coverage = 83.9% (covered=4131 / total=4925)`.
+
+### 7.3 Acceptance Criteria Verification
+
+| AC | Result | Evidence |
+|----|--------|----------|
+| AC-1 Role matrix supports Editor | PASS | `SkillGrantDomainTest` verifies `EDITOR` expands to `read/write` and excludes `delete`. |
+| AC-2 Grant user Editor updates skills ACL | PASS | `SkillAclProjectionListenerTest` verifies Bob `EDITOR` grant writes `user:<id>:read/write` into `skills.acl_entries` without delete. |
+| AC-3 Grant Group Viewer updates skills and vector ACL | PASS | `SkillAclProjectionListenerTest` verifies `group:<id> VIEWER` writes matching `read` ACL entries to both `skills` and `vector_store`. |
+| AC-4 Semantic search respects Group ACL | PASS | `SemanticSearchIntegrationTest.groupPrincipalContext_endToEnd` verifies Bob sees group-shared content and Charlie does not. |
+| AC-5 Paged list count is filtered in SQL | PASS | `SkillSearchTest.pageTotalElementsReflectsSqlAclFilter` verifies private unreadable rows are not counted after pagination. |
+| AC-6 Detail returns owner viewerPermissions | PASS | `SkillDetailViewerPermissionsTest` verifies owner detail response has owner/manage/edit/delete/share permissions. |
+| AC-7 Detail returns editor viewerPermissions | PASS | `SkillDetailViewerPermissionsTest` verifies editor can edit and cannot delete/share/manage grants. |
+| AC-8 Detail returns Group viewerPermissions | PASS | `SkillDetailViewerPermissionsTest` verifies group viewer can view/download and cannot edit/delete/share. |
+| AC-9 API never exposes aclEntries | PASS | `SkillResponsePrivacyTest`, `SkillJsonViewTest`, and `SkillQueryControllerApiContractTest` verify list/detail JSON omit `aclEntries`. |
+| AC-10 Grants list is owner-only | PASS | `SkillGrantControllerAuthzTest` and `S016EndToEndSmokeTest` verify owner gets 200 and non-owner editor/viewer gets 403. |
+| AC-11 Skill update uses write permission | PASS | `SkillCommandControllerSecurityTest` verifies `EDITOR` can update skill metadata through write permission. |
+| AC-12 Skill delete requires delete permission | PASS | `SkillCommandControllerSecurityTest` verifies `EDITOR` delete returns 403, not 409. |
+| AC-13 Share modal exposes principals and roles, not raw operations | PASS | `ShareModal.test.tsx` verifies user/group/public targets, `可檢視` / `可編輯` roles, and no raw read/write/delete controls. |
+| AC-14 Frontend action buttons read viewerPermissions | PASS | `SkillDetailPage.test.tsx` verifies action gating follows `viewerPermissions`, not `skill.ownerId === me.sub`. |
+| AC-15 Permission denial is 403 and conflict remains 409 | PASS | `GlobalExceptionHandlerTest` and `SkillCommandControllerSecurityTest` verify access denied maps to 403 while duplicate/conflict paths remain 409. |
+
+### 7.4 Final Size Re-score
+
+| Dimension | Initial | Actual | Notes |
+|-----------|---------|--------|-------|
+| Technical risk | 2 | 2 | Reused existing Spring Data JDBC, Modulith listener, JSONB ACL, and React patterns. |
+| Uncertainty | 2 | 2 | S170 already owned group principal context; S169 consumed its stable `principalKey` contract. |
+| Dependencies | 3 | 3 | Required S016, S017, S114a, S121, S154, S158, and S170 behavior to line up. |
+| Scope | 3 | 3 | Backend permissions, SQL ACL, JSON response shape, frontend sharing UI, and one Flyway migration changed together. |
+| Testing | 2 | 3 | Added backend integration coverage, frontend role/action tests, S016 smoke update, and full `verify-all.sh`. |
+| Reversibility | 2 | 2 | API contract and migration are visible, but rollback is straightforward by reverting role/UI contract changes before production data relies on `EDITOR`. |
+
+Final score: `15` → `L`. Initial estimate was `14` → `M`; actual size increased by 1 point because test coverage had to span backend ACL projection, semantic search, detail JSON privacy, write/delete authorization, and frontend action gating together.

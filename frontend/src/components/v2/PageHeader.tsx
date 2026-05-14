@@ -107,6 +107,12 @@ function relativeTime(iso: string): string {
  */
 export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, report, stats, onDownload, onShareClick, onEditClick }: Props) {
   const skillScore = scores?.skillScore ?? null
+  const permissions = skill.viewerPermissions
+  const isOwnerView = permissions?.isOwner ?? isOwner
+  const canDownload = permissions?.canDownload ?? true
+  const canEdit = permissions?.canEdit ?? isOwner
+  const canShare = permissions?.canShare ?? isOwner
+  const canManageGrants = permissions?.canManageGrants ?? isOwner
 
   return (
     <div
@@ -168,7 +174,7 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
 
         {/* Right: actions */}
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'flex-start' }}>
-          {isOwner && onEditClick && (
+          {canEdit && onEditClick && (
             <button
               type="button"
               aria-label="編輯技能"
@@ -179,8 +185,8 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
               編輯
             </button>
           )}
-          {isOwner && <VisibilityToggleButton skillId={skill.id} />}
-          {isOwner && onShareClick && (
+          {canShare && <VisibilityToggleButton skillId={skill.id} />}
+          {canManageGrants && onShareClick && (
             <button
               type="button"
               aria-label="分享"
@@ -190,8 +196,8 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
               分享
             </button>
           )}
-          <StarButton skillId={skill.id} isOwner={isOwner} />
-          {skill.status === 'PUBLISHED' && (
+          <StarButton skillId={skill.id} isOwner={isOwnerView} />
+          {skill.status === 'PUBLISHED' && canDownload && (
             <BeamFrame>
               <button
                 data-testid="download-cta"

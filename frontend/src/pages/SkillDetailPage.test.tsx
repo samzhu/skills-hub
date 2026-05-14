@@ -128,6 +128,15 @@ const skillFixture = (status: string, id = 'skill-test-1') => ({
   ownerId: 'alice',
   averageRating: 0,
   reviewCount: 0,
+  viewerPermissions: {
+    isOwner: true,
+    canView: true,
+    canDownload: status === 'PUBLISHED',
+    canEdit: true,
+    canDelete: true,
+    canShare: true,
+    canManageGrants: true,
+  },
 })
 
 const SKILL_SUB_PATHS = ['/versions', '/stats', '/bundles', '/files', '/scores', '/security-report', '/grants', '/flags', '/reviews']
@@ -222,7 +231,19 @@ describe('SkillDetailPage — S114a AC-11 share button visibility', () => {
   })
 
   it('AC-11: non-owner does not see 分享 button', async () => {
-    const skill = { ...skillFixture('PUBLISHED', 'skill-share-2'), ownerId: 'alice' }
+    const skill = {
+      ...skillFixture('PUBLISHED', 'skill-share-2'),
+      ownerId: 'alice',
+      viewerPermissions: {
+        isOwner: false,
+        canView: true,
+        canDownload: true,
+        canEdit: false,
+        canDelete: false,
+        canShare: false,
+        canManageGrants: false,
+      },
+    }
     mockFetchWithOwnerAndMe(skill, 'bob')
     renderPage('skill-share-2')
     await waitFor(() => {
@@ -230,5 +251,26 @@ describe('SkillDetailPage — S114a AC-11 share button visibility', () => {
       expect(screen.getByTestId('download-cta')).toBeInTheDocument()
     })
     expect(screen.queryByRole('button', { name: '分享' })).not.toBeInTheDocument()
+  })
+
+  it('S169 AC-14: viewerPermissions.canShare=true controls 分享 button, not ownerId === me.sub', async () => {
+    const skill = {
+      ...skillFixture('PUBLISHED', 'skill-share-vp'),
+      ownerId: 'u_alice0',
+      viewerPermissions: {
+        isOwner: true,
+        canView: true,
+        canDownload: true,
+        canEdit: true,
+        canDelete: true,
+        canShare: true,
+        canManageGrants: true,
+      },
+    }
+    mockFetchWithOwnerAndMe(skill, 'oauth-sub-not-owner-id')
+    renderPage('skill-share-vp')
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '分享' })).toBeInTheDocument()
+    })
   })
 })

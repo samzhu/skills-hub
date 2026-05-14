@@ -14,8 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import io.github.samzhu.skillshub.shared.security.AclPrincipalExpander;
-import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+import io.github.samzhu.skillshub.shared.security.PrincipalContextService;
 import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
@@ -56,18 +55,16 @@ class SemanticSearchService {
 
     private final JdbcTemplate jdbcTemplate;
     private final EmbeddingModel embeddingModel;
-    private final CurrentUserProvider currentUserProvider;
-    private final AclPrincipalExpander aclExpander;
+    private final PrincipalContextService principalContextService;
     private final SkillRepository skillRepo;
 
     SemanticSearchService(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel,
-            CurrentUserProvider currentUserProvider, AclPrincipalExpander aclExpander,
+            PrincipalContextService principalContextService,
             SkillRepository skillRepo,
             @Value("${skillshub.search.semantic-similarity-threshold:0.3}") double similarityThreshold) {
         this.jdbcTemplate = jdbcTemplate;
         this.embeddingModel = embeddingModel;
-        this.currentUserProvider = currentUserProvider;
-        this.aclExpander = aclExpander;
+        this.principalContextService = principalContextService;
         this.skillRepo = skillRepo;
         this.similarityThreshold = similarityThreshold;
     }
@@ -83,10 +80,10 @@ class SemanticSearchService {
      * @return 語意相關的技能清單，若無符合結果則回傳空清單（不拋出例外）
      */
     List<SemanticSearchResult> search(String query, int topK) {
-        // S017：展開當前 user 的 read patterns；走 ACL-aware SQL 路徑（fail-secure 由 vector_store.acl_entries 守 — anonymous 走 lab user fallback patterns，
-        // 與既有 vector_store row owner 對不上即回 empty result）
-        var currentUser = currentUserProvider.current();
-        var aclPatterns = aclExpander.expand(currentUser, "read");
+        // S169：S170 PrincipalContextService 從 platform user_id + group_members/group_closure
+        // 建 principal keys；semantic search 只加 read verb 後交給 vector_store JSONB ACL filter。
+        var principalKeys = principalContextService.currentPrincipalKeys();
+        var aclPatterns = readPatterns(principalKeys);
 
         var request = SearchRequest.builder()
                 .query(query)
@@ -115,11 +112,17 @@ class SemanticSearchService {
 
         log.atInfo()
                 .addKeyValue("query", query)
-                .addKeyValue("userId", currentUser.userId())
+                .addKeyValue("principalCount", principalKeys.size())
                 .addKeyValue("patternsCount", aclPatterns.size())
                 .addKeyValue("resultsCount", results.size())
                 .log("ACL-aware semantic search 完成");
         return results;
+    }
+
+    private static List<String> readPatterns(java.util.Set<String> principalKeys) {
+        var patterns = principalKeys.stream().map(key -> key + ":read").collect(Collectors.toCollection(java.util.ArrayList::new));
+        patterns.add("public:*:read");
+        return patterns;
     }
 
     /**

@@ -1,5 +1,32 @@
 # Changelog
 
+## [v4.57.0] — S169 CQRS permission contract（2026-05-14）
+
+### Added
+
+- **`EDITOR` role grant** — `skill_grants.role` 現在支援 `OWNER` / `EDITOR` / `VIEWER`；`EDITOR` 會展成 `read/write` ACL，不含 `delete`。
+- **Group-aware ACL projection** — `SkillAclProjectionListener` 會把 `user:<id>`、`group:<id>`、`public:*` role grants 展開後同步寫入 `skills.acl_entries` 與 `vector_store.acl_entries`。
+- **Detail action contract** — `GET /api/v1/skills/{id}` 回傳 `viewerPermissions`，前端按鈕直接讀 `canEdit`、`canDelete`、`canShare`、`canManageGrants`。
+- **Share modal role UI** — 分享視窗支援 user / group / public target，權限選項顯示 `可檢視` / `可編輯`，不再暴露 read/write/delete 原始操作。
+
+### Changed
+
+- **List/search ACL source 改用 S170 principal context** — keyword list 與 semantic search 都用 `PrincipalContextService.currentPrincipalKeys()` 產生 ACL patterns，讓群組成員能看到 group-shared skills。
+- **Grant list 改 owner-only** — `GET /api/v1/skills/{id}/grants` 只有 skill owner 可讀；editor 仍可編輯 skill metadata，但不能看或改 grants。
+- **API response privacy hardening** — list/detail JSON 都不輸出 `aclEntries`；detail 改由 `viewerPermissions` 給前端行為判斷。
+- **Permission status code 對齊** — 權限不足回 403；duplicate version/review 等狀態衝突保留 409。
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 83.9%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`exit=0`。
+- Backend targeted tests：`SkillGrantDomainTest`、`SkillAclProjectionListenerTest`、`SemanticSearchIntegrationTest`、`SkillSearchTest`、`SkillDetailViewerPermissionsTest`、`SkillResponsePrivacyTest`、`SkillGrantControllerAuthzTest`、`SkillGrantServiceTest`、`SkillCommandControllerSecurityTest`、`GlobalExceptionHandlerTest`、`S016EndToEndSmokeTest` 全部 PASS。
+- Frontend：`npm test -- SkillDetailPage.test.tsx ShareModal.test.tsx`（15 tests PASS）與 `npm run typecheck` PASS。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-13-S169-cqrs-permission-contract.md` → `docs/grimo/specs/archive/2026-05-13-S169-cqrs-permission-contract.md`
+- `docs/grimo/tasks/2026-05-14-S169-T01..T06-*.md` 已刪除；S169 移至 roadmap shipped table 與 `v4.57.0` milestone。
+
 ## [v4.56.0] — S170 Group tree principal model（2026-05-14）
 
 ### Added
