@@ -31,8 +31,8 @@ export interface EmptyStateProps {
   eyebrow?: string
   /** redirect: echo of user query */
   query?: string
-  /** redirect: list of suggestion items {text, hint} */
-  suggestions?: Array<{ text: string; hint?: string }>
+  /** redirect: list of suggestion items; actionable items render as links/buttons. */
+  suggestions?: Array<{ text: string; hint?: string; href?: string; onClick?: () => void }>
   /** clear: list of stat items {value, label} (max 3) */
   stats?: Array<{ value: string; label: string; delta?: string }>
   /** invite: optional 4-step horizontal flow (e.g. ['打包', '自動掃描', '發佈', '追蹤']);
@@ -194,18 +194,51 @@ function RedirectTone(props: EmptyStateProps) {
           <div className="flex flex-col gap-2">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A8A49C]">你可以這樣做</p>
             {props.suggestions.map((s, i) => (
-              <div key={i} className="flex items-center justify-between gap-3 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#171719] px-3 py-2.5">
-                <div className="flex flex-col">
-                  <span className="text-[13px] font-medium text-[#EEECEA]">{s.text}</span>
-                  {s.hint && <span className="mt-0.5 text-[11px] text-[#A8A49C]">{s.hint}</span>}
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#A8A49C]" />
-              </div>
+              <SuggestionRow key={i} suggestion={s} />
             ))}
           </div>
         )}
       </div>
     </Container>
+  )
+}
+
+function SuggestionRow({ suggestion }: { suggestion: NonNullable<EmptyStateProps['suggestions']>[number] }) {
+  const content = (
+    <>
+      <div className="flex flex-col">
+        <span className="text-[13px] font-medium text-[#EEECEA]">{suggestion.text}</span>
+        {suggestion.hint && <span className="mt-0.5 text-[11px] text-[#A8A49C]">{suggestion.hint}</span>}
+      </div>
+      {(suggestion.href || suggestion.onClick) && <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#A8A49C]" />}
+    </>
+  )
+  const className = "flex w-full items-center justify-between gap-3 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#171719] px-3 py-2.5 text-left"
+
+  if (suggestion.href) {
+    return (
+      <Link to={suggestion.href} className={`${className} hover:bg-[#1F1F22] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}>
+        {content}
+      </Link>
+    )
+  }
+
+  if (suggestion.onClick) {
+    return (
+      <button
+        type="button"
+        onClick={suggestion.onClick}
+        className={`${className} hover:bg-[#1F1F22] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return (
+    <div className={`${className} border-dashed opacity-80`}>
+      {content}
+    </div>
   )
 }
 

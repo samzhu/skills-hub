@@ -13,8 +13,7 @@ interface Props {
 }
 
 /**
- * S142a — Three-card hero metrics row (SkillScore | Quality | Security).
- * grid-template-columns: 160px 1fr 1fr (per AC-S142a-6).
+ * S142a/S172-T06 — Hero metrics row (SkillScore | Quality | Security).
  */
 export function HeroMetricsRow({ skillScore, scores, report, activeTab, onTabChange }: Props) {
   return (
@@ -22,7 +21,7 @@ export function HeroMetricsRow({ skillScore, scores, report, activeTab, onTabCha
       data-testid="hero-metrics-row"
       style={{
         display: 'grid',
-        gridTemplateColumns: '160px 1fr 1fr',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
         gap: 10,
         marginBottom: 0,
       }}

@@ -48,4 +48,15 @@ And（而且）在 390px 寬度 tab control 會包行或在自身容器內捲動
 - 無。
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-14
+Test: `npm test -- MySkillsPage.test.tsx` (`frontend/src/pages/MySkillsPage.test.tsx`)
+Files changed:
+- `frontend/src/pages/MySkillsPage.tsx` (modified)
+- `frontend/src/pages/MySkillsPage.test.tsx` (modified)
+- `docs/grimo/tasks/2026-05-14-S172-T04-my-skills-dark-segmented-tabs.md` (modified)
+Notes:
+- RED: `cd frontend && npm test -- MySkillsPage.test.tsx` failed 3 S172 assertions because inactive tabs used `bg-white`, counts were plain text, and active style used the old high-contrast block.
+- GREEN: `cd frontend && npm test -- MySkillsPage.test.tsx` passed 1 test file / 15 tests.

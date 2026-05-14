@@ -23,9 +23,10 @@ export function InstallCard({ skill }: Props) {
       <div style={{ fontSize: 11, color: 'var(--ink-3, rgba(238,236,234,0.4))', marginBottom: 8 }}>
         安裝
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
         <div style={{
           flex: 1,
+          minWidth: 0,
           fontFamily: 'monospace',
           fontSize: 11,
           padding: '6px 10px',

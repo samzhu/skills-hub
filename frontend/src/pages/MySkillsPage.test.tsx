@@ -32,7 +32,7 @@ const setAuthedFetchMock = () => {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ userId: 'u_alice0', handle: 'alice', sub: 'alice', name: 'Alice', email: 'alice@example.com', picture: null, roles: ['user'], groups: [], companyId: null, deptId: null, scope: '' }) } as Response)
     }
     if (url.includes('/api/v1/skills')) {
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [], page: { number: 0, size: 200, totalPages: 0, totalElements: 0 } }) } as Response)
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [], page: { number: 0, size: 100, totalPages: 0, totalElements: 0 } }) } as Response)
     }
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) } as Response)
   })
@@ -98,7 +98,7 @@ describe('MySkillsPage — Flags wiring (S112-T04)', () => {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ userId: 'u_alice0', handle: 'alice', sub: 'alice', name: 'Alice', email: 'alice@example.com', picture: null, roles: ['user'], groups: [], companyId: null, deptId: null, scope: '' }) } as Response)
       }
       if (url.includes('/api/v1/skills')) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [], page: { number: 0, size: 200, totalPages: 0, totalElements: 0 } }) } as Response)
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [], page: { number: 0, size: 100, totalPages: 0, totalElements: 0 } }) } as Response)
       }
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) } as Response)
     })
@@ -154,7 +154,7 @@ describe('MySkillsPage — S144 delete skill UX', () => {
         return Promise.resolve(deleteResponse)
       }
       if (url.includes('/api/v1/skills')) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [skill], page: { number: 0, size: 200, totalPages: 1, totalElements: 1 } }) } as Response)
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [skill], page: { number: 0, size: 100, totalPages: 1, totalElements: 1 } }) } as Response)
       }
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) } as Response)
     })
@@ -241,7 +241,7 @@ describe('MySkillsPage — S145 subscription management tab', () => {
         return Promise.resolve({ ok: true, status: 204 } as Response)
       }
       if (url.includes('/api/v1/skills')) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [], page: { number: 0, size: 200, totalPages: 0, totalElements: 0 } }) } as Response)
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ content: [], page: { number: 0, size: 100, totalPages: 0, totalElements: 0 } }) } as Response)
       }
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) } as Response)
     })
@@ -316,5 +316,34 @@ describe('MySkillsPage — S145 subscription management tab', () => {
 
     expect(await screen.findByText('尚未訂閱任何技能')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '前往瀏覽' })).toHaveAttribute('href', '/')
+  })
+})
+
+describe('MySkillsPage — S172 dark segmented lifecycle tabs', () => {
+  it('AC-S172-14: lifecycle tabs do not use bg-white inactive style', async () => {
+    renderPage()
+    const publishedTab = await screen.findByRole('button', { name: /已發布/ })
+
+    expect(publishedTab.className).not.toContain('bg-white')
+    expect(publishedTab.closest('[data-testid="my-skills-lifecycle-tabs"]')?.className).toContain('bg-card')
+  })
+
+  it('AC-S172-14: lifecycle tab count renders as muted inline text', async () => {
+    renderPage()
+
+    expect(await screen.findByTestId('my-skills-tab-count-all')).toHaveClass('text-muted-foreground')
+    expect(screen.getByTestId('my-skills-tab-count-PUBLISHED')).toHaveTextContent('0')
+  })
+
+  it('AC-S172-15: lifecycle tab buttons remain focusable and change active filter', async () => {
+    renderPage()
+    const allTab = await screen.findByRole('button', { name: /全部/ })
+    const draftTab = screen.getByRole('button', { name: /草稿/ })
+
+    expect(draftTab).toHaveAttribute('type', 'button')
+    fireEvent.click(draftTab)
+
+    expect(draftTab.className).toContain('bg-accent-soft')
+    expect(allTab.className).not.toContain('bg-accent-soft')
   })
 })

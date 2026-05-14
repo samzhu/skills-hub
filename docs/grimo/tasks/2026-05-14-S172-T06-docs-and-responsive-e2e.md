@@ -49,6 +49,22 @@ And（而且）`/my-skills` tab button 沒有 `bg-white` 或 computed white back
 - `frontend/src/pages/docs/OverviewPage.tsx`
 - `frontend/src/pages/docs/OverviewPage.test.tsx`
 - `e2e/tests/S172-responsive-polish.spec.ts`
+- `frontend/src/components/v2/HeroMetricsRow.tsx`
+- `frontend/src/components/v2/HeroMetricsRow.test.tsx`
+- `frontend/src/components/v2/PageHeader.tsx`
+- `frontend/src/components/v2/SkillScoreBadge.tsx`
+- `frontend/src/components/v2/QualityHeroCard.tsx`
+- `frontend/src/components/v2/SecurityHeroCard.tsx`
+- `frontend/src/components/v2/InstallCard.tsx`
+- `frontend/src/components/v2/Sidebar.tsx`
+- `frontend/src/components/v2/tabs/SkillMdTab.tsx`
+- `frontend/src/components/v2/shared/FrontmatterSyntax.tsx`
+- `frontend/src/components/CreateCollectionModal.tsx`
+- `frontend/src/components/CreateCollectionModal.test.tsx`
+- `frontend/src/pages/MySkillsPage.tsx`
+- `frontend/src/pages/MySkillsPage.test.tsx`
+- `backend/src/main/resources/application-e2e.yaml`
+- `backend/src/main/java/io/github/samzhu/skillshub/score/judge/E2EQualityJudgeConfig.java`
 
 ## 驗證方式
 執行：`cd frontend && npm test -- OverviewPage.test.tsx`  
@@ -62,4 +78,12 @@ And（而且）`/my-skills` tab button 沒有 `bg-white` 或 computed white back
 - S172-T05 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-14）
+
+## Result
+- RED：`cd frontend && npm test -- OverviewPage.test.tsx` 先抓到 `/docs/overview` feature grid 仍是 `md:grid-cols-3`；`test -f e2e/tests/S172-responsive-polish.spec.ts` 確認尚未有 S172 瀏覽器檢查檔。
+- RED：第一次跑 `cd e2e && npx playwright test --grep @responsive-polish` 時，後端 e2e profile 仍要求 Gemini quality judge；補 `skillshub.quality.judge.enabled=false` 後又缺 main classpath stub，因此新增 e2e-only `QualityJudge` stub。
+- RED：Playwright 真跑頁面後抓到 `/skills/{id}` 在 390px 被 header action row 與 hero metrics 固定三欄撐到 577px；修 `PageHeader` actions wrap、`HeroMetricsRow` responsive grid、卡片 `minWidth: 0` 後通過。
+- GREEN：`cd frontend && npm test -- OverviewPage.test.tsx` 通過。
+- GREEN：`cd frontend && npm test -- MySkillsPage.test.tsx HeroMetricsRow.test.tsx SkillDetailPage.test.tsx Sidebar.test.tsx CreateCollectionModal.test.tsx` 通過（8 files / 64 tests）。
+- GREEN：`cd e2e && npx playwright test --grep @responsive-polish` 通過（3 tests），覆蓋 390、768、900、1440 寬度與 `/`、`/browse`、`/collections`、`/my-skills`、`/publish`、`/docs/overview`、`/skills/{id}`。

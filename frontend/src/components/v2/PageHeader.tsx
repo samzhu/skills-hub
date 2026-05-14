@@ -124,11 +124,11 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
       }}
     >
       {/* Top row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap', marginBottom: 16 }}>
         {/* Left: skill info */}
-        <div style={{ display: 'flex', gap: 14 }}>
+        <div style={{ display: 'flex', gap: 14, minWidth: 0, flex: '1 1 260px' }}>
           <IconTile name={skill.name} category={skill.category} size="xl" />
-          <div>
+          <div style={{ minWidth: 0 }}>
             {/* Name row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
               <span style={{ fontSize: 22, fontWeight: 500 }}>{skill.name}</span>
@@ -173,7 +173,7 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
         </div>
 
         {/* Right: actions */}
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 8, maxWidth: '100%', flex: '1 1 260px', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
           {canEdit && onEditClick && (
             <button
               type="button"

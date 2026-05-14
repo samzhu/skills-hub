@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from './AppShell'
@@ -145,5 +145,58 @@ describe('AppShell — S096h1 nav + bell badge', () => {
       expect(screen.getByRole('button', { name: '登入' })).toBeInTheDocument()
     })
     expect(screen.queryByLabelText('通知')).toBeNull()
+  })
+})
+
+describe('AppShell — S172 compact navigation', () => {
+  const expectedLinks = [
+    ['瀏覽', '/browse'],
+    ['集合', '/collections'],
+    ['群組', '/groups'],
+    ['需求', '/requests'],
+    ['我的技能', '/my-skills'],
+    ['發佈', '/publish'],
+    ['數據', '/analytics'],
+    ['待審回報', '/flags'],
+    ['文件', '/docs'],
+  ] as const
+
+  it('AC-S172-3: mobile menu exposes all AppShell nav links with aria-expanded state', () => {
+    renderAnonymous()
+
+    const trigger = screen.getByRole('button', { name: '開啟導覽選單' })
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(trigger).toHaveAttribute('aria-controls', 'app-shell-mobile-nav')
+
+    fireEvent.click(trigger)
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    const menu = screen.getByTestId('app-shell-mobile-nav')
+    expectedLinks.forEach(([label, path]) => {
+      expect(within(menu).getByRole('link', { name: label })).toHaveAttribute('href', path)
+    })
+  })
+
+  it('AC-S172-3: clicking a compact nav link closes the menu', () => {
+    renderAnonymous()
+
+    const trigger = screen.getByRole('button', { name: '開啟導覽選單' })
+    fireEvent.click(trigger)
+    fireEvent.click(within(screen.getByTestId('app-shell-mobile-nav')).getByRole('link', { name: '發佈' }))
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByTestId('app-shell-mobile-nav')).not.toBeInTheDocument()
+  })
+
+  it('AC-S172-4: desktop nav still renders regular links and highlights current path', () => {
+    renderWithCount(0, '/docs/overview')
+
+    const desktopNav = screen.getByTestId('app-shell-desktop-nav')
+    expectedLinks.forEach(([label, path]) => {
+      expect(within(desktopNav).getByRole('link', { name: label })).toHaveAttribute('href', path)
+    })
+    const docsLink = within(desktopNav).getByRole('link', { name: '文件' })
+    expect(docsLink.className).toContain('text-foreground')
+    expect(docsLink.className).toContain('font-medium')
   })
 })

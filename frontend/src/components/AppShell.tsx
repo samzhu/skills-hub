@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
-import { Bell } from 'lucide-react'
+import { Bell, Menu, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 import { fetchUnreadCount } from '@/api/notifications'
@@ -36,6 +36,7 @@ const navLinks = [
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   // S139: bell + unread poll 改 conditional on authenticated — anonymous user 不
   // 該 hit /notifications/unread-count（會吃 401 噪訊）；登入後才啟用 polling。
   const auth = useAuth()
@@ -49,31 +50,66 @@ export function AppShell({ children }: { children: ReactNode }) {
     enabled: isAuthenticated,
   })
   const unreadCount = unread?.count ?? 0
+  const mobileNavId = 'app-shell-mobile-nav'
+
+  useEffect(() => {
+    if (!mobileNavOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileNavOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [mobileNavOpen])
+
+  const navLinkClass = (path: string) => {
+    const active = location.pathname === path || location.pathname.startsWith(`${path}/`)
+    return `text-sm ${active ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-6">
-          <Link to="/" className="flex items-center gap-2 font-semibold">
+        <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:gap-6">
+          <Link to="/" className="flex min-w-0 items-center gap-2 font-semibold">
             <span className="text-lg">Skills Hub</span>
           </Link>
-          <nav className="flex flex-1 items-center gap-4">
+          <nav
+            aria-label="主要導覽"
+            data-testid="app-shell-desktop-nav"
+            className="hidden flex-1 items-center gap-4 lg:flex"
+          >
             {navLinks.map(({ path, label }) => (
               <Link
                 key={path}
                 to={path}
-                className={`text-sm ${location.pathname === path ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+                className={navLinkClass(path)}
               >
                 {label}
               </Link>
             ))}
           </nav>
+          <div className="flex flex-1 justify-end lg:hidden">
+            <button
+              type="button"
+              aria-label={mobileNavOpen ? '關閉導覽選單' : '開啟導覽選單'}
+              aria-expanded={mobileNavOpen}
+              aria-controls={mobileNavId}
+              onClick={() => setMobileNavOpen((open) => !open)}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
+          </div>
           {/* S096h1 + S139: bell 只在登入後渲染 — anonymous 看不到 unread badge / 鈴鐺 */}
           {isAuthenticated && (
             <Link
               to="/notifications"
               aria-label="通知"
-              className="relative flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
@@ -87,10 +123,33 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           )}
           {/* S139: AuthArea — 未登入：登入按鈕；登入：avatar dropdown */}
-          <AuthArea />
+          <div className="shrink-0">
+            <AuthArea />
+          </div>
         </div>
+        {mobileNavOpen && (
+          <nav
+            id={mobileNavId}
+            aria-label="行動導覽"
+            data-testid={mobileNavId}
+            className="border-t border-border bg-background px-4 py-3 lg:hidden"
+          >
+            <div className="mx-auto grid max-w-7xl grid-cols-2 gap-2 sm:grid-cols-3">
+              {navLinks.map(({ path, label }) => (
+                <Link
+                  key={path}
+                  to={path}
+                  onClick={() => setMobileNavOpen(false)}
+                  className={`${navLinkClass(path)} rounded-md border border-border bg-card px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        )}
       </header>
-      <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">{children}</main>
       <Toaster />
     </div>
   )

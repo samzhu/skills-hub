@@ -160,21 +160,25 @@ export function SkillDetailPage() {
         </div>
       )}
 
-      {/* Tab + Body: main 1fr + sidebar 232px */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 232px', gap: 24, marginTop: 8 }}>
-        <div>
+      <div
+        data-testid="skill-detail-body"
+        className="mt-2 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_232px]"
+      >
+        <div data-testid="skill-detail-main" className="min-w-0">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="skill-md">SKILL.md</TabsTrigger>
-              <TabsTrigger value="quality">品質</TabsTrigger>
-              <TabsTrigger value="versions">版本</TabsTrigger>
-              <TabsTrigger value="reviews">評論</TabsTrigger>
-              <TabsTrigger value="security">安全性</TabsTrigger>
-              <TabsTrigger value="flags">旗標</TabsTrigger>
-              <TabsTrigger value="files">檔案 {fileCount > 0 ? `(${fileCount})` : ''}</TabsTrigger>
-            </TabsList>
+            <div className="-mx-1 overflow-x-auto px-1 pb-1">
+              <TabsList className="min-w-max justify-start">
+                <TabsTrigger value="skill-md">SKILL.md</TabsTrigger>
+                <TabsTrigger value="quality">品質</TabsTrigger>
+                <TabsTrigger value="versions">版本</TabsTrigger>
+                <TabsTrigger value="reviews">評論</TabsTrigger>
+                <TabsTrigger value="security">安全性</TabsTrigger>
+                <TabsTrigger value="flags">旗標</TabsTrigger>
+                <TabsTrigger value="files">檔案 {fileCount > 0 ? `(${fileCount})` : ''}</TabsTrigger>
+              </TabsList>
+            </div>
 
-            <TabsContent value="skill-md" className="mt-4">
+            <TabsContent value="skill-md" className="mt-4 min-w-0">
               <SkillMdTab content={skillMdContent} />
             </TabsContent>
 

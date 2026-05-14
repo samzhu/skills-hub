@@ -28,6 +28,10 @@ skillshub:
         # publish 30s timeout 撐不過。e2e 只驗 pattern scanner happy path 即可
         # 達成 risk_level=NONE/LOW，LLM 質量留 LAB 部署驗證。
         enabled: false
+  quality:
+    judge:
+      # S172-T06: Playwright e2e 不需要真打 Gemini quality judge；保留頁面流程穩定。
+      enabled: false
   search:
     # S168: 配合 E2EEmbeddingConfig word-overlap stub 升級。Word-overlap doc cosine
     # ~0.2，純 noise pair cosine ~±0.05；threshold 0.1 篩出 keyword-match 但拒絕

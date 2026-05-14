@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { HeroMetricsRow } from './HeroMetricsRow'
 
 describe('HeroMetricsRow', () => {
-  it('AC-S142a-6: renders 3-card grid with correct layout', () => {
+  it('AC-S142a-6: renders responsive 3-card grid', () => {
     const { getByTestId } = render(
       <HeroMetricsRow
         skillScore={89}
@@ -14,7 +14,7 @@ describe('HeroMetricsRow', () => {
       />
     )
     const row = getByTestId('hero-metrics-row')
-    expect(row.style.gridTemplateColumns).toBe('160px 1fr 1fr')
+    expect(row.style.gridTemplateColumns).toBe('repeat(auto-fit, minmax(min(100%, 220px), 1fr))')
     expect(screen.getByTestId('skill-score-badge')).toBeTruthy()
     expect(screen.getByTestId('quality-hero-card')).toBeTruthy()
     expect(screen.getByTestId('security-hero-card')).toBeTruthy()

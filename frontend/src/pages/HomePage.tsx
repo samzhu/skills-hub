@@ -87,6 +87,13 @@ export function HomePage() {
     setPage(0)
   }
 
+  const clearSearchAndBrowseAll = () => {
+    setQuery('')
+    setCategory(null)
+    setRiskFilter(new Set())
+    setPage(0)
+  }
+
   /**
    * 點選側邊欄分類時觸發；只在關鍵字模式下有效。
    */
@@ -192,9 +199,8 @@ export function HomePage() {
                   headline="這個描述還沒有匹配的技能。"
                   sub="現有技能與你描述的概念相似度都偏低。可以調整描述、改用關鍵字模式，或邀請團隊發布。"
                   suggestions={[
-                    { text: '改用關鍵字搜尋', hint: '更直接的詞彙比喻；trim fallback 仍會回所有技能' },
-                    { text: '換個描述方式', hint: '把技能要做的「動詞」拉到開頭' },
-                    { text: '發布這個技能', hint: '你可能是第一個遇到此需求的人' },
+                    { text: '清除描述並瀏覽全部技能', hint: '回到完整技能列表', onClick: clearSearchAndBrowseAll },
+                    { text: '發布這個技能', hint: '你可能是第一個遇到此需求的人', href: '/publish' },
                   ]}
                 />
               )}
@@ -243,7 +249,7 @@ export function HomePage() {
                   primaryAction={{ label: '清除篩選', onClick: () => setRiskFilter(new Set()) }}
                 />
               ) : (
-                <SkillCardGrid skills={filteredSkills} query={query} />
+                <SkillCardGrid skills={filteredSkills} query={query} onClearQuery={clearSearchAndBrowseAll} />
               )}
               {/* S104: filter active 且 filteredSkills 0 時 hide pagination — 跨頁仍 0 hits 沒意義 */}
               {skillsPage && skillsPage.page.totalPages > 1 && filteredSkills.length > 0 && (

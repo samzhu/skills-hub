@@ -94,9 +94,8 @@ export function SearchResultsPage() {
               headline="這個描述還沒有匹配的技能。"
               sub="現有技能與你描述的概念相似度都偏低。可以調整描述、改用關鍵字模式、或邀請團隊發布。"
               suggestions={[
-                { text: '回首頁瀏覽全部技能', hint: '取消當前過濾' },
-                { text: '改用更直接的關鍵字', hint: '把動詞拉到開頭' },
-                { text: '發布這個技能', hint: '可能你的團隊也需要這個' },
+                { text: '回首頁瀏覽全部技能', hint: '取消當前過濾', href: '/browse' },
+                { text: '發布這個技能', hint: '可能你的團隊也需要這個', href: '/publish' },
               ]}
             />
           ) : (

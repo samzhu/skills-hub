@@ -51,7 +51,7 @@ export function MySkillsPage() {
   // 不被使用（page 顯 EmptyState 時 skillsPage 不參與 render）— 對齊 React Hook 順序固定原則
   const { data: skillsPage, isLoading: skillsLoading } = useSkillList({
     author,
-    size: 200,
+    size: 100,
   })
   // S112-T04: 待處理回報 — me 已 loaded 才查（避免 anonymous 拒接）；放早 return 前以對齊 Rules of Hooks
   const { data: flagsSummary } = useFlagsSummary(!!author)
@@ -179,22 +179,15 @@ export function MySkillsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-3 flex flex-wrap gap-2">
-        <TabPill active={tab === 'all'} onClick={() => setTab('all')}>
-          全部 ({total})
-        </TabPill>
-        <TabPill active={tab === 'PUBLISHED'} onClick={() => setTab('PUBLISHED')}>
-          已發布 ({published})
-        </TabPill>
-        <TabPill active={tab === 'DRAFT'} onClick={() => setTab('DRAFT')}>
-          草稿 ({drafts})
-        </TabPill>
-        <TabPill active={tab === 'SUSPENDED'} onClick={() => setTab('SUSPENDED')}>
-          已停用 ({suspended})
-        </TabPill>
-        <TabPill active={tab === 'SUBSCRIPTIONS'} onClick={() => setTab('SUBSCRIPTIONS')}>
-          訂閱 ({subscriptionRows.length})
-        </TabPill>
+      <div
+        data-testid="my-skills-lifecycle-tabs"
+        className="mb-3 inline-flex max-w-full flex-wrap gap-1 rounded-md border border-border bg-card p-1"
+      >
+        <TabPill id="all" label="全部" count={total} active={tab === 'all'} onClick={() => setTab('all')} />
+        <TabPill id="PUBLISHED" label="已發布" count={published} active={tab === 'PUBLISHED'} onClick={() => setTab('PUBLISHED')} />
+        <TabPill id="DRAFT" label="草稿" count={drafts} active={tab === 'DRAFT'} onClick={() => setTab('DRAFT')} />
+        <TabPill id="SUSPENDED" label="已停用" count={suspended} active={tab === 'SUSPENDED'} onClick={() => setTab('SUSPENDED')} />
+        <TabPill id="SUBSCRIPTIONS" label="訂閱" count={subscriptionRows.length} active={tab === 'SUBSCRIPTIONS'} onClick={() => setTab('SUBSCRIPTIONS')} />
       </div>
 
       {tab === 'SUBSCRIPTIONS' ? (
@@ -356,13 +349,17 @@ function SubscriptionRow({
 }
 
 function TabPill({
+  id,
+  label,
+  count,
   active,
   onClick,
-  children,
 }: {
+  id: string
+  label: string
+  count: number
   active: boolean
   onClick: () => void
-  children: React.ReactNode
 }) {
   return (
     <button
@@ -370,11 +367,14 @@ function TabPill({
       onClick={onClick}
       className={
         active
-          ? 'rounded-md bg-[#181818] px-3 py-1.5 text-[12px] font-medium text-white'
-          : 'rounded-md border border-border bg-white px-3 py-1.5 text-[12px] text-foreground hover:bg-muted/40'
+          ? 'rounded-md border border-accent/30 bg-accent-soft px-3 py-1.5 text-[12px] font-medium text-accent-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
+          : 'rounded-md border border-transparent bg-transparent px-3 py-1.5 text-[12px] text-muted-foreground hover:bg-muted/40 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
       }
     >
-      {children}
+      <span>{label}</span>
+      <span data-testid={`my-skills-tab-count-${id}`} className="ml-1 font-mono text-muted-foreground">
+        {count}
+      </span>
     </button>
   )
 }

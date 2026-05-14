@@ -29,7 +29,7 @@ export function OverviewPage() {
       </p>
 
       <H2>三個核心機制</H2>
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
+      <div data-testid="docs-overview-feature-grid" className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <FeatureCard
           icon={<ShieldCheck className="h-4 w-4 text-[#6FD8B0]" />}
           title="自動風險評分"

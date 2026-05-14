@@ -30,6 +30,7 @@ export function QualityHeroCard({ scores, active, onClick }: Props) {
         padding: '14px 16px',
         cursor: 'pointer',
         flex: 1,
+        minWidth: 0,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>

@@ -13,8 +13,9 @@ import type { Skill } from '@/types/skill'
  *
  * @param skills 要顯示的技能列表
  * @param query  使用者搜尋字串（非空表示使用者主動搜尋過；用於 0-results tone 區分）
+ * @param onClearQuery 清除搜尋字串並回到全部技能列表
  */
-export function SkillCardGrid({ skills, query }: { skills: Skill[]; query?: string }) {
+export function SkillCardGrid({ skills, query, onClearQuery }: { skills: Skill[]; query?: string; onClearQuery?: () => void }) {
   if (skills.length === 0) {
     if (query && query.trim().length > 0) {
       return (
@@ -24,9 +25,8 @@ export function SkillCardGrid({ skills, query }: { skills: Skill[]; query?: stri
           headline="找不到符合的技能"
           sub="搜尋詞可能太特殊，或詞彙與技能描述不一致。試試以下其他路徑。"
           suggestions={[
-            { text: '清除關鍵字並瀏覽全部技能', hint: '取消當前過濾' },
-            { text: '切換到語意搜尋模式', hint: '用一句話描述你想做的事' },
-            { text: '發布你自己的技能', hint: '可能你的團隊也需要這個' },
+            { text: '清除關鍵字並瀏覽全部技能', hint: '取消當前過濾', onClick: onClearQuery },
+            { text: '發布你自己的技能', hint: '可能你的團隊也需要這個', href: '/publish' },
           ]}
         />
       )

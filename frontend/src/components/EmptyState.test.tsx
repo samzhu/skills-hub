@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { EmptyState } from './EmptyState'
 
@@ -99,5 +99,31 @@ describe('EmptyState — S094c 4 tones', () => {
     render(<EmptyState tone="seed" headline="Bare seed state" />)
     expect(screen.getByText('Bare seed state')).toBeInTheDocument()
     // No crash / no prop errors when optional pieces missing
+  })
+
+  it('AC-S172-5: redirect suggestions with href render as links', () => {
+    wrap(
+      <EmptyState
+        tone="redirect"
+        headline="找不到符合的技能"
+        suggestions={[{ text: '發布你自己的技能', hint: '讓團隊也能使用', href: '/publish' }]}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: /發布你自己的技能/ })).toHaveAttribute('href', '/publish')
+  })
+
+  it('AC-S172-5: redirect suggestions with onClick render as buttons', () => {
+    const onClick = vi.fn()
+    wrap(
+      <EmptyState
+        tone="redirect"
+        headline="找不到符合的技能"
+        suggestions={[{ text: '清除關鍵字並瀏覽全部技能', hint: '取消當前過濾', onClick }]}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /清除關鍵字並瀏覽全部技能/ }))
+    expect(onClick).toHaveBeenCalledTimes(1)
   })
 })

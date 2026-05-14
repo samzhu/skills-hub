@@ -58,4 +58,15 @@ And（而且）按「建立集合」時 `createCollection` 收到 `skillIds: [A.
 - S172-T03 PASS（EmptyState/link/button behavior 可重用在 no-skill state，但不是硬性程式依賴）。
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-14
+Test: `npm test -- CreateCollectionModal.test.tsx` (`frontend/src/components/CreateCollectionModal.test.tsx`)
+Files changed:
+- `frontend/src/components/CreateCollectionModal.tsx` (modified)
+- `frontend/src/components/CreateCollectionModal.test.tsx` (new)
+- `docs/grimo/tasks/2026-05-14-S172-T05-create-collection-my-skills-picker.md` (modified)
+Notes:
+- RED: `cd frontend && npm test -- CreateCollectionModal.test.tsx` failed 6 S172 assertions because the dialog still used a UUID textarea and lacked a my-skills picker, selected list, close button, and viewport-bounded surface.
+- GREEN: `cd frontend && npm test -- CreateCollectionModal.test.tsx` passed 1 test file / 6 tests.

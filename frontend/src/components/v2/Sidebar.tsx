@@ -25,13 +25,7 @@ export function Sidebar({ skill, version, stats, scores, report, versions, activ
   return (
     <div
       data-testid="sidebar"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-        borderLeft: '0.5px solid var(--line, rgba(255,255,255,0.08))',
-        paddingLeft: 22,
-      }}
+      className="min-w-0 flex flex-col gap-[14px] border-t border-border pt-6 lg:border-t-0 lg:border-l lg:pl-[22px] lg:pt-0"
     >
       {/* Always-visible cards */}
       <InstallCard skill={skill} />

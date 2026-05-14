@@ -1,7 +1,12 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Plus, Trash2, X } from 'lucide-react'
 import { createCollection } from '@/api/skills'
 import { localizeApiError } from '@/lib/api-error-messages'
+import { useMe } from '@/hooks/useMe'
+import { useSkillList } from '@/hooks/useSkillList'
+import type { Skill } from '@/types/skill'
 
 /**
  * S096f2-T04 — 建立集合 modal。
@@ -21,17 +26,26 @@ export function CreateCollectionModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('')
-  const [skillIdsText, setSkillIdsText] = useState('')
+  const [selectedSkillId, setSelectedSkillId] = useState('')
+  const [selectedSkills, setSelectedSkills] = useState<Skill[]>([])
   const queryClient = useQueryClient()
+  const { data: me } = useMe()
+  const { data: mySkillsPage, isLoading: skillsLoading } = useSkillList({
+    author: me?.userId,
+    size: 100,
+  })
+
+  const publishedSkills = (mySkillsPage?.content ?? []).filter((skill) => skill.status === 'PUBLISHED')
+  const selectedIds = new Set(selectedSkills.map((skill) => skill.id))
+  const availableSkills = publishedSkills.filter((skill) => !selectedIds.has(skill.id))
 
   const mutation = useMutation({
     mutationFn: () => {
-      const skillIds = skillIdsText.split(/\s+/).map((s) => s.trim()).filter(Boolean)
       return createCollection({
         name: name.trim(),
         description: description.trim() || null,
         category: category.trim(),
-        skillIds,
+        skillIds: selectedSkills.map((skill) => skill.id),
       })
     },
     onSuccess: () => {
@@ -43,8 +57,19 @@ export function CreateCollectionModal({ onClose }: { onClose: () => void }) {
   const canSubmit =
     name.trim().length > 0 &&
     category.trim().length > 0 &&
-    skillIdsText.trim().length > 0 &&
+    selectedSkills.length > 0 &&
     !mutation.isPending
+
+  const addSelectedSkill = () => {
+    const skill = availableSkills.find((item) => item.id === selectedSkillId)
+    if (!skill) return
+    setSelectedSkills((current) => [...current, skill])
+    setSelectedSkillId('')
+  }
+
+  const removeSelectedSkill = (skillId: string) => {
+    setSelectedSkills((current) => current.filter((skill) => skill.id !== skillId))
+  }
 
   return (
     <div
@@ -52,8 +77,27 @@ export function CreateCollectionModal({ onClose }: { onClose: () => void }) {
       aria-label="建立集合"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
     >
-      <div className="w-full max-w-md rounded-md border border-border bg-card p-6">
-        <h3 className="mb-3 text-[16px] font-semibold">建立集合</h3>
+      <div
+        data-testid="create-collection-dialog-surface"
+        className="max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-md border border-border bg-card p-5"
+      >
+        <div className="mb-4 flex items-start justify-between gap-4 border-b border-border pb-4">
+          <div>
+            <h3 className="text-[16px] font-semibold">建立集合</h3>
+            <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+              從你已發布的技能挑選幾個，組成可一次安裝的技能包。
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="關閉建立集合"
+            onClick={onClose}
+            disabled={mutation.isPending}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
         <div className="mb-3">
           <label htmlFor="collection-name" className="mb-1 block text-[12px] text-muted-foreground">
@@ -101,20 +145,77 @@ export function CreateCollectionModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="mb-3">
-          <label htmlFor="collection-skills" className="mb-1 block text-[12px] text-muted-foreground">
-            技能 ID 清單（每行一個 skill UUID）
+          <label htmlFor="collection-skill-picker" className="mb-1 block text-[12px] text-muted-foreground">
+            新增技能
           </label>
-          <textarea
-            id="collection-skills"
-            value={skillIdsText}
-            onChange={(e) => setSkillIdsText(e.target.value)}
-            rows={4}
-            className="w-full rounded-md border border-border bg-background p-2 font-mono text-[12px]"
-            placeholder={'sk-1\nsk-2\nsk-3'}
-          />
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            技能 UUID 須為 PUBLISHED 狀態；漂亮的多選選擇器後續版本推出。
-          </p>
+          {skillsLoading ? (
+            <div className="rounded-md border border-border bg-background p-3 text-[12px] text-muted-foreground">
+              載入你的技能中...
+            </div>
+          ) : publishedSkills.length === 0 ? (
+            <div className="rounded-md border border-dashed border-border bg-background p-3">
+              <p className="text-[13px] font-medium">集合只能加入已發布技能</p>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                目前沒有可加入集合的已發布技能；先發布一個技能後再回來建立集合。
+              </p>
+              <Link to="/publish" className="mt-3 inline-flex rounded-md border border-border px-3 py-1.5 text-[12px] hover:bg-muted">
+                前往發布技能
+              </Link>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <select
+                id="collection-skill-picker"
+                value={selectedSkillId}
+                onChange={(e) => setSelectedSkillId(e.target.value)}
+                className="min-w-0 flex-1 rounded-md border border-border bg-background p-2 text-[13px]"
+              >
+                <option value="">選擇已發布技能</option>
+                {availableSkills.map((skill) => (
+                  <option key={skill.id} value={skill.id}>
+                    {formatSkillOption(skill)}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={addSelectedSkill}
+                disabled={!selectedSkillId}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 py-2 text-[13px] hover:bg-muted disabled:opacity-50"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                新增
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="mb-3">
+          <p className="mb-1 text-[12px] text-muted-foreground">已選技能 {selectedSkills.length}</p>
+          <div data-testid="selected-skills-list" className="rounded-md border border-border bg-background">
+            {selectedSkills.length === 0 ? (
+              <p className="px-3 py-3 text-[12px] text-muted-foreground">尚未加入技能</p>
+            ) : (
+              selectedSkills.map((skill) => (
+                <div key={skill.id} className="flex items-center gap-3 border-b border-border px-3 py-2 last:border-b-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-medium">{skill.name}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {skill.category} · v{skill.latestVersion ?? '—'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={`移除 ${skill.name}`}
+                    onClick={() => removeSelectedSkill(skill.id)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {mutation.isError && (
@@ -138,10 +239,14 @@ export function CreateCollectionModal({ onClose }: { onClose: () => void }) {
             disabled={!canSubmit}
             className="rounded-md bg-primary px-3 py-1.5 text-[13px] font-medium text-primary-foreground disabled:opacity-50"
           >
-            {mutation.isPending ? '送出中...' : '送出'}
+            {mutation.isPending ? '建立中...' : '建立集合'}
           </button>
         </div>
       </div>
     </div>
   )
+}
+
+function formatSkillOption(skill: Skill) {
+  return `${skill.name} · ${skill.category} · v${skill.latestVersion ?? '—'}`
 }

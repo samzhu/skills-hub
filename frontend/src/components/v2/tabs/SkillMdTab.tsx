@@ -46,10 +46,10 @@ export function SkillMdTab({ content }: Props) {
   const { frontmatter, body } = parseFrontmatter(content)
 
   return (
-    <div data-testid="skill-md-tab" style={{ padding: '16px 0' }}>
+    <div data-testid="skill-md-tab" style={{ minWidth: 0, padding: '16px 0' }}>
       {frontmatter && <FrontmatterSyntax yaml={frontmatter} />}
       {body && (
-        <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.7 }}>
+        <div style={{ minWidth: 0, marginTop: 20, fontSize: 14, lineHeight: 1.7 }}>
           <MiniMarkdown content={body} />
         </div>
       )}
