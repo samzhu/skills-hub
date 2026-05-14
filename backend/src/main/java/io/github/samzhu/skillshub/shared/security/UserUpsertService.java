@@ -11,6 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * S154 — OIDC /me 觸發的 platform user UPSERT。
@@ -79,6 +81,7 @@ public class UserUpsertService {
      * @param avatarUrl     OIDC {@code picture} claim（nullable）
      * @return 已 persist 的 User（INSERT 或 UPDATE 後的 row）
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public User upsertFromOidc(String oauthProvider, String sub, String email,
                                @Nullable String name, @Nullable String avatarUrl) {
         var existing = repo.findByOauthProviderAndSub(oauthProvider, sub);

@@ -75,6 +75,14 @@ class ScanOrchestratorTest {
 		};
 	}
 
+	private static SecurityAnalyzer errorAnalyzer(String name, Phase phase) {
+		return new SecurityAnalyzer() {
+			@Override public String name() { return name; }
+			@Override public Phase phase() { return phase; }
+			@Override public AnalysisOutput analyze(ScanContext ctx) { throw new AssertionError("native metadata unavailable"); }
+		};
+	}
+
 	private record Mocks(
 			SkillRepository skillRepo,
 			SkillVersionRepository versionRepo) {}
@@ -196,6 +204,23 @@ class ScanOrchestratorTest {
 		orch.on(EVT);
 
 		// secret 的 finding 仍寫入 — 透過驗 skill_repo 寫進 HIGH
+		verify(m.skillRepo, atLeastOnce()).updateRiskLevel(eq("agg-1"), eq("HIGH"), any(Instant.class));
+	}
+
+	@Test
+	@DisplayName("AC-S173-2: analyzer Error is isolated and does not abort scan pipeline")
+	@Tag("AC-S173-2")
+	void analyzerErrorIsolated() throws IOException {
+		var failing = errorAnalyzer("llm-judge", Phase.LLM);
+		var ok = fakeAnalyzer("meta", Phase.META, new AnalysisOutput(
+				List.of(new SecurityFinding("R", Severity.HIGH, "x", "f", 1, "e", "meta", "AST08")),
+				List.of()));
+
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(failing, ok), m);
+
+		orch.on(EVT);
+
 		verify(m.skillRepo, atLeastOnce()).updateRiskLevel(eq("agg-1"), eq("HIGH"), any(Instant.class));
 	}
 

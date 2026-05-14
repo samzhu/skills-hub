@@ -232,6 +232,13 @@ class ScanOrchestrator {
 		try {
 			var output = analyzer.analyze(ctx);
 			return output == null ? AnalysisOutput.empty() : output;
+		} catch (Error e) {
+			log.atError()
+					.setCause(e)
+					.addKeyValue("analyzer", analyzer.name())
+					.addKeyValue("errorClass", e.getClass().getName())
+					.log("Analyzer failed with Error; skipping analyzer output");
+			return AnalysisOutput.empty();
 		} catch (Exception e) {
 			log.warn("Analyzer {} failed: {}", analyzer.name(), e.toString());
 			return AnalysisOutput.empty();

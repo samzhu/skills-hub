@@ -1,5 +1,31 @@
 # Changelog
 
+## [v4.60.0] — S173 Production upload post-publish failures（2026-05-14）
+
+### Fixed
+
+- **Spring AI structured output native hint** — 新增 `ScanNativeConfig @RegisterReflectionForBinding({LlmJudgement.class, LlmJudgement.RiskClaim.class})`，修正 production native runtime 對 `LlmJudge.call().entity(LlmJudgement.class)` 缺 record metadata 的錯誤。
+- **Scan listener Error boundary** — `ScanOrchestrator.safeAnalyze` 會把 analyzer 丟出的 `Error` 記錄後轉成 empty output，避免不可重試的 native metadata bug 讓 outbox event 一直留在未完成狀態。
+- **Subscription details read-only tx 500** — `UserUpsertService.upsertFromOidc` 改成自己的 write transaction，讓 `/api/v1/me/subscriptions/details` 在 read-only 查詢路徑中 refresh `users.last_seen_at` 不再觸發 PostgreSQL read-only transaction error。
+- **Temporary security DEBUG cleanup** — 本地 `temp/service.rendered.yaml` 已移除 `logging.level.org.springframework.security=DEBUG`；live Cloud Run service 仍需新 revision deploy 後才會套用。
+
+### Added
+
+- **Structured output native hint local guard** — `StructuredOutputNativeHintCoverageTest` 掃 production source 的 `.entity(X.class)` / `BeanOutputConverter<>(X.class)` target，確認每個 target 都在 production `@RegisterReflectionForBinding` 裡。
+- **Development standard + debugging playbook** — `development-standards.md` 明寫 Spring AI structured output record checklist；`debugging-playbook.md` 補 S173 `LlmJudgement` case。
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 85.8%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`exit=0`。
+- Targeted backend：`ScanNativeConfigTest`、`StructuredOutputNativeHintCoverageTest`、`ScanOrchestratorTest`、`SkillSubscriptionServiceReadOnlyTxTest` PASS。
+- Post-release follow-up：deploy S173 新 Cloud Run revision 後，上傳 valid skill zip，等待至少 60 秒，再查 `LlmJudgement` 與 `cannot execute UPDATE in a read-only transaction` logs 應為零筆新錯誤。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-14-S173-production-upload-post-publish-failures.md` → `docs/grimo/specs/archive/2026-05-14-S173-production-upload-post-publish-failures.md`
+- `docs/grimo/tasks/2026-05-14-S173-*.md` 已刪除。
+- Final size re-score：S(10) → M(12)，原因是本地 release guard + Docker native build + deploy-follow-up evidence 一起進入 ship 範圍。
+
 ## [v4.59.0] — S147 Issue-code scanner architecture（2026-05-14）
 
 ### Added

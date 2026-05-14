@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-14（S147 v4.59.0 ship — Issue-code scanner architecture；zip 內所有 UTF-8 文字檔掃描；`verify-all.sh` 全綠）
+> 最後更新：2026-05-14（S173 v4.60.0 local release ship — structured-output AOT guard + subscription tx fix）
 
 ## 使用說明
 
@@ -73,6 +73,7 @@
 | v4.57.0 | S169 (CQRS permission contract) | ✅ shipped 2026-05-14 — S169 all AC 1-15 PASS，`verify-all.sh` 全綠 |
 | v4.58.0 | S171 (Spring AI M6 model abstraction cleanup) | ✅ shipped 2026-05-14 — S171 all AC 1-10 PASS，`verify-all.sh` 全綠 |
 | v4.59.0 | S147 (Issue-code scanner architecture) | ✅ shipped 2026-05-14 — S147 all AC PASS，zip 內所有 UTF-8 文字檔掃描，`verify-all.sh` 全綠 |
+| v4.60.0 | S173 (Production upload post-publish failures) | ✅ shipped 2026-05-14 — local release PASS；post-deploy Cloud Run log evidence deferred |
 
 ---
 
@@ -232,6 +233,7 @@
 | S169 | CQRS permission contract — role grants + ACL projections + viewer actions + 403 semantics | L(15) | v4.57.0 |
 | S171 | Spring AI M6 model abstraction cleanup | M(14) | v4.58.0 |
 | S147 | Issue-code scanner architecture | XL(17) | v4.59.0 |
+| S173 | Production upload post-publish failures | M(12) | v4.60.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |
