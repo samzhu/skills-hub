@@ -1,6 +1,6 @@
 # S175 — Scan Native Binding Completeness Hotfix
 
-> Status: ✅ fresh production upload PASS; shipping blocked by unrelated dirty state
+> Status: ✅ shipped v4.64.0
 > Date: 2026-05-15
 > Trigger: production upload scan failed after `POST /api/v1/skills/upload`
 > Related: S173, S148, S148b
@@ -297,3 +297,38 @@ git status --short
 Result: BLOCKED by unrelated dirty state. Next tick should split or commit those
 S183/S184/grants changes separately, rerun `./scripts/verify-all.sh` in the release tick,
 then complete S175/S181 changelog / roadmap / archive via `$shipping-release`.
+
+### Release Result — PASS (2026-05-16)
+
+S175 shipped in `v4.64.0` together with S181 because S181 was the release-gate blocker
+discovered while shipping S175.
+
+Final verification:
+
+```text
+./scripts/verify-all.sh
+PASS — V01=PASS, V02=INFO line coverage 85.9%, V03=PASS, V04/V05/V06/V07=SKIP
+because prerequisites were not met in the clean release worktree, V08a=PASS, V08b=PASS,
+Verdict: all CRITICAL passed; exit=0.
+```
+
+Release summary:
+
+- Production native image accepted a fresh authenticated upload:
+  `s175-fresh-scan-20260515-210629`.
+- Cloud Run logged `POST /api/v1/skills/upload 201`.
+- The 15-engine scan completed for skill `8ee45695-c16e-4586-9869-9fdbe110ca88`.
+- Native binding / `ScanNotice` / `ConversionFailedException` / `UnsupportedFeatureError`
+  log queries after the upload timestamp returned empty.
+
+### Final Size Re-score
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 2 | Root cause was clear after Cloud Run log inspection, but the fix crossed native-image reflection metadata. |
+| Uncertainty | 0 | 1 | Production upload retest was needed to prove `ScanNotice` JSON persistence in the native image. |
+| Dependencies | 1 | 1 | Stayed within Spring AOT / GraalVM hint mechanism already used by S173. |
+| Scope | 1 | 1 | Production code change stayed limited to scanner native config classes and tests. |
+| Testing | 0 | 1 | Required targeted Gradle tests plus processTestAot and production log evidence. |
+| Reversibility | 0 | 0 | Extra reflection hints are additive and easy to remove if superseded by Spring AOT inference. |
+| **Total** | **3 / XS** | **6 / XS** | Still XS; release was delayed by an unrelated S181 test stability blocker, not by larger S175 scope. |

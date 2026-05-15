@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.64.0] — S175/S181 Native Scan + State Conflict Observability（2026-05-16）
+
+### Fixed
+
+- **Native scan JSON persistence** — S175 registers scanner JSON payload records used by the native-image scan persistence path, so a fresh production upload can complete the 15-engine scan without `ScanNotice` / record-component binding failures.
+- **State conflict log evidence** — S181 keeps 409 `STATE_CONFLICT` responses stable while logging path, method, exception class/message, and root-cause class/message without request headers, cookies, tokens, or identity values.
+- **Full backend suite stability** — S181 log assertions now read the actual Logback event instead of the shared captured console buffer, fixing the full-suite blocker exposed during S175 shipping preflight.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 85.9%）、V03=PASS、V04=SKIP（prerequisite not met）、V05=SKIP（prerequisite not met）、V06=SKIP（prerequisite not met）、V07=SKIP（prerequisite not met）、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- S175 production evidence：Chrome authenticated upload `s175-fresh-scan-20260515-210629` returned `/publish/review?id=8ee45695-c16e-4586-9869-9fdbe110ca88`; Cloud Run logged `POST /api/v1/skills/upload 201`; scan completed with `level=LOW, findings=0`; native binding / `ScanNotice` / ERROR log queries after upload returned empty.
+- S181 evidence：targeted `GlobalExceptionHandlerTest` PASS；`cd backend && ./gradlew clean test jacocoTestReport` PASS；production retest no longer reproduced the original authenticated 409 (`/api/v1/me` returned 200, remaining validate calls returned 403 and were recorded as follow-up evidence).
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-15-S175-scan-native-binding-completeness.md` → `docs/grimo/specs/archive/2026-05-15-S175-scan-native-binding-completeness.md`
+- `docs/grimo/specs/2026-05-15-S181-authenticated-state-conflict-observability.md` → `docs/grimo/specs/archive/2026-05-15-S181-authenticated-state-conflict-observability.md`
+- `docs/grimo/tasks/2026-05-15-S181-*.md` 已刪除。
+- Final size re-score：S175 XS(3) → XS(6)；S181 XS(6) → S(8)，原因是 S181 需要 production deploy/log evidence 與 full-suite test stabilization 才能解除 S175 release gate。
+
 ## [v4.63.0] — S176 Explicit Publish Skill Name（2026-05-15）
 
 ### Fixed

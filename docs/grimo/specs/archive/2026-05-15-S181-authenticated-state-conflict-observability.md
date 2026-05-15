@@ -1,7 +1,7 @@
 # S181 — Authenticated State Conflict Observability
 
 > SpecID: S181
-> Status: ✅ Done — T01/T02 PASS; production 409 no longer reproduces, follow-up is authenticated 403 ACL evidence
+> Status: ✅ shipped v4.64.0
 > Date: 2026-05-15
 > Size: XS(6)
 > Related: S180 Chrome logged-in validate blocker, S162/S162b API error shape, S141 `/api/v1/me`, S154 user_id upsert, S169 permission contract
@@ -428,3 +428,42 @@ BUILD SUCCESSFUL in 4m 40s
 ```
 
 Result: PASS. The S181 full-suite blocker recorded by S175 is fixed.
+
+### Release Result — PASS (2026-05-16)
+
+S181 shipped in `v4.64.0` together with S175 because the unstable S181 log assertion was
+the only current full-suite blocker for the S175 release.
+
+Final verification:
+
+```text
+./scripts/verify-all.sh
+PASS — V01=PASS, V02=INFO line coverage 85.9%, V03=PASS, V04/V05/V06/V07=SKIP
+because prerequisites were not met in the clean release worktree, V08a=PASS, V08b=PASS,
+Verdict: all CRITICAL passed; exit=0.
+```
+
+Release summary:
+
+- `GlobalExceptionHandler.handleStateConflict` keeps the HTTP 409
+  `STATE_CONFLICT` response shape unchanged.
+- The handler logs `path`, `method`, exception class/message, and root-cause
+  class/message without Authorization, bearer token, cookie, session id, email, or
+  OAuth subject values.
+- The production Chrome retest no longer reproduced the original authenticated 409:
+  `/api/v1/me` returned 200, while the remaining validate failure returned 403 and was
+  recorded as a separate follow-up finding.
+- The full backend suite blocker was fixed by reading the actual Logback event instead
+  of the shared captured console buffer.
+
+### Final Size Re-score
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 1 | Spring MVC supports `HttpServletRequest` in `@ExceptionHandler`; implementation matched the documented mechanism. |
+| Uncertainty | 1 | 2 | Production retest changed the observed failure from 409 to 403, so S181 became observability plus follow-up evidence. |
+| Dependencies | 0 | 1 | Needed Cloud Run deploy/log evidence and Chrome authenticated retest. |
+| Scope | 1 | 1 | Production code stayed in one handler plus one focused test file. |
+| Testing | 2 | 2 | Covered targeted handler tests, backend full suite, and production log verification. |
+| Reversibility | 1 | 1 | Additive log fields and tests can be removed or narrowed without API contract migration. |
+| **Total** | **6 / XS** | **8 / S** | Bucket shifts XS→S because deploy/log evidence and full-suite test stabilization were required before release. |

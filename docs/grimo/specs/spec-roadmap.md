@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-15（S176 shipped v4.63.0；S178 in-design — Browse Search Entry Point Cleanup）
+> 最後更新：2026-05-16（S175/S181 shipped v4.64.0；S178 in-design — Browse Search Entry Point Cleanup）
 
 ## 使用說明
 
@@ -40,7 +40,6 @@
 | S142a | SkillDetailPage v2 frontend rework | M-L(13-15) | S142b API contract | ✅ v4.22.0 — 318/318 Vitest PASS (6 tasks: T01 foundation + T02 hero + T03 tabs + T04 FileExplorer + T05 Sidebar + T06 page assembly); 0 TS production errors |
 | S142b | SkillDetailPage v2 backend supplement (SkillScore composite + SecurityReport 4-quad + Skill aggregate field projection) | S-M(8-10) | S135a ✅ | ✅ v4.1.0 — 41/41 tests PASS (21 SecurityCategoryMapper + 3 SecurityReport + 6 SkillScore + 5 QualityScore + 4 SkillQueryService + 2 APIContract) |
 | S174 | Skill detail anonymous 401 not-found UX | XS(3) | S153 ✅, S122 ✅ | 📋 planned — Round 68 production Chrome found `/skills/{missing-id}` shows generic retry because API returns 401 before 404 |
-| S175 | Scan native binding completeness hotfix | XS(3) | S173 ✅, S148b ✅ | ⏳ local PASS — registered scanner JSON records; targeted Gradle test + processTestAot PASS; production deploy pending |
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | 📐 in-design — spec ready for review |
 | S179 | Publish author anonymous login hint（未登入時作者欄位顯「請先登入後發布」，不再空白） | XS(7) | S154b ✅, S139 ✅ | 📐 in-design — spec ready for review |
 | S180 | Skill public native readback hotfix（`skills.is_public` native image 讀回不再把 Boolean 塞進 primitive boolean） | XS(3) | S168 ✅, S177 ✅ | ⏳ deployed — Chrome logged-in validate blocked by HTTP 409 session/detail requests |
@@ -81,6 +80,7 @@
 | v4.61.0 | S172 (Production UI responsive polish) | ✅ shipped 2026-05-15 — S172 all AC PASS，`verify-all.sh` 全綠 |
 | v4.62.0 | S177 (is_public-first search visibility) | ✅ shipped 2026-05-15 — S177 all AC PASS，`verify-all.sh` 全綠 |
 | v4.63.0 | S176 (Explicit Publish Skill Name) | ✅ shipped 2026-05-15 — S176 all AC PASS，`verify-all.sh` 全綠 |
+| v4.64.0 | S175 + S181 (native scan binding + state-conflict observability) | ✅ shipped 2026-05-16 — S175 production upload/scan PASS；S181 409 observability + full-suite stability PASS；`verify-all.sh` 全綠 |
 
 ---
 
@@ -244,6 +244,8 @@
 | S172 | Production UI responsive polish | S(9) | v4.61.0 |
 | S177 | is_public-first search visibility | L(15) | v4.62.0 |
 | S176 | Explicit publish skill display name | M(14) | v4.63.0 |
+| S175 | Scan native binding completeness hotfix | XS(6) | v4.64.0 |
+| S181 | Authenticated state conflict observability | S(8) | v4.64.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |
