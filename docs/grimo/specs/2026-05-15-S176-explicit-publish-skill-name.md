@@ -1,6 +1,6 @@
 # S176: Explicit Publish Skill Name（發佈頁手填平台 skill name + 允許重名）
 
-> Spec: S176 | Size: S(7) | Status: 📐 in-design
+> Spec: S176 | Size: S(7) | Status: ⏳ Plan
 > Date: 2026-05-15
 > Depends: S003 ✅, S004 ✅, S032 ✅（本 spec 修改其 invariant）, S154b ✅, S173 ✅
 > Trigger: production upload after S175 deploy — 使用者重新上傳 skill 時，Cloud Run log 出現 `skills.name` unique constraint 409；使用者要求「skill name 不做重複檢查，加一個欄位是 skill name，不是直接拿 zip 檔名稱當 skill name」。
@@ -345,3 +345,21 @@ Production retest after deploy:
 2. 用同一個 `skillName=transcribe-video` 上傳兩次。
 3. 第二次應回成功並跳 `/publish/validate?id=<new-id>`；Cloud Run log 不應再有 `skills_name_key` / `duplicate key value violates unique constraint`。
 4. 詳情頁 by id 可以開兩筆不同 id；列表搜尋 `transcribe-video` 可以看到兩筆。
+
+---
+
+## 6. Task Plan
+
+POC: not required — S176 只使用現有 Spring MVC multipart `@RequestParam`、現有 Spring Data JDBC aggregate validation、現有 Flyway/PostgreSQL migration pattern、現有 React form/FormData path；沒有新 package、SDK、framework SPI 或未知外部 API。Phase 0 pre-flight 已重新檢查 PRD P2 發佈流程、S032 舊 invariant、S154b author forge fix、V1 schema 與目前 upload code；未發現需要回到 `/planning-spec` 的設計矛盾。
+
+E2E seam decision: required — AC-1 是使用者在 browser 看到並送出的發佈表單；AC-2/3 是 HTTP multipart → controller → service → DB migration 的 real assembly path。T05 會補 `@S176` Playwright flow，用 `/publish` 頁面實際送出 duplicate platform name，避免只用 unit test 證明單一元件。
+
+| Task | Scope | AC | Depends | Verification |
+|---|---|---|---|---|
+| T01 | Drop `skills.name` unique constraint and make legacy author/name lookup deterministic | AC-6, AC-7 | — | `cd backend && ./gradlew test --tests "*SkillNameUniquenessMigrationTest" --tests "*SkillRepositoryDuplicateNameTest"` |
+| T02 | Backend upload API/service uses explicit `skillName` and allows duplicate platform names | AC-2, AC-3, AC-4 | T01 | `cd backend && ./gradlew test --tests "*SkillUploadExplicitNameTest" --tests "*SkillPublishForgeryTest" --tests "*TestDataControllerTest"` |
+| T03 | Version publishing keeps `SKILL.md name` as package metadata and no longer compares it to platform name | AC-5 | T02 | `cd backend && ./gradlew test --tests "*SkillUploadAllowedToolsTest" --tests "*SkillUploadExplicitNameTest"` |
+| T04 | PublishPage and frontend upload API send `skillName` from a required UI field | AC-1 | T02 | `cd frontend && npm test -- PublishPage.test.tsx` |
+| T05 | Browser E2E proves duplicate platform names can be published through the assembled app | AC-1, AC-2, AC-3 | T01-T04 | `cd e2e && npx playwright test --grep @S176` |
+
+After all tasks pass, Phase 4 runs `SKIP_NATIVE=1 ./scripts/verify-all.sh`, records §7 results, and leaves production deploy/log retest as the post-release verification step unless the user asks to deploy in the same turn.
