@@ -34,7 +34,15 @@ Spring Boot native-image docs also state that most controller hints are inferred
 use of `WebClient`, `RestClient`, or `RestTemplate` may need explicit
 `@RegisterReflectionForBinding`.
 
+The Spring Boot GraalVM introduction explains why this only appeared in production native:
+native images are built by static analysis from the application entry point, code not
+reachable at image build time can be removed, and GraalVM needs explicit metadata for
+dynamic reflection / serialization when Spring AOT cannot infer it. Therefore this hotfix
+registers every scanner record that crosses a Jackson, RestClient, or validation binding
+boundary outside normal controller inference.
+
 Sources:
+- Spring Boot GraalVM native image introduction: https://docs.spring.io/spring-boot/reference/packaging/native-image/introducing-graalvm-native-images.html
 - Spring Framework Javadoc: https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/aot/hint/annotation/RegisterReflectionForBinding.html
 - Spring Boot native image advanced topics: https://docs.spring.io/spring-boot/reference/packaging/native-image/advanced-topics.html
 
