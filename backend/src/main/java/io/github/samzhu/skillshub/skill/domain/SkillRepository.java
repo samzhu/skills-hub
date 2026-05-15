@@ -20,7 +20,7 @@ import org.springframework.data.repository.query.Param;
  * Modulith {@code event_publication} outbox（同 transaction）— 詳見
  * {@code docs/deepwiki/spring-data-jdbc-modulith/aggregate-design.md §3}。
  *
- * <p>S024 T1 — minimal interface（僅 CRUD + name 查詢）；後續 task 補：
+ * <p>S024 T1 — minimal interface（僅 CRUD + legacy author/name 查詢）；後續 task 補：
  * <ul>
  *   <li>T5：{@code @Modifying @Query int updateRiskLevel(...)} — ScanOrchestrator
  *       cross-aggregate projection（risk_level 為 SkillVersion 衍生資料，
@@ -36,21 +36,21 @@ import org.springframework.data.repository.query.Param;
 public interface SkillRepository extends ListCrudRepository<Skill, String> {
 
     /**
-     * 依 name 唯一鍵查詢 Skill；無對應則 {@link Optional#empty()}。
+     * S096c/S176 — 依 (author, name) 組合查詢 Skill；用於 `/skills/:author/:name` legacy alias。
+     * Canonical route is id-based. case-insensitive 比對對齊 GitHub/npm/Docker Hub 慣例
+     *（`Platform-Team` ≡ `platform-team`）。
      *
-     * <p>schema 層 {@code skills.name UNIQUE} constraint 保證最多一筆；
-     * 用於 createSkill 預檢避免 name 衝突（T4 SkillCommandService 改造可能引入）。
+     * <p>S176 移除 {@code skills.name UNIQUE} 後，同一 author/name 可能有多筆歷史資料；
+     * legacy alias 固定回最新建立 row，避免 PostgreSQL heap/page order 影響 {@code LIMIT 1}。
      */
-    Optional<Skill> findByName(String name);
-
-    /**
-     * S096c — 依 (author, name) 組合查詢 Skill；用於 `/skills/:author/:name` canonical route
-     * (per ADR-003)。case-insensitive 比對對齊 GitHub/npm/Docker Hub 慣例（`Platform-Team` ≡ `platform-team`）。
-     *
-     * <p>schema 上 `name` 已 UNIQUE per-org（per S041），但 `(author, name)` 組合在 v1 設計上
-     * 也唯一（同一 author 不會發兩個同名 skill）。LIMIT 1 防範資料漂移情況。
-     */
-    @Query("SELECT * FROM skills WHERE LOWER(author) = LOWER(:author) AND LOWER(name) = LOWER(:name) LIMIT 1")
+    @Query("""
+            SELECT *
+            FROM skills
+            WHERE LOWER(author) = LOWER(:author)
+              AND LOWER(name) = LOWER(:name)
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            """)
     Optional<Skill> findByAuthorAndName(@Param("author") String author, @Param("name") String name);
 
     /**

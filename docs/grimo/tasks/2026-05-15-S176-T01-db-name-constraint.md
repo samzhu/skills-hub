@@ -56,5 +56,17 @@ And（而且）同 author + same name 呼叫 `findByAuthorAndName(author, name)`
 ## 前置條件
 - 無
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-15
+Test: flywaySchema_removesNameUniqueConstraintAndAllowsDuplicateSkillNames (backend/src/test/java/io/github/samzhu/skillshub/skill/domain/SkillNameUniquenessMigrationTest.java)
+Test: authorNameLegacyLookup_returnsDeterministicLatestRowForDuplicateNames (backend/src/test/java/io/github/samzhu/skillshub/skill/domain/SkillRepositoryDuplicateNameTest.java)
+Files changed:
+- backend/src/main/resources/db/migration/V25__drop_skill_name_unique.sql (new)
+- backend/src/main/java/io/github/samzhu/skillshub/skill/domain/SkillRepository.java (modified)
+- backend/src/test/java/io/github/samzhu/skillshub/skill/domain/SkillNameUniquenessMigrationTest.java (new)
+- backend/src/test/java/io/github/samzhu/skillshub/skill/domain/SkillRepositoryDuplicateNameTest.java (new)
+- docs/grimo/tasks/2026-05-15-S176-T01-db-name-constraint.md (modified)
+Notes: RED confirmed with `skills_name_key` still present / duplicate insert rejected; GREEN confirmed by `cd backend && ./gradlew test --tests "*SkillNameUniquenessMigrationTest" --tests "*SkillRepositoryDuplicateNameTest"` passing.

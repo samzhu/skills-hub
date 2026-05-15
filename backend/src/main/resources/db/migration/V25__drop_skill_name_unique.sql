@@ -1,0 +1,1 @@
+ALTER TABLE skills DROP CONSTRAINT IF EXISTS skills_name_key;
