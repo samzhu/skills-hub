@@ -310,7 +310,7 @@ AC result:
 | AC-S181-1 | PASS — test confirms 409 response body remains `STATE_CONFLICT`. |
 | AC-S181-2 | PASS — test captures WARN log containing `/api/v1/me` and `GET`. |
 | AC-S181-3 | PASS — test captures exception class/message and root cause class/message. |
-| AC-S181-4 | pending — requires deploy and Chrome + Cloud Run log retest. |
+| AC-S181-4 | PASS via S181-T02 — deploy and Chrome + Cloud Run retest proved no new 409 occurs on the validate path. |
 | AC-S181-5 | PASS local — test confirms handler output does not include Authorization, cookie, email, or OAuth subject fixture strings. |
 
 ### S181-T02 — PASS
@@ -369,3 +369,24 @@ Follow-up finding:
 
 - The next clear work unit should plan a small ACL/visibility debug spec for the authenticated 403 on skill detail and bundle-info for `028cecf1-3326-4327-bbe9-28b4e6fab6d5`.
 - Evidence to start from: after login, `/api/v1/me` returned 200 and `UserUpsertService` refreshed `userId=u_5e0652`; the two failing requests returned 403 at `2026-05-15T19:22:17Z` on revision `skillshub-00030-rd2`.
+
+### Shipping Preflight — BLOCKED (2026-05-16)
+
+`$shipping-release` preflight was checked before archiving S181. Gate 3 requires `git status` to be clean of unrelated changes before updating roadmap, changelog, archive paths, or tags.
+
+Tick-start state:
+
+```text
+git status --short
+ M docs/grimo/specs/spec-roadmap.md
+?? docs/grimo/specs/2026-05-15-S179-publish-author-anonymous-login-hint.md
+```
+
+Result: BLOCKED. The modified roadmap and untracked S179 spec were already present before this tick and are not S181 release files. Shipping S181 now would require touching `docs/grimo/specs/spec-roadmap.md`, so this tick must not stage release metadata around those unrelated edits.
+
+Pending release actions after the dirty state is split or cleaned:
+
+- Run `./scripts/verify-all.sh` in the same tick as release.
+- Move this spec to `docs/grimo/specs/archive/`.
+- Delete `docs/grimo/tasks/2026-05-15-S181-*.md`.
+- Update `docs/grimo/CHANGELOG.md` and the S181 row in `docs/grimo/specs/spec-roadmap.md`.
