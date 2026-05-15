@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-15（S177 task plan ready — is_public-first visibility）
+> 最後更新：2026-05-15（S178 in-design — Browse Search Entry Point Cleanup）
 
 ## 使用說明
 
@@ -43,6 +43,7 @@
 | S175 | Scan native binding completeness hotfix | XS(3) | S173 ✅, S148b ✅ | ⏳ local PASS — registered scanner JSON records; targeted Gradle test + processTestAot PASS; production deploy pending |
 | S176 | Explicit Publish Skill Name（發佈頁手填平台 skill name + 允許重名） | S(7) | S003 ✅, S004 ✅, S032 ✅, S154b ✅, S173 ✅ | ✅ Verify-All PASS — T01-T06 PASS；shipping pending |
 | S177 | is_public-first search visibility（public 不再寫入 ACL；匿名查 is_public，登入查 is_public OR explicit ACL） | S(9) | S017 ✅, S169 ✅, S170 ✅ | ⏳ Plan — T01-T04 task files ready；下一步 T01 schema + aggregate public state |
+| S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | 📐 in-design — spec ready for review |
 
 ---
 
