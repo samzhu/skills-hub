@@ -432,3 +432,22 @@ cd frontend && /Users/samzhu/.nvm/versions/node/v20.19.3/bin/npm test -- Publish
 Red result: 2 failed / 9 passed；失敗點為找不到 `技能名稱` label，以及缺技能名稱時 submit button 仍未 disabled。
 
 Green result: 1 file passed / 11 tests passed.
+
+### T05 — PASS（2026-05-15）
+
+Commit message `test: add S176 duplicate publish e2e`：
+
+- 新增 `e2e/tests/S176-explicit-publish-skill-name.spec.ts`。
+- Playwright 透過 `/publish` text mode 連續送出兩筆相同平台 `skillName="transcribe-video"` 的 skill。
+- 第一筆 SKILL.md frontmatter `name="internal-package-one"`，第二筆 `name="internal-package-two"`；兩次都成功跳到 `/publish/validate?id=...` 並完成 `/publish/review?id=...`。
+- 測試確認兩次 publish id 不同，且 `GET /api/v1/skills?keyword=transcribe-video&page=0&size=20` 查回兩筆同名平台 skill，覆蓋 AC-1/2/3 的 browser → HTTP multipart → service → DB 組裝路徑。
+
+Verification:
+
+```bash
+cd e2e && /Users/samzhu/.nvm/versions/node/v20.19.3/bin/npx playwright test --grep @S176
+```
+
+Red result: webServer 成功啟動後 `Error: No tests found`。
+
+Green result: `1 passed (22.1s)`。

@@ -66,4 +66,28 @@ And（而且）測試透過 API/list 或 DB-backed response 看到同名平台 s
 - S176-T04 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-15）
+
+## Result
+
+新增 `e2e/tests/S176-explicit-publish-skill-name.spec.ts`，用 Playwright 打開 `/publish`：
+
+- 第一次輸入平台 `skillName="transcribe-video"`，SKILL.md frontmatter `name="internal-package-one"`，送出後跳到 `/publish/validate?id=<first-id>` 並完成 `/publish/review?id=<first-id>`。
+- 第二次輸入同一個平台 `skillName="transcribe-video"`，SKILL.md frontmatter `name="internal-package-two"`，送出後跳到 `/publish/validate?id=<second-id>` 並完成 `/publish/review?id=<second-id>`。
+- 測試確認 `first-id` 和 `second-id` 不同，且 `GET /api/v1/skills?keyword=transcribe-video&page=0&size=20` 回來的 `content[]` 內有兩筆 `name="transcribe-video"`，id 正好是上述兩筆。
+
+RED：
+
+```bash
+cd e2e && /Users/samzhu/.nvm/versions/node/v20.19.3/bin/npx playwright test --grep @S176
+```
+
+Result：`Error: No tests found`。
+
+GREEN：
+
+```bash
+cd e2e && /Users/samzhu/.nvm/versions/node/v20.19.3/bin/npx playwright test --grep @S176
+```
+
+Result：`1 passed (22.1s)`。

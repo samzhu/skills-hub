@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-15（S176 task plan ready — explicit publish skill name）
+> 最後更新：2026-05-15（S176 T05 PASS — browser duplicate publish E2E）
 
 ## 使用說明
 
@@ -41,7 +41,7 @@
 | S142b | SkillDetailPage v2 backend supplement (SkillScore composite + SecurityReport 4-quad + Skill aggregate field projection) | S-M(8-10) | S135a ✅ | ✅ v4.1.0 — 41/41 tests PASS (21 SecurityCategoryMapper + 3 SecurityReport + 6 SkillScore + 5 QualityScore + 4 SkillQueryService + 2 APIContract) |
 | S174 | Skill detail anonymous 401 not-found UX | XS(3) | S153 ✅, S122 ✅ | 📋 planned — Round 68 production Chrome found `/skills/{missing-id}` shows generic retry because API returns 401 before 404 |
 | S175 | Scan native binding completeness hotfix | XS(3) | S173 ✅, S148b ✅ | ⏳ local PASS — registered scanner JSON records; targeted Gradle test + processTestAot PASS; production deploy pending |
-| S176 | Explicit Publish Skill Name（發佈頁手填平台 skill name + 允許重名） | S(7) | S003 ✅, S004 ✅, S032 ✅, S154b ✅, S173 ✅ | ⏳ Dev — T01-T04 PASS；T05 browser E2E pending |
+| S176 | Explicit Publish Skill Name（發佈頁手填平台 skill name + 允許重名） | S(7) | S003 ✅, S004 ✅, S032 ✅, S154b ✅, S173 ✅ | ⏳ Dev — T01-T05 PASS；Phase 4 verify pending |
 
 ---
 
