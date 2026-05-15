@@ -1,7 +1,7 @@
 # S180 — Skill Public Native Readback Hotfix
 
 > SpecID: S180
-> Status: ⏳ deployed — Chrome logged-in validate page follow-up pending
+> Status: ⏳ deployed — Chrome logged-in validate blocked by HTTP 409 session/detail requests
 > Date: 2026-05-15
 > Size: XS(3)
 > Related: S168 GraalVM native boolean wrapper workaround, S177 is_public-first search visibility, S176 explicit publish skill name, S098a3-2 bundle-info endpoint
@@ -309,7 +309,7 @@ AC status:
 | AC-S180-1 | ✅ PASS | `JdbcConfigurationConverterTest.skillPublicSkill_mustBeBooleanWrapper`。 |
 | AC-S180-2 | ✅ PASS | `SkillAggregateTest.s180_publicSkillWrapperPreservesVisibilityBehavior` + existing S177 aggregate tests。 |
 | AC-S180-3 | ✅ PASS | `./gradlew processAot` exit 0。 |
-| AC-S180-4 | ⏳ PARTIAL | LAB route serves the validate SPA HTML with HTTP 200; unauthenticated API calls now return 401, not 400. Needs Chrome logged-in session to confirm the page no longer shows 「無法載入 skill」。 |
+| AC-S180-4 | ⚠️ BLOCKED | LAB route serves the validate SPA HTML with HTTP 200; unauthenticated API calls now return 401, not 400. Chrome logged-in page still shows 「無法載入 skill」 because `/api/v1/me` and `/api/v1/skills/{id}` now return HTTP 409, which is a new session/detail blocker rather than the old `Skill.publicSkill` 400 native mapping crash. |
 | AC-S180-5 | ✅ PASS | New revision log shows incomplete event retry for the affected skill reached `SearchProjection onVersionPublished done`; no `Skill.publicSkill ... java.lang.Integer` entries in new revision logs。 |
 
 Roadmap note: `docs/grimo/specs/spec-roadmap.md` currently contains mixed S179 + S180 WIP rows. This S180 implementation commit intentionally does not stage roadmap to avoid committing unrelated S179 changes.
@@ -376,4 +376,69 @@ curl -i -sS https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/028c
 curl -i -sS https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/028cecf1-3326-4327-bbe9-28b4e6fab6d5/bundle-info
 ```
 
-Result: both returned HTTP 401 `{"error":"UNAUTHORIZED","message":"Authentication required"}`. This proves the unauthenticated request no longer reaches the old 400 native mapping crash path, but it does not prove the logged-in validate page UI text. Next tick should use Chrome with an authenticated session to finish AC-S180-4.
+Result: both returned HTTP 401 `{"error":"UNAUTHORIZED","message":"Authentication required"}`. This proves the unauthenticated request no longer reaches the old 400 native mapping crash path, but it does not prove the logged-in validate page UI text.
+
+### Chrome Logged-In Validate Attempt — 2026-05-15 17:33 UTC Tick
+
+URL:
+
+```text
+https://skillshub-644359853825.asia-east1.run.app/publish/validate?id=028cecf1-3326-4327-bbe9-28b4e6fab6d5
+```
+
+Steps:
+
+1. Opened the validate URL in Chrome through the Codex Chrome extension.
+2. Read the page text after load.
+3. Clicked the visible `登入` nav item.
+4. Collected Chrome console messages and Cloud Run request logs for the same timestamp.
+
+Expected:
+
+- Validate page loads skill/bundle information for `028cecf1-3326-4327-bbe9-28b4e6fab6d5`.
+- Page does not show `無法載入 skill`.
+- Login action redirects or updates the user state.
+
+Actual:
+
+- Page text still contains `登入`.
+- Page text still contains `無法載入 skill (id=028cecf1-3326-4327-bbe9-28b4e6fab6d5) — 可能仍在處理或已被刪除`.
+- Clicking `登入` did not navigate away from the validate page.
+
+Browser console:
+
+```text
+[QueryCache] Array(2) Error: fetchMe failed: HTTP 409
+    at to (https://skillshub-644359853825.asia-east1.run.app/assets/index-EXPIzJQn.js:11:71616)
+```
+
+Cloud Run request logs on revision `skillshub-00028-n7g`:
+
+| Timestamp | Path | Status | Trace |
+| --- | --- | --- | --- |
+| `2026-05-15T17:35:34.223578Z` | `/api/v1/me` | 409 | `projects/cfh-vibe-lab/traces/22da8014fd6eb2727e2b64169a440467` |
+| `2026-05-15T17:35:34.224361Z` | `/api/v1/skills/028cecf1-3326-4327-bbe9-28b4e6fab6d5` | 409 | `projects/cfh-vibe-lab/traces/0bf6cdcd5eb7a08b7e2b64169a440d1a` |
+
+Related log checks:
+
+```bash
+curl -i -sS https://skillshub-644359853825.asia-east1.run.app/api/v1/me
+```
+
+Result without Chrome cookies: HTTP 401 with empty body and `www-authenticate` header. This means the HTTP 409 is specific to the Chrome session or authenticated request path, not the anonymous `/api/v1/me` behavior.
+
+```bash
+gcloud logging read 'trace="projects/cfh-vibe-lab/traces/22da8014fd6eb2727e2b64169a440467" OR trace="projects/cfh-vibe-lab/traces/0bf6cdcd5eb7a08b7e2b64169a440d1a"' --project=cfh-vibe-lab --limit=20
+```
+
+Result: request logs exist with HTTP 409, but no application text log was attached to those traces. Revision-level `severity>=ERROR` also returned 0 entries. Chrome read-only eval could not read the failed response body.
+
+Impact:
+
+- AC-S180-4 remains blocked at the user-visible page level.
+- The original S180 native-image bug is still fixed: new revision logs contain no `Skill.publicSkill ... java.lang.Integer`, and unauthenticated API reads return 401 instead of the old 400 crash.
+- The remaining failure is a different production blocker: Chrome-session `/api/v1/me` and skill detail requests return HTTP 409, likely through `GlobalExceptionHandler.handleStateConflict(IllegalStateException)`.
+
+Next tick recommendation:
+
+- Start a new small planning/debug unit for `Chrome session /api/v1/me HTTP 409 blocks validate page`, or first add response/log evidence for `STATE_CONFLICT` so the failed response body and root `IllegalStateException` message are visible in Cloud Run logs.
