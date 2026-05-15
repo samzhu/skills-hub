@@ -5,7 +5,14 @@ import org.springframework.context.annotation.Configuration;
 
 import io.github.samzhu.skillshub.security.scan.engines.LlmJudgement;
 
-// S173: native binding hints for LlmJudge structured output records.
+// S175: native binding hints for scanner output and persistence JSON records.
 @Configuration(proxyBeanMethods = false)
-@RegisterReflectionForBinding({LlmJudgement.class, LlmJudgement.RiskClaim.class})
+@RegisterReflectionForBinding({
+		AnalysisOutput.class,
+		SecurityFinding.class,
+		ScanNotice.class,
+		ScanResult.class,
+		LlmJudgement.class,
+		LlmJudgement.RiskClaim.class
+})
 class ScanNativeConfig {}

@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-15（S172 v4.61.0 shipped — production UI responsive polish）
+> 最後更新：2026-05-15（S175 local implementation PASS — production deploy pending）
 
 ## 使用說明
 
@@ -40,6 +40,7 @@
 | S142a | SkillDetailPage v2 frontend rework | M-L(13-15) | S142b API contract | ✅ v4.22.0 — 318/318 Vitest PASS (6 tasks: T01 foundation + T02 hero + T03 tabs + T04 FileExplorer + T05 Sidebar + T06 page assembly); 0 TS production errors |
 | S142b | SkillDetailPage v2 backend supplement (SkillScore composite + SecurityReport 4-quad + Skill aggregate field projection) | S-M(8-10) | S135a ✅ | ✅ v4.1.0 — 41/41 tests PASS (21 SecurityCategoryMapper + 3 SecurityReport + 6 SkillScore + 5 QualityScore + 4 SkillQueryService + 2 APIContract) |
 | S174 | Skill detail anonymous 401 not-found UX | XS(3) | S153 ✅, S122 ✅ | 📋 planned — Round 68 production Chrome found `/skills/{missing-id}` shows generic retry because API returns 401 before 404 |
+| S175 | Scan native binding completeness hotfix | XS(3) | S173 ✅, S148b ✅ | ⏳ local PASS — registered scanner JSON records; targeted Gradle test + processTestAot PASS; production deploy pending |
 
 ---
 

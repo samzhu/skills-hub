@@ -14,13 +14,13 @@ import io.github.samzhu.skillshub.security.scan.engines.LlmJudgement;
 class ScanNativeConfigTest {
 
 	@Test
-	@Tag("AC-S173-1")
-	@DisplayName("AC-S173-1: ScanNativeConfig registers LlmJudgement and RiskClaim for binding")
-	void scanNativeConfigRegistersLlmJudgementAndRiskClaimForBinding() {
+	@Tag("AC-S175-1")
+	@DisplayName("AC-S175-1: ScanNativeConfig registers scan output and risk_assessment records")
+	void scanNativeConfigRegistersScanOutputAndRiskAssessmentRecordsForBinding() {
 		var hint = ScanNativeConfig.class.getAnnotation(RegisterReflectionForBinding.class);
 
 		assertThat(hint).as(
-				"ScanNativeConfig must declare @RegisterReflectionForBinding for Spring AI structured output records")
+				"ScanNativeConfig must declare @RegisterReflectionForBinding for scanner JSON records")
 				.isNotNull();
 
 		var registeredClasses = new ArrayList<Class<?>>();
@@ -28,6 +28,12 @@ class ScanNativeConfigTest {
 		java.util.Collections.addAll(registeredClasses, hint.classes());
 
 		assertThat(registeredClasses)
-				.contains(LlmJudgement.class, LlmJudgement.RiskClaim.class);
+				.contains(
+						AnalysisOutput.class,
+						SecurityFinding.class,
+						ScanNotice.class,
+						ScanResult.class,
+						LlmJudgement.class,
+						LlmJudgement.RiskClaim.class);
 	}
 }
