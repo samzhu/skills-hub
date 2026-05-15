@@ -118,8 +118,8 @@ class SearchProjection {
         // S016：re-embed 也帶 owner-derived acl_entries 維持與 onSkillCreated 一致；
         // delete-then-add 會走新 row 路徑（無 ON CONFLICT 觸發），需顯式提供初始 acl 防止空 array。
         // S034: owner 從 aggregate 取（同 onSkillReactivated 模式；S025b §7 architecture tech debt 完全解決）。
-        // SkillVersionPublishedEvent 的 frontmatter 也帶 author，但 aggregate.author 才是 source of truth
-        // （S032 enforces SKILL.md name 一致性，但 author 沒驗；以 aggregate 為準避免 frontmatter quirk 污染）。
+        // SkillVersionPublishedEvent 的 frontmatter 也帶 author/package name；S176 後 package name 可不同於平台 name。
+        // owner 仍以 aggregate.author 為準，避免 frontmatter quirk 污染 ACL。
         var skill = skillRepo.findById(event.aggregateId()).orElse(null);
         var owner = skill != null ? skill.getAuthor() : null;
         // S026: 加 "public:*:read" public-read pseudo-principal — version 重建時保持公開

@@ -184,19 +184,8 @@ public class SkillCommandService {
 			throw new SkillValidationException("SKILL.md validation failed", findings);
 		}
 
-		// S032: 防 download zip metadata 與平台 listing name 不一致 — 早於 version 重複檢查上移 findById
 		var skill = skillRepo.findById(skillId)
 				.orElseThrow(() -> new IllegalArgumentException("Skill not found: " + skillId));
-		var zipName = (String) validation.metadata().get("name");
-		if (zipName != null && !zipName.equals(skill.getName())) {
-			log.atWarn()
-					.addKeyValue("skillId", skillId)
-					.addKeyValue("aggregateName", skill.getName())
-					.addKeyValue("zipName", zipName)
-					.log("SKILL.md name 與 skill aggregate 不一致");
-			throw new IllegalArgumentException(
-					"SKILL.md name '" + zipName + "' does not match skill name '" + skill.getName() + "'");
-		}
 
 		// AC-7 service-layer predicate — friendly error before DB UNIQUE 兜底
 		if (skillVersionRepo.existsBySkillIdAndVersion(skillId, version)) {

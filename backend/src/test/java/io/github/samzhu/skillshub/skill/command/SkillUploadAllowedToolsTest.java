@@ -19,6 +19,7 @@ import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
 
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
+import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
 
 /**
@@ -42,6 +43,9 @@ class SkillUploadAllowedToolsTest {
 
     @Autowired
     private SkillVersionRepository versionRepo;
+
+    @Autowired
+    private SkillRepository skillRepo;
 
     @Test
     @DisplayName("AC-13: uploadSkill with allowed-tools → SkillVersionReadModel.allowedTools 含對應 list")
@@ -76,23 +80,32 @@ class SkillUploadAllowedToolsTest {
     }
 
     @Test
-    @DisplayName("AC-S032: addVersion 偵測 zip SKILL.md name 與 skill aggregate 不一致 → IllegalArgumentException")
-    @Tag("AC-S032")
-    void addVersion_nameMismatch_rejects() throws IOException {
-        // 先 upload 建立 skill A（name = realName）
-        var realName = "real-name-" + UUID.randomUUID().toString().substring(0, 8);
-        var v1 = createZipWithFrontmatter(realName, null);
-        var skillId = commandService.uploadSkill(v1, realName, "1.0.0", "owner", "testing", null, null);
+    @DisplayName("AC-S176-5: addVersion accepts SKILL.md name different from platform skill name")
+    @Tag("AC-S176-5")
+    void addVersionWithDifferentPackageName_updatesLatestVersionAndStoresFrontmatter() throws IOException {
+        var platformName = "platform-skill-" + UUID.randomUUID().toString().substring(0, 8);
+        var packageV1 = "internal-package-v1-" + UUID.randomUUID().toString().substring(0, 8);
+        var v1 = createZipWithFrontmatter(packageV1, null);
+        var skillId = commandService.uploadSkill(v1, platformName, "1.0.0", "owner", "testing", null, null);
 
-        // 嘗試 PUT 版本，但 zip SKILL.md 的 name 不同
-        var v2 = createZipWithFrontmatter("totally-different-name", null);
+        var packageV2 = "internal-package-v2-" + UUID.randomUUID().toString().substring(0, 8);
+        var v2 = createZipWithFrontmatter(packageV2, null);
+        commandService.addVersion(skillId, v2, "1.1.0");
+
+        var skill = skillRepo.findById(skillId).orElseThrow();
+        assertThat(skill.getName()).isEqualTo(platformName);
+        assertThat(skill.getLatestVersion()).isEqualTo("1.1.0");
+
+        var version = versionRepo.findBySkillIdAndVersion(skillId, "1.1.0").orElseThrow();
+        assertThat(version.getFrontmatter()).containsEntry("name", packageV2);
+
+        assertThat(versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId))
+                .extracting("version")
+                .containsExactly("1.1.0", "1.0.0");
+
         assertThatThrownBy(() -> commandService.addVersion(skillId, v2, "1.1.0"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("does not match")
-                .hasMessageContaining(realName);
-
-        // 既有 1.0.0 不被破壞
-        assertThat(versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId)).hasSize(1);
+                .isInstanceOf(VersionExistsException.class)
+                .hasMessageContaining("Version 1.1.0 already exists");
     }
 
     /**

@@ -378,7 +378,7 @@ Commit `46baf24 fix: allow duplicate skill names`：
 
 ### T02 — PASS（2026-05-15）
 
-Commit pending：
+Commit `24ee27a fix: require explicit upload skill name`：
 
 - `POST /api/v1/skills/upload` 新增 required multipart `skillName`。
 - `SkillCommandService.uploadSkill(...)` canonical signature 改成 `byte[], skillName, version, author, category, visibility, authorNameSnapshot`。
@@ -393,3 +393,22 @@ cd backend && ./gradlew test --tests "*SkillUploadExplicitNameTest" --tests "*Sk
 ```
 
 Result: `BUILD SUCCESSFUL in 2m 32s`
+
+### T03 — PASS（2026-05-15）
+
+Commit message `fix: allow package name changes on version publish`：
+
+- `SkillCommandService.addVersion(...)` 不再比較 `SKILL.md name` 與平台 `skills.name`。
+- `SkillUploadAllowedToolsTest` 改為 `AC-S176-5`：新版本 package name 可不同於平台 name，`latestVersion` 更新成 `1.1.0`，`skill_versions.frontmatter.name` 保存 package metadata。
+- 同一測試確認同一 skill 同 version 第二次上傳仍丟 `VersionExistsException`，版本唯一檢查未被移除。
+- `SearchProjection` 更新過時 S032 註解，明確寫出 S176 後 package name 可不同於平台 name。
+
+Verification:
+
+```bash
+cd backend && ./gradlew test --tests "*SkillUploadAllowedToolsTest" --tests "*SkillUploadExplicitNameTest"
+```
+
+Red result: `SkillUploadAllowedToolsTest > AC-S176-5... FAILED`，`addVersion(...)` 在舊 name mismatch guard 丟 `IllegalArgumentException`。
+
+Green result: `BUILD SUCCESSFUL in 2m 31s`
