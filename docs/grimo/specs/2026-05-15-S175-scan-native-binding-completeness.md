@@ -1,6 +1,6 @@
 # S175 — Scan Native Binding Completeness Hotfix
 
-> Status: ✅ fresh production upload PASS; shipping metadata pending
+> Status: ✅ fresh production upload PASS; shipping blocked by unrelated dirty state
 > Date: 2026-05-15
 > Trigger: production upload scan failed after `POST /api/v1/skills/upload`
 > Related: S173, S148, S148b
@@ -260,3 +260,40 @@ Result: BLOCKED by current-tick verify-all V01 failure. Next tick should fix or 
 `GlobalExceptionHandlerTest.stateConflictLogsRequestMetadataAndPreservesResponse`, rerun
 `./scripts/verify-all.sh`, then complete S175 changelog / roadmap / archive via
 `$shipping-release`.
+
+### Shipping Preflight Follow-up — BLOCKED (2026-05-16)
+
+S181 no longer blocks S175 shipping. Commit `6bba39f test(S181): stabilize state
+conflict log assertion` changed
+`GlobalExceptionHandlerTest.stateConflictLogsRequestMetadataAndPreservesResponse` to
+read the Logback event directly instead of waiting for the shared captured console buffer.
+
+Verification from the S181 fix tick:
+
+```text
+cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.api.GlobalExceptionHandlerTest
+BUILD SUCCESSFUL in 1m 59s
+
+cd backend && ./gradlew clean test jacocoTestReport
+BUILD SUCCESSFUL in 4m 40s
+```
+
+Current `$shipping-release` preflight still cannot archive S175/S181 because the worktree
+contains unrelated S183/S184/grants changes that must not be staged into this release:
+
+```text
+git status --short
+ M CONTEXT.md
+ M docs/grimo/glossary.md
+ M docs/grimo/specs/spec-roadmap.md
+ M frontend/src/api/grants.ts
+?? docs/grimo/specs/2026-05-16-S183-security-report-issue-code-ui.md
+?? docs/grimo/specs/2026-05-16-S184-api-empty-response-contract.md
+?? docs/grimo/ui/prototype/Skills Hub Security Report Issue Code UI.html
+?? docs/grimo/ui/prototype/Skills Hub Security Risk Lights UI.html
+?? frontend/src/api/grants.test.ts
+```
+
+Result: BLOCKED by unrelated dirty state. Next tick should split or commit those
+S183/S184/grants changes separately, rerun `./scripts/verify-all.sh` in the release tick,
+then complete S175/S181 changelog / roadmap / archive via `$shipping-release`.
