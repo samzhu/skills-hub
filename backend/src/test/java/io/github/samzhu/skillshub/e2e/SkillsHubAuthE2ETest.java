@@ -281,7 +281,7 @@ class SkillsHubAuthE2ETest {
         var out = new ByteArrayOutputStream();
         try {
             for (var field : new String[][]{
-                    {"version", version}, {"author", author},
+                    {"skillName", skillName}, {"version", version}, {"author", author},
                     {"category", category}, {"visibility", visibility}}) {
                 out.write(("--" + boundary + "\r\n").getBytes());
                 out.write(("Content-Disposition: form-data; name=\"" + field[0] + "\"\r\n\r\n").getBytes());

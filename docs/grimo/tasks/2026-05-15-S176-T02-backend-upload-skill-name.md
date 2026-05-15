@@ -71,4 +71,16 @@ And（而且）缺少 `skillName` 或送 `skillName="Bad Name!"` 時回 400，DB
 - S176-T01 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-15）
+
+## 執行結果
+- 新增 `SkillUploadExplicitNameTest`，驗 `SkillCommandService.uploadSkill(...)` 用 request `skillName` 寫 `skills.name`，`SKILL.md name` 保留在 `skill_versions.frontmatter`。
+- `POST /api/v1/skills/upload` 現在必收 multipart `skillName`；Spring Framework multipart docs 說普通 form field 與 `MultipartFile` 都可用 `@RequestParam` 取得，故採用原生 `@RequestParam("skillName")`。
+- 移除 upload service 端 fallback 到 `SKILL.md name` 的 overload；所有 backend/test upload call site 明確傳平台 skill name。
+- 更新 `TestDataController` seed path，`req.name()` 會傳成平台 skill name；author 仍由 server/test request path 控制，沒有引入 caller 偽造 author 的路徑。
+- 更新 `SkillPublishForgeryTest` 和 `TestDataControllerTest`，確保新 signature 下 author 仍是 server-derived，且缺少/非法 `skillName` 會走 HTTP 400。
+
+## 驗證結果
+PASS：`cd backend && ./gradlew test --tests "*SkillUploadExplicitNameTest" --tests "*SkillPublishForgeryTest" --tests "*TestDataControllerTest"`
+
+實際結果：`BUILD SUCCESSFUL in 2m 32s`

@@ -120,7 +120,7 @@ class TestDataController {
         var version = req.version() != null ? req.version() : "1.0.0";
         var visibility = req.visibility() != null ? req.visibility() : Visibility.PUBLIC;
         var id = skillCommandService.uploadSkill(
-                zipBytes, version, req.author(), req.category(), visibility);
+                zipBytes, req.name(), version, req.author(), req.category(), visibility, null);
         log.atInfo()
                 .addKeyValue("event", "test_data_seed_skill")
                 .addKeyValue("skillId", id)

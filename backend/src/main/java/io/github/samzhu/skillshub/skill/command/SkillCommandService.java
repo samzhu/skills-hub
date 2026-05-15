@@ -80,30 +80,20 @@ public class SkillCommandService {
 		return skill.getId();
 	}
 
-	/** S116 backward-compat 4-arg overload — defaults visibility=PUBLIC（v3.x 既有行為）。 */
-	public String uploadSkill(byte[] uploadedBytes, String version, String author, String category) throws IOException {
-		return uploadSkill(uploadedBytes, version, author, category,
-				io.github.samzhu.skillshub.skill.domain.Visibility.PUBLIC, null);
-	}
-
-	/** S154 backward-compat 5-arg overload — null snapshot；S116 既有 visibility 路徑。 */
-	public String uploadSkill(byte[] uploadedBytes, String version, String author, String category,
-			io.github.samzhu.skillshub.skill.domain.Visibility visibility) throws IOException {
-		return uploadSkill(uploadedBytes, version, author, category, visibility, null);
-	}
-
 	/**
-	 * S154 — 6-arg canonical：含 author 顯示名稱 snapshot。controller 從 currentUserProvider 取後透傳。
+	 * S176 — upload canonical path：platform skillName 來自 request；SKILL.md name 保留在 version frontmatter。
 	 *
+	 * @param skillName platform-visible skill name（required；不同於 SKILL.md package name）
 	 * @param authorNameSnapshot publish 時 freeze 的 author 顯示名稱（nullable；無 OIDC name claim 時 null）
 	 */
 	@Transactional
-	public String uploadSkill(byte[] uploadedBytes, String version, String author, String category,
+	public String uploadSkill(byte[] uploadedBytes, String skillName, String version, String author, String category,
 			io.github.samzhu.skillshub.skill.domain.Visibility visibility,
 			@org.jspecify.annotations.Nullable String authorNameSnapshot) throws IOException {
 		// S053: normalize plain .md → 合法 zip；若已是 zip 原樣返回。下游流程一致 zip contract。
 		var zipBytes = packageService.normalizeToZip(uploadedBytes);
 		log.atInfo()
+				.addKeyValue("skillName", skillName)
 				.addKeyValue("version", version)
 				.addKeyValue("author", author)
 				.addKeyValue("uploadedSize", uploadedBytes.length)
@@ -126,11 +116,10 @@ public class SkillCommandService {
 			throw new SkillValidationException("SKILL.md validation failed", findings);
 		}
 
-		var name = (String) validation.metadata().get("name");
 		var description = (String) validation.metadata().get("description");
 
 		var skill = Skill.create(new CreateSkillCommand(
-				name, description, author, category, visibility, authorNameSnapshot));
+				skillName, description, author, category, visibility, authorNameSnapshot));
 		skill.recordVersionPublished(version, authorNameSnapshot);
 		var storagePath = "skills/" + skill.getId() + "/" + version + "/skill.zip";
 
@@ -148,7 +137,8 @@ public class SkillCommandService {
 
 		log.atInfo()
 				.addKeyValue("skillId", skill.getId())
-				.addKeyValue("name", name)
+				.addKeyValue("skillName", skillName)
+				.addKeyValue("packageName", validation.metadata().get("name"))
 				.addKeyValue("version", version)
 				.addKeyValue("storagePath", storagePath)
 				.addKeyValue("fileCount", fileCount)

@@ -81,15 +81,16 @@ public class SkillCommandController {
 	 * <p>流程：接收 multipart → 解壓 zip → 驗證 SKILL.md → 上傳至 GCS
 	 * → 產生 SkillCreated + SkillVersionPublished 領域事件。</p>
 	 *
-	 * @param file     技能套件 zip 檔（最大 10MB）
-	 * @param version  語意化版本號（如 "1.0.0"）
-	 * @param author   作者名稱
-	 * @param category 分類（如 DevOps、Testing）
+	 * @param file      技能套件 zip 檔（最大 10MB）
+	 * @param skillName 平台顯示/路由用 skill name
+	 * @param version   語意化版本號（如 "1.0.0"）
+	 * @param category  分類（如 DevOps、Testing）
 	 * @return 201 Created + {"id": "uuid"}
 	 */
 	@PostMapping("/upload")
 	ResponseEntity<Map<String, String>> uploadSkill(
 			@RequestParam("file") MultipartFile file,
+			@RequestParam("skillName") String skillName,
 			@RequestParam("version") String version,
 			// S154 AC-3 forgery fix：dropped @RequestParam("author") — caller 傳的 author param Spring
 			// 預設 silently ignored；server 一律從 currentUserProvider 取 platform user_id。
@@ -107,6 +108,7 @@ public class SkillCommandController {
 				.addKeyValue("authenticated", auth != null && auth.isAuthenticated())
 				.addKeyValue("principal", auth == null ? "null" : auth.getName())
 				.addKeyValue("fileSize", file.getSize())
+				.addKeyValue("skillName", skillName)
 				.addKeyValue("version", version)
 				.addKeyValue("category", category)
 				.addKeyValue("visibility", visibility)
@@ -116,7 +118,7 @@ public class SkillCommandController {
 		// PRIVATE 走私人 skill 路徑（acl_entries 不含 *:read，由既有 GIN ?| filter
 		// 自動 fail-closed against anonymous / non-grant user）。
 		// S154: author = 平台 user_id；authorNameSnapshot = OIDC name 顯示名稱 freeze。
-		var id = commandService.uploadSkill(file.getBytes(), version,
+		var id = commandService.uploadSkill(file.getBytes(), skillName, version,
 				current.userId(), category, visibility, current.name());
 		return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id));
 	}

@@ -51,7 +51,7 @@ class SkillUploadAllowedToolsTest {
         var zip = createZipWithFrontmatter(skillName,
                 "Bash(git:*) Edit Read Write");
 
-        var skillId = commandService.uploadSkill(zip, "1.0.0", "owner", "testing");
+        var skillId = commandService.uploadSkill(zip, skillName, "1.0.0", "owner", "testing", null, null);
 
         var versions = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
         assertThat(versions).hasSize(1);
@@ -69,7 +69,7 @@ class SkillUploadAllowedToolsTest {
         var skillName = "no-tools-" + UUID.randomUUID().toString().substring(0, 8);
         var zip = createZipWithFrontmatter(skillName, null); // 不寫 allowed-tools
 
-        var skillId = commandService.uploadSkill(zip, "1.0.0", "owner", "testing");
+        var skillId = commandService.uploadSkill(zip, skillName, "1.0.0", "owner", "testing", null, null);
 
         var versions = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId);
         assertThat(versions.get(0).getAllowedTools()).isEmpty();
@@ -82,7 +82,7 @@ class SkillUploadAllowedToolsTest {
         // 先 upload 建立 skill A（name = realName）
         var realName = "real-name-" + UUID.randomUUID().toString().substring(0, 8);
         var v1 = createZipWithFrontmatter(realName, null);
-        var skillId = commandService.uploadSkill(v1, "1.0.0", "owner", "testing");
+        var skillId = commandService.uploadSkill(v1, realName, "1.0.0", "owner", "testing", null, null);
 
         // 嘗試 PUT 版本，但 zip SKILL.md 的 name 不同
         var v2 = createZipWithFrontmatter("totally-different-name", null);

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
@@ -55,6 +56,48 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
     private static final String BOB_DISPLAY_NAME = "Bob Smith";
 
     @Test
+    @DisplayName("AC-S176-4: multipart upload 缺 skillName → 400 且不呼叫 service")
+    @Tag("AC-S176-4")
+    void uploadWithoutSkillName_returns400BeforeService() throws Exception {
+        var fakeZip = new MockMultipartFile("file", "skill.zip", "application/zip", new byte[]{0x50, 0x4b, 0x03, 0x04});
+
+        mockMvc.perform(multipart("/api/v1/skills/upload")
+                        .file(fakeZip)
+                        .param("version", "1.0.0")
+                        .param("category", "testing")
+                        .with(jwt().jwt(j -> j.subject("bob-google-sub"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"));
+
+        Mockito.verifyNoInteractions(skillCommandService);
+    }
+
+    @Test
+    @DisplayName("AC-S176-4: multipart upload skillName 格式不合法 → 400")
+    @Tag("AC-S176-4")
+    void uploadWithInvalidSkillName_returns400() throws Exception {
+        Mockito.when(currentUserProvider.current()).thenReturn(new CurrentUser(
+                BOB_USER_ID, "bob-google-sub", BOB_DISPLAY_NAME, "bob@example.com",
+                "bob", List.of("user"), List.of(), null));
+        Mockito.when(skillCommandService.uploadSkill(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq("Bad Name!"), ArgumentMatchers.any(),
+                        ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+                .thenThrow(new IllegalArgumentException("Skill name must match ^[a-z0-9-]{1,64}$ (got: Bad Name!)"));
+
+        var fakeZip = new MockMultipartFile("file", "skill.zip", "application/zip", new byte[]{0x50, 0x4b, 0x03, 0x04});
+
+        mockMvc.perform(multipart("/api/v1/skills/upload")
+                        .file(fakeZip)
+                        .param("skillName", "Bad Name!")
+                        .param("version", "1.0.0")
+                        .param("category", "testing")
+                        .with(jwt().jwt(j -> j.subject("bob-google-sub"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Skill name must match")));
+    }
+
+    @Test
     @DisplayName("AC-3 Scenario A: Bob multipart upload 不帶 author → service 收到 BOB user_id（從 currentUserProvider）")
     @Tag("AC-3")
     void uploadWithoutAuthorParam_usesCurrentUser() throws Exception {
@@ -64,6 +107,7 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
                 "bob", List.of("user"), List.of(), null));
         Mockito.when(skillCommandService.uploadSkill(
                         ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(),
+                        ArgumentMatchers.any(),
                         ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenReturn("skill-id-from-bob");
 
@@ -71,6 +115,7 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
 
         mockMvc.perform(multipart("/api/v1/skills/upload")
                         .file(fakeZip)
+                        .param("skillName", "bob-platform-skill")
                         .param("version", "1.0.0")
                         .param("category", "testing")
                         .with(jwt().jwt(j -> j.subject("bob-google-sub"))))
@@ -80,7 +125,7 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
         var authorCaptor = ArgumentCaptor.forClass(String.class);
         var snapshotCaptor = ArgumentCaptor.forClass(String.class);
         Mockito.verify(skillCommandService).uploadSkill(
-                ArgumentMatchers.any(), ArgumentMatchers.eq("1.0.0"),
+                ArgumentMatchers.any(), ArgumentMatchers.eq("bob-platform-skill"), ArgumentMatchers.eq("1.0.0"),
                 authorCaptor.capture(), ArgumentMatchers.eq("testing"),
                 ArgumentMatchers.any(), snapshotCaptor.capture());
 
@@ -101,6 +146,7 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
                 "bob", List.of("user"), List.of(), null));
         Mockito.when(skillCommandService.uploadSkill(
                         ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(),
+                        ArgumentMatchers.any(),
                         ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
                 .thenReturn("skill-id-still-from-bob");
 
@@ -108,6 +154,7 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
 
         mockMvc.perform(multipart("/api/v1/skills/upload")
                         .file(fakeZip)
+                        .param("skillName", "bob-platform-skill")
                         .param("version", "1.0.0")
                         .param("author", "u_alice_xx")  // 偽造！server 應 ignore
                         .param("category", "testing")
@@ -117,7 +164,7 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
         // 即使 caller 多塞 ?author=u_alice_xx，service 仍收 BOB_USER_ID
         var authorCaptor = ArgumentCaptor.forClass(String.class);
         Mockito.verify(skillCommandService).uploadSkill(
-                ArgumentMatchers.any(), ArgumentMatchers.any(),
+                ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(),
                 authorCaptor.capture(), ArgumentMatchers.any(),
                 ArgumentMatchers.any(), ArgumentMatchers.any());
 

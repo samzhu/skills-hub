@@ -85,7 +85,7 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
         var fakeZip = new byte[]{1, 2, 3};
         when(packageService.normalizeToZip(any(byte[].class))).thenReturn(fakeZip);
         when(skillCommandService.uploadSkill(any(byte[].class), anyString(), anyString(),
-                anyString(), eq(Visibility.PUBLIC)))
+                anyString(), anyString(), eq(Visibility.PUBLIC), any()))
             .thenReturn(fakeId);
 
         var body = """
@@ -105,7 +105,8 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
             .andExpect(jsonPath("$.id").value(fakeId));
 
         verify(skillCommandService, times(1)).uploadSkill(
-            any(byte[].class), eq("1.0.0"), eq("alice"), eq("devops"), eq(Visibility.PUBLIC));
+            any(byte[].class), eq("docker-helper"), eq("1.0.0"),
+            eq("alice"), eq("devops"), eq(Visibility.PUBLIC), eq(null));
     }
 
     @Test
@@ -113,7 +114,7 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
     void seedSkill_appliesDefaults() throws Exception {
         when(packageService.normalizeToZip(any(byte[].class))).thenReturn(new byte[]{0});
         when(skillCommandService.uploadSkill(any(byte[].class), anyString(), anyString(),
-                anyString(), eq(Visibility.PUBLIC)))
+                anyString(), anyString(), eq(Visibility.PUBLIC), any()))
             .thenReturn("id-002");
 
         var body = """
@@ -131,7 +132,8 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
             .andExpect(status().isOk());
 
         verify(skillCommandService).uploadSkill(
-            any(byte[].class), eq("1.0.0"), eq("bob"), eq("testing"), eq(Visibility.PUBLIC));
+            any(byte[].class), eq("test-skill"), eq("1.0.0"),
+            eq("bob"), eq("testing"), eq(Visibility.PUBLIC), eq(null));
     }
 
     @Test

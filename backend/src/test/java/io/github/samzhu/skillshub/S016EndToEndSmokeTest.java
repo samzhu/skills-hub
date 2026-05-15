@@ -123,6 +123,7 @@ class S016EndToEndSmokeTest {
                     try {
                         var uploadResponse = mockMvc.perform(multipart("/api/v1/skills/upload")
                                 .file(new MockMultipartFile("file", "v.zip", "application/zip", zipBytes))
+                                .param("skillName", skillName)
                                 .param("version", "1.0.0")
                                 .param("author", "alice")
                                 .param("category", "testing")
@@ -234,6 +235,7 @@ class S016EndToEndSmokeTest {
 
         var uploadResponse = mockMvc.perform(multipart("/api/v1/skills/upload")
                 .file(new MockMultipartFile("file", "v.zip", "application/zip", initialZip))
+                .param("skillName", skillName)
                 .param("version", "1.0.0")
                 .param("author", "alice")
                 .param("category", "testing")
@@ -308,6 +310,7 @@ class S016EndToEndSmokeTest {
                     try {
                         var resp = mockMvc.perform(multipart("/api/v1/skills/upload")
                                 .file(new MockMultipartFile("file", "test.zip", "application/zip", zip))
+                                .param("skillName", "test-upload")
                                 .param("version", "1.0.0")
                                 .param("author", "sam")
                                 .param("category", "devops")
@@ -344,6 +347,7 @@ class S016EndToEndSmokeTest {
 
         mockMvc.perform(multipart("/api/v1/skills/upload")
                 .file(new MockMultipartFile("file", "bad.zip", "application/zip", zip))
+                .param("skillName", "bad-upload")
                 .param("version", "1.0.0")
                 .param("author", "sam")
                 .param("category", "devops")
@@ -363,6 +367,7 @@ class S016EndToEndSmokeTest {
 
         var createResp = mockMvc.perform(multipart("/api/v1/skills/upload")
                 .file(new MockMultipartFile("file", "v1.zip", "application/zip", zipV1))
+                .param("skillName", "versioned-skill")
                 .param("version", "1.0.0")
                 .param("author", "sam")
                 .param("category", "devops")
@@ -408,6 +413,7 @@ class S016EndToEndSmokeTest {
 
         var createResp = mockMvc.perform(multipart("/api/v1/skills/upload")
                 .file(new MockMultipartFile("file", "init.zip", "application/zip", zip))
+                .param("skillName", "dup-version-skill")
                 .param("version", "1.0.0")
                 .param("author", "sam")
                 .param("category", "devops")
@@ -531,6 +537,7 @@ class S016EndToEndSmokeTest {
                 "---\nname: " + name + "\ndescription: Test\n---\n# " + name);
         var resp = mockMvc.perform(multipart("/api/v1/skills/upload")
                 .file(new MockMultipartFile("file", "skill.zip", "application/zip", zip))
+                .param("skillName", name)
                 .param("version", version)
                 .param("author", "tester")
                 .param("category", "testing")

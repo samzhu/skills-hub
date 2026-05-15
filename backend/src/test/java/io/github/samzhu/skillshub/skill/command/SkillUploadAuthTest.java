@@ -47,6 +47,7 @@ class SkillUploadAuthTest extends WebMvcSliceTestBase {
     void anonymousUpload_returns401() throws Exception {
         mockMvc.perform(multipart("/api/v1/skills/upload")
                 .file(new MockMultipartFile("file", "v.zip", "application/zip", new byte[]{1, 2, 3}))
+                .param("skillName", "auth-test")
                 .param("version", "1.0.0")
                 .param("author", "alice")
                 .param("category", "devops"))

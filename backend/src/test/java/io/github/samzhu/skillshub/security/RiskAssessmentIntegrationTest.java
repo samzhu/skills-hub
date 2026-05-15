@@ -221,6 +221,7 @@ class RiskAssessmentIntegrationTest {
 		body.add("file", new ByteArrayResource(zip) {
 			@Override public String getFilename() { return "skill.zip"; }
 		});
+		body.add("skillName", "risk-assessment-fixture");
 		body.add("version", "1.0.0");
 		body.add("author", "tester");
 		body.add("category", "testing");
