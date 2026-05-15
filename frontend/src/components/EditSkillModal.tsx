@@ -35,7 +35,7 @@ export function EditSkillModal({
         category: category.trim() || null,
       }),
     onSuccess: () => {
-      // SkillDetailPage 用兩種 key 取 skill：by id (`/skills/:id`) + by author/name canonical
+      // SkillDetailPage 用 id canonical route 取 detail；author/name legacy alias 仍可能有 cache consumer。
       queryClient.invalidateQueries({ queryKey: ['skill', skill.id] })
       queryClient.invalidateQueries({ queryKey: ['skills'] })
       toast.success('技能已更新')

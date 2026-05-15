@@ -45,10 +45,10 @@ class SkillUploadExplicitNameTest {
     private NamedParameterJdbcTemplate jdbc;
 
     @Test
-    @DisplayName("AC-S176-2: uploadSkill 寫入 request skillName；frontmatter 保留 package name")
+    @DisplayName("AC-S176-2: uploadSkill 寫入 request display skillName；frontmatter 保留 package name")
     @Tag("AC-S176-2")
-    void uploadSkillPersistsPlatformNameSeparatelyFromPackageName() throws IOException {
-        var platformName = unique("platform-skill");
+    void uploadSkillPersistsDisplayNameSeparatelyFromPackageName() throws IOException {
+        var platformName = "Team Transcribe " + UUID.randomUUID().toString().substring(0, 8);
         var packageName = unique("internal-package-name");
         var zip = createZip(packageName);
 
@@ -66,7 +66,7 @@ class SkillUploadExplicitNameTest {
     @DisplayName("AC-S176-3: duplicate platform skillName 允許建立兩筆 skill")
     @Tag("AC-S176-3")
     void duplicatePlatformSkillNamesAreAllowed() throws IOException {
-        var platformName = unique("transcribe-video");
+        var platformName = "團隊轉錄工具";
 
         var firstId = commandService.uploadSkill(createZip(unique("internal-one")),
                 platformName, "1.0.0", "owner-a", "testing", Visibility.PUBLIC, "Owner A");
@@ -78,9 +78,9 @@ class SkillUploadExplicitNameTest {
     }
 
     @Test
-    @DisplayName("AC-S176-4: missing/invalid skillName → IllegalArgumentException；DB 不新增 row")
+    @DisplayName("AC-S176-4: missing/blank/control-char skillName → IllegalArgumentException；DB 不新增 row")
     @Tag("AC-S176-4")
-    void missingOrInvalidPlatformSkillNameRejectsBeforeInsert() throws IOException {
+    void missingBlankOrControlCharacterPlatformSkillNameRejectsBeforeInsert() throws IOException {
         var before = countSkills();
         var zip = createZip(unique("internal-name"));
 
@@ -90,10 +90,16 @@ class SkillUploadExplicitNameTest {
                 .hasMessageContaining("name is required");
         assertThat(countSkills()).isEqualTo(before);
 
-        assertThatThrownBy(() -> commandService.uploadSkill(zip, "Bad Name!", "1.0.0",
+        assertThatThrownBy(() -> commandService.uploadSkill(zip, "   ", "1.0.0",
                 "owner", "testing", Visibility.PUBLIC, "Owner Name"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Skill name must match");
+                .hasMessageContaining("Skill name must not be blank");
+        assertThat(countSkills()).isEqualTo(before);
+
+        assertThatThrownBy(() -> commandService.uploadSkill(zip, "Team\nTranscribe", "1.0.0",
+                "owner", "testing", Visibility.PUBLIC, "Owner Name"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Skill name must not contain control characters");
         assertThat(countSkills()).isEqualTo(before);
     }
 

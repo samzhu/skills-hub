@@ -176,7 +176,7 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
       target: { value: '---\nname: internal-package-name\ndescription: a useful skill\n---\n# body' },
     })
     const skillNameInput = screen.getByLabelText('技能名稱') as HTMLInputElement
-    fireEvent.change(skillNameInput, { target: { value: 'platform-skill' } })
+    fireEvent.change(skillNameInput, { target: { value: 'Team Transcribe' } })
     const categoryInput = screen.getByPlaceholderText('DevOps') as HTMLInputElement
     fireEvent.change(categoryInput, { target: { value: 'DevOps' } })
 
@@ -191,7 +191,7 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
     // FormData entries 確認不含 author key
     const keys = Array.from(capturedForm!.keys())
     expect(keys).not.toContain('author')
-    expect(capturedForm!.get('skillName')).toBe('platform-skill')
+    expect(capturedForm!.get('skillName')).toBe('Team Transcribe')
     // sanity — 其他必要欄位仍在
     expect(keys).toContain('file')
     expect(keys).toContain('version')
@@ -216,5 +216,13 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
     const skillNameInput = screen.getByLabelText('技能名稱') as HTMLInputElement
     fireEvent.change(skillNameInput, { target: { value: 'platform-skill' } })
     await waitFor(() => expect(submitBtn).not.toBeDisabled())
+  })
+
+  it('AC-S176-1: 技能名稱是平台顯示名稱，不套用 SKILL.md package-name pattern', () => {
+    renderPublishPage()
+
+    const skillNameInput = screen.getByLabelText('技能名稱') as HTMLInputElement
+    expect(skillNameInput.getAttribute('pattern')).toBeNull()
+    expect(screen.getByText(/平台列表顯示名稱，可和 SKILL\.md 裡的 name 不同/)).toBeInTheDocument()
   })
 })

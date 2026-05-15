@@ -103,8 +103,8 @@ public class SkillQueryController {
 	}
 
 	/**
-	 * S096c — 依 author/name canonical route 取得 Skill (per ADR-003).
-	 * `/skills/:id` 為永久 alias，`/skills/:author/:name` 為 canonical；兩者 resolve 同 aggregate。
+	 * S096c → S176 — 依 author/name legacy alias 取得 Skill。
+	 * `/skills/:id` 是 canonical identity；重名後本 route 回 deterministic latest row。
 	 * Path 區分：UUID 為 single-segment（既有 endpoint），author/name 為 two-segment（本 endpoint）。
 	 *
 	 * <p>S124: 走 {@code @PostAuthorize} 對 returnObject.id 套 ACL — 因 {@code @PreAuthorize} 對

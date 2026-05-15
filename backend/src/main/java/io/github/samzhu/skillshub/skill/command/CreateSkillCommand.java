@@ -21,7 +21,7 @@ import io.github.samzhu.skillshub.skill.domain.Visibility;
  * {@code currentUserProvider.current().name()} 注入；publish 時由 {@link
  * io.github.samzhu.skillshub.skill.domain.Skill#create} 寫進 {@code skills.author_name_snapshot} 欄位。
  *
- * @param name               技能名稱（小寫連字號格式，最長 64 字元，符合 agentskills.io 規範）
+ * @param name               平台顯示名稱（最長 64 字元；可和 SKILL.md package name 不同）
  * @param description        技能功能描述（最長 1024 字元）
  * @param author             technical author identifier（S154 起為 platform user_id，由 server 注入）
  * @param category           技能分類（如 DevOps、Testing）

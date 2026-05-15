@@ -82,7 +82,7 @@ public class SkillCommandController {
 	 * → 產生 SkillCreated + SkillVersionPublished 領域事件。</p>
 	 *
 	 * @param file      技能套件 zip 檔（最大 10MB）
-	 * @param skillName 平台顯示/路由用 skill name
+	 * @param skillName 平台顯示名稱；canonical identity 仍是 skill id
 	 * @param version   語意化版本號（如 "1.0.0"）
 	 * @param category  分類（如 DevOps、Testing）
 	 * @return 201 Created + {"id": "uuid"}

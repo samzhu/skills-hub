@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.63.0] — S176 Explicit Publish Skill Name（2026-05-15）
+
+### Fixed
+
+- **Duplicate platform skill names** — `skills.name` no longer has DB uniqueness; same display name can be published more than once.
+- **Platform display name semantics** — publish `skillName` is the human-facing platform display name; it accepts spaces, uppercase, Chinese, and punctuation, and rejects only blank, over-64-character, or control-character values.
+- **Package metadata decoupling** — `SKILL.md` frontmatter `name` remains agentskills.io package metadata and may differ from the platform display name; version upload no longer compares package name to platform name.
+- **Route identity clarification** — `/skills/{id}` is the canonical identity; `/skills/{author}/{name}` remains a deterministic latest-row legacy alias.
+
+### Verification
+
+- `SKIP_NATIVE=1 ./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.0%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=SKIP；`exit=0`。
+- QA：independent QA PASS；`cd e2e && npx playwright test --grep @S176` PASS；targeted backend/frontend checks PASS。
+- Post-release follow-up：deploy 後上傳兩個相同 `skillName` 的 skill，預期拿到兩個不同 id，且 Cloud Run logs 沒有 `skills_name_key` / duplicate-key error。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-15-S176-explicit-publish-skill-name.md` → `docs/grimo/specs/archive/2026-05-15-S176-explicit-publish-skill-name.md`
+- `docs/grimo/tasks/2026-05-15-S176-*.md` 已刪除。
+- Final size re-score：S(8) → M(14)，原因是 DB constraint、domain validation、upload API、frontend publish form、legacy route 行為與 E2E 一起進入 release 範圍。
+
 ## [v4.62.0] — S177 is_public-first search visibility（2026-05-15）
 
 ### Fixed

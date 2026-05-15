@@ -91,8 +91,8 @@ export function updateSkill(
 }
 
 /**
- * S096c — 依 (author, name) canonical route 取得 Skill (per ADR-003).
- * `/skills/:author/:name` 為 v2 canonical；`/skills/:id` 仍為永久 alias。
+ * S176 — 依 (author, name) legacy alias 取得 Skill。
+ * `/skills/:id` 是 canonical identity；重名後 author/name route 只回 deterministic latest row。
  */
 export function fetchSkillByAuthorAndName(author: string, name: string): Promise<Skill> {
   return apiFetch(`/skills/${encodeURIComponent(author)}/${encodeURIComponent(name)}`)

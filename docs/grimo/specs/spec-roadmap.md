@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-15（S178 in-design — Browse Search Entry Point Cleanup）
+> 最後更新：2026-05-15（S176 shipped v4.63.0；S178 in-design — Browse Search Entry Point Cleanup）
 
 ## 使用說明
 
@@ -41,7 +41,6 @@
 | S142b | SkillDetailPage v2 backend supplement (SkillScore composite + SecurityReport 4-quad + Skill aggregate field projection) | S-M(8-10) | S135a ✅ | ✅ v4.1.0 — 41/41 tests PASS (21 SecurityCategoryMapper + 3 SecurityReport + 6 SkillScore + 5 QualityScore + 4 SkillQueryService + 2 APIContract) |
 | S174 | Skill detail anonymous 401 not-found UX | XS(3) | S153 ✅, S122 ✅ | 📋 planned — Round 68 production Chrome found `/skills/{missing-id}` shows generic retry because API returns 401 before 404 |
 | S175 | Scan native binding completeness hotfix | XS(3) | S173 ✅, S148b ✅ | ⏳ local PASS — registered scanner JSON records; targeted Gradle test + processTestAot PASS; production deploy pending |
-| S176 | Explicit Publish Skill Name（發佈頁手填平台 skill name + 允許重名） | S(7) | S003 ✅, S004 ✅, S032 ✅, S154b ✅, S173 ✅ | ✅ Verify-All PASS — T01-T06 PASS；shipping pending |
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | 📐 in-design — spec ready for review |
 
 ---
@@ -79,6 +78,7 @@
 | v4.60.0 | S173 (Production upload post-publish failures) | ✅ shipped 2026-05-14 — local release PASS；post-deploy Cloud Run log evidence deferred |
 | v4.61.0 | S172 (Production UI responsive polish) | ✅ shipped 2026-05-15 — S172 all AC PASS，`verify-all.sh` 全綠 |
 | v4.62.0 | S177 (is_public-first search visibility) | ✅ shipped 2026-05-15 — S177 all AC PASS，`verify-all.sh` 全綠 |
+| v4.63.0 | S176 (Explicit Publish Skill Name) | ✅ shipped 2026-05-15 — S176 all AC PASS，`verify-all.sh` 全綠 |
 
 ---
 
@@ -241,6 +241,7 @@
 | S173 | Production upload post-publish failures | M(12) | v4.60.0 |
 | S172 | Production UI responsive polish | S(9) | v4.61.0 |
 | S177 | is_public-first search visibility | L(15) | v4.62.0 |
+| S176 | Explicit publish skill display name | M(14) | v4.63.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

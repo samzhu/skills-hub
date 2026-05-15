@@ -126,11 +126,9 @@ export function PublishPage() {
                 placeholder="transcribe-video"
                 required
                 maxLength={64}
-                pattern="[a-z0-9-]{1,64}"
-                title="小寫英數與 hyphen，最多 64 字元"
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
-                小寫英數與 hyphen，最多 64 字元。這是平台列表顯示名稱。
+                平台列表顯示名稱，可和 SKILL.md 裡的 name 不同，最多 64 字元。
               </p>
             </div>
 

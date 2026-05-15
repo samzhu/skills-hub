@@ -276,14 +276,12 @@ class SkillAggregateTest {
     // ============================================================================
 
     @Test
-    @Tag("AC-S041")
-    @DisplayName("AC-S041: name 違反 agentskills.io regex（uppercase）→ IllegalArgumentException")
-    void create_invalidName_throws() {
-        assertThatThrownBy(() -> Skill.create(
-                new CreateSkillCommand("BadName", "desc", "alice", "devops")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must match")
-                .hasMessageContaining("BadName");
+    @Tag("AC-S176-4")
+    @DisplayName("AC-S176-4: platform display name 可含大寫字母")
+    void create_displayNameWithUppercase_succeeds() {
+        var skill = Skill.create(new CreateSkillCommand("BadName", "desc", "alice", "devops"));
+
+        assertThat(skill.getName()).isEqualTo("BadName");
     }
 
     @Test
@@ -293,7 +291,7 @@ class SkillAggregateTest {
         assertThatThrownBy(() -> Skill.create(
                 new CreateSkillCommand("", "desc", "alice", "devops")))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("must match");
+                .hasMessageContaining("must not be blank");
     }
 
     @Test

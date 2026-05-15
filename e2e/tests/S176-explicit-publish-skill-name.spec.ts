@@ -9,7 +9,7 @@ async function publishTextSkill(page: Page, packageName: string): Promise<string
   await page.goto('/publish');
   await expect(page.getByRole('heading', { level: 1, name: '發佈新技能' })).toBeVisible();
 
-  await page.getByLabel('技能名稱').fill('transcribe-video');
+  await page.getByLabel('技能名稱').fill('Team Transcribe');
   await page.getByRole('button', { name: '貼上文本' }).click();
   await page.getByPlaceholder(/name: my-skill/).fill(`---
 name: ${packageName}
@@ -55,10 +55,10 @@ test.describe('S176 — Explicit Publish Skill Name', () => {
     await test.step('Then both publishes succeeded with different ids and list API shows two same-name skills', async () => {
       expect(secondId).not.toBe(firstId);
 
-      const res = await request.get('http://localhost:8080/api/v1/skills?keyword=transcribe-video&page=0&size=20');
+      const res = await request.get('http://localhost:8080/api/v1/skills?keyword=Team%20Transcribe&page=0&size=20');
       expect(res.ok(), `skills query failed: ${res.status()} ${await res.text()}`).toBeTruthy();
       const body = await res.json() as SkillsPage;
-      const duplicates = body.content.filter(skill => skill.name === 'transcribe-video');
+      const duplicates = body.content.filter(skill => skill.name === 'Team Transcribe');
 
       expect(duplicates.map(skill => skill.id).sort()).toEqual([firstId, secondId].sort());
     });

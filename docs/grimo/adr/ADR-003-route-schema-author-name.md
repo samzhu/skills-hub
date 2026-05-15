@@ -1,9 +1,10 @@
-# ADR-003: Route Schema Migration — `/skills/:id` UUID → `/skills/:author/:name` Canonical
+# ADR-003: Route Schema Migration — `/skills/:id` UUID + `/skills/:author/:name`
 
-> Status: **Accepted** (2026-05-02)
+> Status: **Amended by S176** (2026-05-15)
 > Supersedes: PRD §P1-P6 implicit `/skills/:id` URL pattern referenced in既有 spec docs S001-S088
 > Triggered by: Engineering Handoff (S096 META input) §9 Navigation Map specifies `/skills/:author/:name` as canonical
 > Implementation: S096c (Routing schema + Risk tier 4-level)
+> Amendment: S176 allows duplicate platform display names, so `/skills/:id` is the canonical identity and `/skills/:author/:name` is a deterministic legacy alias.
 
 ---
 
@@ -22,18 +23,18 @@
 
 ## 2. Decision
 
-採用 **dual-route 並行 schema**：
+採用 **dual-route 並行 schema**。S096c 原始決策把 author/name 視為 canonical；S176 ship 後因平台 `skills.name` 改成人類顯示名稱且允許同作者重名，canonical identity 改回 UUID id：
 
 | Route | Status | Resolution |
 |-------|--------|-----------|
-| `/skills/:author/:name` | **Canonical** | 主要 frontend route；新分享連結都用此 |
-| `/skills/:id` | **Permanent alias** | 不 redirect、不 deprecate；continue serving 給既有 caller |
+| `/skills/:id` | **Canonical identity** | 唯一定位 skill；新功能與可審計引用優先使用此 route |
+| `/skills/:author/:name` | **Legacy deterministic alias** | 不 redirect、不 deprecate；同作者同名時回 `created_at DESC, id DESC` 最新 row |
 
 兩個 route resolve 到同一個 `Skill` aggregate；backend 提供：
 - 既有 `GET /api/v1/skills/{id}` 持續存活
-- 新增 `GET /api/v1/skills/{author}/{name}` 等價語意
+- `GET /api/v1/skills/{author}/{name}` 保留為 deterministic alias，不再保證唯一語意
 
-Frontend 兩個 React Route 都註冊到 `SkillDetailPage` component；component 內透過任一 identifier resolve 出 skill。
+Frontend 兩個 React Route 都註冊到 `SkillDetailPage` component；component 內透過任一 identifier resolve 出 skill。新入口若需要不可歧義引用，應用 `/skills/:id`。
 
 ### 2.1 為什麼不 hard migrate（302/301 redirect）
 
@@ -58,25 +59,25 @@ Frontend 兩個 React Route 都註冊到 `SkillDetailPage` component；component
 - **Human-readable URL**: `/skills/platform-team/k8s-deployment` 比 `/skills/abc-123-...` 易於分享
 - **對齊 industry convention**: GitHub/npm/Docker Hub 同 pattern，user 直覺
 - **Backwards compatible**: 既有 caller / bookmark 不破
-- **DB schema 不需動**: skill `name` 欄位本來就 UNIQUE per-org（per S041），加 `(author, name)` UNIQUE 即可（暫時不限 — 既有 author 對應 name 已唯一）
+- **Backwards compatible alias**: S176 移除 `skills.name` unique 後，author/name route 仍可服務舊連結，但只能承諾 deterministic latest-row 行為。
 
 ### Negative
 
 - **dual-route 維護**: 兩個 backend endpoint 對同一 resource，需 keep behavior 一致；任何 skill resolve 邏輯改動需同步兩處
 - **frontend 路由判斷**: SkillDetailPage 需 detect 路由 param 是 UUID 還是 author/name，做不同 fetch — 增 1 個分支
-- **search result 連結 schema 統一**: 既有 search 結果 `<Link to={`/skills/${id}`}>` 改 `<Link to={`/skills/${author}/${name}`}>` — touchpoints widespread
+- **author/name 不再唯一**: 同作者同名時 URL 無法指向舊 row；需要唯一定位時必須用 `/skills/:id`
 
 ### Neutral
 
 - 既有 archived spec doc 內 `/skills/{id}` 引用**不更新**（archive 是歷史記錄；新 spec 用新 schema）
-- 新建 spec doc 一律用 `/skills/:author/:name` canonical
+- 新建 spec doc 一律用 `/skills/:id` 表達 canonical identity；只有在測 legacy alias 行為時才用 `/skills/:author/:name`
 
 ## 4. Implementation Plan (S096c)
 
 ### 4.1 Backend
 
 ```java
-// New endpoint
+// Legacy alias endpoint
 @GetMapping("/skills/{author}/{name}")
 Skill getByAuthorAndName(@PathVariable String author, @PathVariable String name) {
   return queryService.findByAuthorAndName(author, name);
@@ -87,14 +88,14 @@ Skill getByAuthorAndName(@PathVariable String author, @PathVariable String name)
 Skill getById(@PathVariable String id) { ... }
 ```
 
-新增 `SkillRepository.findByAuthorAndName(String author, String name)` — `WHERE LOWER(author) = LOWER(:author) AND LOWER(name) = LOWER(:name) LIMIT 1`.
+新增 `SkillRepository.findByAuthorAndName(String author, String name)` — S176 後使用 `WHERE ... ORDER BY created_at DESC, id DESC LIMIT 1`，讓 legacy alias deterministic。
 
 ### 4.2 Frontend
 
 ```tsx
 <Routes>
-  <Route path="/skills/:id" element={<SkillDetailPage />} />              // legacy alias
-  <Route path="/skills/:author/:name" element={<SkillDetailPage />} />    // canonical
+  <Route path="/skills/:id" element={<SkillDetailPage />} />              // canonical identity
+  <Route path="/skills/:author/:name" element={<SkillDetailPage />} />    // legacy deterministic alias
 </Routes>
 ```
 
@@ -102,7 +103,7 @@ Skill getById(@PathVariable String id) { ... }
 
 ### 4.3 Data invariant
 
-`(author, name)` 在 v1 設計上就 UNIQUE per-org（同一作者不發兩個同名 skill；name 有 `^[a-z0-9-]{1,64}$` regex）。新加 SQL `UNIQUE (LOWER(author), LOWER(name))` constraint 是強化（S096c implementation 確認）。
+S176 後 `(author, name)` 不再唯一：`skills.name` 是平台顯示名稱，允許空白、大小寫、中文與重名；`SKILL.md` frontmatter `name` 的 agentskills.io regex 只套用在 package metadata。
 
 ## 5. Sub-routes
 
@@ -117,7 +118,7 @@ Skill getById(@PathVariable String id) { ... }
 /skills/:author/:name/diff?from=v2.0.1&to=v2.1.0
 ```
 
-`/skills/:id` legacy alias 不需支援 sub-routes — 既有 caller 都是 detail page 入口；sub-routes 為新功能，全用 canonical schema.
+S176 後 sub-route 若需要唯一定位，應優先設計在 `/skills/:id` 上；author/name sub-route 只能繼承 legacy alias 的 deterministic latest-row 語意。
 
 ## 6. Glossary impact
 

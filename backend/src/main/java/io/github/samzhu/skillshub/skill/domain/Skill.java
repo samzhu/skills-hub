@@ -179,13 +179,18 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         // Aggregate factory 為 user input 守門點；NPE 屬 programmer bug 語意不對。
         if (cmd.name() == null) throw new IllegalArgumentException("name is required");
         if (cmd.description() == null) throw new IllegalArgumentException("description is required");
-        // S041: name 必符 agentskills.io 正規格式（與 SkillValidator.NAME_REGEX 一致；
-        // 不從 SkillValidator import 因 module 邊界 — domain 不依賴 validation 子模組）。
-        // 變更時需手動同步兩處 regex literal。
+        // S176-T07: skills.name 是平台顯示名稱，不是 SKILL.md package name；package name
+        // 仍由 SkillValidator 依 agentskills.io regex 驗證。
         var name = cmd.name().trim();
-        if (!NAME_REGEX.matcher(name).matches()) {
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("Skill name must not be blank");
+        }
+        if (name.length() > NAME_MAX) {
             throw new IllegalArgumentException(
-                    "Skill name must match ^[a-z0-9-]{1,64}$ (got: " + cmd.name() + ")");
+                    "Skill name exceeds " + NAME_MAX + " characters (got: " + name.length() + ")");
+        }
+        if (name.chars().anyMatch(Character::isISOControl)) {
+            throw new IllegalArgumentException("Skill name must not contain control characters");
         }
         // S041: author trim；非 null 但 blank（"" / "   "）→ 拒絕（IllegalArgumentException → 400）。
         // 不靜默 null-out 因 schema `skills.author NOT NULL`；blank author 也會產生
@@ -254,9 +259,8 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         return skill;
     }
 
-    /** S041: agentskills.io 正規格式（與 {@code SkillValidator.NAME_REGEX} 同字面）。 */
-    private static final java.util.regex.Pattern NAME_REGEX =
-            java.util.regex.Pattern.compile("^[a-z0-9-]{1,64}$");
+    /** S176-T07: platform display name length limit; SKILL.md package-name regex lives in SkillValidator. */
+    private static final int NAME_MAX = 64;
 
     /** S042: description 長度上限（與 {@code SkillValidator.DESCRIPTION_MAX} 同值）。 */
     private static final int DESCRIPTION_MAX = 1024;

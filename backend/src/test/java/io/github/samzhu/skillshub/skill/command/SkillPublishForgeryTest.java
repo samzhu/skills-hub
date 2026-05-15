@@ -73,28 +73,28 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
     }
 
     @Test
-    @DisplayName("AC-S176-4: multipart upload skillName 格式不合法 → 400")
+    @DisplayName("AC-S176-4: multipart upload blank skillName → 400")
     @Tag("AC-S176-4")
-    void uploadWithInvalidSkillName_returns400() throws Exception {
+    void uploadWithBlankSkillName_returns400() throws Exception {
         Mockito.when(currentUserProvider.current()).thenReturn(new CurrentUser(
                 BOB_USER_ID, "bob-google-sub", BOB_DISPLAY_NAME, "bob@example.com",
                 "bob", List.of("user"), List.of(), null));
         Mockito.when(skillCommandService.uploadSkill(
-                        ArgumentMatchers.any(), ArgumentMatchers.eq("Bad Name!"), ArgumentMatchers.any(),
+                        ArgumentMatchers.any(), ArgumentMatchers.eq("   "), ArgumentMatchers.any(),
                         ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
-                .thenThrow(new IllegalArgumentException("Skill name must match ^[a-z0-9-]{1,64}$ (got: Bad Name!)"));
+                .thenThrow(new IllegalArgumentException("Skill name must not be blank"));
 
         var fakeZip = new MockMultipartFile("file", "skill.zip", "application/zip", new byte[]{0x50, 0x4b, 0x03, 0x04});
 
         mockMvc.perform(multipart("/api/v1/skills/upload")
                         .file(fakeZip)
-                        .param("skillName", "Bad Name!")
+                        .param("skillName", "   ")
                         .param("version", "1.0.0")
                         .param("category", "testing")
                         .with(jwt().jwt(j -> j.subject("bob-google-sub"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Skill name must match")));
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Skill name must not be blank")));
     }
 
     @Test

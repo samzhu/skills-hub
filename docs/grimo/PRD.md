@@ -501,7 +501,7 @@ Scenario: 全部已讀 + 偏好設定
 | D22 | Event Store 位置 | 同 PostgreSQL 的 `domain_events` 表（JSONB payload + per-aggregate `(aggregate_id, sequence)` UNIQUE） | 與 read model 同 DB / 同 transaction；query 簡單；無額外基礎設施 | 獨立 DB（多一套系統）、per-aggregate table（管理複雜） |
 | D23 | ES MVP 範圍 | 僅儲存事件 + 更新 projection | 最小可行、後續可擴展 replay/snapshot | Full ES（replay、snapshot、upcasting 放 Backlog） |
 | D24 | 專案目錄 | `backend/`（原 `skillshub/`）+ `frontend/` | 前後端分離目錄、語意清晰 | 單一目錄（前後端混在一起） |
-| D25 | URL schema | `/skills/:author/:name` canonical + `/skills/:id` 永久 alias（per ADR-003） | 對齊 GitHub/npm/Docker Hub `:owner/:name` 慣例；既有 caller 不破 | 純 UUID（不可讀）、hard redirect（增 round-trip + cli tool 可能不 follow） |
+| D25 | URL schema | `/skills/:id` canonical identity + `/skills/:author/:name` legacy deterministic alias（ADR-003 amended by S176） | S176 允許同一作者多筆同名 skill，ID 才能唯一識別；author/name alias 保留既有 caller 並回 deterministic latest row | 只留 author/name（重名不可唯一定位）、hard redirect（增 round-trip + cli tool 可能不 follow） |
 | D26 | UI 主題 | dark theme（`#08080A` bg + `#EEECEA` ink；per Engineering Handoff §7） | 對齊 v2 prototype 16 mockup；engineer-tier 工具的視覺慣例 | warm-white 維持（既有 v1）、dual-theme switcher（維護 2× cost） |
 | D27 | Risk tier 階數 | 4-tier (NONE/LOW/MEDIUM/HIGH) per ADR-future / S096c | 對齊 Cisco Skill Scanner + CVSS None band；分清「0-finding pure docs」vs「low-severity finding」 | 3-tier（既有，把 0-finding 與 low-finding 混為 LOW，user 看不到差異） |
 
