@@ -194,3 +194,23 @@ gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.serv
 ```
 
 Result: PASS. The production native image accepted a fresh authenticated upload, completed the 15-engine scan, persisted the scan result, and produced no S175-family native binding error after the upload.
+
+### Shipping Preflight — BLOCKED (2026-05-16)
+
+`$shipping-release` preflight stopped before changelog / roadmap / archive edits because the worktree already contains non-S175 changes:
+
+```text
+git status --short
+ M docs/grimo/specs/spec-roadmap.md
+?? docs/grimo/specs/2026-05-15-S179-publish-author-anonymous-login-hint.md
+```
+
+S175 runtime evidence is ready: production Chrome uploaded `s175-fresh-scan-20260515-210629`, Cloud Run returned `POST /api/v1/skills/upload 201`, the 15-engine scan completed, and native binding / ERROR log queries after `2026-05-15T21:06:29Z` were empty.
+
+Release actions still pending:
+
+1. Clear or separately commit the unrelated `spec-roadmap.md` / S179 changes.
+2. Run `./scripts/verify-all.sh` in the current tick after the worktree is clean of unrelated changes.
+3. Add final release metadata for S175 (`§7 Implementation Results` / final size re-score if required by `$shipping-release`), update changelog, update roadmap, and archive the spec.
+
+Result: BLOCKED by unrelated dirty state. No S175 code change is pending.
