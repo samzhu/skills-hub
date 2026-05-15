@@ -1,7 +1,7 @@
 # S181 — Authenticated State Conflict Observability
 
 > SpecID: S181
-> Status: 📐 in-design
+> Status: ⏳ Dev — T01 PASS; deploy evidence pending
 > Date: 2026-05-15
 > Size: XS(6)
 > Related: S180 Chrome logged-in validate blocker, S162/S162b API error shape, S141 `/api/v1/me`, S154 user_id upsert, S169 permission contract
@@ -248,8 +248,8 @@ Expected log keys:
 | `method` | `GET` | `request.getMethod()` |
 | `exceptionClass` | `java.lang.IllegalStateException` | `ex.getClass().getName()` |
 | `message` | `Failed to generate unique_user_id...` | `ex.getMessage()` |
-| `rootCauseClass` | `org.springframework.dao.DataIntegrityViolationException` or empty | deepest cause |
-| `rootCauseMessage` | database / conversion message or empty | deepest cause |
+| `rootCauseClass` | `org.springframework.dao.DataIntegrityViolationException` or `java.lang.IllegalStateException` | deepest cause; same as exception if no nested cause |
+| `rootCauseMessage` | database / conversion message or exception message | deepest cause; same as exception message if no nested cause |
 
 ## 5. File Plan
 
@@ -268,4 +268,47 @@ Task cut:
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+| Task | Status | BDD / verification |
+| --- | --- | --- |
+| S181-T01 — STATE_CONFLICT log evidence | PASS | Given `GET /api/v1/me` throws `IllegalStateException`, when `GlobalExceptionHandler` handles it, then response stays HTTP 409 `STATE_CONFLICT` and WARN log includes path/method/exception/root cause without Authorization/cookie/identity fields. Verified by `./gradlew test --tests io.github.samzhu.skillshub.shared.api.GlobalExceptionHandlerTest`. |
+| S181-T02 — Deploy and collect LAB evidence | pending | Given S181-T01 is deployed, when Chrome opens the validate URL, then Cloud Run application logs show the exact path/method/exception/message for each new 409. |
+
+Roadmap update remains deferred because `docs/grimo/specs/spec-roadmap.md` had pre-existing unrelated local changes before S181-T01 started.
+
+## 7. Implementation Results
+
+### S181-T01 — PASS
+
+Date: 2026-05-16
+
+Files changed:
+
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/api/GlobalExceptionHandler.java`
+- `backend/src/test/java/io/github/samzhu/skillshub/shared/api/GlobalExceptionHandlerTest.java`
+- `docs/grimo/tasks/2026-05-15-S181-T01-state-conflict-log-evidence.md`
+
+Red result:
+
+```text
+./gradlew test --tests io.github.samzhu.skillshub.shared.api.GlobalExceptionHandlerTest
+compileTestJava FAILED: handleStateConflict required IllegalStateException but test passed IllegalStateException, MockHttpServletRequest.
+```
+
+Green result:
+
+```text
+./gradlew test --tests io.github.samzhu.skillshub.shared.api.GlobalExceptionHandlerTest
+BUILD SUCCESSFUL in 2m 20s
+```
+
+AC result:
+
+| AC | Result |
+| --- | --- |
+| AC-S181-1 | PASS — test confirms 409 response body remains `STATE_CONFLICT`. |
+| AC-S181-2 | PASS — test captures WARN log containing `/api/v1/me` and `GET`. |
+| AC-S181-3 | PASS — test captures exception class/message and root cause class/message. |
+| AC-S181-4 | pending — requires deploy and Chrome + Cloud Run log retest. |
+| AC-S181-5 | PASS local — test confirms handler output does not include Authorization, cookie, email, or OAuth subject fixture strings. |

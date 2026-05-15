@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.util.NoSuchElementException;
 import java.util.zip.ZipException;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -39,6 +41,14 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
+	private static Throwable rootCause(Throwable throwable) {
+		var root = throwable;
+		while (root.getCause() != null && root.getCause() != root) {
+			root = root.getCause();
+		}
+		return root;
+	}
 
 	/**
 	 * S098b3-2 — 處理 SKILL.md 結構化驗證失敗（{@link SkillValidationException}）。
@@ -445,10 +455,16 @@ public class GlobalExceptionHandler {
 	 * 409 Conflict（per RFC 9110 §15.5.10：「conflict with the current state of the target resource」）。
 	 */
 	@ExceptionHandler(IllegalStateException.class)
-	ResponseEntity<ErrorResponse> handleStateConflict(IllegalStateException ex) {
+	ResponseEntity<ErrorResponse> handleStateConflict(IllegalStateException ex, HttpServletRequest request) {
+		var root = rootCause(ex);
 		log.atWarn()
 				.addKeyValue("errorCode", "STATE_CONFLICT")
+				.addKeyValue("path", request.getRequestURI())
+				.addKeyValue("method", request.getMethod())
+				.addKeyValue("exceptionClass", ex.getClass().getName())
 				.addKeyValue("message", ex.getMessage())
+				.addKeyValue("rootCauseClass", root.getClass().getName())
+				.addKeyValue("rootCauseMessage", root.getMessage())
 				.log("State conflict");
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 				.body(new ErrorResponse("STATE_CONFLICT", ex.getMessage(), Instant.now()));

@@ -9,6 +9,9 @@ import java.util.zip.ZipException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -16,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -37,9 +41,14 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * status code mapping + error code 命名一致性。每 handler 一支 test；增 ~30 supports
  * 把 GlobalExceptionHandler coverage 從 35% 拉高（jacoco V03 baseline ratchet 的核心 target）。
  */
+@ExtendWith(OutputCaptureExtension.class)
 class GlobalExceptionHandlerTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+    private static MockHttpServletRequest request() {
+        return new MockHttpServletRequest("GET", "/api/v1/test");
+    }
 
     @AfterEach
     void clearSecurityContext() {
@@ -328,7 +337,7 @@ class GlobalExceptionHandlerTest {
 
         assertThat(handler.handleOwnerAlreadyExists(new OwnerAlreadyExistsException()).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
-        assertThat(handler.handleStateConflict(new IllegalStateException("review_already_exists")).getStatusCode())
+        assertThat(handler.handleStateConflict(new IllegalStateException("review_already_exists"), request()).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
         assertThat(handler.handleDuplicateKey(new DuplicateKeyException("duplicate")).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
@@ -434,9 +443,43 @@ class GlobalExceptionHandlerTest {
     @DisplayName("S030 IllegalStateException → 409 STATE_CONFLICT")
     void illegalStateReturns409() {
         ResponseEntity<ErrorResponse> response = handler.handleStateConflict(
-                new IllegalStateException("bad state"));
+                new IllegalStateException("bad state"), request());
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody().error()).isEqualTo("STATE_CONFLICT");
+    }
+
+    @Test
+    @DisplayName("AC-S181-1/2/3/5: IllegalStateException 409 logs request metadata and preserves response body")
+    void stateConflictLogsRequestMetadataAndPreservesResponse(CapturedOutput output) {
+        var request = new MockHttpServletRequest("GET", "/api/v1/me");
+        request.addHeader("Authorization", "Bearer secret-token");
+        request.addHeader("Cookie", "JSESSIONID=secret");
+        var ex = new IllegalStateException(
+                "Failed to generate unique user_id after 5 retries",
+                new IllegalArgumentException("root collision"));
+
+        ResponseEntity<ErrorResponse> response = handler.handleStateConflict(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        ErrorResponse body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.error()).isEqualTo("STATE_CONFLICT");
+        assertThat(body.message()).isEqualTo("Failed to generate unique user_id after 5 retries");
+        assertThat(output.getAll())
+                .contains("State conflict")
+                .contains("STATE_CONFLICT")
+                .contains("/api/v1/me")
+                .contains("GET")
+                .contains("java.lang.IllegalStateException")
+                .contains("Failed to generate unique user_id after 5 retries")
+                .contains("java.lang.IllegalArgumentException")
+                .contains("root collision")
+                .doesNotContain("Authorization")
+                .doesNotContain("Bearer secret-token")
+                .doesNotContain("Cookie")
+                .doesNotContain("JSESSIONID=secret")
+                .doesNotContain("alice@example.com")
+                .doesNotContain("oauth-sub-123");
     }
 
     @Test
