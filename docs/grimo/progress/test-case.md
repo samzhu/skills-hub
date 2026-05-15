@@ -1605,3 +1605,33 @@ typecheck: 0 errors
 
 - Tick 131: 7 checks / **1 bug found + fixed inline**（Bug X — toast 不一致 across 3 mutations；修復對齊 MySkillsPage sonner pattern）。下次 tick 換 cut 軸（候選：interactive state consistency on owner flow / negative deep-link with edit modal / form validation feedback timing）。
 
+---
+
+## Tick 132 — Mode B Round 67（Anonymous vs Authenticated Production API State），2026-05-15
+
+> Cut 軸切換 — 正式站無 cookie API 狀態與 SPA route 可達性。目標是確認匿名使用者進站時，公開資料 API 可讀、登入狀態 API 回 401、AppShell 不會因 bell polling 製造額外錯誤。
+
+### 涵蓋
+
+| # | 類別 | Case | Result | Notes |
+|---|------|------|--------|-------|
+| 67.1 | 匿名 API | `GET /api/v1/me`（無 cookie）| ✅ 401 `text/html` | 對齊 `frontend/src/api/auth.ts` / `useAuth`：401 代表 anonymous branch |
+| 67.2 | 匿名 API | `GET /api/v1/notifications/unread-count`（無 cookie）| ✅ 401 `text/html` | 對齊 `AppShell.tsx` 註解：未登入不應主動 polling；直接打 API 401 合理 |
+| 67.3 | 公開查詢 | `GET /api/v1/skills?page=0&size=1` | ✅ 200 JSON，`content: []` | 正式 DB 目前 0 skills；不是 API failure |
+| 67.4 | 公開查詢 | `GET /api/v1/collections` | ✅ 200 JSON，`[]` | |
+| 67.5 | 公開查詢 | `GET /api/v1/requests` | ✅ 200 JSON，`[]` | |
+| 67.6 | 公開查詢 | `GET /api/v1/analytics/overview` | ✅ 200 JSON，`totalSkills: 0`, `totalDownloads: 0` | |
+| 67.7 | SPA route | `/`, `/browse`, `/my-skills`, `/collections`, `/requests`, `/analytics` | ✅ 全部 200 `text/html;charset=UTF-8` | deep route fallback 正常 |
+| 67.8 | Cloud Run | `gcloud run revisions list --service=skillshub --region=asia-east1` | ✅ 最新 `skillshub-00023-j5q` Ready；00022/00021 也 Ready | |
+| 67.9 | Cloud Run logs | 最近 1h `severity>=ERROR` | ✅ 0 rows | |
+| 67.10 | App logs | 最近 request/application log | ✅ cold start + health + search logs；無 exception | 看到 `SkillshubApplication Started`、Cloud SQL accepted connection、`技能搜尋完成` |
+
+### 觀察
+
+- 無 cookie 的 `/api/v1/me` 回 401，代表 production 目前不是 lab always-auth 狀態；前端測試已有 anonymous 分支，AppShell 也只在 `auth.status === 'authenticated'` 時啟用 unread-count polling。
+- 公開 API 全部 200，但資料為空。這會讓 browse/collections/requests/analytics 顯示 empty state；不是本輪 bug。
+- Chrome plugin 的 callable browser-client tool 在本輪 Codex tool context 沒有出現；本輪用正式站 HTTP response + Cloud Run log 做證據。下一輪若 Chrome tool 可用，應補 DOM click path（登入狀態切換、按鈕可見性、空狀態文案）。
+
+### Round 67 Summary
+
+- Tick 132: 10 checks / **0 bugs**。Mode B 0-bug；下次 tick 換 cut 軸（候選：negative deep-link with edit modal / form validation feedback timing / backend cache-header-CORS cut）。
