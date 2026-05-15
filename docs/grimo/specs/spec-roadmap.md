@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-15（S177 in-design — is_public-first visibility）
+> 最後更新：2026-05-15（S177 task plan ready — is_public-first visibility）
 
 ## 使用說明
 
@@ -42,7 +42,7 @@
 | S174 | Skill detail anonymous 401 not-found UX | XS(3) | S153 ✅, S122 ✅ | 📋 planned — Round 68 production Chrome found `/skills/{missing-id}` shows generic retry because API returns 401 before 404 |
 | S175 | Scan native binding completeness hotfix | XS(3) | S173 ✅, S148b ✅ | ⏳ local PASS — registered scanner JSON records; targeted Gradle test + processTestAot PASS; production deploy pending |
 | S176 | Explicit Publish Skill Name（發佈頁手填平台 skill name + 允許重名） | S(7) | S003 ✅, S004 ✅, S032 ✅, S154b ✅, S173 ✅ | ✅ Verify-All PASS — T01-T06 PASS；shipping pending |
-| S177 | is_public-first search visibility（public 不再寫入 ACL；匿名查 is_public，登入查 is_public OR explicit ACL） | S(9) | S017 ✅, S169 ✅, S170 ✅ | 📐 in-design — LAB 清資料重測；需 V26 schema rewrite + read SQL sweep |
+| S177 | is_public-first search visibility（public 不再寫入 ACL；匿名查 is_public，登入查 is_public OR explicit ACL） | S(9) | S017 ✅, S169 ✅, S170 ✅ | ⏳ Plan — T01-T04 task files ready；下一步 T01 schema + aggregate public state |
 
 ---
 

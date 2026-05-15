@@ -1,6 +1,6 @@
 # S177: is_public-first Search Visibility
 
-> Spec: S177 | Size: S(9) | Status: 📐 in-design
+> Spec: S177 | Size: S(9) | Status: ⏳ Plan
 > Date: 2026-05-15
 > Origin: LAB production bug — two private skills were hidden from keyword browse but still visible through semantic search.
 > Related: S017, S026, S114a, S116, S163, S169, S170
@@ -41,7 +41,7 @@ public:*:read         → 移除，不再寫入新資料
 | `curl '.../api/v1/skills?keyword=影片&page=0&size=20&sort=downloadCount,desc'` | 匿名 keyword browse 回 `{"content":[],"page":{"totalElements":0}}` | `skills` 表的可見性資料是正確的；bug 不是 keyword browse 的 SQL。 |
 | `curl '.../api/v1/search/semantic?q=影片'` | 匿名 semantic search 回兩筆 private skill | semantic search 目前依賴 `vector_store.acl_entries`，投影資料一錯就漏。 |
 | Production SQL：`skills` row | 兩筆 `is_public=false` 且 `acl_entries` 只有 owner ACL | `is_public` 是 user 想要的可見性判斷實體。 |
-| Production SQL：`vector_store` row | 兩筆 `acl_entries` 含 `public:*:read` | `vector_store.acl_entries` 不適合繼續當 public visibility source。 |
+| Production SQL：`vector_store` row | 兩筆 `acl_entries` 含 `public:*:read` | `vector_store` 是搜尋索引，應保存可讀範圍，但 public 不應混成 ACL pseudo entry。 |
 | `V16__rbac_acl_projection.sql` | `skills.is_public` 是 generated column：`acl_entries @> '["public:*:read"]'::jsonb` | 新設計必須把 generated column 改成普通 boolean；LAB 會清資料重測，不需要保留舊值。 |
 | `Skill.create(CreateSkillCommand)` | 現在新增 PUBLIC skill 時會把 `public:*:read` 放進 `acl_entries`；DB generated `is_public` 因此自動變 true | 目前「新增 skill 就有 `is_public`」是成立的，但來源是 ACL pseudo-principal。S177 移除 pseudo-principal 後，`Skill` aggregate 必須直接持久化 `is_public`。 |
 | `SkillAclProjectionListener` | rebuild ACL 會從 `skill_grants` 展開到 `skills.acl_entries` 與 `vector_store.acl_entries` | 這裡要改成：只展開 non-public explicit grants；不 seed owner/public grants、不更新 `skills.is_public`。 |
@@ -80,21 +80,41 @@ SQL 是透過一次性 Cloud Run Job 用 `postgres:18-alpine` + `psql` 查同一
 |---|---|---|
 | `skills.is_public` | 公開可見 source-of-truth；由 `Skill` aggregate 直接持有並寫入 | `true` 表示 anonymous、所有登入 user 都可讀 |
 | `skills.acl_entries` | 明確授權投影 | `["user:u_715d70:read","user:u_715d70:write","user:u_715d70:delete","group:g_eng:read"]` |
-| `vector_store.acl_entries` | optional mirror，只保留 explicit ACL；semantic read 不靠它判斷 public | `["user:u_715d70:read","group:g_eng:read"]` |
+| `vector_store.is_public` | 搜尋索引的公開可見性投影；semantic search 用它過濾匿名結果 | `true` |
+| `vector_store.acl_entries` | 搜尋索引的明確授權投影；semantic search 用它過濾登入結果 | `["user:u_715d70:read","group:g_eng:read"]` |
 | `skill_grants` public VIEWER row | command-side 表達 owner 的公開可見性設定；不是 explicit ACL | `principal_type='public', principal_id='*', role='VIEWER'` |
 
-查詢規則：
+Keyword/detail 查詢規則：
 
 ```text
 anonymous browse/search:
   s.status = 'PUBLISHED'
   AND s.is_public = true
 
-authenticated browse/search:
+authenticated browse/detail:
   s.status = 'PUBLISHED'
   AND (
     s.is_public = true
     OR s.acl_entries ??| ARRAY[
+      'user:<id>:read',
+      'group:<id>:read',
+      'company:<id>:read'
+    ]
+  )
+```
+
+Semantic 查詢規則：
+
+```text
+anonymous semantic:
+  s.status = 'PUBLISHED'
+  AND vs.is_public = true
+
+authenticated semantic:
+  s.status = 'PUBLISHED'
+  AND (
+    vs.is_public = true
+    OR vs.acl_entries ??| ARRAY[
       'user:<id>:read',
       'group:<id>:read',
       'company:<id>:read'
@@ -121,6 +141,8 @@ Skill aggregate + projection listeners
       +--> skill_grants public VIEWER row = mirrors Skill public visibility
       |
       +--> skills.acl_entries = explicit non-public permissions
+      |
+      +--> vector_store.is_public = Skill.publicSkill
       |
       +--> vector_store.acl_entries = same explicit non-public permissions
 ```
@@ -154,7 +176,7 @@ Skill aggregate + projection listeners
 | public visibility grant id | 先產生 12 hex opaque grant id，再交給 `Skill.makePublic(...)` 記進 event | `skill_grants.id` 只是資料庫主鍵，無業務語意、不加 prefix；12 hex 比既有 6 hex user/group id 更適合高筆數 grant；service 層保留 collision retry；前端 `POST /grants` 仍可立即拿到 `{grantId}`。 |
 | `SkillCreatedEvent` payload | 不新增 visibility / publicGrantId | 新增流程的強一致資料由 command service 同 TX 寫完；created event 不負責 seed owner/public grants。 |
 | `SkillVisibilityChangedEvent` audit | 寫入 `domain_events` audit log | 公開/轉私人會改 `skills.is_public` 與 public VIEWER grant；需要可查「誰在何時改了可見性」。 |
-| semantic SQL ACL source | `JOIN skills s` 後看 `s.is_public OR s.acl_entries ??| ?::text[]` | 避免 `vector_store` 投影資料錯誤造成 public leak。 |
+| semantic SQL ACL source | `vector_store` 保存 `is_public` + explicit read ACL scope，查詢時過濾可讀結果 | `vector_store` 是全文/向量索引；仍 JOIN `skills` 確認 `PUBLISHED` 狀態，但可讀範圍由搜尋索引自己的投影欄位判斷。 |
 | anonymous pattern | 不建 pattern array，直接 `is_public=true` | 少掉 `public:*:read`，SQL 更短，符合「未登入只看公開」。 |
 | authenticated pattern | principal keys 加 `:read`，不補 public | public 由 `is_public=true` 負責；ACL 只判斷明確授權。 |
 
@@ -162,12 +184,10 @@ Skill aggregate + projection listeners
 
 | Task 候選 | Class / file | 來源 | 正向情境 | 反向情境 | POC |
 |---|---|---|---|---|---|
-| T01 | Flyway V26 migration | V16 generated column | `is_public` 轉 ordinary boolean，ACL 移除 `public:*:read`；不做舊資料保留 | schema 仍不可是 generated column | not required |
-| T02 | `Skill` aggregate + `Visibility` docs | `Skill.create` / visibility method | PUBLIC 建立 `is_public=true`，ACL 不含 public；公開/私人變更由 Skill domain event 表達 | PRIVATE 建立 `is_public=false`，ACL 不含 public | not required |
-| T03 | grant mirror + ACL projection | command service + projection | create/toggle 同 TX 寫 owner/public grant mirror；ACL projection 只展 non-public explicit grants | revoke public grant 後 `Skill.publicSkill=false` 且 explicit ACL 保留 | not required |
-| T04 | list/detail permission SQL | `SkillQueryService`, `JdbcSkillAclReadEvaluator`, `SkillPermissionStrategy`, `DelegatingPermissionEvaluator`, `AclPrincipalExpander` | anonymous 可看 public；logged-in 可看 public + granted private | 未授權 user 看不到 private | not required |
-| T05 | semantic search SQL | `SemanticSearchService`, `SkillshubPgVectorStore` | anonymous semantic 只搜 public；logged-in semantic 搜 public + granted private | `vector_store.acl_entries` 測試 fixture 即使含 public 也不造成外漏 | not required |
-| T06 | Tests cleanup | search/query/security/domain tests | 移除 `public:*:read` 期待值，新增 is_public-first AC | 舊 pseudo-principal 測試不可保留 | not required |
+| T01 | schema + aggregate public state | V16 generated column / `Skill.create` | `skills.is_public` 轉 ordinary boolean、`vector_store.is_public` 新增、PUBLIC create 寫 true | schema 仍不可是 generated column；ACL 不含 public pseudo entry | not required |
+| T02 | grant mirror + ACL projection | command service + projection | create/toggle 同 TX 寫 owner/public grant mirror；ACL projection 只展 non-public explicit grants | revoke public grant 後 `Skill.publicSkill=false` 且 explicit ACL 保留 | not required |
+| T03 | keyword/detail permission SQL | `SkillQueryService`, `JdbcSkillAclReadEvaluator`, `SkillPermissionStrategy`, `DelegatingPermissionEvaluator`, `AclPrincipalExpander` | anonymous 可看 public；logged-in 可看 public + granted private | 未授權 user 看不到 private；public 不給 write/delete | not required |
+| T04 | semantic vector visibility | `SemanticSearchService`, `SkillshubPgVectorStore`, `SearchProjection` | anonymous semantic 只搜 `vector_store.is_public=true`；logged-in semantic 搜 public + granted private | `vector_store.acl_entries` 測試 fixture 即使含 public 也不造成外漏 | not required |
 
 ### 2.7 Confidence Classification
 
@@ -176,7 +196,7 @@ Skill aggregate + projection listeners
 | anonymous 用 `is_public=true` | Validated | production SQL 已能正確標出兩筆 private `is_public=false`；PostgreSQL btree boolean partial index 已存在。 |
 | authenticated 用 `is_public OR acl_entries ??| patterns` | Validated | 現有 JSONB ACL `??|` path 已在 S017/S169 使用；只移除 public pseudo pattern。 |
 | `is_public` 要改 ordinary boolean | Validated | V16 generated formula 明確依賴 `public:*:read`；移除 public ACL 必須改欄位定義。 |
-| `vector_store.acl_entries` 不再判斷 public | Validated | production bug 正是此投影資料錯誤造成；join `skills` 已存在於 semantic SQL。 |
+| `vector_store.is_public` 作為 semantic public filter | Validated | current code 已有 `vector_store.acl_entries` read filter 與 `JOIN skills` status filter；S177 只把 public 從 ACL 字串拆成 boolean 投影。 |
 | V26 migration 一次完成 generated column rewrite + ACL cleanup | Validated | 不保留舊資料時可 drop generated column 後 add ordinary boolean；migration test 只需確認欄位不是 generated column。 |
 
 ### 2.8 前後端連動檢查
@@ -201,7 +221,7 @@ Skill aggregate + projection listeners
 | 公開分享 | `VisibilityToggleButton` / `ShareModal` → `createGrant({public, *, VIEWER})` | `POST /api/v1/skills/{id}/grants` → `SkillGrantService.grant()` → `Skill.makePublic(...)` + `grantRepo.save(publicGrant)` + `skillRepo.save(skill)` in same TX | API commit 後立刻同時有 `skills.is_public=true` 與 public VIEWER grant；`skills.acl_entries` / `vector_store.acl_entries` 仍不含 `public:*:read`。 |
 | 轉為私人 | `VisibilityToggleButton` / `ShareModal` → `revokeGrant(publicGrantId)` | `DELETE /api/v1/skills/{id}/grants/{grantId}` → `SkillGrantService.revoke()` → `Skill.makePrivate(...)` + `grantRepo.deleteById(...)` + `skillRepo.save(skill)` in same TX | API commit 後立刻同時有 `skills.is_public=false` 且 public VIEWER grant 已刪；explicit user/group/company ACL 保留。 |
 | 刪除 skill | `MySkillsPage` → `deleteSkill(id)` | `DELETE /api/v1/skills/{id}` → `SkillCommandService.deleteSkill()` | hard delete 會移除 `skills` row；`SearchProjection.onSkillDeleted` 主動刪 vector row。S177 不新增刪除 API，但要保證殘留 vector row 不可靠 `public:*:read` 被搜到。 |
-| suspend / reactivate | admin action → existing command API | `POST /suspend` / `POST /reactivate` → `SearchProjection` delete/re-embed | reactivate re-embed 不可重新加 `public:*:read`；semantic SQL 仍以 `skills.is_public OR explicit ACL` 判斷。 |
+| suspend / reactivate | admin action → existing command API | `POST /suspend` / `POST /reactivate` → `SearchProjection` delete/re-embed | reactivate re-embed 不可重新加 `public:*:read`；semantic SQL 以 `vector_store.is_public OR vector_store.acl_entries` 判斷。 |
 
 ---
 
@@ -293,7 +313,7 @@ Skill aggregate + projection listeners
 
 | 分類 | 對應驗收 | 說明 |
 |---|---|---|
-| Performance | AC-S177-2, AC-S177-4 | anonymous 查詢只走 `status + is_public`，可用 `idx_skills_is_public`；semantic search 仍 join `skills`，比 JSONB public pattern 更直覺。 |
+| Performance | AC-S177-2, AC-S177-4 | anonymous keyword 查詢走 `skills.status + skills.is_public`；anonymous semantic 查詢走 `skills.status + vector_store.is_public`，避免 JSONB public pattern。 |
 | Security | AC-S177-2 到 AC-S177-8 | private skill 不可因 `vector_store` ACL fixture 或 pseudo-principal 混用被匿名看到。 |
 | Reliability | AC-S177-1, AC-S177-7 | migration 不做舊資料保留；重測資料由 publish/grant flow 維護同一個 `is_public` source。 |
 | Usability | N/A | 不改 UI 控制；「公開分享/轉為私人」按鈕維持既有行為。 |
@@ -325,7 +345,8 @@ V26 需要完成三件事：
 
 1. 把 generated `is_public` 改成 ordinary `BOOLEAN NOT NULL DEFAULT FALSE`。
 2. 不保留舊 rows 的 public/private 值；LAB 會清資料重測。
-3. 從 `skills.acl_entries` 與 `vector_store.acl_entries` 移除 `public:*:read`。
+3. 新增 `vector_store.is_public BOOLEAN NOT NULL DEFAULT FALSE`，讓 semantic search 不再用 public ACL 字串判斷公開。
+4. 從 `skills.acl_entries` 與 `vector_store.acl_entries` 移除 `public:*:read`。
 
 候選 SQL 形狀：
 
@@ -334,6 +355,8 @@ ALTER TABLE skills ADD COLUMN is_public_v2 BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE skills DROP COLUMN is_public;
 ALTER TABLE skills RENAME COLUMN is_public_v2 TO is_public;
 CREATE INDEX IF NOT EXISTS idx_skills_is_public ON skills (is_public) WHERE is_public = TRUE;
+ALTER TABLE vector_store ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS idx_vector_store_is_public ON vector_store (is_public) WHERE is_public = TRUE;
 ```
 
 ACL cleanup shape：
@@ -423,7 +446,7 @@ public void makePrivate(String changedBy) {
 
 ### 4.3 Semantic search contract
 
-`SkillshubPgVectorStore` ACL SQL 改成使用 `skills`：
+`SkillshubPgVectorStore` ACL SQL 仍 JOIN `skills` 確認 skill 狀態，但 public / explicit grant 可讀範圍改用 `vector_store` 自己的投影欄位：
 
 ```sql
 SELECT vs.id, vs.content, vs.metadata, vs.embedding <=> ? AS distance
@@ -431,15 +454,15 @@ SELECT vs.id, vs.content, vs.metadata, vs.embedding <=> ? AS distance
   JOIN skills s ON s.id = vs.skill_id
  WHERE s.status = 'PUBLISHED'
    AND (
-        s.is_public = TRUE
-        OR s.acl_entries ??| ?::text[]
+        vs.is_public = TRUE
+        OR vs.acl_entries ??| ?::text[]
    )
    AND vs.embedding <=> ? < ?
  ORDER BY distance
  LIMIT ?
 ```
 
-Anonymous caller 可以傳 empty patterns；SQL 仍靠 `s.is_public=true` 回 public rows。已登入 caller 傳 user/group/company read patterns。
+Anonymous caller 可以傳 empty patterns；SQL 仍靠 `vs.is_public=true` 回 public rows。已登入 caller 傳 user/group/company read patterns。`skills` join 只負責排除 DRAFT/SUSPENDED/已刪除的 skill，不負責 public 判斷。
 
 ### 4.4 Permission evaluator contract
 
@@ -485,6 +508,14 @@ UPDATE vector_store
  WHERE skill_id = :skillId
 ```
 
+Visibility changed projection（同 TX 寫 Skill 後，搜尋索引用 listener / projection path 對齊）：
+
+```sql
+UPDATE vector_store
+   SET is_public = :isPublic
+ WHERE skill_id = :skillId
+```
+
 Public visibility service transaction：
 
 ```text
@@ -525,7 +556,8 @@ upload visibility=PRIVATE:
 
 ```text
 read Skill aggregate
-write vector_store.acl_entries = skill.acl_entries
+write vector_store.is_public = skill.publicSkill
+write vector_store.acl_entries = skill.aclEntries
 do not infer public visibility from owner
 do not add public:*:read
 ```
@@ -536,7 +568,7 @@ do not add public:*:read
 
 | 檔案 | 動作 | 說明 |
 |---|---|---|
-| `backend/src/main/resources/db/migration/V26__is_public_first_search_visibility.sql` | new | 改 `is_public` ordinary boolean、清 `public:*:read`；不做舊資料保留。 |
+| `backend/src/main/resources/db/migration/V26__is_public_first_search_visibility.sql` | new | 改 `skills.is_public` ordinary boolean、新增 `vector_store.is_public`、清 `public:*:read`；不做舊資料保留。 |
 | `backend/src/main/java/io/github/samzhu/skillshub/skill/domain/Skill.java` | modify | 加 `@Column("is_public") private boolean publicSkill`；PUBLIC create 寫 true，PRIVATE create 寫 false；新增公開/私人變更 method；ACL 不寫 public。 |
 | `backend/src/main/java/io/github/samzhu/skillshub/skill/domain/SkillVisibilityChangedEvent.java` | new | Skill aggregate domain event；公開/私人切換集中在 Skill event path。 |
 | `backend/src/main/java/io/github/samzhu/skillshub/skill/domain/Visibility.java` | modify | 文件改成 `is_public` source，不再說 ACL entry。 |
@@ -550,8 +582,8 @@ do not add public:*:read
 | `backend/src/main/java/io/github/samzhu/skillshub/shared/security/AclPrincipalExpander.java` | modify | read 不再補 `public:*:read`。 |
 | `backend/src/main/java/io/github/samzhu/skillshub/shared/security/DelegatingPermissionEvaluator.java` | modify | anonymous read 改走 strategy 的 `is_public` SQL，不再用 public pseudo-principal。 |
 | `backend/src/main/java/io/github/samzhu/skillshub/search/SemanticSearchService.java` | modify | read patterns 不再補 `public:*:read`。 |
-| `backend/src/main/java/io/github/samzhu/skillshub/search/SkillshubPgVectorStore.java` | modify | semantic ACL SQL 改用 `s.is_public OR s.acl_entries ??| ?::text[]`。 |
-| `backend/src/main/java/io/github/samzhu/skillshub/search/SearchProjection.java` | modify | re-embed 不寫 public ACL。 |
+| `backend/src/main/java/io/github/samzhu/skillshub/search/SkillshubPgVectorStore.java` | modify | INSERT/UPDATE 支援 `vector_store.is_public`；semantic ACL SQL 改用 `vs.is_public OR vs.acl_entries ??| ?::text[]`。 |
+| `backend/src/main/java/io/github/samzhu/skillshub/search/SearchProjection.java` | modify | re-embed 寫 `vector_store.is_public = skill.publicSkill`，不寫 public ACL。 |
 | `backend/src/test/java/io/github/samzhu/skillshub/db/*` | modify/new | migration AC-S177-1。 |
 | `backend/src/test/java/io/github/samzhu/skillshub/skill/domain/SkillAggregateTest.java` | modify | 新增/修改 aggregate 測試：create 寫 `is_public`；公開/私人 method 發 `SkillVisibilityChangedEvent`；metadata update 不改 public 狀態。 |
 | `backend/src/test/java/io/github/samzhu/skillshub/skill/command/SkillCommandServiceDeleteTest.java` | modify | 刪除後 browse/detail/vector 不可殘留可查資料。 |
@@ -570,4 +602,40 @@ do not add public:*:read
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+POC: not required — S177 只改既有 Spring Data JDBC aggregate、Flyway migration、NamedParameter/JdbcTemplate SQL 與既有 vector store 客製類；所有設計點都能用現有 RepositorySlice / SpringBootTest / unit tests 直接驗證。
+
+### Execution Order
+
+| Task | Status | AC | 驗證重點 |
+|---|---|---|---|
+| T01 — schema + aggregate public state | pending | AC-S177-1, AC-S177-1b | V26 改 `skills.is_public`、新增 `vector_store.is_public`；`Skill.create` 直接持有 public/private 狀態 |
+| T02 — grant mirror + ACL projection | pending | AC-S177-1b, AC-S177-7 | upload/toggle 同 TX 寫 Skill + OWNER/public grant；projection 不再展 public ACL |
+| T03 — keyword/detail permission SQL | pending | AC-S177-2, AC-S177-3, AC-S177-6 | list/detail/read permission 改成 `is_public OR explicit ACL` |
+| T04 — semantic vector visibility | pending | AC-S177-4, AC-S177-5, AC-S177-8 | semantic search 用 `vector_store.is_public OR vector_store.acl_entries`；不再 append `public:*:read` |
+
+### AC Coverage
+
+| AC | Covered by |
+|---|---|
+| AC-S177-1 | T01 |
+| AC-S177-1b | T01, T02 |
+| AC-S177-2 | T03 |
+| AC-S177-3 | T03 |
+| AC-S177-4 | T04 |
+| AC-S177-5 | T04 |
+| AC-S177-6 | T03 |
+| AC-S177-7 | T02 |
+| AC-S177-8 | T04（local test + deploy follow-up instructions） |
+
+### Planning Notes
+
+- T01 must run first because production code cannot persist `Skill.publicSkill` or `vector_store.is_public` before V26 exists.
+- T02 depends on T01 because public grant/revoke must update ordinary `skills.is_public`.
+- T03 can start after T01; it does not require vector store changes.
+- T04 depends on T01 and T02 so semantic vector rows have both explicit ACL and public projection available.
+
+---
+
+<!-- Section 7 added by /planning-tasks after implementation -->
