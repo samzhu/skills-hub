@@ -1635,3 +1635,33 @@ typecheck: 0 errors
 ### Round 67 Summary
 
 - Tick 132: 10 checks / **0 bugs**。Mode B 0-bug；下次 tick 換 cut 軸（候選：negative deep-link with edit modal / form validation feedback timing / backend cache-header-CORS cut）。
+
+---
+
+## Tick 133 — Mode B Round 68（Negative Deep-Link Chrome DOM Check），2026-05-15
+
+> Cut 軸切換 — 嘗試用 Chrome plugin 開正式站負向 deep link，確認不存在的 skill / collection / request / unknown route 都顯示可理解的繁中錯誤畫面，而不是白屏或 console error。
+
+### 預計涵蓋
+
+| # | 類別 | URL | 預期 |
+|---|------|-----|------|
+| 68.1 | Skill not found | `/skills/00000000-0000-0000-0000-000000000000` | DOM 顯示「找不到此技能」；不顯示 retry hint |
+| 68.2 | Collection not found | `/collections/00000000-0000-0000-0000-000000000000` | DOM 顯示「找不到此集合。」與「返回集合列表」 |
+| 68.3 | Request not found | `/requests/00000000-0000-0000-0000-000000000000` | DOM 顯示「找不到此需求。」與「回需求看板」 |
+| 68.4 | Unknown SPA route | `/definitely-not-a-real-route` | DOM 顯示「找不到此頁面。」與「回首頁」 |
+
+### Blocker
+
+- Chrome runtime setup 成功，取得 tab id `574304097`；第一次巡覽時該 tab handle 回 `Tab 574304097 is not part of browser session ...`。
+- 重新建立 tab id `574304217` 後再跑同一組 production URL，Chrome native pipe 回 `native pipe closed before response`，未取得 DOM snapshot。
+- Chrome/extension/native-host 唯讀檢查皆通過：
+  - Google Chrome running: yes（pid 38680）
+  - Google Chrome installed: `/Applications/Google Chrome.app`，version `148.0.7778.168`
+  - Codex Chrome Extension installed/enabled: yes（Profile 1，version `1.1.4_0`）
+  - Native host manifest: exists + host name/origin match
+- 依 Chrome skill：extension/native-host 檢查通過但通訊仍失敗時，需要 user 允許開一個 Chrome window 再 retry；本輪未用 curl / bash 代替 Chrome DOM 驗證。
+
+### Round 68 Summary
+
+- Tick 133: **BLOCKED** — Chrome plugin 通訊中斷，negative deep-link DOM 檢查未完成。下次 tick 若 user 允許開 Chrome window，可重跑 68.1-68.4；若仍失敗，請從 Codex plugin UI 重裝 Chrome plugin。
