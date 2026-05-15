@@ -1,12 +1,15 @@
 package io.github.samzhu.skillshub.skill.security;
 
 import java.lang.invoke.MethodHandles;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +24,7 @@ import io.github.samzhu.skillshub.shared.security.UserResolver;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.security.events.SkillGrantedEvent;
 import io.github.samzhu.skillshub.skill.security.events.SkillRevokedEvent;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * S114a — Application service for managing skill access grants.
@@ -50,19 +54,28 @@ public class SkillGrantService {
     private final UserResolver userResolver;
     /** S154b T04 — listGrants 讀側 enrich displayName/handle 查詢來源。 */
     private final UserRepository userRepo;
+    private final NamedParameterJdbcTemplate jdbc;
+    private final ObjectMapper objectMapper;
+    private final SkillGrantIdGenerator grantIdGenerator;
 
     public SkillGrantService(SkillRepository skillRepo,
                              SkillGrantRepository grantRepo,
                              ApplicationEventPublisher events,
                              CurrentUserProvider users,
                              UserResolver userResolver,
-                             UserRepository userRepo) {
+                             UserRepository userRepo,
+                             NamedParameterJdbcTemplate jdbc,
+                             ObjectMapper objectMapper,
+                             SkillGrantIdGenerator grantIdGenerator) {
         this.skillRepo = skillRepo;
         this.grantRepo = grantRepo;
         this.events = events;
         this.users = users;
         this.userResolver = userResolver;
         this.userRepo = userRepo;
+        this.jdbc = jdbc;
+        this.objectMapper = objectMapper;
+        this.grantIdGenerator = grantIdGenerator;
     }
 
     /**
@@ -109,8 +122,17 @@ public class SkillGrantService {
         } else {
             resolvedPrincipalId = req.principalId();
         }
-        var grant = SkillGrant.create(skillId, req.principalType(), resolvedPrincipalId, req.role(), actor);
+        var isPublicGrant = "public".equals(req.principalType());
+        var grant = isPublicGrant
+                ? SkillGrant.createWithId(grantIdGenerator.nextId(), skillId, req.principalType(),
+                        resolvedPrincipalId, req.role(), actor)
+                : SkillGrant.create(skillId, req.principalType(), resolvedPrincipalId, req.role(), actor);
         grantRepo.save(grant);
+        if (isPublicGrant) {
+            skill.makePublic(actor, grant.getId());
+            skillRepo.save(skill);
+        }
+        rebuildSkillAclEntries(skillId);
         events.publishEvent(new SkillGrantedEvent(skillId, grant.getId()));
         log.atInfo().addKeyValue("skillId", skillId).addKeyValue("grantId", grant.getId())
                 .addKeyValue("role", req.role()).addKeyValue("actor", actor)
@@ -142,7 +164,13 @@ public class SkillGrantService {
         if ("OWNER".equals(grant.getRole()) && actor.equals(grant.getPrincipalId())) {
             throw new CannotRevokeOwnOwnerException();
         }
+        var publicGrant = "public".equals(grant.getPrincipalType());
+        if (publicGrant) {
+            skill.makePrivate(actor, grant.getId());
+            skillRepo.save(skill);
+        }
         grantRepo.deleteById(grantId);
+        rebuildSkillAclEntries(skillId);
         events.publishEvent(new SkillRevokedEvent(skillId, grantId));
         log.atInfo().addKeyValue("skillId", skillId).addKeyValue("grantId", grantId)
                 .addKeyValue("actor", actor).log("Skill grant revoked");
@@ -181,6 +209,35 @@ public class SkillGrantService {
             });
         }
         return grants;
+    }
+
+    private void rebuildSkillAclEntries(String skillId) {
+        jdbc.queryForList(
+                "SELECT pg_advisory_xact_lock(hashtext('acl:' || :id)::bigint)",
+                Map.of("id", skillId));
+
+        var grants = grantRepo.findBySkillId(skillId);
+        if (grants == null) {
+            grants = Collections.emptyList();
+        }
+        var entries = grants.stream()
+                .filter(g -> !"public".equals(g.getPrincipalType()))
+                .flatMap(g -> Role.valueOf(g.getRole()).permissions().stream()
+                        .map(perm -> g.getPrincipalType() + ":" + g.getPrincipalId() + ":" + perm))
+                .distinct()
+                .toList();
+
+        jdbc.update("UPDATE skills SET acl_entries = :acl::jsonb WHERE id = :id",
+                Map.of("id", skillId, "acl", writeAclEntries(entries)));
+    }
+
+    private String writeAclEntries(List<String> entries) {
+        try {
+            return objectMapper.writeValueAsString(entries);
+        }
+        catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize ACL entries", e);
+        }
     }
 
     /**

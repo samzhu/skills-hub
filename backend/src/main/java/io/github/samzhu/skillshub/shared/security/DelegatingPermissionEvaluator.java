@@ -57,8 +57,8 @@ public class DelegatingPermissionEvaluator implements PermissionEvaluator {
 
     private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    /** S122: anonymous read fallback — 對齊 S026 + S114a「{@code public:*:read} read 預設公開」設計。 */
-    private static final Set<String> ANONYMOUS_READ_PRINCIPALS = Set.of("public:*:read");
+    /** S177: anonymous read uses skills.is_public in the Skill strategy. */
+    private static final Set<String> ANONYMOUS_READ_PRINCIPALS = Set.of();
 
     private final List<PermissionStrategy> strategies;
     private final CurrentUserProvider currentUserProvider;
@@ -177,10 +177,6 @@ public class DelegatingPermissionEvaluator implements PermissionEvaluator {
             var role = a.getAuthority().replaceFirst("^ROLE_", "");
             p.add("role:" + role + ":" + permission);
         });
-        // S125b Bug AW fix: read permission 額外加 public:*:read（per S026 + S114a + AclPrincipalExpander.expand）
-        if ("read".equals(permission)) {
-            p.add("public:*:read");
-        }
         return p;
     }
 }

@@ -27,6 +27,7 @@ import io.github.samzhu.skillshub.skill.domain.SkillRiskAssessedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillSuspendedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedFromAggregate;
+import io.github.samzhu.skillshub.skill.domain.SkillVisibilityChangedEvent;
 
 /**
  * S024 T05B — 訂閱所有 Skill 相關 domain events，作為 {@code domain_events} audit log
@@ -171,6 +172,18 @@ public class AuditEventListener {
                 "deletedBy", event.deletedBy() == null ? "" : event.deletedBy());
         recordAudit(event.aggregateId(), "SkillDeleted", payload,
                 dedupKey("SkillDeleted", event.aggregateId()));
+    }
+
+    @ApplicationModuleListener
+    void on(SkillVisibilityChangedEvent event) {
+        var payload = Map.<String, Object>of(
+                "isPublic", event.isPublic(),
+                "grantId", event.grantId() == null ? "" : event.grantId(),
+                "changedBy", event.changedBy() == null ? "" : event.changedBy());
+        recordAudit(event.aggregateId(), "SkillVisibilityChanged", payload,
+                dedupKey("SkillVisibilityChanged", event.aggregateId(),
+                        event.grantId() == null ? "" : event.grantId(),
+                        String.valueOf(event.isPublic())));
     }
 
     // ─── S156c T03 — Request events (per spec §2.8 ES 永存) ─────────────────────

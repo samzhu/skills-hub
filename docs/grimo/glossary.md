@@ -30,7 +30,7 @@
 | 讀取模型 | Read Model | `*ReadModel` | 由 projection 建構的查詢優化資料結構 |
 | 命令端 | Command Side | `command/` | CQRS 的寫入面，處理命令並產生事件 |
 | 查詢端 | Query Side | `query/` | CQRS 的讀取面，從 read model 提供查詢結果 |
-| 聚合根 | Aggregate Root | `Skill` | 核心域的一致性邊界，封裝業務規則並產生 domain events。本專案只有 `Skill` 是 Aggregate Root |
+| 聚合根 | Aggregate Root | `Skill` / `SkillGrant` | 核心域的一致性邊界，封裝業務規則並產生 domain events。S177 起，skill 大模組內有 Skill 與 Grant 兩個緊密連動的 aggregate root |
 | 值物件 | Value Object | `SkillVersion` | Aggregate 內部的不可變物件，無獨立 identity |
 | 不變量 | Invariant | — | Aggregate 必須維護的業務規則（如 version 必須遞增、name 唯一） |
 | 核心域 | Core Domain | `skill/` | 使用 Aggregate + ES + CQRS 的核心業務模組 |
@@ -54,5 +54,6 @@
 | 權限角色 | Permission Role | `Role` | S169 起，使用者分享 skill 時只選角色（OWNER / EDITOR / VIEWER），系統再展開成 `read/write/delete` 權限；UI 不提供 raw operation checkbox |
 | 檢視者權限 | Viewer Permissions | `viewerPermissions` | S169 起，Skill detail API 由後端依當前 user 計算可做動作（canEdit/canDelete/canShare 等），frontend 按鈕只讀此欄位，不重做 ACL 判斷 |
 | 公開可見性 | Public Visibility | `isPublic` / `is_public` | S177 起，表示 skill 是否對匿名與所有登入使用者可讀；公開 skill 會有一筆 public VIEWER grant 表達 owner 的公開設定，但 public 不屬於明確授權 |
-| 明確授權 | Explicit Grant | `SkillGrant` / `aclEntries` | S177 起，指 owner 對 user / group / company 指定角色後產生的可讀、可寫、可刪權限；不包含 public VIEWER grant |
+| 授權模型 | Grant Model | `SkillGrant` | S177 起，與 Skill 分開的領域模型；管理「授權對象 + 角色」（user/group/company/public + OWNER/EDITOR/VIEWER），不管理 skill 本身 metadata 或 public visibility source-of-truth |
+| 明確授權 | Explicit Grant | `SkillGrant` / `aclEntries` | S177 起，指 owner 對 user / group / company 指定角色；角色會展開成 `read/write/delete` 寫入 `skills.acl_entries` 作為讀取/寫入判斷優化；不包含 public VIEWER grant |
 | 授權主鍵 | Grant ID | `grantId` | `skill_grants.id`；純資料庫主鍵，無業務語意。S177 起新 public visibility grant 使用無 prefix 的 12 hex opaque id |

@@ -102,13 +102,14 @@ class SemanticSearchIntegrationTest {
                 "sam", "devops", "1.0.0", "LOW", "PUBLISHED", 0L, now, now,
                 List.of(), null));
 
-        // S017：TestRestTemplate 不帶 JWT → CurrentUserProvider fallback (labUserId="lab-user", ["admin"], [])
-        //   → expand = ["user:lab-user:read", "role:admin:read"]
-        // 為讓既有 IT（不驗 ACL）搜得到 seeded doc，acl_entries 需含 "role:admin:read"（lab user 的 admin role 命中）。
+        jdbc.update("UPDATE skills SET is_public = TRUE WHERE id = ?", TEST_DOC_ID);
+
+        // S177：TestRestTemplate 不帶 JWT；公開文件靠 vector_store.is_public=true 命中，不再塞 public:*:read。
         SkillshubPgVectorStore.builder(jdbc, embeddingModel)
                 .owner("integration-test-owner")
                 .skillId(TEST_DOC_ID)
-                .aclEntries(List.of("user:integration-test-owner:read", "public:*:read"))
+                .aclEntries(List.of("user:integration-test-owner:read"))
+                .publicSkill(true)
                 .build()
                 .add(List.of(Document.builder()
                         .id(TEST_DOC_ID)

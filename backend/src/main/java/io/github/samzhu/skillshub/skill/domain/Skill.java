@@ -45,7 +45,8 @@ import io.github.samzhu.skillshub.skill.query.ViewerPermissions;
  * <p>S167b — ACL grant/revoke 經 aggregate 充血方法的舊 path 已移除（v4.42.0 之 S167 拿掉 HTTP
  * controller，留下的 aggregate / event / handler dead code 全清）。寫 ACL 路徑唯一入口為 S114a
  * {@code SkillGrantController} → {@code SkillGrantService} → {@code skill_grants} 表 +
- * {@code SkillAclProjectionListener} 重建 {@code aclEntries} 投影。
+ * {@code SkillAclProjectionListener} 重建 {@code aclEntries} 投影。S177 起公開狀態由
+ * {@code skills.is_public} 直接保存，ACL 只保留明確授權。
  *
  * @see SkillRepository
  * @see SkillCreatedEvent
@@ -125,6 +126,10 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     @JsonIgnore
     @Column("acl_entries")
     private List<String> aclEntries;
+    /** S177: public visibility source-of-truth；ACL 不再保存 public pseudo-principal。 */
+    @JsonIgnore
+    @Column("is_public")
+    private boolean publicSkill;
     /** S114a — owner_id maps to V16 schema column; derived from author at create time. */
     /** S158: ownerId 僅 Detail view 暴露 — list endpoint 不洩漏 owner identity（與 author 重複）。 */
     @JsonView(Views.Detail.class)
@@ -222,26 +227,19 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         skill.latestVersion = null;
         skill.riskLevel = null;
         skill.downloadCount = 0;
-        // S016 自動 seed owner ACL（owner 為 author；無 author 時仍 seed public read）
-        // S026: 加 "public:*:read" public-read pseudo-principal — skill 預設對所有使用者開放讀取
-        // （write/delete/suspend/reactivate 仍 owner-only）。
-        // S114a: 統一改用 3-segment "public:*:read"（與 V17 backfill + is_public generated column 對齊）。
-        // S116: 走 cmd.visibility() 條件分支 — PUBLIC 加 public:*:read（v3.x 既有行為）；
-        // PRIVATE 不加（fail-closed by 既有 GIN ?| filter）。author=null + PRIVATE
-        // 不允許（無 owner 即無人可讀；早於 ACL seed reject）。
+        // S177: public visibility 寫 skills.is_public；aclEntries 只保存 explicit owner/grant permissions。
+        // author=null + PRIVATE 不允許（無 owner 即無人可讀；早於 ACL seed reject）。
         var visibility = cmd.visibility() == null ? Visibility.PUBLIC : cmd.visibility();
         if (visibility == Visibility.PRIVATE && author == null) {
             throw new IllegalArgumentException(
                     "visibility=PRIVATE 必須提供 author（無 owner 即無人可讀）");
         }
+        skill.publicSkill = visibility == Visibility.PUBLIC;
         var entries = new ArrayList<String>();
         if (author != null) {
             entries.add("user:" + author + ":read");
             entries.add("user:" + author + ":write");
             entries.add("user:" + author + ":delete");
-        }
-        if (visibility == Visibility.PUBLIC) {
-            entries.add("public:*:read");
         }
         skill.aclEntries = entries;
         // S114a: owner_id NOT NULL in V16 schema — derive from author; fall back to "unknown" for null-author test fixtures
@@ -324,6 +322,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         skill.updatedAt = updatedAt;
         // mutable ArrayList — 物化後不應再 mutate（query path 唯讀），但保持與 create() 行為一致避免後續混淆
         skill.aclEntries = aclEntries == null ? new ArrayList<>() : new ArrayList<>(aclEntries);
+        skill.publicSkill = false;
         // S114a: owner_id derives from author for query-side factory (read-model path)
         skill.ownerId = author != null ? author : "unknown";
         skill.version = version;
@@ -456,6 +455,30 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     }
 
     /**
+     * S177 — public grant mirror toggles the source-of-truth column.
+     */
+    public void makePublic(String changedBy, String grantId) {
+        if (this.publicSkill) {
+            return;
+        }
+        this.publicSkill = true;
+        this.updatedAt = Instant.now();
+        registerEvent(new SkillVisibilityChangedEvent(id, true, grantId, changedBy, this.updatedAt));
+    }
+
+    /**
+     * S177 — revoking the public grant makes the skill private again.
+     */
+    public void makePrivate(String changedBy, String grantId) {
+        if (!this.publicSkill) {
+            return;
+        }
+        this.publicSkill = false;
+        this.updatedAt = Instant.now();
+        registerEvent(new SkillVisibilityChangedEvent(id, false, grantId, changedBy, this.updatedAt));
+    }
+
+    /**
      * S144 — register hard-delete event before repository deletes the aggregate row.
      *
      * <p>No state field is mutated because {@code skills} is removed in the same transaction.
@@ -506,6 +529,8 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     public List<String> getAclEntries() {
         return aclEntries == null ? List.of() : List.copyOf(aclEntries);
     }
+    @JsonIgnore
+    public boolean isPublic() { return publicSkill; }
     public String getOwnerId() { return ownerId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

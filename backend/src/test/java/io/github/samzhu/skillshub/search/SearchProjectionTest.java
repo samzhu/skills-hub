@@ -174,7 +174,7 @@ class SearchProjectionTest {
     }
 
     @Test
-    @DisplayName("AC-S033: SkillReactivatedEvent → vector_store row 重新 embed（含 *:read public ACL）")
+    @DisplayName("AC-S033: SkillReactivatedEvent → vector_store row 重新 embed（保留 is_public）")
     @Tag("AC-S033")
     void onSkillReactivated_reEmbedsVectorStoreRow(Scenario scenario) {
         // Phase 1: 透過 prod 路徑（SkillRepository.save）seed skill aggregate + 一筆 SkillVersion
@@ -196,7 +196,7 @@ class SearchProjectionTest {
 
         // Phase 2: 發 reactivate event；listener 應重 embed vector_store row
         // 注意：onSkillReactivated 從 skill aggregate 取 author='sam'（不依賴 SecurityContext，per S025b §7 tech debt 落地）
-        jdbc.update("UPDATE skills SET status = 'PUBLISHED' WHERE id = ?", skillId);
+        jdbc.update("UPDATE skills SET status = 'PUBLISHED', is_public = TRUE WHERE id = ?", skillId);
         scenario.publish(new SkillReactivatedEvent(skillId, "approved"))
                 .andWaitForStateChange(() -> rowOrNull(skillId))
                 .andVerify(row -> {
@@ -206,7 +206,12 @@ class SearchProjectionTest {
                     var aclJson = jdbc.queryForObject(
                             "SELECT acl_entries::text FROM vector_store WHERE id = ?::uuid",
                             String.class, skillId);
-                    assertThat(aclJson).contains("public:*:read");
+                    assertThat(aclJson).contains("user:sam:read");
+                    assertThat(aclJson).doesNotContain("public:*:read");
+                    var publicSkill = jdbc.queryForObject(
+                            "SELECT is_public FROM vector_store WHERE id = ?::uuid",
+                            Boolean.class, skillId);
+                    assertThat(publicSkill).isTrue();
                 });
     }
 

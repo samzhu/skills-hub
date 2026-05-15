@@ -33,7 +33,7 @@
 | **security** | **Event-driven service** | 無 | 訂閱 `SkillVersionPublishedEvent` 觸發風險評估，透過 `SkillVersion.attachRiskAssessment` 回寫；S147 起 `ScanContext.packageFiles` 掃 zip 內所有 UTF-8 文字檔，`IssueDetector` / `LlmIssueRule` 產出 issue-code findings；`SecurityReportService` + `SecurityReportController` 回傳 legacy `checks` 與新 `categories/findings` |
 | **search** | **Read-side projection** | 無 | 消費 skill events 建構搜尋索引（keyword + semantic） |
 | **analytics** | **Read-side projection** | 無 | 消費 download events 建構統計數據 |
-| **audit** | **Cross-cutting listener** | 無 | 訂閱所有 8 個 Skill domain events 寫入 `domain_events` audit log（async + idempotent；S024 引入；S167b 移除 SkillAclGranted/Revoked 兩個 dead events；S177 新增 SkillVisibilityChanged） |
+| **audit** | **Cross-cutting listener** | 無 | 訂閱 Skill / Grant domain events 寫入 `domain_events` audit log（async + idempotent；S024 引入；S177 把 Grant events 納入 audit） |
 | **score** | **Async LLM judge** | `SkillScore`（per-axis evaluation row） | S135a 引入；訂閱 `SkillVersionPublishedEvent` → 3-axis 品質評分（VALIDATION rule-based + IMPLEMENTATION/ACTIVATION Gemini 2.5 Flash LLM judge）→ 寫 `skill_scores` 表；獨立 `qualityExecutor` pool（corePool=1, queue=500）避免擠 `applicationTaskExecutor`；S142b 加 `SkillScoreCalculator`（composite `round(0.6 × quality + 0.4 × security)` → `skillScore` field in `/scores` response） |
 | **storage** | **Infrastructure service** | 無 | 傳統 service，GCS 操作 |
 
@@ -50,6 +50,12 @@
 - 避開 Spring Data JDBC `WritingContext.update()` delete-and-reinsert 雷（per [deepwiki/aggregate-design.md §2](../deepwiki/spring-data-jdbc-modulith/aggregate-design.md)）
 - `attachRiskAssessment(Map)` 充血方法 + `ScanOrchestrator` AFTER_COMMIT async 路徑
 
+**Grant domain events**
+- S177 實作保留既有 `skill.security` package；`SkillGrant` 是 Spring Data JDBC entity，`SkillGrantedEvent` / `SkillRevokedEvent` 由 `SkillGrantService` publish。
+- 建立 skill 當下同 TX 寫入的 OWNER grant、以及 public skill 的 public VIEWER grant，也發 `SkillGrantedEvent`；private create 固定兩筆 event（SkillCreated + OWNER SkillGranted），public create 因多 public VIEWER grant 為三筆 event。`SkillCreatedEvent` 記錄 skill 已建立，`SkillGrantedEvent` 記錄 grant 已建立。
+- Grant events 是跨模組可訂閱的公開 domain events，放在 `skill.security.events`。
+- Grant command transaction 寫 `skill_grants` row 與強一致的 `skills.acl_entries`；`SkillAclProjectionListener` AFTER_COMMIT 回查目前 grants 與 `skills.is_public`，重建 `vector_store.is_public` / read-only `vector_store.acl_entries`。
+
 ### Aggregate State Mutation Flow
 
 ```
@@ -64,38 +70,59 @@ Command → Service.@Transactional method:
     - event_publication row INSERTED（completion_date NULL → 等待 listener）
   AFTER_COMMIT async（@ApplicationModuleListener）：
     - SearchProjection 訂閱 → vector_store INSERT/UPDATE
+    - SkillAclProjectionListener 訂閱 Grant events → vector_store read scope UPDATE
     - AnalyticsProjection 訂閱 → download_events INSERT (idempotent via eventId)
-    - AuditEventListener 訂閱 → domain_events INSERT (audit log；deterministic UUID + ON CONFLICT DO NOTHING)
+    - AuditEventListener 訂閱 Skill / Grant events → domain_events INSERT (audit log；deterministic UUID + ON CONFLICT DO NOTHING)
     - ScanOrchestrator 訂閱（SkillVersionPublishedEvent only）→ multi-engine scan pipeline
     - 各 listener 完成 → event_publication.completion_date = now()
 ```
 
-### Domain Events（skill domain；8 個 — S177 後）
+### Public Domain Events（Skill domain；7 個）
+
+Skill events 是跨模組可訂閱的公開 domain events，放在 `skill.domain`。
 
 | Event | Trigger | Payload |
 |-------|---------|---------|
-| `SkillCreatedEvent` | `Skill.create(cmd)` | name, description, author, category |
+| `SkillCreatedEvent` | `Skill.create(cmd)` | name, description, author, category, isPublic |
 | `SkillVersionPublishedEvent` | `SkillVersion.publish(cmd)` | version, storagePath, fileSize, allowedTools, sourceEventId |
 | `SkillVersionPublishedFromAggregate` | `Skill.recordVersionPublished(version)`（state-change marker） | version |
 | `SkillSuspendedEvent` | `Skill.suspend(cmd)` | reason, suspendedBy |
 | `SkillReactivatedEvent` | `Skill.reactivate(cmd)` | reason |
-| `SkillVisibilityChangedEvent` | `Skill.makePublic(...)` / `Skill.makePrivate(...)` | isPublic, publicGrantId, changedBy, changedAt |
 | `SkillDownloadedEvent` | `Skill.recordDownload()` | version, eventId |
 | `SkillRiskAssessedEvent` | `SkillVersion.attachRiskAssessment(map)` | skillId, version, level, findings |
 
-> **S167b 移除（2026-05-10 v4.45.0）**：`SkillAclGrantedEvent` / `SkillAclRevokedEvent` 連同
-> `Skill.grantAcl/revokeAcl` 充血方法、`SkillCommandService.grantAcl/revokeAcl` orchestration、
-> `SkillAclQueryService` 全部清空。寫 ACL 路徑唯一入口為 S114a `SkillGrantController` →
-> `SkillGrantService` → `skill_grants` 表 → `SkillAclProjectionListener` 重建 `skills.acl_entries`
-> 投影。歷史 `domain_events` row（`event_type IN ('SkillAclGranted', 'SkillAclRevoked')`）保留不刪
-> （audit log 不可變）。
+### Public Domain Events（Grant domain；S177 後）
 
-> **S169 更新（2026-05-14 v4.57.0）**：`skill_grants.role` 支援 `OWNER` / `EDITOR` / `VIEWER`。
-> listener 會把 role grant 展成 `principal:verb` ACL entries，並同步寫入 `skills.acl_entries`
-> 與 `vector_store.acl_entries`。API 不輸出 `aclEntries`；Skill detail 改輸出 `viewerPermissions`
+Grant events 是跨模組可訂閱的公開 domain events，放在 `skill.security.events`。
+
+| Event | Trigger | Payload | Known subscribers |
+|-------|---------|---------|-------------------|
+| `SkillGrantedEvent` | `SkillGrantService.grant(...)` saves any `skill_grants` role row, including create-time OWNER and public VIEWER | skillId, grantId | `SkillAclProjectionListener`回查目前 grants 與 `skills.is_public`，更新 `vector_store.is_public`，並從 user/group/company roles 產生 read-only `vector_store.acl_entries` |
+| `SkillRevokedEvent` | `SkillGrantService.revoke(...)` hard-deletes grant row | skillId, grantId | `SkillAclProjectionListener`回查目前 grants 與 `skills.is_public`，更新 `vector_store.is_public`，並從 user/group/company roles 產生 read-only `vector_store.acl_entries` |
+
+> **S177 重設（2026-05-15）**：`skill` 是大模組，內含 Skill 與 Grant 兩個緊密連動的子領域模型。
+> Grant 負責 `skill_grants` 的授權對象與角色；Skill 負責 skill 本身資料與 public visibility。建立 skill 時，
+> `SkillCreatedEvent` 與初始 `SkillGrantedEvent` 在同一個 transaction 內 publish；Grant event 觸發 search read-scope projection。
+> public toggle 不另發 visibility event；同一個 transaction 內更新 `skills.is_public` 與 public VIEWER grant row，
+> 對外只發 `SkillGranted(isPublic=true, public/* VIEWER)` / `SkillRevoked(isPublic=false, public/* VIEWER)`，
+> 訂閱方依 payload 自行判斷是否處理。
+
+> **S169 更新（2026-05-14 v4.57.0；S177 前狀態）**：`skill_grants.role` 支援 `OWNER` / `EDITOR` / `VIEWER`。
+> 當時 listener 會把 role grant 展成 `principal:verb` ACL entries，並同步寫入 `skills.acl_entries`
+> 與 `vector_store.acl_entries`；S177 後這個 listener 職責被拆成同 TX `skills.acl_entries` writer
+> 與 async `SkillAclProjectionListener`。API 不輸出 `aclEntries`；Skill detail 改輸出 `viewerPermissions`
 > 給前端顯示編輯、刪除、分享、管理 grants 按鈕。多筆讀取與 semantic search 都先用 S170
 > `PrincipalContextService.currentPrincipalKeys()` 產生 `user:<id>` / `group:<id>` principal keys，
 > 再在 SQL JSONB ACL clause 過濾。
+
+> **S177 計畫更新（2026-05-15）**：public visibility 從 ACL 拆出成 `skills.is_public`
+> / `vector_store.is_public`；`skills.acl_entries` 與 `vector_store.acl_entries` 只保留 user/group/company
+> explicit read/write/delete scope。`skills.acl_entries` 由 grant application service 在同一個 transaction
+> 內重建；`SkillAclProjectionListener` async 訂閱 Grant events 維護 `vector_store.is_public` / `vector_store.acl_entries`。
+> S177 在 `skill` 大模組內保留 Skill / Grant 兩個子領域模型：`Skill` 管理 skill 本身資料與 public visibility；
+> `Grant` 管理授權對象與角色。Grant 角色變動時，同 TX 寫入/刪除 `skill_grants` row 並重建
+> `skills.acl_entries` 作為 browse/detail/read/write/delete 判斷優化；projection 再依 Grant event
+> 非同步更新 `vector_store.acl_entries` 的 read scope。
 
 ### Code Pattern
 
@@ -249,7 +276,7 @@ io.github.samzhu.skillshub
 │       └── ErrorResponse.java
 │
 ├── audit/                      ← S024 引入：audit log async 寫入（避開 shared → skill cycle）
-│   └── AuditEventListener.java  (@ApplicationModuleListener × 9 — 訂閱所有 Skill domain events
+│   └── AuditEventListener.java  (@ApplicationModuleListener — 訂閱 Skill / Grant domain events
 │                                  寫 domain_events row；deterministic UUID + ON CONFLICT)
 │
 ├── skill/                      ← 核心域（Spring Data JDBC 充血聚合 + Modulith outbox）
@@ -270,6 +297,13 @@ io.github.samzhu.skillshub
 │   │   ├── SkillQueryService.java (skillRepo.findById / search via NamedParameterJdbcTemplate + Skill.fromRow)
 │   │   ├── SkillQueryController.java (GET — response type Skill / SkillVersion；@JsonIgnore version)
 │   │   └── SkillAclQueryService.java (skillRepo.findById → ACL entry 拆解)
+│   ├── grant/                  ← Grant 子領域（skill_grants 現況表 + Grant aggregate events）
+│   │   ├── SkillGrant.java     (@Table extends AbstractAggregateRoot — create/revoke register Grant events)
+│   │   ├── SkillGrantRepository.java (CRUD + findBySkillId / findBySkillIdAndPrincipal...)
+│   │   ├── SkillGrantService.java (grant/revoke orchestration；同 TX 重建 skills.acl_entries)
+│   │   ├── SkillGrantController.java (POST/GET/DELETE /api/v1/skills/{id}/grants)
+│   │   ├── SkillAclEntriesBuilder.java / SkillAclEntryWriter.java
+│   │   └── events/             (public domain events: SkillGrantedEvent / SkillRevokedEvent)
 │   ├── validation/             ← SKILL.md 驗證
 │   │   └── SkillValidator.java (agentskills.io 規範)
 │   └── testsupport/            ← S140：E2E fixture seeding endpoints（@Profile-gated, non-prod only）

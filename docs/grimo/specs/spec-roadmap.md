@@ -42,7 +42,6 @@
 | S174 | Skill detail anonymous 401 not-found UX | XS(3) | S153 ✅, S122 ✅ | 📋 planned — Round 68 production Chrome found `/skills/{missing-id}` shows generic retry because API returns 401 before 404 |
 | S175 | Scan native binding completeness hotfix | XS(3) | S173 ✅, S148b ✅ | ⏳ local PASS — registered scanner JSON records; targeted Gradle test + processTestAot PASS; production deploy pending |
 | S176 | Explicit Publish Skill Name（發佈頁手填平台 skill name + 允許重名） | S(7) | S003 ✅, S004 ✅, S032 ✅, S154b ✅, S173 ✅ | ✅ Verify-All PASS — T01-T06 PASS；shipping pending |
-| S177 | is_public-first search visibility（public 不再寫入 ACL；匿名查 is_public，登入查 is_public OR explicit ACL） | S(9) | S017 ✅, S169 ✅, S170 ✅ | ⏳ Plan — T01-T04 task files ready；下一步 T01 schema + aggregate public state |
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | 📐 in-design — spec ready for review |
 
 ---
@@ -79,6 +78,7 @@
 | v4.59.0 | S147 (Issue-code scanner architecture) | ✅ shipped 2026-05-14 — S147 all AC PASS，zip 內所有 UTF-8 文字檔掃描，`verify-all.sh` 全綠 |
 | v4.60.0 | S173 (Production upload post-publish failures) | ✅ shipped 2026-05-14 — local release PASS；post-deploy Cloud Run log evidence deferred |
 | v4.61.0 | S172 (Production UI responsive polish) | ✅ shipped 2026-05-15 — S172 all AC PASS，`verify-all.sh` 全綠 |
+| v4.62.0 | S177 (is_public-first search visibility) | ✅ shipped 2026-05-15 — S177 all AC PASS，`verify-all.sh` 全綠 |
 
 ---
 
@@ -240,6 +240,7 @@
 | S147 | Issue-code scanner architecture | XL(17) | v4.59.0 |
 | S173 | Production upload post-publish failures | M(12) | v4.60.0 |
 | S172 | Production UI responsive polish | S(9) | v4.61.0 |
+| S177 | is_public-first search visibility | L(15) | v4.62.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

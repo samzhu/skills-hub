@@ -210,16 +210,12 @@ public class SkillQueryService {
 		var statusClause = authorMode
 				? " WHERE LOWER(author) = LOWER(:author) "
 				: " WHERE status = 'PUBLISHED' ";
-		// S121/S169: row-level ACL filter — 補上 list endpoint 漏裝的 acl_entries 過濾。
-		// S116 visibility (PUBLIC/PRIVATE) 仰賴 acl_entries 含 *:read 與否判斷可見性，
-		// list 必套此 clause 才會生效。readPatterns 對 read permission 自動加 public:*:read（S026），
-		// PUBLIC skill (acl_entries 含 *:read) 對任何 user 可見；PRIVATE 僅 owner / 被 grant
-		// 的 user / group principal 可見。對齊 S016 SkillPermissionStrategy 既驗 ??| ARRAY pattern。
+		// S177: public visibility 由 skills.is_public 命中；acl_entries 只保存 explicit grants。
 		// Admin role 不在此處特殊化 — admin 若要看 PRIVATE skill 須走 grant；對齊既有 S016 設計
 		// （admin bypass 集中在 DelegatingPermissionEvaluator @PreAuthorize 路徑，CQRS read 路徑不另立例外）。
 		var aclPatterns = readPatterns(principalContextService.currentPrincipalKeys());
 		// S016: ?? escape 必要 — pgJDBC 仍會 parse ? 為 placeholder；?? → ? 後送 ?| operator
-		var aclClause = " AND acl_entries ??| :aclPatterns ";
+		var aclClause = " AND (is_public = TRUE OR acl_entries ??| :aclPatterns) ";
 		// S119: SELECT 加 average_rating + review_count — list endpoint 過去缺此 2 column
 		// 致 SkillCard rating 永遠 0（user-visible bug）。S098e2 ship review averageRating
 		// projection 後此 list endpoint 漏 update SELECT；single GET findById 走 Spring Data
@@ -284,10 +280,7 @@ public class SkillQueryService {
 	}
 
 	private static List<String> readPatterns(Set<String> principalKeys) {
-		var patterns = principalKeys.stream().map(key -> key + ":read").toList();
-		var mutable = new ArrayList<>(patterns);
-		mutable.add("public:*:read");
-		return mutable;
+		return principalKeys.stream().map(key -> key + ":read").toList();
 	}
 
 	/**

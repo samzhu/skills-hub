@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -55,6 +56,9 @@ class SkillSubscriptionServiceReadOnlyTxTest extends RepositorySliceTestBase {
     @Autowired
     private UserRepository userRepo;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     private String skillId;
 
     @BeforeEach
@@ -71,10 +75,12 @@ class SkillSubscriptionServiceReadOnlyTxTest extends RepositorySliceTestBase {
                 "author@example.com", "Author Name", "author", null, now));
 
         skillId = UUID.randomUUID().toString();
-        skillRepo.save(Skill.fromRow(
+        var skill = Skill.fromRow(
                 skillId, "subscribed-skill", "summary fixture", "u_author", "devops",
                 "1.0.0", null, "PUBLISHED", 0L, now, now,
-                List.of("public:*:read"), null));
+                List.of(), null);
+        skillRepo.save(skill);
+        jdbcTemplate.update("UPDATE skills SET is_public = TRUE WHERE id = ?", skillId);
         skillRepo.updateRiskLevel(skillId, "LOW", now);
         subscriptionRepo.save(SkillSubscription.create(skillId, SUBSCRIBER_ID));
     }

@@ -1,5 +1,31 @@
 # Changelog
 
+## [v4.62.0] — S177 is_public-first search visibility（2026-05-15）
+
+### Fixed
+
+- **Semantic search public leak** — anonymous semantic search now filters on `vector_store.is_public`; private skills are not exposed by stale `public:*:read` ACL entries.
+- **Public visibility source-of-truth** — `skills.is_public` is now an ordinary persisted boolean, and public visibility no longer depends on `acl_entries` containing `public:*:read`.
+- **Vector ACL read scope** — `vector_store.acl_entries` now stores read-only explicit ACL entries, so OWNER/EDITOR grants do not put `write/delete` into vector search filtering data.
+- **Test fixtures after Testcontainers reset** — backend fixtures/tests now mark public skills with `skills.is_public` / `vector_store.is_public` instead of active `public:*:read` pseudo ACL entries.
+
+### Changed
+
+- **Grant mirror behavior** — public VIEWER grants remain in `skill_grants` for UI/audit state, but public grants are not expanded into ACL entries.
+- **Spec/design sync** — S177 docs and architecture now match the implemented package/listener shape: grant code remains in `skill.security`, and `SkillAclProjectionListener` owns the vector read-scope projection.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.1%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`exit=0`。
+- Round 2 targeted fixes：T05 vector read-scope projection、T06 public ACL fixtures、T07 test slice beans、T08 spec design sync all PASS。
+- Post-release follow-up：deploy 後執行 production curl，確認 `translate-subtitle` / `transcribe-video` 兩筆 private skill 不再被 anonymous semantic search 找到。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-15-S177-is-public-first-search-visibility.md` → `docs/grimo/specs/archive/2026-05-15-S177-is-public-first-search-visibility.md`
+- `docs/grimo/tasks/2026-05-15-S177-*.md` 已刪除。
+- Final size re-score：S(9) → L(15)，原因是 persisted schema、ACL projection、semantic search、fixtures、AOT/native image gate 同時進入 release 範圍。
+
 ## [v4.61.0] — S172 Production UI responsive polish（2026-05-15）
 
 ### Fixed

@@ -79,8 +79,16 @@ public class SkillGrant implements Persistable<String> {
      */
     public static SkillGrant create(String skillId, String principalType,
                                     String principalId, Role role, String grantedBy) {
+        return createWithId(UUID.randomUUID().toString(), skillId, principalType, principalId, role, grantedBy);
+    }
+
+    /**
+     * Factory method with caller-supplied id — used when another row stores this grant id.
+     */
+    public static SkillGrant createWithId(String id, String skillId, String principalType,
+                                    String principalId, Role role, String grantedBy) {
         var grant = new SkillGrant();
-        grant.id = UUID.randomUUID().toString();
+        grant.id = id;
         grant.skillId = skillId;
         grant.principalType = principalType;
         grant.principalId = principalId;

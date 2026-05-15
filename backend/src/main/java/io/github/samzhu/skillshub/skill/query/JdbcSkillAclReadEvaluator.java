@@ -14,7 +14,15 @@ import io.github.samzhu.skillshub.shared.security.PrincipalContextService;
 @Service
 class JdbcSkillAclReadEvaluator implements SkillAclReadEvaluator {
 
-    private static final String SQL = """
+    private static final String READ_SQL = """
+            SELECT EXISTS (
+              SELECT 1 FROM skills
+               WHERE id = :skillId
+                 AND (is_public = TRUE OR acl_entries ??| :patterns)
+            )
+            """;
+
+    private static final String ACL_SQL = """
             SELECT EXISTS (
               SELECT 1 FROM skills
                WHERE id = :skillId
@@ -48,13 +56,11 @@ class JdbcSkillAclReadEvaluator implements SkillAclReadEvaluator {
 
     private boolean hasPermission(String skillId, String permission, boolean includePublicRead) {
         var patterns = patterns(principalContextService.currentPrincipalKeys(), permission);
-        if (includePublicRead) {
-            patterns.add("public:*:read");
-        }
         var params = new MapSqlParameterSource()
                 .addValue("skillId", skillId)
                 .addValue("patterns", new SqlParameterValue(Types.ARRAY, patterns.toArray(new String[0])));
-        return Boolean.TRUE.equals(jdbc.queryForObject(SQL, params, Boolean.class));
+        var sql = includePublicRead ? READ_SQL : ACL_SQL;
+        return Boolean.TRUE.equals(jdbc.queryForObject(sql, params, Boolean.class));
     }
 
     private static ArrayList<String> patterns(Set<String> principalKeys, String permission) {

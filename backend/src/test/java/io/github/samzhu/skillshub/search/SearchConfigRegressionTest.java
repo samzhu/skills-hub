@@ -71,8 +71,9 @@ class SearchConfigRegressionTest {
         var source = Files.readString(Path.of(
                 "src/main/java/io/github/samzhu/skillshub/search/SkillshubPgVectorStore.java"));
 
-        assertThat(source).contains("INSERT INTO vector_store (id, content, metadata, embedding, owner, skill_id, acl_entries)");
-        assertThat(source).contains("acl_entries ??| ?::text[]");
+        assertThat(source).contains(
+                "INSERT INTO vector_store (id, content, metadata, embedding, owner, skill_id, acl_entries, is_public)");
+        assertThat(source).contains("vs.is_public = TRUE OR vs.acl_entries ??| ?::text[]");
         assertThat(source).contains("SkillshubPgVectorStore extends AbstractObservationVectorStore");
     }
 

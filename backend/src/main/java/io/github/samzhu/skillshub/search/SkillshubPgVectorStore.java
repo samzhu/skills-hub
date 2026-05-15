@@ -31,8 +31,8 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Skills Hub 自訂 PgVectorStore — 寫入 vector_store 表 7 欄
- * （id, content, metadata, embedding, owner, skill_id, acl_entries），而非官方
+ * Skills Hub 自訂 PgVectorStore — 寫入 vector_store 表 8 欄
+ * （id, content, metadata, embedding, owner, skill_id, acl_entries, is_public），而非官方
  * {@code org.springframework.ai.vectorstore.pgvector.PgVectorStore} 的 4 欄。
  *
  * <p><strong>Per-request instantiation 模式</strong>（不註冊為 Spring Bean）：
@@ -77,9 +77,9 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
     private static final Logger log = LoggerFactory.getLogger(SkillshubPgVectorStore.class);
 
     /**
-     * 7-欄 INSERT，ON CONFLICT 保留 owner/skill_id/acl_entries（per S016 §4.16）。
+     * 8-欄 INSERT，ON CONFLICT 保留 owner/skill_id/acl_entries/is_public（per S016 §4.16 + S177）。
      *
-     * <p>{@code acl_entries} 綁兩次（position 7 + 8）解 NOT NULL constraint × COALESCE preservation 矛盾：
+     * <p>{@code acl_entries} / {@code is_public} 雙綁解 NOT NULL constraint × COALESCE preservation 矛盾：
      * <ul>
      *   <li>position 7 = INSERT VALUES — 必須非 null（{@code acl_entries JSONB NOT NULL}）；
      *       caller 未設定時 builder 端用 {@code "[]"} 兜底</li>
@@ -88,15 +88,16 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
      * </ul>
      */
     static final String INSERT_SQL = """
-            INSERT INTO vector_store (id, content, metadata, embedding, owner, skill_id, acl_entries)
-            VALUES (?::uuid, ?, ?::jsonb, ?, ?, ?, ?::jsonb)
+            INSERT INTO vector_store (id, content, metadata, embedding, owner, skill_id, acl_entries, is_public)
+            VALUES (?::uuid, ?, ?::jsonb, ?, ?, ?, ?::jsonb, ?)
             ON CONFLICT (id) DO UPDATE
               SET content = EXCLUDED.content,
                   metadata = EXCLUDED.metadata,
                   embedding = EXCLUDED.embedding,
                   owner = COALESCE(EXCLUDED.owner, vector_store.owner),
                   skill_id = COALESCE(EXCLUDED.skill_id, vector_store.skill_id),
-                  acl_entries = COALESCE(?::jsonb, vector_store.acl_entries)
+                  acl_entries = COALESCE(?::jsonb, vector_store.acl_entries),
+                  is_public = COALESCE(?, vector_store.is_public)
             """;
 
     static final String DELETE_SQL = "DELETE FROM vector_store WHERE id = ?::uuid";
@@ -111,7 +112,7 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
             """;
 
     /**
-     * S017：ACL-aware similarity search SQL — 加 {@code WHERE acl_entries ??| ?::text[]} filter，
+     * S017/S177：ACL-aware similarity search SQL — 加 {@code is_public OR acl_entries ??| ?::text[]} filter，
      * 並 oversample {@code LIMIT topK * OVERSAMPLE_FACTOR} 解 HNSW post-filter recall 問題（per spec §2.5 Challenge #1）。
      *
      * <p>{@code ??} escape：pgJDBC PgPreparedStatement 在 NamedParameterJdbcTemplate 之下會
@@ -130,10 +131,10 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
     // DRAFT/SUSPENDED 即使有 vector embedding 也不公開呈現。idx_skills_status btree 加 JOIN 成本可忽略。
     static final String SIMILARITY_SEARCH_SQL_ACL = """
             SELECT vs.id, vs.content, vs.metadata, vs.embedding <=> ? AS distance
-              FROM vector_store vs
-              JOIN skills s ON s.id = vs.skill_id
+             FROM vector_store vs
+             JOIN skills s ON s.id = vs.skill_id
              WHERE s.status = 'PUBLISHED'
-               AND vs.acl_entries ??| ?::text[]
+               AND (vs.is_public = TRUE OR vs.acl_entries ??| ?::text[])
                AND vs.embedding <=> ? < ?
              ORDER BY distance
              LIMIT ?
@@ -158,6 +159,7 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
     private final @Nullable String skillId;
     private final @Nullable List<String> aclEntries;
     private final @Nullable List<String> aclPatterns;
+    private final @Nullable Boolean publicSkill;
 
     private SkillshubPgVectorStore(Builder builder) {
         super(builder);
@@ -166,6 +168,7 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
         this.skillId = builder.skillId;
         this.aclEntries = builder.aclEntries;
         this.aclPatterns = builder.aclPatterns;
+        this.publicSkill = builder.publicSkill;
     }
 
     /** Test accessor — 驗 builder 設定的 aclPatterns 正確下放至 instance（per S017 T1 AC-1）。 */
@@ -210,11 +213,12 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
                 String metadataJson = JSON.writeValueAsString(doc.getMetadata());
                 PGvector embedding = new PGvector(embeddings.get(i));
 
-                // S016：acl_entries 雙綁解 NOT NULL × COALESCE preservation 矛盾（per INSERT_SQL Javadoc）
+                // S016/S177：acl_entries/is_public 雙綁解 NOT NULL × COALESCE preservation 矛盾（per INSERT_SQL Javadoc）
                 //  - aclJsonForInsert：給 position 7（INSERT VALUES），caller 未設定則用 "[]" 兜底
-                //  - aclJsonForUpdate：給 position 8（UPDATE COALESCE），caller 未設定則用 null 觸發保留
+                //  - aclJsonForUpdate：給 position 9（UPDATE COALESCE），caller 未設定則用 null 觸發保留
                 String aclSerialized = aclEntries == null ? null : JSON.writeValueAsString(aclEntries);
                 String aclJsonForInsert = aclSerialized == null ? "[]" : aclSerialized;
+                Boolean publicForInsert = publicSkill == null ? Boolean.FALSE : publicSkill;
 
                 StatementCreatorUtils.setParameterValue(ps, 1, SqlTypeValue.TYPE_UNKNOWN, id);
                 StatementCreatorUtils.setParameterValue(ps, 2, SqlTypeValue.TYPE_UNKNOWN, content);
@@ -223,7 +227,9 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
                 StatementCreatorUtils.setParameterValue(ps, 5, SqlTypeValue.TYPE_UNKNOWN, owner);
                 StatementCreatorUtils.setParameterValue(ps, 6, SqlTypeValue.TYPE_UNKNOWN, skillId);
                 StatementCreatorUtils.setParameterValue(ps, 7, SqlTypeValue.TYPE_UNKNOWN, aclJsonForInsert);
-                StatementCreatorUtils.setParameterValue(ps, 8, SqlTypeValue.TYPE_UNKNOWN, aclSerialized);
+                StatementCreatorUtils.setParameterValue(ps, 8, SqlTypeValue.TYPE_UNKNOWN, publicForInsert);
+                StatementCreatorUtils.setParameterValue(ps, 9, SqlTypeValue.TYPE_UNKNOWN, aclSerialized);
+                StatementCreatorUtils.setParameterValue(ps, 10, SqlTypeValue.TYPE_UNKNOWN, publicSkill);
             }
 
             @Override
@@ -326,6 +332,7 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
         private @Nullable String skillId;
         private @Nullable List<String> aclEntries;
         private @Nullable List<String> aclPatterns;
+        private @Nullable Boolean publicSkill;
 
         Builder(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel) {
             super(embeddingModel);
@@ -354,6 +361,15 @@ class SkillshubPgVectorStore extends AbstractObservationVectorStore {
          */
         public Builder aclEntries(@Nullable List<String> aclEntries) {
             this.aclEntries = aclEntries;
+            return self();
+        }
+
+        /**
+         * S177：寫入端 — 設定 vector_store.is_public。null 表示 re-embed 時保留既有值；
+         * 新 row 仍以 false 兜底，避免無 context 寫入意外公開。
+         */
+        public Builder publicSkill(@Nullable Boolean publicSkill) {
+            this.publicSkill = publicSkill;
             return self();
         }
 

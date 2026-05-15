@@ -18,6 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
+import io.github.samzhu.skillshub.skill.security.SkillGrantIdGenerator;
 import io.github.samzhu.skillshub.skill.validation.SkillValidator;
 import io.github.samzhu.skillshub.storage.PackageService;
 
@@ -28,7 +29,7 @@ import io.github.samzhu.skillshub.storage.PackageService;
  * {@link SkillCommandService#deleteSkill(String, String)} through the same repository transaction path
  * production will use. Audit insertion is intentionally out of scope for T01; it is covered by T02.
  */
-@Import({SkillCommandService.class, PackageService.class, SkillValidator.class})
+@Import({SkillCommandService.class, PackageService.class, SkillValidator.class, SkillGrantIdGenerator.class})
 class SkillCommandServiceDeleteTest extends RepositorySliceTestBase {
 
     @Autowired SkillCommandService commandService;

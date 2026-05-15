@@ -11,6 +11,7 @@ import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillStatus;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
+import io.github.samzhu.skillshub.skill.security.SkillGrantIdGenerator;
 import io.github.samzhu.skillshub.skill.validation.SkillValidator;
 import io.github.samzhu.skillshub.storage.PackageService;
 
@@ -25,7 +26,7 @@ import io.github.samzhu.skillshub.storage.PackageService;
  * {@link SkillRepository} aggregate state（sync TX commit）取代 audit assertion；
  * 完整 audit pipeline 由 S016 e2e + {@code AuditEventListenerTest} module test 涵蓋。
  */
-@Import({SkillCommandService.class, PackageService.class, SkillValidator.class})
+@Import({SkillCommandService.class, PackageService.class, SkillValidator.class, SkillGrantIdGenerator.class})
 class SkillCommandServiceTest extends RepositorySliceTestBase {
 
     @Autowired

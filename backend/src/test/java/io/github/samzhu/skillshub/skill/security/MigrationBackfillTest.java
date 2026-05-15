@@ -19,9 +19,9 @@ import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
  * <p>Flyway V1-V17 runs on empty DB at test startup. Tests insert legacy-format
  * data via JdbcTemplate and re-execute V17 SQL to reproduce backfill behavior:
  * <ol>
- *   <li>V16 schema: skill_grants table + is_public GENERATED column exist</li>
+ *   <li>V16 schema: skill_grants table + is_public column exist</li>
  *   <li>V17 format: {@code "*:read"} converted to {@code "public:*:read"};
- *       is_public updates automatically</li>
+ *       S177 後 {@code is_public} 不再由 ACL JSON 自動推導</li>
  *   <li>V17 OWNER backfill: principal with {@code :delete} permission gets OWNER grant;
  *       without delete gets VIEWER grant</li>
  *   <li>V17 public VIEWER backfill: skill with {@code "public:*:read"} gets
@@ -36,7 +36,7 @@ class MigrationBackfillTest extends RepositorySliceTestBase {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("AC-8: V16 schema - skill_grants table and is_public GENERATED column exist")
+    @DisplayName("AC-8: V16 schema - skill_grants table and is_public column exist")
     @Tag("AC-8")
     void v16Schema_skillGrantsAndIsPublicColumnExist() {
         Integer grantTableCount = jdbcTemplate.queryForObject(
@@ -52,7 +52,7 @@ class MigrationBackfillTest extends RepositorySliceTestBase {
     }
 
     @Test
-    @DisplayName("AC-8: V17 format migration - '*:read' converts to 'public:*:read', is_public auto-updates")
+    @DisplayName("AC-8: V17 format migration - '*:read' converts to 'public:*:read', is_public stays ordinary column")
     @Tag("AC-8")
     void v17FormatMigration_convertsLegacyPublicEntry_isPublicUpdates() {
         // Given: skill with legacy "*:read" 2-segment format
@@ -74,7 +74,7 @@ class MigrationBackfillTest extends RepositorySliceTestBase {
                 " WHERE id = ?",
                 skillId);
 
-        // Then: acl_entries contains "public:*:read"; is_public GENERATED column auto-updates to true
+        // Then: V17 legacy ACL rewrite still produces "public:*:read"; S177 made is_public an ordinary column.
         String aclEntries = jdbcTemplate.queryForObject(
                 "SELECT acl_entries::text FROM skills WHERE id = ?", String.class, skillId);
         assertThat(aclEntries).contains("public:*:read");
@@ -82,7 +82,7 @@ class MigrationBackfillTest extends RepositorySliceTestBase {
 
         Boolean afterMigration = jdbcTemplate.queryForObject(
                 "SELECT is_public FROM skills WHERE id = ?", Boolean.class, skillId);
-        assertThat(afterMigration).isTrue();
+        assertThat(afterMigration).isFalse();
     }
 
     @Test

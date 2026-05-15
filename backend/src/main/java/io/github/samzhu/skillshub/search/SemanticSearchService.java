@@ -120,9 +120,7 @@ class SemanticSearchService {
     }
 
     private static List<String> readPatterns(java.util.Set<String> principalKeys) {
-        var patterns = principalKeys.stream().map(key -> key + ":read").collect(Collectors.toCollection(java.util.ArrayList::new));
-        patterns.add("public:*:read");
-        return patterns;
+        return principalKeys.stream().map(key -> key + ":read").toList();
     }
 
     /**

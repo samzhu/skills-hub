@@ -18,6 +18,11 @@ import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersion;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
+import io.github.samzhu.skillshub.skill.domain.Visibility;
+import io.github.samzhu.skillshub.skill.security.Role;
+import io.github.samzhu.skillshub.skill.security.SkillGrant;
+import io.github.samzhu.skillshub.skill.security.SkillGrantIdGenerator;
+import io.github.samzhu.skillshub.skill.security.SkillGrantRepository;
 import io.github.samzhu.skillshub.shared.api.SkillValidationException;
 import io.github.samzhu.skillshub.shared.api.ValidationFinding;
 import io.github.samzhu.skillshub.skill.validation.SkillValidator;
@@ -53,25 +58,32 @@ public class SkillCommandService {
 	private final PackageService packageService;
 	private final SkillValidator skillValidator;
 	private final NamedParameterJdbcTemplate jdbc;
+	private final SkillGrantRepository grantRepo;
+	private final SkillGrantIdGenerator grantIdGenerator;
 
 	public SkillCommandService(SkillRepository skillRepo,
 			SkillVersionRepository skillVersionRepo,
 			StorageService storageService,
 			PackageService packageService,
 			SkillValidator skillValidator,
-			NamedParameterJdbcTemplate jdbc) {
+			NamedParameterJdbcTemplate jdbc,
+			SkillGrantRepository grantRepo,
+			SkillGrantIdGenerator grantIdGenerator) {
 		this.skillRepo = skillRepo;
 		this.skillVersionRepo = skillVersionRepo;
 		this.storageService = storageService;
 		this.packageService = packageService;
 		this.skillValidator = skillValidator;
 		this.jdbc = jdbc;
+		this.grantRepo = grantRepo;
+		this.grantIdGenerator = grantIdGenerator;
 	}
 
 	@Transactional
 	public String createSkill(CreateSkillCommand cmd) {
 		var skill = Skill.create(cmd);
 		skillRepo.save(skill);
+		seedInitialGrants(skill, cmd.visibility() == null ? Visibility.defaultValue() : cmd.visibility());
 		log.atInfo()
 				.addKeyValue("skillId", skill.getId())
 				.addKeyValue("name", cmd.name())
@@ -127,6 +139,7 @@ public class SkillCommandService {
 
 		// 一次 save Skill — INSERT skills row + publish 兩 registered events（SkillCreatedEvent + SkillVersionPublishedFromAggregate）
 		skillRepo.save(skill);
+		seedInitialGrants(skill, visibility == null ? Visibility.defaultValue() : visibility);
 
 		// SkillVersion 獨立 aggregate INSERT + publish SkillVersionPublishedEvent（含 storagePath / fileSize / allowedTools 完整載荷）
 		// S098a3-2: fileCount 從 packageService 計算給 PublishValidatePage upload-strip 顯實值用
@@ -294,6 +307,21 @@ public class SkillCommandService {
 		jdbc.update("DELETE FROM skill_scores WHERE skill_id = :skillId", params);
 		jdbc.update("DELETE FROM collection_skills WHERE skill_id = :skillId", params);
 		jdbc.update("DELETE FROM notifications WHERE skill_id = :skillId", params);
+	}
+
+	private void seedInitialGrants(Skill skill, Visibility visibility) {
+		var ownerId = skill.getOwnerId();
+		if (ownerId != null && !"unknown".equals(ownerId)) {
+			grantRepo.findBySkillIdAndPrincipalTypeAndPrincipalId(skill.getId(), "user", ownerId)
+					.orElseGet(() -> grantRepo.save(
+							SkillGrant.create(skill.getId(), "user", ownerId, Role.OWNER, ownerId)));
+		}
+		if (visibility == Visibility.PUBLIC) {
+			grantRepo.findBySkillIdAndPrincipalTypeAndPrincipalId(skill.getId(), "public", "*")
+					.orElseGet(() -> grantRepo.save(SkillGrant.createWithId(
+							grantIdGenerator.nextId(), skill.getId(), "public", "*", Role.VIEWER,
+							ownerId == null || "unknown".equals(ownerId) ? "system" : ownerId)));
+		}
 	}
 
 	private List<ValidationFinding> buildFindings(ValidationResult r) {

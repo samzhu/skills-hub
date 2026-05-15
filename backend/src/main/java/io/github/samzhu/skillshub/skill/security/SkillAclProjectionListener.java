@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.skill.security;
 
 import java.lang.invoke.MethodHandles;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,8 +21,7 @@ import tools.jackson.databind.ObjectMapper;
  *
  * <p>Listens to three events:
  * <ul>
- *   <li>{@link SkillCreatedEvent} — auto-seeds an OWNER grant for the author,
- *       then rebuilds the ACL projection.</li>
+ *   <li>{@link SkillCreatedEvent} — rebuilds the ACL projection from existing grants.</li>
  *   <li>{@link SkillGrantedEvent} — rebuilds ACL projections for the skill.</li>
  *   <li>{@link SkillRevokedEvent} — rebuilds ACL projections for the skill.</li>
  * </ul>
@@ -53,46 +53,11 @@ public class SkillAclProjectionListener {
     }
 
     /**
-     * Auto-seed OWNER grant for the skill author on creation, then rebuild ACL.
-     *
-     * <p>For PUBLIC visibility skills (initial {@code acl_entries} contains
-     * {@code "public:*:read"}), also seeds a public VIEWER grant so {@link #rebuildAcl}
-     * preserves public read access after overwriting the aggregate-managed column.
-     *
-     * <p>If author is null (e.g. test fixtures without an owner), skip seeding —
-     * the skill starts with an empty ACL and an explicit grant must be made later.
+     * Rebuild ACL after skill creation.
      */
     @ApplicationModuleListener
     public void onSkillCreated(SkillCreatedEvent event) {
-        var skillId = event.aggregateId();
-        var author = event.author();
-        if (author == null || author.isBlank()) {
-            log.atWarn().addKeyValue("skillId", skillId)
-                    .log("SkillCreatedEvent has no author — skipping OWNER grant auto-seed");
-            return;
-        }
-        // idempotent: only seed if no existing grant for this author
-        var existing = grantRepo.findBySkillIdAndPrincipalTypeAndPrincipalId(skillId, "user", author);
-        if (existing.isEmpty()) {
-            grantRepo.save(SkillGrant.create(skillId, "user", author, Role.OWNER, author));
-            log.atInfo().addKeyValue("skillId", skillId).addKeyValue("author", author)
-                    .log("OWNER grant auto-seeded from SkillCreatedEvent");
-        }
-        // S116: preserve PUBLIC visibility — Skill.create() adds "public:*:read" to acl_entries for
-        // PUBLIC skills; rebuildAcl() rebuilds from skill_grants, so a public VIEWER grant must also
-        // be seeded here. Read is_public (GENERATED column) BEFORE rebuildAcl() to capture the intent.
-        var isPublic = Boolean.TRUE.equals(
-                jdbc.queryForObject("SELECT is_public FROM skills WHERE id = :id",
-                        Map.of("id", skillId), Boolean.class));
-        if (isPublic) {
-            var publicExists = grantRepo.findBySkillIdAndPrincipalTypeAndPrincipalId(skillId, "public", "*");
-            if (publicExists.isEmpty()) {
-                grantRepo.save(SkillGrant.create(skillId, "public", "*", Role.VIEWER, author));
-                log.atInfo().addKeyValue("skillId", skillId)
-                        .log("Public VIEWER grant auto-seeded for PUBLIC skill");
-            }
-        }
-        rebuildAcl(skillId);
+        rebuildAcl(event.aggregateId());
     }
 
     /** Rebuild ACL projection after a grant is added. */
@@ -121,22 +86,43 @@ public class SkillAclProjectionListener {
                 Map.of("id", skillId));
 
         var grants = grantRepo.findBySkillId(skillId);
-        var entries = grants.stream()
-                .flatMap(g -> Role.valueOf(g.getRole()).permissions().stream()
-                        .map(perm -> g.getPrincipalType() + ":" + g.getPrincipalId() + ":" + perm))
-                .distinct()
-                .toList();
+        var skillEntries = aclEntries(grants, false);
+        var vectorEntries = aclEntries(grants, true);
 
-        var json = writeAclEntries(entries);
-        var params = Map.of("id", skillId, "acl", json);
-        var skillRows = jdbc.update("UPDATE skills SET acl_entries = :acl::jsonb WHERE id = :id", params);
-        var vectorRows = jdbc.update("UPDATE vector_store SET acl_entries = :acl::jsonb WHERE skill_id = :id", params);
+        var isPublic = Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT is_public FROM skills WHERE id = :id",
+                Map.of("id", skillId),
+                Boolean.class));
+
+        var skillAcl = writeAclEntries(skillEntries);
+        var vectorAcl = writeAclEntries(vectorEntries);
+        var params = new HashMap<String, Object>();
+        params.put("id", skillId);
+        params.put("skillAcl", skillAcl);
+        params.put("vectorAcl", vectorAcl);
+        params.put("isPublic", isPublic);
+        var skillRows = jdbc.update("UPDATE skills SET acl_entries = :skillAcl::jsonb WHERE id = :id", params);
+        var vectorRows = jdbc.update(
+                "UPDATE vector_store SET acl_entries = :vectorAcl::jsonb, is_public = :isPublic WHERE skill_id = :id",
+                params);
         log.atInfo()
                 .addKeyValue("skillId", skillId)
-                .addKeyValue("entryCount", entries.size())
+                .addKeyValue("skillEntryCount", skillEntries.size())
+                .addKeyValue("vectorReadEntryCount", vectorEntries.size())
+                .addKeyValue("publicSkill", isPublic)
                 .addKeyValue("skillsRows", skillRows)
                 .addKeyValue("vectorRows", vectorRows)
                 .log("ACL projections rebuilt");
+    }
+
+    private List<String> aclEntries(List<SkillGrant> grants, boolean readOnly) {
+        return grants.stream()
+                .filter(g -> !"public".equals(g.getPrincipalType()))
+                .flatMap(g -> Role.valueOf(g.getRole()).permissions().stream()
+                        .filter(perm -> !readOnly || "read".equals(perm))
+                        .map(perm -> g.getPrincipalType() + ":" + g.getPrincipalId() + ":" + perm))
+                .distinct()
+                .toList();
     }
 
     private String writeAclEntries(List<String> entries) {

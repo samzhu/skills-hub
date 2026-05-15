@@ -132,7 +132,7 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
         var skillId = "ac4-" + uniqueSuffix();
         var fixture = Skill.fromRow(skillId, "ac4-search", "fixture", "alice", "testing",
                 null, null, "PUBLISHED", 0L, Instant.now(), Instant.now(),
-                List.of("public:*:read"), null);
+                List.of(), null);
         Mockito.when(skillQueryService.search(
                         ArgumentMatchers.isNull(), ArgumentMatchers.eq("testing"),
                         ArgumentMatchers.isNull(), ArgumentMatchers.any()))

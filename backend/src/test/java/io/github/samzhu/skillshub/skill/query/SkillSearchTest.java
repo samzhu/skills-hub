@@ -29,11 +29,9 @@ import io.github.samzhu.skillshub.skill.domain.SkillRepository;
  * 收斂為 {@link SkillQueryService#search} + {@link SkillQueryService#getCategoryCounts}
  * 純 SQL 邏輯驗證。Seed 直接走 {@link SkillRepository#save}（無需 HTTP POST）。
  *
- * <p>S121: SkillQueryService 加 {@link CurrentUserProvider} + {@link AclPrincipalExpander}
- * 兩個 dep 後，slice test 透過 {@code @MockitoBean} 提供 stub — 預設 stub 回傳含
- * {@code *:read} pattern（對應 PUBLIC skill 預設可見），讓既有 6 個 AC 不變動 (fixtures
- * acl_entries 同步改 {@code List.of("public:*:read")} 表達 PUBLIC 語意)；專屬 ACL 行為驗證走
- * S121 新 AC（owner-only / granted-user / non-grantee 三場景）。
+ * <p>S177: PUBLIC skill 由 {@code skills.is_public=true} 命中；{@code acl_entries}
+ * 只保存具名 user/group/company 授權。專屬 ACL 行為驗證走 S121 新 AC
+ *（owner-only / granted-user / non-grantee 三場景）。
  */
 @Import(SkillQueryService.class)
 class SkillSearchTest extends RepositorySliceTestBase {
@@ -56,22 +54,20 @@ class SkillSearchTest extends RepositorySliceTestBase {
     @BeforeEach
     void setUp() {
         skillRepo.deleteAll();
-        // 預設 stub：PrincipalContextService 回 user principal；query service 會自行補 public:*:read。
-        // 既有 6 ACs fixture 走 PUBLIC 語意（acl_entries 含 *:read），通過 ?| 比對。
+        // 預設 stub：PrincipalContextService 回 user principal；PUBLIC fixture 靠 is_public=true 命中。
         when(principalContextService.currentPrincipalKeys())
                 .thenReturn(Set.of("user:test-admin"));
         var now = Instant.now();
         // S031: search/categories 過濾 status=PUBLISHED；fixture 改 PUBLISHED 對齊公開查詢預期
-        // S121: acl_entries 加 *:read（PUBLIC 語意）— ACL filter 啟用後須含此 pseudo-principal 才對 anonymous/admin 可見
-        skillRepo.save(Skill.fromRow(
+        savePublicSkill(Skill.fromRow(
                 UUID.randomUUID().toString(), "docker-helper", "Docker compose helper",
-                "sam", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
-        skillRepo.save(Skill.fromRow(
+                "sam", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of(), null));
+        savePublicSkill(Skill.fromRow(
                 UUID.randomUUID().toString(), "k8s-deploy", "Kubernetes deployment skill",
-                "jane", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
-        skillRepo.save(Skill.fromRow(
+                "jane", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of(), null));
+        savePublicSkill(Skill.fromRow(
                 UUID.randomUUID().toString(), "test-runner", "Run unit tests automatically",
-                "bob", "testing", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
+                "bob", "testing", "1.0.0", null, "PUBLISHED", 0L, now, now, List.of(), null));
     }
 
     @Test
@@ -154,14 +150,13 @@ class SkillSearchTest extends RepositorySliceTestBase {
     @DisplayName("AC-S094a-3: ?author= 帶值時跳過 PUBLISHED filter（含 DRAFT/SUSPENDED）")
     void authorFilterShowsAllStatuses() {
         var now = Instant.now();
-        // S121: DRAFT/SUSPENDED skill 仍須含 *:read 才對非 owner / non-admin user 可見；
-        // 此 AC 驗 author-mode 不過濾 status，acl_entries 維持 PUBLIC 語意確保 list 命中
-        skillRepo.save(Skill.fromRow(
+        // 此 AC 驗 author-mode 不過濾 status；PUBLIC fixture 靠 is_public=true 命中。
+        savePublicSkill(Skill.fromRow(
                 UUID.randomUUID().toString(), "sam-draft-skill", "draft for sam",
-                "sam", "devops", null, null, "DRAFT", 0L, now, now, List.of("public:*:read"), null));
-        skillRepo.save(Skill.fromRow(
+                "sam", "devops", null, null, "DRAFT", 0L, now, now, List.of(), null));
+        savePublicSkill(Skill.fromRow(
                 UUID.randomUUID().toString(), "sam-suspended-skill", "suspended for sam",
-                "sam", "devops", "1.0.0", null, "SUSPENDED", 0L, now, now, List.of("public:*:read"), null));
+                "sam", "devops", "1.0.0", null, "SUSPENDED", 0L, now, now, List.of(), null));
 
         var page = queryService.search(null, null, "sam", PageRequest.of(0, 20));
         // 1 PUBLISHED + 1 DRAFT + 1 SUSPENDED = 3 (S094a 跳過 PUBLISHED filter for author view)
@@ -169,15 +164,14 @@ class SkillSearchTest extends RepositorySliceTestBase {
     }
 
     @Test
-    @DisplayName("AC-S121-1: 非 owner non-admin user 看不到 PRIVATE skill (acl_entries 不含 *:read 也無 grant)")
+    @DisplayName("AC-S121-1: 非 owner non-admin user 看不到 PRIVATE skill (is_public=false 且無 grant)")
     void privateSkillHiddenFromNonGrantee() {
         var now = Instant.now();
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "private-secret-skill", "owned by alice (private)",
                 "alice", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now,
                 List.of("user:alice:read", "user:alice:write", "user:alice:delete"), null));
-        // user=bob 不是 alice / 非 admin / 對 private-secret-skill 沒 grant：expand 出
-        // [user:bob:read, *:read] — 無一命中該 skill 的 acl_entries
+        // user=bob 不是 alice / 非 admin / 對 private-secret-skill 沒 grant；且 skill.is_public=false。
         when(principalContextService.currentPrincipalKeys())
                 .thenReturn(Set.of("user:bob"));
 
@@ -210,10 +204,10 @@ class SkillSearchTest extends RepositorySliceTestBase {
         skillRepo.deleteAll();
         var now = Instant.now();
         for (int i = 0; i < 20; i++) {
-            skillRepo.save(Skill.fromRow(
+            savePublicSkill(Skill.fromRow(
                     UUID.randomUUID().toString(), "public-skill-" + i, "public fixture",
                     "alice", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now,
-                    List.of("public:*:read"), null));
+                    List.of(), null));
         }
         skillRepo.save(Skill.fromRow(
                 UUID.randomUUID().toString(), "private-hidden-from-bob", "private fixture",
@@ -235,10 +229,10 @@ class SkillSearchTest extends RepositorySliceTestBase {
     void listEndpointReturnsRatingProjection() {
         var now = Instant.now();
         var skillId = UUID.randomUUID().toString();
-        skillRepo.save(Skill.fromRow(
+        savePublicSkill(Skill.fromRow(
                 skillId, "rated-skill-x", "rated 4.5 from 2 reviews",
                 "alice", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now,
-                List.of("public:*:read"), null));
+                List.of(), null));
         // average_rating / review_count 為 @ReadOnlyProperty — 走 raw SQL UPDATE 模擬
         // SkillRatingService.refresh projection 寫入路徑（per S098e2 既驗）
         jdbcTemplate.update(
@@ -265,5 +259,10 @@ class SkillSearchTest extends RepositorySliceTestBase {
         var page = queryService.search("docker", null, "sam", PageRequest.of(0, 20));
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getContent().get(0).getName()).isEqualTo("docker-helper");
+    }
+
+    private void savePublicSkill(Skill skill) {
+        skillRepo.save(skill);
+        jdbcTemplate.update("UPDATE skills SET is_public = TRUE WHERE id = ?", skill.getId());
     }
 }

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 import io.github.samzhu.skillshub.shared.api.CannotRevokeOwnOwnerException;
 import io.github.samzhu.skillshub.shared.api.GrantNotFoundException;
@@ -30,6 +31,7 @@ import io.github.samzhu.skillshub.skill.domain.Skill;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.security.events.SkillGrantedEvent;
 import io.github.samzhu.skillshub.skill.security.events.SkillRevokedEvent;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * S114a T03 — SkillGrantService unit test (pure Mockito, no Spring context).
@@ -51,6 +53,8 @@ class SkillGrantServiceTest {
     private CurrentUserProvider users;
     private UserResolver userResolver;
     private UserRepository userRepo;
+    private NamedParameterJdbcTemplate jdbc;
+    private SkillGrantIdGenerator grantIdGenerator;
     private SkillGrantService service;
 
     @BeforeEach
@@ -61,12 +65,16 @@ class SkillGrantServiceTest {
         users = mock(CurrentUserProvider.class);
         userResolver = mock(UserResolver.class);
         userRepo = mock(UserRepository.class);
+        jdbc = mock(NamedParameterJdbcTemplate.class);
+        grantIdGenerator = mock(SkillGrantIdGenerator.class);
         // S154b T04 — ctor 擴 UserResolver + UserRepository 供 grant resolve + listGrants enrich。
         // 既有 AC-2/AC-4/AC-5 test 預設「principalId 已是 user_id」場景：stub resolver
         // 回 same value 維持 backward compatibility。
         when(userResolver.resolveByEmailHandleOrId(anyString())).thenAnswer(
                 inv -> Optional.of((String) inv.getArgument(0)));
-        service = new SkillGrantService(skillRepo, grantRepo, events, users, userResolver, userRepo);
+        when(grantIdGenerator.nextId()).thenReturn("public001abc");
+        service = new SkillGrantService(skillRepo, grantRepo, events, users, userResolver, userRepo,
+                jdbc, new ObjectMapper(), grantIdGenerator);
     }
 
     @Test

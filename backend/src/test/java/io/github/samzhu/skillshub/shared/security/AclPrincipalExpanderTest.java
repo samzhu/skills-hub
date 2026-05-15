@@ -26,13 +26,12 @@ class AclPrincipalExpanderTest {
 
         var patterns = expander.expand(user, "read");
 
-        // S026 + S114a: read 一律附 "public:*:read" public-read entry
+        // S177: public visibility 改由 skills/vector_store.is_public；expander 只產出具名 principal。
         assertThat(patterns).containsExactlyInAnyOrder(
                 "user:alice:read",
                 "role:admin:read",
                 "group:engineering:read",
-                "group:platform:read",
-                "public:*:read");
+                "group:platform:read");
     }
 
     @Test
@@ -68,11 +67,9 @@ class AclPrincipalExpanderTest {
         var user = CurrentUser.synthetic("dan", List.of("admin"), List.of(), null);
 
         // S016 spec §2.4 #5：MVP 啟用 verbs = read/write/delete/suspend/reactivate
-        // S026 + S114a: read 一律附 "public:*:read"；write/delete/suspend/reactivate 不附
+        // S177: read 也不再附 public pseudo-principal。
         for (var verb : List.of("read", "write", "delete", "suspend", "reactivate")) {
-            var expected = "read".equals(verb)
-                    ? List.of("user:dan:" + verb, "role:admin:" + verb, "public:*:read")
-                    : List.of("user:dan:" + verb, "role:admin:" + verb);
+            var expected = List.of("user:dan:" + verb, "role:admin:" + verb);
             assertThat(expander.expand(user, verb))
                     .as("verb=%s 應產出對應 patterns", verb)
                     .containsExactlyInAnyOrderElementsOf(expected);

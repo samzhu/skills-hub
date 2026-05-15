@@ -27,6 +27,7 @@ import io.github.samzhu.skillshub.skill.domain.SkillDownloadedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillReactivatedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillRiskAssessedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillSuspendedEvent;
+import io.github.samzhu.skillshub.skill.domain.SkillVisibilityChangedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedFromAggregate;
 
@@ -202,6 +203,24 @@ class AuditEventListenerTest {
                     assertThat(rows.getFirst().payload())
                             .containsEntry("name", "delete-service")
                             .containsEntry("deletedBy", "alice");
+                });
+    }
+
+    @Test
+    @DisplayName("AC-S177-7: visibility change writes audit event")
+    @Tag("AC-S177-7")
+    void visibilityChanged_writesAuditRow(Scenario scenario) {
+        var skillId = newId();
+        var event = new SkillVisibilityChangedEvent(skillId, true, "public-grant-001", "u_alice0", Instant.now());
+
+        scenario.publish(event)
+                .andWaitForStateChange(() -> firstRowOrNull(skillId))
+                .andVerify(row -> {
+                    assertThat(row.eventType()).isEqualTo("SkillVisibilityChanged");
+                    assertThat(row.payload())
+                            .containsEntry("isPublic", true)
+                            .containsEntry("grantId", "public-grant-001")
+                            .containsEntry("changedBy", "u_alice0");
                 });
     }
 

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import io.github.samzhu.skillshub.shared.persistence.RepositorySliceTestBase;
@@ -47,6 +48,9 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
     @Autowired
     private UserRepository userRepo;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @MockitoBean
     private CurrentUserProvider currentUserProvider;
 
@@ -60,10 +64,10 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
         // seed PUBLIC skill 給 subscribe 路徑用
         skillId = UUID.randomUUID().toString();
         var now = Instant.now();
-        skillRepo.save(Skill.fromRow(
+        savePublicSkill(Skill.fromRow(
                 skillId, "demo-skill", "demo for subscription test",
                 "alice", "devops", "1.0.0", null, "PUBLISHED", 0L, now, now,
-                List.of("user:alice:read", "user:alice:write", "user:alice:delete", "public:*:read"),
+                List.of("user:alice:read", "user:alice:write", "user:alice:delete"),
                 null));
     }
 
@@ -72,9 +76,9 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
         var now = Instant.now();
         userRepo.save(User.createNew(authorId, "google", authorId + "-sub", authorId + "@example.com",
                 authorName, authorId.replace("u_", ""), null, now));
-        skillRepo.save(Skill.fromRow(
+        savePublicSkill(Skill.fromRow(
                 id, name, "summary fixture", authorId, "devops", latestVersion, null,
-                "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
+                "PUBLISHED", 0L, now, now, List.of(), null));
         if (riskLevel != null) {
             skillRepo.updateRiskLevel(id, riskLevel, now);
         }
@@ -157,9 +161,9 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
         // seed 第二個 skill
         var skill2 = UUID.randomUUID().toString();
         var now = Instant.now();
-        skillRepo.save(Skill.fromRow(
+        savePublicSkill(Skill.fromRow(
                 skill2, "another-skill", "second skill", "alice", "devops", "1.0.0",
-                null, "PUBLISHED", 0L, now, now, List.of("public:*:read"), null));
+                null, "PUBLISHED", 0L, now, now, List.of(), null));
 
         asUser("bob");
         service.subscribe(skillId);
@@ -202,5 +206,10 @@ class SkillSubscriptionServiceTest extends RepositorySliceTestBase {
         service.subscribe(skillId);
 
         assertThat(service.findSubscriptionsOfCurrentUser()).containsExactly(skillId);
+    }
+
+    private void savePublicSkill(Skill skill) {
+        skillRepo.save(skill);
+        jdbcTemplate.update("UPDATE skills SET is_public = TRUE WHERE id = ?", skill.getId());
     }
 }

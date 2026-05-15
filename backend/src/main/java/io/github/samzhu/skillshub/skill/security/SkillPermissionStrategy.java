@@ -43,11 +43,19 @@ import io.github.samzhu.skillshub.shared.security.PermissionStrategy;
 public class SkillPermissionStrategy implements PermissionStrategy {
 
     /**
-     * acl_entries ?| :patterns — 任一 pattern 命中即 true。
+     * Read permission accepts public skills; write/delete stay explicit ACL only.
      *
      * <p>{@code ??|} 寫法詳 class Javadoc 與 spec §2.4 #2 [Implementation note: T1 verified]。
      */
-    private static final String SQL = """
+    private static final String READ_SQL = """
+            SELECT EXISTS (
+              SELECT 1 FROM skills
+               WHERE id = :skillId
+                 AND (is_public = TRUE OR acl_entries ??| :patterns)
+            )
+            """;
+
+    private static final String ACL_SQL = """
             SELECT EXISTS (
               SELECT 1 FROM skills
                WHERE id = :skillId
@@ -118,6 +126,7 @@ public class SkillPermissionStrategy implements PermissionStrategy {
                 // 對 Iterable<?> 的 IN-list 自動展開（會把 String[] 拆成 ?,?,? 破壞 ?| 語意）
                 .addValue("patterns", new SqlParameterValue(Types.ARRAY, patternsArray));
 
-        return Boolean.TRUE.equals(jdbc.queryForObject(SQL, params, Boolean.class));
+        var sql = "read".equals(permission) ? READ_SQL : ACL_SQL;
+        return Boolean.TRUE.equals(jdbc.queryForObject(sql, params, Boolean.class));
     }
 }

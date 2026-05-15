@@ -194,6 +194,19 @@ class DelegatingPermissionEvaluatorTest {
                 .isNull();
     }
 
+    @Test
+    @DisplayName("AC-S177-6: write permission is not granted by public visibility")
+    @Tag("AC-S177-6")
+    void writePermissionDoesNotReceivePublicPrincipal() {
+        var skillStub = new PrincipalAwareStrategy("Skill");
+        var evaluator = new DelegatingPermissionEvaluator(List.of(skillStub), currentUserStub);
+
+        var allowed = evaluator.hasPermission(aliceAuth, "abc-1", "Skill", "write");
+
+        assertThat(allowed).isFalse();
+        assertThat(skillStub.lastPrincipals).doesNotContain("public:*:write");
+    }
+
     // ---- helpers ----
 
     /** Test stub — 紀錄最後一次呼叫；可控制 supports / hasPermission 回傳值。 */
@@ -218,6 +231,26 @@ class DelegatingPermissionEvaluatorTest {
             this.lastInvokedTarget = target;
             this.lastInvokedPermission = permission;
             return returnValue;
+        }
+    }
+
+    private static final class PrincipalAwareStrategy implements PermissionStrategy {
+        private final String supportedType;
+        Set<String> lastPrincipals = Set.of();
+
+        PrincipalAwareStrategy(String supportedType) {
+            this.supportedType = supportedType;
+        }
+
+        @Override
+        public boolean supports(String targetType) {
+            return supportedType.equals(targetType);
+        }
+
+        @Override
+        public boolean hasPermission(Set<String> principals, Object target, String permission) {
+            this.lastPrincipals = principals;
+            return principals.contains("public:*:" + permission);
         }
     }
 

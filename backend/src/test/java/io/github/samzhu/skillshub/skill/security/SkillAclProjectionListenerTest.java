@@ -51,10 +51,11 @@ class SkillAclProjectionListenerTest {
 
     @Test
     @Tag("AC-1")
-    @DisplayName("AC-1: SkillCreatedEvent → OWNER grant auto-seeded; acl_entries has alice read/write/delete")
+    @DisplayName("AC-S177-1b: SkillCreatedEvent rebuilds ACL from create-time OWNER grant")
     void onSkillCreated_seedsOwnerGrantAndRebuildsAcl(Scenario scenario) {
         var skillId = UUID.randomUUID().toString();
         insertSkill(skillId, "alice");
+        grantRepo.save(SkillGrant.create(skillId, "user", "alice", Role.OWNER, "alice"));
 
         scenario.publish(new SkillCreatedEvent(skillId, "test-skill", "desc", "alice", "Test"))
                 .andWaitAtMost(java.time.Duration.ofSeconds(5))
@@ -68,7 +69,7 @@ class SkillAclProjectionListenerTest {
 
     @Test
     @Tag("AC-2")
-    @DisplayName("S169 AC-2: user EDITOR grant → skills/vector_store acl_entries contain read/write but not delete")
+    @DisplayName("AC-S177-5b: rebuild writes full skill ACL but read-only vector ACL")
     void onGranted_userEditor_rebuildsSkillsAndVectorAcl(Scenario scenario) {
         var skillId = UUID.randomUUID().toString();
         insertSkill(skillId, "alice");
@@ -85,7 +86,9 @@ class SkillAclProjectionListenerTest {
                 .andVerify(entries -> {
                     assertThat(entries).contains("user:bob:read", "user:bob:write");
                     assertThat(entries).doesNotContain("user:bob:delete");
-                    assertThat(loadVectorAclEntries(skillId)).containsExactlyInAnyOrderElementsOf(entries);
+                    assertThat(loadVectorAclEntries(skillId))
+                            .containsExactlyInAnyOrder("user:alice:read", "user:bob:read")
+                            .doesNotContain("user:alice:write", "user:alice:delete", "user:bob:write");
                 });
     }
 
@@ -106,7 +109,34 @@ class SkillAclProjectionListenerTest {
                 .andWaitForStateChange(() -> loadAclEntries(skillId))
                 .andVerify(entries -> {
                     assertThat(entries).contains("group:g_d4e5f6:read");
-                    assertThat(loadVectorAclEntries(skillId)).containsExactlyInAnyOrderElementsOf(entries);
+                    assertThat(loadVectorAclEntries(skillId))
+                            .containsExactlyInAnyOrder("user:alice:read", "group:g_d4e5f6:read")
+                            .doesNotContain("user:alice:write", "user:alice:delete");
+                });
+    }
+
+    @Test
+    @Tag("AC-S177-5b")
+    @DisplayName("AC-S177-5b: rebuild never writes public pseudo ACL into vector_store")
+    void onGranted_publicGrant_setsVectorPublicWithoutPublicPseudoAcl(Scenario scenario) {
+        var skillId = UUID.randomUUID().toString();
+        insertSkill(skillId, "alice");
+        insertVectorRow(skillId, "alice");
+        jdbc.update("UPDATE skills SET is_public = TRUE WHERE id = ?", skillId);
+
+        grantRepo.save(SkillGrant.create(skillId, "user", "alice", Role.OWNER, "alice"));
+        var publicGrant = SkillGrant.createWithId("pub" + UUID.randomUUID().toString().replace("-", "").substring(0, 9),
+                skillId, "public", "*", Role.VIEWER, "alice");
+        grantRepo.save(publicGrant);
+
+        scenario.publish(new SkillGrantedEvent(skillId, publicGrant.getId()))
+                .andWaitAtMost(java.time.Duration.ofSeconds(5))
+                .andWaitForStateChange(() -> loadVectorIsPublic(skillId))
+                .andVerify(isPublic -> {
+                    assertThat(isPublic).isTrue();
+                    assertThat(loadVectorAclEntries(skillId))
+                            .containsExactly("user:alice:read")
+                            .doesNotContain("public:*:read");
                 });
     }
 
@@ -192,6 +222,13 @@ class SkillAclProjectionListenerTest {
         return jdbc.query(
                 "SELECT jsonb_array_elements_text(acl_entries) FROM vector_store WHERE skill_id = ? AND acl_entries IS NOT NULL",
                 (rs, n) -> rs.getString(1),
+                skillId);
+    }
+
+    private Boolean loadVectorIsPublic(String skillId) {
+        return jdbc.queryForObject(
+                "SELECT is_public FROM vector_store WHERE skill_id = ?",
+                Boolean.class,
                 skillId);
     }
 }

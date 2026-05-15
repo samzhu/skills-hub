@@ -57,10 +57,10 @@ class SkillAggregateTest {
         assertThat(skill.getVersion()).isNull();
         assertThat(skill.isNew()).isTrue();
 
-        // S016 自動 seed author 為 owner — 與 legacy SkillProjection.on(SkillCreatedEvent) 同邏輯
-        // S026 + S114a: 加 "public:*:read" public-read entry — skill 預設對所有使用者開放讀取
+        // S177: 預設 PUBLIC 寫入 is_public；ACL 只保存 owner explicit permissions。
+        assertThat(skill.isPublic()).isTrue();
         assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
-                "user:alice:read", "user:alice:write", "user:alice:delete", "public:*:read");
+                "user:alice:read", "user:alice:write", "user:alice:delete");
 
         Collection<Object> events = retrieveDomainEvents(skill);
         assertThat(events).hasSize(1);
@@ -308,12 +308,13 @@ class SkillAggregateTest {
 
     @Test
     @Tag("AC-S041")
-    @DisplayName("AC-S041: author null（caller 顯式不傳）→ 允許，ACL 只 seed public:*:read（測試 fixture 用）")
+    @DisplayName("AC-S041: author null（caller 顯式不傳）→ 允許，PUBLIC 寫 is_public 且 ACL 為空（測試 fixture 用）")
     void create_nullAuthor_seedsPublicReadOnly() {
         var skill = Skill.create(new CreateSkillCommand("null-author-test", "desc", null, "devops"));
 
         assertThat(skill.getAuthor()).isNull();
-        assertThat(skill.getAclEntries()).containsExactly("public:*:read");
+        assertThat(skill.isPublic()).isTrue();
+        assertThat(skill.getAclEntries()).isEmpty();
     }
 
     @Test
@@ -424,13 +425,42 @@ class SkillAggregateTest {
 
     @Test
     @Tag("AC-S116-1")
-    @DisplayName("S116 AC-1: PUBLIC visibility (or 4-arg backward-compat) → acl_entries 含 public:*:read")
+    @DisplayName("S116 AC-1: PUBLIC visibility (or 4-arg backward-compat) → is_public=true 且 ACL 只含 owner")
     void s116_publicVisibility_includesPublicReadEntry() {
         // 4-arg backward-compat ctor delegates to 5-arg PUBLIC default
         var skill = Skill.create(new CreateSkillCommand("public-skill", "desc", "alice", "devops"));
 
+        assertThat(skill.isPublic()).isTrue();
         assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
-                "user:alice:read", "user:alice:write", "user:alice:delete", "public:*:read");
+                "user:alice:read", "user:alice:write", "user:alice:delete");
+    }
+
+    @Test
+    @Tag("AC-S177-1b")
+    @DisplayName("AC-S177-1b: public skill create persists is_public without public ACL entry")
+    void s177_publicSkillCreatePersistsIsPublicWithoutPublicAclEntry() {
+        var skill = Skill.create(new CreateSkillCommand(
+                "s177-public-skill", "desc", "alice", "devops",
+                io.github.samzhu.skillshub.skill.domain.Visibility.PUBLIC));
+
+        assertThat(skill.isPublic()).isTrue();
+        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
+                "user:alice:read", "user:alice:write", "user:alice:delete");
+        assertThat(skill.getAclEntries()).doesNotContain("public:*:read");
+    }
+
+    @Test
+    @Tag("AC-S177-1b")
+    @DisplayName("AC-S177-1b: private skill create persists is_public false without public grant")
+    void s177_privateSkillCreatePersistsIsPublicFalseWithoutPublicGrant() {
+        var skill = Skill.create(new CreateSkillCommand(
+                "s177-private-skill", "desc", "alice", "devops",
+                io.github.samzhu.skillshub.skill.domain.Visibility.PRIVATE));
+
+        assertThat(skill.isPublic()).isFalse();
+        assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
+                "user:alice:read", "user:alice:write", "user:alice:delete");
+        assertThat(skill.getAclEntries()).doesNotContain("public:*:read");
     }
 
     @Test
@@ -448,14 +478,15 @@ class SkillAggregateTest {
 
     @Test
     @Tag("AC-S116-2")
-    @DisplayName("S116 AC-2 explicit: PUBLIC visibility 顯式傳入 → 同 4-arg backward-compat 行為")
+    @DisplayName("S116 AC-2 explicit: PUBLIC visibility 顯式傳入 → is_public=true 且 ACL 只含 owner")
     void s116_explicitPublic_sameAsDefault() {
         var skill = Skill.create(new CreateSkillCommand(
                 "public-skill", "desc", "alice", "devops",
                 io.github.samzhu.skillshub.skill.domain.Visibility.PUBLIC));
 
+        assertThat(skill.isPublic()).isTrue();
         assertThat(skill.getAclEntries()).containsExactlyInAnyOrder(
-                "user:alice:read", "user:alice:write", "user:alice:delete", "public:*:read");
+                "user:alice:read", "user:alice:write", "user:alice:delete");
     }
 
     @Test
@@ -471,13 +502,14 @@ class SkillAggregateTest {
 
     @Test
     @Tag("AC-S116-1")
-    @DisplayName("S116 AC-1 corner: PUBLIC + author=null → 仍含 public:*:read（無 owner ACL 但公開讀取）")
+    @DisplayName("S116 AC-1 corner: PUBLIC + author=null → is_public=true（無 owner ACL 但公開讀取）")
     void s116_publicWithoutAuthor_seedsOnlyPublicRead() {
         var skill = Skill.create(new CreateSkillCommand(
                 "no-author", "desc", null, "devops",
                 io.github.samzhu.skillshub.skill.domain.Visibility.PUBLIC));
 
-        assertThat(skill.getAclEntries()).containsExactly("public:*:read");
+        assertThat(skill.isPublic()).isTrue();
+        assertThat(skill.getAclEntries()).isEmpty();
     }
 
     @Test
