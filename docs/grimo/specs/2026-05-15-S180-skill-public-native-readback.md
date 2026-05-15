@@ -1,7 +1,7 @@
 # S180 — Skill Public Native Readback Hotfix
 
 > SpecID: S180
-> Status: ⏳ local PASS — production deploy/log follow-up pending
+> Status: ⏳ deployed — Chrome logged-in validate page follow-up pending
 > Date: 2026-05-15
 > Size: XS(3)
 > Related: S168 GraalVM native boolean wrapper workaround, S177 is_public-first search visibility, S176 explicit publish skill name, S098a3-2 bundle-info endpoint
@@ -309,7 +309,71 @@ AC status:
 | AC-S180-1 | ✅ PASS | `JdbcConfigurationConverterTest.skillPublicSkill_mustBeBooleanWrapper`。 |
 | AC-S180-2 | ✅ PASS | `SkillAggregateTest.s180_publicSkillWrapperPreservesVisibilityBehavior` + existing S177 aggregate tests。 |
 | AC-S180-3 | ✅ PASS | `./gradlew processAot` exit 0。 |
-| AC-S180-4 | ⏳ Pending deploy | Need LAB deploy and manual verify: `/publish/validate?id=028cecf1-3326-4327-bbe9-28b4e6fab6d5` no longer shows 「無法載入 skill」。 |
-| AC-S180-5 | ⏳ Pending deploy | Need post-deploy `gcloud logging read` to confirm no `Skill.publicSkill ... java.lang.Integer` stacktrace in new revision logs。 |
+| AC-S180-4 | ⏳ PARTIAL | LAB route serves the validate SPA HTML with HTTP 200; unauthenticated API calls now return 401, not 400. Needs Chrome logged-in session to confirm the page no longer shows 「無法載入 skill」。 |
+| AC-S180-5 | ✅ PASS | New revision log shows incomplete event retry for the affected skill reached `SearchProjection onVersionPublished done`; no `Skill.publicSkill ... java.lang.Integer` entries in new revision logs。 |
 
 Roadmap note: `docs/grimo/specs/spec-roadmap.md` currently contains mixed S179 + S180 WIP rows. This S180 implementation commit intentionally does not stage roadmap to avoid committing unrelated S179 changes.
+
+### Production Deploy Evidence — 2026-05-15 17:03 UTC Tick
+
+Build input:
+
+- Source: clean `/private/tmp/skills-hub-s180-deploy` snapshot created from git `HEAD` (`04bb1ee`), so local S179 / roadmap draft changes were not uploaded.
+- Cloud Build id: `7120f0a3-db0f-4daf-8edb-43ad7147f0ec`.
+- Image: `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260515-170329`.
+- Build result: `SUCCESS`, finish time `2026-05-15T17:13:02Z`.
+
+Cloud Run deploy:
+
+```bash
+gcloud run services replace temp/service.rendered.yaml --region=asia-east1 --project=cfh-vibe-lab --quiet
+```
+
+Result: service `skillshub` routed traffic to revision `skillshub-00028-n7g`.
+
+Startup evidence:
+
+```text
+2026-05-15T17:13:53.756Z Starting AOT-processed SkillshubApplication using Java 25.0.2
+2026-05-15T17:13:58.097Z Tomcat started on port 8080
+2026-05-15T17:13:58.098Z Started SkillshubApplication in 5.421 seconds
+```
+
+S180 affected skill retry evidence:
+
+```text
+2026-05-15T17:13:58.108Z IncompleteEventRepublishTask : Republishing incomplete event publications
+2026-05-15T17:13:58.130Z SearchProjection onSkillCreated skillId=028cecf1-3326-4327-bbe9-28b4e6fab6d5 name=字幕
+2026-05-15T17:13:58.856Z SearchProjection onSkillCreated done skillId=028cecf1-3326-4327-bbe9-28b4e6fab6d5
+2026-05-15T17:13:58.183Z SearchProjection onVersionPublished skillId=028cecf1-3326-4327-bbe9-28b4e6fab6d5 version=1.0.0
+2026-05-15T17:13:58.984Z SearchProjection onVersionPublished done skillId=028cecf1-3326-4327-bbe9-28b4e6fab6d5
+```
+
+Log checks:
+
+```bash
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="skillshub" AND resource.labels.revision_name="skillshub-00028-n7g" AND textPayload:"Skill.publicSkill"' --project=cfh-vibe-lab --limit=20
+```
+
+Result: 0 entries.
+
+```bash
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="skillshub" AND resource.labels.revision_name="skillshub-00028-n7g" AND severity>=ERROR' --project=cfh-vibe-lab --limit=20
+```
+
+Result: 0 entries.
+
+HTTP checks:
+
+```bash
+curl -i -sS -L 'https://skillshub-644359853825.asia-east1.run.app/publish/validate?id=028cecf1-3326-4327-bbe9-28b4e6fab6d5'
+```
+
+Result: HTTP 200 and SPA HTML served.
+
+```bash
+curl -i -sS https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/028cecf1-3326-4327-bbe9-28b4e6fab6d5
+curl -i -sS https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/028cecf1-3326-4327-bbe9-28b4e6fab6d5/bundle-info
+```
+
+Result: both returned HTTP 401 `{"error":"UNAUTHORIZED","message":"Authentication required"}`. This proves the unauthenticated request no longer reaches the old 400 native mapping crash path, but it does not prove the logged-in validate page UI text. Next tick should use Chrome with an authenticated session to finish AC-S180-4.
