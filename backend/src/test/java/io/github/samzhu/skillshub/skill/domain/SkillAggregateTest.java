@@ -462,6 +462,28 @@ class SkillAggregateTest {
     }
 
     @Test
+    @Tag("AC-S180-2")
+    @DisplayName("AC-S180-2: Boolean publicSkill preserves visibility toggles and treats null as private")
+    void s180_publicSkillWrapperPreservesVisibilityBehavior() throws NoSuchFieldException, IllegalAccessException {
+        var skill = Skill.create(new CreateSkillCommand(
+                "s180-public-skill", "desc", "alice", "devops", Visibility.PUBLIC));
+
+        assertThat(skill.isPublic()).isTrue();
+
+        skill.makePrivate("alice", "grant-1");
+        assertThat(skill.isPublic()).isFalse();
+
+        skill.makePublic("alice", "grant-2");
+        assertThat(skill.isPublic()).isTrue();
+
+        var field = Skill.class.getDeclaredField("publicSkill");
+        field.setAccessible(true);
+        field.set(skill, null);
+
+        assertThat(skill.isPublic()).isFalse();
+    }
+
+    @Test
     @Tag("AC-S116-2")
     @DisplayName("S116 AC-2: PRIVATE visibility → acl_entries 不含 public:*:read")
     void s116_privateVisibility_excludesPublicReadEntry() {

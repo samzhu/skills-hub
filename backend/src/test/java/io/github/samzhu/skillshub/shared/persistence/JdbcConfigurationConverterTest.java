@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.samzhu.skillshub.notification.NotificationPreference;
 import io.github.samzhu.skillshub.shared.security.User;
+import io.github.samzhu.skillshub.skill.domain.Skill;
 
 /**
  * S168 — Regression guard：所有持久化 boolean column 的 entity field 必須宣告為
@@ -73,5 +74,17 @@ class JdbcConfigurationConverterTest {
                             + "詳 oracle/graal#5672 + JobRunr PR #1501。")
                     .isEqualTo(Boolean.class);
         }
+    }
+
+    @Test
+    @DisplayName("AC-S180-1: Skill.publicSkill 必為 Boolean wrapper（同上規避）")
+    @Tag("AC-S180-1")
+    void skillPublicSkill_mustBeBooleanWrapper() throws NoSuchFieldException {
+        var field = Skill.class.getDeclaredField("publicSkill");
+
+        assertThat(field.getType())
+                .as("Skill.publicSkill 必須是 Boolean (wrapper)。"
+                        + "詳 oracle/graal#5672 + spring-data-relational#2186。")
+                .isEqualTo(Boolean.class);
     }
 }

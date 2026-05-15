@@ -126,10 +126,13 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     @JsonIgnore
     @Column("acl_entries")
     private List<String> aclEntries;
-    /** S177: public visibility source-of-truth；ACL 不再保存 public pseudo-principal。 */
+    /**
+     * S180/S168 — public visibility source-of-truth；Boolean wrapper avoids GraalVM native
+     * primitive boolean MethodHandle corruption. DB column is NOT NULL, getter unboxing is safe.
+     */
     @JsonIgnore
     @Column("is_public")
-    private boolean publicSkill;
+    private Boolean publicSkill;
     /** S114a — owner_id maps to V16 schema column; derived from author at create time. */
     /** S158: ownerId 僅 Detail view 暴露 — list endpoint 不洩漏 owner identity（與 author 重複）。 */
     @JsonView(Views.Detail.class)
@@ -462,7 +465,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * S177 — public grant mirror toggles the source-of-truth column.
      */
     public void makePublic(String changedBy, String grantId) {
-        if (this.publicSkill) {
+        if (Boolean.TRUE.equals(this.publicSkill)) {
             return;
         }
         this.publicSkill = true;
@@ -474,7 +477,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * S177 — revoking the public grant makes the skill private again.
      */
     public void makePrivate(String changedBy, String grantId) {
-        if (!this.publicSkill) {
+        if (!Boolean.TRUE.equals(this.publicSkill)) {
             return;
         }
         this.publicSkill = false;
@@ -534,7 +537,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         return aclEntries == null ? List.of() : List.copyOf(aclEntries);
     }
     @JsonIgnore
-    public boolean isPublic() { return publicSkill; }
+    public boolean isPublic() { return Boolean.TRUE.equals(publicSkill); }
     public String getOwnerId() { return ownerId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
