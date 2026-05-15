@@ -1,6 +1,6 @@
 # S175 — Scan Native Binding Completeness Hotfix
 
-> Status: ⏳ production deployed; fresh upload retest pending
+> Status: ✅ fresh production upload PASS; shipping metadata pending
 > Date: 2026-05-15
 > Trigger: production upload scan failed after `POST /api/v1/skills/upload`
 > Related: S173, S148, S148b
@@ -132,3 +132,65 @@ gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.serv
 ```
 
 Interpretation: deployment is no longer pending, and no matching native binding error has appeared since the current image started serving. This is passive evidence only; S175 still needs a fresh authenticated upload retest that produces a new scan completion log and proves `ScanNotice` persistence works on the production native image.
+
+### Fresh Upload Retest (2026-05-16)
+
+Chrome production URL:
+
+```text
+https://skillshub-644359853825.asia-east1.run.app/publish
+```
+
+Steps:
+
+1. Chrome clicked `登入` from `/publish`; the page returned authenticated and showed author `朱尚禮 @csamzhu`.
+2. Chrome switched to `貼上文本`.
+3. Chrome submitted a new raw `SKILL.md` skill:
+
+```text
+skillName: s175-fresh-scan-20260515-210629
+version: 1.0.0
+category: Testing
+metadata.s175: fresh-upload-retest
+```
+
+Browser result:
+
+```text
+URL: /publish/review?id=8ee45695-c16e-4586-9869-9fdbe110ca88
+Page text:
+「s175-fresh-scan-20260515-210629」 v1.0.0 已成功發佈
+id: 8ee45695-c16e-4586-9869-9fdbe110ca88
+低風險
+狀態 PUBLISHED
+```
+
+Cloud Run request log:
+
+```text
+2026-05-15T21:06:42.563550Z skillshub-00030-rd2 POST /api/v1/skills/upload 201 latency=0.165019949s
+```
+
+Cloud Run application logs for skill `8ee45695-c16e-4586-9869-9fdbe110ca88`:
+
+```text
+2026-05-15T21:06:42.736Z SearchProjection onSkillCreated skillId=8ee45695-c16e-4586-9869-9fdbe110ca88 name=s175-fresh-scan-20260515-210629
+2026-05-15T21:06:45.227Z Multi-engine scan triggered for skill 8ee45695-c16e-4586-9869-9fdbe110ca88 version 1.0.0 (15 engines)
+2026-05-15T21:06:49.444Z Scan completed for skill 8ee45695-c16e-4586-9869-9fdbe110ca88 v1.0.0: level=LOW, findings=0
+```
+
+Native binding error query after the fresh upload timestamp:
+
+```text
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="skillshub" AND timestamp>="2026-05-15T21:06:29Z" AND (textPayload:"Record components not available" OR textPayload:"ScanNotice" OR textPayload:"ConversionFailedException" OR textPayload:"UnsupportedFeatureError")' --project=cfh-vibe-lab --limit=50 --format='value(timestamp,resource.labels.revision_name,severity,textPayload)'
+<empty>
+```
+
+Error severity query after the fresh upload timestamp:
+
+```text
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="skillshub" AND timestamp>="2026-05-15T21:06:29Z" AND severity>=ERROR' --project=cfh-vibe-lab --limit=20 --format='value(timestamp,resource.labels.revision_name,severity,textPayload)'
+<empty>
+```
+
+Result: PASS. The production native image accepted a fresh authenticated upload, completed the 15-engine scan, persisted the scan result, and produced no S175-family native binding error after the upload.
