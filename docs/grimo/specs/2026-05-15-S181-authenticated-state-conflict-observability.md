@@ -390,3 +390,41 @@ Pending release actions after the dirty state is split or cleaned:
 - Move this spec to `docs/grimo/specs/archive/`.
 - Delete `docs/grimo/tasks/2026-05-15-S181-*.md`.
 - Update `docs/grimo/CHANGELOG.md` and the S181 row in `docs/grimo/specs/spec-roadmap.md`.
+
+### Full-Suite Stability Fix — PASS (2026-05-16)
+
+S175 shipping preflight exposed a full-suite failure in the S181 test:
+
+```text
+GlobalExceptionHandlerTest > AC-S181-1/2/3/5: IllegalStateException 409 logs request metadata and preserves response body FAILED
+java.lang.AssertionError at GlobalExceptionHandlerTest.java:470
+```
+
+Root cause: the test asserted the S181 structured log by reading the whole captured console
+string through `CapturedOutput`. In the full backend suite, that made the assertion depend on
+when the log line had been flushed into the shared captured output buffer. The production
+code already emitted the `STATE_CONFLICT` key-value fields; the unstable part was the test
+observation method.
+
+Fix:
+
+- `GlobalExceptionHandlerTest.stateConflictLogsRequestMetadataAndPreservesResponse` now
+  attaches a Logback `ListAppender<ILoggingEvent>` directly to the
+  `GlobalExceptionHandler` logger.
+- The test asserts the actual logging event message and key-value pairs:
+  `errorCode`, `path`, `method`, `exceptionClass`, `message`, `rootCauseClass`,
+  `rootCauseMessage`.
+- The same event assertion still checks the log payload does not include Authorization,
+  bearer token, cookie, session id, email, or OAuth subject fixture strings.
+
+Verification:
+
+```text
+cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.api.GlobalExceptionHandlerTest
+BUILD SUCCESSFUL in 1m 59s
+
+cd backend && ./gradlew clean test jacocoTestReport
+BUILD SUCCESSFUL in 4m 40s
+```
+
+Result: PASS. The S181 full-suite blocker recorded by S175 is fixed.
