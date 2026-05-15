@@ -214,3 +214,49 @@ Release actions still pending:
 3. Add final release metadata for S175 (`§7 Implementation Results` / final size re-score if required by `$shipping-release`), update changelog, update roadmap, and archive the spec.
 
 Result: BLOCKED by unrelated dirty state. No S175 code change is pending.
+
+### Shipping Preflight Retest — BLOCKED (2026-05-16)
+
+Current tick reran the repository verification command after the S179/S180 docs were
+committed:
+
+```bash
+./scripts/verify-all.sh
+```
+
+Result:
+
+```text
+V01=FAIL V02=SKIP V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS
+Verdict: 1 CRITICAL failure(s); exit=1
+```
+
+V01 failure detail from `verify-all.log`:
+
+```text
+GlobalExceptionHandlerTest > AC-S181-1/2/3/5: IllegalStateException 409 logs request metadata and preserves response body FAILED
+java.lang.AssertionError at GlobalExceptionHandlerTest.java:470
+
+990 tests completed, 1 failed, 7 skipped
+Execution failed for task ':test'.
+```
+
+Interpretation: S175 production evidence and native image build remain green, but
+`$shipping-release` cannot run because the current full gate failed in an unrelated S181
+backend test. The same verify-all run continued after V01 and proved:
+
+- V03 `./gradlew jacocoTestCoverageVerification`: PASS.
+- V04 `cd frontend && npm test`: PASS.
+- V05 `cd frontend && npm run verify`: PASS.
+- V06 `cd frontend && npm test -- --coverage`: PASS.
+- V07 `cd e2e && npx playwright test --grep @happy-path`: PASS.
+- V08a `./gradlew processAot`: PASS.
+- V08b `./gradlew bootBuildImage`: PASS; built `docker.io/library/skillshub-verify:local`.
+
+Worktree status also contains unrelated S183 / grants UI changes, so this tick only records
+the S175 blocker note and does not stage those files.
+
+Result: BLOCKED by current-tick verify-all V01 failure. Next tick should fix or isolate
+`GlobalExceptionHandlerTest.stateConflictLogsRequestMetadataAndPreservesResponse`, rerun
+`./scripts/verify-all.sh`, then complete S175 changelog / roadmap / archive via
+`$shipping-release`.
