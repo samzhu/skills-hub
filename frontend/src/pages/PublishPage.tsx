@@ -31,6 +31,7 @@ export function PublishPage() {
   const [mode, setMode] = useState<Mode>('file')
   const [file, setFile] = useState<File | null>(null)
   const [skillMdText, setSkillMdText] = useState('')
+  const [skillName, setSkillName] = useState('')
   // S099b3: 文本 mode preview pane toggle
   const [showPreview, setShowPreview] = useState(false)
   // 預填 1.0.0 作為首次發佈的慣例起始版本
@@ -53,7 +54,7 @@ export function PublishPage() {
         ? new File([skillMdText], 'SKILL.md', { type: 'text/markdown' })
         : file
       if (!submitFile) throw new Error('請選取檔案或貼上 SKILL.md 內容')
-      return uploadSkill(submitFile, version, category, visibility)
+      return uploadSkill(submitFile, skillName.trim(), version, category, visibility)
     },
     onSuccess: (data) => {
       navigate(`/publish/validate?id=${data.id}`)
@@ -86,6 +87,7 @@ export function PublishPage() {
 
   // submit disable rule per mode；text mode 加 frontmatter validation gate
   const submitDisabled = mutation.isPending
+    || skillName.trim().length === 0
     || (mode === 'file'
       ? !file
       : skillMdText.trim().length === 0 || fmValidation.errors.length > 0)
@@ -115,6 +117,23 @@ export function PublishPage() {
             {mode === 'file' ? '上傳 Skill 套件' : '貼上 SKILL.md 內容'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="publish-skill-name" className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">技能名稱</label>
+              <Input
+                id="publish-skill-name"
+                value={skillName}
+                onChange={(e) => setSkillName(e.target.value)}
+                placeholder="transcribe-video"
+                required
+                maxLength={64}
+                pattern="[a-z0-9-]{1,64}"
+                title="小寫英數與 hyphen，最多 64 字元"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                小寫英數與 hyphen，最多 64 字元。這是平台列表顯示名稱。
+              </p>
+            </div>
+
             {mode === 'file' ? (
               <FileDropZone onFileSelect={setFile} selectedFile={file} />
             ) : (

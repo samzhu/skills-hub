@@ -151,7 +151,7 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
     expect(screen.queryByText(/代發名稱/)).toBeNull()
   })
 
-  it('AC-10: 表單提交時 FormData 不含 author key（uploadSkill signature drop author）', async () => {
+  it('AC-S176-1: 表單提交時 FormData 含 skillName 且不含 author key', async () => {
     // 攔截 fetch 取出 FormData 檢查
     let capturedForm: FormData | null = null
     const fetchSpy = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
@@ -173,8 +173,10 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
     fireEvent.click(screen.getByRole('button', { name: /貼上文本/ }))
     const textarea = screen.getByPlaceholderText(/name: my-skill/) as HTMLTextAreaElement
     fireEvent.change(textarea, {
-      target: { value: '---\nname: my-skill\ndescription: a useful skill\n---\n# body' },
+      target: { value: '---\nname: internal-package-name\ndescription: a useful skill\n---\n# body' },
     })
+    const skillNameInput = screen.getByLabelText('技能名稱') as HTMLInputElement
+    fireEvent.change(skillNameInput, { target: { value: 'platform-skill' } })
     const categoryInput = screen.getByPlaceholderText('DevOps') as HTMLInputElement
     fireEvent.change(categoryInput, { target: { value: 'DevOps' } })
 
@@ -189,10 +191,30 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
     // FormData entries 確認不含 author key
     const keys = Array.from(capturedForm!.keys())
     expect(keys).not.toContain('author')
+    expect(capturedForm!.get('skillName')).toBe('platform-skill')
     // sanity — 其他必要欄位仍在
     expect(keys).toContain('file')
     expect(keys).toContain('version')
     expect(keys).toContain('category')
     expect(keys).toContain('visibility')
+  })
+
+  it('AC-S176-1: 缺少技能名稱時發佈按鈕 disabled', async () => {
+    renderPublishPage()
+
+    fireEvent.click(screen.getByRole('button', { name: /貼上文本/ }))
+    const textarea = screen.getByPlaceholderText(/name: my-skill/) as HTMLTextAreaElement
+    fireEvent.change(textarea, {
+      target: { value: '---\nname: internal-package-name\ndescription: a useful skill\n---\n# body' },
+    })
+    const categoryInput = screen.getByPlaceholderText('DevOps') as HTMLInputElement
+    fireEvent.change(categoryInput, { target: { value: 'DevOps' } })
+
+    const submitBtn = screen.getByRole('button', { name: /發佈技能/ })
+    expect(submitBtn).toBeDisabled()
+
+    const skillNameInput = screen.getByLabelText('技能名稱') as HTMLInputElement
+    fireEvent.change(skillNameInput, { target: { value: 'platform-skill' } })
+    await waitFor(() => expect(submitBtn).not.toBeDisabled())
   })
 })

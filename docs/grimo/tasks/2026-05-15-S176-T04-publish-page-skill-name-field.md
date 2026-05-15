@@ -64,4 +64,32 @@ And（而且）缺少技能名稱時，「發佈技能」按鈕 disabled
 - S176-T02 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-15）
+
+## 實作結果
+- `PublishPage` 新增 required「技能名稱」欄位，`id="publish-skill-name"`，限制 64 字元、小寫英數與 hyphen，並顯示平台列表名稱說明文字。
+- 發佈按鈕 disabled 條件新增 `skillName.trim().length === 0`；使用者缺技能名稱時不能送出。
+- `PublishPage` 呼叫 `uploadSkill(submitFile, skillName.trim(), version, category, visibility)`。
+- `frontend/src/api/skills.ts uploadSkill(...)` signature 新增 `skillName`，multipart `FormData` 會 append `skillName`，仍不 append `author`。
+- `PublishPage.test.tsx` 新增 `AC-S176-1` 驗證：FormData 含 `skillName="platform-skill"`、不含 `author`，且缺技能名稱時 submit button disabled。
+
+## 驗證結果
+Red：
+
+```bash
+/Users/samzhu/.nvm/versions/node/v20.19.3/bin/npm test -- PublishPage.test.tsx
+```
+
+Result: 2 failed / 9 passed；失敗點為找不到 `技能名稱` label，以及缺技能名稱時「發佈技能」按鈕仍未 disabled。
+
+Green：
+
+```bash
+/Users/samzhu/.nvm/versions/node/v20.19.3/bin/npm test -- PublishPage.test.tsx
+```
+
+Result: 1 file passed / 11 tests passed.
+
+## 環境
+- Required Node.js 20 satisfied via `/Users/samzhu/.nvm/versions/node/v20.19.3/bin/node` (`v20.19.3`)。
+- `frontend/node_modules` present。

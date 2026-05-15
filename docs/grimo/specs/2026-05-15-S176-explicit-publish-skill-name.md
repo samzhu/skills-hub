@@ -412,3 +412,23 @@ cd backend && ./gradlew test --tests "*SkillUploadAllowedToolsTest" --tests "*Sk
 Red result: `SkillUploadAllowedToolsTest > AC-S176-5... FAILED`，`addVersion(...)` 在舊 name mismatch guard 丟 `IllegalArgumentException`。
 
 Green result: `BUILD SUCCESSFUL in 2m 31s`
+
+### T04 — PASS（2026-05-15）
+
+Commit message `feat: require publish page skill name`：
+
+- `PublishPage` 新增 required「技能名稱」欄位，並在欄位下方顯示「小寫英數與 hyphen，最多 64 字元。這是平台列表顯示名稱。」
+- `submitDisabled` 新增 `skillName.trim().length === 0`，缺技能名稱時不能送出。
+- `PublishPage` 呼叫 `uploadSkill(submitFile, skillName.trim(), version, category, visibility)`。
+- `frontend/src/api/skills.ts uploadSkill(...)` 新增 `skillName` 參數，multipart `FormData` 會 append `skillName`，仍不送 `author`。
+- `PublishPage.test.tsx` 新增 `AC-S176-1`：送出 text-mode SKILL.md 時 FormData 含 `skillName="platform-skill"`、不含 `author`，且缺技能名稱時「發佈技能」按鈕 disabled。
+
+Verification:
+
+```bash
+cd frontend && /Users/samzhu/.nvm/versions/node/v20.19.3/bin/npm test -- PublishPage.test.tsx
+```
+
+Red result: 2 failed / 9 passed；失敗點為找不到 `技能名稱` label，以及缺技能名稱時 submit button 仍未 disabled。
+
+Green result: 1 file passed / 11 tests passed.

@@ -360,10 +360,10 @@ export function fetchCategories(): Promise<CategoryCount[]> {
  * 因為 `FormData` body 必須讓瀏覽器自動設定 `Content-Type: multipart/form-data; boundary=...`，
  * 若透過 `apiFetch` 手動設定 header 會導致 boundary 遺失而解析失敗。
  *
- * @param file     技能 zip 套件
- * @param version  語意化版本號（SemVer，如 1.0.0）
- * @param author   作者名稱
- * @param category 技能分類
+ * @param file      技能 zip 套件
+ * @param skillName 平台列表顯示用技能名稱
+ * @param version   語意化版本號（SemVer，如 1.0.0）
+ * @param category  技能分類
  * @returns 後端分配的技能 UUID
  */
 /**
@@ -376,11 +376,13 @@ export type Visibility = 'PUBLIC' | 'PRIVATE'
 // 取 author（caller body silent ignored），前端不再送以對齊 authoritative ownership semantics。
 export async function uploadSkill(
   file: File,
+  skillName: string,
   version: string,
   category: string,
   visibility: Visibility = 'PUBLIC',
 ): Promise<{ id: string }> {
   const form = new FormData()
+  form.append('skillName', skillName)
   form.append('file', file)
   form.append('version', version)
   form.append('category', category)
