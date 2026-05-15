@@ -33,7 +33,7 @@
 | **security** | **Event-driven service** | 無 | 訂閱 `SkillVersionPublishedEvent` 觸發風險評估，透過 `SkillVersion.attachRiskAssessment` 回寫；S147 起 `ScanContext.packageFiles` 掃 zip 內所有 UTF-8 文字檔，`IssueDetector` / `LlmIssueRule` 產出 issue-code findings；`SecurityReportService` + `SecurityReportController` 回傳 legacy `checks` 與新 `categories/findings` |
 | **search** | **Read-side projection** | 無 | 消費 skill events 建構搜尋索引（keyword + semantic） |
 | **analytics** | **Read-side projection** | 無 | 消費 download events 建構統計數據 |
-| **audit** | **Cross-cutting listener** | 無 | 訂閱所有 7 個 Skill domain events 寫入 `domain_events` audit log（async + idempotent；S024 引入；S167b 移除 SkillAclGranted/Revoked 兩個 dead events） |
+| **audit** | **Cross-cutting listener** | 無 | 訂閱所有 8 個 Skill domain events 寫入 `domain_events` audit log（async + idempotent；S024 引入；S167b 移除 SkillAclGranted/Revoked 兩個 dead events；S177 新增 SkillVisibilityChanged） |
 | **score** | **Async LLM judge** | `SkillScore`（per-axis evaluation row） | S135a 引入；訂閱 `SkillVersionPublishedEvent` → 3-axis 品質評分（VALIDATION rule-based + IMPLEMENTATION/ACTIVATION Gemini 2.5 Flash LLM judge）→ 寫 `skill_scores` 表；獨立 `qualityExecutor` pool（corePool=1, queue=500）避免擠 `applicationTaskExecutor`；S142b 加 `SkillScoreCalculator`（composite `round(0.6 × quality + 0.4 × security)` → `skillScore` field in `/scores` response） |
 | **storage** | **Infrastructure service** | 無 | 傳統 service，GCS 操作 |
 
@@ -70,7 +70,7 @@ Command → Service.@Transactional method:
     - 各 listener 完成 → event_publication.completion_date = now()
 ```
 
-### Domain Events（skill domain；7 個 — S167b 後）
+### Domain Events（skill domain；8 個 — S177 後）
 
 | Event | Trigger | Payload |
 |-------|---------|---------|
@@ -79,6 +79,7 @@ Command → Service.@Transactional method:
 | `SkillVersionPublishedFromAggregate` | `Skill.recordVersionPublished(version)`（state-change marker） | version |
 | `SkillSuspendedEvent` | `Skill.suspend(cmd)` | reason, suspendedBy |
 | `SkillReactivatedEvent` | `Skill.reactivate(cmd)` | reason |
+| `SkillVisibilityChangedEvent` | `Skill.makePublic(...)` / `Skill.makePrivate(...)` | isPublic, publicGrantId, changedBy, changedAt |
 | `SkillDownloadedEvent` | `Skill.recordDownload()` | version, eventId |
 | `SkillRiskAssessedEvent` | `SkillVersion.attachRiskAssessment(map)` | skillId, version, level, findings |
 
