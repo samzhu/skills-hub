@@ -1,6 +1,6 @@
 # S175 — Scan Native Binding Completeness Hotfix
 
-> Status: ✅ implemented locally; production deploy pending
+> Status: ⏳ production deployed; fresh upload retest pending
 > Date: 2026-05-15
 > Trigger: production upload scan failed after `POST /api/v1/skills/upload`
 > Related: S173, S148, S148b
@@ -105,3 +105,30 @@ cd backend
 Result: `BUILD SUCCESSFUL in 2m 8s`. The command also completed `processTestAot`
 before running the selected tests, so the new configuration classes do not break the Spring
 test AOT phase.
+
+### Production Deploy Evidence (2026-05-16)
+
+S175 code commit `a934819 fix(scan): register native binding records` is older than the image deployed for S181/S180 recovery. That image is currently serving as Cloud Run revision `skillshub-00030-rd2`.
+
+Revision check:
+
+```text
+gcloud run revisions list --service=skillshub --region=asia-east1 --project=cfh-vibe-lab --format='value(metadata.name,status.conditions[0].status,status.conditions[0].type,spec.containers[0].image)' --limit=5
+skillshub-00030-rd2  True  Ready  asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub@sha256:b88d8111289683ff0a11fe35222832988b181d604b220feab3ac74a4c4d44068
+```
+
+Native binding error log check after the S181/S180 deploy timestamp:
+
+```text
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="skillshub" AND timestamp>="2026-05-15T19:22:00Z" AND (textPayload:"Record components not available" OR textPayload:"ScanNotice" OR textPayload:"ConversionFailedException" OR textPayload:"UnsupportedFeatureError")' --project=cfh-vibe-lab --limit=20 --format='value(timestamp,resource.labels.revision_name,severity,textPayload)'
+<empty>
+```
+
+Fresh scan activity check on the current ready revision:
+
+```text
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="skillshub" AND resource.labels.revision_name="skillshub-00030-rd2" AND timestamp>="2026-05-15T19:22:00Z" AND textPayload:"multi-engine scan completed"' --project=cfh-vibe-lab --limit=10 --format='value(timestamp,severity,textPayload)'
+<empty>
+```
+
+Interpretation: deployment is no longer pending, and no matching native binding error has appeared since the current image started serving. This is passive evidence only; S175 still needs a fresh authenticated upload retest that produces a new scan completion log and proves `ScanNotice` persistence works on the production native image.
