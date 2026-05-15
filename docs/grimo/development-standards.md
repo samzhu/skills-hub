@@ -240,6 +240,29 @@ void serializesCorrectly() throws Exception {
 
 > **Spring Boot 4 / Jackson 3 customization**：用 `JsonMapperBuilderCustomizer` bean 比 yaml `spring.jackson.mapper.*` property 更穩定（property namespace 隨版本可能變動，bean 是 program-level explicit）。詳 `shared.api.JacksonConfiguration`。
 
+### GraalVM Native Image 開發規範（S148b / S168 / S173 / S175）
+
+Production 跑 GraalVM native image；本機 JVM 測試通過不代表 Cloud Run native binary 會通過。任何會靠 reflection、Jackson binding、Spring AI structured output、AOT build-time bean discovery 的變更，都要先照這段檢查。
+
+- **先判斷資料型別是否跨 reflection boundary**：新增或修改 record/class 時，先問它是否會被 `ChatClient.entity(...)`、`BeanOutputConverter`、Jackson 反序列化、SARIF/JSON parser、`JsonMapper.convertValue(...)`、controller 外的 background listener 使用。會的話要加 native hint；只被一般 Java method call 使用，不需要為了安心亂加 hint。
+- **Controller request/response 不是唯一風險點**：Spring AOT 通常能推到 `@RestController` 的 request/response type；S175 的 production 問題發生在 scan listener 內部 JSON record，不在 HTTP controller 邊界。async listener、scheduled job、outbox consumer、scanner/parser 內部 DTO 要自己檢查。
+- **hint 放在型別所在 module/package 附近**：package-private DTO 用 package-local native config class；公開 DTO 則放在該 module 的 native config。使用 `@RegisterReflectionForBinding(...)` 註冊 root record 與 nested record/classes，並補一個 guard test（例如 `ScanNativeConfigTest` 或 repo-wide `StructuredOutputNativeHintCoverageTest`）。
+- **Error 要在 background path 被吃掉並轉成可恢復結果**：native missing metadata 常丟 `MissingReflectionRegistrationError`，它是 `Error` 不是 `Exception`。如果發生在 `@ApplicationModuleListener` / scheduled retry / scan pipeline，caller 必須 catch `Error`，log 出 skill/version/source event id，回 empty/noop output，不能讓 outbox event 無限 retry。
+- **AOT profile 會 bake into image**：`processAot` 用 `-Pspring.profiles.active=aot,gcp,{lab|prod}` 決定 build-time active profiles；runtime `SPRING_PROFILES_ACTIVE` 不能移除已 baked 的 profile。需要 native 可見的 bean definition 不要用 runtime secret 或 `@ConditionalOnProperty` 擋掉；在 factory method 裡用 runtime 值分支。
+- **AOT 階段不能碰真 DB / GCP credential**：`application-aot.yaml` 和 `AotStubConfig` 是 build-time stub。新 auto-config / `@Bean` 不可在 AOT processing 時要求 Cloud SQL、Secret Manager、OAuth client 真值或外部網路；必要時在 aot profile 關閉該 auto-config，runtime profile 再開回。
+- **Spring Data JDBC primitive boolean 仍受 GraalVM issue 影響**：`JdbcConfiguration.IntegerToBooleanConverter` 是全域 workaround。新增 entity primitive boolean 欄位時不需要另寫 converter，但升 Spring Boot / GraalVM 前要查 upstream issue 狀態並用 native test 直讀該欄位。
+- **用 fast-fail 補 production 前證據**：native 相關 spec 或 deploy-day 必跑 `cd backend && ./gradlew nativeCompile -PexactReachability=true`，讓專案 package 內 missing reflection metadata 在 build 階段失敗；平常可用 `processTestAot` / targeted tests 先縮短回饋。
+- **不要把 native workaround 只寫在 source comment**：根因、官方文件依據、取捨、哪些型別要 hint、哪些不用 hint，寫進 spec §2/§7 或 ADR；source comment 只留 spec id + 一句話。
+- **SBOM / nativeCompile 衝突仍是已知事項**：`cyclonedx-bom` 3.2.4 與 native task graph 衝突未解；需要 SBOM 或升 plugin 時先看 S148f 與 Upstream Issue Tracking，不要直接恢復 plugin 讓 native build 壞掉。
+
+Reviewer checklist：
+
+1. 這次新增的 record/class 是否被 reflection/Jackson/LLM structured output/background parser 使用？
+2. 若是，是否有 `@RegisterReflectionForBinding` 和 guard test？
+3. background path 是否 catch `Error`，且不會讓 outbox 無限 retry？
+4. `processAot` 是否不需要真 DB、GCP credential、Secret Manager、OAuth 真值？
+5. spec §7 是否記錄 native/AOT 驗證命令與結果？
+
 ## Configuration Best Practices (S009)
 
 - **Pure values in YAML** — `skillshub.*` properties must not use `${...}` placeholder indirection. Relaxed binding handles env var override automatically (e.g., `SKILLSHUB_GENAI_API_KEY`).
