@@ -28,6 +28,7 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
 
       // 切到 text mode（textarea 比 file upload 在 e2e 更穩）
       await page.getByRole('button', { name: '貼上文本' }).click();
+      await page.getByLabel('技能名稱').fill('ac3-publish-helper');
 
       // 純 SKILL.md（無 scripts/）— 含必填 frontmatter name + description；
       // 觸發 backend security scanner happy path → riskLevel = NONE/LOW
