@@ -1,6 +1,6 @@
 # S176: Explicit Publish Skill Name（發佈頁手填平台 skill name + 允許重名）
 
-> Spec: S176 | Size: S(7) | Status: 🚧 In Progress
+> Spec: S176 | Size: S(7) | Status: ✅ Verify-All PASS — Shipping Pending
 > Date: 2026-05-15
 > Depends: S003 ✅, S004 ✅, S032 ✅（本 spec 修改其 invariant）, S154b ✅, S173 ✅
 > Trigger: production upload after S175 deploy — 使用者重新上傳 skill 時，Cloud Run log 出現 `skills.name` unique constraint 409；使用者要求「skill name 不做重複檢查，加一個欄位是 skill name，不是直接拿 zip 檔名稱當 skill name」。
@@ -489,10 +489,24 @@ cd e2e && /Users/samzhu/.nvm/versions/node/v20.19.3/bin/npx playwright test --gr
 
 Result: `9 passed (27.9s)`.
 
-Pending Phase 4 retry:
+### Phase 4 Retry — PASS（2026-05-15）
 
 ```bash
 SKIP_NATIVE=1 ./scripts/verify-all.sh
 ```
 
-Expected: V01/V03/V04/V05/V06/V07/V08a PASS, V08b SKIP, exit=0.
+Result:
+
+- V01 PASS
+- V02 INFO：LINE coverage = 85.9%（covered=4622 / total=5382）
+- V03 PASS
+- V04 PASS
+- V05 PASS
+- V06 PASS
+- V07 PASS
+- V08a PASS
+- V08b SKIP（`SKIP_NATIVE=1` dev opt-out）
+
+Verdict: all CRITICAL passed; exit=0.
+
+S176 is ready for `$shipping-release` follow-up. Production deploy/log retest remains the post-release verification step because this tick only ran local deterministic verification.
