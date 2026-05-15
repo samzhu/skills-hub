@@ -1665,3 +1665,39 @@ typecheck: 0 errors
 ### Round 68 Summary
 
 - Tick 133: **BLOCKED** — Chrome plugin 通訊中斷，negative deep-link DOM 檢查未完成。下次 tick 若 user 允許開 Chrome window，可重跑 68.1-68.4；若仍失敗，請從 Codex plugin UI 重裝 Chrome plugin。
+
+---
+
+## Tick 134 — Mode B Round 68 Retry（Negative Deep-Link Chrome DOM Check），2026-05-15
+
+> User 允許重新連線 Chrome 後重跑 Round 68。Chrome extension 可建立 controllable tab，正式站首頁 DOM 可讀，console error/warn empty。
+
+### Chrome DOM 結果
+
+| # | URL | Expected | Actual | Result |
+|---|-----|----------|--------|--------|
+| 68.1 | `/skills/00000000-0000-0000-0000-000000000000` | 「找不到此技能」且不顯示 retry hint | 顯示「載入技能時發生錯誤」+「請稍後重試或重新整理頁面」+「返回列表」 | **BUG Y** |
+| 68.2 | `/collections/00000000-0000-0000-0000-000000000000` | 「找不到此集合。」+「返回集合列表」 | 符合；console error/warn 0 | ✅ |
+| 68.3 | `/requests/00000000-0000-0000-0000-000000000000` | 「找不到此需求。」+「回需求看板」 | 符合；console error/warn 0 | ✅ |
+| 68.4 | `/definitely-not-a-real-route` | 「找不到此頁面。」+ 回首頁 action | 顯示「找不到此頁面。」+「回到首頁」；console error/warn 0 | ✅（文案為現行程式碼） |
+
+### Bug Y — Skill detail missing id 被 auth gate 擋成 401
+
+- URL：`https://skillshub-644359853825.asia-east1.run.app/skills/00000000-0000-0000-0000-000000000000`
+- 操作步驟：Chrome 開上述 URL，等待 DOM ready。
+- 預期結果：S153/S122 設計下，400/403/404 對 user 都顯示「找不到此技能」，且不顯示「請稍後重試或重新整理頁面」。
+- 實際結果：DOM 顯示「載入技能時發生錯誤」與「請稍後重試或重新整理頁面」。
+- Browser console error/warn：0。
+- Failed network response：`GET /api/v1/skills/00000000-0000-0000-0000-000000000000` → `401 application/json`，body `{"error":"UNAUTHORIZED","message":"Authentication required","timestamp":"2026-05-15T01:17:23.919586761Z"}`。
+- Comparison responses：`GET /api/v1/collections/{same-id}` → `404 COLLECTION_NOT_FOUND`；`GET /api/v1/requests/{same-id}` → `404 REQUEST_NOT_FOUND`。
+- Cloud Run logs：`2026-05-15T01:17:23.912541Z WARNING GET /api/v1/skills/... 401`；application log 同秒 `GlobalExceptionHandler : Access denied`；最近 30m `severity>=ERROR` 0 rows。
+- Root-cause hypothesis：`SkillQueryController.getById` 有 `@PreAuthorize("hasPermission(#id, 'Skill', 'read')")`，anonymous missing-id 在 method body 查 DB 之前就被 `DelegatingPermissionEvaluator` fail-secure 擋成 401；collection/request detail 沒有同樣的 pre-authorize gate，所以能先查到 not-found 404。
+- 影響 spec / AC：S153 skill detail not-found UX、S122 read-side ACL gate、S169 permission contract；缺口是 production Chrome negative deep-link 沒覆蓋 anonymous missing skill id。
+
+### Follow-up
+
+- 新增 roadmap planned row：S174 `Skill detail anonymous 401 not-found UX`。下一輪 Decision Tree 應進 Mode A，用 `$planning-spec S174` 設計修法（候選方向：missing-id 先回 404、private existing anonymous 仍 401/403/找不到；避免洩漏 private skill existence）。
+
+### Round 68 Retry Summary
+
+- Tick 134: 4 Chrome DOM cases / **1 bug found**（Bug Y），已新增 S174 planned row；下次 tick 切回 Mode A 設計 S174。
