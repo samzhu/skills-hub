@@ -31,9 +31,9 @@ class IsPublicFirstMigrationTest {
     private NamedParameterJdbcTemplate jdbc;
 
     @Test
-    @DisplayName("AC-S177-1: migration converts skills.is_public to ordinary boolean and adds vector_store.is_public")
+    @DisplayName("AC-S177-1: migration keeps skills.is_public as ordinary boolean")
     @Tag("AC-S177-1")
-    void migrationConvertsSkillsIsPublicAndAddsVectorStoreIsPublic() {
+    void migrationKeepsSkillsIsPublicAsOrdinaryBoolean() {
         var skillColumn = jdbc.queryForMap("""
                 SELECT data_type, is_nullable, column_default, generation_expression
                 FROM information_schema.columns
@@ -47,26 +47,13 @@ class IsPublicFirstMigrationTest {
                 .isNullOrEmpty();
         assertThat(((String) skillColumn.get("column_default")).toLowerCase())
                 .contains("false");
-
-        var vectorColumn = jdbc.queryForMap("""
-                SELECT data_type, is_nullable, column_default, generation_expression
-                FROM information_schema.columns
-                WHERE table_name = 'vector_store' AND column_name = 'is_public'
-                """, Map.of());
-
-        assertThat(vectorColumn.get("data_type")).isEqualTo("boolean");
-        assertThat(vectorColumn.get("is_nullable")).isEqualTo("NO");
-        assertThat((String) vectorColumn.get("generation_expression")).isNullOrEmpty();
-        assertThat(((String) vectorColumn.get("column_default")).toLowerCase())
-                .contains("false");
     }
 
     @Test
-    @DisplayName("AC-S177-1: migration removes public ACL pseudo entry from skills and vector_store")
+    @DisplayName("AC-S177-1: migration removes public ACL pseudo entry from skills")
     @Tag("AC-S177-1")
-    void migrationCleanupRemovesPublicPseudoAclEntries() {
+    void migrationCleanupRemovesPublicPseudoAclEntriesFromSkills() {
         var skillId = UUID.randomUUID().toString();
-        var vectorId = UUID.randomUUID();
         try {
             var now = Instant.now();
             jdbc.update("""
@@ -81,21 +68,9 @@ class IsPublicFirstMigrationTest {
                     .addValue("id", skillId)
                     .addValue("name", "s177-migration-" + skillId.substring(0, 8))
                     .addValue("ts", java.sql.Timestamp.from(now)));
-            jdbc.update("""
-                    INSERT INTO vector_store (id, content, skill_id, acl_entries, is_public)
-                    VALUES (:id, 'S177 migration fixture', :skillId,
-                            '["user:alice:read","public:*:read"]'::jsonb, false)
-                    """, new MapSqlParameterSource()
-                    .addValue("id", vectorId)
-                    .addValue("skillId", skillId));
 
             jdbc.getJdbcTemplate().update("""
                     UPDATE skills
-                       SET acl_entries = acl_entries - 'public:*:read'
-                     WHERE acl_entries @> '["public:*:read"]'::jsonb
-                    """);
-            jdbc.getJdbcTemplate().update("""
-                    UPDATE vector_store
                        SET acl_entries = acl_entries - 'public:*:read'
                      WHERE acl_entries @> '["public:*:read"]'::jsonb
                     """);
@@ -104,17 +79,10 @@ class IsPublicFirstMigrationTest {
                     "SELECT acl_entries::text FROM skills WHERE id = :id",
                     Map.of("id", skillId),
                     String.class);
-            var vectorAcl = jdbc.queryForObject(
-                    "SELECT acl_entries::text FROM vector_store WHERE id = :id",
-                    Map.of("id", vectorId),
-                    String.class);
 
             assertThat(skillAcl).doesNotContain("public:*:read");
-            assertThat(vectorAcl).doesNotContain("public:*:read");
             assertThat(skillAcl).contains("user:alice:read");
-            assertThat(vectorAcl).contains("user:alice:read");
         } finally {
-            jdbc.update("DELETE FROM vector_store WHERE id = :id", Map.of("id", vectorId));
             jdbc.update("DELETE FROM skills WHERE id = :id", Map.of("id", skillId));
         }
     }

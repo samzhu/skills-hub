@@ -1,6 +1,6 @@
 # S186: Skill Embedding 同表化
 
-> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — tasks PASS, Phase 4 blocked by verify-all failures
+> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — T07 PASS; Phase 4 still needs verify-all rerun + V07 follow-up
 > 日期：2026-05-16
 > 對應：PRD P5 語意搜尋 / S107 semantic projection fields / S157 semantic search / S177 is_public-first search visibility / S185 list-detail projection consistency
 
@@ -412,6 +412,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 | 4 | [S186-T04 remove vector ACL projection](../tasks/2026-05-16-S186-T04-remove-vector-acl-projection.md) | PASS | AC-S186-4 | `PUT /visibility` 或 grant 變更 commit 後，下一次 semantic search 直接用 `skills` row，不等任何 `vector_store` listener。 |
 | 5 | [S186-T05 vector-store cleanup sweep](../tasks/2026-05-16-S186-T05-vector-store-cleanup-sweep.md) | PASS | AC-S186-6 | `rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 只剩允許的舊 migration test 引用；active runtime/test code 不再讀寫舊表。 |
 | 6 | [S186-T06 docs and explain evidence](../tasks/2026-05-16-S186-T06-docs-explain-evidence.md) | PASS | AC-S186-7 | spec §7 有 semantic SQL `EXPLAIN (ANALYZE, BUFFERS)` 的實際數字；architecture / standards 不再把 runtime search 說成依賴 `vector_store`。 |
+| 7 | [S186-T07 migration tests final schema](../tasks/2026-05-16-S186-T07-migration-tests-final-schema.md) | PASS | AC-S186-6 | 舊 V2 / V26 migration tests 不再查詢或寫入已由 V27 刪除的 `vector_store`，backend suite 不再因 final schema drift 失敗。 |
 
 ### 6.4 AC Coverage
 
@@ -422,7 +423,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 | AC-S186-3 | T02 |
 | AC-S186-4 | T04 |
 | AC-S186-5 | T03 |
-| AC-S186-6 | T05 |
+| AC-S186-6 | T05, T07 |
 | AC-S186-7 | T06 |
 | AC-S186-8 | T02 |
 
@@ -434,6 +435,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 4. T04 depends on T02 because visibility/ACL lag is only fixed after semantic search reads `skills` directly.
 5. T05 depends on T03/T04 because cleanup is only safe after runtime read/write paths no longer reference `SkillshubPgVectorStore`.
 6. T06 runs last because it records implementation evidence and syncs docs to actual code.
+7. T07 runs after Phase 4 found full-suite drift in legacy migration tests; it is a post-verification repair task for S186 final schema.
 
 ### 6.6 Task Results
 
@@ -449,11 +451,13 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 
 2026-05-16 S186-T06 PASS：RED：`rg -n "SkillshubPgVectorStore|vector_store\\.acl_entries|vector_store\\.is_public" docs/grimo/architecture.md docs/grimo/development-standards.md` 列出 architecture / standards 仍把 runtime semantic search 說成依賴舊獨立向量表。GREEN：`SemanticSearchExplainEvidenceTest` 以 public/private/draft 三筆 `skills.embedding` fixture 跑 `EXPLAIN (ANALYZE, BUFFERS)`；docs grep 改成 0 筆。`cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.search.SemanticSearchExplainEvidenceTest'` 最後 `BUILD SUCCESSFUL in 2m 5s`；S186 顯式 test class 清單最後 `BUILD SUCCESSFUL in 2m 18s`。`cd backend && ./gradlew test --tests '*S186*'` 不可用，因為 Gradle `--tests` filter 不匹配 JUnit `@Tag("S186")`。
 
+2026-05-17 S186-T07 PASS：RED：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.db.IsPublicFirstMigrationTest --tests io.github.samzhu.skillshub.db.V2MigrationTest` 一開始 `6 tests completed, 4 failed`，失敗點都是舊 migration tests 還查詢或寫入 S186 V27 已刪除的 `vector_store`。GREEN：同一 command 最後 `BUILD SUCCESSFUL in 2m 5s`；`rg -n "vector_store" backend/src/test/java/io/github/samzhu/skillshub/db/IsPublicFirstMigrationTest.java backend/src/test/java/io/github/samzhu/skillshub/db/V2MigrationTest.java` 無輸出。
+
 ---
 
 ## 7. Implementation Results（Phase 4 blocked）
 
-T01-T06 已完成；本節保存 task-level implementation evidence 與 Phase 4 verification attempt。`/planning-tasks S186` 下一輪應先修 `scripts/verify-all.sh` 的全域失敗，再重新跑標準 verification gate；通過後才交給 `$shipping-release`。
+T01-T07 已完成；本節保存 task-level implementation evidence 與 Phase 4 verification attempt。`/planning-tasks S186` 下一輪應重新跑 `scripts/verify-all.sh` 確認 V01/V03 已恢復，並處理剩餘 V07 happy-path E2E 失敗；通過後才交給 `$shipping-release`。
 
 ### 7.1 Task Result Summary
 
@@ -465,6 +469,7 @@ T01-T06 已完成；本節保存 task-level implementation evidence 與 Phase 4 
 | T04 remove vector ACL projection | AC-S186-4 | PASS | `SkillAclProjectionListener` 只重建 `skills.acl_entries`；semantic search 下一次 query 直接讀同一 row。 |
 | T05 cleanup sweep | AC-S186-6 | PASS | active runtime/test path 的 `vector_store` / `SkillshubPgVectorStore` reference 已清除；只保留舊 migration tests。 |
 | T06 docs + EXPLAIN evidence | AC-S186-7 | PASS | `SemanticSearchExplainEvidenceTest` 記錄 `EXPLAIN (ANALYZE, BUFFERS)`；architecture / standards 同步 S186 後 runtime 事實。 |
+| T07 migration tests final schema | AC-S186-6 | PASS | `IsPublicFirstMigrationTest` / `V2MigrationTest` 只驗 final schema 仍存在的 `skills` 欄位與 index，不再讀寫已刪除的舊獨立向量表。 |
 
 ### 7.2 EXPLAIN Evidence（AC-S186-7）
 
@@ -525,6 +530,8 @@ Planner 沒使用 `idx_skills_embedding_hnsw` 的原因：這個 verification fi
 | `cd backend && ./gradlew test --tests '*S186*'` | N/A — Gradle 回 `No tests found for given includes: [*S186*]`，這個 filter 不匹配 JUnit tag |
 | `cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.skill.domain.SkillRepositoryEmbeddingColumnTest' --tests 'io.github.samzhu.skillshub.db.SkillEmbeddingMigrationTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchFromSkillsTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchServiceVisibilityTest' --tests 'io.github.samzhu.skillshub.search.SearchEmbeddingRepositoryTest' --tests 'io.github.samzhu.skillshub.search.SearchProjectionEmbeddingWriteTest' --tests 'io.github.samzhu.skillshub.skill.security.SkillAclProjectionListenerEmbeddingColocationTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchVisibilityLagTest' --tests 'io.github.samzhu.skillshub.search.VectorStoreRuntimeRemovalTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchExplainEvidenceTest'` | PASS — `BUILD SUCCESSFUL in 2m 18s` |
 | `rg -n "SkillshubPgVectorStore|vector_store\\.acl_entries|vector_store\\.is_public" docs/grimo/architecture.md docs/grimo/development-standards.md` | PASS — no output |
+| `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.db.IsPublicFirstMigrationTest --tests io.github.samzhu.skillshub.db.V2MigrationTest` | PASS — `BUILD SUCCESSFUL in 2m 5s` |
+| `rg -n "vector_store" backend/src/test/java/io/github/samzhu/skillshub/db/IsPublicFirstMigrationTest.java backend/src/test/java/io/github/samzhu/skillshub/db/V2MigrationTest.java` | PASS — no output |
 
 ### 7.4 Phase 4 Verification Attempt（2026-05-16 23:44 CST）
 
@@ -566,3 +573,30 @@ E2E failure details:
 本輪不直接修上述失敗，因為本輪工作單位是「S186 Phase 4 verification attempt + blocker note」。下一輪建議開單一修復單位：先讓舊 migration tests 不再要求 S186 已刪除的 `vector_store` table，重新跑 `./scripts/verify-all.sh`，再處理 V07 的 S140 browser search assertion。
 
 正式站 Chrome / Cloud Run log 覆測尚未完成；本輪 execution context 沒有可呼叫的 Chrome automation tool。S186 不可 shipping。
+
+### 7.5 Post-blocker Repair Attempt（2026-05-17 00:07 CST）
+
+執行：
+
+```bash
+cd backend && ./gradlew test --tests io.github.samzhu.skillshub.db.IsPublicFirstMigrationTest --tests io.github.samzhu.skillshub.db.V2MigrationTest
+```
+
+結果：PASS，`BUILD SUCCESSFUL in 2m 5s`。
+
+修正內容：
+
+| Test file | 修正後驗什麼 |
+|---|---|
+| `backend/src/test/java/io/github/samzhu/skillshub/db/IsPublicFirstMigrationTest.java` | 只查 `skills.is_public` 是普通 boolean；cleanup test 只建立 / 更新 / 刪除 `skills` row。 |
+| `backend/src/test/java/io/github/samzhu/skillshub/db/V2MigrationTest.java` | 只保留 `skills.acl_entries` metadata 與 author backfill；V27 刪除舊獨立向量表由 `SkillEmbeddingMigrationTest` 覆蓋。 |
+
+文字檢查：
+
+```bash
+rg -n "vector_store" backend/src/test/java/io/github/samzhu/skillshub/db/IsPublicFirstMigrationTest.java backend/src/test/java/io/github/samzhu/skillshub/db/V2MigrationTest.java
+```
+
+結果：PASS，no output。
+
+仍需下一輪重新跑 `./scripts/verify-all.sh`。本輪沒有重新跑 full gate，所以 S186 仍不可 shipping；上一輪記錄的 V07 S140 Playwright assertion 仍是下一個已知未處理項目。

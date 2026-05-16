@@ -23,20 +23,16 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
  *
  * <p>對應 spec §4.2：
  * <ul>
- *   <li>AC-1: skills + vector_store 皆加 {@code acl_entries JSONB NOT NULL DEFAULT '[]'}；
+ *   <li>AC-1: skills 加 {@code acl_entries JSONB NOT NULL DEFAULT '[]'}；
  *       GIN index 走 default {@code jsonb_ops}（必要：{@code jsonb_path_ops} 不支援 {@code ?|}
  *       — 為 reference repo 的隱性 BUG，本 spec 明確避開）。
  *   <li>AC-2: skills backfill from author — author={@code alice} →
  *       {@code ["user:alice:read", "user:alice:write", "user:alice:delete"]}
- *   <li>AC-3: vector_store backfill from owner — owner={@code alice} →
- *       {@code ["user:alice:read"]}；owner=NULL 維持 {@code []}（fail-secure）
  * </ul>
  *
- * <p>本 IT 在 Flyway 自動套用 V1+V2 migration 之後執行 — Testcontainer
- * pgvector/pg16 透過 {@code @ServiceConnection} 注入 datasource。為避免污染
- * 既有 SkillProjection / SearchProjection 監聽器，所有測試資料以
- * {@code NamedParameterJdbcTemplate} 直接寫入 + 完成後驗 {@code pg_indexes} /
- * 各表 {@code acl_entries} 欄位。
+ * <p>本 IT 在 Flyway 自動套用到最新 migration 之後執行。S186 V27 會刪除舊獨立向量表，
+ * 所以這裡只驗仍存在於 final schema 的 {@code skills} ACL 欄位；V27 刪表行為由
+ * {@link SkillEmbeddingMigrationTest} 覆蓋。
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -76,31 +72,6 @@ class V2MigrationTest {
         assertThat(indexDef.toLowerCase())
                 .as("不可使用 jsonb_path_ops（不支援 ?| operator — 詳 spec §2.4 #1）")
                 .doesNotContain("jsonb_path_ops");
-    }
-
-    @Test
-    @DisplayName("AC-1: vector_store.acl_entries JSONB NOT NULL DEFAULT '[]' + GIN(default jsonb_ops)")
-    @Tag("AC-1")
-    void vectorStoreAclEntriesColumnAndIndex_haveCorrectMetadata() {
-        var col = jdbc.queryForMap("""
-                SELECT data_type, is_nullable, column_default
-                FROM information_schema.columns
-                WHERE table_name = 'vector_store' AND column_name = 'acl_entries'
-                """, Map.of());
-
-        assertThat(col.get("data_type")).isEqualTo("jsonb");
-        assertThat(col.get("is_nullable")).isEqualTo("NO");
-        assertThat(((String) col.get("column_default")).toLowerCase()).contains("'[]'::jsonb");
-
-        var indexDef = jdbc.queryForObject("""
-                SELECT pi.indexdef
-                FROM pg_indexes pi
-                WHERE pi.indexname = 'idx_vector_store_acl_entries'
-                """, Map.of(), String.class);
-
-        assertThat(indexDef).isNotNull();
-        assertThat(indexDef.toLowerCase()).contains("using gin");
-        assertThat(indexDef.toLowerCase()).doesNotContain("jsonb_path_ops");
     }
 
     @Test
@@ -154,44 +125,5 @@ class V2MigrationTest {
 
         assertThat(entries).containsExactlyInAnyOrder(
                 "user:alice:read", "user:alice:write", "user:alice:delete");
-    }
-
-    @Test
-    @DisplayName("AC-3: vector_store owner=NOT NULL backfill；owner=NULL 維持 [] (fail-secure)")
-    @Tag("AC-3")
-    void vectorStoreBackfill_failSecureOnNullOwner() {
-        var withOwnerId = UUID.randomUUID();
-        var noOwnerId = UUID.randomUUID();
-
-        jdbc.update("""
-                INSERT INTO vector_store (id, content, owner, acl_entries)
-                VALUES (:id, 'doc-with-owner', 'bob', '[]'::jsonb)
-                """, Map.of("id", withOwnerId));
-        jdbc.update("""
-                INSERT INTO vector_store (id, content, owner, acl_entries)
-                VALUES (:id, 'doc-no-owner', NULL, '[]'::jsonb)
-                """, Map.of("id", noOwnerId));
-
-        // 重跑 V2 backfill SQL 驗 idempotency
-        jdbc.getJdbcTemplate().update("""
-                UPDATE vector_store
-                SET acl_entries = jsonb_build_array('user:' || owner || ':read')
-                WHERE owner IS NOT NULL
-                  AND acl_entries = '[]'::jsonb
-                """);
-
-        var ownerEntriesJson = jdbc.queryForObject(
-                "SELECT acl_entries::text FROM vector_store WHERE id = :id",
-                Map.of("id", withOwnerId), String.class);
-        assertThat(ownerEntriesJson)
-                .as("有 owner 的 row 必須 backfill 為 user:<owner>:read")
-                .contains("user:bob:read");
-
-        var noOwnerEntriesJson = jdbc.queryForObject(
-                "SELECT acl_entries::text FROM vector_store WHERE id = :id",
-                Map.of("id", noOwnerId), String.class);
-        assertThat(noOwnerEntriesJson)
-                .as("owner=NULL 的 row 必須維持 [] — 沒人可讀（fail-secure）")
-                .isEqualTo("[]");
     }
 }
