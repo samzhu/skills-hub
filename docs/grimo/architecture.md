@@ -52,9 +52,10 @@
 
 **Grant domain events**
 - S177 實作保留既有 `skill.security` package；`SkillGrant` 是 Spring Data JDBC entity，`SkillGrantedEvent` / `SkillRevokedEvent` 由 `SkillGrantService` publish。
-- 建立 skill 當下同 TX 寫入的 OWNER grant、以及 public skill 的 public VIEWER grant，也發 `SkillGrantedEvent`；private create 固定兩筆 event（SkillCreated + OWNER SkillGranted），public create 因多 public VIEWER grant 為三筆 event。`SkillCreatedEvent` 記錄 skill 已建立，`SkillGrantedEvent` 記錄 grant 已建立。
+- Grant Model 含兩種語意：user/group/company 是 Explicit Grant；public 是 Public Grant，代表 Public Visibility，不是 ACL entry。
+- 建立 skill 當下同 TX 寫入 OWNER grant；public skill 也會建立 Public Grant 並發 `SkillGrantedEvent`。`SkillCreatedEvent` 記錄 skill 已建立，`SkillGrantedEvent` 記錄 grant 已建立。
 - Grant events 是跨模組可訂閱的公開 domain events，放在 `skill.security.events`。
-- Grant command transaction 寫 `skill_grants` row 與強一致的 `skills.acl_entries`；`SkillAclProjectionListener` AFTER_COMMIT 回查目前 grants 與 `skills.is_public`，重建 `vector_store.is_public` / read-only `vector_store.acl_entries`。
+- Grant command transaction 寫 `skill_grants` row 與強一致的 `skills.acl_entries`；`SkillAclProjectionListener` AFTER_COMMIT 回查目前 grants 與 `skills.is_public`，重建 `vector_store.is_public` / read-only `vector_store.acl_entries`。Public Grant 不展開成 `acl_entries`。
 
 ### Aggregate State Mutation Flow
 
@@ -97,15 +98,20 @@ Grant events 是跨模組可訂閱的公開 domain events，放在 `skill.securi
 
 | Event | Trigger | Payload | Known subscribers |
 |-------|---------|---------|-------------------|
-| `SkillGrantedEvent` | `SkillGrantService.grant(...)` saves any `skill_grants` role row, including create-time OWNER and public VIEWER | skillId, grantId | `SkillAclProjectionListener`回查目前 grants 與 `skills.is_public`，更新 `vector_store.is_public`，並從 user/group/company roles 產生 read-only `vector_store.acl_entries` |
+| `SkillGrantedEvent` | `SkillGrantService.grant(...)` saves any `skill_grants` role row, including create-time OWNER and Public Grant | skillId, grantId | `SkillAclProjectionListener`回查目前 grants 與 `skills.is_public`，更新 `vector_store.is_public`，並從 user/group/company roles 產生 read-only `vector_store.acl_entries`；public grant 不進 ACL |
 | `SkillRevokedEvent` | `SkillGrantService.revoke(...)` hard-deletes grant row | skillId, grantId | `SkillAclProjectionListener`回查目前 grants 與 `skills.is_public`，更新 `vector_store.is_public`，並從 user/group/company roles 產生 read-only `vector_store.acl_entries` |
 
 > **S177 重設（2026-05-15）**：`skill` 是大模組，內含 Skill 與 Grant 兩個緊密連動的子領域模型。
 > Grant 負責 `skill_grants` 的授權對象與角色；Skill 負責 skill 本身資料與 public visibility。建立 skill 時，
 > `SkillCreatedEvent` 與初始 `SkillGrantedEvent` 在同一個 transaction 內 publish；Grant event 觸發 search read-scope projection。
 > public toggle 不另發 visibility event；同一個 transaction 內更新 `skills.is_public` 與 public VIEWER grant row，
-> 對外只發 `SkillGranted(isPublic=true, public/* VIEWER)` / `SkillRevoked(isPublic=false, public/* VIEWER)`，
-> 訂閱方依 payload 自行判斷是否處理。
+> 對外仍走 `SkillGranted` / `SkillRevoked` 統一 event path；Public Grant 是 visibility grant，不是 ACL entry，
+> 訂閱方以 `skills.is_public` 更新 public read scope。
+
+> **S184 計畫更新（2026-05-16）**：公開/私人的對外 UI/API 入口收斂為 `PUT /api/v1/skills/{id}/visibility`。
+> `POST /grants` 只接受 user/group/company Share Target；public 不再是分享視窗的 target。
+> Visibility Command 以 `skills.is_public` 做冪等判斷並回傳結果 visibility；內部仍可沿用 Public Grant + `SkillGrantedEvent` /
+> `SkillRevokedEvent` path。Public Grant 不寫入 `skills.acl_entries` 或 `vector_store.acl_entries`。
 
 > **S169 更新（2026-05-14 v4.57.0；S177 前狀態）**：`skill_grants.role` 支援 `OWNER` / `EDITOR` / `VIEWER`。
 > 當時 listener 會把 role grant 展成 `principal:verb` ACL entries，並同步寫入 `skills.acl_entries`

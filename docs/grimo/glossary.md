@@ -44,7 +44,7 @@
 | 追蹤檔 | Playwright Trace | `trace.zip` | Playwright 錄製的 time-travel debugger artefact，含 screenshot film strip + DOM snapshot + network；本機 `npx playwright show-trace` 或拖到 trace.playwright.dev |
 | 證據檔 | Evidence Contract | `e2e/results/evidence.json` | `playwright-expert` VERIFY mode 產出的跨 skill 契約檔，給 `/verifying-quality` 讀取；schema 含 spec_id / stats / per-test ok / trace_paths |
 | 技能分數 | Skill Score | `skillScore` | S142b 複合評分公式：`round(0.6 × qualityTotal + 0.4 × securityScore)`；securityScore 為 null（未掃描）時 skillScore = null；出現在 GET /scores 回應 |
-| 安全報告 | Security Report | `SecurityReportResponse` | S142b 4-quad 安全檢查視圖（Shell / Paths / Secrets / Deps）；從 `risk_assessment` JSONB findings 依 analyzer + ruleId 分類為 4 個 quad；每 quad 各有 status（PASS/WARN/FAIL）+ detail；出現在 GET /security-report 回應 |
+| 安全報告 | Security Report | `SecurityReportResponse` | 技能安全掃描明細；S142b 保留 legacy `checks` 相容欄位，S147 起新增 `categories/findings`，每筆 finding 可帶 issue code、檔案/行號、evidence、remediation、confidence；出現在 GET /security-report 回應 |
 | 已驗證 | Verified | `verified` | S142b 衍生旗標：`status === 'PUBLISHED' && riskLevel != null`；表示「平台已完成品質 + 安全兩階段審查」≠「無風險」；出現在 GET /skills/{id} 回應 |
 | 平台識別碼 | Platform User ID | `userId` (`u_<6hex>`) | S154 起，平台對 user 的 internal PK；解耦 OAuth provider 的 sub；ACL principal / `skills.author` / `skills.owner_id` 都用此 ID（`u_a3f9c1` 格式）；同一個人換 OAuth provider 仍是不同 user_id（per S154 §2.4 Pattern A）|
 | 顯示用 slug | Handle | `handle` | S154 起，user 在平台上的可讀短名稱（`alice`）；install command + `/api/v1/skills/{handle}/{name}` URL 用它；user 可改、撞名時自動加 `-2/-3` 後綴 |
@@ -53,7 +53,11 @@
 | 顯示名解析鏈 | DisplayName Resolver | `DisplayNameResolver` | S154 起，五層 fallback：name → snapshot → email local-part → handle → user_id（per S154 §2.5）；frontend `lib/displayName.ts` 與 backend static helper 同邏輯 |
 | 權限角色 | Permission Role | `Role` | S169 起，使用者分享 skill 時只選角色（OWNER / EDITOR / VIEWER），系統再展開成 `read/write/delete` 權限；UI 不提供 raw operation checkbox |
 | 檢視者權限 | Viewer Permissions | `viewerPermissions` | S169 起，Skill detail API 由後端依當前 user 計算可做動作（canEdit/canDelete/canShare 等），frontend 按鈕只讀此欄位，不重做 ACL 判斷 |
-| 公開可見性 | Public Visibility | `isPublic` / `is_public` | S177 起，表示 skill 是否對匿名與所有登入使用者可讀；公開 skill 會有一筆 public VIEWER grant 表達 owner 的公開設定，但 public 不屬於明確授權 |
-| 授權模型 | Grant Model | `SkillGrant` | S177 起，與 Skill 分開的領域模型；管理「授權對象 + 角色」（user/group/company/public + OWNER/EDITOR/VIEWER），不管理 skill 本身 metadata 或 public visibility source-of-truth |
+| 公開可見性 | Public Visibility | `isPublic` / `is_public` | 表示 skill 是否對匿名與所有登入使用者可讀；以 skill visibility state 為狀態真相 |
+| 授權模型 | Grant Model | `SkillGrant` | 與 Skill 分開的領域模型；管理「授權對象 + 角色」（user/group/company/public + OWNER/EDITOR/VIEWER），不管理 skill 本身 metadata |
 | 明確授權 | Explicit Grant | `SkillGrant` / `aclEntries` | S177 起，指 owner 對 user / group / company 指定角色；角色會展開成 `read/write/delete` 寫入 `skills.acl_entries` 作為讀取/寫入判斷優化；不包含 public VIEWER grant |
-| 授權主鍵 | Grant ID | `grantId` | `skill_grants.id`；純資料庫主鍵，無業務語意。S177 起新 public visibility grant 使用無 prefix 的 12 hex opaque id |
+| 公開授權 | Public Grant | `principal_type='public'` | 代表 owner 將 skill 公開給所有人；是 Grant Model 的一種，但不屬於 Explicit Grant，也不展開成 ACL entry |
+| 分享對象 | Share Target | `principalType` | owner 在分享視窗中選擇的 user / group / company；不包含 public，公開狀態由公開可見性控制 |
+| 可見性命令 | Visibility Command | `setVisibility` | owner 變更 skill 公開/私人狀態的命令；依 skill visibility state 做冪等處理並回傳結果 |
+| 空回應命令 | Empty Response Mutation | `apiFetchVoid` | 成功時沒有 response body 的 command endpoint；前端必須使用 void client helper，不可 parse JSON |
+| 授權主鍵 | Grant ID | `grantId` | `skill_grants.id`；純資料庫主鍵，無業務語意 |
