@@ -1,6 +1,6 @@
 # S186: Skill Embedding 同表化
 
-> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — T08 PASS; pending verify-all rerun
+> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — verify-all PASS; pending shipping
 > 日期：2026-05-16
 > 對應：PRD P5 語意搜尋 / S107 semantic projection fields / S157 semantic search / S177 is_public-first search visibility / S185 list-detail projection consistency
 
@@ -659,4 +659,28 @@ RED / GREEN evidence：
 | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.testsupport.E2EEmbeddingConfigTest` | GREEN — `BUILD SUCCESSFUL in 1m 52s`。 |
 | `cd e2e && npx playwright test tests/S140-critical-path-browse-search.spec.ts --grep @profile-paged` | GREEN — `1 passed (21.2s)`，`/browse` 搜尋 `docker` 只看到 3 個 docker-related skills。 |
 
-下一輪要重新跑 `./scripts/verify-all.sh`。本輪沒有做 production Chrome / Cloud Run log 覆測，因為目前執行環境沒有可呼叫的 Chrome automation tool。
+下一輪已重跑 `./scripts/verify-all.sh`，結果見 §7.8。本輪沒有做 production Chrome / Cloud Run log 覆測，因為目前執行環境沒有可呼叫的 Chrome automation tool。
+
+### 7.8 Phase 4 Rerun after T08（2026-05-17 00:56 CST）
+
+執行：
+
+```bash
+./scripts/verify-all.sh
+```
+
+結果：PASS，summary 顯示 `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS`，總計 `PASS=8, FAIL=0, SKIP=0`，script exit=0。
+
+| Gate | Result | 實際看到什麼 |
+|---|---|---|
+| V01 `cd backend && ./gradlew clean test jacocoTestReport` | PASS | backend full test + JaCoCo report 通過。 |
+| V02 JaCoCo CSV | INFO | LINE coverage = `86.4%`（covered=4589 / total=5311）。 |
+| V03 `cd backend && ./gradlew jacocoTestCoverageVerification` | PASS | backend coverage gate 通過。 |
+| V04 `cd frontend && npm test` | PASS | frontend unit tests 通過。 |
+| V05 `cd frontend && npm run verify` | PASS | frontend lint/typecheck 通過。 |
+| V06 `cd frontend && npm test -- --coverage` | PASS | frontend coverage command 通過。 |
+| V07 `cd e2e && npx playwright test --grep @happy-path` | PASS | S140 happy-path browse/search 已不再回 `csv-to-parquet` 第四筆 non-docker result。 |
+| V08a `cd backend && ./gradlew processAot` | PASS | AOT processing 通過。 |
+| V08b `cd backend && ./gradlew --no-daemon -x test bootBuildImage ...` | PASS | native image build 通過。 |
+
+S186 local quality gate 已通過，可進 `$shipping-release`。本輪仍未做 production Chrome / Cloud Run log 覆測，因為目前 execution context 沒有可呼叫的 Chrome automation tool；shipping 時若需要部署新版，需再補 Cloud Build / Cloud Run revision / logs / production UI evidence。
