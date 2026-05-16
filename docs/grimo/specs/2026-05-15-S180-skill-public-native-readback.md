@@ -1,7 +1,7 @@
 # S180 — Skill Public Native Readback Hotfix
 
 > SpecID: S180
-> Status: ⏳ deployed — Chrome logged-in validate blocked by HTTP 409 session/detail requests
+> Status: ⏳ blocked — native readback logs clean; logged-in Chrome UI verification unavailable in Codex ticks
 > Date: 2026-05-15
 > Size: XS(3)
 > Related: S168 GraalVM native boolean wrapper workaround, S177 is_public-first search visibility, S176 explicit publish skill name, S098a3-2 bundle-info endpoint
@@ -478,3 +478,21 @@ Interpretation:
 
 - AC-S180-5 remains PASS on the latest revision: the native `Skill.publicSkill` mapping crash is not recurring in application logs.
 - AC-S180-4 remains blocked at the logged-in UI level because the Chrome plugin is not callable in this Codex tick. Unauthenticated curl can only prove the old 400 native crash path is no longer visible; it cannot prove the logged-in validate page renders the skill/bundle details.
+
+### Blocker Checkpoint — 2026-05-16 03:41 UTC Tick
+
+Tool state:
+
+- Current Codex tool list has no callable Chrome namespace, so this tick cannot open the user's logged-in Chrome session, read page text, collect browser console errors, or click the production UI.
+- This is the third consecutive Codex tick where AC-S180-4 still cannot be completed by the required logged-in Chrome path. The available fallback checks are curl and gcloud logs only.
+
+What is already proven:
+
+- `GET /publish/validate?id=028cecf1-3326-4327-bbe9-28b4e6fab6d5` returns the SPA HTML on latest revision `skillshub-00032-9v8`.
+- Unauthenticated `GET /api/v1/skills/028cecf1-3326-4327-bbe9-28b4e6fab6d5` and `/bundle-info` return 401 JSON, not the original 400 native crash.
+- Latest revision logs since 2026-05-16T03:10Z contain no `Skill.publicSkill`, no HTTP 409, and no `severity>=ERROR` rows.
+
+What remains unproven:
+
+- Logged-in Chrome still needs to open the validate URL and verify the page no longer shows `無法載入 skill`.
+- If a browser network request fails, collect the response body and Cloud Run trace before deciding whether S180 can ship or a new small spec is needed.
