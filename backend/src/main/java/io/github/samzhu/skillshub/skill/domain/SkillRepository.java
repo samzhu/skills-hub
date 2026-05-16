@@ -44,7 +44,25 @@ public interface SkillRepository extends ListCrudRepository<Skill, String> {
      * legacy alias 固定回最新建立 row，避免 PostgreSQL heap/page order 影響 {@code LIMIT 1}。
      */
     @Query("""
-            SELECT *
+            SELECT id,
+                   name,
+                   description,
+                   author,
+                   category,
+                   category_display,
+                   author_name_snapshot,
+                   status,
+                   latest_version,
+                   risk_level,
+                   download_count,
+                   average_rating,
+                   review_count,
+                   acl_entries,
+                   is_public,
+                   owner_id,
+                   created_at,
+                   updated_at,
+                   version
             FROM skills
             WHERE LOWER(author) = LOWER(:author)
               AND LOWER(name) = LOWER(:name)

@@ -59,5 +59,12 @@ And（而且）`SkillRepository.findByAuthorAndName` 的 `@Query` 不含 `SELECT
 ## 前置條件
 - 無
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-16
+
+RED：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.domain.SkillRepositoryEmbeddingColumnTest --tests io.github.samzhu.skillshub.db.SkillEmbeddingMigrationTest` 先失敗。實際看到 V27 欄位不存在、`UPDATE skills SET embedding_*` SQL error，且 `SkillRepository.findByAuthorAndName` 還含 `SELECT *`。
+
+GREEN：同一條指令通過，`BUILD SUCCESSFUL in 2m 48s`。DB 會套用 `V27__skill_embedding_columns.sql`，`skills.embedding_content / embedding / embedding_model / embedding_updated_at` 與 `idx_skills_embedding_hnsw` 存在，`vector_store` 被 drop；`Skill` Java class 仍沒有 `embedding*` field；alias query 不再 `SELECT *`。

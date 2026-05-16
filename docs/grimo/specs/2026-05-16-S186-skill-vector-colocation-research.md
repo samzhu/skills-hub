@@ -406,7 +406,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 
 | 順序 | Task | 狀態 | AC | 做完會看到什麼 |
 |---|---|---|---|---|
-| 1 | [S186-T01 schema + aggregate guard](../tasks/2026-05-16-S186-T01-schema-aggregate-guard.md) | pending | AC-S186-1 | DB 有 `skills.embedding_*` 欄位和 HNSW index；`vector_store` 已 drop；`SkillRepository.findByAuthorAndName` 不再 `SELECT *`。 |
+| 1 | [S186-T01 schema + aggregate guard](../tasks/2026-05-16-S186-T01-schema-aggregate-guard.md) | PASS | AC-S186-1 | DB 有 `skills.embedding_*` 欄位和 HNSW index；`vector_store` 已 drop；`SkillRepository.findByAuthorAndName` 不再 `SELECT *`。 |
 | 2 | [S186-T02 semantic SQL from skills](../tasks/2026-05-16-S186-T02-semantic-sql-from-skills.md) | pending | AC-S186-2, AC-S186-3, AC-S186-8 | `GET /api/v1/search/semantic` 從 `skills.embedding` 回 public / granted private skill，card 欄位直接來自同一 row。 |
 | 3 | [S186-T03 embedding write path](../tasks/2026-05-16-S186-T03-embedding-write-path.md) | pending | AC-S186-5 | `SkillVersionPublishedEvent` 後 `skills.embedding_content / embedding / embedding_model / embedding_updated_at` 更新，其他 skill 欄位不被覆蓋。 |
 | 4 | [S186-T04 remove vector ACL projection](../tasks/2026-05-16-S186-T04-remove-vector-acl-projection.md) | pending | AC-S186-4 | `PUT /visibility` 或 grant 變更 commit 後，下一次 semantic search 直接用 `skills` row，不等任何 `vector_store` listener。 |
@@ -434,6 +434,10 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 4. T04 depends on T02 because visibility/ACL lag is only fixed after semantic search reads `skills` directly.
 5. T05 depends on T03/T04 because cleanup is only safe after runtime read/write paths no longer reference `SkillshubPgVectorStore`.
 6. T06 runs last because it records implementation evidence and syncs docs to actual code.
+
+### 6.6 Task Results
+
+2026-05-16 S186-T01 PASS：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.domain.SkillRepositoryEmbeddingColumnTest --tests io.github.samzhu.skillshub.db.SkillEmbeddingMigrationTest` 先紅後綠；最後 `BUILD SUCCESSFUL in 2m 48s`。完成 `V27__skill_embedding_columns.sql`、`SkillRepository.findByAuthorAndName` explicit column list、`SkillRepositoryEmbeddingColumnTest`、`SkillEmbeddingMigrationTest`。
 
 ---
 
