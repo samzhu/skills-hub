@@ -56,4 +56,13 @@ And（而且）production code 不再有 `UPDATE vector_store SET acl_entries...
 - S186-T02 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-16
+Test: `grantProjectionUpdatesSkillsAclWithoutTouchingVectorStore` (`backend/src/test/java/io/github/samzhu/skillshub/skill/security/SkillAclProjectionListenerEmbeddingColocationTest.java`), `semanticSearchSeesPublicVisibilityChangeFromSkillsRowWithoutVectorProjection` / `semanticSearchSeesExplicitReadGrantFromSkillsAclEntriesWithoutVectorProjection` (`backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchVisibilityLagTest.java`)
+Files changed:
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/security/SkillAclProjectionListener.java`
+- `backend/src/test/java/io/github/samzhu/skillshub/skill/security/SkillAclProjectionListenerEmbeddingColocationTest.java`
+- `backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchVisibilityLagTest.java`
+Notes: RED `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.security.SkillAclProjectionListenerEmbeddingColocationTest --tests io.github.samzhu.skillshub.search.SemanticSearchVisibilityLagTest` failed because the ACL listener left `SkillGrantedEvent` unfinished and the test timed out waiting for `skills.acl_entries` to include `user:u_bob111:read`; GREEN same command passed with `BUILD SUCCESSFUL in 3m 11s`.

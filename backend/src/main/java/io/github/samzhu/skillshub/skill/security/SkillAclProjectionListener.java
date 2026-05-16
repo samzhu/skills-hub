@@ -1,7 +1,6 @@
 package io.github.samzhu.skillshub.skill.security;
 
 import java.lang.invoke.MethodHandles;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,7 +16,8 @@ import io.github.samzhu.skillshub.skill.security.events.SkillRevokedEvent;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * S114a/S169 — Materializes ACL JSONB from source-of-truth {@code skill_grants}.
+ * S114a/S169/S186 — Materializes {@code skills.acl_entries} from
+ * source-of-truth {@code skill_grants}.
  *
  * <p>Listens to three events:
  * <ul>
@@ -73,7 +73,7 @@ public class SkillAclProjectionListener {
     }
 
     /**
-     * Rebuild ACL projections from all current grants for the skill.
+     * Rebuild the skill ACL projection from all current grants for the skill.
      *
      * <p>Uses pg_advisory_xact_lock to serialize concurrent rebuilds for the same
      * skill, preventing lost-update race conditions when multiple grants fire within
@@ -86,40 +86,22 @@ public class SkillAclProjectionListener {
                 Map.of("id", skillId));
 
         var grants = grantRepo.findBySkillId(skillId);
-        var skillEntries = aclEntries(grants, false);
-        var vectorEntries = aclEntries(grants, true);
-
-        var isPublic = Boolean.TRUE.equals(jdbc.queryForObject(
-                "SELECT is_public FROM skills WHERE id = :id",
-                Map.of("id", skillId),
-                Boolean.class));
+        var skillEntries = aclEntries(grants);
 
         var skillAcl = writeAclEntries(skillEntries);
-        var vectorAcl = writeAclEntries(vectorEntries);
-        var params = new HashMap<String, Object>();
-        params.put("id", skillId);
-        params.put("skillAcl", skillAcl);
-        params.put("vectorAcl", vectorAcl);
-        params.put("isPublic", isPublic);
+        var params = Map.of("id", skillId, "skillAcl", skillAcl);
         var skillRows = jdbc.update("UPDATE skills SET acl_entries = :skillAcl::jsonb WHERE id = :id", params);
-        var vectorRows = jdbc.update(
-                "UPDATE vector_store SET acl_entries = :vectorAcl::jsonb, is_public = :isPublic WHERE skill_id = :id",
-                params);
         log.atInfo()
                 .addKeyValue("skillId", skillId)
                 .addKeyValue("skillEntryCount", skillEntries.size())
-                .addKeyValue("vectorReadEntryCount", vectorEntries.size())
-                .addKeyValue("publicSkill", isPublic)
                 .addKeyValue("skillsRows", skillRows)
-                .addKeyValue("vectorRows", vectorRows)
-                .log("ACL projections rebuilt");
+                .log("Skill ACL projection rebuilt");
     }
 
-    private List<String> aclEntries(List<SkillGrant> grants, boolean readOnly) {
+    private List<String> aclEntries(List<SkillGrant> grants) {
         return grants.stream()
                 .filter(g -> !"public".equals(g.getPrincipalType()))
                 .flatMap(g -> Role.valueOf(g.getRole()).permissions().stream()
-                        .filter(perm -> !readOnly || "read".equals(perm))
                         .map(perm -> g.getPrincipalType() + ":" + g.getPrincipalId() + ":" + perm))
                 .distinct()
                 .toList();
