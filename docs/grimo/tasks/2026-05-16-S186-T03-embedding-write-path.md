@@ -62,4 +62,14 @@ Then（結果）`skills.embedding` 與 `skills.embedding_content` 變成 null
 - S186-T02 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-16
+Test: `upsertEmbeddingUpdatesOnlySkillsEmbeddingColumns` / `clearEmbeddingNullsEmbeddingColumnsWithoutChangingVisibilityOrAcl` (`backend/src/test/java/io/github/samzhu/skillshub/search/SearchEmbeddingRepositoryTest.java`), `skillVersionPublishedEventEmbedsLatestSkillMdFrontmatterIntoSkillsRow` / `skillSuspendedEventClearsSkillsEmbeddingColumns` (`backend/src/test/java/io/github/samzhu/skillshub/search/SearchProjectionEmbeddingWriteTest.java`)
+Files changed:
+- `backend/src/main/java/io/github/samzhu/skillshub/search/SearchEmbeddingRepository.java` (new)
+- `backend/src/main/java/io/github/samzhu/skillshub/search/SearchProjection.java` (modified)
+- `backend/src/test/java/io/github/samzhu/skillshub/search/SearchEmbeddingRepositoryTest.java` (new)
+- `backend/src/test/java/io/github/samzhu/skillshub/search/SearchProjectionEmbeddingWriteTest.java` (new)
+Notes: RED `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.search.SearchEmbeddingRepositoryTest --tests io.github.samzhu.skillshub.search.SearchProjectionEmbeddingWriteTest` failed with `No tests found`; GREEN same command passed with `BUILD SUCCESSFUL in 2m 38s`.
