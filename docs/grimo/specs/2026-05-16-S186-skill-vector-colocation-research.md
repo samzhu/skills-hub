@@ -1,6 +1,6 @@
 # S186: Skill Embedding 同表化
 
-> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — tasks PASS, Phase 4 verification pending
+> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — tasks PASS, Phase 4 blocked by verify-all failures
 > 日期：2026-05-16
 > 對應：PRD P5 語意搜尋 / S107 semantic projection fields / S157 semantic search / S177 is_public-first search visibility / S185 list-detail projection consistency
 
@@ -451,9 +451,9 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 
 ---
 
-## 7. Implementation Results（Phase 4 QA pending）
+## 7. Implementation Results（Phase 4 blocked）
 
-T01-T06 已完成；本節先保存 task-level implementation evidence。`/planning-tasks S186` 下一輪應進 Phase 4，跑標準 verification gate、整理 QA review，通過後再交給 `$shipping-release`。
+T01-T06 已完成；本節保存 task-level implementation evidence 與 Phase 4 verification attempt。`/planning-tasks S186` 下一輪應先修 `scripts/verify-all.sh` 的全域失敗，再重新跑標準 verification gate；通過後才交給 `$shipping-release`。
 
 ### 7.1 Task Result Summary
 
@@ -526,7 +526,43 @@ Planner 沒使用 `idx_skills_embedding_hnsw` 的原因：這個 verification fi
 | `cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.skill.domain.SkillRepositoryEmbeddingColumnTest' --tests 'io.github.samzhu.skillshub.db.SkillEmbeddingMigrationTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchFromSkillsTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchServiceVisibilityTest' --tests 'io.github.samzhu.skillshub.search.SearchEmbeddingRepositoryTest' --tests 'io.github.samzhu.skillshub.search.SearchProjectionEmbeddingWriteTest' --tests 'io.github.samzhu.skillshub.skill.security.SkillAclProjectionListenerEmbeddingColocationTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchVisibilityLagTest' --tests 'io.github.samzhu.skillshub.search.VectorStoreRuntimeRemovalTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchExplainEvidenceTest'` | PASS — `BUILD SUCCESSFUL in 2m 18s` |
 | `rg -n "SkillshubPgVectorStore|vector_store\\.acl_entries|vector_store\\.is_public" docs/grimo/architecture.md docs/grimo/development-standards.md` | PASS — no output |
 
-### 7.4 Pending Phase 4
+### 7.4 Phase 4 Verification Attempt（2026-05-16 23:44 CST）
 
-- `scripts/verify-all.sh` 尚未在本節跑完；下一輪由 `/planning-tasks S186` Phase 4 或 `/verifying-quality S186` 執行。
-- 正式站 Chrome / Cloud Run log 覆測尚未在本節完成；本輪 execution context 沒有可呼叫的 Chrome automation tool。
+執行：
+
+```bash
+./scripts/verify-all.sh
+```
+
+結果：FAILED，`verify-all.log` summary 顯示 `V01=FAIL V02=SKIP V03=FAIL V04=PASS V05=PASS V06=PASS V07=FAIL V08a=PASS V08b=PASS`，總計 `PASS=5, FAIL=3, SKIP=1`，script exit=1。
+
+| Gate | Result | 實際看到什麼 |
+|---|---|---|
+| V01 `cd backend && ./gradlew clean test jacocoTestReport` | FAIL | `974 tests completed, 4 failed, 7 skipped`；`IsPublicFirstMigrationTest` 2 個 case、`V2MigrationTest` 2 個 case 失敗。 |
+| V02 JaCoCo CSV | SKIP | V01 失敗，`backend/build/reports/jacoco/test/jacocoTestReport.csv` 沒產生。 |
+| V03 `cd backend && ./gradlew jacocoTestCoverageVerification` | FAIL | 同一批 migration test 失敗。 |
+| V04 `cd frontend && npm test` | PASS | frontend unit tests 通過。 |
+| V05 `cd frontend && npm run verify` | PASS | frontend lint/typecheck 通過。 |
+| V06 `cd frontend && npm test -- --coverage` | PASS | frontend coverage command 通過。 |
+| V07 `cd e2e && npx playwright test --grep @happy-path` | FAIL | 9 個 Playwright happy-path 測試跑完，8 passed / 1 failed；`S140-critical-path-browse-search.spec.ts:42` 找不到 `3 個技能` / `3 個相關技能` 文案。 |
+| V08a `cd backend && ./gradlew processAot` | PASS | AOT processing 通過。 |
+| V08b `cd backend && ./gradlew --no-daemon -x test bootBuildImage ...` | PASS | native image build 通過。 |
+
+Backend failure details:
+
+| Test file | Failing line | 現象 | 初步根因假設 |
+|---|---:|---|---|
+| `backend/src/test/java/io/github/samzhu/skillshub/db/IsPublicFirstMigrationTest.java` | 51 | 查 `information_schema.columns WHERE table_name='vector_store' AND column_name='is_public'` 回 0 row，`queryForMap` 丟 `EmptyResultDataAccessException`。 | S186 V27 已 `DROP TABLE IF EXISTS vector_store`，但舊 S177 migration test 還要求 `vector_store.is_public` 存在。 |
+| `backend/src/test/java/io/github/samzhu/skillshub/db/IsPublicFirstMigrationTest.java` | 117 | `finally` 執行 `DELETE FROM vector_store ...` 時 table 不存在，丟 `BadSqlGrammarException`。 | 同上：測試還在清舊表。 |
+| `backend/src/test/java/io/github/samzhu/skillshub/db/V2MigrationTest.java` | 85 | 查 `vector_store.acl_entries` metadata 回 0 row，`queryForMap` 丟 `EmptyResultDataAccessException`。 | S186 刪除舊獨立向量表後，V2 歷史 migration test 的 active expectation 需要搬成「舊 schema 隔離測試」或改為只驗 `skills.acl_entries`。 |
+| `backend/src/test/java/io/github/samzhu/skillshub/db/V2MigrationTest.java` | 166 | `INSERT INTO vector_store ...` table 不存在，丟 `BadSqlGrammarException`。 | 同上：測試直接寫已刪除的 table。 |
+
+E2E failure details:
+
+| Test file | Failing line | 現象 | 初步根因假設 |
+|---|---:|---|---|
+| `e2e/tests/S140-critical-path-browse-search.spec.ts` | 42 | `await expect(page.getByText(/3\s*個(相關)?技能/)).toBeVisible()` timeout 5000ms；artifact: `e2e/test-results/S140-critical-path-browse--e2f3c--1-happy-path-profile-paged-chromium/test-failed-1.png`。 | S186 semantic route / fixture 改動後，browse search UI 的 result count 文案或命中數不再符合 S140 舊期望；下一輪要先讀 screenshot / `error-context.md`，確認是產品行為變了、fixture 沒 seed embedding，還是測試文案 drift。 |
+
+本輪不直接修上述失敗，因為本輪工作單位是「S186 Phase 4 verification attempt + blocker note」。下一輪建議開單一修復單位：先讓舊 migration tests 不再要求 S186 已刪除的 `vector_store` table，重新跑 `./scripts/verify-all.sh`，再處理 V07 的 S140 browser search assertion。
+
+正式站 Chrome / Cloud Run log 覆測尚未完成；本輪 execution context 沒有可呼叫的 Chrome automation tool。S186 不可 shipping。
