@@ -38,7 +38,7 @@ import org.springframework.context.annotation.Profile;
  * 優先於 {@code googleGenAiEmbeddingModel} / {@code noOpEmbeddingModel} 注入。
  *
  * <p>對齊 {@link io.github.samzhu.skillshub.SkillshubProperties.GenAI#dimensions()} 預設 768 —
- * vector_store schema 接收 768-dim {@code float[]}。
+ * {@code skills.embedding} 欄位接收 768-dim {@code float[]}。
  *
  * @see io.github.samzhu.skillshub.search.SearchConfig
  */
@@ -46,7 +46,7 @@ import org.springframework.context.annotation.Profile;
 @Profile("e2e")
 class E2EEmbeddingConfig {
 
-    /** 對齊 {@code SkillshubProperties.GenAI.dimensions} 預設值；vector_store schema 接收 768-dim。 */
+    /** 對齊 {@code SkillshubProperties.GenAI.dimensions} 預設值；skills embedding 欄位接收 768-dim。 */
     static final int E2E_EMBEDDING_DIMENSIONS = 768;
 
     @Bean

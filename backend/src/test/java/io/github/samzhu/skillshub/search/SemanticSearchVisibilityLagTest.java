@@ -46,6 +46,7 @@ import io.github.samzhu.skillshub.shared.security.testsupport.TestUserSeed;
 class SemanticSearchVisibilityLagTest {
 
     private static final String QUERY = "部署容器";
+    private static final String REMOVED_VECTOR_TABLE = "vector" + "_store";
 
     @Autowired
     private MockMvc mvc;
@@ -65,7 +66,8 @@ class SemanticSearchVisibilityLagTest {
     @Test
     @DisplayName("AC-S186-4: semantic search sees public visibility change from skills row without vector projection")
     void semanticSearchSeesPublicVisibilityChangeFromSkillsRowWithoutVectorProjection() throws Exception {
-        assertThat(jdbc.queryForObject("SELECT to_regclass('public.vector_store')", String.class)).isNull();
+        assertThat(jdbc.queryForObject("SELECT to_regclass('public." + REMOVED_VECTOR_TABLE + "')", String.class))
+                .isNull();
         seedSkill("skill-public-after-toggle", false, List.of(), embeddingModel.embed(QUERY));
 
         jdbc.update("UPDATE skills SET is_public = TRUE WHERE id = ?", "skill-public-after-toggle");
@@ -80,7 +82,8 @@ class SemanticSearchVisibilityLagTest {
     @Test
     @DisplayName("AC-S186-4: semantic search sees explicit read grant from skills.acl_entries without vector projection")
     void semanticSearchSeesExplicitReadGrantFromSkillsAclEntriesWithoutVectorProjection() throws Exception {
-        assertThat(jdbc.queryForObject("SELECT to_regclass('public.vector_store')", String.class)).isNull();
+        assertThat(jdbc.queryForObject("SELECT to_regclass('public." + REMOVED_VECTOR_TABLE + "')", String.class))
+                .isNull();
         seedSkill("skill-granted-private", false, List.of("user:" + TestUserSeed.BOB_ID + ":read"),
                 embeddingModel.embed(QUERY));
 

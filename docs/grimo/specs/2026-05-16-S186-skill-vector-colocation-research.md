@@ -410,7 +410,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 | 2 | [S186-T02 semantic SQL from skills](../tasks/2026-05-16-S186-T02-semantic-sql-from-skills.md) | PASS | AC-S186-2, AC-S186-3, AC-S186-8 | `GET /api/v1/search/semantic` 從 `skills.embedding` 回 public / granted private skill，card 欄位直接來自同一 row。 |
 | 3 | [S186-T03 embedding write path](../tasks/2026-05-16-S186-T03-embedding-write-path.md) | PASS | AC-S186-5 | `SkillVersionPublishedEvent` 後 `skills.embedding_content / embedding / embedding_model / embedding_updated_at` 更新，其他 skill 欄位不被覆蓋；`SkillSuspendedEvent` 清空 embedding。 |
 | 4 | [S186-T04 remove vector ACL projection](../tasks/2026-05-16-S186-T04-remove-vector-acl-projection.md) | PASS | AC-S186-4 | `PUT /visibility` 或 grant 變更 commit 後，下一次 semantic search 直接用 `skills` row，不等任何 `vector_store` listener。 |
-| 5 | [S186-T05 vector-store cleanup sweep](../tasks/2026-05-16-S186-T05-vector-store-cleanup-sweep.md) | pending | AC-S186-6 | `rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 只剩允許的舊 migration / archived docs 外引用。 |
+| 5 | [S186-T05 vector-store cleanup sweep](../tasks/2026-05-16-S186-T05-vector-store-cleanup-sweep.md) | PASS | AC-S186-6 | `rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 只剩允許的舊 migration test 引用；active runtime/test code 不再讀寫舊表。 |
 | 6 | [S186-T06 docs and explain evidence](../tasks/2026-05-16-S186-T06-docs-explain-evidence.md) | pending | AC-S186-7 | spec §7 有 semantic SQL `EXPLAIN (ANALYZE, BUFFERS)` 的實際數字；architecture / standards 不再把 runtime search 說成依賴 `vector_store`。 |
 
 ### 6.4 AC Coverage
@@ -444,6 +444,8 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 2026-05-16 S186-T03 PASS：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.search.SearchEmbeddingRepositoryTest --tests io.github.samzhu.skillshub.search.SearchProjectionEmbeddingWriteTest` 先紅後綠；RED 是兩個新測試 class 尚不存在，Gradle 回 `No tests found`；GREEN 最後 `BUILD SUCCESSFUL in 2m 38s`。完成 `SearchEmbeddingRepository` 對 `skills.embedding_*` 的 upsert / clear，`SearchProjection` 的 created / published / reactivated / suspended listener 不再寫 `vector_store`，改為更新或清空同 row embedding 欄位。
 
 2026-05-16 S186-T04 PASS：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.security.SkillAclProjectionListenerEmbeddingColocationTest --tests io.github.samzhu.skillshub.search.SemanticSearchVisibilityLagTest` 先紅後綠；RED 是 `SkillAclProjectionListenerEmbeddingColocationTest` 等不到 `skills.acl_entries` 出現 Bob read grant，shutdown 時留下 `SkillGrantedEvent` 未完成；GREEN 最後 `BUILD SUCCESSFUL in 3m 11s`。完成 `SkillAclProjectionListener` 移除 `SELECT is_public` 與 `UPDATE vector_store ...`，Grant event 只重建 `skills.acl_entries`；新增 semantic visibility/grant tests 確認下一次 search 直接讀同一筆 `skills` row。
+
+2026-05-16 S186-T05 PASS：RED：`rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 一開始列出 `SkillshubPgVectorStore.java`、`TestDataController` reset allowlist、search/security/delete tests 的舊表讀寫。GREEN：同一 grep 只剩 `backend/src/test/java/io/github/samzhu/skillshub/db/*MigrationTest.java` 的歷史 migration references；`rg ... | rg -v "backend/src/test/java/io/github/samzhu/skillshub/db/"` 無輸出。`cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.search.*'` 最後 `BUILD SUCCESSFUL in 2m 52s`。完成刪除 custom vector store class、舊 vector-store-specific tests/fixture，TestDataController reset allowlist 改為 15 張表，並新增 `VectorStoreRuntimeRemovalTest` 防止 active runtime/test path 再引用舊表或舊 class。
 
 ---
 

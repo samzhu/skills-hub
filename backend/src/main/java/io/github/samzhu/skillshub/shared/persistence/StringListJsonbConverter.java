@@ -13,7 +13,7 @@ import tools.jackson.databind.ObjectMapper;
 /**
  * {@code List<String>} ↔ PostgreSQL JSONB array 雙向 converter（S016 ACL 用）。
  *
- * <p>對應 {@code SkillReadModel.aclEntries} / {@code vector_store.acl_entries}
+ * <p>對應 {@code SkillReadModel.aclEntries} / {@code skills.acl_entries}
  * 等 flat string array JSONB 欄位 — schema 形如 {@code ["user:alice:read",
  * "role:admin:read"]}，搭配 GIN(jsonb_ops) index 的 {@code ?|} operator 實現
  * 任意 principal 的 row-level 過濾。

@@ -54,26 +54,13 @@ class SearchConfigRegressionTest {
     void searchRuntimeClassesOnlyDependOnEmbeddingModel() throws Exception {
         for (String file : java.util.List.of(
                 "src/main/java/io/github/samzhu/skillshub/search/SearchProjection.java",
-                "src/main/java/io/github/samzhu/skillshub/search/SemanticSearchService.java",
-                "src/main/java/io/github/samzhu/skillshub/search/SkillshubPgVectorStore.java")) {
+                "src/main/java/io/github/samzhu/skillshub/search/SemanticSearchService.java")) {
             var source = Files.readString(Path.of(file));
             assertThat(source).contains("org.springframework.ai.embedding.EmbeddingModel");
             assertThat(source).doesNotContain("GoogleGenAiTextEmbeddingModel");
             assertThat(source).doesNotContain("GoogleGenAiEmbeddingConnectionDetails");
             assertThat(source).doesNotContain("GoogleGenAiTextEmbeddingOptions");
         }
-    }
-
-    @Test
-    @DisplayName("AC-S171-9: SkillshubPgVectorStore ACL SQL is unchanged by S171")
-    void skillshubPgVectorStoreAclSqlRemainsCustom() throws Exception {
-        var source = Files.readString(Path.of(
-                "src/main/java/io/github/samzhu/skillshub/search/SkillshubPgVectorStore.java"));
-
-        assertThat(source).contains(
-                "INSERT INTO vector_store (id, content, metadata, embedding, owner, skill_id, acl_entries, is_public)");
-        assertThat(source).contains("vs.is_public = TRUE OR vs.acl_entries ??| ?::text[]");
-        assertThat(source).contains("SkillshubPgVectorStore extends AbstractObservationVectorStore");
     }
 
     @Test

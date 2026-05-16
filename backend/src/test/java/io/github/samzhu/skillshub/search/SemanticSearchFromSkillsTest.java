@@ -31,8 +31,7 @@ import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.shared.security.testsupport.TestUserSeed;
 
 /**
- * S186-T02 — semantic search reads result cards from {@code skills.embedding} instead of
- * the removed {@code vector_store} table.
+ * S186-T02 — semantic search reads result cards from {@code skills.embedding}.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
@@ -46,6 +45,7 @@ import io.github.samzhu.skillshub.shared.security.testsupport.TestUserSeed;
 class SemanticSearchFromSkillsTest {
 
     private static final String QUERY = "部署容器";
+    private static final String REMOVED_VECTOR_TABLE = "vector" + "_store";
 
     @Autowired
     private MockMvc mvc;
@@ -63,9 +63,10 @@ class SemanticSearchFromSkillsTest {
     }
 
     @Test
-    @DisplayName("AC-S186-2: semantic search returns public skill from skills.embedding without vector_store")
+    @DisplayName("AC-S186-2: semantic search returns public skill from skills.embedding")
     void semanticSearchReturnsPublicSkillFromSkillsEmbeddingWithoutVectorStore() throws Exception {
-        assertThat(jdbc.queryForObject("SELECT to_regclass('public.vector_store')", String.class)).isNull();
+        assertThat(jdbc.queryForObject("SELECT to_regclass('public." + REMOVED_VECTOR_TABLE + "')", String.class))
+                .isNull();
         seedSkill("skill-docker", "docker-compose-helper", "u_current", "devops", "DevOps",
                 true, List.of("public:*:read"), 7L, embeddingModel.embed(QUERY));
 

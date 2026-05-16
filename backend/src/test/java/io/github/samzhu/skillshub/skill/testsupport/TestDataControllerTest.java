@@ -64,7 +64,6 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.tablesCleared").isArray())
             .andExpect(jsonPath("$.tablesCleared[?(@ == 'skills')]").exists())
-            .andExpect(jsonPath("$.tablesCleared[?(@ == 'vector_store')]").exists())
             .andExpect(jsonPath("$.tablesCleared[?(@ == 'download_events')]").exists())
             .andExpect(jsonPath("$.tablesCleared[?(@ == 'domain_events')]").exists())
             .andExpect(jsonPath("$.tablesCleared[?(@ == 'event_publication')]").exists());
@@ -73,7 +72,7 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
         verify(jdbc).update(sqlCaptor.capture(), any(Map.class));
         var sql = sqlCaptor.getValue();
         assertThat(sql).startsWith("TRUNCATE TABLE")
-            .contains("skills", "skill_versions", "vector_store",
+            .contains("skills", "skill_versions",
                       "download_events", "domain_events", "event_publication")
             .contains("CASCADE");
     }

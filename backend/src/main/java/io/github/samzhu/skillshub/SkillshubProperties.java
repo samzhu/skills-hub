@@ -41,8 +41,8 @@ public record SkillshubProperties(
     /**
      * 向量搜尋後端設定。
      *
-     * <p>T8 起唯一後端為自寫 {@link io.github.samzhu.skillshub.search.SkillshubPgVectorStore}
-     * 子類（HNSW + cosine + 6-欄 INSERT），不再有切換選項。
+     * <p>S186 後 embedding 與 skill row 同表保存；{@code collection} 保留為相容設定，
+     * 新 runtime path 不再使用外部 collection table。
      *
      * @param collection 向量搜尋集合名稱；
      *                   可透過 env var {@code SKILLSHUB_SEARCH_COLLECTION} 覆蓋

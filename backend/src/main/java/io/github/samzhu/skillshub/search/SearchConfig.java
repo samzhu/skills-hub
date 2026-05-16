@@ -13,14 +13,11 @@ import io.github.samzhu.skillshub.shared.ai.AiModelConfig;
  * This class keeps the old factory method as a non-bean delegate for S157 unit
  * tests until those tests are folded into the shared AI config tests.
  *
- * <p>**T8 之後不註冊任何 VectorStore @Bean**：vector store 操作由
- * {@link SkillshubPgVectorStore#builder(org.springframework.jdbc.core.JdbcTemplate, EmbeddingModel)}
- * per-request 建構，owner / skillId 鎖在 instance attribute 裡，操作完即可被 GC，
- * 無 thread-safety 顧慮、無 singleton state leak。
+ * <p>S186 後 semantic search 直接讀寫 {@code skills.embedding} 欄位，本 module
+ * 不再註冊或建構 VectorStore runtime 物件。
  *
  * <p>相依模組：{@code search} — 不依賴任何業務模組。
  *
- * @see SkillshubPgVectorStore
  * @see SearchProjection
  * @see SemanticSearchService
  */

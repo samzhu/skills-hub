@@ -45,7 +45,6 @@ class SkillCommandServiceDeleteTest extends RepositorySliceTestBase {
         jdbc.update("DELETE FROM collections");
         jdbc.update("DELETE FROM skill_subscriptions");
         jdbc.update("DELETE FROM skill_scores");
-        jdbc.update("DELETE FROM vector_store");
         jdbc.update("DELETE FROM skill_grants");
         jdbc.update("DELETE FROM reviews");
         jdbc.update("DELETE FROM flags");
@@ -71,7 +70,6 @@ class SkillCommandServiceDeleteTest extends RepositorySliceTestBase {
         assertThat(count("skills", skillId)).isZero();
         assertThat(count("skill_versions", skillId)).isZero();
         assertThat(count("download_events", skillId)).isZero();
-        assertThat(count("vector_store", skillId)).isZero();
         assertThat(count("reviews", skillId)).isZero();
         assertThat(count("flags", skillId)).isZero();
         assertThat(count("skill_grants", skillId)).isZero();
@@ -136,12 +134,6 @@ class SkillCommandServiceDeleteTest extends RepositorySliceTestBase {
                 INSERT INTO skill_grants (id, skill_id, principal_type, principal_id, role, granted_by)
                 VALUES (?, ?, 'user', 'bob', 'VIEWER', 'alice')
                 """, UUID.randomUUID().toString(), skillId);
-        jdbc.update("""
-                INSERT INTO vector_store (id, content, metadata, embedding, owner, skill_id, acl_entries)
-                SELECT gen_random_uuid(), 'delete-service', '{}'::json,
-                       ('[' || array_to_string(array_fill(0.0::double precision, ARRAY[768]), ',') || ']')::vector,
-                       'alice', ?, '["user:alice:read"]'::jsonb
-                """, skillId);
     }
 
     private void seedSoftFkRows(String skillId, String versionId) {

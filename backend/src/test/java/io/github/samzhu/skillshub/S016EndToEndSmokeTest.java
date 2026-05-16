@@ -118,7 +118,7 @@ class S016EndToEndSmokeTest {
         var zipBytes = createValidSkillZip(skillName);
         var skillIdRef = new AtomicReference<String>();
 
-        // (1) alice upload — Scenario 同步等 SkillCreated + SkillVersionPublished + vector_store ACL
+        // (1) alice upload — Scenario 同步等 SkillCreated + SkillVersionPublished + skills ACL
         scenario.stimulate(() -> {
                     try {
                         var uploadResponse = mockMvc.perform(multipart("/api/v1/skills/upload")
@@ -494,7 +494,7 @@ class S016EndToEndSmokeTest {
      * SkillVersionPublished）且 {@code SkillAclProjectionListener.onSkillCreated} 已完成
      * 將 acl_entries 材料化（S114a：防止新 listener 與步驟 2 的 old grantAcl 競爭）。
      *
-     * <p>注意：不檢查 {@code vector_store.acl_entries} — {@code SearchProjection.onVersionPublished}
+     * <p>注意：不檢查舊搜尋索引 ACL — {@code SearchProjection.onVersionPublished}
      * 在 async listener 內 {@code CurrentUserProvider.userId()} 因無 SecurityContext 走
      * {@code labUserId} fallback（per {@code CurrentUserProvider:76}），會以 {@code lab-user}
      * ACL 覆寫掉 {@code onSkillCreated} 寫入的 author ACL；該 derived state 不適合

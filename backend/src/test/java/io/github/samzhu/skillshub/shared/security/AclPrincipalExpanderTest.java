@@ -26,7 +26,7 @@ class AclPrincipalExpanderTest {
 
         var patterns = expander.expand(user, "read");
 
-        // S177: public visibility 改由 skills/vector_store.is_public；expander 只產出具名 principal。
+        // S177/S186: public visibility 改由 skills.is_public；expander 只產出具名 principal。
         assertThat(patterns).containsExactlyInAnyOrder(
                 "user:alice:read",
                 "role:admin:read",

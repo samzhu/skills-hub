@@ -31,7 +31,7 @@ import io.github.samzhu.skillshub.storage.PackageService;
  *
  * <p>3 個 endpoint：
  * <ul>
- *   <li>{@code POST /internal/test/reset} — 單次 {@code TRUNCATE} 涵蓋 allowlist 16 張
+     *   <li>{@code POST /internal/test/reset} — 單次 {@code TRUNCATE} 涵蓋 allowlist 15 張
  *       application data tables（Flyway {@code schema_history} 保留），讓每個 Playwright
  *       test 走 deterministic empty state</li>
  *   <li>{@code POST /internal/test/seed/skill} — 透過 {@link SkillCommandService#uploadSkill}
@@ -57,7 +57,7 @@ class TestDataController {
      */
     private static final List<String> RESET_ALLOWLIST = List.of(
             "skills", "skill_versions", "skill_scores", "skill_subscriptions",
-            "collections", "collection_skills", "vector_store",
+            "collections", "collection_skills",
             "download_events", "domain_events", "event_publication",
             "notifications", "notification_preferences",
             "requests", "request_votes", "reviews", "flags");

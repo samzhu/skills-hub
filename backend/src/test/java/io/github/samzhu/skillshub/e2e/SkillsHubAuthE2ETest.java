@@ -112,7 +112,6 @@ class SkillsHubAuthE2ETest {
         jdbc.update("DELETE FROM skill_versions");
         jdbc.update("DELETE FROM skill_scores");
         jdbc.update("DELETE FROM download_events");
-        jdbc.update("DELETE FROM vector_store");
         jdbc.update("DELETE FROM flags");
         jdbc.update("DELETE FROM reviews");
         jdbc.update("DELETE FROM skills");

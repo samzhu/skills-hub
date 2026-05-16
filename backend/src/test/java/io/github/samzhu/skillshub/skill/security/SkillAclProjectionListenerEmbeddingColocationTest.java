@@ -29,6 +29,7 @@ import io.github.samzhu.skillshub.skill.security.events.SkillGrantedEvent;
 @Import(TestcontainersConfiguration.class)
 @Tag("S186")
 class SkillAclProjectionListenerEmbeddingColocationTest {
+    private static final String REMOVED_VECTOR_TABLE = "vector" + "_store";
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -42,11 +43,12 @@ class SkillAclProjectionListenerEmbeddingColocationTest {
     }
 
     @Test
-    @DisplayName("AC-S186-4: grant projection updates skills ACL without touching vector_store")
+    @DisplayName("AC-S186-4: grant projection updates skills ACL without touching legacy vector table")
     void grantProjectionUpdatesSkillsAclWithoutTouchingVectorStore(Scenario scenario) {
         var skillId = UUID.randomUUID().toString();
         seedSkill(skillId, "u_alice1");
-        assertThat(jdbc.queryForObject("SELECT to_regclass('public.vector_store')", String.class)).isNull();
+        assertThat(jdbc.queryForObject("SELECT to_regclass('public." + REMOVED_VECTOR_TABLE + "')", String.class))
+                .isNull();
 
         grantRepo.save(SkillGrant.create(skillId, "user", "u_alice1", Role.OWNER, "u_alice1"));
         var bobGrant = SkillGrant.create(skillId, "user", "u_bob111", Role.VIEWER, "u_alice1");

@@ -22,7 +22,7 @@ import io.github.samzhu.skillshub.shared.security.PrincipalContextService;
  * 語意搜尋服務 — 接收自然語言查詢，直接從 {@code skills.embedding} 找出語意相近的技能。
  *
  * <p>S186-T02: result card 欄位、visibility/ACL、cosine distance 都來自同一筆
- * {@code skills} row；不再查 {@code vector_store}，也不再用 {@code skillRepo.findAllById}
+ * {@code skills} row；不再查舊獨立向量表，也不再用 {@code skillRepo.findAllById}
  * 對結果做二次補資料。
  *
  * @see SearchProjection
@@ -82,7 +82,7 @@ class SemanticSearchService {
      * @return 語意相關的技能清單，若無符合結果則回傳空清單（不拋出例外）
      */
     List<SemanticSearchResult> search(String query, int topK) {
-        // S186-T02：ACL filter 與 result card 都直接讀 skills row，避免 vector_store stale metadata。
+        // S186-T02：ACL filter 與 result card 都直接讀 skills row，避免舊索引 metadata stale。
         var principalKeys = principalContextService.currentPrincipalKeys();
         var aclPatterns = readPatterns(principalKeys);
         var queryEmbedding = new PGvector(embeddingModel.embed(query));

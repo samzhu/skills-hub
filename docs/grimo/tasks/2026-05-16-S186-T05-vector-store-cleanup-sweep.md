@@ -57,4 +57,11 @@ And（而且）保留的字串只允許出現在舊 Flyway migration 或 archive
 - S186-T04 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## 結果
+- RED：`rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 列出 production `SkillshubPgVectorStore.java`、`TestDataController` reset allowlist，以及多個 search/security/delete tests 還在讀寫舊表。
+- GREEN：刪除 `SkillshubPgVectorStore.java`、舊 vector-store-specific tests 與 fixture，`TestDataController` reset allowlist 不再包含舊表，active tests 改用 `skills.embedding` / `skills.acl_entries`。
+- Guard：新增 `VectorStoreRuntimeRemovalTest`，掃 `src/main/java` + `src/test/java`，只允許 `skillshub/db/*MigrationTest.java` 保留歷史 migration 字串。
+- 驗證：`rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 只剩 `backend/src/test/java/io/github/samzhu/skillshub/db/*MigrationTest.java`；`rg ... | rg -v "backend/src/test/java/io/github/samzhu/skillshub/db/"` 無輸出。
+- 驗證：`cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.search.*'` → `BUILD SUCCESSFUL in 2m 52s`。

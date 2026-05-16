@@ -33,7 +33,7 @@ import org.springframework.security.task.DelegatingSecurityContextAsyncTaskExecu
  * 以便 {@code @ApplicationModuleListener} 內 {@code CurrentUserProvider.userId()} /
  * {@code current()} 仍能取得正確 user。沒有此包裝，async thread 的 SecurityContext
  * 為 null → SearchProjection / 其他依賴當前 user 的 listener 在 production 拿不到正確
- * owner、寫入 vector_store / read model 時欄位為 null。
+ * owner、寫入 search read model 時欄位為 null。
  *
  * @see <a href="https://docs.spring.io/spring-framework/reference/integration/scheduling.html#scheduling-annotation-support-async">Spring @Async docs</a>
  * @see <a href="https://docs.spring.io/spring-security/reference/servlet/integrations/concurrency.html">Spring Security Concurrency</a>

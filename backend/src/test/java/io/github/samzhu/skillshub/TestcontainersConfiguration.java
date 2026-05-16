@@ -83,16 +83,12 @@ public class TestcontainersConfiguration {
 	/**
 	 * S025a-T01 — Lift {@link EmbeddingModel} mock 為共用 {@link Primary} bean。
 	 *
-	 * <p>取代散佈在 8 個 file 的 {@code @MockitoBean EmbeddingModel}（per S025a inventory：
-	 * SemanticSearchAclTest / SemanticSearchIntegrationTest / PgVectorStoreOwnerWriteTest /
-	 * SkillshubPgVectorStoreAclTest / SkillshubPgVectorStoreAclSearchTest /
-	 * S016EndToEndSmokeTest / SearchProjectionAclWriteTest / SearchProjectionTest）。
-	 * 8 處 stub 邏輯**完全相同** — 三個 overload 皆回 {@code randomVector(768)}。
+	 * <p>取代過去散佈在多個 semantic / projection test 的 {@code @MockitoBean EmbeddingModel}。
+	 * 共用 stub 邏輯**完全相同** — 三個 overload 皆回 {@code randomVector(768)}。
 	 *
 	 * <p>同 query/document 不保證同向量（每次呼叫獨立 random）— 對 cosine similarity 測試
-	 * 場景需要「同向量 ≈ 1.0 > threshold」的測試，{@link SemanticSearchAclTest} 等已透過
-	 * vector 寫入 {@code vector_store} 後 search 走相同 query embedding 路徑（同次 mock 呼叫
-	 * 序列），此 stub 行為與原各 file 既有 stub 完全等價。
+	 * 場景需要「同向量 ≈ 1.0 > threshold」的測試，現行 search tests 會把同一 stub 向量寫入
+	 * {@code skills.embedding}，再用相同 query embedding 路徑讀回。
 	 *
 	 * <p><b>注意</b>：{@code @Primary} 在 {@code @MockitoBean} 下會被 Mockito bean override
 	 * 機制覆蓋（{@code @MockitoBean} 直接替換 bean instance）；T03 將移除全部 8 處
@@ -134,8 +130,7 @@ public class TestcontainersConfiguration {
 	 * → 任意 query 必命中 seed 的 doc。若用 {@code new Random()}（無 seed）則 doc/query 不同向量
 	 * → cosine ≈ 0（768 維 uniform random）→ search 回空 → test 失敗。
 	 *
-	 * <p>各 file 既有 stub 多用 {@code new Random(42)}（per SearchProjectionAclWriteTest L95、
-	 * SemanticSearchAclTest 等）— lift 後在此處集中設 seed 42 對齊原行為。
+	 * <p>各 file 既有 stub 多用 {@code new Random(42)}；lift 後在此處集中設 seed 42 對齊原行為。
 	 */
 	private static float[] randomVector(int dim) {
 		var rnd = new Random(42);

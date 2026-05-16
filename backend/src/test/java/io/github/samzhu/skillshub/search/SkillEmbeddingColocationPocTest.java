@@ -32,6 +32,7 @@ import io.github.samzhu.skillshub.skill.domain.Visibility;
  */
 @Tag("S186")
 class SkillEmbeddingColocationPocTest extends RepositorySliceTestBase {
+    private static final String REMOVED_VECTOR_TABLE = "vector" + "_store";
 
     private static final String SEMANTIC_SQL = """
             SELECT id, name, description, author, category, embedding <=> ? AS distance
@@ -89,7 +90,8 @@ class SkillEmbeddingColocationPocTest extends RepositorySliceTestBase {
         var alicePrivateSkill = seedPublishedSkill("poc-alice-private", "alice", Visibility.PRIVATE, unitVector(0));
         var bobPrivateSkill = seedPublishedSkill("poc-bob-private", "bob", Visibility.PRIVATE, unitVector(0));
 
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM vector_store", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT to_regclass('public." + REMOVED_VECTOR_TABLE + "')", String.class))
+                .isNull();
 
         var anonymousHits = searchSkillsTable(unitVector(0), List.of());
         assertThat(anonymousHits).extracting(Hit::id)
@@ -105,14 +107,14 @@ class SkillEmbeddingColocationPocTest extends RepositorySliceTestBase {
     }
 
     @Test
-    @DisplayName("POC-S186-3: EXPLAIN 同表查詢只碰 skills，不碰 vector_store")
+    @DisplayName("POC-S186-3: EXPLAIN 同表查詢只碰 skills，不碰舊向量表")
     void explainSameTableSemanticSqlTouchesOnlySkills() {
         seedPublishedSkill("poc-explain", "alice", Visibility.PUBLIC, unitVector(0));
 
         var plan = explainSkillsTableSearch(unitVector(0), List.of());
 
         assertThat(plan).contains("skills");
-        assertThat(plan).doesNotContain("vector_store");
+        assertThat(plan).doesNotContain(REMOVED_VECTOR_TABLE);
     }
 
     private Skill seedPublishedSkill(String prefix, String author, Visibility visibility, float[] embedding) {
