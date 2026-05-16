@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Conditional;
@@ -111,22 +110,4 @@ class SearchConfigRegressionTest {
         }
     }
 
-    @Test
-    @DisplayName("AC-7: SearchNativeConfig 含 @RegisterReflectionForBinding(LlmIntentOutput.class)")
-    @Tag("AC-7")
-    void searchNativeConfigRegistersLlmIntentOutputForBinding() {
-        var hint = SearchNativeConfig.class.getAnnotation(RegisterReflectionForBinding.class);
-
-        assertThat(hint).as(
-                "SearchNativeConfig must declare @RegisterReflectionForBinding — "
-                        + "BeanOutputConverter 需要 AOT hint 才能 reflect record components (S148 family)")
-                .isNotNull();
-        // @RegisterReflectionForBinding 用 @AliasFor 把 value() / classes() 互通。raw reflection
-        // 不走 Spring AnnotatedElementUtils merge，所以 array form `@A({X.class})` 會把資料寫進
-        // value()，classes() 仍回 default empty。檢查兩個 array 任一含目標 class 即可。
-        var both = new java.util.ArrayList<Class<?>>();
-        java.util.Collections.addAll(both, hint.value());
-        java.util.Collections.addAll(both, hint.classes());
-        assertThat(both).contains(SearchIntentService.LlmIntentOutput.class);
-    }
 }

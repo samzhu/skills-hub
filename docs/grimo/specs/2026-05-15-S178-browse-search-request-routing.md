@@ -475,7 +475,7 @@ git diff --check
 | --- | --- | --- | --- | --- |
 | S178-T01 | `docs/grimo/tasks/2026-05-16-S178-T01-debounce-query-enabled.md` | AC-S178-2, AC-S178-3 | PASS | `cd frontend && npm test -- useDebouncedValue useSkillList HomePage SearchBar` |
 | S178-T02 | `docs/grimo/tasks/2026-05-16-S178-T02-homepage-request-routing.md` | AC-S178-1 through AC-S178-7, AC-S178-12 | PASS | `cd frontend && npm test -- useDebouncedValue useSkillList HomePage SearchBar` |
-| S178-T03 | `docs/grimo/tasks/2026-05-16-S178-T03-remove-search-route-intent.md` | AC-S178-8, AC-S178-9 | pending | Remove `/search` route and intent summary code path. |
+| S178-T03 | `docs/grimo/tasks/2026-05-16-S178-T03-remove-search-route-intent.md` | AC-S178-8, AC-S178-9 | PASS | `cd frontend && npm test -- App`; `cd frontend && npm run verify`; `cd backend && ./gradlew test --tests "*Search*" --tests "*AiModelConfigTest" --tests "*StructuredOutputNativeHintCoverageTest"` |
 | S178-T04 | `docs/grimo/tasks/2026-05-16-S178-T04-docs-e2e-sync.md` | AC-S178-10, AC-S178-11 | pending | Sync docs/E2E and run final frontend verification. |
 
 ## 7. Results
@@ -503,3 +503,28 @@ cd frontend && npm test -- useDebouncedValue useSkillList HomePage SearchBar
 ```
 
 Result: PASS — 4 test files / 20 tests.
+
+### 2026-05-16 — S178-T03 PASS
+
+Confirmed current bug from real route table:
+
+- `frontend/src/App.tsx` still routed `/search` to `SearchResultsPage`; the RED test opened `/search?q=dd` and could not find `404`.
+- `SearchResultsPage` was the only production frontend caller of `useSearchIntent`, and `SearchIntentController` was the backend registration point for `POST /api/v1/search/intent`.
+
+Implemented:
+
+- Removed `/search` from the React route table; direct `/search` and `/search?q=dd` now fall through to existing `NotFoundPage`.
+- Deleted `SearchResultsPage`, `useSearchIntent`, `IntentSummaryCard`, frontend intent API client, backend intent controller/service/native hint, and `searchIntentChatClient`.
+- Removed intent-summary expectations from backend tests and removed the REST quick-reference row for the deleted endpoint.
+
+Verification:
+
+```bash
+cd frontend && npm test -- App
+cd frontend && npm run verify
+rg "SearchResultsPage|IntentSummaryCard|useSearchIntent|fetchSearchIntent|IntentResponse|SearchIntent|searchIntentChatClient|SearchNativeConfig|/api/v1/search/intent" frontend/src backend/src/main/java backend/src/test/java
+cd backend && ./gradlew test --tests "*Search*" --tests "*AiModelConfigTest" --tests "*StructuredOutputNativeHintCoverageTest"
+git diff --check
+```
+
+Result: PASS — `/search?q=dd` route test passed, source scan found no matches in `frontend/src`, `backend/src/main/java`, or `backend/src/test/java`, backend command finished `BUILD SUCCESSFUL`.

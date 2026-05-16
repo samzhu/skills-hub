@@ -20,7 +20,7 @@ import type { Skill } from '@/types/skill'
  *
  * @param skill 技能讀取模型（或語意搜尋結果）
  * @param score 語意相似度（0.0–1.0）；語意搜尋模式下顯示「XX% 相符」badge
- * @param featured 是否為 top-match — wrap in BeamFrame; SearchResultsPage 為第一個 result 啟用
+ * @param featured 是否為 top-match — wrap in BeamFrame; /browse semantic mode 為第一個 result 啟用
  */
 export function SkillCard({ skill, score, featured }: { skill: Skill; score?: number; featured?: boolean }) {
   const inner = (

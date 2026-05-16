@@ -43,7 +43,6 @@ class AiModelConfigTest {
                     assertThat(context).hasSingleBean(ChatModel.class);
                     assertThat(context).hasBean("qualityJudgeChatClient");
                     assertThat(context).hasBean("scannerChatClient");
-                    assertThat(context).hasBean("searchIntentChatClient");
                     assertThat(context).hasSingleBean(EmbeddingModel.class);
                     assertThat(context.getBean("qualityJudgeChatClient")).isInstanceOf(ChatClient.class);
                 });

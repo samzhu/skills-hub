@@ -6,7 +6,7 @@ import { DocsLayout } from '@/components/DocsLayout'
  *
  * Cross-checked 2026-05-02：對齊實際 backend controllers (SkillCommandController /
  * SkillQueryController / SkillAclController / FlagController / SearchController /
- * SearchIntentController / AnalyticsController / FileBrowserController /
+ * AnalyticsController / FileBrowserController /
  * NotificationController / CollectionController / RequestController / MeController)。
  *
  * Stub-state endpoints 標 ⏸；其他皆已實作。
@@ -61,11 +61,10 @@ export function RestApiPage() {
         ]}
       />
 
-      <H2>搜尋（SearchController + SearchIntentController）</H2>
+      <H2>搜尋（SearchController）</H2>
       <EndpointGroup
         rows={[
           { method: 'GET', path: '/api/v1/search/semantic', note: '語意搜尋；query: q / k (default 20)' },
-          { method: 'POST', path: '/api/v1/search/intent', note: 'S094b：query 解析意圖摘要 + 概念 chips；body: { query }' },
         ]}
       />
 

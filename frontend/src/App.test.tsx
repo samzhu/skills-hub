@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NotFoundPage } from './pages/NotFoundPage'
+import App from './App'
 
 /**
  * 此測試只驗 NotFoundPage 本身渲染合約，不 mount 整個 <App />。
@@ -71,5 +72,26 @@ describe('S143 AC-3: docs 子頁不被 redirect', () => {
   it('當直接訪問 /docs/overview 時，正常渲染不重定向', () => {
     renderDocsRoutes('/docs/overview')
     expect(screen.getByTestId('overview-sentinel')).toBeInTheDocument()
+  })
+})
+
+function renderAppAt(initialPath: string) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <App />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+describe('S178 AC-8: /search route removed', () => {
+  it('AC-S178-8: /search?q=dd falls through to NotFoundPage', () => {
+    renderAppAt('/search?q=dd')
+
+    expect(screen.getByText('404')).toBeInTheDocument()
+    expect(screen.getByText('找不到此頁面。')).toBeInTheDocument()
+    expect(screen.queryByText(/語意分析中/)).not.toBeInTheDocument()
   })
 })

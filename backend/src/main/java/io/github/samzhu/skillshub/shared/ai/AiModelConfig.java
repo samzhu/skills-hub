@@ -120,23 +120,6 @@ public class AiModelConfig {
     }
 
     /**
-     * Optional search intent LLM client.
-     *
-     * @param chatModel provider for the shared chat model
-     * @return named ChatClient or null when no chat model is available
-     */
-    @Bean("searchIntentChatClient")
-    @Nullable
-    ChatClient searchIntentChatClient(ObjectProvider<ChatModel> chatModel) {
-        var model = chatModel.getIfAvailable();
-        if (model == null) {
-            log.info("No ChatModel available — searchIntentChatClient not registered");
-            return null;
-        }
-        return ChatClient.builder(model).build();
-    }
-
-    /**
      * Embedding provider model — real Google GenAI when configured, NoOp fallback otherwise.
      *
      * @param props resolved application properties

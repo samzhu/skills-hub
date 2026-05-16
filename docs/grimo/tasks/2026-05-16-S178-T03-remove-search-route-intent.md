@@ -100,5 +100,32 @@ cd backend && ./gradlew test --tests "*Search*" --tests "*AiModelConfigTest" --t
 - S178-T01 PASS
 - S178-T02 PASS
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-16
+Test: `AC-S178-8: /search?q=dd falls through to NotFoundPage` (`frontend/src/App.test.tsx`)
+
+RED:
+- `cd frontend && npm test -- App` → FAIL：`/search?q=dd` 實際 render `SearchResultsPage`，找不到 `404`。
+
+GREEN:
+- `cd frontend && npm test -- App` → PASS（2 files / 17 tests）
+- `cd frontend && npm run verify` → PASS（eslint + `tsc -b`）
+- `rg "SearchResultsPage|IntentSummaryCard|useSearchIntent|fetchSearchIntent|IntentResponse|SearchIntent|searchIntentChatClient|SearchNativeConfig|/api/v1/search/intent" frontend/src backend/src/main/java backend/src/test/java` → no matches
+- `cd backend && ./gradlew test --tests "*Search*" --tests "*AiModelConfigTest" --tests "*StructuredOutputNativeHintCoverageTest"` → BUILD SUCCESSFUL
+
+Files changed:
+- `frontend/src/App.tsx`：移除 `/search` route 與 `SearchResultsPage` import。
+- `frontend/src/App.test.tsx`：新增 `/search?q=dd` 落到 `NotFoundPage` 的 route test。
+- `frontend/src/api/search.ts`：只保留 `fetchSemanticSearch`，移除 intent summary API client。
+- `frontend/src/pages/SearchResultsPage.tsx`、`frontend/src/pages/SearchResultsPage.test.tsx`、`frontend/src/hooks/useSearchIntent.ts`、`frontend/src/components/IntentSummaryCard.tsx`、`frontend/src/components/IntentSummaryCard.test.tsx`：刪除 dedicated `/search` frontend 支線。
+- `backend/src/main/java/io/github/samzhu/skillshub/search/SearchIntentController.java`、`SearchIntentService.java`、`SearchNativeConfig.java`：刪除 `POST /api/v1/search/intent` backend 支線與 native hint。
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/ai/AiModelConfig.java`：移除 `searchIntentChatClient` bean。
+- `backend/src/test/java/io/github/samzhu/skillshub/search/SearchConfigRegressionTest.java`、`backend/src/test/java/io/github/samzhu/skillshub/shared/aot/StructuredOutputNativeHintCoverageTest.java`、`backend/src/test/java/io/github/samzhu/skillshub/shared/ai/AiModelConfigTest.java`：移除 intent summary / AOT hint / bean expectation。
+- `backend/src/test/java/io/github/samzhu/skillshub/search/SearchIntentServiceTest.java`：刪除已移除 service 的測試。
+- `frontend/src/pages/docs/RestApiPage.tsx`：REST quick reference 移除已刪除的 intent endpoint row。
+- `frontend/src/components/SkillCard.tsx`：移除已刪除 `SearchResultsPage` 的註解引用。
+
+Notes: T04 仍需同步 `/docs/semantic-search` CTA、architecture/debugging docs 與 Playwright E2E browse network contract。

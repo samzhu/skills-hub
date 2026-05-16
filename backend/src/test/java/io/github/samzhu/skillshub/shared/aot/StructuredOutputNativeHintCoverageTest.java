@@ -37,7 +37,6 @@ class StructuredOutputNativeHintCoverageTest {
 
 		assertThat(targets).contains(
 				"io.github.samzhu.skillshub.score.judge.JudgeResponse",
-				"io.github.samzhu.skillshub.search.SearchIntentService.LlmIntentOutput",
 				"io.github.samzhu.skillshub.security.scan.engines.LlmJudgement");
 	}
 

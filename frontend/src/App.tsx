@@ -17,7 +17,6 @@ import { RestApiPage } from './pages/docs/RestApiPage'
 import { EventPayloadPage } from './pages/docs/EventPayloadPage'
 import { RiskScannerScopePage } from './pages/docs/RiskScannerScopePage'
 import { MySkillsPage } from './pages/MySkillsPage'
-import { SearchResultsPage } from './pages/SearchResultsPage'
 import { LandingPage } from './pages/LandingPage'
 import { RequestBoardPage } from './pages/RequestBoardPage'
 import { RequestDetailPage } from './pages/RequestDetailPage'
@@ -69,8 +68,6 @@ function App() {
       <Route path="/groups" element={<GroupsPage />} />
       {/* S096h1: Notifications stub — read-only list + bell badge in AppShell */}
       <Route path="/notifications" element={<NotificationsPage />} />
-      {/* S094b: 語意搜尋結果頁 — split inline → dedicated route */}
-      <Route path="/search" element={<SearchResultsPage />} />
       {/* S143: /docs canonical entry — 直訪或 nav click 統一 redirect 至 overview，消除 404 */}
       <Route path="/docs" element={<Navigate to="/docs/overview" replace />} />
       {/* S094d: docs walkthrough — 第一篇 walkthrough */}
