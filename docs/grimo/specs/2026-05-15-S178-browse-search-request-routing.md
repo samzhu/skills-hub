@@ -1,7 +1,7 @@
 # S178 — Browse Search Entry Point Cleanup
 
 > SpecID: S178
-> Status: 📐 in-design
+> Status: ⏳ in-progress
 > Date: 2026-05-15
 > Size: S(9)
 > Related: S157 semantic search LAB enablement, S177 is_public-first search visibility, S094b dedicated semantic search page (superseded at UI route level by S178), S104 filter-active empty state, S106 browse sort mapping
@@ -475,8 +475,8 @@ git diff --check
 | --- | --- | --- | --- | --- |
 | S178-T01 | `docs/grimo/tasks/2026-05-16-S178-T01-debounce-query-enabled.md` | AC-S178-2, AC-S178-3 | PASS | `cd frontend && npm test -- useDebouncedValue useSkillList HomePage SearchBar` |
 | S178-T02 | `docs/grimo/tasks/2026-05-16-S178-T02-homepage-request-routing.md` | AC-S178-1 through AC-S178-7, AC-S178-12 | PASS | `cd frontend && npm test -- useDebouncedValue useSkillList HomePage SearchBar` |
-| S178-T03 | _pending task file_ | AC-S178-8, AC-S178-9 | pending | Remove `/search` route and intent summary code path. |
-| S178-T04 | _pending task file_ | AC-S178-10, AC-S178-11 | pending | Sync docs/E2E and run final frontend verification. |
+| S178-T03 | `docs/grimo/tasks/2026-05-16-S178-T03-remove-search-route-intent.md` | AC-S178-8, AC-S178-9 | pending | Remove `/search` route and intent summary code path. |
+| S178-T04 | `docs/grimo/tasks/2026-05-16-S178-T04-docs-e2e-sync.md` | AC-S178-10, AC-S178-11 | pending | Sync docs/E2E and run final frontend verification. |
 
 ## 7. Results
 
