@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { useSkillList } from '@/hooks/useSkillList'
 import { useCategories } from '@/hooks/useCategories'
 import { useSemanticSearch } from '@/hooks/useSemanticSearch'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import type { RiskLevel, Skill } from '@/types/skill'
 
 /**
@@ -37,13 +38,11 @@ const RISK_TIER_LABELS: Record<RiskLevel, string> = {
 // 字典序 NONE→LOW→MEDIUM→HIGH 與此 enum 順序一致）。
 
 /**
- * 技能瀏覽首頁：支援語意搜尋（自然語言）與關鍵字搜尋（fallback）。
+ * 技能瀏覽首頁：空白輸入顯示 catalog；有輸入時只顯示語意搜尋結果。
  *
  * 搜尋模式切換規則：
- * - query 非空 → 語意搜尋模式（useSemanticSearch），隱藏 CategorySidebar 與分頁
- * - query 空字串 → 關鍵字搜尋模式（useSkillList），顯示完整 CategorySidebar 與分頁
- *
- * 此設計符合 AC-6：「關鍵字搜尋與分類篩選在語意搜尋模式下隱藏」。
+ * - query 非空 → 語意搜尋模式，隱藏 CategorySidebar 與分頁
+ * - query 空字串 → catalog 模式，顯示完整 CategorySidebar 與分頁
  */
 export function HomePage() {
   const [query, setQuery] = useState('')
@@ -52,32 +51,30 @@ export function HomePage() {
   const [sortMode, setSortMode] = useState<SortMode>('recommended')
   // S098d2: risk filter selection — empty Set = 「不篩選」= 全顯
   const [riskFilter, setRiskFilter] = useState<Set<RiskLevel>>(new Set())
+  const trimmedQuery = query.trim()
+  const debouncedQuery = useDebouncedValue(trimmedQuery, 300)
+  const hasSearchInput = trimmedQuery.length > 0
+  const isSemanticMode = hasSearchInput
+  const isCatalogMode = !hasSearchInput
+  const isDebouncingSearch = hasSearchInput && debouncedQuery !== trimmedQuery
 
-  // 語意搜尋模式：query 非空時啟用（enabled 由 hook 內部控制）
+  // S178: semantic mode waits for the debounced query; catalog mode passes blank to keep the hook disabled.
   const {
     data: semanticResults,
     isLoading: semanticLoading,
     error: semanticError,
-  } = useSemanticSearch(query)
+  } = useSemanticSearch(isSemanticMode ? debouncedQuery : '')
 
-  // 關鍵字搜尋模式：query 空時為主模式；query 非空時作為語意搜尋的 fallback
+  // S178: catalog mode never sends keyword fallback while the search box has text.
   // S100b: sort param 改 server-side 派遣 — backend Spring Pageable 接收 sort=field,direction
   const { data: skillsPage, isLoading: listLoading, error: listError } = useSkillList({
-    keyword: query.trim() || undefined,
     category: category ?? undefined,
     page,
     size: 20,
     sort: sortMode,
-  })
+  }, { enabled: isCatalogMode })
 
   const { data: categories } = useCategories()
-
-  // 語意搜尋模式：query 非空、semantic 未 error、且確實有結果時啟用。
-  // S046：semantic 回空（dev 未配置 embedding / prod 真 zero match / silent failure）
-  // 也算 fallback 觸發條件 — 落 keyword mode，避免「找到 0 個 試試換個描述方式」死巷。
-  const isSemanticMode = query.trim().length > 0
-    && !semanticError
-    && (semanticResults?.length ?? 0) > 0
 
   /**
    * 使用者輸入搜尋字串時觸發，同時重置分頁與分類篩選。
@@ -85,6 +82,10 @@ export function HomePage() {
   const handleSearch = (value: string) => {
     setQuery(value)
     setPage(0)
+    if (value.trim().length > 0) {
+      setCategory(null)
+      setRiskFilter(new Set())
+    }
   }
 
   const clearSearchAndBrowseAll = () => {
@@ -102,7 +103,7 @@ export function HomePage() {
     setPage(0)
   }
 
-  const isLoading = isSemanticMode ? semanticLoading : listLoading
+  const isLoading = isSemanticMode ? (isDebouncingSearch || semanticLoading) : listLoading
   const error = isSemanticMode ? semanticError : listError
 
   // S100b: sort 改 server-side（query param sort=field,direction）— 跨頁全域 sort
@@ -146,8 +147,8 @@ export function HomePage() {
       </div>
 
       <div className="flex gap-6">
-        {/* CategorySidebar + RiskFilterSidebar 只在關鍵字搜尋模式（query 空）時顯示 */}
-        {!isSemanticMode && (
+        {/* CategorySidebar + RiskFilterSidebar 只在 catalog mode（query 空）時顯示 */}
+        {isCatalogMode && (
           <aside className="hidden w-56 shrink-0 md:block space-y-6">
             {/* S098d2: risk filter — client-side counts 來自當前頁 skillsPage.content */}
             <RiskFilterSidebar
@@ -171,7 +172,7 @@ export function HomePage() {
             </div>
           ) : error ? (
             <div className="flex items-center justify-center py-16 text-red-500">
-              載入技能失敗，請重新整理頁面
+              {isSemanticMode ? '搜尋失敗，請調整描述或清除搜尋後瀏覽全部技能' : '載入技能失敗，請重新整理頁面'}
             </div>
           ) : isSemanticMode ? (
             // 語意搜尋結果：顯示每張卡片的相符度 badge，無分頁
@@ -197,7 +198,7 @@ export function HomePage() {
                   tone="redirect"
                   query={query}
                   headline="這個描述還沒有匹配的技能。"
-                  sub="現有技能與你描述的概念相似度都偏低。可以調整描述、改用關鍵字模式，或邀請團隊發布。"
+                  sub="現有技能與你描述的概念相似度都偏低。可以調整描述、清除搜尋並瀏覽分類，或邀請團隊發布。"
                   suggestions={[
                     { text: '清除描述並瀏覽全部技能', hint: '回到完整技能列表', onClick: clearSearchAndBrowseAll },
                     { text: '發布這個技能', hint: '你可能是第一個遇到此需求的人', href: '/publish' },

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -19,14 +19,20 @@ const mockSkillsPage = {
   ],
   page: { number: 0, size: 20, totalElements: 103, totalPages: 6 },
 }
+const mockSemanticResults = [
+  { id: 'semantic-1', name: 'semantic-dd', author: 'ai', description: 'semantic result', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 4, score: 0.91 },
+]
+const searchPlaceholder = '描述你想完成的任務或搜尋技能...'
 
-const renderPage = () => {
+const renderPage = (initialPath = '/browse') => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/']}>
+      <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/browse" element={<HomePage />} />
+          <Route path="/skills" element={<HomePage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -43,9 +49,22 @@ beforeEach(() => {
     if (url.includes('/api/v1/categories')) {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
     }
+    if (url.includes('/api/v1/search/semantic')) {
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(mockSemanticResults) } as Response)
+    }
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
   })
 })
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+const fetchUrls = () => {
+  const fetchMock = (globalThis as any).fetch as ReturnType<typeof vi.fn>
+  return fetchMock.mock.calls.map((c) => String(c[0]))
+}
+const waitMs = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
 
 describe('HomePage — S104 filter-active 0-hits UX', () => {
   it('AC-baseline: 無 filter 時顯 unfiltered count + render skill cards', async () => {
@@ -171,5 +190,123 @@ describe('HomePage — S104 filter-active 0-hits UX', () => {
 
     await waitFor(() => expect(screen.getByText('保留技能')).toBeInTheDocument())
     expect(screen.queryByText('已刪除技能')).not.toBeInTheDocument()
+  })
+})
+
+describe('HomePage — S178 browse search request routing', () => {
+  it('AC-S178-1: initial browse uses catalog API only', async () => {
+    renderPage('/browse')
+    await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
+
+    const urls = fetchUrls()
+    expect(urls.some((u) => u.includes('/api/v1/skills?') && !u.includes('keyword='))).toBe(true)
+    expect(urls.some((u) => u.includes('/api/v1/search/semantic'))).toBe(false)
+    expect(screen.getByText(/共 103 個技能/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /無風險/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '下一頁' })).toBeInTheDocument()
+  })
+
+  it('AC-S178-2/3: search input uses only final debounced semantic API', async () => {
+    renderPage('/browse')
+    await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
+    ;((globalThis as any).fetch as ReturnType<typeof vi.fn>).mockClear()
+
+    const input = screen.getByPlaceholderText(searchPlaceholder)
+    fireEvent.change(input, { target: { value: 'd' } })
+    await waitMs(100)
+    fireEvent.change(input, { target: { value: 'dd' } })
+
+    expect(fetchUrls().some((u) => u.includes('/api/v1/search/semantic?q=d'))).toBe(false)
+    expect(fetchUrls().some((u) => u.includes('/api/v1/skills?') && u.includes('keyword='))).toBe(false)
+
+    await waitFor(() => expect(screen.getByText('semantic-dd')).toBeInTheDocument())
+    const urls = fetchUrls()
+    expect(urls.filter((u) => u.includes('/api/v1/search/semantic?q=dd'))).toHaveLength(1)
+    expect(urls.some((u) => u.includes('/api/v1/search/semantic?q=d&'))).toBe(false)
+    expect(urls.some((u) => u.includes('/api/v1/skills?') && u.includes('keyword=dd'))).toBe(false)
+    expect(screen.queryByRole('button', { name: /無風險/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '下一頁' })).not.toBeInTheDocument()
+  })
+
+  it('AC-S178-4: semantic zero result does not keyword-fallback', async () => {
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/v1/skills')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(mockSkillsPage) } as Response)
+      }
+      if (url.includes('/api/v1/categories')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
+      }
+      if (url.includes('/api/v1/search/semantic')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
+    })
+    renderPage('/browse')
+    await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
+    ;((globalThis as any).fetch as ReturnType<typeof vi.fn>).mockClear()
+
+    fireEvent.change(screen.getByPlaceholderText(searchPlaceholder), { target: { value: 'dd' } })
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2, name: '這個描述還沒有匹配的技能。' })).toBeInTheDocument()
+    })
+    const urls = fetchUrls()
+    expect(urls.some((u) => u.includes('/api/v1/search/semantic?q=dd'))).toBe(true)
+    expect(urls.some((u) => u.includes('/api/v1/skills?') && u.includes('keyword=dd'))).toBe(false)
+    expect(screen.getByText(/清除搜尋並瀏覽分類/)).toBeInTheDocument()
+  })
+
+  it('AC-S178-5: semantic error does not keyword-fallback', async () => {
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/v1/skills')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(mockSkillsPage) } as Response)
+      }
+      if (url.includes('/api/v1/categories')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
+      }
+      if (url.includes('/api/v1/search/semantic')) {
+        return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({ message: 'semantic failed' }) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
+    })
+    renderPage('/browse')
+    await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
+    ;((globalThis as any).fetch as ReturnType<typeof vi.fn>).mockClear()
+
+    fireEvent.change(screen.getByPlaceholderText(searchPlaceholder), { target: { value: 'dd' } })
+
+    await waitFor(() => {
+      expect(screen.getByText('搜尋失敗，請調整描述或清除搜尋後瀏覽全部技能')).toBeInTheDocument()
+    })
+    const urls = fetchUrls()
+    expect(urls.some((u) => u.includes('/api/v1/search/semantic?q=dd'))).toBe(true)
+    expect(urls.some((u) => u.includes('/api/v1/skills?') && u.includes('keyword=dd'))).toBe(false)
+  })
+
+  it('AC-S178-6/7: clearing search returns to unfiltered catalog API from /skills alias', async () => {
+    renderPage('/skills')
+    await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /無風險/ }))
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2, name: /沒有「無風險」的技能/ })).toBeInTheDocument()
+    })
+    ;((globalThis as any).fetch as ReturnType<typeof vi.fn>).mockClear()
+
+    const input = screen.getByPlaceholderText(searchPlaceholder)
+    fireEvent.change(input, { target: { value: 'dd' } })
+    await waitFor(() => expect(screen.getByText('semantic-dd')).toBeInTheDocument())
+
+    ;((globalThis as any).fetch as ReturnType<typeof vi.fn>).mockClear()
+    fireEvent.change(input, { target: { value: '' } })
+    await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
+
+    const skillsUrls = fetchUrls().filter((u) => u.includes('/api/v1/skills?'))
+    expect(skillsUrls.length).toBeGreaterThan(0)
+    const lastSkillsUrl = skillsUrls.at(-1) ?? ''
+    expect(lastSkillsUrl).toContain('page=0')
+    expect(lastSkillsUrl).toContain('size=20')
+    expect(lastSkillsUrl).not.toContain('keyword=')
+    expect(lastSkillsUrl).not.toContain('category=')
+    expect(screen.getByText(/共 103 個技能/)).toBeInTheDocument()
   })
 })

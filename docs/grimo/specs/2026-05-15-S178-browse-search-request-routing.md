@@ -466,3 +466,40 @@ Verification:
 cd frontend && npm test
 git diff --check
 ```
+
+---
+
+## 6. Task Plan
+
+| Task | File | ACs | Status | Verification |
+| --- | --- | --- | --- | --- |
+| S178-T01 | `docs/grimo/tasks/2026-05-16-S178-T01-debounce-query-enabled.md` | AC-S178-2, AC-S178-3 | PASS | `cd frontend && npm test -- useDebouncedValue useSkillList HomePage SearchBar` |
+| S178-T02 | `docs/grimo/tasks/2026-05-16-S178-T02-homepage-request-routing.md` | AC-S178-1 through AC-S178-7, AC-S178-12 | PASS | `cd frontend && npm test -- useDebouncedValue useSkillList HomePage SearchBar` |
+| S178-T03 | _pending task file_ | AC-S178-8, AC-S178-9 | pending | Remove `/search` route and intent summary code path. |
+| S178-T04 | _pending task file_ | AC-S178-10, AC-S178-11 | pending | Sync docs/E2E and run final frontend verification. |
+
+## 7. Results
+
+### 2026-05-16 — S178-T01/T02 PASS
+
+Confirmed current bug from real source:
+
+- `frontend/src/pages/HomePage.tsx` was calling `useSemanticSearch(query)` and `useSkillList({ keyword: query.trim() })` in the same render.
+- `frontend/src/App.tsx` still has `/search` route; docs and E2E still point to `/search`. These remain for S178-T03/T04.
+
+Implemented:
+
+- `useDebouncedValue(value, 300)` publishes only the final stable search text.
+- `useSkillList(params, { enabled:false })` prevents catalog list fetch while search input is non-empty.
+- `/browse` now treats `query.trim().length > 0` as semantic mode, not "semantic only if results exist".
+- `/browse` search no longer passes `keyword` to `/api/v1/skills`.
+- Semantic empty/error states stay in semantic mode and do not fallback to keyword list.
+- SearchBar placeholder now says `描述你想完成的任務或搜尋技能...`.
+
+Verification:
+
+```bash
+cd frontend && npm test -- useDebouncedValue useSkillList HomePage SearchBar
+```
+
+Result: PASS — 4 test files / 20 tests.

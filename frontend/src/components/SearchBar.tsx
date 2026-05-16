@@ -33,7 +33,7 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="搜尋名稱、描述或分類..."
+          placeholder="描述你想完成的任務或搜尋技能..."
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="h-12 rounded-lg pl-10 text-base border-none focus-visible:ring-0 focus-visible:ring-offset-0"
