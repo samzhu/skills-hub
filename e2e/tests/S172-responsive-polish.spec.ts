@@ -89,9 +89,9 @@ test.describe('S172 — responsive polish guard', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/browse');
     await page.getByRole('searchbox').fill('s172-no-result-query');
-    await expect(page.getByRole('heading', { name: '找不到符合的技能' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /清除關鍵字並瀏覽全部技能/ })).toBeVisible();
-    await expect(page.getByRole('link', { name: /發布你自己的技能/ })).toHaveAttribute('href', '/publish');
+    await expect(page.getByRole('heading', { name: '這個描述還沒有匹配的技能。' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /清除描述並瀏覽全部技能/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /發布這個技能/ })).toHaveAttribute('href', '/publish');
     await expect(page.getByText('切換到語意搜尋模式')).toHaveCount(0);
     await expectNoBodyOverflow(page, '/browse empty @ 390x844');
 

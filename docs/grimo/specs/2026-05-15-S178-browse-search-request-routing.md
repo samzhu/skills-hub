@@ -477,6 +477,7 @@ git diff --check
 | S178-T02 | `docs/grimo/tasks/2026-05-16-S178-T02-homepage-request-routing.md` | AC-S178-1 through AC-S178-7, AC-S178-12 | PASS | `cd frontend && npm test -- useDebouncedValue useSkillList HomePage SearchBar` |
 | S178-T03 | `docs/grimo/tasks/2026-05-16-S178-T03-remove-search-route-intent.md` | AC-S178-8, AC-S178-9 | PASS | `cd frontend && npm test -- App`; `cd frontend && npm run verify`; `cd backend && ./gradlew test --tests "*Search*" --tests "*AiModelConfigTest" --tests "*StructuredOutputNativeHintCoverageTest"` |
 | S178-T04 | `docs/grimo/tasks/2026-05-16-S178-T04-docs-e2e-sync.md` | AC-S178-10, AC-S178-11 | PASS | `cd frontend && npm test -- SemanticSearchPage`; `cd frontend && npm run verify`; `cd e2e && npx playwright test --grep @S178` |
+| S178-T05 | `docs/grimo/tasks/2026-05-16-S178-T05-s172-e2e-empty-state-drift.md` | V07 release gate drift | PASS | `cd e2e && npx playwright test --grep "@S172.*responsive-polish.*happy-path"`; `cd e2e && npx playwright test --grep @happy-path` |
 
 ## 7. Results
 
@@ -553,3 +554,49 @@ cd e2e && npx playwright test --grep @S178
 ```
 
 Result: PASS — docs CTA test passed, frontend lint/typecheck passed, and the Playwright `@S178` browser test passed with the `/browse` semantic-only request contract.
+
+### 2026-05-16 — QA Round 1 REJECT-FIX
+
+`./scripts/verify-all.sh` reached the standard repo gate and produced:
+
+```text
+V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=FAIL V08a=PASS V08b=PASS
+Verdict: ❌ 1 CRITICAL failure(s); exit=1
+```
+
+V07 failed in `e2e/tests/S172-responsive-polish.spec.ts:92`, not in the new S178 semantic-search test. The stale assertion expected `/browse` search 0-result copy from keyword mode:
+
+```text
+heading: 找不到符合的技能
+button: 清除關鍵字並瀏覽全部技能
+link: 發布你自己的技能
+```
+
+S178 intentionally changed `/browse` non-empty search to semantic mode. The current `HomePage.tsx` semantic empty-state copy is:
+
+```text
+heading: 這個描述還沒有匹配的技能。
+button: 清除描述並瀏覽全部技能
+link: 發布這個技能
+```
+
+Action: create S178-T05 to update the stale S172 E2E assertions, then rerun the S172 responsive-polish Playwright cut.
+
+### 2026-05-16 — S178-T05 PASS
+
+Implemented:
+
+- Updated `e2e/tests/S172-responsive-polish.spec.ts` to assert the current `/browse` semantic empty state:
+  - `這個描述還沒有匹配的技能。`
+  - `清除描述並瀏覽全部技能`
+  - `發布這個技能`
+- Kept S172's original no-overflow assertion and the check that `切換到語意搜尋模式` is absent.
+
+Verification:
+
+```bash
+cd e2e && npx playwright test --grep "@S172.*responsive-polish.*happy-path"
+cd e2e && npx playwright test --grep @happy-path
+```
+
+Result: PASS — S172 responsive-polish cut passed 3/3, then full Playwright `@happy-path` gate passed 9/9. The earlier `./scripts/verify-all.sh` run had already passed V01, V03, V04, V05, V06, V08a, and V08b; it failed only at stale V07 before S178-T05. A fresh full `./scripts/verify-all.sh` exit=0 is still required before shipping.
