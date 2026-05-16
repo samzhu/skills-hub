@@ -228,14 +228,16 @@ ALTER TABLE skills
 
 CREATE INDEX IF NOT EXISTS idx_skills_embedding_hnsw
   ON skills USING HNSW (embedding vector_cosine_ops);
+
+DROP TABLE IF EXISTS vector_store;
 ```
 
 `vector_store` cleanup 決議：
 
 1. S186 不保留舊 `vector_store` 向量資料，不做 `vector_store -> skills.embedding` migration。
 2. 部署目標環境可清除重建資料；S186 不是 production-preserving data migration spec。
-3. S186 不做舊 skill embedding backfill；上線後只有新建、重新發布、reactivate、或後續明確 re-embed 動作寫入 `skills.embedding_*` 的 skill 會出現在 semantic search。
-4. migration 只負責 schema：新增 `skills.embedding_*` 欄位 / index，並移除 `vector_store` runtime 依賴；不嘗試用 SQL 或 application startup 搬移既有向量資料。
+3. S186 不做舊 skill embedding backfill，也不新增手動 re-embed 維運入口；部署 / 測試目標環境以系統資料重建後重新驗證 semantic search。
+4. migration 只負責 schema：新增 `skills.embedding_*` 欄位 / index，並 `DROP TABLE IF EXISTS vector_store`；不嘗試用 SQL、application startup、或手動 command 搬移既有向量資料。
 5. 測試資料與 e2e fixture 必須改成 seed skill 後寫 `skills.embedding_*`，不再 seed `vector_store`。
 
 ### 4.2 Search DTO

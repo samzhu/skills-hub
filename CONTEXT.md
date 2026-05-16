@@ -12,6 +12,22 @@ _Avoid_: Empty search, blank semantic search
 Finding skills from a non-empty natural-language or keyword-like user input by semantic relevance.
 _Avoid_: Keyword mode, semantic fallback
 
+**Search Embedding**:
+Search-only data derived from the latest SKILL.md name and description so semantic search can rank skills by relevance.
+_Avoid_: Skill content, skill metadata
+
+**Skill Description Snapshot**:
+A display copy of the latest SKILL.md description kept on the skill row so pages can render without reading the package file.
+_Avoid_: Editable skill description, separate marketing description
+
+**SKILL.md Edit**:
+A versioned content change made by uploading or pasting a replacement SKILL.md.
+_Avoid_: Skill metadata edit, description edit
+
+**Version History**:
+A read-only list of published skill versions.
+_Avoid_: Version upload form, edit form
+
 **Search Entry Point**:
 The single user-facing place where people search for skills.
 _Avoid_: Dedicated search page, alternate search route
@@ -52,6 +68,10 @@ _Avoid_: Public grant, visibility setting
 A grant-shaped visibility setting that makes a skill readable by everyone without becoming an ACL entry.
 _Avoid_: Public ACL, explicit grant
 
+**Vector Read Scope**:
+A deprecated search-index copy of a skill's public visibility and explicit grant read access.
+_Avoid_: Visibility truth, ACL truth
+
 **Share Target**:
 A user, group, or company that receives an explicit grant to a skill.
 _Avoid_: Public, visibility target
@@ -68,6 +88,10 @@ _Avoid_: JSON mutation, void JSON response
 
 - **Skill Browsing** starts when the search input is blank.
 - **Semantic Search** on `/browse` starts when the search input has any non-blank text after debounce.
+- A **Search Embedding** may be stored beside skill read state, but it is not part of the user-facing **Skill** concept.
+- A **Skill Description Snapshot** changes when the latest SKILL.md changes; it is not edited independently.
+- A **SKILL.md Edit** updates the latest package content and may refresh the **Skill Description Snapshot** and **Search Embedding**.
+- **Version History** shows existing versions only; SKILL.md uploads and text edits happen in the edit page.
 - The **Search Entry Point** is `/browse`; `/search` is deleted rather than redirected to avoid keeping an alternate search surface.
 - A zero-result **Semantic Search** can continue by adjusting the input, clearing the input to return to **Skill Browsing**, or publishing a missing skill.
 - A **Keyword Filter** may exist on an API, but `/browse` does not expose it as a separate user mode.
@@ -81,6 +105,7 @@ _Avoid_: JSON mutation, void JSON response
 - **Public Visibility** is represented by a **Public Grant**.
 - An **Explicit Grant** targets a user, group, or company; it never targets "public".
 - A **Public Grant** is not an **Explicit Grant** and does not expand into ACL entries.
+- **Vector Read Scope** mirrors **Public Visibility** and **Explicit Grant** read access for semantic search; it is not the source of either concept.
 - A **Share Target** is never public; public access is controlled by **Public Visibility** in the page header.
 - A **Visibility Command** returns the resulting **Public Visibility** state so the UI can update immediately.
 - A **Visibility Command** decides success from the skill's current **Public Visibility**, not from whether a Public Grant row exists.
@@ -115,3 +140,4 @@ _Avoid_: JSON mutation, void JSON response
 - "findings count" was used as a possible substitute for risk. Resolved: **Security Findings** are supporting detail; **Risk Level** is the canonical header summary.
 - "public grant" was used as if it were an explicit user/group/company ACL grant. Resolved: **Public Grant** represents **Public Visibility**, but it is not an **Explicit Grant** and does not expand into ACL entries.
 - "public" appeared as a share target. Resolved: public is **Public Visibility** in the page header; **Share Targets** are user, group, or company only.
+- "visibility/ACL projection" was used during S186 discussion to mean `vector_store.is_public` and `vector_store.acl_entries`. Resolved: call this **Vector Read Scope**; it is a deprecated search-index copy, while `skills.is_public` and `skills.acl_entries` remain the query-side read state.
