@@ -19,13 +19,14 @@
 - `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.0%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
 - S183 targeted evidence：`cd frontend && npm test -- SecurityHeroCard HeroMetricsRow PageHeader SecurityTab SkillDetailPage` PASS — 5 files / 44 tests；`cd frontend && npm run verify` PASS；`cd frontend && npm test` PASS — 77 files / 440 tests。
 - S184 targeted evidence：`cd frontend && npm test -- grants.test.ts client.test.ts VisibilityToggleButton.test.tsx ShareModal.test.tsx` PASS — 4 files / 25 tests；`cd frontend && npm run typecheck` PASS；backend grant/visibility focused tests PASS；stale backend S016/SkillGrantService tests realigned and PASS。
+- Production deploy：Cloud Build `a70196af-93ee-471d-9741-21dcb6cc4b79` built and pushed `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260516-031017` (`sha256:cd601cc504641ba188420e566bfb070d5ffb7179d31a0811a4467afcb576ae3d`)；Cloud Run revision `skillshub-00032-9v8` became Ready and serves 100% traffic；`/`, `/actuator/health/readiness`, and `/api/v1/skills?page=0&size=5` returned 200；latest revision `severity>=ERROR` query returned no rows.
 
 ### Spec lifecycle
 
 - `docs/grimo/specs/2026-05-16-S183-security-report-issue-code-ui.md` → `docs/grimo/specs/archive/2026-05-16-S183-security-report-issue-code-ui.md`
 - `docs/grimo/specs/2026-05-16-S184-api-empty-response-contract.md` → `docs/grimo/specs/archive/2026-05-16-S184-api-empty-response-contract.md`
 - Final size re-score：S183 S(10) → S(10)；S184 XS(7) → S(11)，原因是 S184 從單一 empty-response bug 擴大成 frontend/backend visibility API contract cleanup。
-- Post-release follow-up：deploy v4.65.0 後，用 production UI 點一次「轉為私人」，確認 Cloud Run logs 只看到 `PUT /visibility` 200，不再出現同一 grant id 的重複 DELETE 404 burst。
+- Post-release follow-up：Chrome plugin 在本 tick 沒有可呼叫工具；登入後 production UI 點一次「轉為私人」仍待人工或可用 Chrome tool 覆測，預期 Cloud Run logs 只看到 `PUT /visibility` 200，不再出現同一 grant id 的重複 DELETE 404 burst。
 
 ## [v4.64.0] — S175/S181 Native Scan + State Conflict Observability（2026-05-16）
 
