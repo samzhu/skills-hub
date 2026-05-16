@@ -1,38 +1,30 @@
 package io.github.samzhu.skillshub.search;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.SqlTypeValue;
+import org.springframework.jdbc.core.StatementCreatorUtils;
 import org.springframework.stereotype.Service;
 
+import com.pgvector.PGvector;
+
 import io.github.samzhu.skillshub.shared.security.PrincipalContextService;
-import io.github.samzhu.skillshub.skill.domain.Skill;
-import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 
 /**
- * 語意搜尋服務 — 接收自然語言查詢，透過 {@link SkillshubPgVectorStore} 找出語意相近的技能。
+ * 語意搜尋服務 — 接收自然語言查詢，直接從 {@code skills.embedding} 找出語意相近的技能。
  *
- * <p>呼叫 {@code SkillshubPgVectorStore.builder(jdbc, em).build().similaritySearch(...)}
- * 並將回傳的 {@link Document} 清單映射至 {@link SemanticSearchResult}。
+ * <p>S186-T02: result card 欄位、visibility/ACL、cosine distance 都來自同一筆
+ * {@code skills} row；不再查 {@code vector_store}，也不再用 {@code skillRepo.findAllById}
+ * 對結果做二次補資料。
  *
- * <p><strong>Per-request VectorStore 模式（T8）</strong>：每次搜尋用 builder 建構新 instance，
- * 操作完即可被 GC；讀取場景不需 owner / skillId（builder 略過）。VectorStore 不註冊為
- * Spring Bean，與寫入路徑（{@link SearchProjection}）共用同一份 {@link SkillshubPgVectorStore}
- * 實作（一次 SQL 走 cosine distance；§4.14）。
- *
- * <p>此 service 不負責 embedding 計算（{@link SkillshubPgVectorStore#doSimilaritySearch}
- * 內部處理），也不負責 embedding 的寫入（由 {@link SearchProjection} 負責）。
- *
- * @see SkillshubPgVectorStore
  * @see SearchProjection
  * @see SearchConfig
  */
@@ -40,6 +32,19 @@ import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 class SemanticSearchService {
 
     private static final Logger log = LoggerFactory.getLogger(SemanticSearchService.class);
+
+    static final String SEMANTIC_SEARCH_SQL_FROM_SKILLS = """
+            SELECT id, name, description, author, category, category_display,
+                   latest_version, risk_level, download_count, embedding <=> ? AS distance
+              FROM skills
+             WHERE status = 'PUBLISHED'
+               AND embedding IS NOT NULL
+               AND (is_public = TRUE OR acl_entries ??| ?::text[])
+               AND embedding <=> ? < ?
+             ORDER BY distance
+             LIMIT ?
+            """;
+    private static final int OVERSAMPLE_FACTOR = 5;
 
     /**
      * Cosine similarity 最低門檻值（cosine 範圍 [-1, 1]）。
@@ -56,16 +61,13 @@ class SemanticSearchService {
     private final JdbcTemplate jdbcTemplate;
     private final EmbeddingModel embeddingModel;
     private final PrincipalContextService principalContextService;
-    private final SkillRepository skillRepo;
 
     SemanticSearchService(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel,
             PrincipalContextService principalContextService,
-            SkillRepository skillRepo,
             @Value("${skillshub.search.semantic-similarity-threshold:0.3}") double similarityThreshold) {
         this.jdbcTemplate = jdbcTemplate;
         this.embeddingModel = embeddingModel;
         this.principalContextService = principalContextService;
-        this.skillRepo = skillRepo;
         this.similarityThreshold = similarityThreshold;
     }
 
@@ -80,34 +82,34 @@ class SemanticSearchService {
      * @return 語意相關的技能清單，若無符合結果則回傳空清單（不拋出例外）
      */
     List<SemanticSearchResult> search(String query, int topK) {
-        // S169：S170 PrincipalContextService 從 platform user_id + group_members/group_closure
-        // 建 principal keys；semantic search 只加 read verb 後交給 vector_store JSONB ACL filter。
+        // S186-T02：ACL filter 與 result card 都直接讀 skills row，避免 vector_store stale metadata。
         var principalKeys = principalContextService.currentPrincipalKeys();
         var aclPatterns = readPatterns(principalKeys);
+        var queryEmbedding = new PGvector(embeddingModel.embed(query));
 
-        var request = SearchRequest.builder()
-                .query(query)
-                .topK(topK)
-                .similarityThreshold(similarityThreshold)
-                .build();
+        var hits = jdbcTemplate.query(connection -> {
+            var ps = connection.prepareStatement(SEMANTIC_SEARCH_SQL_FROM_SKILLS);
+            bind(ps, 1, queryEmbedding);
+            bind(ps, 2, pgArrayLiteral(aclPatterns));
+            bind(ps, 3, queryEmbedding);
+            bind(ps, 4, 1.0d - similarityThreshold);
+            bind(ps, 5, topK * OVERSAMPLE_FACTOR);
+            return ps;
+        }, (rs, rowNum) -> new SkillSemanticHit(
+                rs.getString("id"),
+                rs.getString("name"),
+                rs.getString("description"),
+                rs.getString("author"),
+                rs.getString("category"),
+                rs.getString("category_display"),
+                rs.getString("latest_version"),
+                rs.getString("risk_level"),
+                rs.getLong("download_count"),
+                rs.getDouble("distance")));
 
-        var docs = SkillshubPgVectorStore.builder(jdbcTemplate, embeddingModel)
-                .aclPatterns(aclPatterns)
-                .build()
-                .similaritySearch(request);
-
-        // S107: source author/category/riskLevel 從 canonical Skill aggregate（vector_store
-        // metadata 在歷史 row 含 stale empty 值 — onSkillCreated 早期 path 沒寫齊全；onVersionPublished
-        // 還把 riskLevel 硬塞 null per line 147）。Per-result lookup 不額外 N+1：用 findAllById batch
-        // 一次撈，topK ≤ 50 對 PK index 是 O(1) 級。
-        var skillIds = docs.stream()
-                .map(d -> getString(d.getMetadata(), "skillId"))
-                .toList();
-        var skillsById = skillRepo.findAllById(skillIds).stream()
-                .collect(Collectors.toMap(Skill::getId, Function.identity()));
-
-        var results = docs.stream()
-                .map(doc -> toResult(doc, skillsById.get(getString(doc.getMetadata(), "skillId"))))
+        var results = hits.stream()
+                .limit(topK)
+                .map(SkillSemanticHit::toResult)
                 .toList();
 
         log.atInfo()
@@ -119,51 +121,16 @@ class SemanticSearchService {
         return results;
     }
 
-    private static List<String> readPatterns(java.util.Set<String> principalKeys) {
+    private static List<String> readPatterns(Set<String> principalKeys) {
         return principalKeys.stream().map(key -> key + ":read").toList();
     }
 
-    /**
-     * S107: 將 VectorStore Document + canonical Skill aggregate 映射至 SemanticSearchResult。
-     *
-     * <p>Skill 為 source of truth — author / category / riskLevel / latestVersion / downloadCount
-     * 從 aggregate 取，不依賴 vector_store metadata（projection 寫入歷史不一致）。
-     * 若 skill 已刪除（race condition：vector_store 仍在但 skill 被 delete），fallback 到 metadata
-     * + empty defaults 維持 graceful，不 throw。
-     *
-     * @param doc   VectorStore Document（含 skillId / name / description / score）
-     * @param skill canonical Skill aggregate；race condition 下可能為 null
-     */
-    private SemanticSearchResult toResult(Document doc, Skill skill) {
-        var meta = doc.getMetadata();
-        double score = doc.getScore() != null ? doc.getScore() : 0.0;
-        if (skill == null) {
-            // graceful fallback: skill row gone but vector_store row still exists
-            return new SemanticSearchResult(
-                    getString(meta, "skillId"),
-                    getString(meta, "name"),
-                    getString(meta, "description"),
-                    "", "", null, null, null, 0L, score
-            );
-        }
-        return new SemanticSearchResult(
-                skill.getId(),
-                skill.getName(),
-                skill.getDescription(),
-                skill.getAuthor(),
-                skill.getCategory(),
-                skill.getCategoryDisplay(),  // S159b Round 2 — dual-write display value
-                skill.getLatestVersion(),
-                skill.getRiskLevel(),
-                skill.getDownloadCount(),
-                score
-        );
+    private static void bind(PreparedStatement ps, int index, Object value) throws SQLException {
+        StatementCreatorUtils.setParameterValue(ps, index, SqlTypeValue.TYPE_UNKNOWN, value);
     }
 
-    /** 安全地從 metadata 取得字串值，null 或缺少的鍵回傳空字串。 */
-    private static String getString(Map<String, Object> meta, String key) {
-        Object v = meta.get(key);
-        return v != null ? v.toString() : "";
+    private static String pgArrayLiteral(List<String> items) {
+        return items.isEmpty() ? "{}" : "{" + String.join(",", items) + "}";
     }
 
 }

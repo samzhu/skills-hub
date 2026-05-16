@@ -62,4 +62,15 @@ And（而且）以 Alice principal 呼叫時 response 包含 `skill-private`
 - S186-T01 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-16
+Test: semanticSearchReturnsPublicSkillFromSkillsEmbeddingWithoutVectorStore / anonymousSemanticSearchHidesPrivateSkillStoredInSkillsEmbedding / grantedUserSemanticSearchSeesPrivateSkillFromSkillsAclEntries / semanticResultCardFieldsComeFromTheSameSkillsRow (`backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchFromSkillsTest.java`)
+Files changed:
+- `backend/src/main/java/io/github/samzhu/skillshub/search/SemanticSearchService.java` (modified)
+- `backend/src/main/java/io/github/samzhu/skillshub/search/SkillSemanticHit.java` (new)
+- `backend/src/main/java/io/github/samzhu/skillshub/search/SemanticSearchResult.java` (modified)
+- `backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchFromSkillsTest.java` (new)
+- `backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchServiceVisibilityTest.java` (modified)
+Notes: RED first returned HTTP 400 because the old VectorStore path still built Spring AI `SearchRequest` with test threshold `-1.0`; GREEN passes with direct `skills.embedding` SQL and no `skillRepo.findAllById` call. Verification command: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.search.SemanticSearchFromSkillsTest --tests io.github.samzhu.skillshub.search.SemanticSearchServiceVisibilityTest` → `BUILD SUCCESSFUL in 2m 49s`.

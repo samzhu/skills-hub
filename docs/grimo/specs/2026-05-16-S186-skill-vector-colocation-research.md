@@ -407,7 +407,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 | 順序 | Task | 狀態 | AC | 做完會看到什麼 |
 |---|---|---|---|---|
 | 1 | [S186-T01 schema + aggregate guard](../tasks/2026-05-16-S186-T01-schema-aggregate-guard.md) | PASS | AC-S186-1 | DB 有 `skills.embedding_*` 欄位和 HNSW index；`vector_store` 已 drop；`SkillRepository.findByAuthorAndName` 不再 `SELECT *`。 |
-| 2 | [S186-T02 semantic SQL from skills](../tasks/2026-05-16-S186-T02-semantic-sql-from-skills.md) | pending | AC-S186-2, AC-S186-3, AC-S186-8 | `GET /api/v1/search/semantic` 從 `skills.embedding` 回 public / granted private skill，card 欄位直接來自同一 row。 |
+| 2 | [S186-T02 semantic SQL from skills](../tasks/2026-05-16-S186-T02-semantic-sql-from-skills.md) | PASS | AC-S186-2, AC-S186-3, AC-S186-8 | `GET /api/v1/search/semantic` 從 `skills.embedding` 回 public / granted private skill，card 欄位直接來自同一 row。 |
 | 3 | [S186-T03 embedding write path](../tasks/2026-05-16-S186-T03-embedding-write-path.md) | pending | AC-S186-5 | `SkillVersionPublishedEvent` 後 `skills.embedding_content / embedding / embedding_model / embedding_updated_at` 更新，其他 skill 欄位不被覆蓋。 |
 | 4 | [S186-T04 remove vector ACL projection](../tasks/2026-05-16-S186-T04-remove-vector-acl-projection.md) | pending | AC-S186-4 | `PUT /visibility` 或 grant 變更 commit 後，下一次 semantic search 直接用 `skills` row，不等任何 `vector_store` listener。 |
 | 5 | [S186-T05 vector-store cleanup sweep](../tasks/2026-05-16-S186-T05-vector-store-cleanup-sweep.md) | pending | AC-S186-6 | `rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 只剩允許的舊 migration / archived docs 外引用。 |
@@ -438,6 +438,8 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 ### 6.6 Task Results
 
 2026-05-16 S186-T01 PASS：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.domain.SkillRepositoryEmbeddingColumnTest --tests io.github.samzhu.skillshub.db.SkillEmbeddingMigrationTest` 先紅後綠；最後 `BUILD SUCCESSFUL in 2m 48s`。完成 `V27__skill_embedding_columns.sql`、`SkillRepository.findByAuthorAndName` explicit column list、`SkillRepositoryEmbeddingColumnTest`、`SkillEmbeddingMigrationTest`。
+
+2026-05-16 S186-T02 PASS：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.search.SemanticSearchFromSkillsTest --tests io.github.samzhu.skillshub.search.SemanticSearchServiceVisibilityTest` 先紅後綠；最後 `BUILD SUCCESSFUL in 2m 49s`。完成 `SemanticSearchService` direct `skills.embedding` SQL、`SkillSemanticHit` row DTO、`SemanticSearchFromSkillsTest`，並保留 S177 空 ACL 不加 public pseudo principal 的 unit test。
 
 ---
 

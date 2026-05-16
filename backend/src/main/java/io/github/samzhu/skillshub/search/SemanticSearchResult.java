@@ -4,7 +4,7 @@ package io.github.samzhu.skillshub.search;
  * 語意搜尋結果 DTO — 包含技能 metadata 與語意相似度分數。
  *
  * <p>由 {@link SemanticSearchService#search} 回傳，
- * 每筆記錄對應 VectorStore 中的一個技能 embedding document。
+ * 每筆記錄對應 {@code skills} 表中的一個技能 embedding。
  * score 為 cosine similarity（0.0–1.0），越高表示與查詢語意越相近。
  *
  * @param id            技能唯一識別碼（UUID）
