@@ -1,8 +1,8 @@
 // S140 critical-path E2E — AC-1 (PRD P1: Browse + keyword search).
 //
-// S168 升級後：E2EEmbeddingConfig stub 為 word-overlap biased（同 token →
-// cosine 顯著正，無 overlap → 隨機 ±0.05）；e2e threshold=0.1。query "docker"
-// 對 3 個 docker-* skill cosine ≈ 0.2 通過 threshold，其他 7 個被篩掉 →
+// S186-T08 後：E2EEmbeddingConfig stub 為 token-only sparse vector（同 token →
+// cosine 顯著正，無 overlap → 接近 0）；e2e threshold=0.1。query "docker"
+// 對 3 個 docker-* skill 通過 threshold，其他 7 個被篩掉 →
 // HomePage isSemanticMode = true → 顯示「找到 3 個相關技能」(regex 接受 keyword
 // 與 semantic 兩種計數文字)。
 
@@ -38,7 +38,7 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
       // SkillQueryService.search line 174–179)；3 個 docker-* skills 全命中。
       // 計數文字兩個 mode 都接受：keyword「共 N 個技能」/ semantic「找到 N 個相關技能」。
       // HomePage `isSemanticMode = query 非空 && !semanticError && semanticResults > 0`；
-      // e2e stub embedder threshold=0.0 statistically 仍有命中 → 走 semantic 分支。
+      // e2e stub embedder threshold=0.1 只留下共同 token 命中的 docker cards。
       await expect(page.getByText(/3\s*個(相關)?技能/)).toBeVisible();
 
       // 命中項：3 張 docker-* card 的 H3 name 出現
@@ -50,6 +50,7 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
       await expect(page.getByRole('heading', { level: 3, name: 'junit-test-generator' })).not.toBeVisible();
       await expect(page.getByRole('heading', { level: 3, name: 'eslint-config-pack' })).not.toBeVisible();
       await expect(page.getByRole('heading', { level: 3, name: 'docs-publisher' })).not.toBeVisible();
+      await expect(page.getByRole('heading', { level: 3, name: 'csv-to-parquet' })).not.toBeVisible();
 
       // 結構欄位 spot-check：每張 SkillCard 的 author/category/risk/download 都應渲染
       // （抽 docker-compose-helper 一張驗 SkillCard 結構完整 — 不重複測 3 張免拖慢）

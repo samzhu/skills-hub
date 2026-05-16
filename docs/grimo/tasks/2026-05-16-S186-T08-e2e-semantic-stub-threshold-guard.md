@@ -64,4 +64,25 @@ cd e2e && npx playwright test tests/S140-critical-path-browse-search.spec.ts --g
 - S186-T07 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-17）
+
+## 實作結果
+
+- RED：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.testsupport.E2EEmbeddingConfigTest` 一開始 `2 tests completed, 1 failed`，失敗點是 `docker` query 對 `csv-to-parquet` 的 cosine 沒低於 `0.1`。
+- GREEN：`E2EEmbeddingConfig` 的 e2e-only stub 改成 token-only sparse vector；每個 token 用 SHA-256 派生 16 個 signed slots，避免 random noise 或單一 slot collision 讓 non-docker fixture 穿過 `0.1` threshold。
+- 補強：`E2EEmbeddingConfigTest` 固定完整 paged fixture 邊界：3 個 docker skill 必須 `>= 0.1`，其餘 7 個 non-docker skill 必須 `< 0.1`；同 input vector 必須一致。
+- E2E：`e2e/tests/S140-critical-path-browse-search.spec.ts` 新增 `csv-to-parquet` 不可見 assertion，並更新註解對齊 S186-T08 後的 stub 行為。
+
+## 驗證結果
+
+```bash
+cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.testsupport.E2EEmbeddingConfigTest
+```
+
+結果：PASS，`BUILD SUCCESSFUL in 1m 52s`。
+
+```bash
+cd e2e && npx playwright test tests/S140-critical-path-browse-search.spec.ts --grep @profile-paged
+```
+
+結果：PASS，`1 passed (21.2s)`；`/browse` 搜尋 `docker` 只看到 3 個 docker-related skills。

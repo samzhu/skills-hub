@@ -1,7 +1,9 @@
 package io.github.samzhu.skillshub.skill.testsupport;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
-import java.util.Random;
 import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
@@ -18,15 +20,14 @@ import org.springframework.context.annotation.Profile;
 /**
  * S140 — {@code e2e} profile 專用 deterministic stub {@link EmbeddingModel}。
  *
- * <p>S168 升級：原 {@code Random(input.hashCode())} 純亂數 → 改為 <b>word-overlap biased</b> —
- * 拆解 input 的 alphanumeric token，每 token 對 {@code hashCode % dim} 加固定 boost。
- * 同 token 的 doc/query 在該 slot 對齊 → cosine 顯著正；不同 token → cosine 接近 0
- * （由小 random noise 主導）。這讓 keyword query 對 keyword-命中的 doc 可分離出來，
- * 同時保留 deterministic + cross-reload 一致性（POC 既驗）。
+ * <p>S186-T08：e2e stub 用 token-only sparse vector。拆解 input 的 alphanumeric token，
+ * 每 token 以 SHA-256 對 16 個 salted hash slot 加固定 signed boost；同 token 的 doc/query
+ * 在這些 slots 對齊，無共同 token 則接近 0。這讓 keyword query 對 keyword-命中的 doc
+ * 可分離出來，同時避免 random noise 或單一 hash collision 把 non-overlap fixture 推過 threshold。
  *
  * <p>對 e2e tests：
  * <ul>
- *   <li>AC-1 「docker」query → 3 docker-* skill cosine 高，其他低 → threshold 0.15
+ *   <li>AC-1 「docker」query → 3 docker-* skill cosine 高，其他低 → threshold 0.1
  *       篩出 3 → "找到 3 個相關技能" 對齊 expect</li>
  *   <li>AC-5 中文 query「容器環境」→ 跟 English doc tokens 無 overlap → cosine 全低 →
  *       semantic 回空 → HomePage fallback 到 keyword OR AC-5 改用英文 query</li>
@@ -48,22 +49,22 @@ class E2EEmbeddingConfig {
 
     /** 對齊 {@code SkillshubProperties.GenAI.dimensions} 預設值；skills embedding 欄位接收 768-dim。 */
     static final int E2E_EMBEDDING_DIMENSIONS = 768;
+    private static final int TOKEN_HASH_SLOTS = 16;
 
     @Bean
     @Primary
     EmbeddingModel e2eStubEmbeddingModel() {
-        return new DeterministicRandomEmbeddingModel(E2E_EMBEDDING_DIMENSIONS);
+        return new DeterministicTokenEmbeddingModel(E2E_EMBEDDING_DIMENSIONS);
     }
 
     /**
-     * Per POC validation — 同 input → 同 768-dim unit vector；不同 input cosine 範圍約 0.09
-     * （足夠分離不 tie）；跨 process 排序穩定（Java {@link String#hashCode()} 規範保證一致）。
+     * 同 input → 同 768-dim unit vector；跨 process 排序穩定（SHA-256 輸出固定）。
      */
-    static final class DeterministicRandomEmbeddingModel implements EmbeddingModel {
+    static final class DeterministicTokenEmbeddingModel implements EmbeddingModel {
 
         private final int dim;
 
-        DeterministicRandomEmbeddingModel(int dim) {
+        DeterministicTokenEmbeddingModel(int dim) {
             this.dim = dim;
         }
 
@@ -81,20 +82,36 @@ class E2EEmbeddingConfig {
         }
 
         private float[] embedString(String input) {
-            // 小 random noise base — input.hashCode() 同字串 → 同 vector（Java spec 保證）。
-            var rng = new Random(input.hashCode());
             var vec = new float[dim];
-            for (int i = 0; i < dim; i++) {
-                vec[i] = (rng.nextFloat() * 2 - 1) * 0.05f;
-            }
-            // Word-overlap boost — 每個 alphanumeric token（length ≥ 2）在 hashCode % dim 加 1.0。
-            // 同 token 的 doc/query 在該 slot 對齊 → cosine 顯著正；無 overlap → cosine ≈ 0。
             for (var token : input.toLowerCase().split("[^a-z0-9]+")) {
                 if (token.length() < 2) continue;
-                int idx = Math.floorMod(token.hashCode(), dim);
-                vec[idx] += 1.0f;
+                addToken(vec, token);
             }
             return normalize(vec);
+        }
+
+        private void addToken(float[] vec, String token) {
+            // S186-T08：16 個 signed slots 讓單一 hash collision 不會讓 non-overlap pair 過 threshold。
+            for (int i = 0; i < TOKEN_HASH_SLOTS; i++) {
+                byte[] digest = sha256(token + "#" + i);
+                int idx = Math.floorMod(firstInt(digest), dim);
+                vec[idx] += (digest[4] & 1) == 0 ? 1.0f : -1.0f;
+            }
+        }
+
+        private static byte[] sha256(String input) {
+            try {
+                return MessageDigest.getInstance("SHA-256").digest(input.getBytes(StandardCharsets.UTF_8));
+            } catch (NoSuchAlgorithmException e) {
+                throw new IllegalStateException("SHA-256 digest unavailable", e);
+            }
+        }
+
+        private static int firstInt(byte[] digest) {
+            return ((digest[0] & 0xff) << 24)
+                    | ((digest[1] & 0xff) << 16)
+                    | ((digest[2] & 0xff) << 8)
+                    | (digest[3] & 0xff);
         }
 
         private static float[] normalize(float[] v) {

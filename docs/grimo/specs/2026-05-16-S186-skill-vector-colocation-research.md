@@ -1,6 +1,6 @@
 # S186: Skill Embedding 同表化
 
-> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — T08 pending; verify-all restored except V07 E2E
+> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — T08 PASS; pending verify-all rerun
 > 日期：2026-05-16
 > 對應：PRD P5 語意搜尋 / S107 semantic projection fields / S157 semantic search / S177 is_public-first search visibility / S185 list-detail projection consistency
 
@@ -413,7 +413,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 | 5 | [S186-T05 vector-store cleanup sweep](../tasks/2026-05-16-S186-T05-vector-store-cleanup-sweep.md) | PASS | AC-S186-6 | `rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 只剩允許的舊 migration test 引用；active runtime/test code 不再讀寫舊表。 |
 | 6 | [S186-T06 docs and explain evidence](../tasks/2026-05-16-S186-T06-docs-explain-evidence.md) | PASS | AC-S186-7 | spec §7 有 semantic SQL `EXPLAIN (ANALYZE, BUFFERS)` 的實際數字；architecture / standards 不再把 runtime search 說成依賴 `vector_store`。 |
 | 7 | [S186-T07 migration tests final schema](../tasks/2026-05-16-S186-T07-migration-tests-final-schema.md) | PASS | AC-S186-6 | 舊 V2 / V26 migration tests 不再查詢或寫入已由 V27 刪除的 `vector_store`，backend suite 不再因 final schema drift 失敗。 |
-| 8 | [S186-T08 E2E semantic stub threshold guard](../tasks/2026-05-16-S186-T08-e2e-semantic-stub-threshold-guard.md) | pending | AC-S186-2, AC-S186-6 | e2e profile 的 deterministic embedding stub 要讓 `docker` query 只回 3 個 docker skills；`csv-to-parquet` 不再穿過 threshold 造成 V07 fail。 |
+| 8 | [S186-T08 E2E semantic stub threshold guard](../tasks/2026-05-16-S186-T08-e2e-semantic-stub-threshold-guard.md) | PASS | AC-S186-2, AC-S186-6 | e2e profile 的 deterministic embedding stub 讓 `docker` query 只回 3 個 docker skills；non-docker fixture 不再穿過 threshold 造成 V07 fail。 |
 
 ### 6.4 AC Coverage
 
@@ -455,11 +455,13 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 
 2026-05-17 S186-T07 PASS：RED：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.db.IsPublicFirstMigrationTest --tests io.github.samzhu.skillshub.db.V2MigrationTest` 一開始 `6 tests completed, 4 failed`，失敗點都是舊 migration tests 還查詢或寫入 S186 V27 已刪除的 `vector_store`。GREEN：同一 command 最後 `BUILD SUCCESSFUL in 2m 5s`；`rg -n "vector_store" backend/src/test/java/io/github/samzhu/skillshub/db/IsPublicFirstMigrationTest.java backend/src/test/java/io/github/samzhu/skillshub/db/V2MigrationTest.java` 無輸出。
 
+2026-05-17 S186-T08 PASS：RED：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.testsupport.E2EEmbeddingConfigTest` 一開始 `2 tests completed, 1 failed`，失敗點是 `docker` query 對 non-docker fixture 的 cosine 沒低於 `0.1`；第一次 token-only 單 slot 修法又被 `markdown-linter` hash collision 抓到。GREEN：`E2EEmbeddingConfig` 改用 SHA-256 token-only sparse vector，每 token 16 個 signed slots；同一 backend command 最後 `BUILD SUCCESSFUL in 1m 52s`。`cd e2e && npx playwright test tests/S140-critical-path-browse-search.spec.ts --grep @profile-paged` 最後 `1 passed (21.2s)`。
+
 ---
 
-## 7. Implementation Results（Phase 4 blocked）
+## 7. Implementation Results（Phase 4 repair in progress）
 
-T01-T07 已完成；T08 已開成下一個 pending repair task。本節保存 task-level implementation evidence 與 Phase 4 verification attempt。`/planning-tasks S186` 下一輪應先完成 T08，讓 V07 happy-path E2E 從 `docker` query 的 4 筆結果回到 3 筆；通過後重新跑 `scripts/verify-all.sh`，再交給 `$shipping-release`。
+T01-T08 已完成；本節保存 task-level implementation evidence 與 Phase 4 verification attempt。下一輪應重新跑 `scripts/verify-all.sh`，若全綠再交給 `$shipping-release`。
 
 ### 7.1 Task Result Summary
 
@@ -472,7 +474,7 @@ T01-T07 已完成；T08 已開成下一個 pending repair task。本節保存 ta
 | T05 cleanup sweep | AC-S186-6 | PASS | active runtime/test path 的 `vector_store` / `SkillshubPgVectorStore` reference 已清除；只保留舊 migration tests。 |
 | T06 docs + EXPLAIN evidence | AC-S186-7 | PASS | `SemanticSearchExplainEvidenceTest` 記錄 `EXPLAIN (ANALYZE, BUFFERS)`；architecture / standards 同步 S186 後 runtime 事實。 |
 | T07 migration tests final schema | AC-S186-6 | PASS | `IsPublicFirstMigrationTest` / `V2MigrationTest` 只驗 final schema 仍存在的 `skills` 欄位與 index，不再讀寫已刪除的舊獨立向量表。 |
-| T08 E2E semantic stub threshold guard | AC-S186-2, AC-S186-6 | pending | `./scripts/verify-all.sh` 只剩 V07 fail；`/browse` 搜尋 `docker` 顯示 `找到 4 個相關技能`，多出 `csv-to-parquet`。 |
+| T08 E2E semantic stub threshold guard | AC-S186-2, AC-S186-6 | PASS | `E2EEmbeddingConfigTest` 固定 3 個 docker fixture `>=0.1`、7 個 non-docker fixture `<0.1`；S140 Playwright profile-paged case 通過，只看到 3 個 docker skills。 |
 
 ### 7.2 EXPLAIN Evidence（AC-S186-7）
 
@@ -535,6 +537,8 @@ Planner 沒使用 `idx_skills_embedding_hnsw` 的原因：這個 verification fi
 | `rg -n "SkillshubPgVectorStore|vector_store\\.acl_entries|vector_store\\.is_public" docs/grimo/architecture.md docs/grimo/development-standards.md` | PASS — no output |
 | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.db.IsPublicFirstMigrationTest --tests io.github.samzhu.skillshub.db.V2MigrationTest` | PASS — `BUILD SUCCESSFUL in 2m 5s` |
 | `rg -n "vector_store" backend/src/test/java/io/github/samzhu/skillshub/db/IsPublicFirstMigrationTest.java backend/src/test/java/io/github/samzhu/skillshub/db/V2MigrationTest.java` | PASS — no output |
+| `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.testsupport.E2EEmbeddingConfigTest` | PASS — `BUILD SUCCESSFUL in 1m 52s` |
+| `cd e2e && npx playwright test tests/S140-critical-path-browse-search.spec.ts --grep @profile-paged` | PASS — `1 passed (21.2s)` |
 
 ### 7.4 Phase 4 Verification Attempt（2026-05-16 23:44 CST）
 
@@ -635,4 +639,24 @@ V07 artifact:
 
 根因假設：`backend/src/main/java/io/github/samzhu/skillshub/skill/testsupport/E2EEmbeddingConfig.java` 的 deterministic stub 先給每個 input 一組 small random noise，再加 word-overlap boost。S140 test 註解假設 non-overlap cosine 會落在 `±0.05`，但本輪實際 `docker` query 對 `csv-to-parquet Converts CSV datasets to Parquet` 算出約 `0.16`，高於 `application-e2e.yaml` 的 `semantic-similarity-threshold: 0.1`，所以 semantic search 多回一筆 non-docker result。
 
-下一個修復 task：S186-T08。修法必須只碰 e2e profile / e2e assertion 相關測試，不改 production semantic ranking；通過條件是 `docker` query 在 V07 的 S140 browse-search case 重新只看到 3 個 docker skills。
+修復 task：S186-T08。修法只碰 e2e profile / e2e assertion 相關測試，不改 production semantic ranking；通過條件是 `docker` query 在 V07 的 S140 browse-search case 重新只看到 3 個 docker skills。
+
+### 7.7 T08 Repair Result（2026-05-17 00:35 CST）
+
+T08 修復內容：
+
+| File | 實際改動 |
+|---|---|
+| `backend/src/main/java/io/github/samzhu/skillshub/skill/testsupport/E2EEmbeddingConfig.java` | `e2e` profile stub 改成 SHA-256 token-only sparse vector；每 token 16 個 signed slots，沒有 random base，不改 production Gemini embedding。 |
+| `backend/src/test/java/io/github/samzhu/skillshub/skill/testsupport/E2EEmbeddingConfigTest.java` | 新增 2 個 tests：`docker` 對 3 個 docker fixture `>=0.1`，對 7 個 non-docker fixture `<0.1`；同 input vector deterministic。 |
+| `e2e/tests/S140-critical-path-browse-search.spec.ts` | 更新 stub 行為註解，並新增 `csv-to-parquet` 不可見 assertion。 |
+
+RED / GREEN evidence：
+
+| Command | Result |
+|---|---|
+| `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.testsupport.E2EEmbeddingConfigTest` | RED — `2 tests completed, 1 failed`，`csv-to-parquet` non-overlap 沒低於 `0.1`。 |
+| `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.testsupport.E2EEmbeddingConfigTest` | GREEN — `BUILD SUCCESSFUL in 1m 52s`。 |
+| `cd e2e && npx playwright test tests/S140-critical-path-browse-search.spec.ts --grep @profile-paged` | GREEN — `1 passed (21.2s)`，`/browse` 搜尋 `docker` 只看到 3 個 docker-related skills。 |
+
+下一輪要重新跑 `./scripts/verify-all.sh`。本輪沒有做 production Chrome / Cloud Run log 覆測，因為目前執行環境沒有可呼叫的 Chrome automation tool。
