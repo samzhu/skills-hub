@@ -600,3 +600,15 @@ cd e2e && npx playwright test --grep @happy-path
 ```
 
 Result: PASS — S172 responsive-polish cut passed 3/3, then full Playwright `@happy-path` gate passed 9/9. The earlier `./scripts/verify-all.sh` run had already passed V01, V03, V04, V05, V06, V08a, and V08b; it failed only at stale V07 before S178-T05. A fresh full `./scripts/verify-all.sh` exit=0 is still required before shipping.
+
+### 2026-05-16 — QA Round 2 PASS
+
+`./scripts/verify-all.sh` was rerun after S178-T05 and produced:
+
+```text
+V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS
+V02 [info]: LINE coverage = 86.2% (covered=4704 / total=5457)
+Verdict: ✅ all CRITICAL passed; exit=0
+```
+
+Result: PASS — the stale S172 V07 failure is fixed, and the full local release gate is green for S178. Shipping was not performed in this tick because the working tree still contains unrelated S186/roadmap changes that must not be included in an S178 release commit.
