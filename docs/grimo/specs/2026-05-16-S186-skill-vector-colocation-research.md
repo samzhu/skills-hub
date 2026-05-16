@@ -1,6 +1,6 @@
 # S186: Skill Embedding 同表化
 
-> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — T07 PASS; Phase 4 still needs verify-all rerun + V07 follow-up
+> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — T08 pending; verify-all restored except V07 E2E
 > 日期：2026-05-16
 > 對應：PRD P5 語意搜尋 / S107 semantic projection fields / S157 semantic search / S177 is_public-first search visibility / S185 list-detail projection consistency
 
@@ -413,6 +413,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 | 5 | [S186-T05 vector-store cleanup sweep](../tasks/2026-05-16-S186-T05-vector-store-cleanup-sweep.md) | PASS | AC-S186-6 | `rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 只剩允許的舊 migration test 引用；active runtime/test code 不再讀寫舊表。 |
 | 6 | [S186-T06 docs and explain evidence](../tasks/2026-05-16-S186-T06-docs-explain-evidence.md) | PASS | AC-S186-7 | spec §7 有 semantic SQL `EXPLAIN (ANALYZE, BUFFERS)` 的實際數字；architecture / standards 不再把 runtime search 說成依賴 `vector_store`。 |
 | 7 | [S186-T07 migration tests final schema](../tasks/2026-05-16-S186-T07-migration-tests-final-schema.md) | PASS | AC-S186-6 | 舊 V2 / V26 migration tests 不再查詢或寫入已由 V27 刪除的 `vector_store`，backend suite 不再因 final schema drift 失敗。 |
+| 8 | [S186-T08 E2E semantic stub threshold guard](../tasks/2026-05-16-S186-T08-e2e-semantic-stub-threshold-guard.md) | pending | AC-S186-2, AC-S186-6 | e2e profile 的 deterministic embedding stub 要讓 `docker` query 只回 3 個 docker skills；`csv-to-parquet` 不再穿過 threshold 造成 V07 fail。 |
 
 ### 6.4 AC Coverage
 
@@ -423,7 +424,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 | AC-S186-3 | T02 |
 | AC-S186-4 | T04 |
 | AC-S186-5 | T03 |
-| AC-S186-6 | T05, T07 |
+| AC-S186-6 | T05, T07, T08 |
 | AC-S186-7 | T06 |
 | AC-S186-8 | T02 |
 
@@ -436,6 +437,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 5. T05 depends on T03/T04 because cleanup is only safe after runtime read/write paths no longer reference `SkillshubPgVectorStore`.
 6. T06 runs last because it records implementation evidence and syncs docs to actual code.
 7. T07 runs after Phase 4 found full-suite drift in legacy migration tests; it is a post-verification repair task for S186 final schema.
+8. T08 runs after Phase 4 rerun proved backend/frontend/native gates pass and only V07 remains; it is a narrow e2e-profile fixture repair, not a production semantic ranking change.
 
 ### 6.6 Task Results
 
@@ -457,7 +459,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 
 ## 7. Implementation Results（Phase 4 blocked）
 
-T01-T07 已完成；本節保存 task-level implementation evidence 與 Phase 4 verification attempt。`/planning-tasks S186` 下一輪應重新跑 `scripts/verify-all.sh` 確認 V01/V03 已恢復，並處理剩餘 V07 happy-path E2E 失敗；通過後才交給 `$shipping-release`。
+T01-T07 已完成；T08 已開成下一個 pending repair task。本節保存 task-level implementation evidence 與 Phase 4 verification attempt。`/planning-tasks S186` 下一輪應先完成 T08，讓 V07 happy-path E2E 從 `docker` query 的 4 筆結果回到 3 筆；通過後重新跑 `scripts/verify-all.sh`，再交給 `$shipping-release`。
 
 ### 7.1 Task Result Summary
 
@@ -470,6 +472,7 @@ T01-T07 已完成；本節保存 task-level implementation evidence 與 Phase 4 
 | T05 cleanup sweep | AC-S186-6 | PASS | active runtime/test path 的 `vector_store` / `SkillshubPgVectorStore` reference 已清除；只保留舊 migration tests。 |
 | T06 docs + EXPLAIN evidence | AC-S186-7 | PASS | `SemanticSearchExplainEvidenceTest` 記錄 `EXPLAIN (ANALYZE, BUFFERS)`；architecture / standards 同步 S186 後 runtime 事實。 |
 | T07 migration tests final schema | AC-S186-6 | PASS | `IsPublicFirstMigrationTest` / `V2MigrationTest` 只驗 final schema 仍存在的 `skills` 欄位與 index，不再讀寫已刪除的舊獨立向量表。 |
+| T08 E2E semantic stub threshold guard | AC-S186-2, AC-S186-6 | pending | `./scripts/verify-all.sh` 只剩 V07 fail；`/browse` 搜尋 `docker` 顯示 `找到 4 個相關技能`，多出 `csv-to-parquet`。 |
 
 ### 7.2 EXPLAIN Evidence（AC-S186-7）
 
@@ -600,3 +603,36 @@ rg -n "vector_store" backend/src/test/java/io/github/samzhu/skillshub/db/IsPubli
 結果：PASS，no output。
 
 仍需下一輪重新跑 `./scripts/verify-all.sh`。本輪沒有重新跑 full gate，所以 S186 仍不可 shipping；上一輪記錄的 V07 S140 Playwright assertion 仍是下一個已知未處理項目。
+
+### 7.6 Phase 4 Rerun after T07（2026-05-17 00:23 CST）
+
+執行：
+
+```bash
+./scripts/verify-all.sh
+```
+
+結果：FAILED，summary 顯示 `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=FAIL V08a=PASS V08b=PASS`，總計 `PASS=7, FAIL=1, SKIP=0`，script exit=1。
+
+| Gate | Result | 實際看到什麼 |
+|---|---|---|
+| V01 `cd backend && ./gradlew clean test jacocoTestReport` | PASS | T07 後 backend full test 不再卡在 migration tests。 |
+| V02 JaCoCo CSV | INFO | LINE coverage = `86.1%`（covered=4566 / total=5306）。 |
+| V03 `cd backend && ./gradlew jacocoTestCoverageVerification` | PASS | backend coverage gate 通過。 |
+| V04 `cd frontend && npm test` | PASS | frontend unit tests 通過。 |
+| V05 `cd frontend && npm run verify` | PASS | frontend lint/typecheck 通過。 |
+| V06 `cd frontend && npm test -- --coverage` | PASS | frontend coverage command 通過。 |
+| V07 `cd e2e && npx playwright test --grep @happy-path` | FAIL | `S140-critical-path-browse-search.spec.ts:42` 等不到 `3 個技能` / `3 個相關技能`；artifact 顯示畫面是 `找到 4 個相關技能`。 |
+| V08a `cd backend && ./gradlew processAot` | PASS | AOT processing 通過。 |
+| V08b `cd backend && ./gradlew --no-daemon -x test bootBuildImage ...` | PASS | native image build 通過。 |
+
+V07 artifact:
+
+| File | 看到什麼 |
+|---|---|
+| `e2e/test-results/S140-critical-path-browse--e2f3c--1-happy-path-profile-paged-chromium/error-context.md` | `/browse` 搜尋框值是 `docker`；結果文字是 `找到 4 個相關技能`；前三張是 `docker-compose-helper`、`docker-cleaner`、`docker-image-builder`；第四張是 `csv-to-parquet`，score 顯示 `16% 相符`。 |
+| `e2e/test-results/S140-critical-path-browse--e2f3c--1-happy-path-profile-paged-chromium/test-failed-1.png` | 與 error-context 一致，可視化畫面保留在 Playwright artifact。 |
+
+根因假設：`backend/src/main/java/io/github/samzhu/skillshub/skill/testsupport/E2EEmbeddingConfig.java` 的 deterministic stub 先給每個 input 一組 small random noise，再加 word-overlap boost。S140 test 註解假設 non-overlap cosine 會落在 `±0.05`，但本輪實際 `docker` query 對 `csv-to-parquet Converts CSV datasets to Parquet` 算出約 `0.16`，高於 `application-e2e.yaml` 的 `semantic-similarity-threshold: 0.1`，所以 semantic search 多回一筆 non-docker result。
+
+下一個修復 task：S186-T08。修法必須只碰 e2e profile / e2e assertion 相關測試，不改 production semantic ranking；通過條件是 `docker` query 在 V07 的 S140 browse-search case 重新只看到 3 個 docker skills。
