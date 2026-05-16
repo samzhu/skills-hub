@@ -612,3 +612,17 @@ Verdict: ✅ all CRITICAL passed; exit=0
 ```
 
 Result: PASS — the stale S172 V07 failure is fixed, and the full local release gate is green for S178. Shipping was not performed in this tick because the working tree still contains unrelated S186/roadmap changes that must not be included in an S178 release commit.
+
+### 2026-05-16 15:52 CST — Shipping Blocker Recheck
+
+`git status --short` still prevents a safe S178 `$shipping-release` run because the local checkout contains unrelated work:
+
+```text
+ M CONTEXT.md
+ M docs/grimo/specs/spec-roadmap.md
+?? backend/src/test/java/io/github/samzhu/skillshub/search/SkillEmbeddingColocationPocTest.java
+?? docs/grimo/specs/2026-05-16-S186-skill-vector-colocation-research.md
+?? docs/grimo/specs/2026-05-16-S187-skill-md-edit-page.md
+```
+
+Decision: do not archive S178, update changelog, or edit roadmap in this tick. Those release files would overlap the existing unrelated roadmap / S186 / S187 edits. S178 remains locally verified by QA Round 2 (`./scripts/verify-all.sh` exit=0) and is ready to ship once the checkout is clean or S178 is moved to an isolated release worktree.
