@@ -1,4 +1,4 @@
-import { apiFetch } from './client'
+import { apiFetch, apiFetchVoid } from './client'
 
 /**
  * S098e2 — Skill Review API client。
@@ -34,5 +34,5 @@ export function createReview(skillId: string, body: CreateReviewBody): Promise<{
 }
 
 export function deleteReview(skillId: string, reviewId: string): Promise<void> {
-  return apiFetch<void>(`/skills/${skillId}/reviews/${reviewId}`, { method: 'DELETE' })
+  return apiFetchVoid(`/skills/${skillId}/reviews/${reviewId}`, { method: 'DELETE' })
 }

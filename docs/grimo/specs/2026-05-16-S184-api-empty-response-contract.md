@@ -446,6 +446,12 @@ Verification:
 | `cd backend && ./gradlew test --tests '*SkillGrantControllerAuthzTest' --tests '*SkillGrantServiceVisibilityTest' --tests '*SkillUpdateControllerTest'` | PASS。 |
 | `cd backend && ./gradlew test --tests '*SkillGrantServiceVisibilityTest'` | PASS — non-owner visibility guard 補測後重跑。 |
 
+Code split progress:
+
+| Date | Slice | Evidence |
+| --- | --- | --- |
+| 2026-05-16 | Frontend empty-response API callers: grants, notifications, reviews, flags | `cd frontend && npm test -- grants.test.ts client.test.ts` PASS — 2 files / 15 tests. |
+
 E2E decision:
 
 Browser E2E not required for S184. This change touches API client empty-response handling, backend controller/service contracts, and React Query mutation cache updates. The behavior is covered by focused frontend API/component tests and backend controller/service tests. Production follow-up after deploy is the gcloud log query in §5: one click on 「轉為私人」 should show one `PUT /visibility` 200 and no repeated DELETE 404 burst for the same grant id.

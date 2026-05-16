@@ -114,3 +114,19 @@ describe('client.ts CSRF helpers (S160b\')', () => {
     })
   })
 })
+
+describe('client.ts empty response contract (S184)', () => {
+  it('AC-S184-2: production code 不使用 apiFetch<void>(...)', () => {
+    const sourceModules = import.meta.glob('../**/*.{ts,tsx}', {
+      eager: true,
+      import: 'default',
+      query: '?raw',
+    }) as Record<string, string>
+    const offenders = Object.entries(sourceModules)
+      .filter(([file]) => !/\.test\.(ts|tsx)$/.test(file))
+      .filter(([, source]) => source.includes('apiFetch<void>('))
+      .map(([file]) => file)
+
+    expect(offenders).toEqual([])
+  })
+})

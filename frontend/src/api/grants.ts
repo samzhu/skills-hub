@@ -1,4 +1,4 @@
-import { apiFetch } from './client'
+import { apiFetch, apiFetchVoid } from './client'
 
 /**
  * S114a — Skill ACL grants API client。
@@ -43,5 +43,5 @@ export function createGrant(
 }
 
 export function revokeGrant(skillId: string, grantId: string): Promise<void> {
-  return apiFetch<void>(`/skills/${skillId}/grants/${grantId}`, { method: 'DELETE' })
+  return apiFetchVoid(`/skills/${skillId}/grants/${grantId}`, { method: 'DELETE' })
 }

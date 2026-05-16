@@ -1,4 +1,4 @@
-import { apiFetch } from './client'
+import { apiFetch, apiFetchVoid } from './client'
 
 /**
  * S096h2 — Notification public type，對齊 backend NotificationResponse（spec §4.7）。
@@ -57,15 +57,15 @@ export function fetchUnreadCount(): Promise<{ count: number }> {
 }
 
 export function markNotificationRead(id: string): Promise<void> {
-  return apiFetch<void>(`/notifications/${id}/read`, { method: 'POST' })
+  return apiFetchVoid(`/notifications/${id}/read`, { method: 'POST' })
 }
 
 export function markAllNotificationsRead(): Promise<void> {
-  return apiFetch<void>('/notifications/read-all', { method: 'POST' })
+  return apiFetchVoid('/notifications/read-all', { method: 'POST' })
 }
 
 export function deleteNotification(id: string): Promise<void> {
-  return apiFetch<void>(`/notifications/${id}`, { method: 'DELETE' })
+  return apiFetchVoid(`/notifications/${id}`, { method: 'DELETE' })
 }
 
 export function fetchPreferences(): Promise<NotificationPreferences> {

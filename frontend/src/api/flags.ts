@@ -1,4 +1,4 @@
-import { apiFetch } from './client'
+import { apiFetch, apiFetchVoid } from './client'
 
 /**
  * S112 + S098e3 — Skill 舉報（Flag）API client。
@@ -71,7 +71,7 @@ export function updateFlagStatus(
   flagId: string,
   status: Flag['status'],
 ): Promise<void> {
-  return apiFetch<void>(`/skills/${skillId}/flags/${flagId}`, {
+  return apiFetchVoid(`/skills/${skillId}/flags/${flagId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
