@@ -1,6 +1,6 @@
 # S186: Skill Embedding 同表化
 
-> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — verify-all PASS; shipping blocked by unrelated working-tree changes
+> 規格：S186 | 大小：M(14) | 狀態：✅ Done — v4.66.0 local release PASS; production deploy deferred
 > 日期：2026-05-16
 > 對應：PRD P5 語意搜尋 / S107 semantic projection fields / S157 semantic search / S177 is_public-first search visibility / S185 list-detail projection consistency
 
@@ -459,9 +459,9 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 
 ---
 
-## 7. Implementation Results（Phase 4 repair in progress）
+## 7. Implementation Results（local release PASS）
 
-T01-T08 已完成；本節保存 task-level implementation evidence 與 Phase 4 verification attempt。下一輪應重新跑 `scripts/verify-all.sh`，若全綠再交給 `$shipping-release`。
+T01-T08 已完成；本節保存 task-level implementation evidence、Phase 4 verification attempt、release gate evidence 與 final re-score。S186 local release gate 已通過；production deploy / Chrome evidence 依 §7.10 留到部署後補。
 
 ### 7.1 Task Result Summary
 
@@ -696,3 +696,57 @@ git status --short
 結果：shipping preflight BLOCKED。`$shipping-release` 的 gate 要求工作樹沒有 unrelated changes；目前 repo 仍有 S186 以外的 PRD / architecture / glossary / roadmap / S187 / S188 / S189 / S178 / S162b 變動。這些變動不屬於 S186 release commit，不能一起 stage 或一起 archive。
 
 本輪不執行 `$shipping-release` 的 changelog / roadmap / archive 步驟。下一輪要先在乾淨工作樹或可安全合併的 background worktree 執行 S186 shipping；若仍在目前 checkout，需先處理或暫存 unrelated changes，再重跑 `./scripts/verify-all.sh` 以滿足當輪 shipping gate。
+
+### 7.10 Release Gate Rerun in Clean Worktree（2026-05-17 01:23 CST）
+
+執行位置：
+
+```bash
+/Users/samzhu/workspace/github-samzhu/skills-hub/.worktrees/S186-ship
+```
+
+執行：
+
+```bash
+./scripts/verify-all.sh
+```
+
+結果：PASS，summary 顯示 `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS`，總計 `PASS=8, FAIL=0, SKIP=0`，script exit=0。
+
+| Gate | Result | 實際看到什麼 |
+|---|---|---|
+| V01 `cd backend && ./gradlew clean test jacocoTestReport` | PASS | backend full test + JaCoCo report 通過。 |
+| V02 JaCoCo CSV | INFO | LINE coverage = `86.3%`（covered=4581 / total=5311）。 |
+| V03 `cd backend && ./gradlew jacocoTestCoverageVerification` | PASS | backend coverage gate 通過。 |
+| V04 `cd frontend && npm test` | PASS | frontend unit tests 通過。 |
+| V05 `cd frontend && npm run verify` | PASS | frontend lint/typecheck 通過。 |
+| V06 `cd frontend && npm test -- --coverage` | PASS | frontend coverage command 通過。 |
+| V07 `cd e2e && npx playwright test --grep @happy-path` | PASS | Playwright happy-path gate 通過；S140 browse/search 不再回 `csv-to-parquet` 第四筆 non-docker result。 |
+| V08a `cd backend && ./gradlew processAot` | PASS | AOT processing 通過。 |
+| V08b `cd backend && ./gradlew --no-daemon -x test bootBuildImage ...` | PASS | native image build 通過。 |
+
+Production evidence：DEFERRED。S186 需要部署新版後才能證明 Cloud Run runtime 已套用 `skills.embedding` 同表查詢；目前已知 live revision 仍是 v4.65.0 changelog 記錄的 `skillshub-00032-9v8`。部署後請執行：
+
+```bash
+export GCP_PROJECT_ID=cfh-vibe-lab
+export GCP_REGION=asia-east1
+export SERVICE_NAME=skillshub
+gcloud builds submit --config=cloudbuild.yaml --project=$GCP_PROJECT_ID --substitutions=_REGION=$GCP_REGION,_TAG=$(date -u +%Y%m%d-%H%M%S)
+gcloud run services replace temp/service.rendered.yaml --region=${GCP_REGION} --quiet
+gcloud run services describe ${SERVICE_NAME} --region=${GCP_REGION} --format='value(status.latestReadyRevisionName,status.traffic[0].percent)'
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="skillshub" AND severity>=ERROR' --project=${GCP_PROJECT_ID} --limit=20 --format=json
+```
+
+預期結果：new revision Ready 且 100% traffic；`/actuator/health/readiness` 與 `/api/v1/search/semantic?q=docker&limit=5` 回 200；latest revision `severity>=ERROR` query 無 S186 新錯誤。Chrome 登入後 UI semantic search 覆測仍待可呼叫 Chrome automation tool 或人工操作。
+
+### 7.11 Final Size Re-score（per estimation-scale.md）
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 2 | 2 | POC 已證明 `skills.embedding` 同表查詢與 aggregate non-mapping 可行；實作沒有改變核心設計。 |
+| Uncertainty | 2 | 2 | Phase 4 發現舊 migration tests 與 e2e stub threshold drift，但沒有推翻 S186 方案。 |
+| Dependencies | 2 | 2 | 涉及 Spring Data JDBC、pgvector、Playwright、Paketo native image；依賴面和設計時一致。 |
+| Scope | 2 | 3 | 原 T01-T06 後又新增 T07 migration final-schema repair 與 T08 e2e semantic stub repair。 |
+| Testing | 3 | 3 | 需要 Testcontainers、frontend tests、Playwright、AOT processing 與 native image build。 |
+| Reversibility | 2 | 2 | V27 drop 舊 `vector_store`，但 S186 目標環境允許重建資料；rollback 仍需 schema migration 介入。 |
+| **Total** | **13 / M** | **14 / M** | Bucket 不變；實際點數因 T07/T08 verification repair +1。 |

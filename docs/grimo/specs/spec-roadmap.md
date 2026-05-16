@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-16（S162b 查證後 no-op 關閉；S178 關閉並由 S189 乾淨承接；當前主線維持 S186 → S187）
+> 最後更新：2026-05-17（S162b 查證後 no-op 關閉；S178 關閉並由 S189 乾淨承接；S186 shipped；下一步可接 S187 / S188 / S189 依相依順序）
 
 ## 使用說明
 
@@ -44,8 +44,7 @@
 | S179 | Publish author anonymous login hint（未登入時作者欄位顯「請先登入後發布」，不再空白） | XS(7) | S154b ✅, S139 ✅ | 📐 in-design — spec ready for review |
 | S180 | Skill public native readback hotfix（`skills.is_public` native image 讀回不再把 Boolean 塞進 primitive boolean） | XS(3) | S168 ✅, S177 ✅ | ⏳ blocked — latest revision log recheck clean；logged-in Chrome UI verification unavailable in Codex ticks |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | 📋 planned — task files created (T01/T02 pending)；Round 69 production API found same skill list returns PRIVATE/versionCount=0 while detail returns PUBLIC/versionCount=1 |
-| S186 | Skill embedding 同表化（`skills.embedding` 取代 `vector_store`；一般 Skill 讀取不撈 embedding） | M(13) | S107 ✅, S157 ✅, S177 ✅, S185 ordering-only | ⏳ Dev — T01-T06 PASS；S186 §7 has EXPLAIN evidence; next: Phase 4 verification / QA；S187 waits until S186 ships |
-| S187 | Skill SKILL.md 編輯頁（詳情頁 edit 導向 `/skills/{id}/edit`；版本頁籤只顯示紀錄；description 來自 latest SKILL.md） | M(13) | S142a ✅, S163 ✅, S176 ✅, S186 required, S188 ordering-only | 📐 in-design / ⏸ implementation waits for S186 — UI scope split from S186；version input optional behavior delegated to S188 |
+| S187 | Skill SKILL.md 編輯頁（詳情頁 edit 導向 `/skills/{id}/edit`；版本頁籤只顯示紀錄；description 來自 latest SKILL.md） | M(13) | S142a ✅, S163 ✅, S176 ✅, S186 ✅, S188 ordering-only | 📐 in-design — UI scope split from S186；spec §1-5 ready for review；version input optional behavior delegated to S188 |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | S(8) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | 📐 in-design — spec §1-5 ready for review；可先於 S187 實作 |
 | S189 | Browse 搜尋入口驗證與收版（S178 superseded；重新驗證 `/browse` semantic-only contract、遷移 evidence tag、乾淨 ship） | S(9) | S186 required, S187 ordering-only | 📐 in-design — carry-over verification & ship；排在 S187 後，避免搜尋 cleanup 與 edit page 主線混雜 |
 
@@ -87,6 +86,7 @@
 | v4.63.0 | S176 (Explicit Publish Skill Name) | ✅ shipped 2026-05-15 — S176 all AC PASS，`verify-all.sh` 全綠 |
 | v4.64.0 | S175 + S181 (native scan binding + state-conflict observability) | ✅ shipped 2026-05-16 — S175 production upload/scan PASS；S181 409 observability + full-suite stability PASS；`verify-all.sh` 全綠 |
 | v4.65.0 | S183 + S184 (Security findings UI + visibility command contract) | ✅ shipped 2026-05-16 — S183 risk lights/findings UI + S184 empty-response/visibility command；`verify-all.sh` 全綠 |
+| v4.66.0 | S186 (Skill embedding 同表化) | ✅ shipped 2026-05-17 — semantic search reads `skills.embedding` / same-row visibility + ACL；`verify-all.sh` 全綠；production deploy deferred |
 
 ---
 
@@ -254,6 +254,7 @@
 | S181 | Authenticated state conflict observability | S(8) | v4.64.0 |
 | S183 | Security risk lights + issue findings UI | S(10) | v4.65.0 |
 | S184 | API empty response + visibility command contract | S(11) | v4.65.0 |
+| S186 | Skill embedding 同表化 | M(14) | v4.66.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

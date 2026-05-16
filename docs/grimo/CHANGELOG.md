@@ -1,5 +1,31 @@
 # Changelog
 
+## [v4.66.0] — S186 Skill Embedding Colocation（2026-05-17）
+
+### Changed
+
+- **Semantic search source of truth** — semantic search now reads `skills.embedding` directly and filters on the same row's `status`, `is_public`, and `acl_entries`; runtime search no longer reads `vector_store`.
+- **Embedding write path** — publish / reactivate updates `skills.embedding_content`, `skills.embedding`, `skills.embedding_model`, and `skills.embedding_updated_at`; suspend clears the same row's embedding fields.
+- **Aggregate read boundary** — normal `Skill` aggregate reads do not map embedding fields, and `SkillRepository.findByAuthorAndName` uses an explicit column list instead of `SELECT *`.
+
+### Fixed
+
+- **Vector ACL lag removal** — grant and visibility changes no longer need a second `vector_store` projection update before semantic search can see the new access state.
+- **Final schema tests** — legacy migration tests no longer require the removed `vector_store` table after S186 V27.
+- **E2E semantic stub stability** — the e2e profile embedding stub now uses SHA-256 token-only sparse vectors, so `docker` search only returns docker-related fixtures in S140 happy-path tests.
+
+### Verification
+
+- `./scripts/verify-all.sh` in clean worktree `.worktrees/S186-ship`：**PASS** — V01=PASS、V02=INFO（line coverage 86.3%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Targeted evidence：S186-T01~T08 all PASS；`SemanticSearchExplainEvidenceTest` recorded same-table `EXPLAIN (ANALYZE, BUFFERS)` evidence；`E2EEmbeddingConfigTest` verifies 3 docker fixtures pass threshold and 7 non-docker fixtures stay below threshold；S140 Playwright profile-paged case passed with only 3 docker-related skills.
+- Production deploy：DEFERRED — deploy S186 image, confirm new Cloud Run revision Ready with 100% traffic, call `/actuator/health/readiness` and `/api/v1/search/semantic?q=docker&limit=5`, then query latest revision `severity>=ERROR`; logged-in Chrome semantic-search UI verification still needs a callable Chrome automation tool or manual operation.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-16-S186-skill-vector-colocation-research.md` → `docs/grimo/specs/archive/2026-05-16-S186-skill-vector-colocation-research.md`
+- `docs/grimo/tasks/2026-05-16-S186-*.md` 已刪除。
+- Final size re-score：M(13) → M(14)，原因是 full gate 後新增 T07 legacy migration final-schema repair 與 T08 e2e semantic stub threshold repair。
+
 ## [v4.65.0] — S183/S184 Security Findings UI + Visibility Contract（2026-05-16）
 
 ### Added
