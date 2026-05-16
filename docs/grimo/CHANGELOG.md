@@ -20,13 +20,14 @@
 - S183 targeted evidence：`cd frontend && npm test -- SecurityHeroCard HeroMetricsRow PageHeader SecurityTab SkillDetailPage` PASS — 5 files / 44 tests；`cd frontend && npm run verify` PASS；`cd frontend && npm test` PASS — 77 files / 440 tests。
 - S184 targeted evidence：`cd frontend && npm test -- grants.test.ts client.test.ts VisibilityToggleButton.test.tsx ShareModal.test.tsx` PASS — 4 files / 25 tests；`cd frontend && npm run typecheck` PASS；backend grant/visibility focused tests PASS；stale backend S016/SkillGrantService tests realigned and PASS。
 - Production deploy：Cloud Build `a70196af-93ee-471d-9741-21dcb6cc4b79` built and pushed `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260516-031017` (`sha256:cd601cc504641ba188420e566bfb070d5ffb7179d31a0811a4467afcb576ae3d`)；Cloud Run revision `skillshub-00032-9v8` became Ready and serves 100% traffic；`/`, `/actuator/health/readiness`, and `/api/v1/skills?page=0&size=5` returned 200；latest revision `severity>=ERROR` query returned no rows.
+- Production visibility follow-up：2026-05-16T03:23Z unauthenticated `PUT /api/v1/skills/8ee45695-c16e-4586-9869-9fdbe110ca88/visibility` with `{"visibility":"PRIVATE"}` returned 401 `UNAUTHORIZED` (`trace=909402df4adefdd36d0e579b9bdb0910`)；`GET /api/v1/skills?page=0&size=5` still returned `visibility:"PRIVATE"`；latest revision logs from 03:10Z showed no repeated `DELETE /grants/` requests and no `severity>=ERROR` rows；Cloud Build error log query for `a70196af-93ee-471d-9741-21dcb6cc4b79` returned no rows.
 
 ### Spec lifecycle
 
 - `docs/grimo/specs/2026-05-16-S183-security-report-issue-code-ui.md` → `docs/grimo/specs/archive/2026-05-16-S183-security-report-issue-code-ui.md`
 - `docs/grimo/specs/2026-05-16-S184-api-empty-response-contract.md` → `docs/grimo/specs/archive/2026-05-16-S184-api-empty-response-contract.md`
 - Final size re-score：S183 S(10) → S(10)；S184 XS(7) → S(11)，原因是 S184 從單一 empty-response bug 擴大成 frontend/backend visibility API contract cleanup。
-- Post-release follow-up：Chrome plugin 在本 tick 沒有可呼叫工具；登入後 production UI 點一次「轉為私人」仍待人工或可用 Chrome tool 覆測，預期 Cloud Run logs 只看到 `PUT /visibility` 200，不再出現同一 grant id 的重複 DELETE 404 burst。
+- Post-release follow-up：Chrome plugin 在 2026-05-16T03:23Z tick 仍沒有可呼叫工具；未登入 curl 只能確認 `PUT /visibility` 會回平台 401 JSON，不能取代登入後 UI 點擊。登入後 production UI 點一次「轉為私人」仍待人工或可用 Chrome tool 覆測，預期 Cloud Run logs 只看到 `PUT /visibility` 200，不再出現同一 grant id 的重複 DELETE 404 burst。
 
 ## [v4.64.0] — S175/S181 Native Scan + State Conflict Observability（2026-05-16）
 

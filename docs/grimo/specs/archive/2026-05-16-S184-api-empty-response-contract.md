@@ -492,7 +492,9 @@ Production follow-up:
 | --- | --- |
 | Cloud Run deploy | PASS — Cloud Build `a70196af-93ee-471d-9741-21dcb6cc4b79` pushed `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260516-031017`; Cloud Run revision `skillshub-00032-9v8` became Ready and serves 100% traffic. |
 | Production smoke | PASS — `GET /`, `GET /actuator/health/readiness`, and `GET /api/v1/skills?page=0&size=5` returned 200; skill list response includes `visibility`. Latest revision `severity>=ERROR` log query returned no rows. |
-| Browser visibility retest | PENDING — Chrome plugin is not callable in this tick. Next manual/browser retest should click 「轉為私人」 once and confirm Cloud Run logs show one `PUT /api/v1/skills/{id}/visibility` 200 and no repeated `DELETE /grants/{grantId}` 404 burst for the same grant id. |
+| Visibility unauth route check | INFO — 2026-05-16T03:23Z unauthenticated `PUT /api/v1/skills/8ee45695-c16e-4586-9869-9fdbe110ca88/visibility` with `{"visibility":"PRIVATE"}` returned 401 JSON: `{"error":"UNAUTHORIZED","message":"Authentication required",...}`. Cloud Run logged the same request on trace `909402df4adefdd36d0e579b9bdb0910`; follow-up `GET /api/v1/skills?page=0&size=5` still returned `visibility:"PRIVATE"`. |
+| DELETE grant burst watch | PASS — Cloud Run latest revision `skillshub-00032-9v8` logs from 2026-05-16T03:10Z returned no `DELETE ... /grants/` rows, and `severity>=ERROR` returned no rows. Cloud Build error log query for build `a70196af-93ee-471d-9741-21dcb6cc4b79` also returned no rows. |
+| Browser visibility retest | PENDING — Chrome plugin is not callable in this tick, and unauthenticated curl cannot perform the owner UI action. Next manual/browser retest should click 「轉為私人」 once while logged in and confirm Cloud Run logs show one `PUT /api/v1/skills/{id}/visibility` 200 and no repeated `DELETE /grants/{grantId}` 404 burst for the same grant id. |
 
 ### Final Size Re-score
 
