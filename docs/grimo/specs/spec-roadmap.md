@@ -42,7 +42,7 @@
 | S174 | Skill detail anonymous 401 not-found UX | XS(3) | S153 ✅, S122 ✅ | 📋 planned — Round 68 production Chrome found `/skills/{missing-id}` shows generic retry because API returns 401 before 404 |
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | 📐 in-design — spec ready for review |
 | S179 | Publish author anonymous login hint（未登入時作者欄位顯「請先登入後發布」，不再空白） | XS(7) | S154b ✅, S139 ✅ | 📐 in-design — spec ready for review |
-| S180 | Skill public native readback hotfix（`skills.is_public` native image 讀回不再把 Boolean 塞進 primitive boolean） | XS(3) | S168 ✅, S177 ✅ | ⏳ deployed — Chrome logged-in validate blocked by HTTP 409 session/detail requests |
+| S180 | Skill public native readback hotfix（`skills.is_public` native image 讀回不再把 Boolean 塞進 primitive boolean） | XS(3) | S168 ✅, S177 ✅ | ⏳ deployed — latest revision log recheck clean；Chrome logged-in validate still pending |
 
 ---
 

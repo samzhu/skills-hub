@@ -442,3 +442,39 @@ Impact:
 Next tick recommendation:
 
 - Start a new small planning/debug unit for `Chrome session /api/v1/me HTTP 409 blocks validate page`, or first add response/log evidence for `STATE_CONFLICT` so the failed response body and root `IllegalStateException` message are visible in Cloud Run logs.
+
+### Latest Revision Recheck — 2026-05-16 03:31 UTC Tick
+
+Cloud Run revision:
+
+```text
+skillshub-00032-9v8  100% traffic  asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260516-031017
+```
+
+HTTP checks:
+
+```bash
+curl -i -sS -L 'https://skillshub-644359853825.asia-east1.run.app/publish/validate?id=028cecf1-3326-4327-bbe9-28b4e6fab6d5'
+```
+
+Result: HTTP 200 and SPA HTML served from the latest frontend bundle (`/assets/index-4KFqykuJ.js`).
+
+```bash
+curl -i -sS https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/028cecf1-3326-4327-bbe9-28b4e6fab6d5
+curl -i -sS https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/028cecf1-3326-4327-bbe9-28b4e6fab6d5/bundle-info
+```
+
+Result: both returned HTTP 401 JSON `{"error":"UNAUTHORIZED","message":"Authentication required",...}` with traces `4c5450b42528323314804cceadbd3956` and `6c67fdb177d2fa6146e404a8c74adf0e`. Trace log lookup found the same two 401 request logs.
+
+Cloud Run log checks on `skillshub-00032-9v8` since 2026-05-16T03:10Z:
+
+| Query | Result |
+| --- | --- |
+| `textPayload:"Skill.publicSkill"` | 0 rows. |
+| `httpRequest.status=409 OR STATE_CONFLICT` | 0 rows. |
+| `severity>=ERROR` | 0 rows. |
+
+Interpretation:
+
+- AC-S180-5 remains PASS on the latest revision: the native `Skill.publicSkill` mapping crash is not recurring in application logs.
+- AC-S180-4 remains blocked at the logged-in UI level because the Chrome plugin is not callable in this Codex tick. Unauthenticated curl can only prove the old 400 native crash path is no longer visible; it cannot prove the logged-in validate page renders the skill/bundle details.
