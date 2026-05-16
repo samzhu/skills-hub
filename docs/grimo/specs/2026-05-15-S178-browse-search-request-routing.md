@@ -476,7 +476,7 @@ git diff --check
 | S178-T01 | `docs/grimo/tasks/2026-05-16-S178-T01-debounce-query-enabled.md` | AC-S178-2, AC-S178-3 | PASS | `cd frontend && npm test -- useDebouncedValue useSkillList HomePage SearchBar` |
 | S178-T02 | `docs/grimo/tasks/2026-05-16-S178-T02-homepage-request-routing.md` | AC-S178-1 through AC-S178-7, AC-S178-12 | PASS | `cd frontend && npm test -- useDebouncedValue useSkillList HomePage SearchBar` |
 | S178-T03 | `docs/grimo/tasks/2026-05-16-S178-T03-remove-search-route-intent.md` | AC-S178-8, AC-S178-9 | PASS | `cd frontend && npm test -- App`; `cd frontend && npm run verify`; `cd backend && ./gradlew test --tests "*Search*" --tests "*AiModelConfigTest" --tests "*StructuredOutputNativeHintCoverageTest"` |
-| S178-T04 | `docs/grimo/tasks/2026-05-16-S178-T04-docs-e2e-sync.md` | AC-S178-10, AC-S178-11 | pending | Sync docs/E2E and run final frontend verification. |
+| S178-T04 | `docs/grimo/tasks/2026-05-16-S178-T04-docs-e2e-sync.md` | AC-S178-10, AC-S178-11 | PASS | `cd frontend && npm test -- SemanticSearchPage`; `cd frontend && npm run verify`; `cd e2e && npx playwright test --grep @S178` |
 
 ## 7. Results
 
@@ -528,3 +528,28 @@ git diff --check
 ```
 
 Result: PASS — `/search?q=dd` route test passed, source scan found no matches in `frontend/src`, `backend/src/main/java`, or `backend/src/test/java`, backend command finished `BUILD SUCCESSFUL`.
+
+### 2026-05-16 — S178-T04 PASS
+
+Confirmed current doc/test drift:
+
+- `frontend/src/pages/docs/SemanticSearchPage.tsx` still linked the semantic-search CTA to `/search` and described keyword fallback.
+- `e2e/tests/S140-critical-path-semantic-search.spec.ts` still opened `/search?q=...`; `cd e2e && npx playwright test --grep @S178` found no tests before this task.
+- `docs/grimo/architecture.md` still listed semantic search as `POST /api/v1/search/semantic` and included the removed `searchIntentChatClient`.
+
+Implemented:
+
+- Added `SemanticSearchPage.test.tsx` for AC-S178-10.
+- Changed `/docs/semantic-search` CTA to `前往瀏覽頁試試語意搜尋 →` with `to="/browse"`.
+- Updated S140 semantic-search E2E to run under `@S178`, open `/browse`, fill the search box, assert `/api/v1/search/semantic?q=` appears in the browser request log, and assert `/api/v1/skills?keyword=` does not appear.
+- Updated architecture and debugging docs for the S178 removal of `/search` intent summary.
+
+Verification:
+
+```bash
+cd frontend && npm test -- SemanticSearchPage
+cd frontend && npm run verify
+cd e2e && npx playwright test --grep @S178
+```
+
+Result: PASS — docs CTA test passed, frontend lint/typecheck passed, and the Playwright `@S178` browser test passed with the `/browse` semantic-only request contract.

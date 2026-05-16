@@ -444,7 +444,7 @@ download_events (PK: id; FK → skills)
 
 ### AI Model Wiring
 
-Spring AI 2.0.0-M6 採 manual config。`shared.ai.AiModelConfig` 是唯一可直接使用 `com.google.genai.Client`、`GoogleGenAiChatModel`、`GoogleGenAiTextEmbeddingModel` 的 production config；`shared.ai` 以 Modulith `shared :: ai` named interface 對 search / security 開放相容 factory。provider builder 在這裡建立 concrete implementation，但 bean return type / runtime dependency 走 Spring AI 抽象：chat provider 是 `ChatModel`，use-case client 是具名 `ChatClient`（`qualityJudgeChatClient` / `scannerChatClient` / `searchIntentChatClient`），embedding provider 是 `EmbeddingModel`。
+Spring AI 2.0.0-M6 採 manual config。`shared.ai.AiModelConfig` 是唯一可直接使用 `com.google.genai.Client`、`GoogleGenAiChatModel`、`GoogleGenAiTextEmbeddingModel` 的 production config；`shared.ai` 以 Modulith `shared :: ai` named interface 對 search / security 開放相容 factory。provider builder 在這裡建立 concrete implementation，但 bean return type / runtime dependency 走 Spring AI 抽象：chat provider 是 `ChatModel`，use-case client 是具名 `ChatClient`（`qualityJudgeChatClient` / `scannerChatClient`），embedding provider 是 `EmbeddingModel`。
 
 Spring AI auto-config 保持關閉：base config 設 `spring.ai.model.chat=none`、`spring.ai.model.embedding.text=none`、`spring.ai.chat.client.enabled=false`。`SkillshubPgVectorStore` 不改成官方 `PgVectorStore`；它是專案 ACL schema / SQL 的客製 vector store，只消費 `EmbeddingModel` 產生向量。
 
@@ -556,7 +556,7 @@ npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer
 | GET | `/api/v1/skills/{id}/security-report` | 取得安全報告：legacy checks + issue-code categories/findings（S147） | security |
 | GET | `/api/v1/skills/{id}/scores` | 取得品質評分（含 skillScore composite） | score |
 | GET | `/api/v1/skills/{id}/flags` | 取得回報列表 | skill.query |
-| POST | `/api/v1/search/semantic` | 語意搜尋（自然語言） | search |
+| GET | `/api/v1/search/semantic` | 語意搜尋（自然語言） | search |
 | GET | `/api/v1/analytics/overview` | 平台總覽統計 | analytics |
 | GET | `/api/v1/analytics/skills/{id}` | 單一 skill 統計 | analytics |
 | GET | `/api/v1/categories` | 取得所有分類 | skill.query |

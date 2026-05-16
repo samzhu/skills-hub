@@ -34,11 +34,11 @@ export function SemanticSearchPage() {
         <li>取 top-k（default k=20）回傳 + 相符度 % 顯示在 SkillCard</li>
       </ol>
 
-      <H2>Fallback 行為</H2>
+      <H2>搜尋狀態</H2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-[16px] text-[#A8A49C]">
-        <li>Gemini API 不可用 → fallback 回 keyword 模式（regex match name + description）</li>
-        <li>0 結果（threshold 太低）→ HomePage 顯 EmptyState redirect tone，建議改用 keyword 或調整描述</li>
-        <li>Skill 剛 publish 未完成 indexing → 排序權重較低（embedding sync 是 async）</li>
+        <li>Gemini API 不可用或向量索引尚未命中 → 顯示搜尋失敗或 0 結果提示，不會改打 keyword API</li>
+        <li>0 結果 → 瀏覽頁顯 EmptyState，建議調整描述或清除搜尋後瀏覽分類</li>
+        <li>Skill 剛 publish 未完成 indexing → 可能暫時不出現在語意結果；清除搜尋可回瀏覽列表</li>
       </ul>
 
       <Callout>
@@ -48,13 +48,13 @@ export function SemanticSearchPage() {
 
       <div className="mt-6 flex items-center gap-3">
         <Link
-          to="/search"
+          to="/browse"
           className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-[14px] font-medium transition-colors"
           style={{ backgroundColor: 'rgba(127,119,221,0.15)', color: '#C9C5F2', border: '1px solid rgba(127,119,221,0.30)' }}
         >
-          試試語意搜尋 →
+          前往瀏覽頁試試語意搜尋 →
         </Link>
-        <span className="text-[13px] text-[#5E5B55]">或直接在瀏覽頁搜尋列輸入自然語言</span>
+        <span className="text-[13px] text-[#5E5B55]">瀏覽頁搜尋列就是語意搜尋入口</span>
       </div>
 
       <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[16px]">

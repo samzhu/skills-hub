@@ -1,11 +1,11 @@
 // S140 critical-path E2E — AC-5 (PRD P5: Semantic search routing).
 //
-// /search?q=... 路由 → SearchResultsPage → useSemanticSearch hook → backend
+// /browse 搜尋列 → useSemanticSearch hook → backend
 // SemanticSearchService → vector_store cosine search。E2E profile：
 //   1) E2EEmbeddingConfig.@Primary word-overlap stub embedder（S168 升級）
 //   2) skillshub.search.semantic-similarity-threshold = 0.1（過濾雜訊但保留 overlap）
 //
-// **AC-5 不驗 semantic 質量** — 只驗：① semantic 路由觸發 ② 結果非空 ③ 跨 reload
+// **AC-5 不驗 semantic 質量** — 只驗：① /browse 觸發 semantic route ② 結果非空 ③ 跨 reload
 // 順序 deterministic。query 用英文 NL（"images and containers in CI"），跟 paged
 // seed 描述（docker-cleaner "Prunes dangling images and containers." / pytest-runner
 // "Runs pytest with coverage in CI." 等）有 token overlap → stub cosine 通過 0.1
@@ -14,7 +14,7 @@
 import { test, expect, profiles } from './_fixtures';
 
 test.describe('S140 — E2E Critical Path Backfill', () => {
-  test('AC-5: 自然語言查詢觸發語意搜尋路徑並回傳穩定排序結果 @S140 @ac-5 @happy-path @profile-paged', async ({
+  test('AC-5: 自然語言查詢觸發語意搜尋路徑並回傳穩定排序結果 @S140 @S178 @ac-5 @happy-path @profile-paged', async ({
     page,
     request,
   }) => {
@@ -26,14 +26,31 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
     });
 
     let firstOrderNames: string[] = [];
+    const semanticRequests: string[] = [];
+    const keywordRequests: string[] = [];
 
-    await test.step('When user opens /search with natural-language query "images and containers in CI"', async () => {
-      const query = encodeURIComponent('images and containers in CI');
-      await page.goto(`/search?q=${query}`);
+    page.on('request', (routeRequest) => {
+      const url = routeRequest.url();
+      if (url.includes('/api/v1/search/semantic?q=')) {
+        semanticRequests.push(url);
+      }
+      if (url.includes('/api/v1/skills?keyword=')) {
+        keywordRequests.push(url);
+      }
+    });
+
+    await test.step('When user opens /browse and types natural-language query "images and containers in CI"', async () => {
+      await page.goto('/browse');
+      await page.getByPlaceholder('描述你想完成的任務或搜尋技能...').fill('images and containers in CI');
 
       // 等 semantic search 結果出現（resultsLoading 結束）；non-empty list
       await expect(page.getByText(/找到/)).toBeVisible({ timeout: 15_000 });
       await expect(page.getByText(/0 個相關技能/)).not.toBeVisible();  // 防 0 results 路徑
+      await expect.poll(
+        () => semanticRequests.length,
+        { message: '/browse search should request semantic endpoint', timeout: 15_000 },
+      ).toBeGreaterThan(0);
+      expect(keywordRequests, '/browse search must not call keyword API').toHaveLength(0);
 
       // 收集第一次的順序：所有 SkillCard h3 names
       const headings1 = page.getByRole('article').locator('h3');
@@ -43,9 +60,18 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
     });
 
     await test.step('Then 結果非空 + 跨 reload 順序完全相同（H3 deterministic verification）', async () => {
-      // Reload 後重新 query（同一 URL）→ stub embedder 同 input.hashCode → 同 vector → 同 cosine ranking
+      semanticRequests.length = 0;
+      keywordRequests.length = 0;
+
+      // /browse 不把 query 寫進 URL；reload 後重打同一段文字，stub embedder 仍會回同 ranking。
       await page.reload();
+      await page.getByPlaceholder('描述你想完成的任務或搜尋技能...').fill('images and containers in CI');
       await expect(page.getByText(/找到/)).toBeVisible({ timeout: 15_000 });
+      await expect.poll(
+        () => semanticRequests.length,
+        { message: 'reload + typed query should request semantic endpoint again', timeout: 15_000 },
+      ).toBeGreaterThan(0);
+      expect(keywordRequests, 'reload + typed query must still avoid keyword API').toHaveLength(0);
 
       const headings2 = page.getByRole('article').locator('h3');
       const secondOrderNames = await headings2.allTextContents();

@@ -125,7 +125,7 @@ JVM 模式無此問題（JDK 反射自動支援 record components）。
 **Known cases**
 
 - **S148** (v4.25.0) — `JudgeResponse` + `JudgeResponse.DimensionScore` 修法
-- **S157** (in-design) — latent twin：`SearchIntentService.LlmIntentOutput` 沒被涵蓋，bean wiring 修好 ChatClient 真接到 LLM 後必爆
+- **S157/S178** — S157 的 latent twin `SearchIntentService.LlmIntentOutput` 已隨 S178 刪除 `/search` intent summary；目前不需要再為這個 target 補 native hint
 - **S173** (v4.50.1) — production upload 後 `LlmJudge.call().entity(LlmJudgement.class)` 在 native runtime 爆 `Record components not available for record class ... LlmJudgement`；修法是 `ScanNativeConfig @RegisterReflectionForBinding({LlmJudgement.class, LlmJudgement.RiskClaim.class})`，加 `StructuredOutputNativeHintCoverageTest` 掃 production source 的 `.entity(X.class)` / `BeanOutputConverter<>(X.class)`，並在 `ScanOrchestrator.safeAnalyze` 加 `catch (Error)` 讓同一 pipeline 其他 analyzer 繼續完成。
 
 **2 分鐘 verify**
