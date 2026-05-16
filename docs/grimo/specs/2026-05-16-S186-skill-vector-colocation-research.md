@@ -1,6 +1,6 @@
 # S186: Skill Embedding 同表化
 
-> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — verify-all PASS; pending shipping
+> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — verify-all PASS; shipping blocked by unrelated working-tree changes
 > 日期：2026-05-16
 > 對應：PRD P5 語意搜尋 / S107 semantic projection fields / S157 semantic search / S177 is_public-first search visibility / S185 list-detail projection consistency
 
@@ -684,3 +684,15 @@ RED / GREEN evidence：
 | V08b `cd backend && ./gradlew --no-daemon -x test bootBuildImage ...` | PASS | native image build 通過。 |
 
 S186 local quality gate 已通過，可進 `$shipping-release`。本輪仍未做 production Chrome / Cloud Run log 覆測，因為目前 execution context 沒有可呼叫的 Chrome automation tool；shipping 時若需要部署新版，需再補 Cloud Build / Cloud Run revision / logs / production UI evidence。
+
+### 7.9 Shipping Preflight Blocker（2026-05-17 00:58 CST）
+
+執行：
+
+```bash
+git status --short
+```
+
+結果：shipping preflight BLOCKED。`$shipping-release` 的 gate 要求工作樹沒有 unrelated changes；目前 repo 仍有 S186 以外的 PRD / architecture / glossary / roadmap / S187 / S188 / S189 / S178 / S162b 變動。這些變動不屬於 S186 release commit，不能一起 stage 或一起 archive。
+
+本輪不執行 `$shipping-release` 的 changelog / roadmap / archive 步驟。下一輪要先在乾淨工作樹或可安全合併的 background worktree 執行 S186 shipping；若仍在目前 checkout，需先處理或暫存 unrelated changes，再重跑 `./scripts/verify-all.sh` 以滿足當輪 shipping gate。
