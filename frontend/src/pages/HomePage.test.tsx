@@ -13,9 +13,9 @@ import { HomePage } from './HomePage'
 // 假資料：3 LOW + 0 NONE，模擬 production DB 狀態（per S096c deferred Flyway migration runtime classify only）
 const mockSkillsPage = {
   content: [
-    { id: '1', name: 'sk1', author: 'a1', description: 'd1', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z', aclEntries: ['*:read'] },
-    { id: '2', name: 'sk2', author: 'a2', description: 'd2', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z', aclEntries: ['*:read'] },
-    { id: '3', name: 'sk3', author: 'a3', description: 'd3', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z', aclEntries: ['*:read'] },
+    { id: '1', name: 'sk1', author: 'a1', description: 'd1', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', visibility: 'PUBLIC', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z' },
+    { id: '2', name: 'sk2', author: 'a2', description: 'd2', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', visibility: 'PUBLIC', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z' },
+    { id: '3', name: 'sk3', author: 'a3', description: 'd3', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', visibility: 'PUBLIC', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z' },
   ],
   page: { number: 0, size: 20, totalElements: 103, totalPages: 6 },
 }
@@ -143,8 +143,8 @@ describe('HomePage — S104 filter-active 0-hits UX', () => {
   })
 
   it('AC-S144-6: 重新載入 /browse 後不渲染已被刪除的 skill', async () => {
-    const deletedSkill = { id: 'deleted-skill', name: '已刪除技能', author: 'alice', description: 'deleted', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z', aclEntries: ['*:read'] }
-    const survivor = { id: 'survivor-skill', name: '保留技能', author: 'alice', description: 'survivor', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z', aclEntries: ['*:read'] }
+    const deletedSkill = { id: 'deleted-skill', name: '已刪除技能', author: 'alice', description: 'deleted', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', visibility: 'PUBLIC', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z' }
+    const survivor = { id: 'survivor-skill', name: '保留技能', author: 'alice', description: 'survivor', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 0, status: 'PUBLISHED', visibility: 'PUBLIC', createdAt: '2026-05-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z' }
     let page = {
       content: [deletedSkill, survivor],
       page: { number: 0, size: 20, totalElements: 2, totalPages: 1 },

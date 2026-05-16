@@ -6,6 +6,9 @@
  */
 export type SkillStatus = 'DRAFT' | 'PUBLISHED' | 'SUSPENDED'
 
+/** 技能公開狀態。公開讀取由後端 `skills.is_public` 判斷，不是 ACL 字串。 */
+export type Visibility = 'PUBLIC' | 'PRIVATE'
+
 /**
  * 風險評估等級（由後端 RiskScanner 分析後設定）。
  * S096c: 4-tier per ADR-future + PRD D27.
@@ -62,6 +65,8 @@ export interface Skill {
   riskLevel: RiskLevel | null
   /** 技能生命週期狀態 */
   status: SkillStatus
+  /** S184 — PageHeader visibility button 的狀態來源。 */
+  visibility: Visibility
   /** 累計下載次數 */
   downloadCount: number
   /** S098e2-T02：review 平均星等（1.00-5.00；尚無 review 時為 0.00） */

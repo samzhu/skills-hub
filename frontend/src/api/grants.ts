@@ -22,7 +22,7 @@ export interface SkillGrant {
 }
 
 export interface CreateGrantRequest {
-  principalType: 'user' | 'group' | 'public'
+  principalType: 'user' | 'group' | 'company'
   principalId: string
   role: 'VIEWER' | 'EDITOR'
 }

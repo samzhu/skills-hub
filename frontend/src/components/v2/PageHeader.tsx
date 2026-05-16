@@ -185,7 +185,7 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
               編輯
             </button>
           )}
-          {canShare && <VisibilityToggleButton skillId={skill.id} />}
+          {canShare && <VisibilityToggleButton skillId={skill.id} visibility={skill.visibility} />}
           {canManageGrants && onShareClick && (
             <button
               type="button"

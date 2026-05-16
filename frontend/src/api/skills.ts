@@ -1,5 +1,5 @@
 import { apiFetch, apiFetchVoid, ApiError } from './client'
-import type { Skill, SpringPage, CategoryCount, SkillVersion } from '../types/skill'
+import type { Skill, SpringPage, CategoryCount, SkillVersion, Visibility } from '../types/skill'
 
 /**
  * 技能搜尋參數。所有欄位皆為可選；
@@ -87,6 +87,23 @@ export function updateSkill(
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+  })
+}
+
+export interface SkillVisibilityResponse {
+  skillId: string
+  visibility: Visibility
+  updatedAt: string
+}
+
+export function setSkillVisibility(
+  id: string,
+  visibility: Visibility,
+): Promise<SkillVisibilityResponse> {
+  return apiFetch<SkillVisibilityResponse>(`/skills/${id}/visibility`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ visibility }),
   })
 }
 
@@ -184,14 +201,8 @@ export function postComment(requestId: string, body: CommentBody): Promise<{ id:
   })
 }
 
-export async function deleteComment(requestId: string, commentId: string): Promise<void> {
-  // backend 回 204；走原生 fetch 因 apiFetch 預期 JSON
-  const res = await fetch(`/api/v1/requests/${requestId}/comments/${commentId}`, { method: 'DELETE' })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    const b = body as { message?: string; error?: string }
-    throw new ApiError(res.status, b.message ?? `Delete comment failed: ${res.status}`, b.error)
-  }
+export function deleteComment(requestId: string, commentId: string): Promise<void> {
+  return apiFetchVoid(`/requests/${requestId}/comments/${commentId}`, { method: 'DELETE' })
 }
 
 export interface CreateRequestBody {
@@ -221,14 +232,8 @@ export function toggleVote(requestId: string): Promise<VoteResult> {
   return apiFetch<VoteResult>(`/requests/${requestId}/vote`, { method: 'POST' })
 }
 
-export async function deleteRequest(requestId: string): Promise<void> {
-  // backend 回 204；走原生 fetch 因 apiFetch 預期 JSON
-  const res = await fetch(`/api/v1/requests/${requestId}`, { method: 'DELETE' })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    const b = body as { message?: string; error?: string }
-    throw new ApiError(res.status, b.message ?? `Delete failed: ${res.status}`, b.error)
-  }
+export function deleteRequest(requestId: string): Promise<void> {
+  return apiFetchVoid(`/requests/${requestId}`, { method: 'DELETE' })
 }
 
 /**
@@ -366,11 +371,8 @@ export function fetchCategories(): Promise<CategoryCount[]> {
  * @param category  技能分類
  * @returns 後端分配的技能 UUID
  */
-/**
- * S116 — Skill visibility (GitHub repo style)。derived from acl_entries 是否含 *:read；
- * caller 不傳 visibility → 走 PUBLIC default 與 v3.x 既有行為一致。
- */
-export type Visibility = 'PUBLIC' | 'PRIVATE'
+/** S184 — Skill visibility is backed by skills.is_public, not public ACL strings. */
+export type { Visibility } from '../types/skill'
 
 // S154b — drop author parameter；backend §S154 §2.5 forge fix 後 server 一律從 auth context
 // 取 author（caller body silent ignored），前端不再送以對齊 authoritative ownership semantics。

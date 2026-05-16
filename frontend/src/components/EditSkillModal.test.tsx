@@ -21,6 +21,7 @@ const sampleSkill: Skill = {
   latestVersion: '1.0.0',
   riskLevel: 'LOW',
   status: 'PUBLISHED',
+  visibility: 'PUBLIC',
   downloadCount: 0,
   averageRating: 0,
   reviewCount: 0,

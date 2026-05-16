@@ -13,6 +13,7 @@ const mockSkill: Skill = {
   latestVersion: '0.3.1',
   riskLevel: 'LOW',
   status: 'PUBLISHED',
+  visibility: 'PUBLIC',
   downloadCount: 42,
   averageRating: 0,
   reviewCount: 0,

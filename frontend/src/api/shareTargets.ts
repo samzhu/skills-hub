@@ -1,6 +1,6 @@
 import { searchGroups } from './groups'
 
-export type ShareTargetType = 'user' | 'group' | 'public'
+export type ShareTargetType = 'user' | 'group' | 'company'
 
 export interface ShareTarget {
   type: ShareTargetType

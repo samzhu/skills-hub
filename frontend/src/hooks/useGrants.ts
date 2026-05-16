@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createGrant, fetchGrants, revokeGrant, type CreateGrantRequest } from '../api/grants'
+import { skillKeys } from '../api/queryKeys'
 
 /** S114a — fetch grants list for a skill; only fires when modal is open (enabled gate). */
 export function useGrants(skillId: string | undefined) {
   return useQuery({
-    queryKey: ['grants', skillId],
+    queryKey: skillKeys.grants(skillId),
     queryFn: () => fetchGrants(skillId!),
     enabled: !!skillId,
     staleTime: 30 * 1000,
@@ -17,7 +18,7 @@ export function useCreateGrant(skillId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: CreateGrantRequest) => createGrant(skillId, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['grants', skillId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: skillKeys.grants(skillId) }),
   })
 }
 
@@ -26,6 +27,6 @@ export function useRevokeGrant(skillId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (grantId: string) => revokeGrant(skillId, grantId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['grants', skillId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: skillKeys.grants(skillId) }),
   })
 }

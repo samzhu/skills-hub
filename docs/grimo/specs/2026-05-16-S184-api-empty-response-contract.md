@@ -452,6 +452,7 @@ Code split progress:
 | --- | --- | --- |
 | 2026-05-16 | Frontend empty-response API callers: grants, notifications, reviews, flags | `cd frontend && npm test -- grants.test.ts client.test.ts` PASS — 2 files / 15 tests. |
 | 2026-05-16 | Backend grants + visibility command: DELETE grants 204, POST public grants 400, PUT `/skills/{id}/visibility`, `Skill.visibility` DTO | `cd backend && ./gradlew test --tests '*SkillGrantControllerAuthzTest' --tests '*SkillGrantServiceVisibilityTest' --tests '*SkillUpdateControllerTest' --tests '*SkillCommandControllerSecurityTest' --tests '*SkillPublishForgeryTest' --tests '*SkillSuspendControllerSecurityTest' --tests '*SkillUploadAuthTest'` PASS. |
+| 2026-05-16 | Frontend visibility + share contract: PageHeader uses `skill.visibility`, visibility button calls `PUT /visibility`, ShareModal hides public mirror grants, query keys use `skillKeys` | `cd frontend && npm test -- grants.test.ts client.test.ts VisibilityToggleButton.test.tsx ShareModal.test.tsx` PASS — 4 files / 25 tests；`cd frontend && npm run typecheck` PASS. |
 
 E2E decision:
 

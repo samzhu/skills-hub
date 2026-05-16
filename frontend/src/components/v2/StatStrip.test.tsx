@@ -6,6 +6,7 @@ import type { Skill } from '@/types/skill'
 const baseSkill: Skill = {
   id: 's1', name: 'test', description: '', author: 'alice', category: 'AI',
   latestVersion: '1.0.0', riskLevel: 'LOW', status: 'PUBLISHED',
+  visibility: 'PUBLIC',
   downloadCount: 1284, averageRating: 4.8, reviewCount: 42,
   createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-05-04T00:00:00Z',
   verified: true, latestVersionPublishedAt: '2026-05-04T00:00:00Z',

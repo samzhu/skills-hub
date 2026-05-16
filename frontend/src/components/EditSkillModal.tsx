@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { updateSkill } from '@/api/skills'
+import { skillKeys } from '@/api/queryKeys'
 import { localizeApiError } from '@/lib/api-error-messages'
 import type { Skill } from '@/types/skill'
 
@@ -36,8 +37,8 @@ export function EditSkillModal({
       }),
     onSuccess: () => {
       // SkillDetailPage 用 id canonical route 取 detail；author/name legacy alias 仍可能有 cache consumer。
-      queryClient.invalidateQueries({ queryKey: ['skill', skill.id] })
-      queryClient.invalidateQueries({ queryKey: ['skills'] })
+      queryClient.invalidateQueries({ queryKey: skillKeys.detail(skill.id) })
+      queryClient.invalidateQueries({ queryKey: skillKeys.all })
       toast.success('技能已更新')
       onClose()
     },

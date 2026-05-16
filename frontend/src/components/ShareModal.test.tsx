@@ -1,8 +1,8 @@
 /**
  * S154b T04 — ShareModal 4 polish tests。
  *
- * 涵蓋 AC-6（list enriched displayName）/ AC-7（只有 user/public radio）/
- * AC-8（已 public → public radio disabled + tooltip）/ AC-9（placeholder
+ * 涵蓋 AC-6（list enriched displayName）/ AC-S184-9（public 不再是分享目標）/
+ * AC-S184-11（public grant row 不顯示在 ShareModal）/ AC-9（placeholder
  * 改 email/handle 友善版）。
  *
  * Mock 策略：vi.mock 替換 `useGrants/useCreateGrant/useRevokeGrant` 3 個 hooks，
@@ -71,13 +71,13 @@ describe('ShareModal — S154b T04 4 polish', () => {
     expect(screen.queryByText(/u_a3f9c1/)).toBeNull()
   })
 
-  it('AC-7: 新增分享 radio 支援 user / group / public，無 company', () => {
+  it('AC-S184-9: 新增分享 radio 支援 user / group / company，不顯示 public', () => {
     setupMocks([])
     renderModal()
     expect(screen.getByRole('radio', { name: /user/i })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /group/i })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /public/i })).toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: /company/i })).toBeNull()
+    expect(screen.getByRole('radio', { name: /company/i })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /public/i })).toBeNull()
   })
 
   it('S169 AC-13: role picker only exposes 可檢視 / 可編輯, not raw read/write/delete', () => {
@@ -90,7 +90,7 @@ describe('ShareModal — S154b T04 4 polish', () => {
     expect(screen.queryByText('delete')).toBeNull()
   })
 
-  it('AC-8: 已 public:*:read 時 public radio disabled + tooltip', () => {
+  it('AC-S184-11: public grant row 是 visibility mirror，不顯示在現有分享清單', () => {
     setupMocks([
       {
         id: 'g_public',
@@ -102,10 +102,8 @@ describe('ShareModal — S154b T04 4 polish', () => {
       } as SkillGrant,
     ])
     renderModal()
-    const publicRadio = screen.getByRole('radio', { name: /public/i })
-    expect(publicRadio).toBeDisabled()
-    // tooltip / aria-label / inline note 任一形式皆可，這裡驗 inline text 出現
-    expect(screen.getByText(/此技能已公開/)).toBeInTheDocument()
+    expect(screen.getByText('尚無分享設定')).toBeInTheDocument()
+    expect(screen.queryByText(/public/)).toBeNull()
   })
 
   it('AC-9: placeholder 改「輸入使用者 email 或 handle」', () => {

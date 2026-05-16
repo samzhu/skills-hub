@@ -6,6 +6,7 @@ import { AuthGatedButton } from '@/components/AuthGatedButton'
 import { RatingStars } from '@/components/RatingStars'
 import { useReviews } from '@/hooks/useReviews'
 import { createReview, deleteReview, type Review } from '@/api/reviews'
+import { skillKeys } from '@/api/queryKeys'
 import type { Skill } from '@/types/skill'
 import { localizeApiError } from '@/lib/api-error-messages'
 
@@ -34,7 +35,7 @@ export function ReviewsPanel({ skill, currentUserId }: { skill: Skill; currentUs
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['skill-reviews', skill.id] })
       // skill aggregate 帶 averageRating / reviewCount projection — 重新拉以反映 hero
-      queryClient.invalidateQueries({ queryKey: ['skill', skill.id] })
+      queryClient.invalidateQueries({ queryKey: skillKeys.detail(skill.id) })
       setShowForm(false)
     },
   })
@@ -43,7 +44,7 @@ export function ReviewsPanel({ skill, currentUserId }: { skill: Skill; currentUs
     mutationFn: (reviewId: string) => deleteReview(skill.id, reviewId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['skill-reviews', skill.id] })
-      queryClient.invalidateQueries({ queryKey: ['skill', skill.id] })
+      queryClient.invalidateQueries({ queryKey: skillKeys.detail(skill.id) })
     },
   })
 

@@ -23,6 +23,7 @@ const baseSkill: Skill = {
   id: 's1', name: 'My Skill', description: 'A test skill', author: 'alice',
   category: 'AI', latestVersion: '1.0.0', riskLevel: 'LOW',
   status: 'PUBLISHED', downloadCount: 100, averageRating: 4.5, reviewCount: 10,
+  visibility: 'PUBLIC',
   createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-05-04T00:00:00Z',
   verified: true, latestVersionPublishedAt: '2026-05-04T00:00:00Z',
   license: 'MIT', compatibility: [], versionCount: 3, openFlagCount: 0,

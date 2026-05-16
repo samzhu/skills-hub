@@ -19,6 +19,7 @@ const skill = (riskLevel: RiskLevel | null, id: string): Skill => ({
   category: 'utility',
   riskLevel,
   status: 'PUBLISHED',
+  visibility: 'PUBLIC',
   downloadCount: 0,
   averageRating: 0,
   reviewCount: 0,

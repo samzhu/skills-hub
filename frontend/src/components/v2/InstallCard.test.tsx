@@ -8,6 +8,7 @@ const baseSkill: Skill = {
   id: 's1', name: 'my-skill', description: 'A skill', author: 'alice',
   category: 'AI', latestVersion: '1.0.0', riskLevel: 'LOW',
   status: 'PUBLISHED', downloadCount: 0, averageRating: 0, reviewCount: 0,
+  visibility: 'PUBLIC',
   createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
   verified: false, latestVersionPublishedAt: null,
   license: null, compatibility: [], versionCount: 1, openFlagCount: 0,

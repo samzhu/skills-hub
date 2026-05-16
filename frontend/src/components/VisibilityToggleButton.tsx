@@ -1,103 +1,53 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createGrant, fetchGrants, revokeGrant } from '@/api/grants'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { setSkillVisibility } from '@/api/skills'
+import { skillKeys } from '@/api/queryKeys'
+import type { Skill, Visibility } from '@/types/skill'
 
 /**
- * S163b' — Owner-only 公開 ↔ 私人 toggle button。
- *
- * 後端 ACL 路徑：
- * - 當前 public（grants 含 principalType='public' && principalId='*'）→ 顯「轉為私人」→
- *   click revokeGrant(skillId, publicGrantId)
- * - 當前 private（無 public:* grant）→ 顯「公開分享」→ click createGrant({public, *, VIEWER})
- *
- * 對應 S163 AC-4（切私人）/ AC-6（重新公開）；驗證走既有 ACL backend 行為。
- *
- * 設計：自包 grants query — 不依賴 parent 傳 isPublic prop，避免 parent 漏接 stale。
- * 切換成功後 invalidate skill detail + grants query，PageHeader 與 ShareModal 同步刷新。
+ * S184 — Owner-only public/private toggle. The button reads skill.visibility
+ * from skill detail JSON and sends the target state; it never looks up public grant ids.
  */
-export function VisibilityToggleButton({ skillId }: { skillId: string }) {
+export function VisibilityToggleButton({
+  skillId,
+  visibility,
+}: {
+  skillId: string
+  visibility: Visibility
+}) {
   const queryClient = useQueryClient()
-  const { data: grants, isLoading } = useQuery({
-    queryKey: ['skill-grants', skillId],
-    queryFn: () => fetchGrants(skillId),
-  })
-
-  const publicGrant = grants?.find(
-    (g) => g.principalType === 'public' && g.principalId === '*',
-  )
-  const isPublic = !!publicGrant
-
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['skill-grants', skillId] })
-    queryClient.invalidateQueries({ queryKey: ['skill', skillId] })
-    queryClient.invalidateQueries({ queryKey: ['skills'] })
-  }
-
-  const grantPublic = useMutation({
-    mutationFn: () =>
-      createGrant(skillId, {
-        principalType: 'public',
-        principalId: '*',
-        role: 'VIEWER',
-      }),
-    onSuccess: invalidate,
-  })
-
-  const revokePublic = useMutation({
-    mutationFn: () => {
-      if (!publicGrant) throw new Error('no public grant to revoke')
-      return revokeGrant(skillId, publicGrant.id)
-    },
-    onSuccess: invalidate,
-  })
-
-  const pending = grantPublic.isPending || revokePublic.isPending
-
-  if (isLoading) {
-    return (
-      <button
-        type="button"
-        disabled
-        aria-label="讀取中"
-        data-testid="visibility-toggle"
-        style={{
-          padding: '8px 14px',
-          fontSize: 13,
-          background: 'rgba(255,255,255,0.06)',
-          border: '0.5px solid var(--line-2, rgba(255,255,255,0.12))',
-          borderRadius: 8,
-          opacity: 0.5,
-          cursor: 'wait',
-        }}
-      >
-        ...
-      </button>
-    )
-  }
-
+  const isPublic = visibility === 'PUBLIC'
+  const target: Visibility = isPublic ? 'PRIVATE' : 'PUBLIC'
   const label = isPublic ? '轉為私人' : '公開分享'
-  const onClick = () => {
-    if (isPublic) revokePublic.mutate()
-    else grantPublic.mutate()
-  }
+
+  const mutation = useMutation({
+    mutationFn: () => setSkillVisibility(skillId, target),
+    onSuccess: (response) => {
+      queryClient.setQueryData<Skill | undefined>(skillKeys.detail(skillId), (old) =>
+        old ? { ...old, visibility: response.visibility, updatedAt: response.updatedAt } : old,
+      )
+      queryClient.invalidateQueries({ queryKey: skillKeys.all })
+      queryClient.invalidateQueries({ queryKey: skillKeys.grants(skillId) })
+    },
+  })
 
   return (
     <button
       type="button"
       aria-label={label}
       data-testid="visibility-toggle"
-      disabled={pending}
-      onClick={onClick}
+      disabled={mutation.isPending}
+      onClick={() => mutation.mutate()}
       style={{
         padding: '8px 14px',
         fontSize: 13,
         background: 'rgba(255,255,255,0.06)',
         border: '0.5px solid var(--line-2, rgba(255,255,255,0.12))',
         borderRadius: 8,
-        cursor: pending ? 'wait' : 'pointer',
-        opacity: pending ? 0.6 : 1,
+        cursor: mutation.isPending ? 'wait' : 'pointer',
+        opacity: mutation.isPending ? 0.6 : 1,
       }}
     >
-      {pending ? '處理中...' : label}
+      {mutation.isPending ? '處理中...' : label}
     </button>
   )
 }

@@ -28,6 +28,7 @@ const skillFixture: Skill = {
   latestVersion: '1.0.0',
   riskLevel: 'LOW',
   status: 'PUBLISHED',
+  visibility: 'PUBLIC',
   downloadCount: 42,
   averageRating: 4.0,
   reviewCount: 3,
