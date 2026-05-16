@@ -340,4 +340,23 @@ The method already has access to `principalContextService`, so it does not need 
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+Planning status: task files created; implementation not started in this tick.
+
+| Task | File | ACs | Status | Verification |
+| --- | --- | --- | --- | --- |
+| S185-T01 | `docs/grimo/tasks/2026-05-16-S185-T01-list-projection-fields.md` | AC-S185-1, AC-S185-2 | pending | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryServiceVisibilityTest` |
+| S185-T02 | `docs/grimo/tasks/2026-05-16-S185-T02-category-and-json-contract.md` | AC-S185-3, AC-S185-4, AC-S185-5 evidence hook | pending | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryServiceVisibilityTest --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest` |
+
+Execution order:
+
+1. S185-T01 first writes failing repository-slice tests for list/detail field parity, then adds the smallest backend mapping fix.
+2. S185-T02 then applies the same visibility clause to category counts and adds the MockMvc JSON contract guard.
+3. After both tasks pass, run `cd backend && ./gradlew test`, deploy through Cloud Build when needed, and capture AC-S185-5 production list/detail recheck plus Cloud Run `severity>=ERROR` log result.
+
+One-unit loop note: this automation tick stops after task planning because `.codex/loop.md` requires one clear commit per tick. Next tick should enter S185-T01 via `$implementing-task`.
+
+## 7. Results
+
+Pending implementation.

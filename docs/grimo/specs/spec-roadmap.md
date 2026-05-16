@@ -43,7 +43,7 @@
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | 📐 in-design — spec ready for review |
 | S179 | Publish author anonymous login hint（未登入時作者欄位顯「請先登入後發布」，不再空白） | XS(7) | S154b ✅, S139 ✅ | 📐 in-design — spec ready for review |
 | S180 | Skill public native readback hotfix（`skills.is_public` native image 讀回不再把 Boolean 塞進 primitive boolean） | XS(3) | S168 ✅, S177 ✅ | ⏳ blocked — latest revision log recheck clean；logged-in Chrome UI verification unavailable in Codex ticks |
-| S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | 📐 in-design — spec ready for task planning；Round 69 production API found same skill list returns PRIVATE/versionCount=0 while detail returns PUBLIC/versionCount=1 |
+| S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | 📋 planned — task files created (T01/T02 pending)；Round 69 production API found same skill list returns PRIVATE/versionCount=0 while detail returns PUBLIC/versionCount=1 |
 
 ---
 
