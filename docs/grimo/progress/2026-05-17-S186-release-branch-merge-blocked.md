@@ -33,9 +33,16 @@ main checkout 目前有使用者未提交的 `docs/grimo/specs/spec-roadmap.md` 
 ## 下一步
 
 1. 先由使用者或後續 tick 處理 main 上的 `docs/grimo/specs/spec-roadmap.md` 未提交修改：commit、stash、或手動整合。
-2. 再執行：
+2. 因為本 blocker note 已先 commit 到 main，後續有兩個安全選項：
 
    ```bash
+   git merge release/S186-ship
+   ```
+
+   或先把 `release/S186-ship` rebase 到最新 main，再快轉：
+
+   ```bash
+   git rebase main release/S186-ship
    git merge --ff-only release/S186-ship
    ```
 
