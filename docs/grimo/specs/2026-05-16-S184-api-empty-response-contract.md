@@ -1,7 +1,7 @@
 # S184 — API Empty Response + Visibility Command Contract
 
 > SpecID: S184
-> Status: ⏳ Implemented locally — code split pending
+> Status: ⏳ Implemented locally — backend contract tests aligned
 > Date: 2026-05-16
 > Size: S(7)
 > Related: S160b' frontend `apiFetch`, S163/S163b' visibility toggle, S162 API response consistency
@@ -453,6 +453,18 @@ Code split progress:
 | 2026-05-16 | Frontend empty-response API callers: grants, notifications, reviews, flags | `cd frontend && npm test -- grants.test.ts client.test.ts` PASS — 2 files / 15 tests. |
 | 2026-05-16 | Backend grants + visibility command: DELETE grants 204, POST public grants 400, PUT `/skills/{id}/visibility`, `Skill.visibility` DTO | `cd backend && ./gradlew test --tests '*SkillGrantControllerAuthzTest' --tests '*SkillGrantServiceVisibilityTest' --tests '*SkillUpdateControllerTest' --tests '*SkillCommandControllerSecurityTest' --tests '*SkillPublishForgeryTest' --tests '*SkillSuspendControllerSecurityTest' --tests '*SkillUploadAuthTest'` PASS. |
 | 2026-05-16 | Frontend visibility + share contract: PageHeader uses `skill.visibility`, visibility button calls `PUT /visibility`, ShareModal hides public mirror grants, query keys use `skillKeys` | `cd frontend && npm test -- grants.test.ts client.test.ts VisibilityToggleButton.test.tsx ShareModal.test.tsx` PASS — 4 files / 25 tests；`cd frontend && npm run typecheck` PASS. |
+
+Backend contract cleanup:
+
+| Date | Trigger | Result |
+| --- | --- | --- |
+| 2026-05-16 | S183 shipping preflight `./scripts/verify-all.sh` failed because two legacy backend tests still asserted pre-S184 behavior: DELETE grant expected `202 Accepted`; external public grant expected a saved `public/*` row. | Updated `S016EndToEndSmokeTest` to expect `204 No Content` from `DELETE /api/v1/skills/{id}/grants/{grantId}`. Updated `SkillGrantServiceTest` to assert `principalType="public"` is rejected and points callers to `PUT /api/v1/skills/{id}/visibility`. |
+
+Verification:
+
+| Command | Result |
+| --- | --- |
+| `cd backend && ./gradlew test --tests '*S016EndToEndSmokeTest' --tests '*SkillGrantServiceTest'` | PASS — `S016EndToEndSmokeTest` 9 tests / 0 failures; `SkillGrantServiceTest` 11 tests / 0 failures. |
 
 E2E decision:
 

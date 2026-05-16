@@ -214,21 +214,21 @@ class SkillGrantServiceTest {
     }
 
     @Test
-    @Tag("AC-9")
-    @DisplayName("AC-9 (S154b T04): public principal 不走 resolver，原樣寫入 \"*\"")
-    void grant_publicSkipsResolver() {
+    @Tag("AC-S184-9")
+    @DisplayName("AC-S184-9: public principal is rejected by grants API")
+    void grant_publicPrincipalRejected() {
         var skillId = "skill-1";
         var skill = mockSkillWithOwner(skillId, "u_alice0");
         when(users.current()).thenReturn(CurrentUser.synthetic("u_alice0", java.util.List.of(), java.util.List.of(), null));
         when(skillRepo.findById(skillId)).thenReturn(Optional.of(skill));
-        when(grantRepo.existsBySkillIdAndRole(skillId, "OWNER")).thenReturn(false);
 
         var req = new SkillGrantService.GrantRequest("public", "*", Role.VIEWER);
-        service.grant(skillId, req);
 
-        var captor = org.mockito.ArgumentCaptor.forClass(SkillGrant.class);
-        verify(grantRepo).save(captor.capture());
-        assertThat(captor.getValue().getPrincipalId()).isEqualTo("*");
+        assertThatThrownBy(() -> service.grant(skillId, req))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("PUT /api/v1/skills/skill-1/visibility");
+
+        verify(grantRepo, never()).save(any());
         // resolver 不該被呼叫於 public principal
         verify(userResolver, never()).resolveByEmailHandleOrId(anyString());
     }

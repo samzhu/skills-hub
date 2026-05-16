@@ -189,13 +189,13 @@ class S016EndToEndSmokeTest {
                 .with(jwtFor("bob", List.of())))
                 .andExpect(status().isForbidden());
 
-        // (5) alice revoke via new S114a /grants/{grantId} endpoint —
-        // SkillRevokedEvent → onRevoked() → rebuildAcl() removes group:engineering:read
+        // (5) alice revoke via S114a /grants/{grantId} endpoint.
+        // S184 returns 204 empty body; revoke event still removes group:engineering:read.
         scenario.stimulate(() -> {
                     try {
                         mockMvc.perform(delete("/api/v1/skills/" + skillId + "/grants/" + grantIdRef.get())
                                 .with(jwtFor("alice", List.of())))
-                                .andExpect(status().isAccepted());
+                                .andExpect(status().isNoContent());
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
