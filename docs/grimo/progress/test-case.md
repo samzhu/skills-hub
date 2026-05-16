@@ -1701,3 +1701,40 @@ typecheck: 0 errors
 ### Round 68 Retry Summary
 
 - Tick 134: 4 Chrome DOM cases / **1 bug found**（Bug Y），已新增 S174 planned row；下次 tick 切回 Mode A 設計 S174。
+
+---
+
+## Tick 135 — Mode B Round 69（Production API Projection Field Completeness），2026-05-16
+
+> Cut 軸切換 — Chrome callable tool 在本輪 Codex context 仍不可用；改用正式站 HTTP response + Cloud Run trace/log 檢查同一個 skill 在 browse list、detail、semantic search、category API 的欄位是否一致。目標 revision：`skillshub-00032-9v8`，image `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260516-031017`。
+
+### Production API 結果
+
+| # | 類別 | URL / command | Expected | Actual | Result |
+|---|------|---------------|----------|--------|--------|
+| 69.1 | 匿名狀態 | `GET /api/v1/me`（無 cookie） | anonymous branch 可辨識 | `401 text/html`，空 body，trace `7aba92184efc970310859c71e55116d1` | ✅ |
+| 69.2 | List/detail consistency | `GET /api/v1/skills?page=0&size=10` + `GET /api/v1/skills/8ee45695-c16e-4586-9869-9fdbe110ca88` | 同一個 skill 的 `visibility`、`verified`、`latestVersionPublishedAt`、`versionCount` 應一致 | list 回 `visibility: PRIVATE`, `verified: false`, `latestVersionPublishedAt: null`, `versionCount: 0`；detail 回 `visibility: PUBLIC`, `verified: true`, `latestVersionPublishedAt: 2026-05-15T21:06:42.704893Z`, `versionCount: 1` | **BUG Z** |
+| 69.3 | Semantic search | `GET /api/v1/search/semantic?q=fresh%20scan&limit=5` | 若回同一筆 skill，應不破壞 public read path | 200 JSON 回同一筆 skill；response 未 expose `visibility` 欄位，trace `9b2cdd139130c1c115604abb9acaeddb` | ✅（觀察） |
+| 69.4 | Category projection | `GET /api/v1/categories` | category count 應和可瀏覽 skill source 對得起來 | 回 `[{"name":"testing","count":1},{"name":"video","count":1}]`；同時 `/skills` 只回一筆 `testing` skill | ⚠️ 觀察 |
+| 69.5 | Cloud Run trace/log | `gcloud logging read` trace + recent `severity>=ERROR` | list/detail traces 都是 200；同時段無 server error | trace `fb16b4dc6cc70fe7961bf798f006a3f7`（list）與 `27aa8e5ca3ca2cf1e720f0c23b3b0217`（detail）各有 Cloud Run 200；`timestamp>=2026-05-16T03:50:00Z severity>=ERROR` 0 rows | ✅ |
+
+### Bug Z — Skill list/detail projection 欄位不一致
+
+- URL：`https://skillshub-644359853825.asia-east1.run.app/api/v1/skills?page=0&size=10` 與 `https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/8ee45695-c16e-4586-9869-9fdbe110ca88`
+- 操作步驟：無 cookie 先打 list，取第一筆 id；再打 detail；比對同 id 的 `visibility`、`verified`、`latestVersionPublishedAt`、`versionCount`。
+- 預期結果：同一筆 skill 的瀏覽卡片與詳情頁基礎狀態一致；若 detail 已是 public/published/versionCount=1，list 不應顯示 private/unverified/versionCount=0。
+- 實際結果：list 回 `PRIVATE` + `verified:false` + `versionCount:0` + `latestVersionPublishedAt:null`；detail 回 `PUBLIC` + `verified:true` + `versionCount:1` + published timestamp。
+- Browser console error：N/A，本輪 Chrome callable tool 不在 Codex context；未做 DOM 操作。
+- Failed network request / response body：無 failed network；兩個 endpoint 都是 HTTP 200 JSON，但 body 欄位互相矛盾。
+- Cloud Run log：list trace `fb16b4dc6cc70fe7961bf798f006a3f7`、detail trace `27aa8e5ca3ca2cf1e720f0c23b3b0217`，Cloud Run request log 都是 200；最近 revision `skillshub-00032-9v8` 同時段 `severity>=ERROR` 0 rows。
+- Root-cause hypothesis：list endpoint 的 read model / SQL projection 對 visibility 與 published version aggregate 的資料來源，和 detail endpoint 目前使用的 source-of-truth 不一致；可能是 S175 publish/scan 完成後只讓 detail source 更新，list projection 欄位仍停在 draft/private 初始值。
+- 影響 spec / AC：S175 production upload/scan/publish result、S177 is_public-first search visibility、S184 visibility command contract；測試缺口是 production/API 沒有用同一 id 比對 list/detail 的 `visibility` + version/published 欄位一致性。
+
+### Follow-up
+
+- 新增 roadmap planned row：S185 `Skill list/detail projection consistency（list visibility/version fields 對齊 detail）`。
+- 下一輪 Decision Tree 建議進 Mode A：先用 `$planning-spec S185` 寫明 list/detail 資料來源、修復策略、BDD 驗證，再進 `$planning-tasks` 補測試與最小修復。
+
+### Round 69 Summary
+
+- Tick 135: 5 production API/log checks / **1 bug found**（Bug Z），已新增 S185 planned row；下次 tick 切回 Mode A 設計 S185。
