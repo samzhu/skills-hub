@@ -43,7 +43,7 @@
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | 📐 in-design — spec ready for review |
 | S179 | Publish author anonymous login hint（未登入時作者欄位顯「請先登入後發布」，不再空白） | XS(7) | S154b ✅, S139 ✅ | 📐 in-design — spec ready for review |
 | S180 | Skill public native readback hotfix（`skills.is_public` native image 讀回不再把 Boolean 塞進 primitive boolean） | XS(3) | S168 ✅, S177 ✅ | ⏳ deployed — Chrome logged-in validate blocked by HTTP 409 session/detail requests |
-| S183 | Security Risk Lights + Issue Findings UI（SkillDetail 上方四燈總風險；安全性 tab 呈現 S147 findings） | S(10) | S147 ✅, S142a ✅, S142b ✅ | ✅ Done — QA PASS；ready for shipping-release |
+| S183 | Security Risk Lights + Issue Findings UI（SkillDetail 上方四燈總風險；安全性 tab 呈現 S147 findings） | S(10) | S147 ✅, S142a ✅, S142b ✅ | ⏳ ship blocked — `verify-all.sh` V01/V03 backend tests fail；S183 UI QA PASS |
 
 ---
 

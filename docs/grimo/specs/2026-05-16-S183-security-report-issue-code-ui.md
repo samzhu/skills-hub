@@ -2,7 +2,7 @@
 
 > SpecID: S183
 > Date: 2026-05-16
-> Status: ✅ Done
+> Status: ⏳ Ship blocked 2026-05-16 — verify-all backend V01/V03 failed
 > Type: Frontend feature spec
 > Estimate: S(10)
 > Depends: S147 ✅, S142a ✅, S142b ✅
@@ -644,3 +644,32 @@ QA findings:
 - Security tab current level is `SkillDetailPage(skill.riskLevel)` → `SecurityTab(riskLevel)`.
 - `report.findings[]` is used only for counts, filter, and finding detail rows.
 - S184 dirty changes were present in the worktree, but QA found no impact on S183 risk lights or findings presentation.
+
+### Shipping Preflight Blocker（2026-05-16）
+
+`./scripts/verify-all.sh` 在 2026-05-16T02:27:31Z 執行，結果不能進 `$shipping-release`：
+
+```text
+Results: V01=FAIL V02=SKIP V03=FAIL V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS
+Verdict: ❌ 2 CRITICAL failure(s); exit=1
+```
+
+失敗點：
+
+| Command step | 看到的失敗 | 目前判斷 |
+|---|---|---|
+| V01 `cd backend && ./gradlew clean test jacocoTestReport` | `S016EndToEndSmokeTest.java:198` 仍期待 `DELETE /grants/{grantId}` 回 `202 Accepted`；目前 S184 已把同步刪除改成 `204 No Content`。 | 需要 S184 task 更新舊測試期待值，確認 grant revoke 後 DB / ACL 仍正確。 |
+| V01 / V03 backend test | `SkillGrantServiceTest.java:227` 的 AC-9 仍期待 `principalType="public"` 可直接走 external grant API；目前 S184 設計改為 public 只能走 `PUT /visibility`。 | 需要 S184 task 移除或改寫舊 public-grant 測試，補上 public target 被拒收與 visibility command 成功測試。 |
+
+已通過但不能抵消 backend failure：
+
+```text
+V04 frontend npm test PASS
+V05 frontend npm run verify PASS
+V06 frontend coverage PASS
+V07 Playwright @happy-path PASS
+V08a processAot PASS
+V08b bootBuildImage PASS
+```
+
+下一步：回到 S184，補一個 backend test contract cleanup task。S183 UI 本身仍維持 local QA PASS，但 release/archive 必須等 `./scripts/verify-all.sh` 回到 `exit=0`。
