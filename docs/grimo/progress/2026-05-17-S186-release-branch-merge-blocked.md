@@ -32,8 +32,25 @@ main checkout 目前有使用者未提交的 `docs/grimo/specs/spec-roadmap.md` 
 
 ## 下一步
 
+### 2026-05-17 01:50 CST 更新
+
+後續 tick 已把 `75ac61f` 乾淨重放到最新 main blocker-note 之後，產生新的可快轉 branch：
+
+- Branch: `release/S186-merge-ready`
+- Commit: `8cdca18 docs(S186): ship embedding colocation release`
+- Command: `git merge-base --is-ancestor main release/S186-merge-ready`
+- Result: `0`
+
+`release/S186-ship` 保留作歷史對照；後續不要再優先使用它。
+
 1. 先由使用者或後續 tick 處理 main 上的 `docs/grimo/specs/spec-roadmap.md` 未提交修改：commit、stash、或手動整合。
-2. 因為本 blocker note 已先 commit 到 main，後續有兩個安全選項：
+2. 使用新的 merge-ready branch：
+
+   ```bash
+   git merge --ff-only release/S186-merge-ready
+   ```
+
+3. 只有需要比對舊 commit 時才看 `release/S186-ship`。若要用舊 branch，需要 normal merge 或先 rebase：
 
    ```bash
    git merge release/S186-ship
@@ -46,4 +63,4 @@ main checkout 目前有使用者未提交的 `docs/grimo/specs/spec-roadmap.md` 
    git merge --ff-only release/S186-ship
    ```
 
-3. merge 成功後，S186 的 local release docs 才會進 main；production deploy / Cloud Run 覆測仍是後續工作。
+4. merge 成功後，S186 的 local release docs 才會進 main；production deploy / Cloud Run 覆測仍是後續工作。
