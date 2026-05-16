@@ -82,7 +82,7 @@
 ### Permission / Sharing Contract（S169 起）
 
 - `skill_grants` 是人類管理面：只能 expose role（`OWNER` / `EDITOR` / `VIEWER`），前端不可顯示或提交 raw `read` / `write` / `delete` checkbox。
-- `acl_entries` 是系統查詢投影：後端 listener 從 grants 展開後寫進 `skills.acl_entries` 與 `vector_store.acl_entries`；API response 不可輸出 `aclEntries`。
+- `acl_entries` 是系統查詢投影：後端 listener 從 grants 展開後只寫進 `skills.acl_entries`；API response 不可輸出 `aclEntries`。S186 後 list/search/detail 都讀 `skills.is_public OR skills.acl_entries`，semantic search 不再依賴獨立向量表的權限投影。
 - 多筆 skill list/search 必須先用 S170 `PrincipalContextService.currentPrincipalKeys()` 產生 principal keys，再把 `:read` patterns 放進 SQL JSONB ACL clause 過濾；不可先分頁後用 Java 過濾。
 - Skill detail 的 UI 按鈕只讀 backend `viewerPermissions`；不要用 `skill.ownerId === me.sub` 或前端複製 role matrix 判斷是否可編輯、刪除、分享。
 - 權限不足回 403；duplicate version/review、非法狀態轉換等 aggregate state conflict 才回 409。不要用 `IllegalStateException` 表達 permission denial。

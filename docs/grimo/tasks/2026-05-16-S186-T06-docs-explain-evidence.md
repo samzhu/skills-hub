@@ -62,4 +62,43 @@ And（而且）文件不再把 `vector_store.acl_entries` 描述成 runtime perm
 - S186-T05 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+
+RED：
+
+```bash
+rg -n "SkillshubPgVectorStore|vector_store\\.acl_entries|vector_store\\.is_public" \
+  docs/grimo/architecture.md docs/grimo/development-standards.md
+```
+
+結果：列出 architecture / development standards 仍描述 runtime semantic search 依賴舊獨立向量表的權限投影。
+
+GREEN：
+
+- 新增 `SemanticSearchExplainEvidenceTest`，用 public/private/draft 三筆 `skills.embedding` fixture 跑 `EXPLAIN (ANALYZE, BUFFERS)`。
+- S186 §7 記錄 observed plan：`Limit -> Sort -> Index Scan using idx_skills_status on skills`、query buffers `shared hit=12`、planning buffers `shared hit=33 read=1`、`Execution Time=0.069 ms`。
+- `idx_skills_embedding_hnsw` 未被 planner 選用；原因是 fixture 只有 3 筆 row，PostgreSQL 選 status index + in-memory sort 成本較低。S186 不在本 task 強制 planner setting；production 大資料量調校留後續以真實資料量判斷。
+- `architecture.md` / `development-standards.md` 已同步為 S186 後 runtime 事實：semantic search 讀 `skills.embedding`，list/search/detail 權限讀 `skills.is_public OR skills.acl_entries`。
+
+驗證：
+
+```bash
+cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.search.SemanticSearchExplainEvidenceTest'
+cd backend && ./gradlew test \
+  --tests 'io.github.samzhu.skillshub.skill.domain.SkillRepositoryEmbeddingColumnTest' \
+  --tests 'io.github.samzhu.skillshub.db.SkillEmbeddingMigrationTest' \
+  --tests 'io.github.samzhu.skillshub.search.SemanticSearchFromSkillsTest' \
+  --tests 'io.github.samzhu.skillshub.search.SemanticSearchServiceVisibilityTest' \
+  --tests 'io.github.samzhu.skillshub.search.SearchEmbeddingRepositoryTest' \
+  --tests 'io.github.samzhu.skillshub.search.SearchProjectionEmbeddingWriteTest' \
+  --tests 'io.github.samzhu.skillshub.skill.security.SkillAclProjectionListenerEmbeddingColocationTest' \
+  --tests 'io.github.samzhu.skillshub.search.SemanticSearchVisibilityLagTest' \
+  --tests 'io.github.samzhu.skillshub.search.VectorStoreRuntimeRemovalTest' \
+  --tests 'io.github.samzhu.skillshub.search.SemanticSearchExplainEvidenceTest'
+rg -n "SkillshubPgVectorStore|vector_store\\.acl_entries|vector_store\\.is_public" \
+  docs/grimo/architecture.md docs/grimo/development-standards.md
+```
+
+Note：`cd backend && ./gradlew test --tests '*S186*'` 實測回 `No tests found for given includes: [*S186*]`；Gradle `--tests` filter 不匹配 JUnit `@Tag("S186")`，所以本 task 改用顯式 class 清單作為 S186 範圍驗證。

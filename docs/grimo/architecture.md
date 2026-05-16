@@ -55,7 +55,7 @@
 - Grant Model 含兩種語意：user/group/company 是 Explicit Grant；public 是 Public Grant，代表 Public Visibility，不是 ACL entry。
 - 建立 skill 當下同 TX 寫入 OWNER grant；public skill 也會建立 Public Grant 並發 `SkillGrantedEvent`。`SkillCreatedEvent` 記錄 skill 已建立，`SkillGrantedEvent` 記錄 grant 已建立。
 - Grant events 是跨模組可訂閱的公開 domain events，放在 `skill.security.events`。
-- Grant command transaction 寫 `skill_grants` row 與強一致的 `skills.acl_entries`；`SkillAclProjectionListener` AFTER_COMMIT 回查目前 grants 與 `skills.is_public`，重建 `vector_store.is_public` / read-only `vector_store.acl_entries`。Public Grant 不展開成 `acl_entries`。
+- Grant command transaction 寫 `skill_grants` row 與強一致的 `skills.acl_entries`；`SkillAclProjectionListener` AFTER_COMMIT 回查目前 grants 並重建 `skills.acl_entries`。Public Grant 不展開成 `acl_entries`；公開讀取由 `skills.is_public` 判斷。
 
 ### Aggregate State Mutation Flow
 
@@ -70,8 +70,8 @@ Command → Service.@Transactional method:
     - skills row UPDATED
     - event_publication row INSERTED（completion_date NULL → 等待 listener）
   AFTER_COMMIT async（@ApplicationModuleListener）：
-    - SearchProjection 訂閱 → vector_store INSERT/UPDATE
-    - SkillAclProjectionListener 訂閱 Grant events → vector_store read scope UPDATE
+    - SearchProjection 訂閱 → `skills.embedding_*` UPDATE / clear
+    - SkillAclProjectionListener 訂閱 Grant events → `skills.acl_entries` rebuild
     - AnalyticsProjection 訂閱 → download_events INSERT (idempotent via eventId)
     - AuditEventListener 訂閱 Skill / Grant events → domain_events INSERT (audit log；deterministic UUID + ON CONFLICT DO NOTHING)
     - ScanOrchestrator 訂閱（SkillVersionPublishedEvent only）→ multi-engine scan pipeline
@@ -98,8 +98,8 @@ Grant events 是跨模組可訂閱的公開 domain events，放在 `skill.securi
 
 | Event | Trigger | Payload | Known subscribers |
 |-------|---------|---------|-------------------|
-| `SkillGrantedEvent` | `SkillGrantService.grant(...)` saves any `skill_grants` role row, including create-time OWNER and Public Grant | skillId, grantId | `SkillAclProjectionListener`回查目前 grants 與 `skills.is_public`，更新 `vector_store.is_public`，並從 user/group/company roles 產生 read-only `vector_store.acl_entries`；public grant 不進 ACL |
-| `SkillRevokedEvent` | `SkillGrantService.revoke(...)` hard-deletes grant row | skillId, grantId | `SkillAclProjectionListener`回查目前 grants 與 `skills.is_public`，更新 `vector_store.is_public`，並從 user/group/company roles 產生 read-only `vector_store.acl_entries` |
+| `SkillGrantedEvent` | `SkillGrantService.grant(...)` saves any `skill_grants` role row, including create-time OWNER and Public Grant | skillId, grantId | `SkillAclProjectionListener` 回查目前 grants，重建 `skills.acl_entries`；public grant 不進 ACL，公開讀取由 `skills.is_public` 判斷 |
+| `SkillRevokedEvent` | `SkillGrantService.revoke(...)` hard-deletes grant row | skillId, grantId | `SkillAclProjectionListener` 回查目前 grants，重建 `skills.acl_entries` |
 
 > **S177 重設（2026-05-15）**：`skill` 是大模組，內含 Skill 與 Grant 兩個緊密連動的子領域模型。
 > Grant 負責 `skill_grants` 的授權對象與角色；Skill 負責 skill 本身資料與 public visibility。建立 skill 時，
@@ -111,24 +111,22 @@ Grant events 是跨模組可訂閱的公開 domain events，放在 `skill.securi
 > **S184 計畫更新（2026-05-16）**：公開/私人的對外 UI/API 入口收斂為 `PUT /api/v1/skills/{id}/visibility`。
 > `POST /grants` 只接受 user/group/company Share Target；public 不再是分享視窗的 target。
 > Visibility Command 以 `skills.is_public` 做冪等判斷並回傳結果 visibility；內部仍可沿用 Public Grant + `SkillGrantedEvent` /
-> `SkillRevokedEvent` path。Public Grant 不寫入 `skills.acl_entries` 或 `vector_store.acl_entries`。
+> `SkillRevokedEvent` path。Public Grant 不寫入 `skills.acl_entries`。
 
 > **S169 更新（2026-05-14 v4.57.0；S177 前狀態）**：`skill_grants.role` 支援 `OWNER` / `EDITOR` / `VIEWER`。
-> 當時 listener 會把 role grant 展成 `principal:verb` ACL entries，並同步寫入 `skills.acl_entries`
-> 與 `vector_store.acl_entries`；S177 後這個 listener 職責被拆成同 TX `skills.acl_entries` writer
-> 與 async `SkillAclProjectionListener`。API 不輸出 `aclEntries`；Skill detail 改輸出 `viewerPermissions`
+> 當時 listener 會把 role grant 展成 `principal:verb` ACL entries；S186 後 runtime 只保留
+> `skills.acl_entries` 作為 list/detail/search 的權限查詢欄位。API 不輸出 `aclEntries`；Skill detail 改輸出 `viewerPermissions`
 > 給前端顯示編輯、刪除、分享、管理 grants 按鈕。多筆讀取與 semantic search 都先用 S170
 > `PrincipalContextService.currentPrincipalKeys()` 產生 `user:<id>` / `group:<id>` principal keys，
 > 再在 SQL JSONB ACL clause 過濾。
 
-> **S177 計畫更新（2026-05-15）**：public visibility 從 ACL 拆出成 `skills.is_public`
-> / `vector_store.is_public`；`skills.acl_entries` 與 `vector_store.acl_entries` 只保留 user/group/company
-> explicit read/write/delete scope。`skills.acl_entries` 由 grant application service 在同一個 transaction
-> 內重建；`SkillAclProjectionListener` async 訂閱 Grant events 維護 `vector_store.is_public` / `vector_store.acl_entries`。
+> **S186 更新（2026-05-16）**：public visibility runtime truth 是 `skills.is_public`；
+> `skills.acl_entries` 只保留 user/group/company explicit read/write/delete scope。
+> `skills.acl_entries` 由 grant application service 在同一個 transaction 內重建；
+> `SkillAclProjectionListener` async 訂閱 Grant events 後也只重建 `skills.acl_entries`。
 > S177 在 `skill` 大模組內保留 Skill / Grant 兩個子領域模型：`Skill` 管理 skill 本身資料與 public visibility；
 > `Grant` 管理授權對象與角色。Grant 角色變動時，同 TX 寫入/刪除 `skill_grants` row 並重建
-> `skills.acl_entries` 作為 browse/detail/read/write/delete 判斷優化；projection 再依 Grant event
-> 非同步更新 `vector_store.acl_entries` 的 read scope。
+> `skills.acl_entries` 作為 browse/detail/read/write/delete/semantic search 判斷欄位。
 
 ### Code Pattern
 
@@ -331,7 +329,7 @@ io.github.samzhu.skillshub
 │
 ├── search/                     ← Read-side projection（無 Aggregate）
 │   ├── SearchService.java      (keyword search via Spring Data JDBC SQL query on read model)
-│   ├── SemanticSearchService.java (Spring AI + Gemini + 自訂 SkillshubPgVectorStore HNSW)
+│   ├── SemanticSearchService.java (Spring AI + Gemini；SQL reads skills.embedding)
 │   ├── SearchController.java
 │   └── SearchProjection.java   (@ApplicationModuleListener — 更新搜尋索引/embedding)
 │
@@ -436,17 +434,24 @@ download_events (PK: id; FK → skills)
 └── INDEX (skill_id, downloaded_at)
 ```
 
-### Vector Store
+### Semantic Search Embedding（S186 起）
 
-`vector_store` 由自寫 `SkillshubPgVectorStore extends AbstractObservationVectorStore`（Spring AI 2.0.0-M6 core artifact）控制；7 欄 atomic INSERT — `id` / `content` / `metadata` JSONB / `embedding` vector(768) / `owner` / `skill_id` / `acl_entries`；`owner` / `skill_id` / `acl_entries` 支援 S016/S017 ACL-aware similarity search；`ON CONFLICT (id) DO UPDATE` 冪等；HNSW 索引 + cosine distance（`embedding <=> query` operator）。
+語意搜尋 embedding 儲存在 `skills.embedding_*` infrastructure columns：
+`embedding_content` / `embedding` vector(768) / `embedding_model` /
+`embedding_updated_at`。`Skill` aggregate 不 mapping 這些欄位；一般 command
+load / save 不讀寫 embedding。`SearchProjection` 監聽 skill events 後用
+`SearchEmbeddingRepository` 直接 `UPDATE skills SET embedding_* ...`。
 
-詳 S014 archived spec §4 + §2.1 決策 #2 / #12（再修訂 — 採 core artifact + 自寫子類，不用官方 starter 因其 4-欄 INSERT 不支援 owner 自訂欄位）。
+`SemanticSearchService` 直接查 `skills.embedding` 算 cosine distance，同一筆
+`skills` row 同時提供 `status`、`is_public`、`acl_entries` 與 result card 欄位。
+S186 已移除舊獨立向量表 runtime path；`vector_store` 只存在於 archived specs
+或舊 migration tests 的歷史脈絡。
 
 ### AI Model Wiring
 
 Spring AI 2.0.0-M6 採 manual config。`shared.ai.AiModelConfig` 是唯一可直接使用 `com.google.genai.Client`、`GoogleGenAiChatModel`、`GoogleGenAiTextEmbeddingModel` 的 production config；`shared.ai` 以 Modulith `shared :: ai` named interface 對 search / security 開放相容 factory。provider builder 在這裡建立 concrete implementation，但 bean return type / runtime dependency 走 Spring AI 抽象：chat provider 是 `ChatModel`，use-case client 是具名 `ChatClient`（`qualityJudgeChatClient` / `scannerChatClient`），embedding provider 是 `EmbeddingModel`。
 
-Spring AI auto-config 保持關閉：base config 設 `spring.ai.model.chat=none`、`spring.ai.model.embedding.text=none`、`spring.ai.chat.client.enabled=false`。`SkillshubPgVectorStore` 不改成官方 `PgVectorStore`；它是專案 ACL schema / SQL 的客製 vector store，只消費 `EmbeddingModel` 產生向量。
+Spring AI auto-config 保持關閉：base config 設 `spring.ai.model.chat=none`、`spring.ai.model.embedding.text=none`、`spring.ai.chat.client.enabled=false`。語意搜尋只消費 `EmbeddingModel` 產生 query / skill vectors；持久化由專案的 `skills.embedding_*` SQL path 控制。
 
 ---
 
@@ -575,7 +580,7 @@ npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer
 | `org.springframework.boot:spring-boot-starter-webmvc` | BOM | `org.springframework.web.bind.annotation.*` | yes (template) |
 | `org.springframework.boot:spring-boot-starter-data-jdbc` | BOM | `org.springframework.data.jdbc.*` | yes (S014) |
 | `org.springframework.boot:spring-boot-starter-jdbc` | BOM | `org.springframework.jdbc.core.*` | yes (S014) |
-| `org.springframework.ai:spring-ai-pgvector-store` | 2.0.0-M6 BOM | `org.springframework.ai.vectorstore.pgvector.*`（core artifact；自寫 `SkillshubPgVectorStore` 子類）| yes (S014 / S171) |
+| `org.springframework.ai:spring-ai-pgvector-store` | 2.0.0-M6 BOM | historical only after S186; runtime semantic search uses `skills.embedding` SQL + `com.pgvector.PGvector` binding | yes (S014 / S171 / S186) |
 | `org.springframework.boot:spring-boot-flyway` | BOM | — | yes (S014) |
 | `org.flywaydb:flyway-core` | BOM-managed | `org.flywaydb.core.*` | yes (S014) |
 | `org.flywaydb:flyway-database-postgresql` | runtime | — | yes (S014) |
@@ -752,7 +757,7 @@ spec:
 
 ### Schema Migration（Flyway）
 
-`backend/src/main/resources/db/migration/V1__initial_schema.sql` 建 6 張表（`domain_events` / `skills` / `skill_versions` / `flags` / `download_events` / `vector_store`）+ `CREATE EXTENSION IF NOT EXISTS vector` + `CREATE EXTENSION IF NOT EXISTS uuid-ossp` + HNSW 索引（vs_emb_idx）；S016/S017 增量 V2/V3 加 `acl_entries` JSONB + GIN(`jsonb_path_ops`)。
+`backend/src/main/resources/db/migration/V1__initial_schema.sql` 的早期 schema 建立舊獨立向量表；S186 的 V27 migration 已把 runtime semantic search 移到 `skills.embedding_*`，建立 `idx_skills_embedding_hnsw`，並移除舊獨立向量表。現行 runtime schema 仍啟用 `CREATE EXTENSION IF NOT EXISTS vector` + `CREATE EXTENSION IF NOT EXISTS uuid-ossp`，`skills.acl_entries` / `skills.is_public` 是 list/detail/search 的可見性來源。
 
 ### Key Constraints
 

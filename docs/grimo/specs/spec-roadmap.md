@@ -44,7 +44,7 @@
 | S179 | Publish author anonymous login hint（未登入時作者欄位顯「請先登入後發布」，不再空白） | XS(7) | S154b ✅, S139 ✅ | 📐 in-design — spec ready for review |
 | S180 | Skill public native readback hotfix（`skills.is_public` native image 讀回不再把 Boolean 塞進 primitive boolean） | XS(3) | S168 ✅, S177 ✅ | ⏳ blocked — latest revision log recheck clean；logged-in Chrome UI verification unavailable in Codex ticks |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | 📋 planned — task files created (T01/T02 pending)；Round 69 production API found same skill list returns PRIVATE/versionCount=0 while detail returns PUBLIC/versionCount=1 |
-| S186 | Skill embedding 同表化（`skills.embedding` 取代 `vector_store`；一般 Skill 讀取不撈 embedding） | M(13) | S107 ✅, S157 ✅, S177 ✅, S185 ordering-only | ⏳ Dev — T01 PASS: V27 adds `skills.embedding_*`, drops `vector_store`, and guards alias query; next: S186-T02 semantic SQL from skills；S187 waits until S186 ships |
+| S186 | Skill embedding 同表化（`skills.embedding` 取代 `vector_store`；一般 Skill 讀取不撈 embedding） | M(13) | S107 ✅, S157 ✅, S177 ✅, S185 ordering-only | ⏳ Dev — T01-T06 PASS；S186 §7 has EXPLAIN evidence; next: Phase 4 verification / QA；S187 waits until S186 ships |
 | S187 | Skill SKILL.md 編輯頁（詳情頁 edit 導向 `/skills/{id}/edit`；版本頁籤只顯示紀錄；description 來自 latest SKILL.md） | M(13) | S142a ✅, S163 ✅, S176 ✅, S186 ✅ required | 📐 in-design / ⏸ implementation waits for S186 — UI scope split from S186；spec §1-5 ready for review but do not start tasks until S186 ships |
 
 ---

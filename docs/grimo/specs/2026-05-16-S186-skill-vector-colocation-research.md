@@ -1,6 +1,6 @@
 # S186: Skill Embedding 同表化
 
-> 規格：S186 | 大小：M(13) | 狀態：⏳ Plan
+> 規格：S186 | 大小：M(13) | 狀態：⏳ Dev — tasks PASS, Phase 4 verification pending
 > 日期：2026-05-16
 > 對應：PRD P5 語意搜尋 / S107 semantic projection fields / S157 semantic search / S177 is_public-first search visibility / S185 list-detail projection consistency
 
@@ -411,7 +411,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 | 3 | [S186-T03 embedding write path](../tasks/2026-05-16-S186-T03-embedding-write-path.md) | PASS | AC-S186-5 | `SkillVersionPublishedEvent` 後 `skills.embedding_content / embedding / embedding_model / embedding_updated_at` 更新，其他 skill 欄位不被覆蓋；`SkillSuspendedEvent` 清空 embedding。 |
 | 4 | [S186-T04 remove vector ACL projection](../tasks/2026-05-16-S186-T04-remove-vector-acl-projection.md) | PASS | AC-S186-4 | `PUT /visibility` 或 grant 變更 commit 後，下一次 semantic search 直接用 `skills` row，不等任何 `vector_store` listener。 |
 | 5 | [S186-T05 vector-store cleanup sweep](../tasks/2026-05-16-S186-T05-vector-store-cleanup-sweep.md) | PASS | AC-S186-6 | `rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 只剩允許的舊 migration test 引用；active runtime/test code 不再讀寫舊表。 |
-| 6 | [S186-T06 docs and explain evidence](../tasks/2026-05-16-S186-T06-docs-explain-evidence.md) | pending | AC-S186-7 | spec §7 有 semantic SQL `EXPLAIN (ANALYZE, BUFFERS)` 的實際數字；architecture / standards 不再把 runtime search 說成依賴 `vector_store`。 |
+| 6 | [S186-T06 docs and explain evidence](../tasks/2026-05-16-S186-T06-docs-explain-evidence.md) | PASS | AC-S186-7 | spec §7 有 semantic SQL `EXPLAIN (ANALYZE, BUFFERS)` 的實際數字；architecture / standards 不再把 runtime search 說成依賴 `vector_store`。 |
 
 ### 6.4 AC Coverage
 
@@ -447,6 +447,86 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 
 2026-05-16 S186-T05 PASS：RED：`rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 一開始列出 `SkillshubPgVectorStore.java`、`TestDataController` reset allowlist、search/security/delete tests 的舊表讀寫。GREEN：同一 grep 只剩 `backend/src/test/java/io/github/samzhu/skillshub/db/*MigrationTest.java` 的歷史 migration references；`rg ... | rg -v "backend/src/test/java/io/github/samzhu/skillshub/db/"` 無輸出。`cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.search.*'` 最後 `BUILD SUCCESSFUL in 2m 52s`。完成刪除 custom vector store class、舊 vector-store-specific tests/fixture，TestDataController reset allowlist 改為 15 張表，並新增 `VectorStoreRuntimeRemovalTest` 防止 active runtime/test path 再引用舊表或舊 class。
 
+2026-05-16 S186-T06 PASS：RED：`rg -n "SkillshubPgVectorStore|vector_store\\.acl_entries|vector_store\\.is_public" docs/grimo/architecture.md docs/grimo/development-standards.md` 列出 architecture / standards 仍把 runtime semantic search 說成依賴舊獨立向量表。GREEN：`SemanticSearchExplainEvidenceTest` 以 public/private/draft 三筆 `skills.embedding` fixture 跑 `EXPLAIN (ANALYZE, BUFFERS)`；docs grep 改成 0 筆。`cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.search.SemanticSearchExplainEvidenceTest'` 最後 `BUILD SUCCESSFUL in 2m 5s`；S186 顯式 test class 清單最後 `BUILD SUCCESSFUL in 2m 18s`。`cd backend && ./gradlew test --tests '*S186*'` 不可用，因為 Gradle `--tests` filter 不匹配 JUnit `@Tag("S186")`。
+
 ---
 
-<!-- Section 7 added by /planning-tasks after implementation -->
+## 7. Implementation Results（Phase 4 QA pending）
+
+T01-T06 已完成；本節先保存 task-level implementation evidence。`/planning-tasks S186` 下一輪應進 Phase 4，跑標準 verification gate、整理 QA review，通過後再交給 `$shipping-release`。
+
+### 7.1 Task Result Summary
+
+| Task | AC | Result | Evidence |
+|---|---|---|---|
+| T01 schema + aggregate guard | AC-S186-1 | PASS | V27 新增 `skills.embedding_*` / `idx_skills_embedding_hnsw` 並 drop 舊獨立向量表；`Skill` aggregate 不 mapping embedding。 |
+| T02 semantic SQL from skills | AC-S186-2, AC-S186-3, AC-S186-8 | PASS | `SemanticSearchService` 直接查 `skills.embedding`，同 row 回 card fields + ACL/public filter。 |
+| T03 embedding write path | AC-S186-5 | PASS | `SearchProjection` publish/reactivate upsert `skills.embedding_*`；suspend clear embedding。 |
+| T04 remove vector ACL projection | AC-S186-4 | PASS | `SkillAclProjectionListener` 只重建 `skills.acl_entries`；semantic search 下一次 query 直接讀同一 row。 |
+| T05 cleanup sweep | AC-S186-6 | PASS | active runtime/test path 的 `vector_store` / `SkillshubPgVectorStore` reference 已清除；只保留舊 migration tests。 |
+| T06 docs + EXPLAIN evidence | AC-S186-7 | PASS | `SemanticSearchExplainEvidenceTest` 記錄 `EXPLAIN (ANALYZE, BUFFERS)`；architecture / standards 同步 S186 後 runtime 事實。 |
+
+### 7.2 EXPLAIN Evidence（AC-S186-7）
+
+執行：
+
+```bash
+cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.search.SemanticSearchExplainEvidenceTest'
+```
+
+Fixture：
+
+| id | status | visibility | embedding |
+|---|---|---|---|
+| `skill-public` | `PUBLISHED` | `is_public=true` | non-null |
+| `skill-private` | `PUBLISHED` | `is_public=false`, `acl_entries=["user:alice:read"]` | non-null |
+| `skill-draft` | `DRAFT` | `is_public=true` | non-null |
+
+Observed plan summary:
+
+| Field | Value |
+|---|---|
+| Top node | `Limit` → `Sort` → `Index Scan using idx_skills_status on skills` |
+| HNSW used? | No |
+| HNSW index present? | Yes, verified by `SkillEmbeddingMigrationTest`; not selected for this 3-row fixture |
+| Buffers | query nodes: `shared hit=12`; planning: `shared hit=33 read=1` |
+| Rows returned | 1 public published row |
+| Rows removed by filter | 1 private published row |
+| Planning Time | `0.139 ms` |
+| Execution Time | `0.069 ms` |
+
+精簡 raw plan：
+
+```text
+Limit (actual time=0.042..0.042 rows=1 loops=1)
+  Buffers: shared hit=12
+  ->  Sort (actual time=0.041..0.041 rows=1 loops=1)
+        Sort Key: ((embedding <=> '[1,0,...]'::vector))
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=12
+        ->  Index Scan using idx_skills_status on skills (actual time=0.029..0.034 rows=1 loops=1)
+              Index Cond: ((status)::text = 'PUBLISHED'::text)
+              Filter: ((embedding IS NOT NULL) AND ((embedding <=> '[1,0,...]'::vector) < '2'::double precision) AND (is_public OR (acl_entries ?| ('{}'::cstring)::text[])))
+              Rows Removed by Filter: 1
+              Buffers: shared hit=9
+Planning:
+  Buffers: shared hit=33 read=1
+Planning Time: 0.139 ms
+Execution Time: 0.069 ms
+```
+
+Planner 沒使用 `idx_skills_embedding_hnsw` 的原因：這個 verification fixture 只有 3 筆 row，PostgreSQL 選 `idx_skills_status` + in-memory sort 成本更低。S186 不在本 task 強制 planner setting；若 production semantic query 在大資料量下 p95 超過 200ms，後續再用實際資料量評估 `hnsw.ef_search`、partial index、iterative scan 或 query shape 調校。
+
+### 7.3 Current Verification Snapshot
+
+| Command | Result |
+|---|---|
+| `cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.search.SemanticSearchExplainEvidenceTest'` | PASS — `BUILD SUCCESSFUL in 2m 5s` |
+| `cd backend && ./gradlew test --tests '*S186*'` | N/A — Gradle 回 `No tests found for given includes: [*S186*]`，這個 filter 不匹配 JUnit tag |
+| `cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.skill.domain.SkillRepositoryEmbeddingColumnTest' --tests 'io.github.samzhu.skillshub.db.SkillEmbeddingMigrationTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchFromSkillsTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchServiceVisibilityTest' --tests 'io.github.samzhu.skillshub.search.SearchEmbeddingRepositoryTest' --tests 'io.github.samzhu.skillshub.search.SearchProjectionEmbeddingWriteTest' --tests 'io.github.samzhu.skillshub.skill.security.SkillAclProjectionListenerEmbeddingColocationTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchVisibilityLagTest' --tests 'io.github.samzhu.skillshub.search.VectorStoreRuntimeRemovalTest' --tests 'io.github.samzhu.skillshub.search.SemanticSearchExplainEvidenceTest'` | PASS — `BUILD SUCCESSFUL in 2m 18s` |
+| `rg -n "SkillshubPgVectorStore|vector_store\\.acl_entries|vector_store\\.is_public" docs/grimo/architecture.md docs/grimo/development-standards.md` | PASS — no output |
+
+### 7.4 Pending Phase 4
+
+- `scripts/verify-all.sh` 尚未在本節跑完；下一輪由 `/planning-tasks S186` Phase 4 或 `/verifying-quality S186` 執行。
+- 正式站 Chrome / Cloud Run log 覆測尚未在本節完成；本輪 execution context 沒有可呼叫的 Chrome automation tool。
