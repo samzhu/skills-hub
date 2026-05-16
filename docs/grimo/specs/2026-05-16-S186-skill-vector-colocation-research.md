@@ -1,6 +1,6 @@
 # S186: Skill Embedding 同表化
 
-> 規格：S186 | 大小：M(13) | 狀態：✅ POC validated / ⏳ Design
+> 規格：S186 | 大小：M(13) | 狀態：⏳ Plan
 > 日期：2026-05-16
 > 對應：PRD P5 語意搜尋 / S107 semantic projection fields / S157 semantic search / S177 is_public-first search visibility / S185 list-detail projection consistency
 
@@ -375,4 +375,66 @@ SELECT id, name, description, author, category, category_display,
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan（/planning-tasks S186）
+
+### 6.1 Pre-flight 結果
+
+2026-05-16 22:00 CST 進入 `$planning-tasks S186`。本輪只拆 S186，不啟動 S187。`docs/grimo/tasks/` 目前仍有 S178/S185 舊 task files；依 user 最新順序「問題修正先 S186 再 S187」，S186 task files 先建立，S187 task loop 必須等 S186 ship 後才開始。
+
+已讀文件與既有證據：
+
+| 檔案 / 命令 | 看到什麼 | 對 task plan 的影響 |
+|---|---|---|
+| `docs/grimo/PRD.md` P5 | 語意搜尋要用自然語言找技能，結果按語意相關度排序。 | S186 不改 API endpoint 目的；只改資料來源從 `vector_store` 到 `skills.embedding`。 |
+| `docs/grimo/specs/archive/2026-05-03-S107-semantic-search-projection-fields.md` §7 | S107 已把 search result card 欄位改回 canonical `Skill` source，因為 `vector_store.metadata` 曾 stale。 | S186 T02 要一次從 `skills` row 回 card 欄位，不再 `findAllById` 補資料。 |
+| `docs/grimo/specs/archive/2026-05-08-S157-semantic-search-not-functional.md` §7 | S157 證明 semantic search 必須有真實 embedding fixture / deterministic stub；只看 metadata 會漏欄位。 | S186 T02/T03 測試要直接 seed `skills.embedding_*` 或走 listener 寫入，不再 seed `vector_store`。 |
+| `docs/grimo/specs/archive/2026-05-15-S177-is-public-first-search-visibility.md` §7 | S177 已把 public visibility source 改成 `skills.is_public`，`vector_store.is_public` 只是投影。 | S186 T04 要移除 `SkillAclProjectionListener` 對 `vector_store` 的更新，semantic SQL 直接讀 `skills.is_public / skills.acl_entries`。 |
+| `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.search.SkillEmbeddingColocationPocTest` | PASS；`BUILD SUCCESSFUL in 2m 39s`。 | POC 已證明同表 embedding + ACL query 可行，Phase 1 不再另建 `poc/S186/`。 |
+| `git status --short` | 進 planning 前乾淨。 | 可以直接建立 S186 task files 並單獨 commit。 |
+
+### 6.2 POC Decision
+
+POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTest` 已覆蓋三個設計假設：
+
+1. `skills.embedding_*` 可以存在於 DB row，但 `Skill` aggregate 不 mapping，也不會被 `skillRepo.save(skill)` 清掉。
+2. Semantic search 可以只查 `skills.embedding + skills.status + skills.is_public + skills.acl_entries`，完全不需要 `vector_store` row。
+3. SQL plan shape 可保持單表 `skills`，不包含 `vector_store`。
+
+未驗證的大資料量 HNSW planner 行為不阻塞 task planning；T06 會把 `EXPLAIN (ANALYZE, BUFFERS)` 證據寫入 §7。
+
+### 6.3 Task Files
+
+| 順序 | Task | 狀態 | AC | 做完會看到什麼 |
+|---|---|---|---|---|
+| 1 | [S186-T01 schema + aggregate guard](../tasks/2026-05-16-S186-T01-schema-aggregate-guard.md) | pending | AC-S186-1 | DB 有 `skills.embedding_*` 欄位和 HNSW index；`vector_store` 已 drop；`SkillRepository.findByAuthorAndName` 不再 `SELECT *`。 |
+| 2 | [S186-T02 semantic SQL from skills](../tasks/2026-05-16-S186-T02-semantic-sql-from-skills.md) | pending | AC-S186-2, AC-S186-3, AC-S186-8 | `GET /api/v1/search/semantic` 從 `skills.embedding` 回 public / granted private skill，card 欄位直接來自同一 row。 |
+| 3 | [S186-T03 embedding write path](../tasks/2026-05-16-S186-T03-embedding-write-path.md) | pending | AC-S186-5 | `SkillVersionPublishedEvent` 後 `skills.embedding_content / embedding / embedding_model / embedding_updated_at` 更新，其他 skill 欄位不被覆蓋。 |
+| 4 | [S186-T04 remove vector ACL projection](../tasks/2026-05-16-S186-T04-remove-vector-acl-projection.md) | pending | AC-S186-4 | `PUT /visibility` 或 grant 變更 commit 後，下一次 semantic search 直接用 `skills` row，不等任何 `vector_store` listener。 |
+| 5 | [S186-T05 vector-store cleanup sweep](../tasks/2026-05-16-S186-T05-vector-store-cleanup-sweep.md) | pending | AC-S186-6 | `rg -n "vector_store|SkillshubPgVectorStore" backend/src/main/java backend/src/test/java` 只剩允許的舊 migration / archived docs 外引用。 |
+| 6 | [S186-T06 docs and explain evidence](../tasks/2026-05-16-S186-T06-docs-explain-evidence.md) | pending | AC-S186-7 | spec §7 有 semantic SQL `EXPLAIN (ANALYZE, BUFFERS)` 的實際數字；architecture / standards 不再把 runtime search 說成依賴 `vector_store`。 |
+
+### 6.4 AC Coverage
+
+| AC | Task |
+|---|---|
+| AC-S186-1 | T01 |
+| AC-S186-2 | T02 |
+| AC-S186-3 | T02 |
+| AC-S186-4 | T04 |
+| AC-S186-5 | T03 |
+| AC-S186-6 | T05 |
+| AC-S186-7 | T06 |
+| AC-S186-8 | T02 |
+
+### 6.5 Execution Order
+
+1. T01 must run first because production code cannot write `skills.embedding_*` before V27 exists, and `vector_store` cannot be dropped until repository guard is in place.
+2. T02 depends on T01 because semantic SQL reads `skills.embedding` and must prove no `vector_store` row is needed.
+3. T03 depends on T01/T02 because write path must produce rows that T02 semantic SQL can read.
+4. T04 depends on T02 because visibility/ACL lag is only fixed after semantic search reads `skills` directly.
+5. T05 depends on T03/T04 because cleanup is only safe after runtime read/write paths no longer reference `SkillshubPgVectorStore`.
+6. T06 runs last because it records implementation evidence and syncs docs to actual code.
+
+---
+
+<!-- Section 7 added by /planning-tasks after implementation -->
