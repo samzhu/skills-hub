@@ -15,7 +15,7 @@ Result:
 ```text
 docs/grimo/specs/spec-roadmap.md remains modified in the main checkout.
 merge-base exit: 0
-release/S186-merge-ready-v2 ahead commit: f077718 docs(S186): ship embedding colocation release
+release/S186-merge-ready-v2 contains one ahead commit: docs(S186): ship embedding colocation release
 ```
 
 ## Blocker
@@ -40,3 +40,16 @@ This tick did not stage, stash, overwrite, or commit the unrelated PRD / archite
    ```
 
 4. If the command exits non-zero, rebase `release/S186-merge-ready-v2` onto main first, then retry the fast-forward merge.
+
+## 2026-05-17 02:10 CST recheck
+
+The same blocker is still present: `docs/grimo/specs/spec-roadmap.md` remains modified in the main checkout, and S186 release also needs to update that file.
+
+Because this is the same dirty-main blocker after multiple automation ticks, the loop should stop waking automatically until the main checkout changes are resolved. Repeated blocker commits move `main` forward and force `release/S186-merge-ready-v2` to be rebased again, but they do not remove the underlying merge blocker.
+
+After resolving the dirty checkout, re-enable the loop or merge S186 directly with:
+
+```bash
+git merge-base --is-ancestor main release/S186-merge-ready-v2
+git merge --ff-only release/S186-merge-ready-v2
+```
