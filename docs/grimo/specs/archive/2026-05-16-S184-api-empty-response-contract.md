@@ -1,7 +1,7 @@
 # S184 — API Empty Response + Visibility Command Contract
 
 > SpecID: S184
-> Status: ⏳ Implemented locally — backend contract tests aligned
+> Status: ✅ Done — shipped locally 2026-05-16
 > Date: 2026-05-16
 > Size: S(7)
 > Related: S160b' frontend `apiFetch`, S163/S163b' visibility toggle, S162 API response consistency
@@ -480,6 +480,26 @@ Independent QA review:
 | Evidence | Curie verified `revokeGrant()` uses `apiFetchVoid()`, production code has no `apiFetch<void>(...)`, `DELETE /grants/{grantId}` returns 204, public grants API rejects `principalType=public`, visibility command idempotency reads `skills.is_public`, Public Grant is filtered out of ACL projections, `VisibilityToggleButton` calls `setSkillVisibility()`, `Skill.getVisibility()` exposes `PUBLIC` / `PRIVATE`, and `ShareModal` only offers user/group/company targets. |
 | Commands | `cd frontend && npm test -- grants.test.ts client.test.ts VisibilityToggleButton.test.tsx ShareModal.test.tsx` PASS; `cd frontend && npm run typecheck` PASS; `cd backend && ./gradlew test --tests '*SkillGrantControllerAuthzTest' --tests '*SkillGrantServiceVisibilityTest' --tests '*SkillUpdateControllerTest' -x processTestAot -x compileAotTestJava -x processAotTestResources` PASS. |
 
-Commit split note:
+Release verification:
 
-The current checkout still has S184 implementation files mixed with S183 UI files. This spec is committed first as the S184 trace record. Code commits must follow by task/hunk split so S184 API contract changes do not accidentally ship S183 presentation changes in the same atomic commit.
+| Command | Result |
+| --- | --- |
+| `./scripts/verify-all.sh` | PASS — V01=PASS, V02=INFO, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS; `Verdict: ✅ all CRITICAL passed; exit=0`. |
+
+Production follow-up:
+
+| Item | Status |
+| --- | --- |
+| Cloud Run deploy + browser retest | POST-RELEASE — deploy the v4.65.0 image, then click 「轉為私人」 once on production and confirm Cloud Run logs show one `PUT /api/v1/skills/{id}/visibility` 200 and no repeated `DELETE /grants/{grantId}` 404 burst for the same grant id. |
+
+### Final Size Re-score
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 2 | Needed backend controller/service contract cleanup plus frontend cache/query-key changes, but no new dependency. |
+| Uncertainty | 1 | 1 | Root cause and response contracts were verified by local tests and production log evidence from the original bug. |
+| Dependencies | 1 | 2 | Consumed S160b' `apiFetchVoid`, S163 visibility UI, S177 public visibility model, and S169 grants contract. |
+| Scope | 2 | 3 | Touched frontend API clients, visibility UI, backend grants API, visibility command, DTOs, and stale backend tests. |
+| Testing | 1 | 2 | Required focused frontend/backend tests plus full `verify-all.sh` because S183 ship gate exposed stale backend expectations. |
+| Reversibility | 1 | 1 | Endpoint and frontend changes are localized; no schema migration. |
+| **Total** | **7 / XS** | **11 / S** | Bucket shift XS→S because the fix became a cross-stack API contract cleanup, not only a void-response caller swap. |

@@ -1,5 +1,32 @@
 # Changelog
 
+## [v4.65.0] — S183/S184 Security Findings UI + Visibility Contract（2026-05-16）
+
+### Added
+
+- **Security risk lights** — S183 changes the Skill detail header to show the platform `riskLevel` as four total-risk lights: 無風險 / 低風險 / 中風險 / 高風險.
+- **Security findings list** — S183 changes the Security tab to render S147 `findings[]` with severity counts, filters, file/line, evidence, remediation, confidence, and plain-text fallback handling.
+- **Visibility command API** — S184 adds `PUT /api/v1/skills/{id}/visibility`, so the PageHeader visibility button sends the target PUBLIC/PRIVATE state instead of operating on a stale public grant id.
+
+### Fixed
+
+- **Empty response mutations** — S184 makes frontend void mutations use `apiFetchVoid()`, so 204/empty-body success responses no longer go through `Response.json()`.
+- **Grant API contract** — S184 changes synchronous `DELETE /grants/{grantId}` success to `204 No Content` and rejects external `POST /grants` calls with `principalType="public"`; callers must use `PUT /visibility`.
+- **Visibility stale UI** — S184 exposes `Skill.visibility`, updates query keys through `skillKeys`, and removes public target creation from ShareModal.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.0%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- S183 targeted evidence：`cd frontend && npm test -- SecurityHeroCard HeroMetricsRow PageHeader SecurityTab SkillDetailPage` PASS — 5 files / 44 tests；`cd frontend && npm run verify` PASS；`cd frontend && npm test` PASS — 77 files / 440 tests。
+- S184 targeted evidence：`cd frontend && npm test -- grants.test.ts client.test.ts VisibilityToggleButton.test.tsx ShareModal.test.tsx` PASS — 4 files / 25 tests；`cd frontend && npm run typecheck` PASS；backend grant/visibility focused tests PASS；stale backend S016/SkillGrantService tests realigned and PASS。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-16-S183-security-report-issue-code-ui.md` → `docs/grimo/specs/archive/2026-05-16-S183-security-report-issue-code-ui.md`
+- `docs/grimo/specs/2026-05-16-S184-api-empty-response-contract.md` → `docs/grimo/specs/archive/2026-05-16-S184-api-empty-response-contract.md`
+- Final size re-score：S183 S(10) → S(10)；S184 XS(7) → S(11)，原因是 S184 從單一 empty-response bug 擴大成 frontend/backend visibility API contract cleanup。
+- Post-release follow-up：deploy v4.65.0 後，用 production UI 點一次「轉為私人」，確認 Cloud Run logs 只看到 `PUT /visibility` 200，不再出現同一 grant id 的重複 DELETE 404 burst。
+
 ## [v4.64.0] — S175/S181 Native Scan + State Conflict Observability（2026-05-16）
 
 ### Fixed

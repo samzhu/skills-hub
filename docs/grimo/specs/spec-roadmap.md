@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-16（S175/S181 shipped v4.64.0；S183 in-design — Security Risk Lights + Issue Findings UI）
+> 最後更新：2026-05-16（S183/S184 shipped v4.65.0；S180 deployed validation still active）
 
 ## 使用說明
 
@@ -43,7 +43,6 @@
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | 📐 in-design — spec ready for review |
 | S179 | Publish author anonymous login hint（未登入時作者欄位顯「請先登入後發布」，不再空白） | XS(7) | S154b ✅, S139 ✅ | 📐 in-design — spec ready for review |
 | S180 | Skill public native readback hotfix（`skills.is_public` native image 讀回不再把 Boolean 塞進 primitive boolean） | XS(3) | S168 ✅, S177 ✅ | ⏳ deployed — Chrome logged-in validate blocked by HTTP 409 session/detail requests |
-| S183 | Security Risk Lights + Issue Findings UI（SkillDetail 上方四燈總風險；安全性 tab 呈現 S147 findings） | S(10) | S147 ✅, S142a ✅, S142b ✅ | ⏳ ship blocked — `verify-all.sh` V01/V03 backend tests fail；S183 UI QA PASS |
 
 ---
 
@@ -82,6 +81,7 @@
 | v4.62.0 | S177 (is_public-first search visibility) | ✅ shipped 2026-05-15 — S177 all AC PASS，`verify-all.sh` 全綠 |
 | v4.63.0 | S176 (Explicit Publish Skill Name) | ✅ shipped 2026-05-15 — S176 all AC PASS，`verify-all.sh` 全綠 |
 | v4.64.0 | S175 + S181 (native scan binding + state-conflict observability) | ✅ shipped 2026-05-16 — S175 production upload/scan PASS；S181 409 observability + full-suite stability PASS；`verify-all.sh` 全綠 |
+| v4.65.0 | S183 + S184 (Security findings UI + visibility command contract) | ✅ shipped 2026-05-16 — S183 risk lights/findings UI + S184 empty-response/visibility command；`verify-all.sh` 全綠 |
 
 ---
 
@@ -247,6 +247,8 @@
 | S176 | Explicit publish skill display name | M(14) | v4.63.0 |
 | S175 | Scan native binding completeness hotfix | XS(6) | v4.64.0 |
 | S181 | Authenticated state conflict observability | S(8) | v4.64.0 |
+| S183 | Security risk lights + issue findings UI | S(10) | v4.65.0 |
+| S184 | API empty response + visibility command contract | S(11) | v4.65.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

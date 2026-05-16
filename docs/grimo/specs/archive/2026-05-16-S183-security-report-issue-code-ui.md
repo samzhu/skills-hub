@@ -2,7 +2,7 @@
 
 > SpecID: S183
 > Date: 2026-05-16
-> Status: ⏳ Ship blocked 2026-05-16 — verify-all backend V01/V03 failed
+> Status: ✅ Done — shipped locally 2026-05-16
 > Type: Frontend feature spec
 > Estimate: S(10)
 > Depends: S147 ✅, S142a ✅, S142b ✅
@@ -672,4 +672,27 @@ V08a processAot PASS
 V08b bootBuildImage PASS
 ```
 
-下一步：回到 S184，補一個 backend test contract cleanup task。S183 UI 本身仍維持 local QA PASS，但 release/archive 必須等 `./scripts/verify-all.sh` 回到 `exit=0`。
+Resolution：S184 backend contract cleanup 已更新 `S016EndToEndSmokeTest` 與 `SkillGrantServiceTest`，讓舊測試對齊 `DELETE /grants/{grantId}` 回 `204 No Content`、外部 grants API 拒絕 `principalType="public"` 的新契約。
+
+### Release Verification（2026-05-16）
+
+```text
+./scripts/verify-all.sh
+Results: V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS
+Counts: PASS=8, FAIL=0, SKIP=0
+Verdict: ✅ all CRITICAL passed; exit=0
+```
+
+Release note：S183 本身是 frontend UI spec，但本次 release gate 也包含 S184 的 backend/frontend visibility contract cleanup，因為 S183 shipping preflight 的 blocker 來自 S184 已實作的新 API 契約。
+
+### Final Size Re-score
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 1 | React/Vitest component changes only; no new framework or API shape for S183. |
+| Uncertainty | 1 | 1 | Prototype direction and `riskLevel` source stayed unchanged. |
+| Dependencies | 3 | 3 | Still depends on shipped S147/S142a/S142b contracts. |
+| Scope | 2 | 2 | Implemented the planned header risk lights, security tab findings, filters, and fallback rendering. |
+| Testing | 2 | 2 | Focused Vitest, full frontend verify, and full `verify-all.sh` ran green. |
+| Reversibility | 1 | 1 | Pure frontend presentation; rollback is limited to component render changes. |
+| **Total** | **10 / S** | **10 / S** | No bucket shift. |
