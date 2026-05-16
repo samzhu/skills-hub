@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.skill.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
@@ -64,19 +65,79 @@ class SkillGrantServiceVisibilityTest extends RepositorySliceTestBase {
     }
 
     @Test
-    @DisplayName("AC-S177-7: public grant create updates is_public and public grant without public ACL")
+    @DisplayName("AC-S184-5: visibility PUBLIC command updates is_public and public grant without public ACL")
     @Tag("AC-S177-7")
-    void publicGrantCreateUpdatesIsPublicWithoutPublicAcl() {
+    @Tag("AC-S184-5")
+    void visibilityPublicCommandUpdatesIsPublicWithoutPublicAcl() {
         var skillId = seedSkill(Visibility.PRIVATE);
         grantRepo.save(SkillGrant.create(skillId, "user", "u_alice0", Role.OWNER, "u_alice0"));
 
-        service.grant(skillId, new SkillGrantService.GrantRequest("public", "*", Role.VIEWER));
+        var result = service.setVisibility(skillId, Visibility.PUBLIC);
 
+        assertThat(result.visibility()).isEqualTo(Visibility.PUBLIC);
         assertThat(isPublic(skillId)).isTrue();
         assertThat(grantCount(skillId, "public", "*")).isEqualTo(1);
         assertThat(aclEntries(skillId))
                 .contains("user:u_alice0:read")
                 .doesNotContain("public:*:read");
+    }
+
+    @Test
+    @DisplayName("AC-S184-5: visibility PRIVATE command is idempotent and does not require public grant")
+    @Tag("AC-S184-5")
+    void visibilityPrivateCommandIsIdempotentWhenAlreadyPrivate() {
+        var skillId = seedSkill(Visibility.PRIVATE);
+        grantRepo.save(SkillGrant.create(skillId, "user", "u_alice0", Role.OWNER, "u_alice0"));
+
+        var first = service.setVisibility(skillId, Visibility.PRIVATE);
+        var second = service.setVisibility(skillId, Visibility.PRIVATE);
+
+        assertThat(first.visibility()).isEqualTo(Visibility.PRIVATE);
+        assertThat(second.visibility()).isEqualTo(Visibility.PRIVATE);
+        assertThat(isPublic(skillId)).isFalse();
+        assertThat(grantCount(skillId, "public", "*")).isZero();
+    }
+
+    @Test
+    @DisplayName("AC-S184-6: visibility PUBLIC no-op uses is_public and does not duplicate public grant")
+    @Tag("AC-S184-6")
+    void visibilityPublicNoopUsesIsPublicWithoutDuplicatingGrant() {
+        var skillId = seedSkill(Visibility.PUBLIC);
+        grantRepo.save(SkillGrant.create(skillId, "user", "u_alice0", Role.OWNER, "u_alice0"));
+
+        var result = service.setVisibility(skillId, Visibility.PUBLIC);
+
+        assertThat(result.visibility()).isEqualTo(Visibility.PUBLIC);
+        assertThat(isPublic(skillId)).isTrue();
+        assertThat(grantCount(skillId, "public", "*")).isZero();
+    }
+
+    @Test
+    @DisplayName("AC-S184-9: external grant API rejects public principal")
+    @Tag("AC-S184-9")
+    void grantApiRejectsPublicPrincipal() {
+        var skillId = seedSkill(Visibility.PRIVATE);
+        grantRepo.save(SkillGrant.create(skillId, "user", "u_alice0", Role.OWNER, "u_alice0"));
+
+        assertThatThrownBy(() ->
+                service.grant(skillId, new SkillGrantService.GrantRequest("public", "*", Role.VIEWER)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("/visibility");
+
+        assertThat(grantCount(skillId, "public", "*")).isZero();
+    }
+
+    @Test
+    @DisplayName("AC-S184-10: non-owner cannot change visibility")
+    @Tag("AC-S184-10")
+    void nonOwnerCannotChangeVisibility() {
+        var skillId = seedSkill(Visibility.PUBLIC);
+        when(users.current()).thenReturn(CurrentUser.synthetic("u_bob00", java.util.List.of(), java.util.List.of(), null));
+
+        assertThatThrownBy(() -> service.setVisibility(skillId, Visibility.PRIVATE))
+                .isInstanceOf(io.github.samzhu.skillshub.shared.api.NotSkillOwnerException.class);
+
+        assertThat(isPublic(skillId)).isTrue();
     }
 
     @Test

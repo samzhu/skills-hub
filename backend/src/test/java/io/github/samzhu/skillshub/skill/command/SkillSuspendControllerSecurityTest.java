@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.shared.security.WebMvcSliceTestBase;
+import io.github.samzhu.skillshub.skill.security.SkillGrantService;
 
 /**
  * S018 T4 — POST {@code /api/v1/skills/{id}/suspend} 與 {@code /reactivate} 端點安全行為驗證。
@@ -40,6 +41,9 @@ class SkillSuspendControllerSecurityTest extends WebMvcSliceTestBase {
 
     @MockitoBean
     private SkillCommandService skillCommandService;
+
+    @MockitoBean
+    private SkillGrantService skillGrantService;
 
     @MockitoBean
     private CurrentUserProvider currentUserProvider;

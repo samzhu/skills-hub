@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.shared.security.WebMvcSliceTestBase;
+import io.github.samzhu.skillshub.skill.security.SkillGrantService;
 
 /**
  * S016 AC-7 — {@link SkillCommandController#addVersion} 加 {@code @PreAuthorize}
@@ -51,6 +52,9 @@ class SkillCommandControllerSecurityTest extends WebMvcSliceTestBase {
 
     @MockitoBean
     private SkillCommandService skillCommandService;
+
+    @MockitoBean
+    private SkillGrantService skillGrantService;
 
     @MockitoBean
     private CurrentUserProvider currentUserProvider;

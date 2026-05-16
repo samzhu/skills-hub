@@ -538,6 +538,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     }
     @JsonIgnore
     public boolean isPublic() { return Boolean.TRUE.equals(publicSkill); }
+    public Visibility getVisibility() { return isPublic() ? Visibility.PUBLIC : Visibility.PRIVATE; }
     public String getOwnerId() { return ownerId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

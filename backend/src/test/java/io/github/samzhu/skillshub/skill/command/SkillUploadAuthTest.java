@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.shared.security.WebMvcSliceTestBase;
+import io.github.samzhu.skillshub.skill.security.SkillGrantService;
 
 /**
  * S139 AC-6 — Anonymous {@code POST /api/v1/skills/upload} 與
@@ -37,6 +38,9 @@ class SkillUploadAuthTest extends WebMvcSliceTestBase {
 
     @MockitoBean
     private SkillCommandService skillCommandService;
+
+    @MockitoBean
+    private SkillGrantService skillGrantService;
 
     @MockitoBean
     private CurrentUserProvider currentUserProvider;

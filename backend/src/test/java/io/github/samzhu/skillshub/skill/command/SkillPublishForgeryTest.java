@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import io.github.samzhu.skillshub.shared.security.CurrentUser;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.shared.security.WebMvcSliceTestBase;
+import io.github.samzhu.skillshub.skill.security.SkillGrantService;
 
 /**
  * S154-T04 AC-3 — `SkillCommandController` forgery fix（caller 偽造 `author` 必須失效）。
@@ -48,6 +49,9 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
 
     @MockitoBean
     private SkillCommandService skillCommandService;
+
+    @MockitoBean
+    private SkillGrantService skillGrantService;
 
     @MockitoBean
     private CurrentUserProvider currentUserProvider;

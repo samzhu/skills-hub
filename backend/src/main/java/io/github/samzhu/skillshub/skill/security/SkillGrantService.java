@@ -22,6 +22,7 @@ import io.github.samzhu.skillshub.shared.security.DisplayNameResolver;
 import io.github.samzhu.skillshub.shared.security.UserRepository;
 import io.github.samzhu.skillshub.shared.security.UserResolver;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
+import io.github.samzhu.skillshub.skill.domain.Visibility;
 import io.github.samzhu.skillshub.skill.security.events.SkillGrantedEvent;
 import io.github.samzhu.skillshub.skill.security.events.SkillRevokedEvent;
 import tools.jackson.databind.ObjectMapper;
@@ -97,6 +98,10 @@ public class SkillGrantService {
                     .log("Grant denied: actor is not the skill owner");
             throw new NotSkillOwnerException();
         }
+        if ("public".equals(req.principalType())) {
+            throw new IllegalArgumentException(
+                    "public grants must be changed through PUT /api/v1/skills/" + skillId + "/visibility");
+        }
         // only one OWNER grant per skill allowed
         if (req.role() == Role.OWNER && grantRepo.existsBySkillIdAndRole(skillId, "OWNER")) {
             log.atWarn().addKeyValue("skillId", skillId).log("Grant denied: OWNER already exists");
@@ -122,16 +127,8 @@ public class SkillGrantService {
         } else {
             resolvedPrincipalId = req.principalId();
         }
-        var isPublicGrant = "public".equals(req.principalType());
-        var grant = isPublicGrant
-                ? SkillGrant.createWithId(grantIdGenerator.nextId(), skillId, req.principalType(),
-                        resolvedPrincipalId, req.role(), actor)
-                : SkillGrant.create(skillId, req.principalType(), resolvedPrincipalId, req.role(), actor);
+        var grant = SkillGrant.create(skillId, req.principalType(), resolvedPrincipalId, req.role(), actor);
         grantRepo.save(grant);
-        if (isPublicGrant) {
-            skill.makePublic(actor, grant.getId());
-            skillRepo.save(skill);
-        }
         rebuildSkillAclEntries(skillId);
         events.publishEvent(new SkillGrantedEvent(skillId, grant.getId()));
         log.atInfo().addKeyValue("skillId", skillId).addKeyValue("grantId", grant.getId())
@@ -174,6 +171,48 @@ public class SkillGrantService {
         events.publishEvent(new SkillRevokedEvent(skillId, grantId));
         log.atInfo().addKeyValue("skillId", skillId).addKeyValue("grantId", grantId)
                 .addKeyValue("actor", actor).log("Skill grant revoked");
+    }
+
+    /**
+     * S184 — idempotent public/private command. State truth is skills.is_public;
+     * the public grant row is only the internal event mirror and never an ACL entry.
+     */
+    @Transactional
+    public VisibilityResult setVisibility(String skillId, Visibility target) {
+        if (target == null) {
+            throw new IllegalArgumentException("visibility is required");
+        }
+        var actor = users.current().userId();
+        var skill = skillRepo.findById(skillId).orElseThrow(() -> new NoSuchElementException(skillId));
+        if (!actor.equals(skill.getOwnerId())) {
+            log.atWarn().addKeyValue("skillId", skillId).addKeyValue("actor", actor)
+                    .log("Visibility change denied: actor is not the skill owner");
+            throw new NotSkillOwnerException();
+        }
+
+        var current = skill.isPublic() ? Visibility.PUBLIC : Visibility.PRIVATE;
+        if (current == target) {
+            return new VisibilityResult(skillId, current, skill.getUpdatedAt());
+        }
+
+        if (target == Visibility.PUBLIC) {
+            var publicGrant = findOrCreatePublicGrant(skillId, actor);
+            skill.makePublic(actor, publicGrant.getId());
+            skillRepo.save(skill);
+            rebuildSkillAclEntries(skillId);
+            events.publishEvent(new SkillGrantedEvent(skillId, publicGrant.getId()));
+        } else {
+            var publicGrant = findOrCreatePublicGrant(skillId, actor);
+            skill.makePrivate(actor, publicGrant.getId());
+            skillRepo.save(skill);
+            grantRepo.deleteById(publicGrant.getId());
+            rebuildSkillAclEntries(skillId);
+            events.publishEvent(new SkillRevokedEvent(skillId, publicGrant.getId()));
+        }
+
+        log.atInfo().addKeyValue("skillId", skillId).addKeyValue("visibility", target)
+                .addKeyValue("actor", actor).log("Skill visibility changed");
+        return new VisibilityResult(skillId, target, skill.getUpdatedAt());
     }
 
     /**
@@ -231,6 +270,12 @@ public class SkillGrantService {
                 Map.of("id", skillId, "acl", writeAclEntries(entries)));
     }
 
+    private SkillGrant findOrCreatePublicGrant(String skillId, String actor) {
+        return grantRepo.findBySkillIdAndPrincipalTypeAndPrincipalId(skillId, "public", "*")
+                .orElseGet(() -> grantRepo.save(SkillGrant.createWithId(
+                        grantIdGenerator.nextId(), skillId, "public", "*", Role.VIEWER, actor)));
+    }
+
     private String writeAclEntries(List<String> entries) {
         try {
             return objectMapper.writeValueAsString(entries);
@@ -243,9 +288,11 @@ public class SkillGrantService {
     /**
      * Inbound request for creating a grant.
      *
-     * @param principalType namespace: user / group / company / public
+     * @param principalType namespace: user / group / company
      * @param principalId   identifier within the namespace
      * @param role          access level
      */
     public record GrantRequest(String principalType, String principalId, Role role) {}
+
+    public record VisibilityResult(String skillId, Visibility visibility, java.time.Instant updatedAt) {}
 }

@@ -24,6 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import io.github.samzhu.skillshub.shared.api.ErrorResponse;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+import io.github.samzhu.skillshub.skill.domain.Visibility;
+import io.github.samzhu.skillshub.skill.security.SkillGrantService;
 
 /**
  * 技能寫入端 REST Controller — 處理所有修改技能狀態的操作。
@@ -46,11 +48,14 @@ public class SkillCommandController {
 	private static final Logger log = LoggerFactory.getLogger(SkillCommandController.class);
 
 	private final SkillCommandService commandService;
+	private final SkillGrantService grantService;
 	private final CurrentUserProvider currentUserProvider;
 
 	public SkillCommandController(SkillCommandService commandService,
+			SkillGrantService grantService,
 			CurrentUserProvider currentUserProvider) {
 		this.commandService = commandService;
+		this.grantService = grantService;
 		this.currentUserProvider = currentUserProvider;
 	}
 
@@ -115,8 +120,7 @@ public class SkillCommandController {
 				.addKeyValue("authorUserId", current.userId())
 				.log("uploadSkill entered");
 		// S116: visibility 缺省 PUBLIC 對齊 v3.x 既有行為；前端 PublishPage 顯式透傳
-		// PRIVATE 走私人 skill 路徑（acl_entries 不含 *:read，由既有 GIN ?| filter
-		// 自動 fail-closed against anonymous / non-grant user）。
+		// PRIVATE 走 skills.is_public=false；acl_entries 只保存 user/group/company 明確授權。
 		// S154: author = 平台 user_id；authorNameSnapshot = OIDC name 顯示名稱 freeze。
 		var id = commandService.uploadSkill(file.getBytes(), skillName, version,
 				current.userId(), category, visibility, current.name());
@@ -179,6 +183,17 @@ public class SkillCommandController {
 	}
 
 	/**
+	 * S184：公開 / 私人切換 command。UI 只送目標狀態；service 用 skills.is_public 做冪等判斷。
+	 */
+	@PutMapping("/{id}/visibility")
+	@PreAuthorize("isAuthenticated()")
+	ResponseEntity<SkillGrantService.VisibilityResult> setVisibility(
+			@PathVariable String id,
+			@RequestBody VisibilityRequest req) {
+		return ResponseEntity.ok(grantService.setVisibility(id, req.visibility()));
+	}
+
+	/**
 	 * S018：停用 skill — 將 PUBLISHED skill 轉至 SUSPENDED 狀態。
 	 *
 	 * <p>{@code @PreAuthorize("hasPermission(#id, 'Skill', 'suspend')")} 守門：呼叫者
@@ -222,5 +237,7 @@ public class SkillCommandController {
 
 	/** S018：Reactivate endpoint request body — single field reason。 */
 	public record ReactivateRequest(String reason) {}
+
+	public record VisibilityRequest(Visibility visibility) {}
 
 }

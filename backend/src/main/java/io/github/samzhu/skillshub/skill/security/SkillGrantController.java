@@ -53,7 +53,7 @@ public class SkillGrantController {
      *
      * @param id      skill id
      * @param grantId grant row id
-     * @return 202 empty body
+     * @return 204 empty body
      */
     @DeleteMapping("/{grantId}")
     @PreAuthorize("isAuthenticated()")
@@ -61,7 +61,7 @@ public class SkillGrantController {
             @PathVariable String id,
             @PathVariable String grantId) {
         service.revoke(id, grantId);
-        return ResponseEntity.accepted().build();
+        return ResponseEntity.noContent().build();
     }
 
     /**

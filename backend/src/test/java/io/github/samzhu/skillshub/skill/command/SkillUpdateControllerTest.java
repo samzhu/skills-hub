@@ -22,6 +22,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
 import io.github.samzhu.skillshub.shared.security.WebMvcSliceTestBase;
+import io.github.samzhu.skillshub.skill.domain.Visibility;
+import io.github.samzhu.skillshub.skill.security.SkillGrantService;
 
 /**
  * S163 AC-1 / AC-2 / AC-3：PUT /api/v1/skills/{id} update metadata 行為驗證。
@@ -38,6 +40,9 @@ class SkillUpdateControllerTest extends WebMvcSliceTestBase {
 
     @MockitoBean
     private SkillCommandService skillCommandService;
+
+    @MockitoBean
+    private SkillGrantService skillGrantService;
 
     @MockitoBean
     private CurrentUserProvider currentUserProvider;
@@ -118,5 +123,27 @@ class SkillUpdateControllerTest extends WebMvcSliceTestBase {
         var cmd = captor.getValue();
         org.assertj.core.api.Assertions.assertThat(cmd.description()).isNull();
         org.assertj.core.api.Assertions.assertThat(cmd.category()).isNull();
+    }
+
+    @Test
+    @DisplayName("AC-S184-10: owner PUT /skills/{id}/visibility → 200 + service 收到 PRIVATE")
+    @Tag("AC-S184-10")
+    void ownerSetVisibility_returns200() throws Exception {
+        var skillId = "test-skill-id";
+        Mockito.when(skillGrantService.setVisibility(eq(skillId), eq(Visibility.PRIVATE)))
+                .thenReturn(new SkillGrantService.VisibilityResult(
+                        skillId, Visibility.PRIVATE, java.time.Instant.parse("2026-05-16T00:00:00Z")));
+
+        mockMvc.perform(put("/api/v1/skills/" + skillId + "/visibility")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"visibility\":\"PRIVATE\"}")
+                .with(jwt()
+                        .jwt(j -> j.subject("alice")
+                                .claim("roles", List.of("user"))
+                                .claim("groups", List.<String>of()))
+                        .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+            .andExpect(status().isOk());
+
+        Mockito.verify(skillGrantService).setVisibility(eq(skillId), eq(Visibility.PRIVATE));
     }
 }
