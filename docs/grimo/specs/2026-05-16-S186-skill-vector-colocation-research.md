@@ -124,6 +124,8 @@ cd backend && ./gradlew test --tests io.github.samzhu.skillshub.search.SkillEmbe
 
 結果：`BUILD SUCCESSFUL in 2m 5s`，3 個 POC case 全綠。
 
+Recheck（2026-05-16 21:55 CST）：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.search.SkillEmbeddingColocationPocTest` 通過，結果 `BUILD SUCCESSFUL in 2m 39s`；11 個 actionable tasks，其中 6 個 executed、5 個 up-to-date。
+
 | POC case | 實際做了什麼 | 結論 |
 |---|---|---|
 | `POC-S186-1` | 在 `skills` 加 `embedding_content/embedding/embedding_model/embedding_updated_at`；用 `skillRepo.save` 建 skill；用 JDBC 寫 `embedding`；再 `findById -> update description -> save`。 | `Skill` aggregate 沒有任何 `embedding*` field，save 後 `skills.embedding_content='docker compose helper'` 還在，`embedding <=> query` 距離接近 0。可行：同表但 domain 不 mapping embedding，不會被一般 save 清掉。 |
