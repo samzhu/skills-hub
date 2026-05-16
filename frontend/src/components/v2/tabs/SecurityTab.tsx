@@ -1,113 +1,209 @@
-import type { SecurityReport, SecurityCheck } from '@/api/security'
-
-// Per spec §4.4: PASS segments use 4-step gradient
-const SEG_PASS_COLORS = ['#1D9E75', '#2DB88B', '#4AC9A0', '#6FD8B0']
-const QUAD_ORDER: Array<keyof SecurityReport['checks']> = ['shell', 'paths', 'secrets', 'deps']
-const QUAD_LABELS = ['Shell', 'Paths', 'Secrets', 'Deps']
-
-function segmentColor(check: SecurityCheck, idx: number): string {
-  if (check.status === 'FAIL') return 'var(--red, #E24B4A)'
-  if (check.status === 'WARN') return 'var(--amber, #EF9F27)'
-  return SEG_PASS_COLORS[idx] ?? '#1D9E75'
-}
-
-function overallCount(report: SecurityReport): number {
-  return QUAD_ORDER.filter(q => report.checks[q].status !== 'PASS').length
-}
-
-// Shield SVG for different states
-function ShieldIcon({ overall }: { overall: string }) {
-  const isPass = overall === 'PASS'
-  const isWarn = overall === 'WARN'
-  const stroke = isPass ? '#1D9E75' : isWarn ? '#EF9F27' : '#E24B4A'
-  const fill = isPass ? 'rgba(29,158,117,0.15)' : isWarn ? 'rgba(239,159,39,0.12)' : 'rgba(226,75,74,0.12)'
-  const iconStroke = isPass ? '#6FD8B0' : isWarn ? '#FAC775' : '#F08080'
-
-  return (
-    <svg width="56" height="64" viewBox="0 0 56 64" fill="none" aria-label="安全性掃描結果">
-      <path d="M28 2 L52 12 L52 32 C52 48 28 62 28 62 C28 62 4 48 4 32 L4 12 Z"
-        fill={fill} stroke={stroke} strokeWidth="1.5" />
-      {isPass && (
-        <path d="M18 32 L24 38 L38 24" stroke={iconStroke} strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round" />
-      )}
-      {isWarn && (
-        <g>
-          <line x1="28" y1="22" x2="28" y2="38" stroke={iconStroke} strokeWidth="2.5" strokeLinecap="round" />
-          <circle cx="28" cy="44" r="1.5" fill={iconStroke} />
-        </g>
-      )}
-      {overall === 'FAIL' && (
-        <g>
-          <line x1="20" y1="24" x2="36" y2="40" stroke={iconStroke} strokeWidth="2.5" strokeLinecap="round" />
-          <line x1="36" y1="24" x2="20" y2="40" stroke={iconStroke} strokeWidth="2.5" strokeLinecap="round" />
-        </g>
-      )}
-    </svg>
-  )
-}
-
-function heroTitle(report: SecurityReport): string {
-  if (report.overall === 'PASS') return '未發現安全問題'
-  const n = overallCount(report)
-  if (report.overall === 'WARN') return `${n} 個問題需要審查`
-  return `${n} 個問題需要注意`
-}
-
-function heroColor(overall: string): string {
-  if (overall === 'PASS') return 'var(--green-text, #6FD8B0)'
-  if (overall === 'WARN') return 'var(--amber-text, #FAC775)'
-  return 'var(--red-text, #F08080)'
-}
-
-function statusBadgeText(status: string): string {
-  if (status === 'PASS') return '✓ 通過'
-  if (status === 'WARN') return '! 需審查'
-  return '✗ 失敗'
-}
-
-function statusBadgeColor(status: string): string {
-  if (status === 'PASS') return '#6FD8B0'
-  if (status === 'WARN') return '#FAC775'
-  return '#F08080'
-}
-
-function QuadCard({ check, label, idx }: { check: SecurityCheck; label: string; idx: number }) {
-  const color = segmentColor(check, idx)
-  return (
-    <div
-      data-testid={`quad-${label.toLowerCase()}`}
-      style={{
-        padding: '14px 16px',
-        border: '0.5px solid var(--line, rgba(255,255,255,0.08))',
-        borderLeft: `3px solid ${color}`,
-        borderRadius: 8,
-        background: 'rgba(255,255,255,0.02)',
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 500 }}>{label}</span>
-        <span style={{ fontSize: 11, color: statusBadgeColor(check.status) }}>
-          {statusBadgeText(check.status)}
-        </span>
-      </div>
-      <p style={{ fontSize: 12, color: 'var(--ink-3, rgba(238,236,234,0.4))', margin: 0 }}>
-        {check.detail}
-      </p>
-    </div>
-  )
-}
+import { useState } from 'react'
+import type { SecurityFindingSummary, SecurityReport } from '@/api/security'
+import type { RiskLevel } from '@/types/skill'
 
 interface Props {
   /** undefined = loading；null = 404 SECURITY_NOT_SCANNED */
   report: SecurityReport | null | undefined
+  riskLevel: RiskLevel | null | undefined
+}
+
+type SeverityFilter = 'ALL' | 'HIGH' | 'MEDIUM' | 'LOW'
+
+function riskLevelLabel(riskLevel: RiskLevel | null | undefined): string {
+  if (riskLevel === 'NONE') return '無風險'
+  if (riskLevel === 'LOW') return '低風險'
+  if (riskLevel === 'MEDIUM') return '中風險'
+  if (riskLevel === 'HIGH') return '高風險'
+  return '未評估'
+}
+
+function emptyFindingMessage(riskLevel: RiskLevel | null | undefined): string {
+  if (riskLevel === 'NONE') return '未發現安全問題'
+  return '沒有需要處理的掃描發現'
+}
+
+function severityCounts(findings: SecurityFindingSummary[]): { high: number; medium: number; low: number; total: number } {
+  return findings.reduce(
+    (counts, finding) => {
+      if (finding.severity === 'HIGH') counts.high += 1
+      if (finding.severity === 'MEDIUM') counts.medium += 1
+      if (finding.severity === 'LOW') counts.low += 1
+      counts.total += 1
+      return counts
+    },
+    { high: 0, medium: 0, low: 0, total: 0 },
+  )
+}
+
+function findingCode(finding: SecurityFindingSummary): string {
+  return finding.issueCode ?? 'LEGACY'
+}
+
+function findingLocation(finding: SecurityFindingSummary): string {
+  if (finding.filePath && finding.line != null) return `${finding.filePath}:${finding.line}`
+  if (finding.filePath) return finding.filePath
+  return '整個套件'
+}
+
+function findingConfidenceLabel(finding: SecurityFindingSummary): string | null {
+  if (finding.confidence === 'HIGH') return '高信心'
+  if (finding.confidence === 'MEDIUM') return '中信心'
+  if (finding.confidence === 'LOW') return '低信心'
+  return null
+}
+
+function findingRemediation(finding: SecurityFindingSummary): string {
+  return finding.remediation ?? '未提供修法建議'
+}
+
+const SEVERITY_ORDER: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 }
+
+function sortFindings(findings: SecurityFindingSummary[]): SecurityFindingSummary[] {
+  return [...findings].sort((a, b) => {
+    const severity = (SEVERITY_ORDER[a.severity ?? ''] ?? 3) - (SEVERITY_ORDER[b.severity ?? ''] ?? 3)
+    if (severity !== 0) return severity
+    const code = (a.issueCode ?? '\uffff').localeCompare(b.issueCode ?? '\uffff')
+    if (code !== 0) return code
+    const path = (a.filePath ?? '\uffff').localeCompare(b.filePath ?? '\uffff')
+    if (path !== 0) return path
+    return (a.line ?? Number.MAX_SAFE_INTEGER) - (b.line ?? Number.MAX_SAFE_INTEGER)
+  })
+}
+
+function filterFindings(findings: SecurityFindingSummary[], filter: SeverityFilter): SecurityFindingSummary[] {
+  if (filter === 'ALL') return findings
+  return findings.filter(finding => finding.severity === filter)
+}
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('zh-TW')
+}
+
+function SummaryBlock({ label, value, testId }: { label: string; value: string | number; testId?: string }) {
+  return (
+    <div
+      style={{
+        padding: '12px 14px',
+        border: '0.5px solid var(--line, rgba(255,255,255,0.08))',
+        borderRadius: 8,
+        background: 'rgba(255,255,255,0.02)',
+        minWidth: 0,
+      }}
+    >
+      <div style={{ fontSize: 11, color: 'var(--ink-3, rgba(238,236,234,0.4))', marginBottom: 4 }}>
+        {label}
+      </div>
+      <div data-testid={testId} style={{ fontSize: 18, fontWeight: 600 }}>
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function severityColor(severity: SecurityFindingSummary['severity']): string {
+  if (severity === 'HIGH') return 'var(--red-text, #F08080)'
+  if (severity === 'MEDIUM') return 'var(--amber-text, #FAC775)'
+  if (severity === 'LOW') return 'var(--green-text, #6FD8B0)'
+  return 'var(--ink-3, rgba(238,236,234,0.4))'
+}
+
+function FindingRow({ finding, index }: { finding: SecurityFindingSummary; index: number }) {
+  const confidence = findingConfidenceLabel(finding)
+  const code = findingCode(finding)
+  const severity = finding.severity ?? '未分級'
+
+  return (
+    <article
+      data-testid={`security-finding-${index}`}
+      style={{
+        padding: 14,
+        border: '0.5px solid var(--line, rgba(255,255,255,0.08))',
+        borderLeft: `3px solid ${severityColor(finding.severity)}`,
+        borderRadius: 8,
+        background: 'rgba(255,255,255,0.02)',
+        minWidth: 0,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
+          <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, overflowWrap: 'anywhere' }}>
+            {code}
+          </span>
+          <span style={{ fontSize: 12, color: severityColor(finding.severity), fontWeight: 600 }}>
+            {severity}
+          </span>
+        </div>
+        {confidence && (
+          <span style={{ fontSize: 12, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
+            {confidence}
+          </span>
+        )}
+      </div>
+
+      <div style={{ fontSize: 13, marginBottom: 8, overflowWrap: 'anywhere' }}>
+        {finding.message}
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--ink-3, rgba(238,236,234,0.4))', marginBottom: 8 }}>
+        <span style={{ fontFamily: 'monospace', overflowWrap: 'anywhere' }}>{findingLocation(finding)}</span>
+        <span style={{ fontFamily: 'monospace', overflowWrap: 'anywhere' }}>{finding.ruleId}</span>
+      </div>
+
+      {finding.evidence && (
+        <pre
+          data-testid={`finding-evidence-${index}`}
+          style={{
+            margin: '8px 0',
+            padding: 10,
+            borderRadius: 6,
+            background: 'rgba(0,0,0,0.18)',
+            color: 'var(--ink-2, rgba(238,236,234,0.7))',
+            fontSize: 12,
+            whiteSpace: 'pre-wrap',
+            overflowWrap: 'anywhere',
+            fontFamily: 'monospace',
+          }}
+        >
+          {finding.evidence}
+        </pre>
+      )}
+
+      <div style={{ fontSize: 12, color: 'var(--ink-2, rgba(238,236,234,0.7))', overflowWrap: 'anywhere' }}>
+        修法：{findingRemediation(finding)}
+      </div>
+    </article>
+  )
+}
+
+function FilterButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: '6px 10px',
+        borderRadius: 8,
+        border: active ? '0.5px solid rgba(127,119,221,.45)' : '0.5px solid var(--line, rgba(255,255,255,0.08))',
+        background: active ? 'rgba(127,119,221,.16)' : 'rgba(255,255,255,0.03)',
+        color: active ? 'var(--ink-1, #EEECEA)' : 'var(--ink-2, rgba(238,236,234,0.7))',
+        fontSize: 12,
+        cursor: 'pointer',
+      }}
+    >
+      {label}
+    </button>
+  )
 }
 
 /**
- * S142a — Security tab with shield hero + 4-quad cards.
- * Shield colors: PASS=green / WARN=amber / FAIL=red.
+ * S183 — Security tab summary for S147 issue-code reports.
+ * The current level comes from skill.riskLevel; findings only drive counts and details.
  */
-export function SecurityTab({ report }: Props) {
+export function SecurityTab({ report, riskLevel }: Props) {
+  const [filter, setFilter] = useState<SeverityFilter>('ALL')
+
   if (report === undefined) {
     return <div data-testid="security-tab-loading" style={{ padding: 24 }}>
       <div className="animate-pulse" style={{ height: 200, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }} />
@@ -117,34 +213,84 @@ export function SecurityTab({ report }: Props) {
   if (report === null) {
     return (
       <div data-testid="security-tab-empty" style={{ padding: 24, textAlign: 'center', color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
-        <div style={{ fontSize: 24, marginBottom: 8 }}>🔍</div>
         <div>尚未進行安全掃描</div>
       </div>
     )
   }
 
-  const scannedDate = new Date(report.scannedAt).toLocaleDateString('zh-TW')
-  const metaSub = `掃描時間 ${scannedDate} · 引擎 ${report.engineVersion} · 規則集 ${report.ruleSetVersion}`
+  const counts = severityCounts(report.findings)
+  const sortedFindings = sortFindings(report.findings)
+  const filteredFindings = filterFindings(sortedFindings, filter)
 
   return (
-    <div data-testid="security-tab" style={{ padding: '16px 0' }}>
-      {/* Hero */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 0 28px' }}>
-        <ShieldIcon overall={report.overall} />
-        <div data-testid="security-hero-title" style={{ fontSize: 18, fontWeight: 600, marginTop: 12, color: heroColor(report.overall) }}>
-          {heroTitle(report)}
+    <div data-testid="security-tab" style={{ padding: '16px 0', minWidth: 0 }}>
+      <section
+        style={{
+          padding: '18px 0 20px',
+          borderBottom: '0.5px solid var(--line, rgba(255,255,255,0.08))',
+          marginBottom: 18,
+        }}
+      >
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 6px' }}>
+          安全性
+        </h2>
+        <div style={{ fontSize: 12, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
+          掃描 {formatDate(report.scannedAt)} · {report.engineVersion || '—'} · 規則集 {report.ruleSetVersion || '—'}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--ink-3, rgba(238,236,234,0.4))', marginTop: 4 }}>
-          {metaSub}
-        </div>
-      </div>
+      </section>
 
-      {/* 4-quad cards */}
-      <div data-testid="security-quads" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        {QUAD_ORDER.map((q, i) => (
-          <QuadCard key={q} check={report.checks[q]} label={QUAD_LABELS[i]} idx={i} />
-        ))}
-      </div>
+      <section style={{ marginBottom: 20 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 10px' }}>
+          掃描摘要
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 10 }}>
+          <SummaryBlock label="目前等級" value={riskLevelLabel(riskLevel)} testId="security-current-risk" />
+          <SummaryBlock label="高風險 findings" value={counts.high} testId="security-high-count" />
+          <SummaryBlock label="中風險 findings" value={counts.medium} testId="security-medium-count" />
+          <SummaryBlock label="低風險 findings" value={counts.low} testId="security-low-count" />
+        </div>
+      </section>
+
+      <section>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
+            掃描發現
+          </h3>
+          {counts.total > 0 && (
+            <span style={{ fontSize: 12, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
+              顯示 {filteredFindings.length} / {counts.total} 筆
+            </span>
+          )}
+        </div>
+        {counts.total === 0 ? (
+          <div
+            data-testid="security-findings-empty"
+            style={{
+              padding: 16,
+              border: '0.5px solid var(--line, rgba(255,255,255,0.08))',
+              borderRadius: 8,
+              color: 'var(--ink-3, rgba(238,236,234,0.4))',
+              background: 'rgba(255,255,255,0.02)',
+            }}
+          >
+            {emptyFindingMessage(riskLevel)}
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+              <FilterButton active={filter === 'ALL'} label="全部" onClick={() => setFilter('ALL')} />
+              <FilterButton active={filter === 'HIGH'} label="高" onClick={() => setFilter('HIGH')} />
+              <FilterButton active={filter === 'MEDIUM'} label="中" onClick={() => setFilter('MEDIUM')} />
+              <FilterButton active={filter === 'LOW'} label="低" onClick={() => setFilter('LOW')} />
+            </div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {filteredFindings.map((finding, index) => (
+                <FindingRow key={`${finding.ruleId}-${finding.issueCode ?? 'legacy'}-${index}`} finding={finding} index={index} />
+              ))}
+            </div>
+          </>
+        )}
+      </section>
     </div>
   )
 }

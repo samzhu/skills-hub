@@ -8,7 +8,7 @@ describe('HeroMetricsRow', () => {
       <HeroMetricsRow
         skillScore={89}
         scores={null}
-        report={null}
+        riskLevel={null}
         activeTab="overview"
         onTabChange={vi.fn()}
       />
@@ -25,12 +25,27 @@ describe('HeroMetricsRow', () => {
       <HeroMetricsRow
         skillScore={89}
         scores={null}
-        report={null}
+        riskLevel={null}
         activeTab="quality"
         onTabChange={vi.fn()}
       />
     )
     // JSDOM normalizes rgba — check 127, 119, 221 components present
     expect(screen.getByTestId('quality-hero-card').style.border).toContain('127')
+  })
+
+  it('AC-S183-3: HeroMetricsRow 將 LOW riskLevel 傳給 SecurityHeroCard', () => {
+    render(
+      <HeroMetricsRow
+        skillScore={89}
+        scores={null}
+        riskLevel="LOW"
+        activeTab="overview"
+        onTabChange={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('security-value').textContent).toBe('低風險')
+    expect(screen.getByText('3 個綠燈 · 1 個紅燈')).toBeTruthy()
   })
 })

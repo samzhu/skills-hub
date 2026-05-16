@@ -127,7 +127,6 @@ export function SkillDetailPage() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         scores={scores}
-        report={report}
         stats={stats}
         onDownload={() => {
           // S142a-T06 missing wire-up — `<button data-testid="download-cta">下載技能</button>` 的
@@ -196,7 +195,7 @@ export function SkillDetailPage() {
             </TabsContent>
 
             <TabsContent value="security" className="mt-4">
-              <SecurityTab report={report} />
+              <SecurityTab riskLevel={skill.riskLevel} report={report} />
             </TabsContent>
 
             <TabsContent value="flags" className="mt-4">

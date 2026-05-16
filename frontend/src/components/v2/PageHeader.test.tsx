@@ -54,7 +54,6 @@ const renderHeader = (skill = baseSkill, isOwner = false) => {
           activeTab="overview"
           onTabChange={vi.fn()}
           scores={null}
-          report={null}
           stats={[]}
         />
       </MemoryRouter>
@@ -107,6 +106,14 @@ describe('PageHeader', () => {
     expect(screen.getByText('A test skill')).toBeTruthy()
   })
 
+  it('AC-S183-3: PageHeader 將 skill.riskLevel 傳到安全性卡片', () => {
+    setupMocks()
+    renderHeader({ ...baseSkill, riskLevel: 'LOW' })
+
+    expect(screen.getByTestId('security-value').textContent).toBe('低風險')
+    expect(screen.getByText('3 個綠燈 · 1 個紅燈')).toBeTruthy()
+  })
+
   it('SUSPENDED skill → no download CTA', () => {
     setupMocks()
     renderHeader({ ...baseSkill, status: 'SUSPENDED' })
@@ -149,7 +156,6 @@ describe('PageHeader', () => {
             activeTab="overview"
             onTabChange={vi.fn()}
             scores={null}
-            report={null}
             stats={[]}
             onEditClick={onEditClick}
           />
@@ -183,7 +189,6 @@ describe('PageHeader', () => {
             activeTab="skill-md"
             onTabChange={vi.fn()}
             scores={null}
-            report={null}
             stats={[]}
             onDownload={onDownload}
           />

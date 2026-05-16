@@ -2,7 +2,6 @@ import type { Skill } from '@/types/skill'
 import { getDisplayName } from '@/lib/displayName'
 import { categoryLabel } from '@/lib/text'
 import type { SkillScores } from '@/api/scores'
-import type { SecurityReport } from '@/api/security'
 import { IconTile } from '@/components/IconTile'
 import { RiskBadge } from '@/components/RiskBadge'
 import { BeamFrame } from '@/components/BeamFrame'
@@ -22,7 +21,6 @@ interface Props {
   activeTab: string
   onTabChange: (tab: string) => void
   scores: SkillScores | null | undefined
-  report: SecurityReport | null | undefined
   stats: number[]
   onDownload?: () => void
   onShareClick?: () => void
@@ -105,7 +103,7 @@ function relativeTime(iso: string): string {
  * Includes SkillInfo / Actions / HeroMetricsRow / StatStrip.
  * Tab-bar and body grid are rendered by the parent page.
  */
-export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, report, stats, onDownload, onShareClick, onEditClick }: Props) {
+export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, stats, onDownload, onShareClick, onEditClick }: Props) {
   const skillScore = scores?.skillScore ?? null
   const permissions = skill.viewerPermissions
   const isOwnerView = permissions?.isOwner ?? isOwner
@@ -224,7 +222,7 @@ export function PageHeader({ skill, isOwner, activeTab, onTabChange, scores, rep
       <HeroMetricsRow
         skillScore={skillScore}
         scores={scores}
-        report={report}
+        riskLevel={skill.riskLevel}
         activeTab={activeTab}
         onTabChange={onTabChange}
       />

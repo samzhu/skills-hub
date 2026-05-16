@@ -1,5 +1,5 @@
 import type { SkillScores } from '@/api/scores'
-import type { SecurityReport } from '@/api/security'
+import type { RiskLevel } from '@/types/skill'
 import { SkillScoreBadge } from './SkillScoreBadge'
 import { QualityHeroCard } from './QualityHeroCard'
 import { SecurityHeroCard } from './SecurityHeroCard'
@@ -7,7 +7,7 @@ import { SecurityHeroCard } from './SecurityHeroCard'
 interface Props {
   skillScore: number | null
   scores: SkillScores | null | undefined
-  report: SecurityReport | null | undefined
+  riskLevel: RiskLevel | null | undefined
   activeTab: string
   onTabChange: (tab: string) => void
 }
@@ -15,7 +15,7 @@ interface Props {
 /**
  * S142a/S172-T06 — Hero metrics row (SkillScore | Quality | Security).
  */
-export function HeroMetricsRow({ skillScore, scores, report, activeTab, onTabChange }: Props) {
+export function HeroMetricsRow({ skillScore, scores, riskLevel, activeTab, onTabChange }: Props) {
   return (
     <div
       data-testid="hero-metrics-row"
@@ -33,7 +33,7 @@ export function HeroMetricsRow({ skillScore, scores, report, activeTab, onTabCha
         onClick={() => onTabChange('quality')}
       />
       <SecurityHeroCard
-        report={report}
+        riskLevel={riskLevel}
         active={activeTab === 'security'}
         onClick={() => onTabChange('security')}
       />
