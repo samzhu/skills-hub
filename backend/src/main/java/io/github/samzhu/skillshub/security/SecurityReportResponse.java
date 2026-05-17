@@ -18,7 +18,8 @@ public record SecurityReportResponse(
         String overall,
         Map<String, CheckDetail> checks,
         List<CategorySummary> categories,
-        List<FindingSummary> findings) {
+        List<FindingSummary> findings,
+        List<RiskReason> riskReasons) {
 
     /** Legacy constructor — keeps S142b controller tests and old callers source-compatible. */
     public SecurityReportResponse(
@@ -31,7 +32,23 @@ public record SecurityReportResponse(
             String overall,
             Map<String, CheckDetail> checks) {
         this(skillId, skillVersionId, skillVersion, scannedAt, engineVersion, ruleSetVersion,
-                overall, checks, List.of(), List.of());
+                overall, checks, List.of(), List.of(), List.of());
+    }
+
+    /** Legacy constructor — keeps S147 callers source-compatible while S190 adds riskReasons. */
+    public SecurityReportResponse(
+            String skillId,
+            String skillVersionId,
+            String skillVersion,
+            Instant scannedAt,
+            String engineVersion,
+            String ruleSetVersion,
+            String overall,
+            Map<String, CheckDetail> checks,
+            List<CategorySummary> categories,
+            List<FindingSummary> findings) {
+        this(skillId, skillVersionId, skillVersion, scannedAt, engineVersion, ruleSetVersion,
+                overall, checks, categories, findings, List.of());
     }
 
     /** 單一 category 的狀態與 detail string。 */
@@ -56,4 +73,22 @@ public record SecurityReportResponse(
             String filePath,
             Integer line,
             String evidence) {}
+
+    /**
+     * S190 — user-readable reason for the package risk tier, separate from fixable findings.
+     *
+     * @param code stable reason code from scan JSON or legacy fallback
+     * @param label short zh-TW heading rendered by the security tab
+     * @param detail plain-language explanation for non-engineers
+     * @param impact NONE / LOW / MEDIUM / HIGH tier impact
+     * @param evidence tool names, script paths, or finding identifiers that support the reason
+     * @param action recommended next action token for the UI
+     */
+    public record RiskReason(
+            String code,
+            String label,
+            String detail,
+            String impact,
+            List<String> evidence,
+            String action) {}
 }

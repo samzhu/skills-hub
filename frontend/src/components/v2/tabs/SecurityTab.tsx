@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import type { SecurityFindingSummary, SecurityReport } from '@/api/security'
+import type { ReactNode } from 'react'
+import { Download, FileText, Flag, Search } from 'lucide-react'
+import type { SecurityFindingSummary, SecurityReport, SecurityRiskReason } from '@/api/security'
 import type { RiskLevel } from '@/types/skill'
 
 interface Props {
@@ -11,7 +13,7 @@ interface Props {
 type SeverityFilter = 'ALL' | 'HIGH' | 'MEDIUM' | 'LOW'
 
 function riskLevelLabel(riskLevel: RiskLevel | null | undefined): string {
-  if (riskLevel === 'NONE') return '無風險'
+  if (riskLevel === 'NONE') return '未發現風險'
   if (riskLevel === 'LOW') return '低風險'
   if (riskLevel === 'MEDIUM') return '中風險'
   if (riskLevel === 'HIGH') return '高風險'
@@ -20,7 +22,7 @@ function riskLevelLabel(riskLevel: RiskLevel | null | undefined): string {
 
 function emptyFindingMessage(riskLevel: RiskLevel | null | undefined): string {
   if (riskLevel === 'NONE') return '未發現安全問題'
-  return '沒有需要處理的掃描發現'
+  return '沒有需要修改的掃描發現'
 }
 
 function severityCounts(findings: SecurityFindingSummary[]): { high: number; medium: number; low: number; total: number } {
@@ -107,6 +109,116 @@ function severityColor(severity: SecurityFindingSummary['severity']): string {
   if (severity === 'MEDIUM') return 'var(--amber-text, #FAC775)'
   if (severity === 'LOW') return 'var(--green-text, #6FD8B0)'
   return 'var(--ink-3, rgba(238,236,234,0.4))'
+}
+
+function whyTitle(riskLevel: RiskLevel | null | undefined): string {
+  return `為什麼是${riskLevelLabel(riskLevel)}？`
+}
+
+function reasonHeading(reason: SecurityRiskReason): string {
+  if (reason.code === 'SCRIPTS_INCLUDED') return '包含可執行腳本'
+  return reason.label
+}
+
+function actionTone(reason: SecurityRiskReason): string {
+  if (reason.action === 'FIX_REQUIRED') return '先查看掃描發現'
+  if (reason.action === 'REVIEW_FIRST') return '使用前先確認'
+  return '可以下載使用'
+}
+
+function RiskReasonSection({ reasons, riskLevel }: { reasons: SecurityRiskReason[]; riskLevel: RiskLevel | null | undefined }) {
+  if (reasons.length === 0) return null
+  return (
+    <section style={{ marginBottom: 20 }}>
+      <h3 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 10px' }}>
+        {whyTitle(riskLevel)}
+      </h3>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {reasons.map(reason => (
+          <article
+            key={`${reason.code}-${reason.label}`}
+            style={{
+              padding: 14,
+              border: '0.5px solid var(--line, rgba(255,255,255,0.08))',
+              borderRadius: 8,
+              background: 'rgba(255,255,255,0.02)',
+              minWidth: 0,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 650, overflowWrap: 'anywhere' }}>
+                {reasonHeading(reason)}
+              </div>
+              <span style={{ fontSize: 12, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
+                {actionTone(reason)}
+              </span>
+            </div>
+            <p style={{ margin: '0 0 10px', fontSize: 13, color: 'var(--ink-2, rgba(238,236,234,0.7))', overflowWrap: 'anywhere' }}>
+              {reason.detail}
+            </p>
+            {reason.evidence.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {reason.evidence.map(item => (
+                  <span
+                    key={item}
+                    style={{
+                      padding: '4px 7px',
+                      border: '0.5px solid var(--line, rgba(255,255,255,0.08))',
+                      borderRadius: 6,
+                      background: 'rgba(255,255,255,0.03)',
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      overflowWrap: 'anywhere',
+                      maxWidth: '100%',
+                    }}
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ActionButton({ children, primary, icon }: { children: string; primary?: boolean; icon: ReactNode }) {
+  return (
+    <button
+      type="button"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '7px 10px',
+        borderRadius: 8,
+        border: primary ? '0.5px solid rgba(127,119,221,.45)' : '0.5px solid var(--line, rgba(255,255,255,0.08))',
+        background: primary ? 'rgba(127,119,221,.16)' : 'rgba(255,255,255,0.03)',
+        color: 'var(--ink-1, #EEECEA)',
+        fontSize: 12,
+        cursor: 'pointer',
+      }}
+    >
+      {icon}
+      {children}
+    </button>
+  )
+}
+
+function ActionStrip({ hasFindings }: { hasFindings: boolean }) {
+  return (
+    <section style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+      {hasFindings ? (
+        <ActionButton primary icon={<Search size={14} aria-hidden="true" />}>先查看掃描發現</ActionButton>
+      ) : (
+        <ActionButton primary icon={<Download size={14} aria-hidden="true" />}>下載技能</ActionButton>
+      )}
+      <ActionButton icon={<FileText size={14} aria-hidden="true" />}>查看檔案</ActionButton>
+      <ActionButton icon={<Flag size={14} aria-hidden="true" />}>回報疑慮</ActionButton>
+    </section>
+  )
 }
 
 function FindingRow({ finding, index }: { finding: SecurityFindingSummary; index: number }) {
@@ -221,6 +333,7 @@ export function SecurityTab({ report, riskLevel }: Props) {
   const counts = severityCounts(report.findings)
   const sortedFindings = sortFindings(report.findings)
   const filteredFindings = filterFindings(sortedFindings, filter)
+  const riskReasons = report.riskReasons ?? []
 
   return (
     <div data-testid="security-tab" style={{ padding: '16px 0', minWidth: 0 }}>
@@ -251,6 +364,10 @@ export function SecurityTab({ report, riskLevel }: Props) {
         </div>
       </section>
 
+      <RiskReasonSection reasons={riskReasons} riskLevel={riskLevel} />
+
+      <ActionStrip hasFindings={counts.total > 0} />
+
       <section>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
@@ -273,7 +390,12 @@ export function SecurityTab({ report, riskLevel }: Props) {
               background: 'rgba(255,255,255,0.02)',
             }}
           >
-            {emptyFindingMessage(riskLevel)}
+            <div>{emptyFindingMessage(riskLevel)}</div>
+            {riskLevel === 'LOW' && (
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--ink-3, rgba(238,236,234,0.4))' }}>
+                scanner 沒有找到 issue code，不代表技能沒有任何能力風險。
+              </p>
+            )}
           </div>
         ) : (
           <>

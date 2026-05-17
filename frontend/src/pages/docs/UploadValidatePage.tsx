@@ -21,7 +21,7 @@ export function UploadValidatePage() {
       <H2>四步流程</H2>
       <Step n={1} title="上傳 zip 套件" body="作者在 /publish 拖放 bundle zip + 填寫分類；版本標籤可留白讓系統自動產生。檔案大小 ≤ 5MB；解壓檔案數 ≤ 50。" />
       <Step n={2} title="驗證 frontmatter" body="系統解析 SKILL.md frontmatter，檢查 name / description 必填欄位 + 格式（lowercase-hyphen / 字數限制）。失敗即進「上傳失敗」頁，作者修檔重傳。" />
-      <Step n={3} title="風險掃描" body="若有 scripts/ 或 allowed-tools 宣告，啟動 risk scan；無則歸 NONE。掃描結果分四級：NONE / LOW / MEDIUM / HIGH。詳見 風險層級頁。" />
+      <Step n={3} title="風險掃描" body="掃描器會看 SKILL.md、scripts/、allowed-tools 與其他文字檔。findings=[] 且沒有 scripts/、沒有 allowed-tools → NONE；findings=[] 但有 scripts/ 或 allowed-tools → LOW，安全頁會顯示原因。" />
       <Step n={4} title="上架或審核" body="LOW/NONE/MEDIUM 自動上架（MEDIUM 附警告標）；HIGH 進審核佇列等 reviewer 決定。" />
 
       <H2>常見錯誤</H2>

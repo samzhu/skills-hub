@@ -12,9 +12,9 @@ import { RiskBadge } from './RiskBadge'
  */
 
 describe('RiskBadge — S096c 4-tier', () => {
-  it('AC-1: NONE renders 無風險 label', () => {
+  it('AC-S190-3: NONE renders 未發現風險 label', () => {
     render(<RiskBadge level="NONE" />)
-    expect(screen.getByText('無風險')).toBeInTheDocument()
+    expect(screen.getByText('未發現風險')).toBeInTheDocument()
   })
 
   it('AC-2: LOW renders 低風險 label', () => {
@@ -42,9 +42,9 @@ describe('RiskBadge — S096c 4-tier', () => {
     expect(screen.getByText('CRITICAL')).toBeInTheDocument()
   })
 
-  it('AC-7: NONE tier 含 caveat tooltip — 「不代表 100% 安全」', () => {
+  it('AC-S190-10: NONE caveat tooltip still says not 100% safe', () => {
     render(<RiskBadge level="NONE" />)
-    const badge = screen.getByText('無風險')
+    const badge = screen.getByText('未發現風險')
     expect(badge.getAttribute('title')).toContain('不代表 100% 安全')
   })
 })

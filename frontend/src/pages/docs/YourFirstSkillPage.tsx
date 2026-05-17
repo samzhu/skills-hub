@@ -72,8 +72,9 @@ ISO 8601 or RFC 2822 variant.
 
       <Callout tone="info">
         <strong>只有 <Code>name</Code> 與 <Code>description</Code> 是必填。</strong>{' '}
-        其他全部 optional。此 bundle 通過驗證 + auto-publish 為 LOW risk —
-        因為沒有 <Code>scripts/</Code> 資料夾。
+        其他全部 optional。此 bundle 只有 <Code>SKILL.md</Code>、沒有{' '}
+        <Code>scripts/</Code>、也沒有 <Code>allowed-tools</Code>，通過掃描後會顯示為
+        「未發現風險」（NONE）。
       </Callout>
 
       {/* §2 Bundle structure */}
@@ -134,12 +135,19 @@ ISO 8601 or RFC 2822 variant.
       {/* §5 Risk tiers */}
       <H2 anchor="risk">各風險層級的觸發條件</H2>
       <P>
-        每次 publish 都跑 auto-scanner。Tier 決定 skill 是即時上架還是等人工審核。
+        每次 publish 都跑 auto-scanner。安全頁會分開顯示「風險等級」、「為什麼是這個等級」
+        和「有沒有掃描發現需要修改」。
       </P>
       <div className="mt-4 flex flex-col gap-3">
+        <RiskRow tier="NONE" tone="neutral">
+          <strong>未發現風險。</strong> 掃描沒有 findings，且 package 內沒有{' '}
+          <Code>scripts/</Code>、沒有 <Code>allowed-tools</Code>。這不是保證安全，只代表
+          scanner 沒找到已知問題，也沒有看到工具或腳本能力。
+        </RiskRow>
         <RiskRow tier="LOW" tone="success">
-          <strong>立即上架。</strong> 沒 scripts/ 資料夾，或 scripts 只含安全 patterns。
-          一般 documentation/utility skill 多落這層。
+          <strong>低風險。</strong> 掃描沒有 findings，但 package 有 <Code>scripts/</Code>{' '}
+          或 <Code>allowed-tools</Code>。安全頁會說明原因，例如「這個技能可以要求 AI 使用
+          Bash、Write」或「包含 scripts/ 檔案」。
         </RiskRow>
         <RiskRow tier="MEDIUM" tone="warning">
           <strong>附警告標籤上架。</strong> Scripts 存在但無危險 pattern — 最多 3 個外部 URL
@@ -312,10 +320,11 @@ function RiskRow({
   children,
 }: {
   tier: string
-  tone: 'success' | 'warning' | 'danger'
+  tone: 'neutral' | 'success' | 'warning' | 'danger'
   children: React.ReactNode
 }) {
   const styles = {
+    neutral: { bg: 'rgba(168,164,156,0.14)', fg: '#A8A49C' },
     success: { bg: 'rgba(29,158,117,0.14)', fg: '#6FD8B0' },
     warning: { bg: 'rgba(239,159,39,0.14)', fg: '#FAC775' },
     danger: { bg: 'rgba(226,75,74,0.14)', fg: '#F2A6A6' },

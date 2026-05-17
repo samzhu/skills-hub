@@ -170,11 +170,18 @@ public class SkillVersion extends AbstractAggregateRoot<SkillVersion> implements
     public Instant getPublishedAt() { return publishedAt; }
     public List<String> getAllowedTools() { return allowedTools == null ? List.of() : allowedTools; }
 
-    /** S018 既有解析邏輯：space-separated string → List；null/empty → 空 list（fail-secure）。 */
+    /** S190/S073：支援 canonical YAML list 與 legacy space-separated string；null/empty → 空 list。 */
     private static List<String> parseAllowedTools(Map<String, Object> frontmatter) {
         if (frontmatter == null) return List.of();
         var raw = frontmatter.get("allowed-tools");
         if (raw == null) return List.of();
+        if (raw instanceof List<?> list) {
+            return list.stream()
+                    .map(String::valueOf)
+                    .map(String::trim)
+                    .filter(token -> !token.isEmpty())
+                    .toList();
+        }
         var asString = raw.toString().trim();
         if (asString.isEmpty()) return List.of();
         return List.of(asString.split("\\s+"));

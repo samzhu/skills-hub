@@ -117,6 +117,20 @@ class SkillVersionAggregateTest {
         assertThat(sv.getAllowedTools()).containsExactly("Bash(git:*)", "Edit", "Read", "WebFetch");
     }
 
+    @Test
+    @Tag("AC-S190-6")
+    @DisplayName("AC-S190-6: allowed-tools YAML list persists clean allowedTools tokens")
+    void allowedToolsYamlListParsing() {
+        var cmd = new PublishVersionCommand(
+                "skill-4", "1.0.0", "gs://b/s/1.0.0.zip", 100, 0,
+                Map.of("allowed-tools", List.of("Read", "Glob", "Bash")));
+
+        var sv = SkillVersion.publish(cmd);
+
+        assertThat(sv.getAllowedTools()).containsExactly("Read", "Glob", "Bash");
+        assertThat(sv.getAllowedTools()).doesNotContain("[Read,", "Bash]");
+    }
+
     // ============================================================================
     // Reflection helpers
     // ============================================================================

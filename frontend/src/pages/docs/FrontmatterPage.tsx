@@ -47,13 +47,14 @@ export function FrontmatterPage() {
           { name: 'license', type: 'string', limit: 'SPDX ID（如 MIT）', note: '建議填 — 顯示於 detail page' },
           { name: 'compatibility', type: 'array<string>', limit: '—', note: '宣告相容 agent（如 ["claude-code", "cursor"]）' },
           { name: 'metadata', type: 'object', limit: '—', note: '自訂 KV 對；agent 可讀但 Skills Hub 不額外處理' },
-          { name: 'allowed-tools', type: 'array<string>', limit: '—', note: '宣告 skill 預期 agent 開啟的 tool；存在會觸發 risk scan' },
+          { name: 'allowed-tools', type: 'array<string>', limit: '—', note: '宣告 skill 預期 agent 可使用的 tool；存在時即使 findings=[]，安全頁也會用 LOW 說明原因' },
         ]}
       />
 
       <Callout>
         加了 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">allowed-tools</code> 或
         <code className="ml-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">scripts/</code> 資料夾就會觸發風險掃描；
+        如果 scanner 沒找到 issue code，安全頁仍會說明「因為這個技能可以要求 AI 使用哪些工具」或「因為 package 包含 scripts/」。
         詳細層級規則見{' '}
         <Link to="/docs/risk-tiers" className="text-[#C9C5F2] hover:underline">風險層級</Link>。
       </Callout>

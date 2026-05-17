@@ -220,7 +220,7 @@ When the user provides a date string and asks to change its format:
 2. Ask the user for the target format if not specified
 3. Output the converted date and explain any ambiguity</div>
 
-        <div class="callout success"><strong>Auto-publishes at low risk</strong> This skill has no <code>scripts/</code> directory, so the risk scanner will mark it Low automatically and publish it without human review.</div>
+        <div class="callout success"><strong>Shows no detected risk</strong> This skill has only <code>SKILL.md</code>, no <code>scripts/</code>, and no <code>allowed-tools</code>, so the scanner will show it as NONE after it finds no issues.</div>
 
         <h2>Bundle structure</h2>
         <p>Zip the skill folder. The archive must contain <code>SKILL.md</code> at the root.</p>
@@ -268,7 +268,7 @@ When the user provides a date string and asks to change its format:
         <h2>Risk tiers</h2>
         <p>Every upload is scanned automatically. The result determines what happens next.</p>
 
-        <div class="tier-row"><span class="tier-pill low">Low</span><span class="tier-desc">Publishes immediately. No scripts/ directory, or all scripts pass all checks.</span></div>
+        <div class="tier-row"><span class="tier-pill low">Low</span><span class="tier-desc">No issue findings, but the package declares scripts/ or allowed-tools. The security page explains the reason.</span></div>
         <div class="tier-row"><span class="tier-pill med">Medium</span><span class="tier-desc">Publishes with a warning badge. 1–2 medium-severity findings that don't block installation.</span></div>
         <div class="tier-row"><span class="tier-pill high">High</span><span class="tier-desc">Blocked until a reviewer approves, rejects, or requests changes. Common triggers: <code>curl | bash</code>, <code>rm -rf</code>, <code>~/.aws</code>, <code>~/.ssh</code>.</span></div>
 
@@ -278,7 +278,7 @@ When the user provides a date string and asks to change its format:
         <div class="code-block"><span class="cmd">$</span> zip -r date-formatter.zip date-formatter/
 <span class="cmd">$</span> skills-hub publish date-formatter.zip
 <span class="ok">✔</span> Validated SKILL.md (name, description, version present)
-<span class="ok">✔</span> Risk scan: LOW — no scripts/ directory
+<span class="ok">✔</span> Risk scan: NONE — no scripts/ or allowed-tools
 <span class="ok">✔</span> Published → <span class="path">skills-hub.io/your-team/date-formatter</span>
    <span style="color:var(--ink-3)">SkillVersionPublished event written</span></div>
 

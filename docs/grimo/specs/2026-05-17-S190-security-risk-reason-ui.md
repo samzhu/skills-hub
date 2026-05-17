@@ -2,7 +2,7 @@
 
 > SpecID: S190
 > Date: 2026-05-17
-> Status: 📐 in-design — spec ready for review
+> Status: ✅ QA PASS — ready for $shipping-release S190
 > Type: Full-stack UX clarity spec
 > Estimate: S(11)
 > Depends: S147 ✅, S183 ✅, S142b ✅
@@ -654,3 +654,80 @@ function actionLabels(riskLevel, totalFindings): ['下載技能' | '先查看掃
 | ADR | No. This is additive reporting/UI; it does not contradict architecture. |
 | Glossary | Already has `風險原因 / Risk Reason`; verify `風險等級 / Risk Level` wording matches §2.0. |
 | Docs pages | Fix stale risk-tier wording in `/docs/your-first-skill`, review `/docs/risk-tiers` and `/docs/upload-validate`. |
+
+---
+
+## §6 Task Plan
+
+### Pre-Flight Validation
+
+| Check | Result |
+|---|---|
+| PRD alignment | PASS。PRD P3 要求風險評估記錄掃描項目與通過/未通過；S190 只把既有 `LOW + 0 findings` 原因顯示出來，不改分級規則。 |
+| Existing implementation | PASS。`ScanOrchestrator.classifyRiskLevel` 已是 `findings=[]` 且有 `scripts/` 或 `allowed-tools` → `LOW`；`SecurityReportService` 目前只回 `findings`，缺 `riskReasons`。 |
+| Prior spec findings | PASS。S096c 已建立 4-tier；S142b/S147/S183 已建立 security report、findings 與安全頁。S073 已證明 `allowed-tools` YAML list 是 canonical shape，S190 task 必須補 `SkillVersion.allowedTools` persistence/parser coverage。 |
+| Product language | PASS。`RiskLevel` / `finding` / `riskReason` 已在 §2.0 定義；NON-engineer copy 必須先說「這個技能可以要求 AI 使用工具」，不能只顯示 `allowed-tools`。 |
+| Existing task collision | S187 task files 仍存在且屬另一條線；S190 task files 使用 `S190` prefix，不會覆蓋。 |
+
+### POC Decision
+
+POC: not required。
+
+S190 不加新 SDK、不包 framework SPI、不改 DB schema。要做的是把既有 `risk_assessment` JSONB map 加 `riskReasons` key，並把既有 `SecurityReport` / `SecurityTab` 顯示補齊。唯一需要特別測的不是新技術，而是已知 interop 細節：S073 讓 validator 支援 YAML list，但 `SkillVersion.parseAllowedTools` / `Skill.parseAllowedTools` 仍是 `raw.toString().split("\\s+")`，task T01 要用測試把 `["Read","Bash"]` 這種 shape 存成乾淨 list。
+
+### Task Order
+
+| Task | File | Scope | AC |
+|---|---|---|---|
+| T01 | `docs/grimo/tasks/2026-05-17-S190-T01-backend-security-report-risk-reasons.md` | `SecurityReportResponse` 加 `RiskReason`；`SecurityReportService` 讀 JSONB/fallback；補 `allowed-tools` list parser coverage。 | AC-S190-5, AC-S190-6, AC-S190-1b backend, AC-S190-3 backend |
+| T02 | `docs/grimo/tasks/2026-05-17-S190-T02-scanner-persist-risk-reasons.md` | `ScanOrchestrator.persist` 寫 deterministic `riskReasons`，含 allowed-tools-only、scripts、findings、NONE。 | AC-S190-7, AC-S190-1 backend, AC-S190-1b backend |
+| T03 | `docs/grimo/tasks/2026-05-17-S190-T03-frontend-security-risk-reasons.md` | `SecurityTab` 顯示原因區、三動作、空 findings 新文案；`RiskBadge` / current-risk NONE label 改「未發現風險」。 | AC-S190-1, AC-S190-1b, AC-S190-2, AC-S190-3, AC-S190-4, AC-S190-8 |
+| T04 | `docs/grimo/tasks/2026-05-17-S190-T04-docs-prototype-risk-language-sync.md` | docs pages / prototype / docs scan 同步風險語言，避免 `NONE` 被寫成「無風險」或純 SKILL.md 被說成 LOW。 | AC-S190-9, AC-S190-10 |
+
+### Verification Chain
+
+| Stage | Command |
+|---|---|
+| T01 backend response | `cd backend && ./gradlew test --tests '*SecurityReportServiceTest' --tests '*SecurityReportControllerTest' --tests '*SkillVersionAggregateTest'` |
+| T02 scanner persist | `cd backend && ./gradlew test --tests '*ScanOrchestratorTest'` |
+| T03 frontend UI | `cd frontend && npm test -- SecurityTab.test.tsx RiskBadge.test.tsx` |
+| T04 docs/prototype | `rg -n "無風險|未發現風險|LOW risk|allowed-tools|scripts/" frontend/src/pages/docs docs/grimo/ui/prototype docs/grimo/glossary.md` |
+| Final deterministic checks | `cd backend && ./gradlew test`; `cd frontend && npm test`; `cd frontend && npm run verify` |
+
+### E2E Assessment
+
+Browser E2E is not required at task-planning time. S190 changes a component that already receives `SecurityReport` props and can be verified with component tests plus backend response tests. The only real-artifact risk is API assembly (`GET /security-report` includes `riskReasons`), covered by `SecurityReportControllerTest`.
+
+---
+
+## §7 Development Results
+
+### Task Results
+
+| Task | Result | Evidence |
+|---|---|---|
+| T01 Backend response contract | PASS | `SecurityReportResponse` exposes `riskReasons`; `SecurityReportService` reads persisted reasons and falls back for legacy rows; allowed-tools YAML list parsing covered. |
+| T02 Scanner persist reasons | PASS | `ScanOrchestrator` persists deterministic `riskReasons` for findings, allowed-tools, scripts, and NONE. |
+| T03 Frontend security tab | PASS | `SecurityTab` renders reason cards, LOW empty finding copy, and action strip; `RiskBadge` shows `未發現風險` for NONE. |
+| T04 Docs/prototype language sync | PASS | Docs/prototype no longer say pure `SKILL.md` / no `scripts/` is LOW; LOW + 0 findings is explained by `allowed-tools` or `scripts/`. |
+
+### Verification Results
+
+| Command | Result |
+|---|---|
+| `cd backend && ./gradlew test --tests '*SecurityReportServiceTest' --tests '*SecurityReportControllerTest' --tests '*SkillVersionAggregateTest'` | PASS |
+| `cd backend && ./gradlew test --tests '*ScanOrchestratorTest'` | PASS |
+| `cd frontend && npm test -- SecurityTab.test.tsx RiskBadge.test.tsx` | PASS — 2 files / 22 tests |
+| `cd frontend && npm run typecheck` | PASS |
+| `rg -n "無風險|未發現風險|LOW risk|allowed-tools|scripts/" frontend/src/pages/docs docs/grimo/ui/prototype docs/grimo/glossary.md` | PASS — no `LOW risk` or user-facing `無風險`; remaining hits are definitions/examples for `未發現風險`, `allowed-tools`, and `scripts/`. |
+| `cd frontend && npm test` | PASS — 80 files / 473 tests |
+| `cd backend && ./gradlew test` | PASS — BUILD SUCCESSFUL in 6m 2s |
+| `cd backend && ./gradlew test --tests '*SecurityReportServiceTest' --tests '*SecurityReportControllerTest' --tests '*SkillVersionAggregateTest' --tests '*ScanOrchestratorTest'` | PASS — BUILD SUCCESSFUL in 2m 3s |
+| `cd e2e && npx playwright test --grep @happy-path` | PASS — 10 tests passed in 38.2s after S140 expectation updated from `無風險` to `未發現風險`. |
+| `./scripts/verify-all.sh` | PASS — V01/V03/V04/V05/V06/V07/V08a/V08b all PASS; V02 coverage 86.9%; exit=0. |
+
+### QA Note
+
+QA gate found one stale E2E expectation: S140 AC-3 still waited for `無風險` while S190 intentionally renders NONE as `未發現風險`. Updated `e2e/tests/S140-critical-path-publish.spec.ts`, reran V07 successfully, then reran the full `./scripts/verify-all.sh` with exit=0.
+
+S190 is ready for `$shipping-release S190`.

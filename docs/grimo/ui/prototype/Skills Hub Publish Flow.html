@@ -261,12 +261,12 @@ html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-siz
                 <div class="v-sub">5 checks · 0 high · 0 medium · 1 info</div>
               </div>
             </div>
-            <span class="v-badge low">Low risk</span>
+            <span class="v-badge low">No detected risk</span>
           </div>
           <div class="check-list">
             <div class="check-row">
               <div class="c-icon pass">✓</div>
-              <div><div class="check-name">No scripts/ directory present</div><div class="check-hint">Primary determinant of low risk — no executable files</div></div>
+              <div><div class="check-name">No scripts/ or allowed-tools present</div><div class="check-hint">With 0 findings, this is shown as NONE because no executable or tool capability was declared.</div></div>
             </div>
             <div class="check-row">
               <div class="c-icon pass">✓</div>
@@ -301,8 +301,8 @@ html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-siz
       <aside class="sidebar">
         <div class="sb-card">
           <div class="sb-callout success">
-            <div class="h">Safe to auto-publish</div>
-            This skill passes all automated checks and will go live immediately without human review. No scripts/ directory means no executable risk.
+            <div class="h">Ready to publish</div>
+            This skill passes all automated checks. With no scripts/ and no allowed-tools, the security page shows NONE, meaning no detected issue or tool/script capability.
           </div>
         </div>
 

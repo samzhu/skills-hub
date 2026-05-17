@@ -46,7 +46,7 @@
 | 證據檔 | Evidence Contract | `e2e/results/evidence.json` | `playwright-expert` VERIFY mode 產出的跨 skill 契約檔，給 `/verifying-quality` 讀取；schema 含 spec_id / stats / per-test ok / trace_paths |
 | 技能分數 | Skill Score | `skillScore` | S142b 複合評分公式：`round(0.6 × qualityTotal + 0.4 × securityScore)`；securityScore 為 null（未掃描）時 skillScore = null；出現在 GET /scores 回應 |
 | 安全報告 | Security Report | `SecurityReportResponse` | 技能安全掃描明細；S142b 保留 legacy `checks` 相容欄位，S147 起新增 `categories/findings`，每筆 finding 可帶 issue code、檔案/行號、evidence、remediation、confidence；出現在 GET /security-report 回應 |
-| 已驗證 | Verified | `verified` | S142b 衍生旗標：`status === 'PUBLISHED' && riskLevel != null`；表示「平台已完成品質 + 安全兩階段審查」≠「無風險」；出現在 GET /skills/{id} 回應 |
+| 已驗證 | Verified | `verified` | S142b 衍生旗標：`status === 'PUBLISHED' && riskLevel != null`；表示「平台已完成品質 + 安全兩階段審查」，不是安全保證；出現在 GET /skills/{id} 回應 |
 | 平台識別碼 | Platform User ID | `userId` (`u_<6hex>`) | S154 起，平台對 user 的 internal PK；解耦 OAuth provider 的 sub；ACL principal / `skills.author` / `skills.owner_id` 都用此 ID（`u_a3f9c1` 格式）；S192 起，一般 user-facing UI 不可把此值當作者/留言者/評論者顯示名稱，只能用於 API filter、ACL、delete ownership、route/install command fallback 等行為或技術識別場景；同一個人換 OAuth provider 仍是不同 user_id（per S154 §2.4 Pattern A）|
 | 顯示用 slug | Handle | `handle` | S154 起，user 在平台上的可讀短名稱（`alice`）；install command + `/api/v1/skills/{handle}/{name}` URL 用它；user 可改、撞名時自動加 `-2/-3` 後綴 |
 | OAuth 識別碼 | OAuth Sub | `sub` | OAuth provider 給的 raw subject identifier（Google: 21 位數字；GitHub: 數字 ID）；S154 起只在 `users.sub` 出現，**不**在業務表（`skills` / `acl_entries`）|

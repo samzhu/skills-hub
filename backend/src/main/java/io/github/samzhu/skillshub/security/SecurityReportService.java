@@ -75,6 +75,8 @@ public class SecurityReportService {
         Map<String, SecurityReportResponse.CheckDetail> checks = buildChecks(partitioned, categoryStatuses);
         List<SecurityReportResponse.CategorySummary> categories = buildCategories(findings);
         List<SecurityReportResponse.FindingSummary> findingSummaries = buildFindingSummaries(findings);
+        List<SecurityReportResponse.RiskReason> riskReasons = buildRiskReasons(
+                riskAssessment, findings, version.getAllowedTools());
 
         return new SecurityReportResponse(
                 skillId,
@@ -86,7 +88,8 @@ public class SecurityReportService {
                 overall,
                 checks,
                 categories,
-                findingSummaries);
+                findingSummaries,
+                riskReasons);
     }
 
     private SkillVersion resolveVersion(String skillId, String versionId) {
@@ -159,6 +162,65 @@ public class SecurityReportService {
                         finding.line(),
                         finding.evidence()))
                 .toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<SecurityReportResponse.RiskReason> buildRiskReasons(
+            Map<String, Object> riskAssessment,
+            List<SecurityFinding> findings,
+            List<String> allowedTools) {
+
+        Object rawReasons = riskAssessment.get("riskReasons");
+        if (rawReasons instanceof List<?> reasons && !reasons.isEmpty()) {
+            return reasons.stream()
+                    .map(raw -> objectMapper.convertValue(raw, SecurityReportResponse.RiskReason.class))
+                    .toList();
+        }
+
+        if (findings != null && !findings.isEmpty()) {
+            return List.of(findingReason(findings));
+        }
+
+        var tools = allowedTools == null ? List.<String>of() : allowedTools;
+        if (!tools.isEmpty()) {
+            return List.of(allowedToolsReason("LEGACY_ALLOWED_TOOLS", tools));
+        }
+
+        return List.of(new SecurityReportResponse.RiskReason(
+                "NO_FINDINGS_NO_CAPABILITIES",
+                "沒有工具宣告或 scripts/",
+                "未發現安全問題，且這個技能沒有工具宣告或 scripts/。這不代表 100% 安全，只表示 scanner 沒有找到已知問題。",
+                "NONE",
+                List.of(),
+                "DOWNLOAD_OK"));
+    }
+
+    private SecurityReportResponse.RiskReason allowedToolsReason(String code, List<String> tools) {
+        var joinedTools = String.join("、", tools);
+        return new SecurityReportResponse.RiskReason(
+                code,
+                "這個技能可以要求 AI 使用工具",
+                "掃描沒有找到需要修改的問題。不過這個技能可以要求 AI 使用工具：" + joinedTools
+                        + "，所以使用前請先確認你接受這些能力。",
+                "LOW",
+                tools,
+                "REVIEW_FIRST");
+    }
+
+    private SecurityReportResponse.RiskReason findingReason(List<SecurityFinding> findings) {
+        var impact = highestSeverity(findings);
+        var evidence = findings.stream()
+                .map(f -> f.issueCode() == null ? f.ruleId() : f.issueCode().code())
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        return new SecurityReportResponse.RiskReason(
+                "FINDINGS_PRESENT",
+                "掃描找到需要查看的項目",
+                "掃描找到需要查看的項目；請先看掃描發現中的檔案、行號與修法。",
+                impact == null ? "LOW" : impact,
+                evidence,
+                "FIX_REQUIRED");
     }
 
     private String highestSeverity(List<SecurityFinding> findings) {

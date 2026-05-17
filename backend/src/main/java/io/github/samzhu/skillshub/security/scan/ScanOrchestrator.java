@@ -2,6 +2,7 @@ package io.github.samzhu.skillshub.security.scan;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -147,7 +148,7 @@ class ScanOrchestrator {
 			Map<String, Object> sarif = sarifReporter.render(analyzers, perEngine, event);
 
 			// 持久化
-			persist(event, finalLevel, allFindings, perEngine, sarif);
+				persist(event, finalLevel, allFindings, initialContext, perEngine, sarif);
 
 			log.info("Scan completed for skill {} v{}: level={}, findings={}",
 					event.aggregateId(), event.version(), finalLevel, allFindings.size());
@@ -301,6 +302,7 @@ class ScanOrchestrator {
 	private void persist(SkillVersionPublishedEvent event,
 			RiskLevel finalLevel,
 			List<SecurityFinding> allFindings,
+			ScanContext ctx,
 			Map<String, AnalysisOutput> perEngine,
 			Map<String, Object> sarif) {
 
@@ -314,8 +316,9 @@ class ScanOrchestrator {
 
 		var riskAssessment = new HashMap<String, Object>();
 		riskAssessment.put("level", finalLevel.name());
-		riskAssessment.put("findings", allFindings);
-		riskAssessment.put("notices", allNotices);
+			riskAssessment.put("findings", allFindings);
+			riskAssessment.put("riskReasons", buildRiskReasons(allFindings, ctx));
+			riskAssessment.put("notices", allNotices);
 		riskAssessment.put("sarif", sarif);
 		riskAssessment.put("scannedAt", Instant.now());
 		// S023 idempotency key — retry 透過此值知道 scan 已完成（per ScanOrchestrator.on Javadoc）
@@ -326,5 +329,98 @@ class ScanOrchestrator {
 						"SkillVersion not found for scan persist: " + event.aggregateId() + " v" + event.version()));
 		sv.attachRiskAssessment(riskAssessment);
 		versionRepo.save(sv);
+	}
+
+	private List<Map<String, Object>> buildRiskReasons(List<SecurityFinding> findings, ScanContext ctx) {
+		var reasons = new ArrayList<Map<String, Object>>();
+		if (findings != null && !findings.isEmpty()) {
+			reasons.add(findingReason(findings));
+		}
+
+		var allowedTools = parseAllowedTools(ctx.frontmatter());
+		if (!allowedTools.isEmpty()) {
+			reasons.add(allowedToolsReason(allowedTools));
+		}
+
+		var scripts = ctx.scripts() == null
+				? List.<String>of()
+				: ctx.scripts().keySet().stream().sorted().toList();
+		if (!scripts.isEmpty()) {
+			reasons.add(scriptsReason(scripts));
+		}
+
+		if (reasons.isEmpty()) {
+			reasons.add(noCapabilitiesReason());
+		}
+		return List.copyOf(reasons);
+	}
+
+	private Map<String, Object> findingReason(List<SecurityFinding> findings) {
+		return Map.of(
+				"code", "FINDINGS_PRESENT",
+				"label", "掃描找到需要查看的項目",
+				"detail", "掃描找到需要查看的項目；請先看掃描發現中的檔案、行號與修法。",
+				"impact", highestSeverity(findings),
+				"evidence", findings.stream()
+						.map(f -> f.issueCode() == null ? f.ruleId() : f.issueCode().code())
+						.filter(java.util.Objects::nonNull)
+						.distinct()
+						.toList(),
+				"action", "FIX_REQUIRED");
+	}
+
+	private Map<String, Object> allowedToolsReason(List<String> tools) {
+		return Map.of(
+				"code", "ALLOWED_TOOLS_DECLARED",
+				"label", "這個技能可以要求 AI 使用工具",
+				"detail", "掃描沒有找到需要修改的問題。不過這個技能可以要求 AI 使用工具：" + String.join("、", tools)
+						+ "，所以使用前請先確認你接受這些能力。",
+				"impact", RiskLevel.LOW.name(),
+				"evidence", tools,
+				"action", "REVIEW_FIRST");
+	}
+
+	private Map<String, Object> scriptsReason(List<String> scripts) {
+		return Map.of(
+				"code", "SCRIPTS_INCLUDED",
+				"label", "這個技能包含 scripts/ 程式檔",
+				"detail", "掃描沒有找到需要修改的問題。不過這個技能包含 scripts/ 程式檔："
+						+ String.join("、", scripts) + "，使用前請先確認你接受這些檔案會被 AI 工作流程使用。",
+				"impact", RiskLevel.LOW.name(),
+				"evidence", scripts,
+				"action", "REVIEW_FIRST");
+	}
+
+	private Map<String, Object> noCapabilitiesReason() {
+		return Map.of(
+				"code", "NO_FINDINGS_NO_CAPABILITIES",
+				"label", "沒有工具宣告或 scripts/",
+				"detail", "未發現安全問題，且這個技能沒有工具宣告或 scripts/。這不代表 100% 安全，只表示 scanner 沒有找到已知問題。",
+				"impact", RiskLevel.NONE.name(),
+				"evidence", List.of(),
+				"action", "DOWNLOAD_OK");
+	}
+
+	private List<String> parseAllowedTools(Map<String, Object> frontmatter) {
+		if (frontmatter == null) return List.of();
+		Object raw = frontmatter.get("allowed-tools");
+		if (raw == null) return List.of();
+		if (raw instanceof List<?> list) {
+			return list.stream()
+					.map(String::valueOf)
+					.map(String::trim)
+					.filter(s -> !s.isBlank())
+					.toList();
+		}
+		return Arrays.stream(raw.toString().split("\\s+"))
+				.map(String::trim)
+				.filter(s -> !s.isBlank())
+				.toList();
+	}
+
+	private String highestSeverity(List<SecurityFinding> findings) {
+		if (findings.stream().anyMatch(f -> f.severity() == Severity.HIGH)) return Severity.HIGH.name();
+		if (findings.stream().anyMatch(f -> f.severity() == Severity.MEDIUM)) return Severity.MEDIUM.name();
+		return Severity.LOW.name();
 	}
 }

@@ -88,11 +88,20 @@ class ScanOrchestratorTest {
 			SkillVersionRepository versionRepo) {}
 
 	private ScanOrchestrator buildOrchestrator(List<SecurityAnalyzer> analyzers, Mocks m) throws IOException {
+		return buildOrchestrator(analyzers, m, Map.of());
+	}
+
+	private ScanOrchestrator buildOrchestrator(
+			List<SecurityAnalyzer> analyzers,
+			Mocks m,
+			Map<String, String> scripts) throws IOException {
 		var storage = mock(StorageService.class);
 		when(storage.download(any())).thenReturn(new byte[0]);
 		var pkg = mock(PackageService.class);
 		when(pkg.extractSkillMd(any())).thenReturn("# md");
-		when(pkg.extractScripts(any())).thenReturn(Map.of());
+		when(pkg.extractScripts(any())).thenReturn(scripts);
+		when(pkg.extractTextFiles(any())).thenReturn(Map.of());
+		when(pkg.listEntryNames(any())).thenReturn(List.of("SKILL.md"));
 		var sarif = new SarifReporter();
 		return new ScanOrchestrator(analyzers, storage, pkg,
 				m.skillRepo, m.versionRepo, sarif);
@@ -111,6 +120,17 @@ class ScanOrchestratorTest {
 		// save 直接 echo argument（aggregate state mutation 在傳入物件上完成）
 		when(versionRepo.save(any(SkillVersion.class))).thenAnswer(inv -> inv.getArgument(0));
 		return new Mocks(skillRepo, versionRepo);
+	}
+
+	private Map<String, Object> savedRiskAssessment(Mocks m) {
+		var captor = ArgumentCaptor.forClass(SkillVersion.class);
+		verify(m.versionRepo, atLeastOnce()).save(captor.capture());
+		return captor.getValue().getRiskAssessment();
+	}
+
+	@SuppressWarnings("unchecked")
+	private List<Map<String, Object>> riskReasons(Map<String, Object> riskAssessment) {
+		return (List<Map<String, Object>>) riskAssessment.get("riskReasons");
 	}
 
 	@Test
@@ -136,6 +156,96 @@ class ScanOrchestratorTest {
 		assertThat(saved.getRiskAssessment()).isNotNull();
 		assertThat(saved.getRiskAssessment().get("level")).isEqualTo("HIGH");
 		assertThat(saved.getRiskAssessment().get("sourceEventId")).isEqualTo(EVT.sourceEventId());
+	}
+
+	@Test
+	@DisplayName("AC-S190-7: package with scripts persists SCRIPTS_INCLUDED risk reason")
+	void packageWithScriptsPersistsScriptsIncludedRiskReason() throws IOException {
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(), m, Map.of(
+				"scripts/check_deps.sh", "#!/bin/sh\nexit 0\n",
+				"scripts/transcribe.py", "print('ok')\n"));
+
+		orch.on(EVT);
+
+		var riskAssessment = savedRiskAssessment(m);
+		assertThat(riskAssessment.get("level")).isEqualTo("LOW");
+		assertThat(riskReasons(riskAssessment)).anySatisfy(reason -> {
+			assertThat(reason.get("code")).isEqualTo("SCRIPTS_INCLUDED");
+			assertThat((List<String>) reason.get("evidence"))
+					.containsExactlyInAnyOrder("scripts/check_deps.sh", "scripts/transcribe.py");
+			assertThat(reason.get("detail").toString()).contains("scripts/");
+		});
+	}
+
+	@Test
+	@DisplayName("AC-S190-1b: allowed-tools-only scan persists ALLOWED_TOOLS_DECLARED risk reason")
+	void allowedToolsOnlyPersistsAllowedToolsRiskReason() throws IOException {
+		var event = SkillVersionPublishedEvent.of("agg-1", "1.0.0", "gs://b/x.zip", 100,
+				Map.of("name", "demo", "allowed-tools", List.of("Read", "Glob", "Bash", "Write")),
+				java.util.List.of());
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(), m);
+
+		orch.on(event);
+
+		var riskAssessment = savedRiskAssessment(m);
+		assertThat(riskAssessment.get("level")).isEqualTo("LOW");
+		assertThat(riskReasons(riskAssessment)).anySatisfy(reason -> {
+			assertThat(reason.get("code")).isEqualTo("ALLOWED_TOOLS_DECLARED");
+			assertThat(reason.get("detail").toString()).contains("這個技能可以要求 AI 使用工具");
+			assertThat((List<String>) reason.get("evidence"))
+					.containsExactly("Read", "Glob", "Bash", "Write");
+		});
+	}
+
+	@Test
+	@DisplayName("AC-S190-3: pure docs scan persists NO_FINDINGS_NO_CAPABILITIES reason")
+	void pureDocsPersistsNoFindingsNoCapabilitiesReason() throws IOException {
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(), m);
+
+		orch.on(EVT);
+
+		var riskAssessment = savedRiskAssessment(m);
+		assertThat(riskAssessment.get("level")).isEqualTo("NONE");
+		assertThat(riskReasons(riskAssessment)).singleElement().satisfies(reason -> {
+			assertThat(reason.get("code")).isEqualTo("NO_FINDINGS_NO_CAPABILITIES");
+			assertThat(reason.get("detail").toString()).contains("未發現安全問題");
+			assertThat(reason.get("action")).isEqualTo("DOWNLOAD_OK");
+		});
+	}
+
+	@Test
+	@DisplayName("AC-S190-4: findings scan persists FINDINGS_PRESENT reason")
+	void findingsPersistFindingsPresentRiskReason() throws IOException {
+		var finding = new SecurityFinding(
+				"W008_HARDCODED_SECRET",
+				SkillIssueCode.W008,
+				Severity.HIGH,
+				"Hardcoded secret",
+				"Remove the secret.",
+				Confidence.HIGH,
+				"SKILL.md",
+				7,
+				"ghp_...1234",
+				"secret",
+				"AST01");
+		var analyzer = fakeAnalyzer("secret", Phase.STATIC, new AnalysisOutput(List.of(finding), List.of()));
+
+		var m = newMocks();
+		var orch = buildOrchestrator(List.of(analyzer), m);
+
+		orch.on(EVT);
+
+		var riskAssessment = savedRiskAssessment(m);
+		assertThat(riskAssessment.get("level")).isEqualTo("HIGH");
+		assertThat(riskReasons(riskAssessment)).anySatisfy(reason -> {
+			assertThat(reason.get("code")).isEqualTo("FINDINGS_PRESENT");
+			assertThat(reason.get("impact")).isEqualTo("HIGH");
+			assertThat((List<String>) reason.get("evidence")).contains("W008");
+			assertThat(reason.get("action")).isEqualTo("FIX_REQUIRED");
+		});
 	}
 
 	@Test

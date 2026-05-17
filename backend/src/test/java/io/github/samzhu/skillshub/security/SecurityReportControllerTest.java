@@ -95,6 +95,40 @@ class SecurityReportControllerTest extends WebMvcSliceTestBase {
     }
 
     @Test
+    @DisplayName("AC-S190-5: GET /security-report JSON exposes riskReasons")
+    void getReport_exposesRiskReasons() throws Exception {
+        var skillId = "skill-s190";
+        var report = new SecurityReportResponse(
+                skillId, "ver-id-1", "1.0.0", Instant.parse("2026-05-17T00:00:00Z"),
+                "risk-scanner v1.0", "2026-05", "pass",
+                Map.of("shell", new SecurityReportResponse.CheckDetail("pass", null)),
+                List.of(),
+                List.of(),
+                List.of(new SecurityReportResponse.RiskReason(
+                        "ALLOWED_TOOLS_DECLARED",
+                        "這個技能可以要求 AI 使用工具",
+                        "掃描沒有找到需要修改的問題。不過這個技能可以要求 AI 使用工具：Bash、Write，所以使用前請先確認你接受這些能力。",
+                        "LOW",
+                        List.of("Bash", "Write"),
+                        "REVIEW_FIRST")));
+
+        when(permissionEvaluator.hasPermission(any(), eq(skillId), eq("Skill"), eq("read")))
+                .thenReturn(true);
+        when(securityReportService.getReport(eq(skillId), any())).thenReturn(report);
+
+        mockMvc.perform(get("/api/v1/skills/{id}/security-report", skillId)
+                        .with(jwt().jwt(j -> j.subject("user-1"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.riskReasons[0].code").value("ALLOWED_TOOLS_DECLARED"))
+                .andExpect(jsonPath("$.riskReasons[0].label").value("這個技能可以要求 AI 使用工具"))
+                .andExpect(jsonPath("$.riskReasons[0].detail").value("掃描沒有找到需要修改的問題。不過這個技能可以要求 AI 使用工具：Bash、Write，所以使用前請先確認你接受這些能力。"))
+                .andExpect(jsonPath("$.riskReasons[0].impact").value("LOW"))
+                .andExpect(jsonPath("$.riskReasons[0].evidence[0]").value("Bash"))
+                .andExpect(jsonPath("$.riskReasons[0].evidence[1]").value("Write"))
+                .andExpect(jsonPath("$.riskReasons[0].action").value("REVIEW_FIRST"));
+    }
+
+    @Test
     @DisplayName("AC-S142b-10: skill 未掃描 → 404 SECURITY_NOT_SCANNED")
     void getReport_notScanned_returns404() throws Exception {
         var skillId = "skill-not-scanned";

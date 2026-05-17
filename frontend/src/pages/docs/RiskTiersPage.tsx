@@ -30,9 +30,9 @@ export function RiskTiersPage() {
         toneBg="rgba(168,164,156,0.10)"
         toneBorder="rgba(168,164,156,0.30)"
         toneText="#A8A49C"
-        title="純文件"
-        body="此技能僅含 SKILL.md，無 scripts/ 或 allowed-tools 宣告，掃描器未發現任何 risk patterns。常見於 prompt-only / reference-only skill。"
-        note="注意：NONE ≠ 100% 安全 — agent 載入後仍會以該 skill 內容為 instruction，故仍須對 description 內容把關。"
+        title="未發現風險"
+        body="掃描結果是 findings=[]，且 package 沒有 scripts/、沒有 allowed-tools。常見於只有 SKILL.md 的 prompt-only / reference-only skill。"
+        note="注意：未發現風險不是安全保證；它只表示 scanner 沒找到已知問題，也沒有看到工具或腳本能力。"
       />
 
       <Tier
@@ -42,7 +42,7 @@ export function RiskTiersPage() {
         toneBorder="rgba(29,158,117,0.30)"
         toneText="#6FD8B0"
         title="自動上架"
-        body="含 scripts 或 allowed-tools 宣告，但未偵測到危險指令。一般 utility / helper / formatter 多落這層；自動上架，公開搜尋可見。"
+        body="掃描結果可以是 findings=[]，但 package 有 scripts/ 或 allowed-tools。安全頁會顯示原因，例如這個技能可以要求 AI 使用 Bash、Write，或 package 內包含 scripts/ 檔案。"
       />
 
       <Tier

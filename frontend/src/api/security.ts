@@ -29,6 +29,16 @@ export interface SecurityFindingSummary {
   evidence: string | null
 }
 
+/** S190 — human-readable reason for the risk tier, separate from fixable findings. */
+export interface SecurityRiskReason {
+  code: string
+  label: string
+  detail: string
+  impact: 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH' | string
+  evidence: string[]
+  action: 'DOWNLOAD_OK' | 'REVIEW_FIRST' | 'FIX_REQUIRED' | string
+}
+
 /**
  * S147-T01 — GET /api/v1/skills/{id}/security-report 的回應 shape。
  * 新版 scanner 以 categories/findings 為主；checks 保留給既有 UI 相容。
@@ -50,6 +60,7 @@ export interface SecurityReport {
   }
   categories: SecurityCategorySummary[]
   findings: SecurityFindingSummary[]
+  riskReasons?: SecurityRiskReason[]
 }
 
 /**

@@ -618,14 +618,18 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         return desc;
     }
 
-    /**
-     * 從 frontmatter Map 解析 {@code allowed-tools} space-separated 字串為 List。
-     * {@link SkillVersion#publish} 同邏輯（v1.5.0 既有；保留 public static 供 SkillCommandService.uploadSkill 透傳）。
-     */
+    /** 從 frontmatter Map 解析 {@code allowed-tools}；支援 YAML list 與 legacy space-separated string。 */
     public static List<String> parseAllowedTools(Map<String, Object> frontmatter) {
         if (frontmatter == null) return List.of();
         var raw = frontmatter.get("allowed-tools");
         if (raw == null) return List.of();
+        if (raw instanceof List<?> list) {
+            return list.stream()
+                    .map(String::valueOf)
+                    .map(String::trim)
+                    .filter(token -> !token.isEmpty())
+                    .toList();
+        }
         var asString = raw.toString().trim();
         if (asString.isEmpty()) return List.of();
         return List.of(asString.split("\\s+"));

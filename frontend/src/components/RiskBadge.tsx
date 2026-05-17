@@ -26,7 +26,7 @@ const TIER_STYLES: Record<RiskLevel, TierStyle> = {
   NONE: {
     bg: 'rgba(29,158,117,0.14)',  // success-soft on dark
     fg: '#6FD8B0',                 // success-text light variant
-    label: '無風險',
+    label: '未發現風險',
     tooltip: '掃描器未發現 known risk patterns。不代表 100% 安全，僅表示未抓到已知威脅指紋。',
   },
   LOW: {

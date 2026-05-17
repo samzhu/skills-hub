@@ -34,7 +34,7 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
       // 觸發 backend security scanner happy path → riskLevel = NONE/LOW
       const skillMd = `---
 name: ac3-publish-helper
-description: AC-3 happy-path E2E 用 — 純 markdown skill，無 scripts，預期低風險上架。
+description: AC-3 happy-path E2E 用 — 純 markdown skill，無 scripts，預期未發現風險上架。
 license: MIT
 ---
 
@@ -53,7 +53,7 @@ Invoke when validating publish flow.
       await page.getByRole('button', { name: '發佈技能' }).click();
     });
 
-    await test.step('Then redirect to validate → 自動 poll → review，顯示 v1 + 低風險 + 已上架', async () => {
+    await test.step('Then redirect to validate → 自動 poll → review，顯示 v1 + 未發現風險 + 已上架', async () => {
       // PublishPage onSuccess 直接 navigate /publish/validate?id=X；
       // PublishValidatePage poll riskLevel until 設值 → /publish/review?id=X
       // (refetchInterval 2s，scanner 通常 < 5s 完成)。最終 URL 含 /publish/review
@@ -62,8 +62,8 @@ Invoke when validating publish flow.
       await page.waitForURL(/\/publish\/review\?id=/, { timeout: 30_000 });
 
       // Risk badge — 必須精確匹配，避免命中 description 文字（"無 script" 等含相同字元組）。
-      // RiskBadge 對 NONE 渲染 `<span data-slot="badge">無風險</span>`；用 exact text 鎖定 badge。
-      await expect(page.getByText('無風險', { exact: true })).toBeVisible();
+      // S190: RiskBadge 對 NONE 渲染「未發現風險」；用 exact text 鎖定 badge。
+      await expect(page.getByText('未發現風險', { exact: true })).toBeVisible();
 
       // S188: blank publish version becomes platform version label v1.
       await expect(page.getByText('v1').first()).toBeVisible();

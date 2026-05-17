@@ -28,7 +28,7 @@
 - 「掃過 + 上架後」即視為 verified
 - 對應規則：`verified = (status === 'PUBLISHED' && riskLevel != null)`
 - 含 MEDIUM/HIGH 也算 verified（Risk pill 另獨立顯示風險等級）
-- 語義意義：「我們確實檢查過」≠「無風險」
+- 語義意義：「我們確實檢查過」不是安全保證
 
 ### Q2：Star 按鈕
 - = 既有 Subscribe（S125）功能，純換 icon 為 ⭐
@@ -124,7 +124,7 @@
 ### D1：Verified pill 範圍
 - 工程採：`verified = (status === 'PUBLISHED' && riskLevel != null)`
 - 包含 MEDIUM/HIGH risk 也算 verified（Risk pill 另獨立表達風險等級）
-- 語義：「我們確實檢查過」≠「無風險」
+- 語義：「我們確實檢查過」不是安全保證
 
 ### D3：Quality 404 fallback
 - 工程採：SKILL SCORE hexagon 顯「—」+「評分計算中」字
