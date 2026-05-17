@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-17（S162b 查證後 no-op 關閉；S178 關閉並由 S189 乾淨承接；S186/S185 shipped；S185 production deploy/recheck PASS；deploy script manifest parity fixed；S188-T01-T04 PASS；下一步接 S188 shipping-release / production deploy recheck）
+> 最後更新：2026-05-17（S188 shipped v4.68.0；version blank publish now creates v1/v2 numeric labels；verify-all.sh 全綠；production deploy/recheck pending same automation tick）
 
 ## 使用說明
 
@@ -45,7 +45,7 @@
 | S180 | Skill public native readback hotfix（`skills.is_public` native image 讀回不再把 Boolean 塞進 primitive boolean） | XS(3) | S168 ✅, S177 ✅ | ⏳ blocked — latest revision log recheck clean；logged-in Chrome UI verification unavailable in Codex ticks |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S187 | Skill SKILL.md 編輯頁（詳情頁 edit 導向 `/skills/{id}/edit`；版本頁籤只顯示紀錄；description 來自 latest SKILL.md） | M(13) | S142a ✅, S163 ✅, S176 ✅, S186 ✅, S188 ordering-only | 📐 in-design — UI scope split from S186；spec §1-5 ready for review；version input optional behavior delegated to S188 |
-| S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | S(8) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ⏳ Dev — T01-T04 PASS；下一步 shipping-release / production deploy recheck |
+| S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；production deploy/recheck pending |
 | S189 | Browse 搜尋入口驗證與收版（S178 superseded；重新驗證 `/browse` semantic-only contract、遷移 evidence tag、乾淨 ship） | S(9) | S186 required, S187 ordering-only | 📐 in-design — carry-over verification & ship；排在 S187 後，避免搜尋 cleanup 與 edit page 主線混雜 |
 
 ---
@@ -87,6 +87,7 @@
 | v4.64.0 | S175 + S181 (native scan binding + state-conflict observability) | ✅ shipped 2026-05-16 — S175 production upload/scan PASS；S181 409 observability + full-suite stability PASS；`verify-all.sh` 全綠 |
 | v4.65.0 | S183 + S184 (Security findings UI + visibility command contract) | ✅ shipped 2026-05-16 — S183 risk lights/findings UI + S184 empty-response/visibility command；`verify-all.sh` 全綠 |
 | v4.66.0 | S186 (Skill embedding 同表化) | ✅ shipped 2026-05-17 — semantic search reads `skills.embedding` / same-row visibility + ACL；`verify-all.sh` 全綠；production deploy deferred |
+| v4.68.0 | S188 (Version Label Auto Sequence) | ✅ shipped 2026-05-17 — blank version creates `1` / next numeric label；custom safe labels retained；`verify-all.sh` 全綠；production deploy/recheck pending |
 
 ---
 

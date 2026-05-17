@@ -1,6 +1,6 @@
 # S188: 版本標籤可自訂與自動流水號
 
-> 規格：S188 | 大小：S(8) | 狀態：⏳ Dev（T01-T04 PASS；待 shipping-release / production deploy recheck）
+> 規格：S188 | 大小：M(14) | 狀態：✅ Shipped v4.68.0
 > 日期：2026-05-16
 > 對應：PRD P2 技能發佈流程 / S003 skill upload versioning / S056 version semver validation / S187 Skill SKILL.md 編輯頁
 > 執行前置：S003/S004/S024/S056/S163/S176 已 ship；S187 是 ordering-only，S188 可先於 S187 實作，讓 edit page 直接沿用 optional version contract。
@@ -461,4 +461,29 @@ Verification:
 Result:
 - Current user-facing docs describe platform `version` as a Version Label, not a required SemVer value.
 - UI display tests now cover numeric labels (`1`, `2`, `3`) and one custom label (`2026.05-hotfix`), so browse cards, detail header, Versions tab, diff page, collection modal, and download filename display do not assume semver parsing.
-- S188 implementation tasks are complete; next step is shipping-release, archive, production deploy/recheck, then stopping `skills-hub-production-debug-loop`.
+- S188 implementation tasks are complete.
+
+### S188 Shipping Gate — PASS（2026-05-17）
+
+Files:
+- `e2e/tests/S140-critical-path-publish.spec.ts`
+
+Verification:
+- RED：`./scripts/verify-all.sh` failed at V07 because `S140-critical-path-publish.spec.ts` still expected `v1.0.0` after publish; the S188 runtime correctly created and displayed platform version label `v1`.
+- GREEN：`cd e2e && npx playwright test --grep @happy-path` passed; Playwright printed `9 passed`.
+- GREEN：`./scripts/verify-all.sh` passed after the E2E expectation update; script printed `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS` and `Verdict: ✅ all CRITICAL passed; exit=0`.
+
+Result:
+- The critical-path publish E2E now asserts the shipped S188 behavior: blank platform version input creates visible `v1`.
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 2 | The core API was simple, but the old semver assumption also lived in backend validation, frontend forms, docs, display tests, and S140 E2E. |
+| Uncertainty | 1 | 1 | Requirements stayed concrete: blank version creates `1` / next numeric label, custom safe labels remain allowed. |
+| Dependencies | 1 | 3 | Final release depended on shipped upload/versioning behavior plus the S140 Playwright critical-path gate and Docker-backed local environment. |
+| Scope | 2 | 3 | Implementation touched backend command/domain code, frontend API/forms/docs/display tests, PRD/glossary/architecture notes, and one critical-path E2E. |
+| Testing | 2 | 3 | Verification required backend tests, frontend tests/typecheck, Playwright happy-path, processAot, and bootBuildImage via `verify-all.sh`. |
+| Reversibility | 1 | 2 | The behavior changes a published API contract and existing platform version semantics, but no schema migration or data rewrite was needed. |
+| **Total** | **8 / S** | **14 / M** | Bucket shift S→M; root cause: semver assumptions were wider than the initial backend/frontend form scope. |

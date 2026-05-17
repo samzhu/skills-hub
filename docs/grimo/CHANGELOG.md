@@ -1,5 +1,27 @@
 # Changelog
 
+## [v4.68.0] — S188 Version Label Auto Sequence（2026-05-17）
+
+### Changed
+
+- **Version label contract** — `POST /api/v1/skills/upload` and `PUT /api/v1/skills/{id}/versions` now accept a missing or blank `version`; the backend creates `1` for a new skill and the next pure numeric label for later versions.
+- **Custom safe labels** — authors can still provide safe custom labels such as `1.0.0`, `2026.05-hotfix`, or `release-1`; duplicate labels still return 409 and unsafe path-like labels return 400 before storage upload.
+- **Frontend publish flow** — `/publish` and the existing add-version form no longer require or prefill a semver value; blank version submissions omit the `version` FormData field.
+- **Version docs/display** — current UI docs and display tests now describe `version` as a Version Label and cover `v1`, `v2`, and `v2026.05-hotfix` without semver parsing assumptions.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.5%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Targeted evidence：`VersionLabelPolicyTest` covers blank initial/next numeric/custom/unsafe labels；backend upload/controller tests cover optional request params, storage path `skills/{skillId}/1/skill.zip`, duplicate 409, unsafe 400；frontend tests confirm blank version is not appended to `FormData` and UI displays numeric/custom labels.
+- E2E release fix：the first full gate failed because S140 AC-3 still expected `v1.0.0`; `e2e/tests/S140-critical-path-publish.spec.ts` now leaves the platform version blank and expects `v1`; `cd e2e && npx playwright test --grep @happy-path` passed with `9 passed`.
+- Production deploy：pending in the same automation tick after this release commit.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-16-S188-version-label-auto-sequence.md` → `docs/grimo/specs/archive/2026-05-16-S188-version-label-auto-sequence.md`
+- `docs/grimo/tasks/2026-05-17-S188-*.md` 已刪除。
+- Final size re-score：S(8) → M(14)，原因是 semver 假設不只在 backend/frontend form，還擴散到現行 docs、display tests、S140 Playwright gate 與 full release image gate。
+
 ## [v4.67.0] — S185 Skill List / Detail Projection Consistency（2026-05-17）
 
 ### Fixed

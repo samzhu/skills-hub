@@ -35,7 +35,6 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
       const skillMd = `---
 name: ac3-publish-helper
 description: AC-3 happy-path E2E 用 — 純 markdown skill，無 scripts，預期低風險上架。
-version: 1.0.0
 license: MIT
 ---
 
@@ -45,7 +44,7 @@ This skill is used by S140 AC-3 happy-path verification.
 Invoke when validating publish flow.
 `;
       await page.getByPlaceholder(/name: my-skill/).fill(skillMd);
-      // 版本 input 已預填 1.0.0 — 不動
+      // S188: platform version input starts blank; backend creates version label "1".
       await page.getByPlaceholder('DevOps').fill('Testing');
       // author 預填 lab-user（自動填入 useMe.sub）— 不動
 
@@ -54,7 +53,7 @@ Invoke when validating publish flow.
       await page.getByRole('button', { name: '發佈技能' }).click();
     });
 
-    await test.step('Then redirect to validate → 自動 poll → review，顯示 v1.0.0 + 低風險 + 已上架', async () => {
+    await test.step('Then redirect to validate → 自動 poll → review，顯示 v1 + 低風險 + 已上架', async () => {
       // PublishPage onSuccess 直接 navigate /publish/validate?id=X；
       // PublishValidatePage poll riskLevel until 設值 → /publish/review?id=X
       // (refetchInterval 2s，scanner 通常 < 5s 完成)。最終 URL 含 /publish/review
@@ -66,8 +65,8 @@ Invoke when validating publish flow.
       // RiskBadge 對 NONE 渲染 `<span data-slot="badge">無風險</span>`；用 exact text 鎖定 badge。
       await expect(page.getByText('無風險', { exact: true })).toBeVisible();
 
-      // 版本 v1.0.0 visible (hero version pill or stepper "上架" step done)
-      await expect(page.getByText('v1.0.0').first()).toBeVisible();
+      // S188: blank publish version becomes platform version label v1.
+      await expect(page.getByText('v1').first()).toBeVisible();
 
       // PublishReviewPage 顯示「上傳成功」/「已上架」/「上架」字眼之一
       await expect(page.getByText(/上[傳架]成功|已上架|上架/).first()).toBeVisible();
