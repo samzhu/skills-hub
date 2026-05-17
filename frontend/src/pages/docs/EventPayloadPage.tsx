@@ -38,12 +38,12 @@ export function EventPayloadPage() {
       <Event
         type="SkillPublished"
         body="新 skill 第一次成功 publish"
-        payload={`{ "skillId": "uuid", "name": "...", "author": "...", "version": "1.0.0", "riskLevel": "LOW" }`}
+        payload={`{ "skillId": "uuid", "name": "...", "author": "...", "version": "1", "riskLevel": "LOW" }`}
       />
       <Event
         type="VersionPublished"
         body="既有 skill 新增版本（不論首版或後續）"
-        payload={`{ "skillId": "uuid", "version": "1.1.0", "fileSize": 84321, "previousVersion": "1.0.0" }`}
+        payload={`{ "skillId": "uuid", "version": "2", "fileSize": 84321, "previousVersion": "1" }`}
       />
       <Event
         type="SkillRiskAssessed"
@@ -63,7 +63,7 @@ export function EventPayloadPage() {
       <Event
         type="SkillDownloaded"
         body="既有 download 計數事件；30d trend 由此 projection 而來"
-        payload={`{ "skillId": "uuid", "version": "1.0.0", "downloaderId": "..." }`}
+        payload={`{ "skillId": "uuid", "version": "1", "downloaderId": "..." }`}
       />
 
       <Callout>

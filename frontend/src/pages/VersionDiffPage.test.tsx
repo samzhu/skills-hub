@@ -20,15 +20,15 @@ const skillJson = {
   riskLevel: 'LOW',
   status: 'PUBLISHED',
   downloadCount: 10,
-  latestVersion: '1.2.0',
+  latestVersion: '3',
   createdAt: '2026-04-01T00:00:00Z',
   updatedAt: '2026-04-01T00:00:00Z',
 }
 
 const versionsJson = [
-  { id: 'v3', skillId: 'skill-1', version: '1.2.0', fileSize: 12000, publishedAt: '2026-04-15T00:00:00Z' },
-  { id: 'v2', skillId: 'skill-1', version: '1.1.0', fileSize: 10000, publishedAt: '2026-04-08T00:00:00Z' },
-  { id: 'v1', skillId: 'skill-1', version: '1.0.0', fileSize: 8000, publishedAt: '2026-04-01T00:00:00Z' },
+  { id: 'v3', skillId: 'skill-1', version: '3', fileSize: 12000, publishedAt: '2026-04-15T00:00:00Z' },
+  { id: 'v2', skillId: 'skill-1', version: '2', fileSize: 10000, publishedAt: '2026-04-08T00:00:00Z' },
+  { id: 'v1', skillId: 'skill-1', version: '1', fileSize: 8000, publishedAt: '2026-04-01T00:00:00Z' },
 ]
 
 const renderPage = (search = '') => {
@@ -46,8 +46,8 @@ const renderPage = (search = '') => {
 
 const diffJson = {
   skillId: 'skill-1',
-  from: { version: '1.1.0', publishedAt: '2026-04-08T00:00:00Z', fileSize: 10000, fileCount: 5 },
-  to: { version: '1.2.0', publishedAt: '2026-04-15T00:00:00Z', fileSize: 12000, fileCount: 6 },
+  from: { version: '2', publishedAt: '2026-04-08T00:00:00Z', fileSize: 10000, fileCount: 5 },
+  to: { version: '3', publishedAt: '2026-04-15T00:00:00Z', fileSize: 12000, fileCount: 6 },
   fields: [
     { field: 'description', fromValue: '舊描述', toValue: '新描述', changeType: 'changed' },
     { field: 'allowedTools', fromValue: null, toValue: 'bash:read_file', changeType: 'added' },
@@ -56,8 +56,8 @@ const diffJson = {
 
 const fileListDiffJson = {
   skillId: 'skill-1',
-  fromVersion: '1.1.0',
-  toVersion: '1.2.0',
+  fromVersion: '2',
+  toVersion: '3',
   addedCount: 1,
   removedCount: 0,
   modifiedCount: 0,
@@ -106,23 +106,23 @@ describe('VersionDiffPage — S098c', () => {
       // skill name in h1
       expect(screen.getByText('date-formatter')).toBeInTheDocument()
     })
-    // 預設 to=最新 (1.2.0), from=次新 (1.1.0)；version codes 在 hero text + cards 都會出現
-    expect(screen.getAllByText(/v1\.2\.0/).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/v1\.1\.0/).length).toBeGreaterThan(0)
+    // 預設 to=最新 (3), from=次新 (2)；version labels 在 hero text + cards 都會出現
+    expect(screen.getAllByText(/v3/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/v2/).length).toBeGreaterThan(0)
   })
 
   it('AC-2: query params override default from/to', async () => {
-    renderPage('?from=1.0.0&to=1.2.0')
+    renderPage('?from=1&to=3')
     await waitFor(() => {
       expect(screen.getByText('date-formatter')).toBeInTheDocument()
     })
-    // 應顯 v1.0.0 + v1.2.0 為比對對；v1.1.0 也在 selector chips 但不是 from/to
-    expect(screen.getAllByText(/v1\.0\.0/).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/v1\.2\.0/).length).toBeGreaterThan(0)
+    // 應顯 v1 + v3 為比對對；v2 也在 selector chips 但不是 from/to
+    expect(screen.getAllByText(/v1/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/v3/).length).toBeGreaterThan(0)
   })
 
   it('AC-4: S098c2 diff fields rendered from /diff API response', async () => {
-    renderPage('?from=1.1.0&to=1.2.0')
+    renderPage('?from=2&to=3')
     await waitFor(() => {
       expect(screen.getByText('date-formatter')).toBeInTheDocument()
     })
@@ -137,7 +137,7 @@ describe('VersionDiffPage — S098c', () => {
   })
 
   it('AC-3-S098c3: FileListDiffPanel renders added file from /file-list-diff response', async () => {
-    renderPage('?from=1.1.0&to=1.2.0')
+    renderPage('?from=2&to=3')
     await waitFor(() => {
       expect(screen.getByText('date-formatter')).toBeInTheDocument()
     })

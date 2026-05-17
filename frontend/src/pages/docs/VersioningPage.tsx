@@ -14,28 +14,29 @@ export function VersioningPage() {
       </p>
       <h1 className="text-[30px] font-semibold tracking-tight text-[#EEECEA]">版本管理</h1>
       <p className="mt-3 text-[18px] leading-relaxed text-[#A8A49C]">
-        Skills Hub 採 SemVer 約定。每個 skill 有唯一 (org, name) — 同名重新發佈
-        即新增版本而非建新 skill；舊版本保留可下載，作者可在技能詳情頁的「版本歷史」
+        Skills Hub 使用版本標籤管理每次發佈。上傳時版本號可留白；首版留白會建立
+        <code className="mx-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">1</code>，
+        後續留白會建立同一 skill 內下一個純數字流水號。舊版本保留可下載，作者可在技能詳情頁的「版本歷史」
         tab 看完整版本列表，並用「比較版本變化」進入 diff 頁。
       </p>
 
-      <H2>版本號規則</H2>
+      <H2>版本標籤規則</H2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-[16px] text-[#A8A49C]">
-        <li>格式：<code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">MAJOR.MINOR.PATCH</code>（如 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">1.0.0</code>），或附 pre-release tag（<code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">2.0.0-rc.1</code>）</li>
-        <li>新版本號必須 strictly &gt; 既有最新版（避免時光倒流）</li>
-        <li>同 skill 任意 commit 不可重用既有版本號 — 系統會 reject</li>
+        <li>可留白；系統會自動建立 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">1</code>、<code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">2</code>、<code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">3</code> 這類流水號</li>
+        <li>也可自訂，例如 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">2026.05-hotfix</code>、<code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">release-1</code></li>
+        <li>自訂標籤只能用英文字母、數字、點、底線、連字號，最多 20 字元；同一 skill 不能重用既有標籤</li>
       </ul>
 
       <H2>升版時機</H2>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-[16px] text-[#A8A49C]">
-        <li><strong className="text-[#EEECEA]">PATCH</strong>：description 微調 / 範例補充 / typo / 非 breaking 的 prompt 加強</li>
-        <li><strong className="text-[#EEECEA]">MINOR</strong>：加 optional 欄位 / 新功能但向後相容 / scripts/ 加新工具但既有皆可用</li>
-        <li><strong className="text-[#EEECEA]">MAJOR</strong>：rename / breaking 行為改變 / 移除既有 scripts / 改 description 致 agent invocation logic 變化</li>
+        <li><strong className="text-[#EEECEA]">小幅修改</strong>：description 微調、範例補充、typo、非 breaking 的 prompt 加強</li>
+        <li><strong className="text-[#EEECEA]">功能新增</strong>：加 optional 欄位、新功能但向後相容、scripts/ 加新工具但既有皆可用</li>
+        <li><strong className="text-[#EEECEA]">破壞性修改</strong>：rename、移除既有 scripts、改 description 致 agent invocation logic 變化；建議自訂清楚標籤</li>
       </ul>
 
       <Callout>
         舊版本不會被刪除 — consumer 可指定版本下載：
-        <code className="ml-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">/api/v1/skills/{'{id}'}/versions/1.0.0/download</code>
+        <code className="ml-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">/api/v1/skills/{'{id}'}/versions/1/download</code>
       </Callout>
 
       <H2>停用 / 下架</H2>

@@ -46,8 +46,8 @@ export function RestApiPage() {
       <EndpointGroup
         rows={[
           { method: 'POST', path: '/api/v1/skills', note: 'JSON body 建立 skill（測試/seed 用）；正式發佈用 /upload' },
-          { method: 'POST', path: '/api/v1/skills/upload', note: 'multipart：file + version + author + category；回 201 + new id' },
-          { method: 'PUT', path: '/api/v1/skills/{id}/versions', note: '為既有 skill 新增版本（multipart：file + version）；@PreAuthorize write' },
+          { method: 'POST', path: '/api/v1/skills/upload', note: 'multipart：file + skillName + category + optional version；回 201 + new id' },
+          { method: 'PUT', path: '/api/v1/skills/{id}/versions', note: '為既有 skill 新增版本（multipart：file + optional version）；@PreAuthorize write' },
           { method: 'POST', path: '/api/v1/skills/{id}/suspend', note: 'admin 停用 skill；@PreAuthorize suspend；body: { reason }' },
           { method: 'POST', path: '/api/v1/skills/{id}/reactivate', note: 'admin 恢復 SUSPENDED skill 為 PUBLISHED；@PreAuthorize reactivate' },
         ]}

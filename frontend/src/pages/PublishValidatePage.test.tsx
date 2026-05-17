@@ -34,7 +34,7 @@ const skillScanning: {
   riskLevel: null,
   status: 'PUBLISHED',
   downloadCount: 0,
-  latestVersion: '1.0.0',
+  latestVersion: '1',
   createdAt: '2026-04-01T00:00:00Z',
   updatedAt: '2026-04-01T00:00:00Z',
 }
@@ -103,7 +103,7 @@ describe('PublishValidatePage — S098a', () => {
     renderWith('?id=skill-1', skillScanning)
     await waitFor(() => {
       // S098a3: filename derived from skill.name + version
-      expect(screen.getByText('date-formatter-1.0.0.zip')).toBeInTheDocument()
+      expect(screen.getByText('date-formatter-1.zip')).toBeInTheDocument()
     })
     expect(screen.getByText('✓ 已上傳')).toBeInTheDocument()
   })

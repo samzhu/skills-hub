@@ -158,9 +158,9 @@ Scenario: 下載最新版本
   And zip 解壓後就是完整的 skill 資料夾結構
 
 Scenario: 下載指定版本
-  Given 使用者在版本歷史中選擇 v1.0.0
+  Given 使用者在版本歷史中選擇 v1
   When 點擊該版本的下載按鈕
-  Then 下載 v1.0.0 的 zip 檔
+  Then 下載 v1 的 zip 檔
 
 Scenario: 下載頁面提供安裝指引
   Given 使用者下載了 skill zip 檔

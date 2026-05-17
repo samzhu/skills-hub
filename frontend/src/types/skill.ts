@@ -59,7 +59,7 @@ export interface Skill {
   category: string
   /** S159b Round 2 — 分類 display 名稱（保留原 CamelCase 如 "DevOps"）；舊資料可能 null，UI 用 `categoryLabel(skill)` 取（fallback `capitalize(category)`）。 */
   categoryDisplay?: string | null
-  /** 最新版本號（SemVer），尚未發佈任何版本時為 null */
+  /** 最新版本標籤；尚未發佈任何版本時為 null */
   latestVersion: string | null
   /** 風險評估結果；尚未評估時為 null */
   riskLevel: RiskLevel | null
@@ -164,7 +164,7 @@ export interface SkillVersion {
   id: string
   /** 所屬技能的聚合根識別碼 */
   skillId: string
-  /** 語意化版本號（SemVer，如 1.0.0） */
+  /** 版本標籤；可為系統流水號（如 1、2）或作者自訂安全字串 */
   version: string
   /** 套件的位元組大小（bytes） */
   fileSize: number

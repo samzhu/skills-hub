@@ -226,7 +226,7 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
     expect(screen.getByText(/平台列表顯示名稱，可和 SKILL\.md 裡的 name 不同/)).toBeInTheDocument()
   })
 
-  it('AC-S188-5: 版本欄位可留白，沒有 required / semver pattern', () => {
+  it('AC-S188-5: 版本欄位可留白，沒有 required / 固定格式 pattern', () => {
     renderPublishPage()
 
     const versionInput = screen.getByLabelText('版本號') as HTMLInputElement

@@ -21,7 +21,7 @@ const mockUseAuth = vi.mocked(useAuthModule.useAuth)
 
 const baseSkill: Skill = {
   id: 's1', name: 'My Skill', description: 'A test skill', author: 'alice',
-  category: 'AI', latestVersion: '1.0.0', riskLevel: 'LOW',
+  category: 'AI', latestVersion: '2', riskLevel: 'LOW',
   status: 'PUBLISHED', downloadCount: 100, averageRating: 4.5, reviewCount: 10,
   visibility: 'PUBLIC',
   createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-05-04T00:00:00Z',
@@ -67,6 +67,12 @@ describe('PageHeader', () => {
     renderHeader()
     expect(screen.getByTestId('verified-pill')).toBeTruthy()
     expect(screen.getByText('已驗證')).toBeTruthy()
+  })
+
+  it('AC-S188-7: header 顯示數字版本標籤', () => {
+    setupMocks()
+    renderHeader()
+    expect(screen.getByText('v2')).toBeTruthy()
   })
 
   it('AC-S142a-2: verified=false → no verified-pill', () => {

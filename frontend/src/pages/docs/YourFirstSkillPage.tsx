@@ -56,7 +56,6 @@ name: date-formatter
 description: Convert between common date formats. Use when the
   user pastes a date string and asks to reformat, or
   when producing structured date output.
-version: 1.0.0
 license: MIT
 ---
 

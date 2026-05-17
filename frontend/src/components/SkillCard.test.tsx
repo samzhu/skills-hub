@@ -10,7 +10,7 @@ const mockSkill: Skill = {
   description: 'Kubernetes 排錯助理 — 自動分析 Pod 失敗、Service 未連通與 Ingress 設定錯誤的常見根因。',
   author: 'samzhu',
   category: '雲端維運',
-  latestVersion: '0.3.1',
+  latestVersion: '2',
   riskLevel: 'LOW',
   status: 'PUBLISHED',
   visibility: 'PUBLIC',
@@ -44,9 +44,9 @@ describe('AC-2: SkillCard 渲染', () => {
     expect(screen.getByText('雲端維運')).toBeInTheDocument()
   })
 
-  it('latestVersion 顯示為 `v{semver}` 格式', () => {
+  it('AC-S188-7: latestVersion 顯示版本標籤，不假設固定格式', () => {
     renderCard(mockSkill)
-    expect(screen.getByText('v0.3.1')).toBeInTheDocument()
+    expect(screen.getByText('v2')).toBeInTheDocument()
   })
 
   it('latestVersion 為 null 不渲染版本 span', () => {

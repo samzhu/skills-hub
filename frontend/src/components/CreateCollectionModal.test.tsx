@@ -21,7 +21,7 @@ const publishedSkills = [
     category: 'Research',
     status: 'PUBLISHED',
     riskLevel: 'LOW',
-    latestVersion: '1.0.0',
+    latestVersion: '1',
     downloadCount: 0,
     createdAt: '2026-05-01T00:00:00Z',
     updatedAt: '2026-05-01T00:00:00Z',
@@ -34,7 +34,7 @@ const publishedSkills = [
     category: 'DevOps',
     status: 'PUBLISHED',
     riskLevel: 'MEDIUM',
-    latestVersion: '2.1.0',
+    latestVersion: '2026.05-hotfix',
     downloadCount: 0,
     createdAt: '2026-05-01T00:00:00Z',
     updatedAt: '2026-05-01T00:00:00Z',
@@ -121,7 +121,7 @@ describe('CreateCollectionModal — S172 my-skills picker', () => {
     fireEvent.click(screen.getByRole('button', { name: '移除 deep-research' }))
 
     expect(screen.queryByTestId('selected-skills-list')).not.toHaveTextContent('deep-research')
-    expect(screen.getByLabelText('新增技能')).toHaveTextContent('deep-research · Research · v1.0.0')
+    expect(screen.getByLabelText('新增技能')).toHaveTextContent('deep-research · Research · v1')
   })
 
   it('AC-S172-12: submit sends selected skill ids without UUID textarea', async () => {

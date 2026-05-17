@@ -155,7 +155,7 @@ export function PublishPage() {
                   <textarea
                     value={skillMdText}
                     onChange={(e) => setSkillMdText(e.target.value)}
-                    placeholder={`---\nname: my-skill\ndescription: 一段精煉描述「skill 做什麼 + agent 何時該呼叫」\nversion: 1.0.0\nlicense: MIT\n---\n\n# My Skill\n\nInvoke this skill when ...`}
+                    placeholder={`---\nname: my-skill\ndescription: 一段精煉描述「skill 做什麼 + agent 何時該呼叫」\nlicense: MIT\n---\n\n# My Skill\n\nInvoke this skill when ...`}
                     required
                     rows={14}
                     className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-[12.5px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:border-[rgba(255,255,255,0.20)] focus:outline-none"

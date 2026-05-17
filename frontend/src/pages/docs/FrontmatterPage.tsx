@@ -42,7 +42,7 @@ export function FrontmatterPage() {
       <H2>選填</H2>
       <FieldTable
         rows={[
-          { name: 'version', type: 'string', limit: 'SemVer 慣例', note: '不寫的話 publish 時提示填' },
+          { name: 'version', type: 'string', limit: '選填 metadata', note: 'SKILL.md 自帶 metadata；平台發佈版本標籤在 /publish 另填，也可留白自動產生' },
           { name: 'author', type: 'string', limit: '—', note: '署名；可為個人 / team 名' },
           { name: 'license', type: 'string', limit: 'SPDX ID（如 MIT）', note: '建議填 — 顯示於 detail page' },
           { name: 'compatibility', type: 'array<string>', limit: '—', note: '宣告相容 agent（如 ["claude-code", "cursor"]）' },

@@ -1,6 +1,6 @@
 # S188: 版本標籤可自訂與自動流水號
 
-> 規格：S188 | 大小：S(8) | 狀態：⏳ Plan
+> 規格：S188 | 大小：S(8) | 狀態：⏳ Dev（T01-T04 PASS；待 shipping-release / production deploy recheck）
 > 日期：2026-05-16
 > 對應：PRD P2 技能發佈流程 / S003 skill upload versioning / S056 version semver validation / S187 Skill SKILL.md 編輯頁
 > 執行前置：S003/S004/S024/S056/S163/S176 已 ship；S187 是 ordering-only，S188 可先於 S187 實作，讓 edit page 直接沿用 optional version contract。
@@ -346,7 +346,7 @@ Input 調整：
 | [S188-T01 Backend VersionLabelPolicy](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T01-backend-version-label-policy.md) | PASS | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4 | `VersionLabelPolicyTest` 驗空白首版、下一號、自訂標籤與 unsafe label。 |
 | [S188-T02 Backend Optional Version API](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T02-backend-api-optional-version.md) | PASS | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4 | `/upload` 與 `/{id}/versions` 不送 version 時能寫 DB / storage；duplicate 與 unsafe label 有正確錯誤。 |
 | [S188-T03 Frontend Optional Version Forms](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T03-frontend-optional-version.md) | PASS | AC-S188-5, AC-S188-6 | `/publish` 與新增版本表單 blank version 不 append `version`，也不被 required/pattern 擋住。 |
-| [S188-T04 Version Label Display, Docs, and Full Verify](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T04-display-docs-and-full-verify.md) | pending | AC-S188-7 + full spec verify | UI / docs 不再用 semver-only 文案；跑 backend/frontend S188 相關驗證並整理 §7。 |
+| [S188-T04 Version Label Display, Docs, and Full Verify](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T04-display-docs-and-full-verify.md) | PASS | AC-S188-7 + full spec verify | UI / docs 不再用 semver-only 文案；跑 backend/frontend S188 相關驗證並整理 §7。 |
 
 ### 6.1 POC Decision
 
@@ -427,3 +427,38 @@ Result:
 
 Next:
 - S188-T04 removes remaining semver-only display/doc assumptions and runs full S188 verification.
+
+### S188-T04 Version Label Display, Docs, and Full Verify — PASS（2026-05-17）
+
+Files:
+- `docs/grimo/PRD.md`
+- `docs/grimo/tasks/2026-05-17-S188-T04-display-docs-and-full-verify.md`
+- `frontend/src/types/skill.ts`
+- `frontend/src/pages/PublishPage.tsx`
+- `frontend/src/pages/docs/VersioningPage.tsx`
+- `frontend/src/pages/docs/FrontmatterPage.tsx`
+- `frontend/src/pages/docs/UploadValidatePage.tsx`
+- `frontend/src/pages/docs/RestApiPage.tsx`
+- `frontend/src/pages/docs/EventPayloadPage.tsx`
+- `frontend/src/pages/docs/YourFirstSkillPage.tsx`
+- `frontend/src/components/SkillCard.test.tsx`
+- `frontend/src/components/VersionList.test.tsx`
+- `frontend/src/components/v2/PageHeader.test.tsx`
+- `frontend/src/components/v2/tabs/VersionsTabV2.test.tsx`
+- `frontend/src/pages/VersionDiffPage.test.tsx`
+- `frontend/src/components/CreateCollectionModal.test.tsx`
+- `frontend/src/pages/PublishValidatePage.test.tsx`
+- `frontend/src/pages/PublishPage.test.tsx`
+
+Verification:
+- RED：`rg -n "semver|SemVer|MAJOR\\.MINOR\\.PATCH|1\\.0\\.0|1\\.1\\.0|格式.*版本|必填.*版本|version: 1\\.0\\.0|v1\\.0\\.0|v1\\.1\\.0" frontend/src docs/grimo/PRD.md docs/grimo/glossary.md docs/grimo/architecture.md docs/grimo/specs/2026-05-16-S188-version-label-auto-sequence.md docs/grimo/tasks/2026-05-17-S188-T04-display-docs-and-full-verify.md` found current docs and display tests still assuming semver examples or `1.0.0`.
+- GREEN：`cd frontend && npm test -- SkillCard.test.tsx PageHeader.test.tsx VersionsTabV2.test.tsx VersionList.test.tsx VersionDiffPage.test.tsx CreateCollectionModal.test.tsx PublishValidatePage.test.tsx PublishPage.test.tsx` passed; Vitest printed `Test Files 8 passed` and `Tests 63 passed`.
+- GREEN：`cd frontend && npm run typecheck` passed.
+- GREEN：`cd backend && ./gradlew test --tests '*VersionLabel*' --tests '*SkillCommand*' --tests '*SkillUpload*'` passed; Gradle printed `BUILD SUCCESSFUL in 2m 25s`.
+- GREEN：`cd frontend && npm test -- --run` passed; Vitest printed `Test Files 79 passed` and `Tests 450 passed`.
+- GREEN：`rg -n "semver|SemVer|MAJOR\\.MINOR\\.PATCH|格式.*版本|必填.*版本|version: 1\\.0\\.0|v1\\.0\\.0|v1\\.1\\.0" frontend/src docs/grimo/PRD.md docs/grimo/glossary.md docs/grimo/architecture.md | rg -v "MVP v1\\.0\\.0|Phase 1 v1\\.1\\.0|PostgreSQL migration"` printed no matches.
+
+Result:
+- Current user-facing docs describe platform `version` as a Version Label, not a required SemVer value.
+- UI display tests now cover numeric labels (`1`, `2`, `3`) and one custom label (`2026.05-hotfix`), so browse cards, detail header, Versions tab, diff page, collection modal, and download filename display do not assume semver parsing.
+- S188 implementation tasks are complete; next step is shipping-release, archive, production deploy/recheck, then stopping `skills-hub-production-debug-loop`.
