@@ -47,7 +47,7 @@
 | S189 | Browse 搜尋入口驗證與收版（S178 superseded；重新驗證 `/browse` semantic-only contract、遷移 evidence tag、乾淨 ship） | S(9) | S186 required, S187 ordering-only | 📐 in-design — carry-over verification & ship；排在 S187 後，避免搜尋 cleanup 與 edit page 主線混雜 |
 | S190 | Security Risk Reason UI（LOW + 0 findings 顯示 allowed-tools/scripts 原因、掃描空狀態說明、下載/查看檔案/回報疑慮三動作） | S(11) | S147 ✅, S183 ✅, S142b ✅ | 📐 in-design — spec ready for review；HTML prototype 已新增 |
 | S191 | 發佈結果與上架語意整理（先不做人工審核；移除審核佇列/24 小時/reviewer approve 文案；修 MEDIUM 文案） | S(9) | S096d4a ✅, S096d5a ✅, S098b ✅, S111 ✅, S190 ordering-only | 📐 in-design — spec ready for review |
-| S192 | 作者顯示名稱一致性收斂（全 repo 掃掉 user-facing raw `u_<id>`；補 PublishReview、semantic result cards、reviews/comments 等漏網路徑與 API display 欄位） | M(13) | S154 ✅, S154b ✅, S177 ✅, S186 ✅ | ⏳ Dev — Phase 4 Step 1 PASS；next `$planning-tasks S192` Phase 4 Step 1.5/2 |
+| S192 | 作者顯示名稱一致性收斂（全 repo 掃掉 user-facing raw `u_<id>`；補 PublishReview、semantic result cards、reviews/comments 等漏網路徑與 API display 欄位） | M(13) | S154 ✅, S154b ✅, S177 ✅, S186 ✅ | ⏳ QA — local consolidation PASS；next `$verifying-quality S192` |
 | S193 | Semantic Search Score Transparency（沿用 Spring AI score 排序；補 top-hit score logging + semantic card 相符度呈現） | XS(5) | S157 ✅, S177 ✅, S186 ✅, S189 ordering-only | ⏳ Dev-ready — Spring AI PgVectorStore POC verified；next `$planning-tasks S193` |
 
 ---
