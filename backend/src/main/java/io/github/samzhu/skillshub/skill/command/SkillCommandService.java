@@ -2,6 +2,7 @@ package io.github.samzhu.skillshub.skill.command;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.time.Instant;
 import java.util.NoSuchElementException;
 
 import org.slf4j.Logger;
@@ -219,6 +220,7 @@ public class SkillCommandService {
 		skill.recordVersionPublished(version, authorNameSnapshot);
 		skill.refreshDescriptionSnapshot((String) validation.metadata().get("description"), skill.getAuthor());
 		skillRepo.save(skill);
+		skillRepo.clearRiskLevel(skillId, Instant.now());
 
 		var storagePath = "skills/" + skillId + "/" + version + "/skill.zip";
 		storageService.upload(storagePath, zipBytes);
@@ -244,6 +246,7 @@ public class SkillCommandService {
 				.orElseThrow(() -> new IllegalArgumentException("Skill not found: " + cmd.skillId()));
 		skill.recordVersionPublished(cmd.version());
 		skillRepo.save(skill);
+		skillRepo.clearRiskLevel(cmd.skillId(), Instant.now());
 		skillVersionRepo.save(SkillVersion.publish(cmd));
 	}
 

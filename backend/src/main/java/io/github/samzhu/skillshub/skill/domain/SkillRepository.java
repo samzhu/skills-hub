@@ -91,6 +91,13 @@ public interface SkillRepository extends ListCrudRepository<Skill, String> {
     int updateRiskLevel(@Param("id") String id, @Param("riskLevel") String riskLevel, @Param("ts") Instant ts);
 
     /**
+     * S187-T06 — 新版本上傳後要重新掃描，不可沿用上一版 {@code risk_level}。
+     */
+    @Modifying
+    @Query("UPDATE skills SET risk_level = NULL, updated_at = :ts WHERE id = :id")
+    int clearRiskLevel(@Param("id") String id, @Param("ts") Instant ts);
+
+    /**
      * S076: 原子計數遞增（取代 aggregate {@code recordDownload + save} 的 read-modify-write
      * 樂觀鎖路徑）— 並行下載同 skill 不再觸發 OptimisticLockingFailureException。
      *

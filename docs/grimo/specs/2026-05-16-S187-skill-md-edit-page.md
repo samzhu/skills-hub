@@ -453,4 +453,25 @@ E2E 評估：S187 是 browser/UI flow，但主要行為可由 Vitest + backend t
 | 3 | `docs/grimo/tasks/2026-05-17-S187-T03-edit-page-submit-and-validate-flow.md` | AC-S187-4, AC-S187-7, AC-S187-10 | PASS（2026-05-17） | `cd frontend && npm test -- SkillEditPage PublishValidatePage` |
 | 4 | `docs/grimo/tasks/2026-05-17-S187-T04-backend-description-snapshot.md` | AC-S187-5, AC-S187-7 | PASS（2026-05-17） | `cd backend && ./gradlew test --tests "*SkillUpload*" --tests "*SkillCommand*"` |
 | 5 | `docs/grimo/tasks/2026-05-17-S187-T05-category-only-update-and-description-rejection.md` | AC-S187-6, AC-S187-9 | PASS（2026-05-17） | `cd frontend && npm test -- SkillEditPage`; `cd backend && ./gradlew test --tests "*SkillUpdateControllerTest" -x processTestAot -x compileAotTestJava -x processAotTestResources` |
-| 6 | `docs/grimo/tasks/2026-05-17-S187-T06-browser-mobile-doc-sync.md` | AC-S187-8, AC-S187-10, docs sync | pending | `cd frontend && npm test -- SkillEditPage PublishValidatePage`; if required `cd e2e && npx playwright test --grep @S187` |
+| 6 | `docs/grimo/tasks/2026-05-17-S187-T06-browser-mobile-doc-sync.md` | AC-S187-8, AC-S187-10, docs sync | PASS（2026-05-17） | `cd backend && ./gradlew test --tests '*SkillAggregateTest' --tests '*SkillUploadAllowedToolsTest' -x processTestAot -x compileAotTestJava -x processAotTestResources`; `cd frontend && npm test -- SkillEditPage PublishValidatePage`; `cd e2e && npx playwright test --grep @S187` |
+
+## 7. Implementation Results
+
+狀態：Implementation complete；等待 `$verifying-quality S187` 獨立 QA。
+
+| AC | 結果 | Evidence |
+|---|---|---|
+| AC-S187-1 | PASS | `SkillDetailPage.test.tsx` 驗證「編輯」導到 `/skills/:id/edit`。 |
+| AC-S187-2 | PASS | `SkillDetailPage.test.tsx` 驗證版本 tab 只顯示紀錄，不再顯示新增版本表單。 |
+| AC-S187-3 | PASS | `SkillEditPage.test.tsx` 驗證 text mode 預填 latest `SKILL.md` 並檢查 frontmatter。 |
+| AC-S187-4 | PASS | `SkillEditPage.test.tsx` 驗證 upload/text submit 走 `PUT /versions` 後進 `/publish/validate?id=...&mode=version`。 |
+| AC-S187-5 | PASS | `SkillUploadAllowedToolsTest` 驗證新版本 frontmatter description 寫回 `skills.description`。 |
+| AC-S187-6 | PASS | `SkillUpdateControllerTest` 驗證 `PUT /skills/{id}` 帶 description 回 400 且資料不改。 |
+| AC-S187-7 | PASS | frontend/backend duplicate version 測試驗證 409 後不覆寫 description/version row。 |
+| AC-S187-8 | PASS | `SkillEditPage.test.tsx` + `e2e/tests/S187-skill-edit-page.spec.ts` 驗證 390px 編輯頁主要控制可見且不超出 viewport。 |
+| AC-S187-9 | PASS | `SkillEditPage.test.tsx` 驗證 category-only request body 不含 description；後端 T05 驗證 category path 仍可成功。 |
+| AC-S187-10 | PASS | `PublishValidatePage.test.tsx` + `e2e/tests/S187-skill-edit-page.spec.ts` 驗證 version validation 完成後回 detail；create flow 仍回 review。 |
+
+T06 補上的實際 bug fix：`Skill.riskLevel` 是 `@ReadOnlyProperty`，新版本發布若只改 aggregate 記憶體不會更新 DB；因此新增 `SkillRepository.clearRiskLevel(...)`，`SkillCommandService.addVersion(...)` / `publishVersion(...)` 儲存版本後把 `skills.risk_level` 清成 `NULL`。使用者點「儲存新版本」後，`/publish/validate?id=...&mode=version` 會先讀到 `riskLevel=null` 顯示「新版本驗證中」，等新掃描寫入 riskLevel 後才回 `/skills/{id}`。
+
+本輪 docs stale scan 未發現 `frontend/src/pages/docs/*` 仍宣稱 description 可直接在 modal/API 編輯；S187 文件中的 `EditSkillModal` 文字是現況掃描背景，不是產品現狀承諾。

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.lang.reflect.InvocationTargetException;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -81,6 +82,22 @@ class SkillAggregateTest {
         Collection<Object> events = retrieveDomainEvents(skill);
         assertThat(events).hasSize(1);
         assertThat(events.iterator().next()).isInstanceOf(SkillVersionPublishedFromAggregate.class);
+    }
+
+    @Test
+    @Tag("AC-S187-10")
+    @DisplayName("AC-S187-10: recordVersionPublished 清掉舊 riskLevel")
+    void recordVersionPublishedClearsRiskLevel() {
+        var now = Instant.parse("2026-05-17T00:00:00Z");
+        var skill = Skill.fromRow(
+                "skill-risk-reset", "risk-reset", "desc", "alice", "testing",
+                "1.0.0", "LOW", "PUBLISHED", 0, now, now, List.of("user:alice:read"), 0L);
+        clearDomainEvents(skill);
+
+        skill.recordVersionPublished("1.1.0");
+
+        assertThat(skill.getLatestVersion()).isEqualTo("1.1.0");
+        assertThat(skill.getRiskLevel()).isNull();
     }
 
     @Test

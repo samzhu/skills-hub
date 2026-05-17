@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -130,6 +131,28 @@ class SkillUploadAllowedToolsTest {
         var version = versionRepo.findBySkillIdAndVersion(skillId, "1.1.0").orElseThrow();
         assertThat(version.getFrontmatter())
                 .containsEntry("description", "New description from SKILL.md");
+    }
+
+    @Test
+    @DisplayName("AC-S187-10: addVersion 清掉上一版 riskLevel 讓 validate page 等新掃描")
+    @Tag("AC-S187-10")
+    void addVersionClearsStaleRiskLevel() throws IOException {
+        var platformName = "risk-reset-skill-" + UUID.randomUUID().toString().substring(0, 8);
+        var packageV1 = "risk-reset-package-v1-" + UUID.randomUUID().toString().substring(0, 8);
+        var v1 = createZipWithFrontmatter(packageV1, "Initial risk description", null);
+        var skillId = commandService.uploadSkill(v1, platformName, "1.0.0", "owner", "testing", null, null);
+        skillRepo.updateRiskLevel(skillId, "LOW", Instant.now());
+
+        assertThat(skillRepo.findById(skillId).orElseThrow().getRiskLevel())
+                .isEqualTo("LOW");
+
+        var packageV2 = "risk-reset-package-v2-" + UUID.randomUUID().toString().substring(0, 8);
+        var v2 = createZipWithFrontmatter(packageV2, "Needs a fresh scan", null);
+        commandService.addVersion(skillId, v2, "1.1.0");
+
+        var skill = skillRepo.findById(skillId).orElseThrow();
+        assertThat(skill.getLatestVersion()).isEqualTo("1.1.0");
+        assertThat(skill.getRiskLevel()).isNull();
     }
 
     @Test

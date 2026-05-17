@@ -117,7 +117,7 @@ export function SkillEditPage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-4xl">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="min-w-0">
             <Link
               to={`/skills/${id}`}
@@ -134,7 +134,7 @@ export function SkillEditPage() {
               )}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div data-testid="skill-edit-actions" className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-3 sm:w-auto sm:flex sm:items-center">
             <Link
               to={`/skills/${id}`}
               className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground"

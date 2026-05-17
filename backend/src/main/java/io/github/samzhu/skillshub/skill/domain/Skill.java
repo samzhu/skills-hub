@@ -381,6 +381,8 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         if (snapshot != null) {
             this.authorNameSnapshot = snapshot;
         }
+        // S187-T06: 新版本需重新掃描；避免 validate page 讀舊 riskLevel 直接跳轉。
+        this.riskLevel = null;
         this.updatedAt = Instant.now();
         registerEvent(new SkillVersionPublishedFromAggregate(id, versionLabel));
     }

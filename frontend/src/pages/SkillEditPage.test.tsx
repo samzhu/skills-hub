@@ -116,6 +116,23 @@ name: docker-helper
     expect(screen.getByTestId('frontmatter-description-check')).toHaveTextContent('description 缺少')
     expect(screen.getByRole('button', { name: '儲存新版本' })).toBeDisabled()
   })
+
+  it('AC-S187-8: 手機寬度下主要編輯控制仍可見', async () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('SKILL.md 內容')).toHaveValue(latestSkillMd)
+    })
+
+    expect(screen.getByTestId('skill-edit-actions')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '取消' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '儲存分類' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '儲存新版本' })).toBeVisible()
+    expect(screen.getByLabelText('分類')).toBeVisible()
+    expect(screen.getByLabelText('版本號')).toBeVisible()
+    expect(screen.getByLabelText('SKILL.md 內容')).toBeVisible()
+  })
 })
 
 describe('SkillEditPage — S187 version submit flow', () => {

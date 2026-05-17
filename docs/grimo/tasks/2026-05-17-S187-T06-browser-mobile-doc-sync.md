@@ -65,4 +65,16 @@ And（而且）新增版本完成後，`/publish/validate?id=skill-docker&mode=v
 - S187-T05 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-17）
+
+## 實作結果
+- `frontend/src/pages/SkillEditPage.tsx`：手機寬度下 header action 改成可換行/單欄的穩定 layout，390px viewport 不會把「取消 / 儲存分類 / 儲存新版本」擠出畫面。
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/command/SkillCommandService.java`：`addVersion(...)` / `publishVersion(...)` 在新版本儲存後把 `skills.risk_level` 清成 `NULL`，讓 `/publish/validate?id=...&mode=version` 先顯示「新版本驗證中」，等新掃描完成再回詳情頁。
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/domain/SkillRepository.java`：新增 `clearRiskLevel(...)` SQL，因 `riskLevel` 是 `@ReadOnlyProperty`，不能靠 `skillRepo.save(skill)` 寫回資料庫。
+- `e2e/tests/S187-skill-edit-page.spec.ts`：新增 `@S187 @ac-S187-8 @ac-S187-10` browser path，走 `POST /internal/test/seed/skill` fixture，驗證詳情頁按「編輯」到 edit page、390px 控制可見、儲存新版本進 version validation、掃描完成回 detail。
+- docs/API stale scan：`frontend/src/pages/docs/*` 未找到仍宣稱 description 可直接在 modal/API 編輯的過時文件；S187 spec 保留舊 modal 描述作為「現況掃描」歷史背景，不改成 shipped reality。
+
+## 驗證結果
+- `cd backend && ./gradlew test --tests '*SkillAggregateTest' --tests '*SkillUploadAllowedToolsTest' -x processTestAot -x compileAotTestJava -x processAotTestResources` -> PASS
+- `cd frontend && npm test -- SkillEditPage PublishValidatePage` -> PASS（2 files / 12 tests）
+- `cd e2e && npx playwright test --grep @S187` -> PASS（1 test）
