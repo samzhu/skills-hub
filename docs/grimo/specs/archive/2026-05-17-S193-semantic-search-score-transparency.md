@@ -1,6 +1,6 @@
 # S193: Semantic Search Score Transparency
 
-> 規格：S193 | 大小：XS(5) | 狀態：✅ Local release gate PASS — next `$shipping-release S193`
+> 規格：S193 | 大小：XS(5) → S(11) | 狀態：✅ shipped v4.71.0
 > 日期：2026-05-17
 > 來源：Production browse search report — `/browse` 輸入「甜點」後回傳公開「產生字幕檔」
 > 對應：S157 semantic search enablement / S177 search visibility / S186 skills.embedding 同表化 / S189 browse search entry point
@@ -307,4 +307,20 @@ Production score evidence：
 
 - `./scripts/verify-all.sh` → PASS；V01=PASS、V02=INFO（LINE coverage 86.9%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
 - S193 AC-S193-1~6 全部 local PASS；production deploy / production log evidence 不屬於本 dev-loop tick。
-- 下一步：`$shipping-release S193` 清 task files、移 spec 到 archive、更新 changelog / roadmap / tag。
+
+2026-05-17 shipping preflight：
+
+- `./scripts/verify-all.sh` → PASS；V01=PASS、V02=INFO（LINE coverage 86.9%，covered=4735 / total=5451）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Production deploy / production log evidence 不屬於本 dev-loop tick；本 release 只 ship local evidence 與文件歸檔。
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 2 | 需要拆本 repo 實際使用的 `spring-ai-pgvector-store-2.0.0-M6.jar` 確認 threshold / distance / score 行為，避免把 cosine distance 當 similarity 反用。 |
+| Uncertainty | 1 | 1 | user 已確認低分命中可顯示，需求收斂為 log + UI score transparency，不改 threshold / keyword guard。 |
+| Dependencies | 1 | 3 | 行為依賴 S157 semantic search、S177 visibility、S186 same-row embedding，且與 S189 `/browse` entry point ordering 相關。 |
+| Scope | 1 | 1 | production code 只改 semantic search logging；UI 已有 score badge，主要補 assembled path tests。 |
+| Testing | 1 | 3 | 除 backend/frontend tests 外，新增 Playwright `/browse` browser path，並通過 full `verify-all.sh` 含 happy-path E2E、AOT、bootBuildImage。 |
+| Reversibility | 1 | 1 | 無 schema / public API shape 破壞；可用一個 commit 回復 log 與 UI test coverage。 |
+| **Total** | **5 / XS** | **11 / S** | Bucket shift XS→S；主要原因是 Spring AI score 行為確認、跨 spec semantic dependency、browser/full release gate testing。 |

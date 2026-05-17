@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-17（S193 local release gate PASS；下一輪接 shipping-release）
+> 最後更新：2026-05-17（S193 shipped v4.71.0；Release Completeness Gate clean）
 
 ## 使用說明
 
@@ -47,7 +47,6 @@
 | S189 | Browse 搜尋入口驗證與收版（S178 superseded；重新驗證 `/browse` semantic-only contract、遷移 evidence tag、乾淨 ship） | S(9) | S186 required, S187 ordering-only | 📐 in-design — carry-over verification & ship；排在 S187 後，避免搜尋 cleanup 與 edit page 主線混雜 |
 | S190 | Security Risk Reason UI（LOW + 0 findings 顯示 allowed-tools/scripts 原因、掃描空狀態說明、下載/查看檔案/回報疑慮三動作） | S(11) | S147 ✅, S183 ✅, S142b ✅ | 📐 in-design — spec ready for review；HTML prototype 已新增 |
 | S191 | 發佈結果與上架語意整理（先不做人工審核；移除審核佇列/24 小時/reviewer approve 文案；修 MEDIUM 文案） | S(9) | S096d4a ✅, S096d5a ✅, S098b ✅, S111 ✅, S190 ordering-only | 📐 in-design — spec ready for review |
-| S193 | Semantic Search Score Transparency（沿用 Spring AI score 排序；補 top-hit score logging + semantic card 相符度呈現） | XS(5) | S157 ✅, S177 ✅, S186 ✅, S189 ordering-only | ✅ Local release gate PASS — next `$shipping-release S193` |
 
 ---
 
@@ -91,6 +90,7 @@
 | v4.68.0 | S188 (Version Label Auto Sequence) | ✅ shipped 2026-05-17 — blank version creates `1` / next numeric label；custom safe labels retained；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
 | v4.69.0 | S174 (Skill detail anonymous 401 not-found UX) | ✅ shipped 2026-05-17 — missing UUID anonymous 404 + detail 401/403/404 not-found copy；`verify-all.sh` 全綠 |
 | v4.70.0 | S192 (Author display name completion) | ✅ shipped 2026-05-17 — user-facing author/reviewer/comment labels use display data instead of raw `u_<id>`；semantic cards/reviews/comments/notifications covered；`verify-all.sh` 全綠 |
+| v4.71.0 | S193 (Semantic Search Score Transparency) | ✅ shipped 2026-05-17 — semantic logs include top hit scores；`/browse` semantic cards show `% 相符` from API score；`verify-all.sh` 全綠 |
 
 ---
 
@@ -260,6 +260,7 @@
 | S184 | API empty response + visibility command contract | S(11) | v4.65.0 |
 | S186 | Skill embedding 同表化 | M(14) | v4.66.0 |
 | S174 | Skill detail anonymous 401 not-found UX | XS(8) | v4.69.0 |
+| S193 | Semantic Search Score Transparency | S(11) | v4.71.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

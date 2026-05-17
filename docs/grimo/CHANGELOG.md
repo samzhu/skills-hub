@@ -1,5 +1,25 @@
 # Changelog
 
+## [v4.71.0] — S193 Semantic Search Score Transparency（2026-05-17）
+
+### Changed
+
+- **Semantic search logs** — backend semantic search completion logs now include `resultsCount` plus top hit ids, names, and scores, so production relevance questions can be checked from logs without guessing from request order.
+- **Semantic score explanation** — `/browse` semantic cards show the API `score` as `% 相符`, so a low-score single result is visibly different from a high-confidence match.
+- **Score contract evidence** — S193 records that this repo follows Spring AI / pgvector cosine behavior: `distance = embedding <=> queryEmbedding` and `score = 1 - distance`; results stay sorted by score descending.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.9%，covered=4735 / total=5451）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Targeted evidence：`cd backend && ./gradlew test --tests "*SemanticSearch*"` PASS（13 tests）；`cd frontend && npm test -- SkillCard` PASS；`cd frontend && npm test -- HomePage SkillCard` PASS；`cd e2e && npx playwright test --grep @S193` PASS（1 test）。
+- Production deploy：not run in this release tick；S193 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-17-S193-semantic-search-score-transparency.md` → `docs/grimo/specs/archive/2026-05-17-S193-semantic-search-score-transparency.md`
+- `docs/grimo/tasks/2026-05-17-S193-*.md` 已刪除。
+- Final size re-score：XS(5) → S(11)，原因是 Spring AI / pgvector score 行為確認、跨 spec semantic dependency、Playwright browser path 與 full release gate testing。
+
 ## [v4.70.0] — S192 Author Display Name Completion（2026-05-17）
 
 ### Changed
