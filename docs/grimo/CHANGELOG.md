@@ -13,7 +13,8 @@
 
 - `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.4%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；exit=0。
 - Targeted evidence：`SkillQueryServiceVisibilityTest` covers AC-S185-1/2/3；`SkillQueryControllerApiContractTest` covers AC-S185-4；both targeted Gradle runs passed before full QA.
-- Production deploy：deferred to next automation unit；AC-S185-5 production list/detail recheck and latest Cloud Run `severity>=ERROR` query remain pending.
+- Production deploy：Cloud Build `829029b6-f98b-4bd5-8ed3-64dec8a029ab` built and pushed `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260517-022641` (`sha256:8c4d39a66d86d451fdcd7ac9035770a984d5b7ff18e4a51de482c7a1402cf0c9`)；Cloud Run revision `skillshub-00036-wkz` became Ready and serves 100% traffic；`/actuator/health/readiness` returned 200 `{"status":"UP"}`；Bug Z skill `8ee45695-c16e-4586-9869-9fdbe110ca88` now returns matching list/detail fields (`visibility=PUBLIC`, `verified=true`, `latestVersionPublishedAt=2026-05-15T21:06:42.704893Z`, `versionCount=1`)；latest revision `severity>=ERROR` query returned no rows.
+- Deploy note：the first attempt through `scripts/gcp/04-deploy.sh` created failed revision `skillshub-00035-42l`; Cloud Run log root cause was `Provider ID must be specified for client registration 'skillshub'` because the rendered script manifest omitted the current OAuth/provider runtime config. Final deploy used `temp/service.rendered.yaml` with the new image tag.
 
 ### Spec lifecycle
 

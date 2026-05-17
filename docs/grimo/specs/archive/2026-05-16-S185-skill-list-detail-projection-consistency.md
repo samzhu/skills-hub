@@ -388,4 +388,15 @@ Full QA, release docs, roadmap update, and archive completed. Production deploy 
 - Task files `docs/grimo/tasks/2026-05-16-S185-T01-list-projection-fields.md` and `docs/grimo/tasks/2026-05-16-S185-T02-category-and-json-contract.md` removed.
 - Final size re-score: XS(8) → XS(8). The implementation stayed within the planned raw JDBC projection + MockMvc contract scope; no new dependencies, no API shape pivot, and full QA/native verification matched the initial testing risk.
 
-Pending: Cloud Build / Cloud Run deploy, and AC-S185-5 production list/detail recheck with Cloud Run `severity>=ERROR` log query.
+2026-05-17 Production Deploy PASS:
+
+- Cloud Build: `829029b6-f98b-4bd5-8ed3-64dec8a029ab` built and pushed `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260517-022641` (`sha256:8c4d39a66d86d451fdcd7ac9035770a984d5b7ff18e4a51de482c7a1402cf0c9`).
+- First deploy attempt: `./scripts/gcp/04-deploy.sh` rendered `scripts/gcp/service.rendered.yaml` and created failed revision `skillshub-00035-42l`. Cloud Run log root cause: `Provider ID must be specified for client registration 'skillshub'`; the script-rendered manifest omitted the current OAuth/provider runtime config. Traffic stayed on `skillshub-00034-2c6`.
+- Final deploy: updated `temp/service.rendered.yaml` image to `20260517-022641`, then ran `gcloud run services replace temp/service.rendered.yaml --region=asia-east1 --project=cfh-vibe-lab --quiet`. Revision `skillshub-00036-wkz` became Ready and serves 100% traffic.
+- Readiness: `GET /actuator/health/readiness` returned 200 `{"status":"UP"}`.
+- AC-S185-5 production API recheck: `GET /api/v1/skills?page=0&size=10` and `GET /api/v1/skills/8ee45695-c16e-4586-9869-9fdbe110ca88` both returned HTTP 200. The compared list/detail fields now match: `visibility=PUBLIC`, `verified=true`, `latestVersionPublishedAt=2026-05-15T21:06:42.704893Z`, `versionCount=1`, `license=MIT`, `compatibility=[]`, `openFlagCount=0`.
+- Category recheck: `GET /api/v1/categories` returned HTTP 200 `[{"name":"testing","count":1}]`.
+- Cloud Run logs: latest ready revision `skillshub-00036-wkz` `severity>=ERROR` query after deploy returned 0 rows; failed revision `skillshub-00035-42l` retained the OAuth provider manifest evidence above.
+- Chrome note: this tick had no callable Chrome automation tool in context, so UI DOM clicks were not claimed; API/log evidence covers AC-S185-5.
+
+Follow-up: fix `scripts/gcp/04-deploy.sh` / `scripts/gcp/service.yaml` manifest parity with the currently working Cloud Run runtime config before relying on the repo deploy script again.
