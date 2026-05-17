@@ -117,7 +117,20 @@ git status --short
 如果 automation 跑在 Local checkout：
 
 - `git status --short` 有 unrelated runtime/code/config 變更時，不要直接實作會碰同一批檔案的 task。
-- 若只是 unrelated docs 變更，dev loop 可在自己的 touched files 範圍內繼續，但不要 stage user docs。
+- 若只是 unrelated docs 變更，尤其是 `docs/grimo/specs/spec-roadmap.md` 新增任務 / 狀態調整，這是正常共享 ledger 變動，不是 dev loop blocker。優先改用 Codex App background worktree 或只在自己的 touched files 範圍內繼續；不要 stage user docs。
+
+### Shared Roadmap Policy
+
+`docs/grimo/specs/spec-roadmap.md` 是多人 / 多 automation 會持續更新的共享索引，常見的新增 spec row、status row、archive row 不應讓 dev loop 或 `$shipping-release` 直接 `BLOCKED`。
+
+判斷方式：
+
+1. 若 automation 跑在 Codex App background worktree：忽略 Local checkout 的 dirty `spec-roadmap.md`；只檢查目前 worktree 內是否有 unrelated runtime/code/config dirty files。
+2. 若 automation 跑在 Local checkout，且本 tick 需要 `$shipping-release` 修改 roadmap：
+   - 只有 `spec-roadmap.md` / docs 類 dirty：不要把它記成 runtime blocker；改用 background worktree 執行 release，或在 Local 做 scoped edit 但只 stage 本 tick 自己的 release diff。
+   - 有 `backend/**`、`frontend/**`、`e2e/**`、migration、build/deploy config、scripts、lockfile dirty overlap：才回 `BLOCKED`。
+3. `$shipping-release` skill 的「git status clean of unrelated changes」在 automation context 中解讀為：目前 execution worktree 不能有 unrelated runtime/code/config 變更；Local checkout 的 shared docs ledger 變動不算 local release correctness failure。
+4. roadmap 合併衝突才是 blocker；單純看到 `M docs/grimo/specs/spec-roadmap.md` 不是 blocker。
 
 ### Worktree Cleanup
 
@@ -149,7 +162,7 @@ git diff --name-only main...<target-branch>
 判斷：
 
 - Local dirty files 與 target branch changed files 沒交集：可繼續。
-- 交集只包含 `docs/**`、`.codex/**`、`AGENTS.md`、`CLAUDE.md`、`README*`、`CHANGELOG*`：不 merge 到 dirty Local；保留 worktree commit，回報 user 後續整合。
+- 交集只包含 `docs/**`、`.codex/**`、`AGENTS.md`、`CLAUDE.md`、`README*`、`CHANGELOG*`：不視為 runtime blocker。若包含 `docs/grimo/specs/spec-roadmap.md`，把它視為 shared roadmap ledger；優先在 worktree 完成 release commit，回報 user 後續整合，不要因它單獨回 `BLOCKED`。
 - 交集包含 `backend/**`、`frontend/**`、`e2e/**`、migration、build/deploy config、scripts、lockfile：不 merge、不 stash、不覆寫；寫 blocker note 或回 `BLOCKED`。
 
 ## One Tick Algorithm

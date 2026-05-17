@@ -35,6 +35,7 @@ Do not execute specs marked Status: Auto-Draft or automation_status: auto-draft.
 
 If running in a Codex background worktree, do not block ordinary implementation on Local checkout dirty files. Only run Dirty Overlap Gate before merge, release, deploy, or handoff back to Local, exactly as described in .codex/loop.dev.md.
 Do not delete the current Codex App execution worktree. If this tick creates any additional child worktree, clean it up before exit according to .codex/loop.dev.md.
+Treat docs/grimo/specs/spec-roadmap.md as a shared roadmap ledger. Normal roadmap/task/spec additions are not a runtime blocker for $shipping-release; follow .codex/loop.dev.md Shared Roadmap Policy instead of returning BLOCKED solely because roadmap is dirty.
 
 Never stage or commit unrelated user changes. If repo files conflict about NEXT_SKILL, report the conflicting file paths and return BLOCKED instead of guessing.
 
