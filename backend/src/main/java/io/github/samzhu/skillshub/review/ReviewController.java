@@ -19,6 +19,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.github.samzhu.skillshub.review.domain.Review;
 import io.github.samzhu.skillshub.shared.api.PlainTextDeserializer;
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+import io.github.samzhu.skillshub.shared.security.UserDisplay;
+import io.github.samzhu.skillshub.shared.security.UserDisplayService;
 
 /**
  * S098e2 — Review REST endpoints。
@@ -38,10 +40,12 @@ class ReviewController {
 
     private final ReviewService reviewService;
     private final CurrentUserProvider users;
+    private final UserDisplayService userDisplayService;
 
-    ReviewController(ReviewService reviewService, CurrentUserProvider users) {
+    ReviewController(ReviewService reviewService, CurrentUserProvider users, UserDisplayService userDisplayService) {
         this.reviewService = reviewService;
         this.users = users;
+        this.userDisplayService = userDisplayService;
     }
 
     @PostMapping
@@ -64,8 +68,13 @@ class ReviewController {
 
     @GetMapping
     List<ReviewResponse> list(@PathVariable String skillId) {
-        return reviewService.getReviewsBySkill(skillId).stream()
-                .map(ReviewResponse::from)
+        var reviews = reviewService.getReviewsBySkill(skillId);
+        var authorDisplays = userDisplayService.resolveAll(reviews.stream()
+                .map(Review::getAuthorId)
+                .toList(), false);
+
+        return reviews.stream()
+                .map(review -> ReviewResponse.from(review, authorDisplays.get(review.getAuthorId())))
                 .toList();
     }
 
@@ -84,13 +93,17 @@ class ReviewController {
             String id,
             String skillId,
             String authorId,
+            String authorDisplayName,
+            String authorHandle,
             int rating,
             String content,
             Instant createdAt,
             Instant updatedAt
     ) {
-        static ReviewResponse from(Review r) {
+        static ReviewResponse from(Review r, UserDisplay authorDisplay) {
             return new ReviewResponse(r.getId(), r.getSkillId(), r.getAuthorId(),
+                    authorDisplay == null ? null : authorDisplay.displayName(),
+                    authorDisplay == null ? null : authorDisplay.handle(),
                     r.getRating(), r.getContent(), r.getCreatedAt(), r.getUpdatedAt());
         }
     }

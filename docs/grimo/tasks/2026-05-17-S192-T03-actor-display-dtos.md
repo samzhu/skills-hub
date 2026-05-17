@@ -51,4 +51,17 @@ And（而且）delete ownership 判斷仍比較 `authorId`，不是 display name
 - S192-T01 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+
+Date：2026-05-17
+
+實作結果：
+- `ReviewController.ReviewResponse` 保留 `authorId`，新增 `authorDisplayName` 與 `authorHandle`，review delete 仍把 `CurrentUser.userId()` 傳給 `ReviewService.deleteReview(...)`。
+- `RequestQueryController.CommentDto` 保留 `authorId`，新增 `authorDisplayName` 與 `authorHandle`，comment delete path 仍由既有 `CommentService` 用 `authorId` 判斷。
+- `NotificationProjectionListener` 產生新 review/comment notification title 時，先用 `UserDisplayService` 的 display name / handle；若 actor 是 unresolved `u_<id>`，title 不再直接寫 raw id。
+
+驗證：
+- RED：`cd backend && ./gradlew test --tests "*ReviewControllerTest" --tests "*Comment*Test" --tests "*NotificationProjectionListenerTest"` -> failed：`ReviewControllerTest.java:63` missing JSON path `authorDisplayName`；`NotificationProjectionListenerTest.java:160` title still contained raw actor id.
+- GREEN：`cd backend && ./gradlew test --tests "*ReviewControllerTest" --tests "*Comment*Test" --tests "*NotificationProjectionListenerTest"` -> BUILD SUCCESSFUL in 2m 17s.

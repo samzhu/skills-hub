@@ -13,6 +13,7 @@ import io.github.samzhu.skillshub.community.SkillSubscriptionService;
 import io.github.samzhu.skillshub.community.events.RequestCommentedEvent;
 import io.github.samzhu.skillshub.review.domain.ReviewCreatedEvent;
 import io.github.samzhu.skillshub.security.SkillFlaggedEvent;
+import io.github.samzhu.skillshub.shared.security.UserDisplayService;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 
@@ -52,17 +53,20 @@ public class NotificationProjectionListener {
     private final SkillRepository skillRepo;
     private final RequestRepository requestRepo;
     private final SkillSubscriptionService subscriptionService;
+    private final UserDisplayService userDisplayService;
 
     NotificationProjectionListener(NotificationRepository notifRepo,
                                    NotificationPreferenceRepository prefRepo,
                                    SkillRepository skillRepo,
                                    RequestRepository requestRepo,
-                                   SkillSubscriptionService subscriptionService) {
+                                   SkillSubscriptionService subscriptionService,
+                                   UserDisplayService userDisplayService) {
         this.notifRepo = notifRepo;
         this.prefRepo = prefRepo;
         this.skillRepo = skillRepo;
         this.requestRepo = requestRepo;
         this.subscriptionService = subscriptionService;
+        this.userDisplayService = userDisplayService;
     }
 
     /**
@@ -102,7 +106,7 @@ public class NotificationProjectionListener {
         if (Objects.equals(ownerId, e.authorId())) return; // skip 自己對自己 skill 寫評論
         if (!isCategoryEnabled(ownerId, "reviews")) return;
 
-        var title = e.authorId() + " 對你的技能 " + skill.getName() + " 寫了 " + e.rating() + "★ 評論";
+        var title = actorLabel(e.authorId()) + " 對你的技能 " + skill.getName() + " 寫了 " + e.rating() + "★ 評論";
         save(ownerId, "reviews", title, null, e.skillId(), e.reviewId());
     }
 
@@ -159,8 +163,19 @@ public class NotificationProjectionListener {
         if (Objects.equals(requesterId, e.authorId())) return; // skip 自己 comment 自己 request
         if (!isCategoryEnabled(requesterId, "requests")) return;
 
-        var title = e.authorId() + " 在你的需求「" + req.getTitle() + "」留言";
+        var title = actorLabel(e.authorId()) + " 在你的需求「" + req.getTitle() + "」留言";
         save(requesterId, "requests", title, e.content(), null, e.commentId());
+    }
+
+    private String actorLabel(String actorId) {
+        var display = userDisplayService.resolve(actorId, false);
+        if (display.displayName() != null) {
+            return display.displayName();
+        }
+        if (display.handle() != null) {
+            return "@" + display.handle();
+        }
+        return actorId.matches("u_[0-9a-fA-F]{6}") ? "使用者" : actorId;
     }
 
     private boolean isCategoryEnabled(String userId, String category) {

@@ -270,7 +270,7 @@ POC：not required — S192 不新增 package、SDK、framework SPI、schema mig
 |---:|---|---|---|---|
 | 1 | `2026-05-17-S192-T01-backend-user-display-service.md` | AC-S192-2, AC-S192-10, AC-S192-11 | PASS | `cd backend && ./gradlew test --tests "*UserDisplayServiceTest"` |
 | 2 | `2026-05-17-S192-T02-semantic-author-display.md` | AC-S192-3 | PASS | `cd backend && ./gradlew test --tests "*SemanticSearch*"` |
-| 3 | `2026-05-17-S192-T03-actor-display-dtos.md` | AC-S192-2, AC-S192-5, AC-S192-6, AC-S192-7, AC-S192-9 | pending | `cd backend && ./gradlew test --tests "*ReviewControllerTest" --tests "*Comment*Test" --tests "*NotificationProjectionListenerTest"` |
+| 3 | `2026-05-17-S192-T03-actor-display-dtos.md` | AC-S192-2, AC-S192-5, AC-S192-6, AC-S192-7, AC-S192-9 | PASS | `cd backend && ./gradlew test --tests "*ReviewControllerTest" --tests "*Comment*Test" --tests "*NotificationProjectionListenerTest"` |
 | 4 | `2026-05-17-S192-T04-frontend-display-helper.md` | AC-S192-11, AC-S192-12 | pending | `cd frontend && npm test -- displayName` |
 | 5 | `2026-05-17-S192-T05-frontend-surface-sweep.md` | AC-S192-1, AC-S192-3, AC-S192-4, AC-S192-5, AC-S192-6, AC-S192-12 | pending | `cd frontend && npm test -- PublishReviewPage HomePage MySkillsPage AnalyticsPage ReviewsPanel CommentList` |
 | 6 | `2026-05-17-S192-T06-source-scan-docs-guard.md` | AC-S192-8, Maintainability NFR | pending | `rg -n "\\.(author|authorId)\\b" frontend/src --glob '*.tsx'` |

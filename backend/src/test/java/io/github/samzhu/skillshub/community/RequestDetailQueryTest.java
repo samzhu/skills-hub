@@ -57,6 +57,22 @@ class RequestDetailQueryTest {
     }
 
     @Test
+    @Tag("AC-S192-6")
+    @DisplayName("AC-S192-6: request comment returns author display data while delete still uses authorId")
+    void detail_commentIncludesAuthorDisplayFields() throws Exception {
+        seedUser("u_f7eb3a", "sam@example.com", "Sam Zhu", "samzhu");
+        var requestId = requestService.createRequest("字幕工具", "需要 srt helper", "alice");
+        var commentId = commentService.addComment(requestId, "u_f7eb3a", "+1 我也需要");
+
+        mockMvc.perform(get("/api/v1/requests/" + requestId).with(user("alice")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comments[0].id").value(commentId))
+                .andExpect(jsonPath("$.comments[0].authorId").value("u_f7eb3a"))
+                .andExpect(jsonPath("$.comments[0].authorDisplayName").value("Sam Zhu"))
+                .andExpect(jsonPath("$.comments[0].authorHandle").value("samzhu"));
+    }
+
+    @Test
     @Tag("AC-4")
     @DisplayName("AC-4 happy: GET as requester (alice) → 200 + comments ASC + canDelete=true")
     void detail_asRequester_canDeleteTrue() throws Exception {
@@ -150,6 +166,14 @@ class RequestDetailQueryTest {
         requestService.deleteRequest(requestId, "alice");
         mockMvc.perform(get("/api/v1/requests/" + requestId))
                 .andExpect(status().isNotFound());
+    }
+
+    private void seedUser(String id, String email, String name, String handle) {
+        jdbc.update("""
+                INSERT INTO users (id, oauth_provider, sub, email, name, handle, created_at, last_seen_at)
+                VALUES (?, 'google', ?, ?, ?, ?, NOW(), NOW())
+                ON CONFLICT DO NOTHING
+                """, id, id + "-sub", email, name, handle);
     }
 
 }

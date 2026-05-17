@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.samzhu.skillshub.shared.security.CurrentUserProvider;
+import io.github.samzhu.skillshub.shared.security.UserDisplay;
+import io.github.samzhu.skillshub.shared.security.UserDisplayService;
 
 /**
  * S096g2 → S156c — Request query endpoints。
@@ -37,11 +39,14 @@ class RequestQueryController {
     private final RequestService service;
     private final CommentService commentService;
     private final CurrentUserProvider users;
+    private final UserDisplayService userDisplayService;
 
-    RequestQueryController(RequestService service, CommentService commentService, CurrentUserProvider users) {
+    RequestQueryController(RequestService service, CommentService commentService, CurrentUserProvider users,
+            UserDisplayService userDisplayService) {
         this.service = service;
         this.commentService = commentService;
         this.users = users;
+        this.userDisplayService = userDisplayService;
     }
 
     @GetMapping
@@ -55,8 +60,12 @@ class RequestQueryController {
     @GetMapping("/{requestId}")
     RequestDetailResponse getOne(@PathVariable String requestId) {
         var request = service.getRequest(requestId);
-        var comments = commentService.listByRequest(requestId).stream()
-                .map(CommentDto::from)
+        var commentRows = commentService.listByRequest(requestId);
+        var authorDisplays = userDisplayService.resolveAll(commentRows.stream()
+                .map(RequestComment::getAuthorId)
+                .toList(), false);
+        var comments = commentRows.stream()
+                .map(comment -> CommentDto.from(comment, authorDisplays.get(comment.getAuthorId())))
                 .toList();
         var canDelete = isAuthenticated() && users.current().userId().equals(request.getRequesterId());
         return RequestDetailResponse.from(request, comments, canDelete);
@@ -112,11 +121,16 @@ class RequestQueryController {
     record CommentDto(
             String id,
             String authorId,
+            String authorDisplayName,
+            String authorHandle,
             String content,
             Instant createdAt
     ) {
-        static CommentDto from(RequestComment c) {
-            return new CommentDto(c.getId(), c.getAuthorId(), c.getContent(), c.getCreatedAt());
+        static CommentDto from(RequestComment c, UserDisplay authorDisplay) {
+            return new CommentDto(c.getId(), c.getAuthorId(),
+                    authorDisplay == null ? null : authorDisplay.displayName(),
+                    authorDisplay == null ? null : authorDisplay.handle(),
+                    c.getContent(), c.getCreatedAt());
         }
     }
 }

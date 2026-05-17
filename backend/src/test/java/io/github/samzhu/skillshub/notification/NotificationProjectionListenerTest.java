@@ -57,6 +57,7 @@ class NotificationProjectionListenerTest {
         jdbc.update("DELETE FROM reviews");
         jdbc.update("DELETE FROM skill_versions");
         jdbc.update("DELETE FROM skills");
+        jdbc.update("DELETE FROM users");
     }
 
     @Test
@@ -144,6 +145,24 @@ class NotificationProjectionListenerTest {
     }
 
     @Test
+    @Tag("AC-S192-7")
+    @DisplayName("AC-S192-7: notification title stores actor display name instead of raw user id")
+    void notificationTitleUsesActorDisplayName(Scenario scenario) {
+        seedUser("u_f7eb3a", "Sam Zhu", "samzhu");
+        var skillId = insertSkill("alice", "subtitle helper");
+        var reviewId = UUID.randomUUID().toString();
+
+        scenario.publish(new ReviewCreatedEvent(reviewId, skillId, "u_f7eb3a", 5, "great", Instant.now()))
+                .andWaitForStateChange(() -> notifRepo.countUnreadByRecipient("alice"), c -> c == 1L)
+                .andVerify(c -> {
+                    var rows = notifRepo.findByRecipient("alice", "reviews", 10);
+                    assertThat(rows).hasSize(1);
+                    assertThat(rows.get(0).getTitle()).contains("Sam Zhu", "subtitle helper", "5★");
+                    assertThat(rows.get(0).getTitle()).doesNotContain("u_f7eb3a");
+                });
+    }
+
+    @Test
     @Tag("AC-10")
     @DisplayName("AC-10: 同 event payload 二次 publish → UNIQUE 攔截 → 1 row only")
     void duplicateEvent_idempotent(Scenario scenario) {
@@ -181,5 +200,13 @@ class NotificationProjectionListenerTest {
                 java.sql.Timestamp.from(Instant.now()),
                 java.sql.Timestamp.from(Instant.now()), author);
         return id;
+    }
+
+    private void seedUser(String id, String name, String handle) {
+        jdbc.update("""
+                INSERT INTO users (id, oauth_provider, sub, email, name, handle, created_at, last_seen_at)
+                VALUES (?, 'google', ?, ?, ?, ?, NOW(), NOW())
+                ON CONFLICT DO NOTHING
+                """, id, id + "-sub", id + "@example.com", name, handle);
     }
 }
