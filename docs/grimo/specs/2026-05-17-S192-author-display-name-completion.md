@@ -1,6 +1,6 @@
 # S192 - 作者顯示名稱一致性收斂
 
-> Status: ⏳ QA — local consolidation PASS；next `$verifying-quality S192`
+> Status: ⏳ Dev — QA REJECT-FIX；V07 happy-path E2E shows blank author labels from S140 seed data；next `$planning-tasks S192`
 > Owner: Codex  
 > Date: 2026-05-17  
 > Size: M(13)  
@@ -340,3 +340,28 @@ No pending local verification. Independent QA is still pending and should run vi
 ### Cleanup
 
 S192 temporary task files were consolidated into this spec and removed from `docs/grimo/tasks/`.
+
+### QA Review 2026-05-17 — REJECT-FIX
+
+`./scripts/verify-all.sh` exit=1 because V07 failed while every other CRITICAL command passed:
+
+| Command | Result | Evidence |
+|---|---|---|
+| V01 `./gradlew clean test jacocoTestReport` | PASS | backend tests completed; JaCoCo report generated |
+| V02 JaCoCo LINE summary | INFO | 86.8% line coverage (`covered=4707 / total=5423`) |
+| V03 `./gradlew jacocoTestCoverageVerification` | PASS | coverage gate passed |
+| V04 `cd frontend && npm test` | PASS | frontend test gate passed |
+| V05 `cd frontend && npm run verify` | PASS | ESLint + TypeScript passed |
+| V06 `cd frontend && npm test -- --coverage` | PASS | frontend coverage gate passed |
+| V07 `cd e2e && npx playwright test --grep @happy-path` | FAIL | S140 browse/detail tests still expect visible author `alice`, but S192 display helper now returns blank when the real page lacks display companion fields |
+| V08a `./gradlew processAot` | PASS | AOT processing passed |
+| V08b `./gradlew --no-daemon -x test bootBuildImage ...` | PASS | native image build passed |
+
+V07 failure details:
+
+- `e2e/tests/S140-critical-path-browse-search.spec.ts:60` expected `docker-compose-helper` card to show `alice`; page snapshot shows the author `<p>` is empty.
+- `e2e/tests/S140-critical-path-skill-detail.spec.ts` expected `作者：alice`; page snapshot shows `作者：` followed by an empty label.
+
+Root cause: S192 intentionally changed normal UI labels so raw identifiers are not human-name fallbacks. Component tests proved the helper behavior, but the assembled S140 happy-path E2E seed still creates skills without display companion data for the author label. The fix must go through a new S192 task: update the e2e seed/display data path and S140 expectations so the browser sees a real author label (for example `Alice`) while install command / route segments may still use the technical segment.
+
+Verdict: REJECT-FIX. Do not ship S192 yet. Re-enter `$planning-tasks S192` and create a QA-fix task for the V07 author display seed/expectation mismatch, then re-run `$verifying-quality S192`.
