@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-17（S193 semantic score transparency POC verified，進入 Dev-ready）
+> 最後更新：2026-05-17（S174 shipped v4.69.0；下一輪接 S192）
 
 ## 使用說明
 
@@ -39,7 +39,6 @@
 | S141 | `/api/v1/me` Display Claims（補 email/name/picture pass-through，修 user-visible 顯示成 Google sub bug） | XS(7) | S139 ✅（v4.18.0）| ✅ v4.21.0 — 3/3 tests PASS (MeController OAuth + LAB 兩分支) |
 | S142a | SkillDetailPage v2 frontend rework | M-L(13-15) | S142b API contract | ✅ v4.22.0 — 318/318 Vitest PASS (6 tasks: T01 foundation + T02 hero + T03 tabs + T04 FileExplorer + T05 Sidebar + T06 page assembly); 0 TS production errors |
 | S142b | SkillDetailPage v2 backend supplement (SkillScore composite + SecurityReport 4-quad + Skill aggregate field projection) | S-M(8-10) | S135a ✅ | ✅ v4.1.0 — 41/41 tests PASS (21 SecurityCategoryMapper + 3 SecurityReport + 6 SkillScore + 5 QualityScore + 4 SkillQueryService + 2 APIContract) |
-| S174 | Skill detail anonymous 401 not-found UX | XS(8) | S153 ✅, S122 ✅ | ⏳ Ready-to-Ship — QA PASS；next `$shipping-release S174` |
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⛔ superseded 2026-05-16 — 取代為 S189（舊 spec 已有 T01-T05/QA 歷史，但未 ship；關閉以免干擾 S186→S187 主線） |
 | S179 | Publish author anonymous login hint（未登入時作者欄位顯「請先登入後發布」，不再空白） | XS(7) | S154b ✅, S139 ✅ | 📐 in-design — spec ready for review |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
@@ -91,6 +90,7 @@
 | v4.65.0 | S183 + S184 (Security findings UI + visibility command contract) | ✅ shipped 2026-05-16 — S183 risk lights/findings UI + S184 empty-response/visibility command；`verify-all.sh` 全綠 |
 | v4.66.0 | S186 (Skill embedding 同表化) | ✅ shipped 2026-05-17 — semantic search reads `skills.embedding` / same-row visibility + ACL；`verify-all.sh` 全綠；production deploy deferred |
 | v4.68.0 | S188 (Version Label Auto Sequence) | ✅ shipped 2026-05-17 — blank version creates `1` / next numeric label；custom safe labels retained；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
+| v4.69.0 | S174 (Skill detail anonymous 401 not-found UX) | ✅ shipped 2026-05-17 — missing UUID anonymous 404 + detail 401/403/404 not-found copy；`verify-all.sh` 全綠 |
 
 ---
 
@@ -259,6 +259,7 @@
 | S183 | Security risk lights + issue findings UI | S(10) | v4.65.0 |
 | S184 | API empty response + visibility command contract | S(11) | v4.65.0 |
 | S186 | Skill embedding 同表化 | M(14) | v4.66.0 |
+| S174 | Skill detail anonymous 401 not-found UX | XS(8) | v4.69.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

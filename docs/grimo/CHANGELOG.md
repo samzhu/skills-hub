@@ -1,5 +1,25 @@
 # Changelog
 
+## [v4.69.0] — S174 Skill Detail Anonymous Not-Found UX（2026-05-17）
+
+### Fixed
+
+- **Missing skill detail API** — `GET /api/v1/skills/{id}` now resolves legal but missing UUIDs before permission evaluation, returning 404 `NOT_FOUND` instead of anonymous 401.
+- **Anonymous/private detail copy** — Skill detail treats 401 as unviewable like 400/403/404, so users see 「找不到此技能」 instead of retry guidance.
+- **Private skill protection** — existing private skills still return 401 to anonymous users without skill JSON.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.5%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Targeted evidence：`cd frontend && npm test -- SkillDetailPage` PASS（1 file / 14 tests）；`cd backend && ./gradlew test --tests "*SkillQueryControllerApiContractTest"` PASS；AC-S174-1~4 covered.
+- Production deploy：not run in this release tick；S174 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-17-S174-skill-detail-anonymous-not-found-ux.md` → `docs/grimo/specs/archive/2026-05-17-S174-skill-detail-anonymous-not-found-ux.md`
+- `docs/grimo/tasks/2026-05-17-S174-*.md` 不存在 / 已清空。
+- Final size re-score：XS(8) → XS(8)，原因是 scope matched design, no schema/dependency/pivot.
+
 ## [v4.68.0] — S188 Version Label Auto Sequence（2026-05-17）
 
 ### Changed

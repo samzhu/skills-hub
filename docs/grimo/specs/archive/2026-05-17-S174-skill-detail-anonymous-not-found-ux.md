@@ -1,6 +1,6 @@
 # S174: Skill Detail Anonymous Not-Found UX
 
-> 規格：S174 | 大小：XS(8) | 狀態：⏳ Ready-to-Ship — QA PASS；next `$shipping-release S174`
+> 規格：S174 | 大小：XS(8) | 狀態：✅ Done — shipped v4.69.0
 > 日期：2026-05-17
 > 對應：spec-roadmap row S174 / S153 / S122
 
@@ -206,7 +206,7 @@ E2E artifact verification：not required for planning — S174 的 AC 都是 API
 
 ## 7. Implementation Results
 
-> Status：⏳ Ready-to-Ship — QA PASS（2026-05-17）；next `$shipping-release S174`
+> Status：✅ Done — shipped v4.69.0（2026-05-17）
 
 ### 7.1 Verification Results
 
@@ -241,7 +241,7 @@ E2E not required — S174 沒新增 route、fixture endpoint、browser-only work
 | Item | Status | Command |
 |---|---|---|
 | Independent QA gate | PASS | `$verifying-quality S174` |
-| Full release gate | pending for shipping | `./scripts/verify-all.sh`（由 `$shipping-release S174` gate 重新執行） |
+| Full release gate | PASS | `./scripts/verify-all.sh` |
 
 ### 7.6 QA Review (2026-05-17)
 
@@ -256,3 +256,23 @@ Reviewer：`$verifying-quality S174`（Codex dev loop）
 | Code quality | PASS | QA 發現並修正 `SkillQueryController` 與 `SkillQueryControllerApiContractTest` 的 S174 前過期註解；production code 行為無需再改。 |
 
 Verdict：PASS。S174 可進 `$shipping-release S174`，由 release gate 重新執行 `./scripts/verify-all.sh`。
+
+### 7.7 Release Verification (2026-05-17)
+
+| Command | Result | Evidence |
+|---|---|---|
+| `./scripts/verify-all.sh` | PASS | V01=PASS, V02=INFO, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。 |
+| Task cleanup | PASS | `docs/grimo/tasks/*-S174-*.md` 不存在；`poc/S174/` 不存在。 |
+| Doc sync | PASS | PRD / architecture / development standards 不需修改；S174 只修 detail missing/private error split，產品範圍與架構決策沒有新增能力或偏離。 |
+
+### 7.8 Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 1 | 沿用現有 `@PostAuthorize` pattern 與 detail page error mapping；沒有框架 pivot。 |
+| Uncertainty | 1 | 1 | 問題來源、production symptom、S153/S122 相依都已明確；實作期間沒有新增未知。 |
+| Dependencies | 2 | 2 | 仍只依賴 S153 frontend copy 與 S122 read ACL 行為。 |
+| Scope | 1 | 1 | 實際改動符合規劃：backend controller/test、frontend page/test，加 release docs。 |
+| Testing | 2 | 2 | Vitest + WebMvc slice + full `verify-all.sh`；沒有新增 Testcontainers/E2E fixture。 |
+| Reversibility | 1 | 1 | 不改 schema、不改 response body shape；可用單一 release commit revert。 |
+| **Total** | **8 / XS** | **8 / XS** | 實際範圍與設計估算一致。 |
