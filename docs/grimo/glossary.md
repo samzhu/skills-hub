@@ -7,7 +7,7 @@
 | 技能作者 | Skill Author / Publisher | `Publisher` | 建立並發佈技能到平台的使用者角色 |
 | 技能消費者 | Skill Consumer | `Consumer` | 瀏覽、搜尋、下載技能的使用者角色 |
 | 管理者 | Admin | `Admin` | 管理平台設定、使用者、審核的角色 |
-| 風險等級 | Risk Level | `RiskLevel` | 技能的安全風險分級：NONE / LOW / MEDIUM / HIGH（per ADR-future S096c；NONE = 0 findings + no scripts + no allowed-tools） |
+| 風險等級 | Risk Level | `RiskLevel` | 技能的安全風險分級：NONE / LOW / MEDIUM / HIGH（per ADR-future S096c；NONE = 0 findings + no scripts + no allowed-tools；S190 起 NONE 對外顯示為「未發現風險」，避免被讀成安全保證） |
 | 風險評估 | Risk Assessment | `RiskAssessment` | 對技能內容的自動安全掃描與分級 |
 | 風險原因 | Risk Reason | `RiskReason` | S190 起，安全報告中解釋「為什麼是此風險等級」的可讀原因；與 finding 分開，原因可能來自 allowed-tools、scripts/ 或 findings，但不一定代表有檔案行號可修 |
 | 硬結構 | Hard Structure | `Organization` | 集團 → 公司 → 部門的固定組織層級樹；S170 起在資料模型上同樣落到 `Group` |
