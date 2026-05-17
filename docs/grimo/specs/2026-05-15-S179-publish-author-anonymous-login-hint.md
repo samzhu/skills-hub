@@ -1,7 +1,7 @@
 # S179 — Publish Author Anonymous Login Hint
 
 > SpecID: S179
-> Status: ⏳ QA needed — S179-T01 PASS; next `$verifying-quality S179`
+> Status: ✅ QA PASS — next `$shipping-release S179`
 > Date: 2026-05-15
 > Size: XS(7)
 > Related: S004 publish UI, S139 login UI + lazy auth gate, S154/S154b author display identity, S176 explicit publish skill name
@@ -217,4 +217,13 @@ POC：not required — S179 只改既有 React page 的 local auth-state display
 | AC-S179-3 | PASS | loading 時 `publish-author-display` 顯示 `正在確認登入狀態...`，不顯示 handle chip。 |
 | AC-S179-4 | PASS | authenticated 時維持 `Alice Chen` 與 `@alice`，作者欄位仍不是 textbox。 |
 
-下一步：`$verifying-quality S179`。
+2026-05-17 QA Review：
+
+- `frontend/src/pages/PublishPage.tsx` 的 `handleSubmit` 仍在 `auth.status !== 'authenticated'` 時直接呼叫 `auth.login()` 並 `return`，所以 anonymous / loading 不會送 `/api/v1/skills/upload`。
+- `frontend/src/api/skills.ts` 的 `uploadSkill(...)` 仍只 append `skillName`、`file`、非空 `version`、`category`、`visibility`；沒有 append `author`。
+- `PublishPage.test.tsx` 已覆蓋 AC-S179-1~4，且既有 S154b/S176/S188 tests 仍保護作者欄位不是 textbox、FormData 不含 `author`。
+- `cd frontend && npm test -- PublishPage` → PASS（1 file / 17 tests）。
+- `cd frontend && npm run verify` → PASS。
+- `cd frontend && npm test` → PASS（80 files / 464 tests）。
+
+QA verdict：PASS。本 spec 是前端 local UI state change，沒有新增 API、DB schema、後端 wiring、browser fixture 或 production deploy requirement。下一輪 `$shipping-release S179` 必須重新執行 `./scripts/verify-all.sh` 作為 release preflight，然後歸檔 spec、刪 task file、補 changelog / roadmap / tag。
