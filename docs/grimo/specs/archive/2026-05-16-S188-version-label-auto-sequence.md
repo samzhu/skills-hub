@@ -476,6 +476,20 @@ Verification:
 Result:
 - The critical-path publish E2E now asserts the shipped S188 behavior: blank platform version input creates visible `v1`.
 
+### Production Deploy / Recheck — PASS（2026-05-17）
+
+Commands / evidence:
+- `gcloud builds submit --config=cloudbuild.yaml --project=cfh-vibe-lab --substitutions=_REGION=asia-east1,_TAG=20260517-041711` created Cloud Build `f1f7da62-318a-419c-9266-8f387bf4eaa0`.
+- Cloud Build pushed `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260517-041711` with digest `sha256:8b3a5f39f5506228655c8c07c3f714972564657b7ee07b49beaa2a81f3cd6716`.
+- `gcloud run services replace temp/service.rendered.yaml --region=asia-east1 --project=cfh-vibe-lab --quiet` created revision `skillshub-00038-252`; Cloud Run reports it Ready and serving 100% traffic.
+- `curl -fsS https://skillshub-644359853825.asia-east1.run.app/actuator/health/readiness` returned `{"status":"UP"}`.
+- `curl -fsS -o /tmp/skillshub-home.html -w '%{http_code} %{content_type} %{size_download}\n' https://skillshub-644359853825.asia-east1.run.app/` returned `200 text/html;charset=UTF-8 458`.
+- `curl -fsS 'https://skillshub-644359853825.asia-east1.run.app/api/v1/skills?page=0&size=3'` returned HTTP 200 with an empty page shape: `content=[]`, `totalElements=0`.
+- `gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="skillshub" AND resource.labels.revision_name="skillshub-00038-252" AND severity>=ERROR' --freshness=20m` returned no rows.
+
+Limit:
+- This Codex tick had no callable Chrome automation tool, so the production recheck did not claim authenticated UI clicks. The recorded evidence is HTTP/API + Cloud Run logs.
+
 ### Final Size Re-score (per estimation-scale.md)
 
 | Dimension | Initial | Actual | Rationale |

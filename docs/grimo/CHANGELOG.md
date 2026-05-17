@@ -14,7 +14,8 @@
 - `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.5%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
 - Targeted evidence：`VersionLabelPolicyTest` covers blank initial/next numeric/custom/unsafe labels；backend upload/controller tests cover optional request params, storage path `skills/{skillId}/1/skill.zip`, duplicate 409, unsafe 400；frontend tests confirm blank version is not appended to `FormData` and UI displays numeric/custom labels.
 - E2E release fix：the first full gate failed because S140 AC-3 still expected `v1.0.0`; `e2e/tests/S140-critical-path-publish.spec.ts` now leaves the platform version blank and expects `v1`; `cd e2e && npx playwright test --grep @happy-path` passed with `9 passed`.
-- Production deploy：pending in the same automation tick after this release commit.
+- Production deploy：Cloud Build `f1f7da62-318a-419c-9266-8f387bf4eaa0` built and pushed `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260517-041711` (`sha256:8b3a5f39f5506228655c8c07c3f714972564657b7ee07b49beaa2a81f3cd6716`)；Cloud Run revision `skillshub-00038-252` became Ready and serves 100% traffic；`/actuator/health/readiness` returned 200 `{"status":"UP"}`；`/` returned 200 HTML；`/api/v1/skills?page=0&size=3` returned 200 `{"content":[],"page":{"size":3,"number":0,"totalElements":0,"totalPages":0}}`；latest revision `severity>=ERROR` query returned no rows.
+- Chrome note：this Codex tick did not expose a callable Chrome automation tool, so production UI operation was not claimed; recheck evidence is HTTP/API + Cloud Run logs.
 
 ### Spec lifecycle
 
