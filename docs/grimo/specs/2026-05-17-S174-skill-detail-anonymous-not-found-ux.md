@@ -1,6 +1,6 @@
 # S174: Skill Detail Anonymous Not-Found UX
 
-> 規格：S174 | 大小：XS(8) | 狀態：Approved-for-Dev
+> 規格：S174 | 大小：XS(8) | 狀態：⏳ QA — local verification PASS；independent QA pending
 > 日期：2026-05-17
 > 對應：spec-roadmap row S174 / S153 / S122
 
@@ -203,3 +203,42 @@ POC：not required — S174 只改既有 React error mapping 與既有 Spring Me
 | 2 | `2026-05-17-S174-T02-backend-missing-uuid-404.md` | AC-S174-1, AC-S174-2 | PASS | `cd backend && ./gradlew test --tests "*SkillQueryControllerApiContractTest"` |
 
 E2E artifact verification：not required for planning — S174 的 AC 都是 API status/body 或 single-page error state，沒有新增 browser-only fixture、runtime wiring、schema 初始化或跨程序行為。Phase 4 若 task 全 PASS，記錄 no E2E seam rationale 即可。
+
+## 7. Implementation Results
+
+> Status：⏳ QA — local verification PASS（2026-05-17）；next `$verifying-quality S174`
+
+### 7.1 Verification Results
+
+| Command | Result | Evidence |
+|---|---|---|
+| `cd frontend && npm test -- SkillDetailPage` | PASS | 1 file / 14 tests passed；S174 401 case 與既有 S153 500 retry case 同時通過。 |
+| `cd backend && ./gradlew test --tests "*SkillQueryControllerApiContractTest"` | PASS | `BUILD SUCCESSFUL in 2m 25s`；`test` 與 `jacocoTestReport` task 完成。 |
+
+### 7.2 AC Results
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC-S174-1 | PASS | `SkillQueryControllerApiContractTest`：missing UUID anonymous GET 回 404 `NOT_FOUND`，message 含 skill id。 |
+| AC-S174-2 | PASS | `SkillQueryControllerApiContractTest`：private existing skill anonymous GET 回 401，body 不含 private name / description / `viewerPermissions`。 |
+| AC-S174-3 | PASS | `SkillDetailPage.test.tsx`：fetch mock 401 時畫面顯示「找不到此技能」，「返回列表」連到 `/browse`。 |
+| AC-S174-4 | PASS | `SkillDetailPage.test.tsx` 既有 500 case 繼續顯示「載入技能時發生錯誤」與「請稍後重試或重新整理頁面」。 |
+
+### 7.3 Implementation Findings
+
+| Finding | Detail |
+|---|---|
+| Missing UUID 404 | `GET /api/v1/skills/{id}` 改用 `@PostAuthorize("hasPermission(returnObject.id, 'Skill', 'read')")` 後，合法但不存在的 UUID 會先進 `SkillQueryService.findById()`，再由 `NoSuchElementException` 轉 404。 |
+| Private skill still hidden | 既有 private skill 仍會先被 controller resolve 成 `Skill`，再由 permission evaluator deny；anonymous 得到 401，response 沒有 skill JSON。 |
+| Frontend defense | Detail page 把 401 加進 `isUnviewable`，所以 production 若仍回 401，使用者也會看到「找不到此技能」，不會看到 retry 提示。 |
+
+### 7.4 E2E Artifact Verification
+
+E2E not required — S174 沒新增 route、fixture endpoint、browser-only workflow、schema migration、subprocess、credential injection 或 packaged artifact 行為。前端 user-visible state 由 `SkillDetailPage` component test 直接覆蓋；後端 method-security 行為由 `MockMvc` WebMvc slice 走 Spring Security / `@PostAuthorize` path 覆蓋。
+
+### 7.5 Pending Verification
+
+| Item | Status | Command |
+|---|---|---|
+| Independent QA gate | pending | `$verifying-quality S174` |
+| Full release gate | pending for shipping | `./scripts/verify-all.sh`（由 `$shipping-release S174` gate 重新執行） |
