@@ -62,6 +62,7 @@
 - hooks/utilities：camelCase（`useSkillSearch.ts`）
 - UI 語言：繁體中文（zh-TW）— 所有頁面標題、按鈕文字、提示訊息、空狀態文案皆使用繁體中文
 - 程式碼中的變數、函式名稱維持英文
+- S192 起，user-facing 作者 / 留言者 / 評論者文字必須用 backend display fields（如 `authorDisplayName`、`authorHandle`）或 `frontend/src/lib/displayName.ts` 的 `getDisplayName(...)`；不可直接 render `author` / `authorId` / `userId` 這類 `u_<6hex>` 平台識別碼。Route、filter、install command、ACL/delete comparison 可用 `getAuthorRouteSegment(...)` 或 raw id，因為那裡是技術識別值，不是人名。
 
 ## API Standards
 

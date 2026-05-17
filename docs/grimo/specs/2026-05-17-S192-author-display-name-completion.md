@@ -273,6 +273,21 @@ POC：not required — S192 不新增 package、SDK、framework SPI、schema mig
 | 3 | `2026-05-17-S192-T03-actor-display-dtos.md` | AC-S192-2, AC-S192-5, AC-S192-6, AC-S192-7, AC-S192-9 | PASS | `cd backend && ./gradlew test --tests "*ReviewControllerTest" --tests "*Comment*Test" --tests "*NotificationProjectionListenerTest"` |
 | 4 | `2026-05-17-S192-T04-frontend-display-helper.md` | AC-S192-11, AC-S192-12 | PASS | `cd frontend && npm test -- displayName` |
 | 5 | `2026-05-17-S192-T05-frontend-surface-sweep.md` | AC-S192-1, AC-S192-3, AC-S192-4, AC-S192-5, AC-S192-6, AC-S192-12 | PASS | `cd frontend && npm test -- PublishReviewPage HomePage MySkillsPage AnalyticsPage ReviewsPanel CommentList` |
-| 6 | `2026-05-17-S192-T06-source-scan-docs-guard.md` | AC-S192-8, Maintainability NFR | pending | `rg -n "\\.(author|authorId)\\b" frontend/src --glob '*.tsx'` |
+| 6 | `2026-05-17-S192-T06-source-scan-docs-guard.md` | AC-S192-8, Maintainability NFR | PASS | `rg -n "\\.(author|authorId)\\b" frontend/src --glob '*.tsx'` |
 
 E2E artifact verification：not required for planning — S192 的 AC 都是 API DTO shape、React component text、notification title projection 或 source inspection；沒有新增 route、test seed endpoint、browser-only workflow、schema migration、credential injection 或 packaged artifact 行為。Phase 4 仍需重新評估並在 §7 記錄理由。
+
+## 7. Implementation Results
+
+### S192-T06 Source Scan Guard
+
+`rg -n "\\.(author|authorId)\\b" frontend/src --glob '*.tsx'` 回傳 15 筆，分類如下：
+
+| 分類 | 檔案 | 判定 |
+|---|---|---|
+| Route / API filter | `SkillDetailPage.tsx`, `MySkillsPage.tsx`, `AnalyticsPage.tsx` | 可保留；這些值用於 `useSkillByAuthorAndName(...)`、author filter、或 `/skills/{author}/{name}` technical route segment，不是人名 label |
+| Delete / ownership comparison | `ReviewsPanel.tsx`, `CommentList.tsx` | 可保留；delete button 判斷仍必須比較 current user id 與 `authorId` |
+| Display helper input | `MySkillsPage.tsx`, `ReviewsPanel.tsx`, `CommentList.tsx` | 可保留；raw id 只作為 `getDisplayName(...)` 的輸入，helper 會避免輸出 `u_<id>` |
+| Test comment | `RequestDetailPage.test.tsx` | 可保留；註解描述 fixture ownership 行為 |
+
+AC-S192-8 PASS：source scan 沒有找到 `.author` / `.authorId` 直接作為一般 visible label render 的 TSX。`docs/grimo/glossary.md` 與 `docs/grimo/development-standards.md` 已補上 display-vs-id 規則。

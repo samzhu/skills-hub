@@ -47,11 +47,11 @@
 | 技能分數 | Skill Score | `skillScore` | S142b 複合評分公式：`round(0.6 × qualityTotal + 0.4 × securityScore)`；securityScore 為 null（未掃描）時 skillScore = null；出現在 GET /scores 回應 |
 | 安全報告 | Security Report | `SecurityReportResponse` | 技能安全掃描明細；S142b 保留 legacy `checks` 相容欄位，S147 起新增 `categories/findings`，每筆 finding 可帶 issue code、檔案/行號、evidence、remediation、confidence；出現在 GET /security-report 回應 |
 | 已驗證 | Verified | `verified` | S142b 衍生旗標：`status === 'PUBLISHED' && riskLevel != null`；表示「平台已完成品質 + 安全兩階段審查」≠「無風險」；出現在 GET /skills/{id} 回應 |
-| 平台識別碼 | Platform User ID | `userId` (`u_<6hex>`) | S154 起，平台對 user 的 internal PK；解耦 OAuth provider 的 sub；ACL principal / `skills.author` / `skills.owner_id` 都用此 ID（`u_a3f9c1` 格式）；同一個人換 OAuth provider 仍是不同 user_id（per S154 §2.4 Pattern A）|
+| 平台識別碼 | Platform User ID | `userId` (`u_<6hex>`) | S154 起，平台對 user 的 internal PK；解耦 OAuth provider 的 sub；ACL principal / `skills.author` / `skills.owner_id` 都用此 ID（`u_a3f9c1` 格式）；S192 起，一般 user-facing UI 不可把此值當作者/留言者/評論者顯示名稱，只能用於 API filter、ACL、delete ownership、route/install command fallback 等行為或技術識別場景；同一個人換 OAuth provider 仍是不同 user_id（per S154 §2.4 Pattern A）|
 | 顯示用 slug | Handle | `handle` | S154 起，user 在平台上的可讀短名稱（`alice`）；install command + `/api/v1/skills/{handle}/{name}` URL 用它；user 可改、撞名時自動加 `-2/-3` 後綴 |
 | OAuth 識別碼 | OAuth Sub | `sub` | OAuth provider 給的 raw subject identifier（Google: 21 位數字；GitHub: 數字 ID）；S154 起只在 `users.sub` 出現，**不**在業務表（`skills` / `acl_entries`）|
 | 顯示名快照 | Author Name Snapshot | `authorNameSnapshot` | S154 起，publish/republish 時 freeze 的作者 display name；user 帳號刪除後 fallback 顯示來源（per S154 §2.6） |
-| 顯示名解析鏈 | DisplayName Resolver | `DisplayNameResolver` | S154 起，五層 fallback：name → snapshot → email local-part → handle → user_id（per S154 §2.5）；frontend `lib/displayName.ts` 與 backend static helper 同邏輯 |
+| 顯示名解析鏈 | DisplayName Resolver | `DisplayNameResolver` | S154 起，低階解析可用五層 fallback：name → snapshot → email local-part → handle → user_id（per S154 §2.5）；S192 起，user-facing DTO / frontend `getDisplayName(...)` 必須擋掉最後的 raw `user_id` fallback，缺顯示資料要修 projection 或 fixture |
 | 權限角色 | Permission Role | `Role` | S169 起，使用者分享 skill 時只選角色（OWNER / EDITOR / VIEWER），系統再展開成 `read/write/delete` 權限；UI 不提供 raw operation checkbox |
 | 檢視者權限 | Viewer Permissions | `viewerPermissions` | S169 起，Skill detail API 由後端依當前 user 計算可做動作（canEdit/canDelete/canShare 等），frontend 按鈕只讀此欄位，不重做 ACL 判斷 |
 | 公開可見性 | Public Visibility | `isPublic` / `is_public` | 表示 skill 是否對匿名與所有登入使用者可讀；以 skill visibility state 為狀態真相 |
