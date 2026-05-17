@@ -75,13 +75,13 @@ class UserDisplayServiceTest extends RepositorySliceTestBase {
     @DisplayName("AC-S192-2: resolveAll de-duplicates ids and preserves result lookup by user id")
     @Tag("AC-S192-2")
     void resolveAllDeduplicatesIds() {
-        users.save(newUser("u_bbbbbb", "bob@example.com", "Bob Lee", "bob"));
+        users.save(newUser("u_192bbb", "bob@example.com", "Bob Lee", "bob-s192"));
         var service = new UserDisplayService(users);
 
-        var results = service.resolveAll(List.of("u_bbbbbb", "u_bbbbbb", "u_absent"), false);
+        var results = service.resolveAll(List.of("u_192bbb", "u_192bbb", "u_absent"), false);
 
-        assertThat(results).containsOnlyKeys("u_bbbbbb", "u_absent");
-        assertThat(results.get("u_bbbbbb").displayName()).isEqualTo("Bob Lee");
+        assertThat(results).containsOnlyKeys("u_192bbb", "u_absent");
+        assertThat(results.get("u_192bbb").displayName()).isEqualTo("Bob Lee");
         assertThat(results.get("u_absent").displayName()).isNull();
     }
 

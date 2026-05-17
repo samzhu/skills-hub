@@ -1,6 +1,6 @@
 # S192 - 作者顯示名稱一致性收斂
 
-> Status: ⏳ Dev — T05 PASS；next `$planning-tasks S192`
+> Status: ⏳ Dev — T08 PASS；next `$planning-tasks S192` Phase 4
 > Owner: Codex  
 > Date: 2026-05-17  
 > Size: M(13)  
@@ -274,6 +274,8 @@ POC：not required — S192 不新增 package、SDK、framework SPI、schema mig
 | 4 | `2026-05-17-S192-T04-frontend-display-helper.md` | AC-S192-11, AC-S192-12 | PASS | `cd frontend && npm test -- displayName` |
 | 5 | `2026-05-17-S192-T05-frontend-surface-sweep.md` | AC-S192-1, AC-S192-3, AC-S192-4, AC-S192-5, AC-S192-6, AC-S192-12 | PASS | `cd frontend && npm test -- PublishReviewPage HomePage MySkillsPage AnalyticsPage ReviewsPanel CommentList` |
 | 6 | `2026-05-17-S192-T06-source-scan-docs-guard.md` | AC-S192-8, Maintainability NFR | PASS | `rg -n "\\.(author|authorId)\\b" frontend/src --glob '*.tsx'` |
+| 7 | `2026-05-17-S192-T07-skillcard-fixture-display-data.md` | AC-S192-8, AC-S192-11 | PASS | `cd frontend && npm test -- SkillCard` |
+| 8 | `2026-05-17-S192-T08-user-display-fixture-isolation.md` | AC-S192-2 | PASS | `cd backend && ./gradlew test --tests "*UserDisplayServiceTest" --tests "*UserRepositoryTest"` |
 
 E2E artifact verification：not required for planning — S192 的 AC 都是 API DTO shape、React component text、notification title projection 或 source inspection；沒有新增 route、test seed endpoint、browser-only workflow、schema migration、credential injection 或 packaged artifact 行為。Phase 4 仍需重新評估並在 §7 記錄理由。
 
@@ -291,3 +293,11 @@ E2E artifact verification：not required for planning — S192 的 AC 都是 API
 | Test comment | `RequestDetailPage.test.tsx` | 可保留；註解描述 fixture ownership 行為 |
 
 AC-S192-8 PASS：source scan 沒有找到 `.author` / `.authorId` 直接作為一般 visible label render 的 TSX。`docs/grimo/glossary.md` 與 `docs/grimo/development-standards.md` 已補上 display-vs-id 規則。
+
+### Phase 4 Finding: SkillCard Fixture
+
+`cd frontend && npm test` 在 `frontend/src/components/SkillCard.test.tsx:42` 失敗：base fixture 只有 `author: 'samzhu'`，但 S192 後 `getDisplayName(...)` 不再把 `author` 當人名 fallback，所以畫面作者列為空。這不是 production UI bug；這是舊 test fixture 還把 behavior-bearing `author` 當 display data。T07 已修正 fixture，讓 raw `author` 改為 `u_a3f9c1`，visible label 由 `authorHandle: 'samzhu'` 提供；`cd frontend && npm test -- SkillCard` PASS（2 files / 11 tests）。
+
+### Phase 4 Finding: UserDisplayService Fixture Collision
+
+`./gradlew test` 在 `backend/src/test/java/io/github/samzhu/skillshub/shared/security/UserRepositoryTest.java:43` 失敗，錯誤是 `DuplicateKeyException`。實際撞到的是 S192 新增的 `UserDisplayServiceTest.resolveAllDeduplicatesIds()` 也 seed `users.id='u_bbbbbb'`；`RepositorySliceTestBase` 共用 PostgreSQL container 且不靠 rollback 清資料，所以 S192 fixture 不能重用既有 fixed id。T08 已將 S192 專用 fixture 改為 `u_192bbb`；`cd backend && ./gradlew test --tests "*UserDisplayServiceTest" --tests "*UserRepositoryTest"` PASS（BUILD SUCCESSFUL）。

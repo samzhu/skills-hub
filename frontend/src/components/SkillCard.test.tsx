@@ -8,7 +8,8 @@ const mockSkill: Skill = {
   id: 'skill-001',
   name: 'k8s-helper',
   description: 'Kubernetes 排錯助理 — 自動分析 Pod 失敗、Service 未連通與 Ingress 設定錯誤的常見根因。',
-  author: 'samzhu',
+  author: 'u_a3f9c1',
+  authorHandle: 'samzhu',
   category: '雲端維運',
   latestVersion: '2',
   riskLevel: 'LOW',
@@ -40,6 +41,7 @@ describe('AC-2: SkillCard 渲染', () => {
     renderCard(mockSkill)
     expect(screen.getByText('k8s-helper')).toBeInTheDocument()
     expect(screen.getByText('samzhu')).toBeInTheDocument()
+    expect(screen.queryByText('u_a3f9c1')).not.toBeInTheDocument()
     expect(screen.getByText(/Kubernetes 排錯助理/)).toBeInTheDocument()
     expect(screen.getByText('雲端維運')).toBeInTheDocument()
   })
