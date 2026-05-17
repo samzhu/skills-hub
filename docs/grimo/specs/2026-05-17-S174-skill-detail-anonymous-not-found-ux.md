@@ -193,3 +193,13 @@ const isUnviewable =
 ---
 
 <!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+POC：not required — S174 只改既有 React error mapping 與既有 Spring Method Security annotation pattern；沒有新 dependency、SDK、schema、外部服務或待驗證框架能力。
+
+| 順序 | Task | AC | 狀態 | 驗證 |
+|---:|---|---|---|---|
+| 1 | `2026-05-17-S174-T01-frontend-401-not-found.md` | AC-S174-3, AC-S174-4 | PASS | `cd frontend && npm test -- SkillDetailPage` |
+| 2 | `2026-05-17-S174-T02-backend-missing-uuid-404.md` | AC-S174-1, AC-S174-2 | PASS | `cd backend && ./gradlew test --tests "*SkillQueryControllerApiContractTest"` |
+
+E2E artifact verification：not required for planning — S174 的 AC 都是 API status/body 或 single-page error state，沒有新增 browser-only fixture、runtime wiring、schema 初始化或跨程序行為。Phase 4 若 task 全 PASS，記錄 no E2E seam rationale 即可。

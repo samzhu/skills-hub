@@ -101,6 +101,23 @@ describe('SkillDetailPage — error paths (ledger Round 1.4)', () => {
     })
     expect(screen.queryByText('請稍後重試或重新整理頁面')).not.toBeInTheDocument()
   })
+
+  it('S174 AC-S174-3: 401 Unauthorized shows 找不到此技能 (no retry hint)', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: () =>
+        Promise.resolve({ error: 'UNAUTHORIZED', message: 'Authentication required' }),
+    } as Response)
+    renderPage('00000000-0000-0000-0000-000000000000')
+    await waitFor(() => {
+      expect(screen.getByText('找不到此技能')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('請稍後重試或重新整理頁面')).not.toBeInTheDocument()
+
+    const link = screen.getByText('返回列表')
+    expect(link.closest('a')).toHaveAttribute('href', '/browse')
+  })
 })
 
 const skillFixture = (status: string, id = 'skill-test-1') => ({

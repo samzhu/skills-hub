@@ -75,15 +75,14 @@ public class SkillQueryController {
 	}
 
 	/**
-	 * 依 ID 取得單一技能詳情。找不到時回傳 404；無權讀取時回傳 403。
+	 * 依 ID 取得單一技能詳情。找不到時回傳 404；存在但無權讀取時回傳 401/403。
 	 *
-	 * <p>S122: 加 row-level ACL 守則 — anonymous 對 PRIVATE skill 走 401（per Spring
-	 * Security ExceptionTranslationFilter 在 AnonymousAuthenticationToken 場景轉為
-	 * AuthenticationException）；authenticated user 無 grant 走 403。對齊 S121 list endpoint
-	 * ACL filter，補完 read-side 單筆 path 的 LAB-blocker gap。
+	 * <p>S174: 先 resolve 再用 {@code @PostAuthorize} 檢查 returnObject.id；missing UUID
+	 * 由 {@link SkillQueryService#findById(String)} 進 {@code NoSuchElementException → 404}，
+	 * private existing skill 仍由 read permission gate 擋住。
 	 */
 	@GetMapping("/skills/{id}")
-	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
+	@PostAuthorize("hasPermission(returnObject.id, 'Skill', 'read')")
 	Skill getById(@PathVariable UUID id) {
 		return queryService.findById(id.toString());
 	}

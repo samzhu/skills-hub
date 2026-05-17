@@ -87,11 +87,12 @@ export function SkillDetailPage() {
   }
 
   if (error || !skill) {
-    // S153: 400 (格式錯誤 ID) / 403 (ACL 拒讀) / 404 (不存在) 對 user 都是「找不到」
+    // S153/S174: 400 (格式錯誤 ID) / 401 (anonymous 不可見) / 403 (ACL 拒讀)
+    // / 404 (不存在) 對 user 都是「找不到」
     // 只有真正的 5xx / network error 才提示 retry — 對「永遠不存在的東西」叫使用者
     // 重試是錯訊息，會誘發無效 refresh。
     const isUnviewable =
-      ApiError.is(error) && [400, 403, 404].includes(error.status)
+      ApiError.is(error) && [400, 401, 403, 404].includes(error.status)
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">

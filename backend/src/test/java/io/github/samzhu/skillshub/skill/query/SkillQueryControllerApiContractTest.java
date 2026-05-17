@@ -1,11 +1,15 @@
 package io.github.samzhu.skillshub.skill.query;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -121,6 +125,49 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
                 .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].version").doesNotExist())
                 .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].name").exists())
                 .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].status").exists());
+    }
+
+    @Test
+    @DisplayName("AC-S174-1: anonymous GET missing UUID returns 404 NOT_FOUND before permission deny")
+    @Tag("AC-S174-1")
+    void s174_missingUuidReturns404BeforePermissionDeny() throws Exception {
+        var skillId = UUID.fromString("00000000-0000-0000-0000-000000000000");
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.any()))
+                .thenReturn(false);
+        Mockito.when(skillQueryService.findById(skillId.toString()))
+                .thenThrow(new NoSuchElementException("Skill not found: " + skillId));
+
+        mockMvc.perform(get("/api/v1/skills/{id}", skillId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Skill not found: " + skillId));
+    }
+
+    @Test
+    @DisplayName("AC-S174-2: anonymous GET private existing skill still returns 401 without skill JSON")
+    @Tag("AC-S174-2")
+    void s174_privateExistingSkillStillReturns401WithoutSkillJson() throws Exception {
+        var skillId = UUID.randomUUID();
+        var fixture = Skill.fromRow(skillId.toString(), "private-s174", "private description",
+                "alice", "testing", null, null, "PUBLISHED", 0L, Instant.now(), Instant.now(),
+                List.of(), null);
+        Mockito.when(skillQueryService.findById(skillId.toString())).thenReturn(fixture);
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.any()))
+                .thenReturn(false);
+
+        mockMvc.perform(get("/api/v1/skills/{id}", skillId))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().string(not(containsString("private-s174"))))
+                .andExpect(content().string(not(containsString("private description"))))
+                .andExpect(content().string(not(containsString("viewerPermissions"))));
     }
 
     @Test
