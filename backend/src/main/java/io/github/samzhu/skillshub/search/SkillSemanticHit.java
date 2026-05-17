@@ -1,5 +1,9 @@
 package io.github.samzhu.skillshub.search;
 
+import org.jspecify.annotations.Nullable;
+
+import io.github.samzhu.skillshub.shared.security.UserDisplay;
+
 /**
  * One row returned by the S186 semantic SQL over {@code skills.embedding}.
  *
@@ -9,7 +13,7 @@ package io.github.samzhu.skillshub.search;
  * @param id skill id from {@code skills.id}
  * @param name skill name from {@code skills.name}
  * @param description skill description from {@code skills.description}
- * @param author author display/user id from {@code skills.author}
+ * @param author internal author user id from {@code skills.author}
  * @param category canonical category key from {@code skills.category}
  * @param categoryDisplay display category from {@code skills.category_display}
  * @param latestVersion latest published SemVer from {@code skills.latest_version}
@@ -30,8 +34,11 @@ record SkillSemanticHit(
         double distance
 ) {
 
-    SemanticSearchResult toResult() {
-        return new SemanticSearchResult(id, name, description, author, category, categoryDisplay,
+    SemanticSearchResult toResult(@Nullable UserDisplay authorDisplay) {
+        return new SemanticSearchResult(id, name, description, author,
+                authorDisplay == null ? null : authorDisplay.displayName(),
+                authorDisplay == null ? null : authorDisplay.handle(),
+                category, categoryDisplay,
                 latestVersion, riskLevel, downloadCount, 1.0d - distance);
     }
 }

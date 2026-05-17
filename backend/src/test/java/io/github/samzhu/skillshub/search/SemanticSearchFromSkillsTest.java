@@ -122,6 +122,41 @@ class SemanticSearchFromSkillsTest {
                         + "&& @.categoryDisplay == 'DevOps' && @.downloadCount == 7)]").exists());
     }
 
+    @Test
+    @DisplayName("AC-S192-3: semantic search result includes author display fields without author-based ranking")
+    @Tag("AC-S192-3")
+    void semanticSearchResultIncludesAuthorDisplayFieldsWithoutAuthorBasedRanking() throws Exception {
+        seedUser("u_f7eb3a", "sam-sub", "sam@example.com", "Sam Zhu", "samzhu");
+        seedSkill("skill-subtitle", "subtitle-helper", "u_f7eb3a", "video", "Video",
+                true, List.of("public:*:read"), 11L, embeddingModel.embed(QUERY));
+
+        mvc.perform(get("/api/v1/search/semantic")
+                        .param("q", QUERY)
+                        .param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == 'skill-subtitle' "
+                        + "&& @.author == 'u_f7eb3a' "
+                        + "&& @.authorDisplayName == 'Sam Zhu' "
+                        + "&& @.authorHandle == 'samzhu')]").exists());
+
+        assertThat(SemanticSearchService.SEMANTIC_SEARCH_SQL_FROM_SKILLS)
+                .as("S192 display enrichment must not add author name/handle to SQL search or ranking")
+                .doesNotContain("users")
+                .doesNotContain("author_display_name")
+                .doesNotContain("author_handle")
+                .doesNotContain("name ILIKE")
+                .doesNotContain("handle ILIKE")
+                .doesNotContain("ORDER BY author");
+    }
+
+    private void seedUser(String id, String sub, String email, String name, String handle) {
+        jdbc.update("""
+                INSERT INTO users (id, oauth_provider, sub, email, name, handle, created_at, last_seen_at)
+                VALUES (?, 'google', ?, ?, ?, ?, NOW(), NOW())
+                ON CONFLICT DO NOTHING
+                """, id, sub, email, name, handle);
+    }
+
     private void seedSkill(String id, String name, String author, String category, String categoryDisplay,
             boolean isPublic, List<String> aclEntries, long downloadCount, float[] embedding) {
         jdbc.update("""

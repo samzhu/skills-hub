@@ -46,4 +46,18 @@ And（而且）SQL/ranking 不搜尋、不排序作者名稱
 - S192-T01 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+
+Date：2026-05-17
+
+實作結果：
+- `SemanticSearchResult` 保留 `author` raw id，新增 nullable `authorDisplayName` 與 `authorHandle`。
+- `SemanticSearchService` 對命中後的 topK author id 呼叫 `UserDisplayService.resolveAll(...)` 批次補顯示欄位。
+- `SemanticSearchService.SEMANTIC_SEARCH_SQL_FROM_SKILLS` 維持從 `skills.embedding` 查詢與用 distance 排序，沒有把 user name / handle 放進搜尋或排序。
+
+驗證：
+- RED：`cd backend && ./gradlew test --tests "*SemanticSearchFromSkillsTest.semanticSearchResultIncludesAuthorDisplayFieldsWithoutAuthorBasedRanking"` -> failed at `SemanticSearchFromSkillsTest.java:137` because response lacked author display fields.
+- GREEN：`cd backend && ./gradlew test --tests "*SemanticSearchFromSkillsTest.semanticSearchResultIncludesAuthorDisplayFieldsWithoutAuthorBasedRanking"` -> BUILD SUCCESSFUL in 2m 10s.
+- 搜尋整包：`cd backend && ./gradlew test --tests "*SemanticSearch*"` -> BUILD SUCCESSFUL in 2m 14s.

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import com.pgvector.PGvector;
 
 import io.github.samzhu.skillshub.shared.security.PrincipalContextService;
+import io.github.samzhu.skillshub.shared.security.UserDisplayService;
 
 /**
  * 語意搜尋服務 — 接收自然語言查詢，直接從 {@code skills.embedding} 找出語意相近的技能。
@@ -61,13 +62,15 @@ class SemanticSearchService {
     private final JdbcTemplate jdbcTemplate;
     private final EmbeddingModel embeddingModel;
     private final PrincipalContextService principalContextService;
+    private final UserDisplayService userDisplayService;
 
     SemanticSearchService(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel,
-            PrincipalContextService principalContextService,
+            PrincipalContextService principalContextService, UserDisplayService userDisplayService,
             @Value("${skillshub.search.semantic-similarity-threshold:0.3}") double similarityThreshold) {
         this.jdbcTemplate = jdbcTemplate;
         this.embeddingModel = embeddingModel;
         this.principalContextService = principalContextService;
+        this.userDisplayService = userDisplayService;
         this.similarityThreshold = similarityThreshold;
     }
 
@@ -107,9 +110,13 @@ class SemanticSearchService {
                 rs.getLong("download_count"),
                 rs.getDouble("distance")));
 
-        var results = hits.stream()
-                .limit(topK)
-                .map(SkillSemanticHit::toResult)
+        var topHits = hits.stream().limit(topK).toList();
+        var authorDisplays = userDisplayService.resolveAll(topHits.stream()
+                .map(SkillSemanticHit::author)
+                .toList(), false);
+
+        var results = topHits.stream()
+                .map(hit -> hit.toResult(authorDisplays.get(hit.author())))
                 .toList();
 
         log.atInfo()

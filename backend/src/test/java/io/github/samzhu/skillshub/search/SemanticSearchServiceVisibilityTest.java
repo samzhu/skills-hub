@@ -19,6 +19,7 @@ import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.RowMapper;
 
 import io.github.samzhu.skillshub.shared.security.PrincipalContextService;
+import io.github.samzhu.skillshub.shared.security.UserDisplayService;
 
 /**
  * S177-T04 — semantic search service no longer appends public:*:read.
@@ -32,6 +33,7 @@ class SemanticSearchServiceVisibilityTest {
         var jdbc = mock(JdbcTemplate.class);
         var embeddingModel = mock(EmbeddingModel.class);
         var principals = mock(PrincipalContextService.class);
+        var userDisplayService = mock(UserDisplayService.class);
         var connection = mock(Connection.class);
         var ps = mock(PreparedStatement.class);
         when(principals.currentPrincipalKeys()).thenReturn(Set.of());
@@ -43,7 +45,7 @@ class SemanticSearchServiceVisibilityTest {
             return List.of();
         });
 
-        var service = new SemanticSearchService(jdbc, embeddingModel, principals, 0.0);
+        var service = new SemanticSearchService(jdbc, embeddingModel, principals, userDisplayService, 0.0);
         service.search("hello", 10);
 
         verify(ps).setString(2, "{}");
