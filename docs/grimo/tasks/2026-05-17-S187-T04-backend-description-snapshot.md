@@ -53,4 +53,14 @@ And（而且）list/detail API 下一次讀取都顯示新 description
 - 無；可與 S187-T01~T03 平行，但 commit 時要避開衝突。
 
 ## 狀態
-pending（待做）
+PASS（2026-05-17）
+
+## 實作結果
+- `SkillCommandService.addVersion(...)` 在 duplicate version guard 通過後，從 validated SKILL.md frontmatter 取 `description`，並呼叫 `Skill.refreshDescriptionSnapshot(...)`。
+- `Skill.refreshDescriptionSnapshot(...)` 會套用既有 description trim / blank / length 驗證；description 沒變時不額外發 update event。
+- `SkillUploadAllowedToolsTest` 新增 AC-S187-5 / AC-S187-7：新版 publish 會更新 `skills.description`，duplicate version 409 不會覆寫 description snapshot。
+
+## 驗證結果
+- RED：`cd backend && ./gradlew test --tests "*SkillUploadAllowedToolsTest"` → 5 tests completed, 2 failed（AC-S187-5 / AC-S187-7 預期失敗）。
+- GREEN：`cd backend && ./gradlew test --tests "*SkillUploadAllowedToolsTest"` → BUILD SUCCESSFUL。
+- FINAL：`cd backend && ./gradlew test --tests "*SkillUpload*" --tests "*SkillCommand*"` → BUILD SUCCESSFUL。

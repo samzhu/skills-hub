@@ -108,17 +108,71 @@ class SkillUploadAllowedToolsTest {
                 .hasMessageContaining("Version 1.1.0 already exists");
     }
 
+    @Test
+    @DisplayName("AC-S187-5: 新版本 publish 更新 skills.description snapshot")
+    @Tag("AC-S187-5")
+    void addVersionUpdatesDescriptionSnapshot() throws IOException {
+        var platformName = "snapshot-skill-" + UUID.randomUUID().toString().substring(0, 8);
+        var packageV1 = "snapshot-package-v1-" + UUID.randomUUID().toString().substring(0, 8);
+        var v1 = createZipWithFrontmatter(packageV1, "Old description snapshot", null);
+        var skillId = commandService.uploadSkill(v1, platformName, "1.0.0", "owner", "testing", null, null);
+
+        assertThat(skillRepo.findById(skillId).orElseThrow().getDescription())
+                .isEqualTo("Old description snapshot");
+
+        var packageV2 = "snapshot-package-v2-" + UUID.randomUUID().toString().substring(0, 8);
+        var v2 = createZipWithFrontmatter(packageV2, "New description from SKILL.md", null);
+        commandService.addVersion(skillId, v2, "1.1.0");
+
+        assertThat(skillRepo.findById(skillId).orElseThrow().getDescription())
+                .isEqualTo("New description from SKILL.md");
+
+        var version = versionRepo.findBySkillIdAndVersion(skillId, "1.1.0").orElseThrow();
+        assertThat(version.getFrontmatter())
+                .containsEntry("description", "New description from SKILL.md");
+    }
+
+    @Test
+    @DisplayName("AC-S187-7: duplicate version 不覆寫 description snapshot")
+    @Tag("AC-S187-7")
+    void duplicateVersionDoesNotUpdateDescriptionSnapshot() throws IOException {
+        var platformName = "duplicate-skill-" + UUID.randomUUID().toString().substring(0, 8);
+        var packageV1 = "duplicate-package-v1-" + UUID.randomUUID().toString().substring(0, 8);
+        var v1 = createZipWithFrontmatter(packageV1, "Initial description", null);
+        var skillId = commandService.uploadSkill(v1, platformName, "1.0.0", "owner", "testing", null, null);
+
+        var packageV2 = "duplicate-package-v2-" + UUID.randomUUID().toString().substring(0, 8);
+        var v2 = createZipWithFrontmatter(packageV2, "Published description", null);
+        commandService.addVersion(skillId, v2, "1.1.0");
+
+        var packageV3 = "duplicate-package-v3-" + UUID.randomUUID().toString().substring(0, 8);
+        var duplicate = createZipWithFrontmatter(packageV3, "Should not overwrite snapshot", null);
+        assertThatThrownBy(() -> commandService.addVersion(skillId, duplicate, "1.1.0"))
+                .isInstanceOf(VersionExistsException.class)
+                .hasMessageContaining("Version 1.1.0 already exists");
+
+        assertThat(skillRepo.findById(skillId).orElseThrow().getDescription())
+                .isEqualTo("Published description");
+        assertThat(versionRepo.findBySkillIdAndVersion(skillId, "1.1.0").orElseThrow().getFrontmatter())
+                .containsEntry("description", "Published description");
+    }
+
     /**
      * 產生最小可通過 SkillValidator 的 zip：含 SKILL.md 含 frontmatter（name + description
      * + 可選 allowed-tools）。
      */
     private byte[] createZipWithFrontmatter(String skillName, String allowedToolsLine) throws IOException {
+        return createZipWithFrontmatter(skillName, "Allowed tools test fixture", allowedToolsLine);
+    }
+
+    private byte[] createZipWithFrontmatter(String skillName, String description, String allowedToolsLine)
+            throws IOException {
         var baos = new ByteArrayOutputStream();
         try (var zos = new ZipOutputStream(baos)) {
             zos.putNextEntry(new ZipEntry("SKILL.md"));
             var sb = new StringBuilder("---\n");
             sb.append("name: ").append(skillName).append("\n");
-            sb.append("description: Allowed tools test fixture\n");
+            sb.append("description: ").append(description).append("\n");
             if (allowedToolsLine != null) {
                 sb.append("allowed-tools: \"").append(allowedToolsLine).append("\"\n");
             }

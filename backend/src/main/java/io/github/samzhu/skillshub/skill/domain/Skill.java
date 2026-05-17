@@ -386,6 +386,19 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     }
 
     /**
+     * S187-T04 — 新版本 SKILL.md frontmatter.description 是 skill card 的最新描述 snapshot。
+     */
+    public void refreshDescriptionSnapshot(String description, String updatedBy) {
+        var desc = normalizeDescription(description);
+        if (desc.equals(this.description)) {
+            return;
+        }
+        this.description = desc;
+        this.updatedAt = Instant.now();
+        registerEvent(new SkillUpdatedEvent(id, this.description, this.category, updatedBy, this.updatedAt));
+    }
+
+    /**
      * S163 — owner 改 description / category。name / version 不可改（DTO surface 已過濾）。
      *
      * <p>cmd 任一欄位 null 表示本次不動。trim 後落地；blank 視為「想清空」reject（mirror create）。
@@ -398,14 +411,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         }
         boolean changed = false;
         if (cmd.description() != null) {
-            var desc = cmd.description().trim();
-            if (desc.isEmpty()) {
-                throw new IllegalArgumentException("Skill description must not be blank");
-            }
-            if (desc.length() > DESCRIPTION_MAX) {
-                throw new IllegalArgumentException(
-                        "Skill description exceeds " + DESCRIPTION_MAX + " characters (got: " + desc.length() + ")");
-            }
+            var desc = normalizeDescription(cmd.description());
             if (!desc.equals(this.description)) {
                 this.description = desc;
                 changed = true;
@@ -602,6 +608,21 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     // ============================================================================
     // Helpers
     // ============================================================================
+
+    private static String normalizeDescription(String rawDescription) {
+        if (rawDescription == null) {
+            throw new IllegalArgumentException("description is required");
+        }
+        var desc = rawDescription.trim();
+        if (desc.isEmpty()) {
+            throw new IllegalArgumentException("Skill description must not be blank");
+        }
+        if (desc.length() > DESCRIPTION_MAX) {
+            throw new IllegalArgumentException(
+                    "Skill description exceeds " + DESCRIPTION_MAX + " characters (got: " + desc.length() + ")");
+        }
+        return desc;
+    }
 
     /**
      * 從 frontmatter Map 解析 {@code allowed-tools} space-separated 字串為 List。

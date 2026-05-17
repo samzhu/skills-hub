@@ -217,6 +217,7 @@ public class SkillCommandService {
 		}
 		// S154: 透傳 snapshot；null → recordVersionPublished 內部不更新（既有 snapshot 保留）
 		skill.recordVersionPublished(version, authorNameSnapshot);
+		skill.refreshDescriptionSnapshot((String) validation.metadata().get("description"), skill.getAuthor());
 		skillRepo.save(skill);
 
 		var storagePath = "skills/" + skillId + "/" + version + "/skill.zip";
