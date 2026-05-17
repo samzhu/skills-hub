@@ -1,7 +1,7 @@
 # S179 — Publish Author Anonymous Login Hint
 
 > SpecID: S179
-> Status: 📐 in-design
+> Status: ⏳ QA needed — S179-T01 PASS; next `$verifying-quality S179`
 > Date: 2026-05-15
 > Size: XS(7)
 > Related: S004 publish UI, S139 login UI + lazy auth gate, S154/S154b author display identity, S176 explicit publish skill name
@@ -189,3 +189,32 @@ Render rule:
 ---
 
 <!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+POC：not required — S179 只改既有 React page 的 local auth-state display；不新增 API、DB schema、套件或 framework SPI。
+
+| 順序 | Task file | AC | 狀態 | 驗證 |
+|---:|---|---|---|---|
+| 1 | `docs/grimo/tasks/2026-05-17-S179-T01-publish-author-auth-state-display.md` | AC-S179-1, AC-S179-2, AC-S179-3, AC-S179-4 | PASS（2026-05-17） | `cd frontend && npm test -- PublishPage` |
+
+## 7. Implementation Results
+
+2026-05-17 S179-T01 result：
+
+- [PublishPage.tsx](/Users/samzhu/workspace/github-samzhu/skills-hub/frontend/src/pages/PublishPage.tsx) 新增 `authorDisplay`，依 `auth.status` 顯示作者欄位：
+  - `loading` → `正在確認登入狀態...`
+  - `anonymous` → `請先登入後發布`
+  - `authenticated + me` → 維持 S154b 的 `getDisplayName(...)` 與 `@handle`
+- [PublishPage.test.tsx](/Users/samzhu/workspace/github-samzhu/skills-hub/frontend/src/pages/PublishPage.test.tsx) 補 AC-S179-1~4。
+- Red：`cd frontend && npm test -- PublishPage` → FAIL；`AC-S179-1` 和 `AC-S179-3` 都收到空白作者欄位。
+- Green：`cd frontend && npm test -- PublishPage` → PASS（1 file / 17 tests）。
+- Verify：`cd frontend && npm run verify` → PASS。
+
+| AC | 結果 | 證據 |
+|---|---|---|
+| AC-S179-1 | PASS | anonymous 時 `publish-author-display` 顯示 `請先登入後發布`。 |
+| AC-S179-2 | PASS | anonymous submit 呼叫 `auth.login()`，不呼叫 `/api/v1/skills/upload`。 |
+| AC-S179-3 | PASS | loading 時 `publish-author-display` 顯示 `正在確認登入狀態...`，不顯示 handle chip。 |
+| AC-S179-4 | PASS | authenticated 時維持 `Alice Chen` 與 `@alice`，作者欄位仍不是 textbox。 |
+
+下一步：`$verifying-quality S179`。

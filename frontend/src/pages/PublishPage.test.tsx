@@ -151,6 +151,88 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
     expect(screen.queryByText(/代發名稱/)).toBeNull()
   })
 
+  it('AC-S179-4: 已登入作者顯示維持 S154b 行為', () => {
+    renderPublishPage()
+
+    const authorDisplay = screen.getByTestId('publish-author-display')
+    expect(authorDisplay).toHaveTextContent('Alice Chen')
+    expect(authorDisplay).toHaveTextContent('@alice')
+    expect(screen.queryByRole('textbox', { name: /作者/ })).toBeNull()
+  })
+
+  it('AC-S179-1: 未登入作者欄位顯示登入提示', () => {
+    mockUseAuth.mockReturnValue({
+      status: 'anonymous',
+      login: vi.fn(),
+      logout: vi.fn(),
+    } as ReturnType<typeof useAuthModule.useAuth>)
+    mockUseMe.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: false,
+      error: null,
+    } as any)
+
+    renderPublishPage()
+
+    const authorDisplay = screen.getByTestId('publish-author-display')
+    expect(authorDisplay).toHaveTextContent('請先登入後發布')
+    expect(authorDisplay).not.toHaveTextContent('@undefined')
+  })
+
+  it('AC-S179-3: 登入中不顯空白作者', () => {
+    mockUseAuth.mockReturnValue({
+      status: 'loading',
+      login: vi.fn(),
+      logout: vi.fn(),
+    } as ReturnType<typeof useAuthModule.useAuth>)
+    mockUseMe.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      error: null,
+    } as any)
+
+    renderPublishPage()
+
+    const authorDisplay = screen.getByTestId('publish-author-display')
+    expect(authorDisplay).toHaveTextContent('正在確認登入狀態...')
+    expect(authorDisplay).not.toHaveTextContent('@')
+  })
+
+  it('AC-S179-2: 未登入送出只啟動登入流程', async () => {
+    const login = vi.fn()
+    const fetchSpy = vi.fn()
+    ;(globalThis as any).fetch = fetchSpy
+    mockUseAuth.mockReturnValue({
+      status: 'anonymous',
+      login,
+      logout: vi.fn(),
+    } as ReturnType<typeof useAuthModule.useAuth>)
+    mockUseMe.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: false,
+      error: null,
+    } as any)
+
+    renderPublishPage()
+
+    fireEvent.click(screen.getByRole('button', { name: /貼上文本/ }))
+    fireEvent.change(screen.getByPlaceholderText(/name: my-skill/), {
+      target: { value: '---\nname: internal-package-name\ndescription: a useful skill\n---\n# body' },
+    })
+    fireEvent.change(screen.getByLabelText('技能名稱'), { target: { value: 'Team Transcribe' } })
+    fireEvent.change(screen.getByPlaceholderText('DevOps'), { target: { value: 'DevOps' } })
+
+    const submitBtn = screen.getByRole('button', { name: /發佈技能/ })
+    await waitFor(() => expect(submitBtn).not.toBeDisabled())
+    fireEvent.click(submitBtn)
+
+    expect(login).toHaveBeenCalledTimes(1)
+    expect(fetchSpy).not.toHaveBeenCalledWith('/api/v1/skills/upload', expect.anything())
+  })
+
   it('AC-S176-1: 表單提交時 FormData 含 skillName 且不含 author key', async () => {
     // 攔截 fetch 取出 FormData 檢查
     let capturedForm: FormData | null = null

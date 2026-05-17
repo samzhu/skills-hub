@@ -85,6 +85,25 @@ export function PublishPage() {
     [skillMdText],
   )
 
+  const authorDisplay = useMemo(() => {
+    if (auth.status === 'loading') {
+      return { label: '正在確認登入狀態...', handle: null }
+    }
+    if (auth.status === 'anonymous') {
+      return { label: '請先登入後發布', handle: null }
+    }
+    if (!me) {
+      return { label: '正在確認作者...', handle: null }
+    }
+    const label = getDisplayName({
+      author: me.userId,
+      authorDisplayName: me.name,
+      authorEmail: me.email,
+      authorHandle: me.handle,
+    })
+    return { label: label || '正在確認作者...', handle: me.handle || null }
+  }, [auth.status, me])
+
   // submit disable rule per mode；text mode 加 frontmatter validation gate
   const submitDisabled = mutation.isPending
     || skillName.trim().length === 0
@@ -215,23 +234,17 @@ export function PublishPage() {
               </div>
             </div>
 
-            {/* S154b — 作者欄位 read-only display；server 從 auth context 取 author，UI 不該誤導
-                 user 以為可改。priority chain：name → email → handle → userId（5-layer fallback
-                 對齊 SkillCard / AuthArea 等元件）。 */}
+            {/* S154b/S179 — 作者欄位 read-only；server 從 auth context 取 author。
+                UI 依 auth state 顯示登入提示，避免 anonymous/loading 時空白。 */}
             <div>
               <span className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">作者</span>
               <div
                 data-testid="publish-author-display"
                 className="flex items-center gap-2 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm"
               >
-                <span>{getDisplayName({
-                  author: me?.userId ?? '',
-                  authorDisplayName: me?.name,
-                  authorEmail: me?.email,
-                  authorHandle: me?.handle,
-                })}</span>
-                {me?.handle && (
-                  <span className="font-mono text-[11px] text-muted-foreground">@{me.handle}</span>
+                <span>{authorDisplay.label}</span>
+                {authorDisplay.handle && (
+                  <span className="font-mono text-[11px] text-muted-foreground">@{authorDisplay.handle}</span>
                 )}
               </div>
             </div>
