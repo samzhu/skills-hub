@@ -82,7 +82,7 @@ skills-hub/
 
 | 想做什麼 | 看哪份 |
 |----------|--------|
-| 建立 / 修 / ship 新功能 | [`AGENTS.md`](./AGENTS.md) / [`CLAUDE.md`](./CLAUDE.md) + [`CONTRIBUTING.md`](./CONTRIBUTING.md) |
+| 建立 / 修 / ship 新功能 | [`WORKFLOW.md`](./WORKFLOW.md) + [`AGENTS.md`](./AGENTS.md) / [`CLAUDE.md`](./CLAUDE.md) + [`CONTRIBUTING.md`](./CONTRIBUTING.md) |
 | 了解產品定位 / Critical Path | [`docs/grimo/PRD.md`](./docs/grimo/PRD.md) |
 | 框架 / 模組架構 / data flow | [`docs/grimo/architecture.md`](./docs/grimo/architecture.md) |
 | 程式約定 / package layout / testing | [`docs/grimo/development-standards.md`](./docs/grimo/development-standards.md) |
