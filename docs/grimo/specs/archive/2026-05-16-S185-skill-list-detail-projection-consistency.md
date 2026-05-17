@@ -399,4 +399,9 @@ Full QA, release docs, roadmap update, and archive completed. Production deploy 
 - Cloud Run logs: latest ready revision `skillshub-00036-wkz` `severity>=ERROR` query after deploy returned 0 rows; failed revision `skillshub-00035-42l` retained the OAuth provider manifest evidence above.
 - Chrome note: this tick had no callable Chrome automation tool in context, so UI DOM clicks were not claimed; API/log evidence covers AC-S185-5.
 
-Follow-up: fix `scripts/gcp/04-deploy.sh` / `scripts/gcp/service.yaml` manifest parity with the currently working Cloud Run runtime config before relying on the repo deploy script again.
+2026-05-17 Deploy Script Manifest Parity PASS:
+
+- Root cause fixed: `scripts/gcp/service.yaml` now renders the same runtime config family that made `skillshub-00036-wkz` Ready: Direct VPC egress, Cloud SQL proxy `--private-ip`, `/config/application-lab.yaml` secret mount, `spring.config.additional-location`, `SPRING_DATASOURCE_*`, OAuth client `secretKeyRef`, redirect URI, and same-origin CORS.
+- Script fix: `scripts/gcp/04-deploy.sh` now exports the new manifest placeholders, derives `CLOUD_RUN_PUBLIC_URL` from the project number by default, keeps `${sm@...}` placeholders via envsubst whitelist, and supports `RENDER_ONLY=true` with a custom `RENDERED` path.
+- Official source basis: Spring Boot OAuth client docs (`https://docs.spring.io/spring-boot/4.0/reference/web/spring-security.html`) say a registration can reference a provider by `spring.security.oauth2.client.registration.<id>.provider` or use configured provider properties; Cloud Run secrets docs (`https://cloud.google.com/run/docs/configuring/services/secrets`) show `secretKeyRef` env vars and secret volume mounts as supported service YAML shapes.
+- Verification: `RENDER_ONLY=true RENDERED=/tmp/skillshub-service-rendered.yaml ./scripts/gcp/04-deploy.sh` rendered without deploying; Ruby YAML contract check passed for `/config` mount, `SPRING_DATASOURCE_*`, OAuth secret env vars, redirect URI, CORS origin, Direct VPC annotations, and proxy `--private-ip`.

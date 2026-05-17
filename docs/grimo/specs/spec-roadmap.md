@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-17（S162b 查證後 no-op 關閉；S178 關閉並由 S189 乾淨承接；S186/S185 shipped；S185 production deploy/recheck PASS；下一步可修 deploy script template 或接 S187 / S188 / S189）
+> 最後更新：2026-05-17（S162b 查證後 no-op 關閉；S178 關閉並由 S189 乾淨承接；S186/S185 shipped；S185 production deploy/recheck PASS；deploy script manifest parity fixed；下一步可接 S187 / S188 / S189）
 
 ## 使用說明
 

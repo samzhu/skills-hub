@@ -25,9 +25,17 @@ GCS_BUCKET_NAME="${GCS_BUCKET_NAME:-${GCP_PROJECT_ID}-skillshub-pkg}"
 CLOUDSQL_INSTANCE_NAME="${CLOUDSQL_INSTANCE_NAME:-skillshub-db}"
 DB_NAME="${DB_NAME:-skillshub}"
 DB_USER="${DB_USER:-skillshub_app}"
+DB_PASSWORD_SECRET_NAME="${DB_PASSWORD_SECRET_NAME:-skillshub-db-password}"
+GENAI_API_KEY_SECRET_NAME="${GENAI_API_KEY_SECRET_NAME:-skillshub-genai-api-key}"
+OAUTH_CLIENT_ID_SECRET_NAME="${OAUTH_CLIENT_ID_SECRET_NAME:-skillshub-oauth-client-id}"
+OAUTH_CLIENT_SECRET_NAME="${OAUTH_CLIENT_SECRET_NAME:-skillshub-oauth-client-secret}"
+APP_CONFIG_SECRET_NAME="${APP_CONFIG_SECRET_NAME:-skillshub-app-config-lab}"
+APP_CONFIG_PROFILE="${APP_CONFIG_PROFILE:-lab}"
+VPC_NETWORK="${VPC_NETWORK:-devplatform-vpc}"
+VPC_SUBNET="${VPC_SUBNET:-devplatform-subnet}"
 CLOUD_RUN_CPU="${CLOUD_RUN_CPU:-1}"
 CLOUD_RUN_MEMORY="${CLOUD_RUN_MEMORY:-1Gi}"
-CLOUD_RUN_MAX_INSTANCES="${CLOUD_RUN_MAX_INSTANCES:-10}"
+CLOUD_RUN_MAX_INSTANCES="${CLOUD_RUN_MAX_INSTANCES:-1}"
 SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-lab,gcp}"
 
 # envsubst 是 GNU gettext 的 cli；macOS 預設沒有，需 `brew install gettext`
@@ -41,25 +49,35 @@ fi
 # TAG 對齊 03-build-push.sh：未指定則用 git short SHA。
 # 指定特定版本部署：TAG=v1.2.3 ./scripts/gcp/04-deploy.sh
 TAG="${TAG:-$(git rev-parse --short HEAD)}"
+GCP_PROJECT_NUMBER="${GCP_PROJECT_NUMBER:-$(gcloud projects describe "${GCP_PROJECT_ID}" --format='value(projectNumber)')}"
+CLOUD_RUN_PUBLIC_URL="${CLOUD_RUN_PUBLIC_URL:-https://${CLOUD_RUN_SERVICE_NAME}-${GCP_PROJECT_NUMBER}.${GCP_REGION}.run.app}"
 
 # 全部 export 給 envsubst 用
 # 注：service.yaml 不引用 ${GCP_PROJECT_ID}（project-id 由 Cloud Run metadata server 自動提供給 SDK）；
 # GCP_PROJECT_ID 仍在上方用來組 IMG / SA_EMAIL / CLOUDSQL_INSTANCE_CONN
 export GCP_REGION CLOUD_RUN_SERVICE_NAME GCS_BUCKET_NAME DB_NAME DB_USER
+export DB_PASSWORD_SECRET_NAME GENAI_API_KEY_SECRET_NAME OAUTH_CLIENT_ID_SECRET_NAME OAUTH_CLIENT_SECRET_NAME
+export APP_CONFIG_SECRET_NAME APP_CONFIG_PROFILE VPC_NETWORK VPC_SUBNET CLOUD_RUN_PUBLIC_URL
 export CLOUD_RUN_CPU CLOUD_RUN_MEMORY CLOUD_RUN_MAX_INSTANCES SPRING_PROFILES_ACTIVE
 export IMG="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO_NAME}/${IMAGE_NAME}:${TAG}"
 export SA_EMAIL="${SERVICE_ACCOUNT_NAME}@${GCP_PROJECT_ID}.iam.gserviceaccount.com"
 export CLOUDSQL_INSTANCE_CONN="${GCP_PROJECT_ID}:${GCP_REGION}:${CLOUDSQL_INSTANCE_NAME}"
+export SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/${DB_NAME}?ApplicationName=skillshub&currentSchema=public&reWriteBatchedInserts=true&socketTimeout=30"
 
 TMPL="scripts/gcp/service.yaml"
-RENDERED="scripts/gcp/service.rendered.yaml"
+RENDERED="${RENDERED:-scripts/gcp/service.rendered.yaml}"
 
 echo "▸ Render ${TMPL} → ${RENDERED}"
 # Whitelist envsubst：只替換我們 own 的變數；service.yaml 內 ${sm@<secret-id>}
 # 等 spring-cloud-gcp 語法保留不被 envsubst 吃掉，交給 Spring runtime 遞迴 resolve。
 envsubst \
-  '$GCP_REGION $CLOUD_RUN_SERVICE_NAME $CLOUD_RUN_CPU $CLOUD_RUN_MEMORY $CLOUD_RUN_MAX_INSTANCES $SPRING_PROFILES_ACTIVE $IMG $SA_EMAIL $CLOUDSQL_INSTANCE_CONN $DB_NAME $DB_USER $GCS_BUCKET_NAME' \
+  '$GCP_REGION $CLOUD_RUN_SERVICE_NAME $CLOUD_RUN_CPU $CLOUD_RUN_MEMORY $CLOUD_RUN_MAX_INSTANCES $SPRING_PROFILES_ACTIVE $IMG $SA_EMAIL $CLOUDSQL_INSTANCE_CONN $SPRING_DATASOURCE_URL $DB_NAME $DB_USER $DB_PASSWORD_SECRET_NAME $GENAI_API_KEY_SECRET_NAME $OAUTH_CLIENT_ID_SECRET_NAME $OAUTH_CLIENT_SECRET_NAME $APP_CONFIG_SECRET_NAME $APP_CONFIG_PROFILE $VPC_NETWORK $VPC_SUBNET $CLOUD_RUN_PUBLIC_URL $GCS_BUCKET_NAME' \
   < "${TMPL}" > "${RENDERED}"
+
+if [[ "${RENDER_ONLY:-false}" == "true" ]]; then
+  echo "✓ rendered only: ${RENDERED}"
+  exit 0
+fi
 
 echo "▸ Deploy ${CLOUD_RUN_SERVICE_NAME} → ${IMG}"
 gcloud run services replace "${RENDERED}" \

@@ -14,9 +14,11 @@
 #
 # 帳密 mode：
 #   - DB user / DB name / storage bucket — env var（非機敏值，envsubst 注入）
-#   - DB password / GenAI API key       — Secret Manager（由 spring-cloud-gcp
-#     secretmanager 在 application-gcp.yaml 透過 ${sm@<secret-id>} placeholder
-#     直接 resolve；service.yaml 不擺 secretKeyRef）
+#   - DB password / OAuth client id/secret — Cloud Run secretKeyRef（runtime env
+#     直接拿 secret value；AOT stub fallback 不會吃到 ${sm@...} literal）
+#   - GenAI API key / app DB password      — Spring Cloud GCP Secret Manager
+#     透過 ${sm@<secret-id>} placeholder resolve
+#   - application-lab.yaml                 — Secret Manager file mount 到 /config/
 # 所有 ${...} placeholder 由 04-deploy.sh 透過 envsubst 渲染。
 #
 # Env name 命名慣例：
@@ -34,7 +36,12 @@
 #   IMG                       — 完整 Artifact Registry image URI（含 tag）
 #   SA_EMAIL                  — runtime service account 完整 email
 #   CLOUDSQL_INSTANCE_CONN    — <project>:<region>:<instance>
-#   DB_NAME / DB_USER / GCS_BUCKET_NAME — 應用 env var 值
+#   SPRING_DATASOURCE_URL / DB_NAME / DB_USER / GCS_BUCKET_NAME — 應用 env var 值
+#   DB_PASSWORD_SECRET_NAME / GENAI_API_KEY_SECRET_NAME / OAUTH_CLIENT_ID_SECRET_NAME /
+#   OAUTH_CLIENT_SECRET_NAME / APP_CONFIG_SECRET_NAME — Secret Manager secret id
+#   APP_CONFIG_PROFILE        — 掛載成 /config/application-${APP_CONFIG_PROFILE}.yaml
+#   VPC_NETWORK / VPC_SUBNET  — Direct VPC egress network interface
+#   CLOUD_RUN_PUBLIC_URL      — OAuth redirect + same-origin CORS origin
 #
 # project-id 不需注入 — Cloud Run metadata server 自動提供，所有 GCP SDK 自己 resolve。
 #
@@ -59,6 +66,10 @@ spec:
   template:
     metadata:
       annotations:
+        # === Direct VPC egress（Cloud SQL private IP）===
+        run.googleapis.com/network-interfaces: '[{"network":"${VPC_NETWORK}","subnetwork":"${VPC_SUBNET}"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+
         # === Sidecar 啟動順序：app 等 cloud-sql-proxy 先 ready ===
         # 用此 feature 必須有 startup probe（Cloud Run 官方要求）— 已在下方 containers 設定
         run.googleapis.com/container-dependencies: '{"app":["cloud-sql-proxy"]}'
@@ -95,6 +106,19 @@ spec:
             # 由 .env 內 SPRING_PROFILES_ACTIVE shell var 決定（預設 lab,gcp；正式 prod,gcp）
             - name: spring.profiles.active
               value: ${SPRING_PROFILES_ACTIVE}
+            # 從 /config/ 載入 application-${APP_CONFIG_PROFILE}.yaml；trailing / 必須保留。
+            - name: spring.config.additional-location
+              value: optional:file:/config/
+            # AotStubConfig 走 System.getenv()，runtime 必須注入 SPRING_DATASOURCE_*。
+            - name: SPRING_DATASOURCE_URL
+              value: ${SPRING_DATASOURCE_URL}
+            - name: SPRING_DATASOURCE_USERNAME
+              value: ${DB_USER}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ${DB_PASSWORD_SECRET_NAME}
+                  key: latest
             # 以下走 Spring property 名 1:1 — 直接對齊 application.yaml
             # 注：project-id 不顯式注入 — Cloud Run runtime metadata server 自動提供，
             #     spring-cloud-gcp 與 google-cloud-* SDK 都會 fallback 走 metadata 拿到
@@ -111,9 +135,30 @@ spec:
             # ⚠ envsubst 預設會把 ${sm@xxx} 當 shell var 吃掉；04-deploy.sh 用 whitelist 模式
             #   只替換我們 own 的變數，sm@ 字串保留給 Spring runtime 處理。
             - name: skillshub.db.password
-              value: ${sm@skillshub-db-password}
+              value: ${sm@${DB_PASSWORD_SECRET_NAME}}
             - name: skillshub.genai.api-key
-              value: ${sm@skillshub-genai-api-key}
+              value: ${sm@${GENAI_API_KEY_SECRET_NAME}}
+            # OAuth2 client secret values 直接由 Cloud Run secretKeyRef 注入。
+            # Spring Boot OAuth client config 還需要 provider/issuer/scope 等結構設定；
+            # 這些由 /config/application-${APP_CONFIG_PROFILE}.yaml 提供。
+            - name: spring.security.oauth2.client.registration.skillshub.client-id
+              valueFrom:
+                secretKeyRef:
+                  name: ${OAUTH_CLIENT_ID_SECRET_NAME}
+                  key: latest
+            - name: spring.security.oauth2.client.registration.skillshub.client-secret
+              valueFrom:
+                secretKeyRef:
+                  name: ${OAUTH_CLIENT_SECRET_NAME}
+                  key: latest
+            - name: spring.security.oauth2.client.registration.skillshub.redirect-uri
+              value: ${CLOUD_RUN_PUBLIC_URL}/login/oauth2/code/skillshub
+            - name: skillshub.security.cors.allowed-origins
+              value: ${CLOUD_RUN_PUBLIC_URL}
+          volumeMounts:
+            - name: app-config
+              mountPath: /config
+              readOnly: true
           # Startup：HTTP 探 readiness（Spring Boot Actuator /actuator/health/readiness 含 db check）
           # — 確保 Flyway migration + Hikari pool + Modulith 都 ready 才放行 traffic
           startupProbe:
@@ -146,9 +191,8 @@ spec:
             - "--http-address=0.0.0.0"
             # 結構化 log 對齊 Cloud Logging LogEntry
             - "--structured-logs"
-            # 預設走 public IP + 加密 tunnel；instance 走 private IP 才打開下行
-            # （搭 Cloud Run --vpc-egress=private-ranges-only + Direct VPC egress / Serverless VPC Access）
-            # - "--private-ip"
+            # Direct VPC egress + private Cloud SQL IP。
+            - "--private-ip"
             # Connection string 必須是最後一個 positional arg
             - "${CLOUDSQL_INSTANCE_CONN}"
           resources:
@@ -170,6 +214,13 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 3
             failureThreshold: 3
+      volumes:
+        - name: app-config
+          secret:
+            secretName: ${APP_CONFIG_SECRET_NAME}
+            items:
+              - key: latest
+                path: application-${APP_CONFIG_PROFILE}.yaml
   traffic:
     - latestRevision: true
       percent: 100

@@ -67,6 +67,15 @@ source scripts/gcp/.env && \
 
 修 code → commit → 跑 `03-build-push.sh && 04-deploy.sh`。
 
+只檢查 Cloud Run YAML 不實際部署：
+
+```bash
+source scripts/gcp/.env
+RENDER_ONLY=true RENDERED=/tmp/skillshub-service.yaml TAG=render-test ./scripts/gcp/04-deploy.sh
+```
+
+這會產出包含 `/config` Secret mount、OAuth secretKeyRef、Direct VPC egress、Cloud SQL `--private-ip` 的 manifest，方便在部署前比對。
+
 ## Cloud Build 包版（手動 `gcloud builds submit`）
 
 S132 把 build 路徑搬到 GCP — 本機只跑 `gcloud builds submit`，frontend/backend image 都在 Cloud Build 跑、自動 push 到 Artifact Registry。沒裝 Java/Docker 的機器也能包版。
