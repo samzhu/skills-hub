@@ -65,10 +65,11 @@ git status --short
 |---|---|
 | Local checkout 乾淨 | 可直接執行 ship / merge / docs update / deploy preflight。 |
 | Local checkout 有 unrelated changes，但本 tick 可在 worktree 完成且不需要 merge 回 Local | 使用 background worktree 或既有 automation worktree，commit 在該 worktree branch；結尾回報 branch / commit / merge 指令。 |
-| Local checkout 有 unrelated changes，且本 tick 目標是 merge/release 到 main | 先跑 Dirty Overlap Gate；若 overlap，停止，不 merge、不 stash、不 rebase release branch 追 blocker notes。 |
+| Local checkout 有 unrelated docs changes，且 automation 也要改 docs | 不視為 blocker；automation 只負責自己的 worktree / branch / commit，結尾回報需要 user 後續整合哪些 docs。 |
+| Local checkout 有 unrelated non-doc changes，且本 tick 目標會改同一檔案 | 先跑 Dirty Overlap Gate；若 overlap，停止，不 merge、不 stash、不 rebase release branch 追 blocker notes。 |
 | Codex-managed worktree 正在 rebase/merge conflict | 先完成、abort、或清理該 worktree；在 unresolved worktree 存在時不要再開新 worktree。 |
 
-Release / shipping 類工作要特別保守：`git merge --ff-only <release-branch>` 只在 Local checkout 乾淨或 dirty files 與 merge diff 無交集時執行。Production deploy 也只在 release commit 已在 main 且 `git status --short` 乾淨時執行。
+Release / shipping 類工作要特別保守：`git merge --ff-only <release-branch>` 只在 Local checkout 乾淨，或 dirty files 與 merge diff 無交集時執行。若交集只包含 `docs/`、`.codex/`、`AGENTS.md`、`CLAUDE.md` 這類文件，automation 不要把它當 blocker；改成在 automation worktree/branch 留下 release/docs commit，回報給 user 後續整合。Production deploy 只在 release commit 已在 main 且 `git status --short` 乾淨時執行。
 
 ## Dirty Overlap Gate
 
@@ -84,25 +85,32 @@ git diff --name-only main...<target-branch>
 判斷：
 
 1. 若 Local dirty files 與 `<target-branch>` changed files 沒交集，可繼續，但 commit 只包含本 tick 自己產生的檔案。
-2. 若有交集，例如 `docs/grimo/specs/spec-roadmap.md` 同時被 user 修改、release branch 也會修改：
+2. 若交集只包含文件：
+   - 文件範圍：`docs/**`、`.codex/**`、`AGENTS.md`、`CLAUDE.md`、`README*`、`CHANGELOG*`。
+   - 不視為 blocker fingerprint。
+   - 不 merge 到 dirty Local。
+   - automation 繼續在自己的 worktree / branch 完成本輪文件變更並 commit。
+   - 結尾回報 automation commit、changed docs、以及 user 可選的後續整合指令（例如先 commit/stash 自己的 docs，再 merge/cherry-pick automation commit）。
+   - 不要切去別的 spec；本輪仍以原本 unit 收尾。
+3. 若交集包含 production code、tests、migration、build/deploy config、scripts、lockfile、或任何可能改 runtime 行為的檔案：
    - 不 merge。
    - 不 stash user changes。
    - 不 commit user changes。
    - 不為了維持 fast-forward 反覆 rebase release branch，除非本 tick 已有新的可保存成果需要保留。
    - 寫一份 blocker note，內容包含 command、overlap path、target branch、user 可執行的下一步。
-3. 若相同 blocker note 已存在且資訊未變，停止本 tick，不再新增 blocker commit。
+4. 若相同 blocker note 已存在且資訊未變，停止本 tick，不再新增 blocker commit。
 
 Blocker fingerprint 格式：
 
 ```text
-kind=<dirty-overlap|external-permission|tool-unavailable|verify-fail>
+kind=<runtime-overlap|external-permission|tool-unavailable|verify-fail>
 target=<spec-id or branch or URL>
 paths=<sorted overlapping paths>
 command=<blocked command>
 reason=<one-line stable reason>
 ```
 
-progress note 必須包含這個 fingerprint；後續 tick 看到同 fingerprint，就只回報，不再寫第二份 note。
+progress note 必須包含這個 fingerprint；後續 tick 看到同 fingerprint，就只回報，不再寫第二份 note。文件 overlap 不寫 blocker fingerprint，因為 user 常會同時開 spec / roadmap / PRD；automation 只需保留自己的文件 commit，不負責清理或合併 user 的 Local 文件改動。
 
 ## Worktree Audit
 
@@ -136,7 +144,7 @@ git status --short
 
 | # | 條件 | 動作 | Mode |
 |---|---|---|---|
-| 0 | Dirty Overlap Gate 發現本 tick 需要 merge/release/deploy，但 Local dirty files 會被覆蓋 | 若 fingerprint 新，寫 blocker note commit；若已記錄，停止並通知 user；不要切到其他 spec | Blocked |
+| 0 | Dirty Overlap Gate 發現本 tick 需要 merge/release/deploy，且 Local dirty overlap 含 runtime/code/config 檔案 | 若 fingerprint 新，寫 blocker note commit；若已記錄，停止並通知 user；不要切到其他 spec | Blocked |
 | 1 | `docs/grimo/specs/` 有 active spec doc（status 為 `📐` / `⏳` / `🚧` / `Dev` / `Plan`） | 讀該 spec + task files，用 `$planning-tasks S00N` 推進下一個 task 或 phase | A Dev |
 | 2 | active spec 實作完成且 QA PASS，但 roadmap / changelog / archive / tag 未完成 | 用 `$shipping-release` ship；不要 inline 模仿 release 流程 | A Ship |
 | 3 | roadmap 有 `📋` planned spec，但 `docs/grimo/specs/` 無對應 doc | 用 `$planning-spec S00N` 產出 §1-§5，更新 roadmap，commit，結束 tick | A Design |
