@@ -1,6 +1,6 @@
 # S174: Skill Detail Anonymous Not-Found UX
 
-> 規格：S174 | 大小：XS(8) | 狀態：⏳ QA — local verification PASS；independent QA pending
+> 規格：S174 | 大小：XS(8) | 狀態：⏳ Ready-to-Ship — QA PASS；next `$shipping-release S174`
 > 日期：2026-05-17
 > 對應：spec-roadmap row S174 / S153 / S122
 
@@ -206,7 +206,7 @@ E2E artifact verification：not required for planning — S174 的 AC 都是 API
 
 ## 7. Implementation Results
 
-> Status：⏳ QA — local verification PASS（2026-05-17）；next `$verifying-quality S174`
+> Status：⏳ Ready-to-Ship — QA PASS（2026-05-17）；next `$shipping-release S174`
 
 ### 7.1 Verification Results
 
@@ -240,5 +240,19 @@ E2E not required — S174 沒新增 route、fixture endpoint、browser-only work
 
 | Item | Status | Command |
 |---|---|---|
-| Independent QA gate | pending | `$verifying-quality S174` |
+| Independent QA gate | PASS | `$verifying-quality S174` |
 | Full release gate | pending for shipping | `./scripts/verify-all.sh`（由 `$shipping-release S174` gate 重新執行） |
+
+### 7.6 QA Review (2026-05-17)
+
+Reviewer：`$verifying-quality S174`（Codex dev loop）
+
+| Check | Result | Evidence |
+|---|---|---|
+| Frontend behavior | PASS | `cd frontend && npm test -- SkillDetailPage`：1 file / 14 tests passed；401 顯「找不到此技能」，500 仍顯 retry copy。 |
+| Backend API behavior | PASS | `cd backend && ./gradlew test --tests "*SkillQueryControllerApiContractTest"`：`BUILD SUCCESSFUL in 2m 27s`；missing UUID anonymous 404、private existing skill anonymous 401。 |
+| Testability gate | PASS | AC-S174-1 / AC-S174-2 由 `SkillQueryControllerApiContractTest` 覆蓋；AC-S174-3 / AC-S174-4 由 `SkillDetailPage.test.tsx` 覆蓋。 |
+| E2E need | PASS | §7.4 理由仍成立：S174 沒新增 browser-only workflow、fixture endpoint、schema migration、credential injection 或 packaged artifact 行為。 |
+| Code quality | PASS | QA 發現並修正 `SkillQueryController` 與 `SkillQueryControllerApiContractTest` 的 S174 前過期註解；production code 行為無需再改。 |
+
+Verdict：PASS。S174 可進 `$shipping-release S174`，由 release gate 重新執行 `./scripts/verify-all.sh`。

@@ -64,9 +64,8 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
     private io.github.samzhu.skillshub.shared.security.UserResolver userResolver;
 
     /**
-     * S122: GET /skills/{id} 加 @PreAuthorize("hasPermission(#id, 'Skill', 'read')") 後，
-     * 本 test 僅驗 JSON contract 不關心 ACL 邏輯；stub permissionEvaluator 一律放行避免
-     * 401 (anonymous mock 預設 hasPermission=false)。
+     * S174: GET /skills/{id} 改為 @PostAuthorize；多數 JSON contract test 不關心 ACL 邏輯，
+     * 預設放行避免 anonymous mock 的 hasPermission=false 讓 response 被 401 取代。
      */
     @BeforeEach
     void allowAllPermissions() {

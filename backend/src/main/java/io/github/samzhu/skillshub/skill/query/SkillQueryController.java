@@ -54,8 +54,8 @@ public class SkillQueryController {
 	 * 在 method validation interceptor **之前** fire，無法早於 fail-secure。`UUID` 內建 converter
 	 * 在 argument resolution 階段就 throw，是唯一乾淨的 pre-PreAuthorize fast-fail 路徑。
 	 *
-	 * <p>合法 UUID 但不存在的 id 仍走 @PreAuthorize → 401/403（security-first，per Spring Security
-	 * 預設「hide existence」設計，避免 anonymous 探測 PRIVATE skill 存在性）。
+	 * <p>S174 後合法但不存在的 UUID 在 {@link #getById(UUID)} 會先 resolve → 404；PRIVATE
+	 * existing skill 仍由 {@code @PostAuthorize} 保持 401/403，不輸出 skill JSON。
 	 */
 	private final SkillQueryService queryService;
 	private final BundleInfoQueryService bundleInfoService;
