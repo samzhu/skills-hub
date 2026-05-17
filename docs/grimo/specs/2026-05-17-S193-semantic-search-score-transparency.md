@@ -1,6 +1,6 @@
 # S193: Semantic Search Score Transparency
 
-> 規格：S193 | 大小：XS(5) | 狀態：⏳ Dev — S193-T01 PASS；next `$planning-tasks S193`
+> 規格：S193 | 大小：XS(5) | 狀態：✅ Local release gate PASS — next `$shipping-release S193`
 > 日期：2026-05-17
 > 來源：Production browse search report — `/browse` 輸入「甜點」後回傳公開「產生字幕檔」
 > 對應：S157 semantic search enablement / S177 search visibility / S186 skills.embedding 同表化 / S189 browse search entry point
@@ -255,7 +255,7 @@ POC：not required for task creation — §7 已用本 repo 實際 `spring-ai-pg
 | 順序 | Task file | AC | 狀態 | 驗證 |
 |---:|---|---|---|---|
 | 1 | `docs/grimo/tasks/2026-05-17-S193-T01-backend-score-logging.md` | AC-S193-1, AC-S193-2, AC-S193-3, AC-S193-4 | PASS（2026-05-17） | `cd backend && ./gradlew test --tests "*SemanticSearch*"` |
-| 2 | `docs/grimo/tasks/2026-05-17-S193-T02-browse-score-visibility.md` | AC-S193-5, AC-S193-6 | pending | `cd frontend && npm test -- SkillCard`；`cd e2e && npx playwright test --grep @S193`；`./scripts/verify-all.sh` |
+| 2 | `docs/grimo/tasks/2026-05-17-S193-T02-browse-score-visibility.md` | AC-S193-5, AC-S193-6 | PASS（2026-05-17） | `cd frontend && npm test -- SkillCard`；`cd e2e && npx playwright test --grep @S193`；`./scripts/verify-all.sh` |
 
 執行順序：
 
@@ -292,3 +292,19 @@ Production score evidence：
 - [SemanticSearchFromSkillsTest.java](/Users/samzhu/workspace/github-samzhu/skills-hub/backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchFromSkillsTest.java) 驗 AC-S193-2 / AC-S193-3 / AC-S193-4。
 - Red：`cd backend && ./gradlew test --tests "*SemanticSearch*"` → fail at AC-S193-2，log 尚未含 top-hit 欄位。
 - Green：`cd backend && ./gradlew test --tests "*SemanticSearch*"` → PASS（13 tests）。
+
+2026-05-17 S193-T02 implementation result：
+
+- [SkillCard.test.tsx](/Users/samzhu/workspace/github-samzhu/skills-hub/frontend/src/components/SkillCard.test.tsx) 明確覆蓋 `AC-S193-5`：`score=0.873` 顯示 `87% 相符`。
+- [HomePage.test.tsx](/Users/samzhu/workspace/github-samzhu/skills-hub/frontend/src/pages/HomePage.test.tsx) 覆蓋 assembled `/browse` path：semantic API 回 `score=0.91`，畫面顯示 `91% 相符`，且沒有 `/api/v1/skills?keyword=dd`。
+- [S193-semantic-search-score.spec.ts](/Users/samzhu/workspace/github-samzhu/skills-hub/e2e/tests/S193-semantic-search-score.spec.ts) 以 browser path 驗 `/browse` 輸入 `images and containers in CI` 後，畫面顯示 API score 對應的 `% 相符`，request log 只含 semantic API。
+- Red：`cd e2e && npx playwright test --grep @S193` → fail，`Error: No tests found`。
+- Green：`cd frontend && npm test -- SkillCard` → PASS（2 files / 11 tests）。
+- Green：`cd frontend && npm test -- HomePage SkillCard` → PASS（3 files / 25 tests）。
+- Green：`cd e2e && npx playwright test --grep @S193` → PASS（1 test）。
+
+2026-05-17 local release gate：
+
+- `./scripts/verify-all.sh` → PASS；V01=PASS、V02=INFO（LINE coverage 86.9%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- S193 AC-S193-1~6 全部 local PASS；production deploy / production log evidence 不屬於本 dev-loop tick。
+- 下一步：`$shipping-release S193` 清 task files、移 spec 到 archive、更新 changelog / roadmap / tag。

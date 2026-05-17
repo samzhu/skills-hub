@@ -76,7 +76,7 @@ describe('AC-2: SkillCard 渲染', () => {
     expect(screen.queryByText('Devops')).not.toBeInTheDocument()  // 確認沒走 fallback
   })
 
-  it('條件 score badge — 傳入 score 顯示「XX% 相符」', () => {
+  it('AC-S193-5: semantic score badge renders match percentage', () => {
     renderCard(mockSkill, 0.873)
     expect(screen.getByText('87% 相符')).toBeInTheDocument()
   })

@@ -239,6 +239,21 @@ describe('HomePage — S178 browse search request routing', () => {
     expect(screen.queryByText('u_f7eb3a')).not.toBeInTheDocument()
   })
 
+  it('AC-S193-5: semantic card 顯示 API score 轉成的相符度', async () => {
+    renderPage('/browse')
+    await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
+    ;((globalThis as any).fetch as ReturnType<typeof vi.fn>).mockClear()
+
+    fireEvent.change(screen.getByPlaceholderText(searchPlaceholder), { target: { value: 'dd' } })
+
+    await waitFor(() => expect(screen.getByText('semantic-dd')).toBeInTheDocument())
+    expect(screen.getByText('91% 相符')).toBeInTheDocument()
+
+    const urls = fetchUrls()
+    expect(urls.some((u) => u.includes('/api/v1/search/semantic?q=dd'))).toBe(true)
+    expect(urls.some((u) => u.includes('/api/v1/skills?') && u.includes('keyword=dd'))).toBe(false)
+  })
+
   it('AC-S178-4: semantic zero result does not keyword-fallback', async () => {
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/v1/skills')) {
