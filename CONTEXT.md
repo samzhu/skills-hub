@@ -84,11 +84,24 @@ _Avoid_: Grant delete, empty mutation
 A successful command endpoint that returns no response body.
 _Avoid_: JSON mutation, void JSON response
 
+**Platform User ID**:
+An internal system identifier for a user, used for ownership, permissions, filters, and technical routes.
+_Avoid_: Display name, author name, visible user label, UID
+
+**User Display Name**:
+The human-readable label shown for a user in product UI.
+_Avoid_: Platform User ID, raw author, raw authorId
+
+**Technical User Segment**:
+A user identifier embedded inside a command, URL, or route where machines need a stable addressable value.
+_Avoid_: Display name, author name
+
 ## Relationships
 
 - **Skill Browsing** starts when the search input is blank.
 - **Semantic Search** on `/browse` starts when the search input has any non-blank text after debounce.
 - A **Search Embedding** may be stored beside skill read state, but it is not part of the user-facing **Skill** concept.
+- **Semantic Search** ranks skills by **Search Embedding**; author identity is result display data, not a search criterion.
 - A **Skill Description Snapshot** changes when the latest SKILL.md changes; it is not edited independently.
 - A **SKILL.md Edit** updates the latest package content and may refresh the **Skill Description Snapshot** and **Search Embedding**.
 - **Version History** shows existing versions only; SKILL.md uploads and text edits happen in the edit page.
@@ -113,6 +126,10 @@ _Avoid_: JSON mutation, void JSON response
 - Public access can only be changed through a **Visibility Command**; grant APIs accept **Share Targets** only.
 - A **Visibility Command** is an owner sharing action; it uses the same owner/share permission language as grant management.
 - An **Empty Response Mutation** must use a void client helper and must not be parsed as JSON.
+- A **Platform User ID** must not be shown as a human-facing label in normal UI.
+- UI surfaces that name a person must show a **User Display Name**; missing display data is a data contract bug to fix at the source, not a UI fallback to **Platform User ID**.
+- **Platform User ID** may still appear in technical surfaces such as API payloads, debug tools, logs, permission checks, filters, and fallback route segments.
+- A **Technical User Segment** should prefer a human-friendly handle when available, but may fall back to a **Platform User ID** because the segment is copied or routed as a machine-readable identifier.
 
 ## Example dialogue
 
@@ -131,6 +148,12 @@ _Avoid_: JSON mutation, void JSON response
 > **Dev:** "After clicking 'make private', should the frontend wait for another detail request?"
 > **Domain expert:** "No. The **Visibility Command** returns the new visibility state."
 
+> **Dev:** "The API response has author `u_f7eb3a`. Should the author row show that value?"
+> **Domain expert:** "No. `u_f7eb3a` is a **Platform User ID**. Uploading a skill requires a logged-in user, so the row must show a **User Display Name** from the user's login/display data or the skill's author snapshot."
+
+> **Dev:** "Can an install command say `skills-hub install u_f7eb3a/transcribe-video`?"
+> **Domain expert:** "Yes, only as a **Technical User Segment** fallback. The nearby author label must still show the **User Display Name**."
+
 ## Flagged ambiguities
 
 - "keyword mode" was used in UI copy and comments to describe `/browse` fallback behavior. Resolved: the user-facing concepts are **Skill Browsing** and **Semantic Search**; keyword search may remain an API capability but is not a `/browse` mode.
@@ -141,3 +164,5 @@ _Avoid_: JSON mutation, void JSON response
 - "public grant" was used as if it were an explicit user/group/company ACL grant. Resolved: **Public Grant** represents **Public Visibility**, but it is not an **Explicit Grant** and does not expand into ACL entries.
 - "public" appeared as a share target. Resolved: public is **Public Visibility** in the page header; **Share Targets** are user, group, or company only.
 - "visibility/ACL projection" was used during S186 discussion to mean `vector_store.is_public` and `vector_store.acl_entries`. Resolved: call this **Vector Read Scope**; it is a deprecated search-index copy, while `skills.is_public` and `skills.acl_entries` remain the query-side read state.
+- "UID" and "author" were used as if they were acceptable UI labels. Resolved: **Platform User ID** is system-only; normal UI must render a **User Display Name**. Missing display data means the API/projection/test fixture is incomplete.
+- "UID in UI" was too broad. Resolved: **Platform User ID** is forbidden as a human label, but allowed as a fallback **Technical User Segment** in commands and routes.
