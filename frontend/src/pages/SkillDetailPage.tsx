@@ -1,25 +1,21 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router'
+import { useParams, Link, useNavigate } from 'react-router'
 import { AlertCircle } from 'lucide-react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { AppShell } from '@/components/AppShell'
-import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FileDropZone } from '@/components/FileDropZone'
 import { FlagsList } from '@/components/FlagsList'
 import { ReviewsPanel } from '@/components/ReviewsPanel'
 import { MarkdownActionMenu } from '@/components/MarkdownActionMenu'
 import { ShareModal } from '@/components/ShareModal'
-import { EditSkillModal } from '@/components/EditSkillModal'
 import { useSkill, useSkillByAuthorAndName } from '@/hooks/useSkill'
 import { useVersions } from '@/hooks/useVersions'
 import { useMe } from '@/hooks/useMe'
 import { useSkillScores } from '@/hooks/useSkillScores'
 import { useSkillFile } from '@/hooks/useSkillFiles'
 import { useSecurityReport } from '@/hooks/useSecurityReport'
-import { addVersion, fetchSkillStats } from '@/api/skills'
+import { fetchSkillStats } from '@/api/skills'
 import { ApiError } from '@/api/client'
-import { localizeApiError } from '@/lib/api-error-messages'
 import { PageHeader } from '@/components/v2/PageHeader'
 import { Sidebar } from '@/components/v2/Sidebar'
 import { SkillMdTab } from '@/components/v2/tabs/SkillMdTab'
@@ -31,6 +27,7 @@ import { FileExplorerPanel } from '@/components/v2/tabs/FileExplorerPanel'
 export function SkillDetailPage() {
   // S096c — dual-route support per ADR-003
   const params = useParams<{ id?: string; author?: string; name?: string }>()
+  const navigate = useNavigate()
   const skillByIdQuery = useSkill(params.id ?? '')
   const skillByAuthorNameQuery = useSkillByAuthorAndName(params.author, params.name)
   const { data: me } = useMe()
@@ -71,10 +68,8 @@ export function SkillDetailPage() {
 
   const [activeTab, setActiveTab] = useState('skill-md')
   const [shareOpen, setShareOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
   const permissions = skill?.viewerPermissions
   const isOwner = permissions?.isOwner ?? (!!skill && !!me?.userId && skill.ownerId === me.userId)
-  const canEdit = permissions?.canEdit ?? isOwner
 
   if (isLoading) {
     return (
@@ -137,11 +132,10 @@ export function SkillDetailPage() {
           window.location.href = `/api/v1/skills/${skill.id}/download`
         }}
         onShareClick={() => setShareOpen(true)}
-        onEditClick={() => setEditOpen(true)}
+        onEditClick={() => navigate(`/skills/${skill.id}/edit`)}
       />
 
       {shareOpen && <ShareModal skillId={skill.id} onClose={() => setShareOpen(false)} />}
-      {editOpen && <EditSkillModal skill={skill} onClose={() => setEditOpen(false)} />}
 
       {/* S087 — SUSPENDED callout */}
       {skill.status === 'SUSPENDED' && (
@@ -188,7 +182,6 @@ export function SkillDetailPage() {
 
             <TabsContent value="versions" className="mt-4">
               <VersionsTabV2 versions={versions ?? []} />
-              {canEdit && skill.status !== 'SUSPENDED' && <AddVersionForm skillId={id} />}
             </TabsContent>
 
             <TabsContent value="reviews" className="mt-4">
@@ -226,64 +219,5 @@ export function SkillDetailPage() {
         <MarkdownActionMenu skillId={skill.id} />
       )}
     </AppShell>
-  )
-}
-
-function AddVersionForm({ skillId }: { skillId: string }) {
-  const [file, setFile] = useState<File | null>(null)
-  const [version, setVersion] = useState('')
-  const queryClient = useQueryClient()
-
-  const mutation = useMutation({
-    mutationFn: () => {
-      if (!file) throw new Error('請選取檔案')
-      return addVersion(skillId, file, version)
-    },
-    onSuccess: () => {
-      setFile(null)
-      setVersion('')
-      queryClient.invalidateQueries({ queryKey: ['skills', skillId, 'versions'] })
-      queryClient.invalidateQueries({ queryKey: ['skills', skillId] })
-    },
-    onError: (err) => {
-      console.error('[AddVersionForm] 新增版本失敗', err)
-    },
-  })
-
-  return (
-    <div className="mt-6 rounded-md border p-4">
-      <h4 className="mb-3 text-sm font-semibold">新增版本</h4>
-      <form
-        onSubmit={(e) => { e.preventDefault(); mutation.mutate() }}
-        className="flex items-end gap-3"
-      >
-        <div className="flex-1">
-          <FileDropZone onFileSelect={setFile} selectedFile={file} />
-        </div>
-        <div className="w-32">
-          <label htmlFor="version-upload-version" className="mb-1 block text-xs text-muted-foreground">版本號</label>
-          <Input
-            id="version-upload-version"
-            value={version}
-            onChange={(e) => setVersion(e.target.value)}
-            placeholder="留白自動產生"
-          />
-          <p className="mt-1 text-[11px] text-muted-foreground">留白時系統會自動產生下一版號</p>
-        </div>
-        <button
-          type="submit"
-          disabled={!file || mutation.isPending}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-        >
-          {mutation.isPending ? '上傳中...' : '新增'}
-        </button>
-      </form>
-      {mutation.isError && (
-        <p className="mt-2 text-sm text-red-600">{localizeApiError(mutation.error)}</p>
-      )}
-      {mutation.isSuccess && (
-        <p className="mt-2 text-sm text-green-600">版本新增成功！</p>
-      )}
-    </div>
   )
 }
