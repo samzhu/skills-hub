@@ -68,6 +68,8 @@ Dev loop 不負責：
 | Repo fact | Meaning |
 |---|---|
 | spec doc 標示 `Status: Auto-Draft` 或 `automation_status: auto-draft` | 這是 site-audit 自動開立草稿；dev loop 必須忽略，不得規劃或實作 |
+| `docs/grimo/specs/` 根目錄有 spec doc，且 §7 / QA / roadmap / task evidence 顯示 AC 已完成或 QA PASS，但 changelog / roadmap release row / archive / tag 任一缺失 | 這不是新功能入口；下一步必須先 `$shipping-release SNNN`，不得跳到下一個 planned spec |
+| `docs/grimo/tasks/` 還有 `SNNN` task file，且對應 spec 已 QA PASS 或已標 Done / Shipped | 這是未收尾 release；下一步必須先 `$shipping-release SNNN` 清 task、歸檔 spec、更新 changelog / roadmap |
 | `docs/grimo/specs/spec-roadmap.md` 有 planned row，但沒有 spec doc | 下一步是 `$planning-spec SNNN` |
 | spec doc 已有設計章節，且標示 `Status: Approved-for-Dev` / roadmap 明確排入 planned 或 active，但 task files 不存在或未完成 | 下一步是 `$planning-tasks SNNN` |
 | task files / spec result 顯示 implementation 完成，但 QA 尚未 PASS | 下一步是 `$verifying-quality SNNN`，通常由 `$planning-tasks` 路由；若 automation 明確位於 QA gate 可直接呼叫 |
@@ -75,6 +77,20 @@ Dev loop 不負責：
 | 沒有 active / planned / releasable spec | 回 `DONE`，說明目前沒有 dev work |
 
 NEXT_SKILL 要從檔案事實推導，不從上一輪聊天記憶推導。自動草稿不是開發授權；人類隔日確認後，必須把 spec 狀態改成 `Approved-for-Dev` 或把 roadmap row 改成可執行 planned / active，dev loop 才能處理。若 prompt、roadmap、spec 三者衝突，以 user 最新 prompt 為最高優先；仍不清楚時回 `BLOCKED` 並指出哪個檔案哪一行互相矛盾。
+
+### Release Completeness Gate
+
+每 tick 選新 spec 前，先掃 `docs/grimo/specs/*.md`、`docs/grimo/tasks/*S*.md`、`docs/grimo/CHANGELOG.md`、`docs/grimo/specs/spec-roadmap.md`、`git tag --points-at HEAD`。若任何 spec 已實作完成或 QA PASS，但仍在 `docs/grimo/specs/` 根目錄、task file 還存在、CHANGELOG 無版本記錄、roadmap 沒有 shipped / archived row、或 git tag 缺失，NEXT_SKILL 必須是 `$shipping-release SNNN`。
+
+「完成 spec」在 dev loop 中只代表 `$shipping-release` 已做完這些檔案事實：
+
+- spec doc 從 `docs/grimo/specs/` 移到 `docs/grimo/specs/archive/`
+- `docs/grimo/tasks/` 沒有該 SNNN 的 task file
+- `docs/grimo/CHANGELOG.md` 有該 SNNN 的版本 entry
+- `docs/grimo/specs/spec-roadmap.md` 有該 SNNN 的 shipped / archived 狀態與版本
+- git commit 存在；若 release 流程要求 tag，`git tag --points-at HEAD` 能看到版本 tag
+
+只要上述任一項缺失，該 tick 只能回 `WIP` 或 `BLOCKED`，不得回 `DONE`，也不得選下一個 planned spec。
 
 ## Skill Router
 
@@ -84,6 +100,7 @@ NEXT_SKILL 要從檔案事實推導，不從上一輪聊天記憶推導。自動
 |---|---|
 | user goal 明確指定 product scope / PRD | `$defining-product` |
 | user goal 明確指定 project roadmap / architecture | `$planning-project` |
+| 已完成 / QA PASS 的 spec 還沒通過 Release Completeness Gate | `$shipping-release SNNN` |
 | roadmap 有 planned spec，但缺 spec doc | `$planning-spec SNNN` |
 | spec doc 已設計完成，且非 `Auto-Draft`，要拆 task / 實作 / consolidate / QA | `$planning-tasks SNNN` |
 | spec task 全 PASS，但需要獨立 QA | `$verifying-quality SNNN` |
@@ -169,15 +186,16 @@ git diff --name-only main...<target-branch>
 
 1. 讀 Start-of-Tick files。
 2. 跑基本 worktree audit。
-3. 找 active / planned / releasable spec。
-4. 選 exactly one NEXT_SKILL，並在回報中寫出選它的 repo evidence。
-5. 呼叫該 skill，讓它完成一個可保存成果。
-6. 跑該 skill 要求的最小必要 verify。
-7. 更新 spec / task / changelog / roadmap 中對應的結果。
-8. 只 stage 本 tick 自己改的檔案。
-9. commit 一個 atomic result，或在不能安全 commit 時回 `BLOCKED`。
-10. 清理本 tick 額外建立的 child worktree；Codex App execution worktree 只回報，不刪。
-11. 結尾回 exactly one EXIT label。
+3. 先跑 Release Completeness Gate：找已完成但未歸檔 / 未 tag / 未清 task 的 spec。
+4. 若 Gate 找到未收尾 spec，NEXT_SKILL 固定為 `$shipping-release SNNN`；只有 Gate 乾淨才找 active / planned spec。
+5. 選 exactly one NEXT_SKILL，並在回報中寫出選它的 repo evidence。
+6. 呼叫該 skill，讓它完成一個可保存成果。
+7. 跑該 skill 要求的最小必要 verify。
+8. 更新 spec / task / changelog / roadmap 中對應的結果。
+9. 只 stage 本 tick 自己改的檔案。
+10. commit 一個 atomic result，或在不能安全 commit 時回 `BLOCKED`。
+11. 清理本 tick 額外建立的 child worktree；Codex App execution worktree 只回報，不刪。
+12. 結尾回 exactly one EXIT label。
 
 ## Write Scope
 
@@ -204,7 +222,7 @@ Dev loop 不應修改：
 
 | Label | Meaning |
 |---|---|
-| `DONE` | 本 tick 完成一個 atomic dev result；或目前沒有 dev work |
+| `DONE` | 本 tick 完成 `$shipping-release` 且 Release Completeness Gate 乾淨；或 Gate 乾淨且目前沒有 dev work |
 | `WIP` | 有可保存進度，但 spec / task 尚未完成 |
 | `BLOCKED` | 需要 user input、外部權限、工具缺失，或 dirty overlap 不能安全處理 |
 | `WALL-HIT` | 時間接近上限，已保存最近 atomic step |

@@ -21,6 +21,11 @@ Read and follow:
 
 Then read active spec docs and docs/grimo/tasks/ only when .codex/loop.dev.md says they are relevant.
 
+Before selecting any new planned or active spec, run the Release Completeness Gate from .codex/loop.dev.md:
+- scan root docs/grimo/specs/*.md, docs/grimo/tasks/, docs/grimo/CHANGELOG.md, docs/grimo/specs/spec-roadmap.md, and git tags;
+- if a spec has completed implementation or QA PASS evidence but is not archived, still has task files, has no CHANGELOG release entry, has no roadmap shipped/archived row, or is missing the expected release tag, choose `$shipping-release SNNN`;
+- do not move to a later planned spec until that older completed spec is archived by `$shipping-release`.
+
 Do exactly one development unit:
 - infer exactly one NEXT_SKILL from repo files using .codex/loop.dev.md;
 - invoke that `$skill-name` explicitly;
@@ -40,5 +45,6 @@ Treat docs/grimo/specs/spec-roadmap.md as a shared roadmap ledger. Normal roadma
 Never stage or commit unrelated user changes. If repo files conflict about NEXT_SKILL, report the conflicting file paths and return BLOCKED instead of guessing.
 
 End with exactly one EXIT label from .codex/loop.dev.md: DONE, WIP, BLOCKED, or WALL-HIT.
+Return DONE only when the Release Completeness Gate is clean after this tick. If a spec is implemented or QA PASS but still needs `$shipping-release`, return WIP or BLOCKED and name `$shipping-release SNNN` as the next action.
 Also report the NEXT_SKILL chosen for this tick, the repo evidence used to choose it, and the suggested NEXT_SKILL for the next tick or "none".
 ```
