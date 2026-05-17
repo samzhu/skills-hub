@@ -61,4 +61,15 @@ And（而且）response 依 score 由高到低排序，後端 log 有 `query`、
 - 無
 
 ## 狀態
-pending（待做）
+PASS（2026-05-17）
+
+## 實作結果
+
+- [backend/src/main/java/io/github/samzhu/skillshub/search/SemanticSearchService.java](/Users/samzhu/workspace/github-samzhu/skills-hub/backend/src/main/java/io/github/samzhu/skillshub/search/SemanticSearchService.java) 在 semantic search 完成 log 新增 `topHitIds`、`topHitNames`、`topHitScores`，只取 response 前 3 筆。
+- [backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchScoreMappingTest.java](/Users/samzhu/workspace/github-samzhu/skills-hub/backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchScoreMappingTest.java) 驗 `score = 1 - distance`。
+- [backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchFromSkillsTest.java](/Users/samzhu/workspace/github-samzhu/skills-hub/backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchFromSkillsTest.java) 驗 top-hit log 欄位、正向 query score 高於弱相關 query、response score 由高到低排序。
+
+## 驗證
+
+- Red：`cd backend && ./gradlew test --tests "*SemanticSearch*"` → fail at `AC-S193-2`，因 log 尚未含 `topHitIds/topHitNames/topHitScores`。
+- Green：`cd backend && ./gradlew test --tests "*SemanticSearch*"` → PASS（13 tests）。

@@ -1,6 +1,7 @@
 package io.github.samzhu.skillshub.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -9,10 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.List;
 import java.util.stream.Collectors;
 
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -44,6 +47,7 @@ import io.github.samzhu.skillshub.shared.security.testsupport.TestUserSeed;
 @Tag("S186")
 class SemanticSearchFromSkillsTest {
 
+    private static final int EMBEDDING_DIMENSIONS = 768;
     private static final String QUERY = "部署容器";
     private static final String REMOVED_VECTOR_TABLE = "vector" + "_store";
 
@@ -55,6 +59,9 @@ class SemanticSearchFromSkillsTest {
 
     @Autowired
     private EmbeddingModel embeddingModel;
+
+    @Autowired
+    private SemanticSearchService semanticSearchService;
 
     @BeforeEach
     void resetData() {
@@ -149,6 +156,89 @@ class SemanticSearchFromSkillsTest {
                 .doesNotContain("ORDER BY author");
     }
 
+    @Test
+    @DisplayName("AC-S193-2: semantic search log includes top hit scores without sensitive fields")
+    @Tag("AC-S193-2")
+    void semanticSearchLogIncludesTopHitScoresWithoutSensitiveFields() {
+        var queryVector = vectorAt(0);
+        when(embeddingModel.embed("影片轉字幕")).thenReturn(queryVector);
+        seedSkill("skill-subtitle", "產生字幕檔", "u_current", "video", "Video",
+                true, List.of("public:*:read"), 7L, queryVector);
+
+        var logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(SemanticSearchService.class);
+        var appender = new ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+
+        try {
+            semanticSearchService.search("影片轉字幕", 10);
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+
+        var event = appender.list.stream()
+                .filter(item -> "ACL-aware semantic search 完成".equals(item.getFormattedMessage()))
+                .reduce((first, second) -> second)
+                .orElseThrow();
+        var keys = event.getKeyValuePairs().stream().map(pair -> pair.key).toList();
+
+        assertThat(keys)
+                .contains("query", "resultsCount", "topHitIds", "topHitNames", "topHitScores")
+                .doesNotContain("token", "cookie", "email", "requestBody");
+        assertThat(logValue(event, "query")).isEqualTo("影片轉字幕");
+        assertThat(logValue(event, "resultsCount")).isEqualTo(1);
+        assertThat(logValue(event, "topHitIds")).isEqualTo(List.of("skill-subtitle"));
+        assertThat(logValue(event, "topHitNames")).isEqualTo(List.of("產生字幕檔"));
+        assertThat(logValue(event, "topHitScores")).isEqualTo(List.of(1.0d));
+    }
+
+    @Test
+    @DisplayName("AC-S193-3: positive query score is higher than weak query score")
+    @Tag("AC-S193-3")
+    void positiveQueryScoreIsHigherThanWeakQueryScore() {
+        var positiveVector = vectorAt(0);
+        var weakVector = vectorAt(1);
+        when(embeddingModel.embed("影片轉字幕")).thenReturn(positiveVector);
+        when(embeddingModel.embed("甜點")).thenReturn(weakVector);
+        seedSkill("skill-subtitle", "產生字幕檔", "u_current", "video", "Video",
+                true, List.of("public:*:read"), 7L, positiveVector);
+
+        var positiveScore = semanticSearchService.search("影片轉字幕", 10).stream()
+                .filter(result -> "skill-subtitle".equals(result.id()))
+                .findFirst()
+                .orElseThrow()
+                .score();
+        var weakScore = semanticSearchService.search("甜點", 10).stream()
+                .filter(result -> "skill-subtitle".equals(result.id()))
+                .findFirst()
+                .orElseThrow()
+                .score();
+
+        assertThat(positiveScore).isGreaterThan(weakScore);
+    }
+
+    @Test
+    @DisplayName("AC-S193-4: semantic response is ordered by score descending")
+    @Tag("AC-S193-4")
+    void semanticResponseIsOrderedByScoreDescending() {
+        var queryVector = vectorAt(0);
+        var weakVector = vectorAt(1);
+        when(embeddingModel.embed("影片轉字幕")).thenReturn(queryVector);
+        seedSkill("skill-strong", "產生字幕檔", "u_current", "video", "Video",
+                true, List.of("public:*:read"), 7L, queryVector);
+        seedSkill("skill-weak", "甜點整理", "u_current", "utility", "Utility",
+                true, List.of("public:*:read"), 3L, weakVector);
+
+        var results = semanticSearchService.search("影片轉字幕", 10);
+        var scores = results.stream().map(SemanticSearchResult::score).toList();
+
+        assertThat(results)
+                .extracting(SemanticSearchResult::id)
+                .containsSubsequence("skill-strong", "skill-weak");
+        assertThat(scores).isSortedAccordingTo((left, right) -> Double.compare(right, left));
+    }
+
     private void seedUser(String id, String sub, String email, String name, String handle) {
         jdbc.update("""
                 INSERT INTO users (id, oauth_provider, sub, email, name, handle, created_at, last_seen_at)
@@ -182,5 +272,19 @@ class SemanticSearchFromSkillsTest {
         return values.stream()
                 .map(value -> "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
                 .collect(Collectors.joining(",", "[", "]"));
+    }
+
+    private static float[] vectorAt(int index) {
+        var vector = new float[EMBEDDING_DIMENSIONS];
+        vector[index] = 1.0f;
+        return vector;
+    }
+
+    private static Object logValue(ch.qos.logback.classic.spi.ILoggingEvent event, String key) {
+        return event.getKeyValuePairs().stream()
+                .filter(pair -> key.equals(pair.key))
+                .map(pair -> pair.value)
+                .findFirst()
+                .orElseThrow();
     }
 }

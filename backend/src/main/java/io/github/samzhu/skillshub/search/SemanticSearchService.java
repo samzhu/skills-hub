@@ -45,6 +45,7 @@ class SemanticSearchService {
              ORDER BY distance
              LIMIT ?
             """;
+    private static final int LOGGED_TOP_HITS = 3;
     private static final int OVERSAMPLE_FACTOR = 5;
 
     /**
@@ -118,12 +119,16 @@ class SemanticSearchService {
         var results = topHits.stream()
                 .map(hit -> hit.toResult(authorDisplays.get(hit.author())))
                 .toList();
+        var loggedResults = results.stream().limit(LOGGED_TOP_HITS).toList();
 
         log.atInfo()
                 .addKeyValue("query", query)
                 .addKeyValue("principalCount", principalKeys.size())
                 .addKeyValue("patternsCount", aclPatterns.size())
                 .addKeyValue("resultsCount", results.size())
+                .addKeyValue("topHitIds", loggedResults.stream().map(SemanticSearchResult::id).toList())
+                .addKeyValue("topHitNames", loggedResults.stream().map(SemanticSearchResult::name).toList())
+                .addKeyValue("topHitScores", loggedResults.stream().map(SemanticSearchResult::score).toList())
                 .log("ACL-aware semantic search 完成");
         return results;
     }

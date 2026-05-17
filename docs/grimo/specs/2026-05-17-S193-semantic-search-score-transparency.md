@@ -1,6 +1,6 @@
 # S193: Semantic Search Score Transparency
 
-> 規格：S193 | 大小：XS(5) | 狀態：⏳ Plan — task files created；next `$planning-tasks S193`
+> 規格：S193 | 大小：XS(5) | 狀態：⏳ Dev — S193-T01 PASS；next `$planning-tasks S193`
 > 日期：2026-05-17
 > 來源：Production browse search report — `/browse` 輸入「甜點」後回傳公開「產生字幕檔」
 > 對應：S157 semantic search enablement / S177 search visibility / S186 skills.embedding 同表化 / S189 browse search entry point
@@ -254,7 +254,7 @@ POC：not required for task creation — §7 已用本 repo 實際 `spring-ai-pg
 
 | 順序 | Task file | AC | 狀態 | 驗證 |
 |---:|---|---|---|---|
-| 1 | `docs/grimo/tasks/2026-05-17-S193-T01-backend-score-logging.md` | AC-S193-1, AC-S193-2, AC-S193-3, AC-S193-4 | pending | `cd backend && ./gradlew test --tests "*SemanticSearch*"` |
+| 1 | `docs/grimo/tasks/2026-05-17-S193-T01-backend-score-logging.md` | AC-S193-1, AC-S193-2, AC-S193-3, AC-S193-4 | PASS（2026-05-17） | `cd backend && ./gradlew test --tests "*SemanticSearch*"` |
 | 2 | `docs/grimo/tasks/2026-05-17-S193-T02-browse-score-visibility.md` | AC-S193-5, AC-S193-6 | pending | `cd frontend && npm test -- SkillCard`；`cd e2e && npx playwright test --grep @S193`；`./scripts/verify-all.sh` |
 
 執行順序：
@@ -284,3 +284,11 @@ Production score evidence：
 | `完全無關的香蕉蛋糕` | `0.48784846502004464` |
 
 結論：score 越高越接近；排序從分數高到低正確。S193 已可進入開發。
+
+2026-05-17 S193-T01 implementation result：
+
+- [SemanticSearchService.java](/Users/samzhu/workspace/github-samzhu/skills-hub/backend/src/main/java/io/github/samzhu/skillshub/search/SemanticSearchService.java) 保留既有 SQL / threshold / `score = 1 - distance` path，只在完成 log 加 `topHitIds`、`topHitNames`、`topHitScores`，限制前 3 筆。
+- [SemanticSearchScoreMappingTest.java](/Users/samzhu/workspace/github-samzhu/skills-hub/backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchScoreMappingTest.java) 驗 AC-S193-1。
+- [SemanticSearchFromSkillsTest.java](/Users/samzhu/workspace/github-samzhu/skills-hub/backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchFromSkillsTest.java) 驗 AC-S193-2 / AC-S193-3 / AC-S193-4。
+- Red：`cd backend && ./gradlew test --tests "*SemanticSearch*"` → fail at AC-S193-2，log 尚未含 top-hit 欄位。
+- Green：`cd backend && ./gradlew test --tests "*SemanticSearch*"` → PASS（13 tests）。
