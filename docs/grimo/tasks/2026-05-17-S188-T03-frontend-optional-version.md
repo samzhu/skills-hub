@@ -52,10 +52,20 @@ And（而且）畫面不出現 browser required 或 semver pattern 錯誤
 - frontend tests for these paths
 
 ## 驗證方式
-執行：`cd frontend && npm test -- --run PublishPage SkillDetailPage`
+執行：`cd frontend && npm test -- skills.test.ts PublishPage.test.tsx SkillDetailPage.test.tsx`
 
 ## 前置條件
 - S188-T02 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-17）
+
+## 實作結果
+- `frontend/src/api/skills.ts`：`uploadSkill` / `addVersion` 的 `version` 改為 optional；`version?.trim()` 有內容才 append 到 `FormData`。
+- `frontend/src/pages/PublishPage.tsx`：版本欄位初始值改空字串，移除 `required` / semver `pattern`，顯示留白自動產生版本號的提示。
+- `frontend/src/pages/SkillDetailPage.tsx`：新增版本表單移除 `required` / semver `pattern`，送出按鈕不再因版本留白 disabled。
+- `frontend/src/api/skills.test.ts`、`PublishPage.test.tsx`、`SkillDetailPage.test.tsx`：補上 blank version 不送 `version`、欄位沒有 required/pattern 的測試。
+
+## 驗證結果
+- RED：`cd frontend && npm test -- skills.test.ts PublishPage.test.tsx SkillDetailPage.test.tsx` 失敗；`FormData.get('version')` 仍是空白字串或 `1.0.0`，Publish 版本欄位仍 required/pattern，新增版本表單仍被 `!version` 擋住。
+- GREEN：同一條命令通過；Vitest 顯示 `Test Files 3 passed`、`Tests 28 passed`。

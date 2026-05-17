@@ -265,15 +265,13 @@ function AddVersionForm({ skillId }: { skillId: string }) {
             id="version-upload-version"
             value={version}
             onChange={(e) => setVersion(e.target.value)}
-            placeholder="2.0.0"
-            required
-            pattern="\d+\.\d+\.\d+(-[A-Za-z0-9\.\-]+)?"
-            title="格式：MAJOR.MINOR.PATCH（如 1.0.0 或 2.0.0-rc.1）"
+            placeholder="留白自動產生"
           />
+          <p className="mt-1 text-[11px] text-muted-foreground">留白時系統會自動產生下一版號</p>
         </div>
         <button
           type="submit"
-          disabled={!file || !version || mutation.isPending}
+          disabled={!file || mutation.isPending}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {mutation.isPending ? '上傳中...' : '新增'}

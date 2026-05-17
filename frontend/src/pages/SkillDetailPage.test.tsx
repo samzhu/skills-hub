@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SkillDetailPage } from './SkillDetailPage'
@@ -220,6 +220,70 @@ describe('SkillDetailPage — S172 responsive detail body', () => {
     expect(sidebar.className).toContain('lg:border-l')
     expect(sidebar.className).toContain('lg:pl-[22px]')
     expect(sidebar).not.toHaveStyle({ borderLeft: '0.5px solid var(--line, rgba(255,255,255,0.08))' })
+  })
+})
+
+describe('SkillDetailPage — S188 optional add-version label', () => {
+  it('AC-S188-6: 新增版本可留白版本號，送出 FormData 不含 version', async () => {
+    const skill = skillFixture('PUBLISHED', 'skill-s188-add-version')
+    let capturedForm: FormData | null = null
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const u = typeof url === 'string' ? url : String(url)
+      if (u.endsWith('/me')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ sub: 'alice', userId: 'alice', roles: [], groups: [] }),
+        } as Response)
+      }
+      if (u === `/api/v1/skills/${skill.id}/versions` && init?.method === 'PUT') {
+        capturedForm = init.body as FormData
+        return Promise.resolve({ ok: true, status: 204, json: () => Promise.resolve({}) } as Response)
+      }
+      if (u.includes(`/skills/${skill.id}`) && !isSkillSubPath(u)) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(skill) } as Response)
+      }
+      if (u.includes('/versions')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response)
+      }
+      if (u.includes('/stats')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(null) } as Response)
+      }
+      if (u.includes('/subscriptions')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) } as Response)
+      }
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) } as Response)
+    })
+
+    renderPage(skill.id)
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: '版本' })).toBeInTheDocument()
+    })
+    const versionsTab = screen.getByRole('tab', { name: '版本' })
+    fireEvent.pointerDown(versionsTab, { button: 0, ctrlKey: false })
+    fireEvent.click(versionsTab)
+    fireEvent.keyDown(versionsTab, { key: 'Enter', code: 'Enter' })
+
+    await waitFor(() => {
+      expect(screen.getByText('新增版本')).toBeInTheDocument()
+    })
+    const versionInput = screen.getByLabelText('版本號') as HTMLInputElement
+    expect(versionInput.value).toBe('')
+    expect(versionInput.required).toBe(false)
+    expect(versionInput.getAttribute('pattern')).toBeNull()
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, {
+      target: { files: [new File(['zip'], 'skill.zip', { type: 'application/zip' })] },
+    })
+
+    const submit = screen.getByRole('button', { name: '新增' })
+    await waitFor(() => expect(submit).not.toBeDisabled())
+    fireEvent.click(submit)
+
+    await waitFor(() => expect(capturedForm).not.toBeNull())
+    expect(capturedForm!.get('file')).toBeInstanceOf(File)
+    expect(capturedForm!.get('version')).toBeNull()
   })
 })
 

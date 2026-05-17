@@ -345,7 +345,7 @@ Input 調整：
 |---|---|---|---|
 | [S188-T01 Backend VersionLabelPolicy](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T01-backend-version-label-policy.md) | PASS | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4 | `VersionLabelPolicyTest` 驗空白首版、下一號、自訂標籤與 unsafe label。 |
 | [S188-T02 Backend Optional Version API](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T02-backend-api-optional-version.md) | PASS | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4 | `/upload` 與 `/{id}/versions` 不送 version 時能寫 DB / storage；duplicate 與 unsafe label 有正確錯誤。 |
-| [S188-T03 Frontend Optional Version Forms](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T03-frontend-optional-version.md) | pending | AC-S188-5, AC-S188-6 | `/publish` 與新增版本表單 blank version 不 append `version`，也不被 required/pattern 擋住。 |
+| [S188-T03 Frontend Optional Version Forms](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T03-frontend-optional-version.md) | PASS | AC-S188-5, AC-S188-6 | `/publish` 與新增版本表單 blank version 不 append `version`，也不被 required/pattern 擋住。 |
 | [S188-T04 Version Label Display, Docs, and Full Verify](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T04-display-docs-and-full-verify.md) | pending | AC-S188-7 + full spec verify | UI / docs 不再用 semver-only 文案；跑 backend/frontend S188 相關驗證並整理 §7。 |
 
 ### 6.1 POC Decision
@@ -405,3 +405,25 @@ Result:
 
 Next:
 - S188-T03 updates frontend forms so blank version is not appended to `FormData`.
+
+### S188-T03 Frontend Optional Version Forms — PASS（2026-05-17）
+
+Files:
+- `frontend/src/api/skills.ts`
+- `frontend/src/api/skills.test.ts`
+- `frontend/src/pages/PublishPage.tsx`
+- `frontend/src/pages/PublishPage.test.tsx`
+- `frontend/src/pages/SkillDetailPage.tsx`
+- `frontend/src/pages/SkillDetailPage.test.tsx`
+
+Verification:
+- RED：`cd frontend && npm test -- skills.test.ts PublishPage.test.tsx SkillDetailPage.test.tsx` failed because blank `version` was still appended to `FormData`, `/publish` still prefilled `1.0.0`, and the add-version form was still disabled when version was blank.
+- GREEN：same command passed; Vitest printed `Test Files 3 passed` and `Tests 28 passed`.
+
+Result:
+- `/publish` now starts with a blank version field, has no browser `required` / semver `pattern`, and tells the user blank input lets the system generate a version.
+- `uploadSkill(...)` omits `version` when the caller passes blank or whitespace; nonblank labels are trimmed before append.
+- The detail page add-version form allows a selected file with blank version, and `addVersion(...)` omits `version` in that case.
+
+Next:
+- S188-T04 removes remaining semver-only display/doc assumptions and runs full S188 verification.

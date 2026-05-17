@@ -192,9 +192,9 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
     const keys = Array.from(capturedForm!.keys())
     expect(keys).not.toContain('author')
     expect(capturedForm!.get('skillName')).toBe('Team Transcribe')
-    // sanity — 其他必要欄位仍在
+    // sanity — 其他必要欄位仍在；S188 之後空白版本交給 backend 自動產生 v1 / next number
     expect(keys).toContain('file')
-    expect(keys).toContain('version')
+    expect(keys).not.toContain('version')
     expect(keys).toContain('category')
     expect(keys).toContain('visibility')
   })
@@ -224,5 +224,15 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
     const skillNameInput = screen.getByLabelText('技能名稱') as HTMLInputElement
     expect(skillNameInput.getAttribute('pattern')).toBeNull()
     expect(screen.getByText(/平台列表顯示名稱，可和 SKILL\.md 裡的 name 不同/)).toBeInTheDocument()
+  })
+
+  it('AC-S188-5: 版本欄位可留白，沒有 required / semver pattern', () => {
+    renderPublishPage()
+
+    const versionInput = screen.getByLabelText('版本號') as HTMLInputElement
+    expect(versionInput.value).toBe('')
+    expect(versionInput.required).toBe(false)
+    expect(versionInput.getAttribute('pattern')).toBeNull()
+    expect(screen.getByText(/留白時系統會自動產生版本號/)).toBeInTheDocument()
   })
 })

@@ -367,7 +367,7 @@ export function fetchCategories(): Promise<CategoryCount[]> {
  *
  * @param file      技能 zip 套件
  * @param skillName 平台列表顯示用技能名稱
- * @param version   語意化版本號（SemVer，如 1.0.0）
+ * @param version   可選版本標籤；空白時後端自動產生 v1 / next number
  * @param category  技能分類
  * @returns 後端分配的技能 UUID
  */
@@ -379,14 +379,15 @@ export type { Visibility } from '../types/skill'
 export async function uploadSkill(
   file: File,
   skillName: string,
-  version: string,
+  version: string | undefined,
   category: string,
   visibility: Visibility = 'PUBLIC',
 ): Promise<{ id: string }> {
   const form = new FormData()
   form.append('skillName', skillName)
   form.append('file', file)
-  form.append('version', version)
+  const trimmedVersion = version?.trim()
+  if (trimmedVersion) form.append('version', trimmedVersion)
   form.append('category', category)
   form.append('visibility', visibility)
   const res = await fetch('/api/v1/skills/upload', { method: 'POST', body: form })
@@ -407,12 +408,13 @@ export async function uploadSkill(
  *
  * @param skillId 目標技能的 UUID
  * @param file    新版本的 zip 套件
- * @param version 新版本的語意化版本號
+ * @param version 可選版本標籤；空白時後端自動產生 next number
  */
-export async function addVersion(skillId: string, file: File, version: string): Promise<void> {
+export async function addVersion(skillId: string, file: File, version?: string): Promise<void> {
   const form = new FormData()
   form.append('file', file)
-  form.append('version', version)
+  const trimmedVersion = version?.trim()
+  if (trimmedVersion) form.append('version', trimmedVersion)
   const res = await fetch(`/api/v1/skills/${skillId}/versions`, { method: 'PUT', body: form })
   if (!res.ok) {
     // S040: 與 apiFetch 對齊 — 拋 ApiError 攜 status + code

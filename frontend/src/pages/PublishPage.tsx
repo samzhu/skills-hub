@@ -34,8 +34,8 @@ export function PublishPage() {
   const [skillName, setSkillName] = useState('')
   // S099b3: 文本 mode preview pane toggle
   const [showPreview, setShowPreview] = useState(false)
-  // 預填 1.0.0 作為首次發佈的慣例起始版本
-  const [version, setVersion] = useState('1.0.0')
+  // S188：留白時由 backend 自動產生 v1，填值時作為自訂版本標籤。
+  const [version, setVersion] = useState('')
   // S154b — author 改為 read-only display。Backend §S154 §2.5 forge fix drop @RequestParam("author")
   // 後 server 一律從 currentUserProvider.userId() 取，caller body silent ignored。原 S100c team
   // override / publish-on-behalf 需求已 user-confirmed 廢除（都是自己上傳）。
@@ -195,12 +195,12 @@ export function PublishPage() {
                   id="publish-version"
                   value={version}
                   onChange={(e) => setVersion(e.target.value)}
-                  placeholder="1.0.0"
-                  required
-                  pattern="\d+\.\d+\.\d+(-[A-Za-z0-9\.\-]+)?"
-                  title="格式：MAJOR.MINOR.PATCH（如 1.0.0 或 2.0.0-rc.1）"
+                  placeholder="留白自動產生"
                   className="font-mono"
                 />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  留白時系統會自動產生版本號；也可輸入自訂標籤。
+                </p>
               </div>
               <div>
                 <label htmlFor="publish-category" className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">分類</label>
