@@ -1,7 +1,7 @@
 # S185 — Skill List / Detail Projection Consistency
 
 > SpecID: S185
-> Status: 📐 in-design
+> Status: ⏳ QA PASS — release pending
 > Date: 2026-05-16
 > Size: XS(8)
 > Related: S119 list rating projection, S142b SkillDetailPage v2 backend supplement, S177 is_public-first search visibility, S184 visibility command contract
@@ -342,7 +342,7 @@ The method already has access to `principalContextService`, so it does not need 
 
 ## 6. Task Plan
 
-Planning status: S185-T01 and S185-T02 completed; QA / release pending.
+Planning status: S185-T01 and S185-T02 completed; QA PASS; release pending.
 
 | Task | File | ACs | Status | Verification |
 | --- | --- | --- | --- | --- |
@@ -355,7 +355,7 @@ Execution order:
 2. S185-T02 then applies the same visibility clause to category counts and adds the MockMvc JSON contract guard.
 3. After both tasks pass, run `cd backend && ./gradlew test`, deploy through Cloud Build when needed, and capture AC-S185-5 production list/detail recheck plus Cloud Run `severity>=ERROR` log result.
 
-One-unit loop note: 2026-05-17 automation ticks implemented S185-T01 and S185-T02 as separate commits because `.codex/loop.md` requires one clear commit per tick. Next tick should enter QA / release preflight via `$planning-tasks S185`.
+One-unit loop note: 2026-05-17 automation ticks implemented S185-T01, S185-T02, and QA evidence as separate commits because `.codex/loop.md` requires one clear commit per tick. Next tick should enter release via `$shipping-release S185`.
 
 ## 7. Results
 
@@ -372,3 +372,12 @@ One-unit loop note: 2026-05-17 automation ticks implemented S185-T01 and S185-T0
 - Verification: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryServiceVisibilityTest --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest` → `BUILD SUCCESSFUL in 2m 9s`.
 
 Pending: full QA, release, deploy, and AC-S185-5 production list/detail recheck.
+
+2026-05-17 QA PASS:
+
+- Verification: `./scripts/verify-all.sh` → exit 0.
+- Results: V01=PASS, V02=INFO, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS.
+- Coverage: V02 LINE coverage = 86.4% (`covered=4608 / total=5332`).
+- Native image gate: V08b built `docker.io/library/skillshub-verify:local` successfully.
+
+Pending: `$shipping-release S185`, Cloud Build / Cloud Run deploy, and AC-S185-5 production list/detail recheck with Cloud Run `severity>=ERROR` log query.
