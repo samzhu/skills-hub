@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-17（S188 shipped v4.68.0；version blank publish now creates v1/v2 numeric labels；verify-all.sh 全綠；deployed `skillshub-00038-252`）
+> 最後更新：2026-05-17（新增 S190 security risk reason UI spec；補 LOW + 0 findings 的原因與三動作呈現設計）
 
 ## 使用說明
 
@@ -47,6 +47,7 @@
 | S187 | Skill SKILL.md 編輯頁（詳情頁 edit 導向 `/skills/{id}/edit`；版本頁籤只顯示紀錄；description 來自 latest SKILL.md） | M(13) | S142a ✅, S163 ✅, S176 ✅, S186 ✅, S188 ordering-only | 📐 in-design — UI scope split from S186；spec §1-5 ready for review；version input optional behavior delegated to S188 |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
 | S189 | Browse 搜尋入口驗證與收版（S178 superseded；重新驗證 `/browse` semantic-only contract、遷移 evidence tag、乾淨 ship） | S(9) | S186 required, S187 ordering-only | 📐 in-design — carry-over verification & ship；排在 S187 後，避免搜尋 cleanup 與 edit page 主線混雜 |
+| S190 | Security Risk Reason UI（LOW + 0 findings 顯示 allowed-tools/scripts 原因、掃描空狀態說明、下載/查看檔案/回報疑慮三動作） | S(11) | S147 ✅, S183 ✅, S142b ✅ | 📐 in-design — spec ready for review；HTML prototype 已新增 |
 
 ---
 

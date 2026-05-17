@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Skills Hub Security Reason UI</title>
+  <style>
+    :root {
+      --bg: #08080a;
+      --panel: #0f0f12;
+      --panel2: #141418;
+      --line: rgba(255,255,255,.08);
+      --line2: rgba(255,255,255,.14);
+      --ink: #eeecea;
+      --muted: #a8a49c;
+      --dim: rgba(238,236,234,.45);
+      --green: #1d9e75;
+      --greenText: #6fd8b0;
+      --amber: #ef9f27;
+      --amberText: #fac775;
+      --red: #e24b4a;
+      --redText: #f08080;
+      --violet: #7f77dd;
+      --violetText: #c9c5f2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    .shell { max-width: 1160px; margin: 0 auto; padding: 28px 20px 60px; }
+    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+    h1 { margin: 0; font-size: 28px; font-weight: 620; }
+    .lead { margin: 8px 0 0; color: var(--muted); font-size: 15px; line-height: 1.6; max-width: 720px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0; }
+    .tab { border: 1px solid var(--line); background: rgba(255,255,255,.03); color: var(--muted); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+    .tab.active { color: var(--ink); border-color: rgba(127,119,221,.45); background: rgba(127,119,221,.16); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
+    section { padding: 18px 0; border-bottom: 1px solid var(--line); }
+    h2 { margin: 0 0 12px; font-size: 17px; font-weight: 620; }
+    h3 { margin: 0 0 8px; font-size: 14px; font-weight: 620; }
+    .meta { color: var(--dim); font-size: 12px; }
+    .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .stat {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.025);
+      padding: 12px 14px;
+    }
+    .stat .label { color: var(--dim); font-size: 11px; margin-bottom: 5px; }
+    .stat .value { font-size: 20px; font-weight: 620; }
+    .reasons { display: grid; gap: 10px; }
+    .reason {
+      border: 1px solid rgba(29,158,117,.25);
+      border-left: 3px solid var(--green);
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(29,158,117,.055);
+    }
+    .reason.none { border-color: rgba(168,164,156,.2); border-left-color: var(--muted); background: rgba(255,255,255,.025); }
+    .reason.high { border-color: rgba(226,75,74,.28); border-left-color: var(--red); background: rgba(226,75,74,.055); }
+    .reason-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .badge { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; font-weight: 720; color: var(--greenText); }
+    .reason.high .badge { color: var(--redText); }
+    .reason.none .badge { color: var(--muted); }
+    .reason p { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .chip {
+      border: 1px solid var(--line2);
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: var(--ink);
+      background: rgba(0,0,0,.18);
+    }
+    .actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .action {
+      min-height: 88px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.025);
+      padding: 13px;
+    }
+    .action.primary { border-color: rgba(238,236,234,.28); background: rgba(238,236,234,.06); }
+    .action.warn { border-color: rgba(239,159,39,.28); background: rgba(239,159,39,.055); }
+    .action-title { font-size: 14px; font-weight: 620; }
+    .action p { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+    .empty {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      color: var(--muted);
+      background: rgba(255,255,255,.025);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .finding {
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--red);
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(255,255,255,.025);
+    }
+    .finding-top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .finding-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 720; }
+    .finding-sev { color: var(--redText); font-size: 12px; font-weight: 650; }
+    .finding p { margin: 8px 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .evidence {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 6px;
+      background: rgba(0,0,0,.25);
+      color: var(--ink);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    aside {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px;
+      position: sticky;
+      top: 18px;
+    }
+    .side-title { font-size: 12px; color: var(--dim); margin-bottom: 10px; }
+    .side-row { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13px; }
+    .side-row:first-of-type { border-top: 0; }
+    .green { color: var(--greenText); }
+    .red { color: var(--redText); }
+    .muted { color: var(--muted); }
+    .example { margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--line); }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: static; }
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .actions { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) {
+      .summary { grid-template-columns: 1fr; }
+      header { display: block; }
+      h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>transcribe-video</h1>
+        <p class="lead">安全性 tab 將「安全等級」、「為什麼是這個等級」、「掃描有沒有抓到可修正問題」分開呈現。這個範例是 LOW + 0 findings。</p>
+      </div>
+      <div class="tab active">低風險</div>
+    </header>
+
+    <div class="tabs">
+      <div class="tab">SKILL.md</div>
+      <div class="tab">品質</div>
+      <div class="tab">版本</div>
+      <div class="tab active">安全性</div>
+      <div class="tab">檔案</div>
+    </div>
+
+    <div class="layout">
+      <div>
+        <section>
+          <h2>安全性</h2>
+          <div class="meta">掃描 2026/05/17 · risk-scanner v1.0 · 規則集 2026-05</div>
+        </section>
+
+        <section>
+          <h2>掃描摘要</h2>
+          <div class="summary">
+            <div class="stat"><div class="label">目前等級</div><div class="value green">低風險</div></div>
+            <div class="stat"><div class="label">高風險 findings</div><div class="value">0</div></div>
+            <div class="stat"><div class="label">中風險 findings</div><div class="value">0</div></div>
+            <div class="stat"><div class="label">低風險 findings</div><div class="value">0</div></div>
+          </div>
+        </section>
+
+        <section>
+          <h2>為什麼是低風險？</h2>
+          <div class="reasons">
+            <article class="reason">
+              <div class="reason-head">
+                <h3>宣告工具能力</h3>
+                <span class="badge">LOW · ALLOWED_TOOLS_DECLARED</span>
+              </div>
+              <p>此技能宣告可使用 Bash、Write、Edit；掃描器沒有在內容中找到具體 issue code 或需要修改的檔案行號。</p>
+              <div class="chips"><span class="chip">Bash</span><span class="chip">Write</span><span class="chip">Edit</span><span class="chip">Read</span></div>
+            </article>
+            <article class="reason">
+              <div class="reason-head">
+                <h3>包含可執行腳本</h3>
+                <span class="badge">LOW · SCRIPTS_INCLUDED</span>
+              </div>
+              <p>package 內含 scripts/；這代表技能可能要求 agent 執行本機程式。這不是 finding，所以沒有修法欄位。</p>
+              <div class="chips"><span class="chip">scripts/check_deps.sh</span><span class="chip">scripts/transcribe.py</span><span class="chip">scripts/youtube_fetch.sh</span></div>
+            </article>
+          </div>
+        </section>
+
+        <section>
+          <h2>你可以做什麼？</h2>
+          <div class="actions">
+            <article class="action primary">
+              <div class="action-title">下載技能</div>
+              <p>LOW + 0 findings 不阻擋下載。下載前仍可先看工具能力與 scripts。</p>
+            </article>
+            <article class="action">
+              <div class="action-title">查看檔案</div>
+              <p>打開檔案 tab 檢查 SKILL.md 與 scripts/ 內容，確認是否符合你的環境。</p>
+            </article>
+            <article class="action warn">
+              <div class="action-title">回報疑慮</div>
+              <p>如果你不接受 Bash/scripts 能力，或內容看起來不合理，可以送出回報。</p>
+            </article>
+          </div>
+        </section>
+
+        <section>
+          <h2>掃描發現</h2>
+          <div class="empty">沒有需要修改的掃描發現。這表示 scanner 沒有找到 issue code，不代表技能沒有任何能力風險。</div>
+        </section>
+
+        <section class="example">
+          <h2>對照：NONE + 0 findings</h2>
+          <article class="reason none">
+            <div class="reason-head">
+              <h3>沒有工具宣告或 scripts/</h3>
+              <span class="badge">NONE · NO_FINDINGS_NO_CAPABILITIES</span>
+            </div>
+            <p>此版本只有 SKILL.md；scanner 沒找到 issue code，也沒有看到 scripts/ 或 allowed-tools。</p>
+          </article>
+          <div class="empty" style="margin-top:10px;">未發現安全問題。</div>
+        </section>
+
+        <section class="example">
+          <h2>對照：HIGH + findings</h2>
+          <article class="reason high">
+            <div class="reason-head">
+              <h3>掃描發現需要處理</h3>
+              <span class="badge">HIGH · FINDINGS_PRESENT</span>
+            </div>
+            <p>此版本有至少一筆 HIGH finding。先看掃描發現，再決定是否下載或回報。</p>
+          </article>
+          <article class="finding" style="margin-top:10px;">
+            <div class="finding-top">
+              <span class="finding-code">W008</span>
+              <span class="finding-sev">HIGH · 高信心</span>
+            </div>
+            <p>Hardcoded secret detected</p>
+            <div class="meta">scripts/use-openai.sh:3 · OPENAI_KEY</div>
+            <div class="evidence">sk-...abcd</div>
+            <p>修法：請移除寫死在 package 文字裡的 secret。</p>
+          </article>
+        </section>
+      </div>
+
+      <aside>
+        <div class="side-title">設計重點</div>
+        <div class="side-row"><span>安全等級</span><strong class="green">低風險</strong></div>
+        <div class="side-row"><span>掃描發現</span><strong>0</strong></div>
+        <div class="side-row"><span>原因數</span><strong>2</strong></div>
+        <div class="side-row"><span>下載</span><strong>允許</strong></div>
+        <div class="side-row"><span>主要差異</span><span class="muted">LOW 不再看起來像空白報告</span></div>
+      </aside>
+    </div>
+  </main>
+</body>
+</html>
