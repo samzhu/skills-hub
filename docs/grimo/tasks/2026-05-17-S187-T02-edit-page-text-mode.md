@@ -53,4 +53,13 @@ And（而且）刪掉 `description:` 後「儲存新版本」disabled
 - S187-T01 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-17）
+
+## 執行結果
+- Red：`cd frontend && npm test -- SkillEditPage` → 失敗，`SkillEditPage` 尚未存在。
+- Green：`cd frontend && npm test -- SkillEditPage` → PASS，2 tests。
+- 實作：
+  - `frontend/src/App.tsx` 將 `/skills/:id/edit` 接到 `SkillEditPage`。
+  - `frontend/src/pages/SkillEditPage.tsx` 新增 edit page shell；預設「貼上文本」mode，讀 `useSkillFile(id, 'SKILL.md')` 後預填 textarea。
+  - `frontend/src/pages/SkillEditPage.tsx` 沿用 `validateFrontmatter`，`name` / `description` 缺失時顯示檢查結果並停用「儲存新版本」。
+  - `frontend/src/pages/SkillEditPage.test.tsx` 覆蓋 latest SKILL.md 預填與缺 `description` disabled。

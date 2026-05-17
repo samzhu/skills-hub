@@ -30,6 +30,7 @@ import { VersionDiffPage } from './pages/VersionDiffPage'
 import { FlagsQueuePage } from './pages/FlagsQueuePage'
 import { AuthDebugPage } from './pages/AuthDebugPage'
 import { GroupsPage } from './pages/GroupsPage'
+import { SkillEditPage } from './pages/SkillEditPage'
 
 function App() {
   return (
@@ -39,7 +40,7 @@ function App() {
       <Route path="/browse" element={<HomePage />} />
       {/* /skills 是 listing alias — 使用者輸入網址或書籤回鏈時的直覺路徑 */}
       <Route path="/skills" element={<HomePage />} />
-      <Route path="/skills/:id/edit" element={<SkillEditRoutePlaceholder />} />
+      <Route path="/skills/:id/edit" element={<SkillEditPage />} />
       <Route path="/skills/:id" element={<SkillDetailPage />} />
       {/* S098c: version diff page — frontend-only stub reuses /versions endpoint */}
       <Route path="/skills/:id/diff" element={<VersionDiffPage />} />
@@ -94,10 +95,6 @@ function App() {
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
-}
-
-function SkillEditRoutePlaceholder() {
-  return <div data-testid="skill-edit-route">編輯技能頁</div>
 }
 
 export default App
