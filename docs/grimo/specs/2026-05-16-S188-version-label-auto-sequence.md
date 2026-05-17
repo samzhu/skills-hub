@@ -1,6 +1,6 @@
 # S188: 版本標籤可自訂與自動流水號
 
-> 規格：S188 | 大小：S(8) | 狀態：📐 in-design
+> 規格：S188 | 大小：S(8) | 狀態：⏳ Plan
 > 日期：2026-05-16
 > 對應：PRD P2 技能發佈流程 / S003 skill upload versioning / S056 version semver validation / S187 Skill SKILL.md 編輯頁
 > 執行前置：S003/S004/S024/S056/S163/S176 已 ship；S187 是 ordering-only，S188 可先於 S187 實作，讓 edit page 直接沿用 optional version contract。
@@ -335,4 +335,32 @@ Input 調整：
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+規劃日期：2026-05-17
+
+本 spec 拆成四個 task，順序固定從後端 policy 到 API contract，再到前端表單，最後清掉顯示與文件中的 semver-only 假設。每個 task 都可單獨驗證；T01/T02 先讓 API 行為成立，T03 再讓 UI 不送空白 version，T04 做全域文案與完整驗證。
+
+| Task | 狀態 | 對應 AC | 驗證重點 |
+|---|---|---|---|
+| [S188-T01 Backend VersionLabelPolicy](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T01-backend-version-label-policy.md) | pending | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4 | `VersionLabelPolicyTest` 驗空白首版、下一號、自訂標籤與 unsafe label。 |
+| [S188-T02 Backend Optional Version API](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T02-backend-api-optional-version.md) | pending | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4, AC-S188-8 | `/upload` 與 `/{id}/versions` 不送 version 時能寫 DB / storage；duplicate 與 unsafe label 有正確錯誤。 |
+| [S188-T03 Frontend Optional Version Forms](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T03-frontend-optional-version.md) | pending | AC-S188-5, AC-S188-6 | `/publish` 與新增版本表單 blank version 不 append `version`，也不被 required/pattern 擋住。 |
+| [S188-T04 Version Label Display, Docs, and Full Verify](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T04-display-docs-and-full-verify.md) | pending | AC-S188-7 + full spec verify | UI / docs 不再用 semver-only 文案；跑 backend/frontend S188 相關驗證並整理 §7。 |
+
+### 6.1 POC Decision
+
+POC：not required。
+
+原因：S188 不引入新 framework 或外部 SDK；核心未知數只有字串規則與既有 service ordering。`backend/src/main/resources/db/migration/V1__initial_schema.sql` 已確認 `version` 欄位長度 20，`SkillVersionRepository` 已有列出同 skill 版本與檢查 duplicate 的 method，前端也只是 FormData append 條件調整。風險可用 T01/T02 的單元與 service/controller 測試直接鎖住，不需要先做 throwaway POC。
+
+### 6.2 Execution Notes
+
+- T01 先只新增 policy + test，不碰 controller/service，避免一次改太大。
+- T02 才改 API optional contract 與 `Skill.recordVersionPublished` semver 檢查。
+- T03 若 S187 尚未建立 `SkillEditPage.tsx`，只改當前 `SkillDetailPage.tsx` 的 AddVersionForm；S187 實作時再沿用同一個 optional contract。
+- T04 文件搜尋要避開 archived specs 的歷史敘述，只更新現行產品文件與 UI。
+
+## 7. Implementation Results
+
+尚未實作。下一步從 S188-T01 開始，先新增 `VersionLabelPolicyTest` 的紅燈測試，再補最小 production code。
