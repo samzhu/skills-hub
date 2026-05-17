@@ -82,14 +82,93 @@ class SkillQueryServiceVisibilityTest extends RepositorySliceTestBase {
                 .doesNotContain("s177-private-hidden");
     }
 
+    @Test
+    @DisplayName("AC-S185-1: list row visibility comes from skills.is_public")
+    @Tag("AC-S185-1")
+    void listRowVisibilityComesFromSkillsIsPublic() {
+        var id = seed("s185-public-visible", true, List.of(), "LOW");
+        seedVersion(id, "1.0.0", Instant.parse("2026-05-15T21:06:42Z"),
+                """
+                {"license":"MIT","compatibility":["codex"]}
+                """);
+        when(principalContextService.currentPrincipalKeys()).thenReturn(Set.of());
+
+        var page = queryService.search("s185-public", null, null, PageRequest.of(0, 20));
+
+        assertThat(page.getContent()).hasSize(1);
+        var result = page.getContent().getFirst();
+        assertThat(result.getId()).isEqualTo(id);
+        assertThat(result.isPublic()).isTrue();
+    }
+
+    @Test
+    @DisplayName("AC-S185-2: list row S142b fields match detail source fields")
+    @Tag("AC-S185-2")
+    void listRowS142bFieldsMatchDetailSourceFields() {
+        var publishedAt = Instant.parse("2026-05-15T21:06:42Z");
+        var id = seed("s185-detail-parity", true, List.of(), "LOW");
+        seedVersion(id, "1.0.0", publishedAt,
+                """
+                {"license":"MIT","compatibility":["codex"]}
+                """);
+        seedOpenFlag(id);
+        when(principalContextService.currentPrincipalKeys()).thenReturn(Set.of());
+
+        var page = queryService.search("s185-detail", null, null, PageRequest.of(0, 20));
+
+        assertThat(page.getContent()).hasSize(1);
+        var result = page.getContent().getFirst();
+        assertThat(result.isVerified()).isTrue();
+        assertThat(result.getLatestVersionPublishedAt()).isEqualTo(publishedAt);
+        assertThat(result.getLicense()).isEqualTo("MIT");
+        assertThat(result.getCompatibility()).containsExactly("codex");
+        assertThat(result.getVersionCount()).isEqualTo(1L);
+        assertThat(result.getOpenFlagCount()).isEqualTo(1L);
+    }
+
     private String seed(String name, boolean isPublic, List<String> aclEntries) {
+        return seed(name, isPublic, aclEntries, null);
+    }
+
+    private String seed(String name, boolean isPublic, List<String> aclEntries, String riskLevel) {
         var now = Instant.now();
         var id = UUID.randomUUID().toString();
         skillRepo.save(Skill.fromRow(
                 id, name, "S177 keyword fixture", "u_alice0", "testing",
-                "1.0.0", null, "PUBLISHED", 0L, now, now, aclEntries, null));
-        jdbc.update("UPDATE skills SET is_public = :isPublic WHERE id = :id",
-                Map.of("id", id, "isPublic", isPublic));
+                "1.0.0", riskLevel, "PUBLISHED", 0L, now, now, aclEntries, null));
+        jdbc.update("UPDATE skills SET is_public = :isPublic, risk_level = :riskLevel WHERE id = :id",
+                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource()
+                        .addValue("id", id)
+                        .addValue("isPublic", isPublic)
+                        .addValue("riskLevel", riskLevel));
         return id;
+    }
+
+    private void seedVersion(String skillId, String version, Instant publishedAt, String frontmatterJson) {
+        jdbc.update("""
+                INSERT INTO skill_versions
+                    (id, skill_id, version, storage_path, file_size, frontmatter, published_at)
+                VALUES
+                    (:id, :skillId, :version, :storagePath, 100, CAST(:frontmatter AS jsonb),
+                     CAST(:publishedAt AS timestamptz))
+                """,
+                Map.of(
+                        "id", UUID.randomUUID().toString(),
+                        "skillId", skillId,
+                        "version", version,
+                        "storagePath", "skills/" + skillId + "/" + version + "/skill.zip",
+                        "frontmatter", frontmatterJson,
+                        "publishedAt", publishedAt.toString()));
+    }
+
+    private void seedOpenFlag(String skillId) {
+        jdbc.update("""
+                INSERT INTO flags (id, skill_id, type, description, reported_by, created_at, status)
+                VALUES (:id, :skillId, 'QUALITY', 'needs review', 'qa', CAST(:createdAt AS timestamptz), 'OPEN')
+                """,
+                Map.of(
+                        "id", UUID.randomUUID().toString(),
+                        "skillId", skillId,
+                        "createdAt", Instant.parse("2026-05-15T21:07:42Z").toString()));
     }
 }

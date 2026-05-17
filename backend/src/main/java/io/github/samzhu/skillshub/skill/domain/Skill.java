@@ -314,6 +314,18 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
             String categoryDisplay, String latestVersion, String riskLevel, String status, long downloadCount,
             Instant createdAt, Instant updatedAt, List<String> aclEntries, Long version,
             double averageRating, long reviewCount) {
+        return fromRow(id, name, description, author, category, categoryDisplay, latestVersion, riskLevel, status,
+                downloadCount, createdAt, updatedAt, aclEntries, version, averageRating, reviewCount, false);
+    }
+
+    /**
+     * S185 — list raw SQL path must preserve {@code skills.is_public}; ACL entries no longer imply
+     * public visibility after S177, so callers that selected the column pass it explicitly.
+     */
+    public static Skill fromRow(String id, String name, String description, String author, String category,
+            String categoryDisplay, String latestVersion, String riskLevel, String status, long downloadCount,
+            Instant createdAt, Instant updatedAt, List<String> aclEntries, Long version,
+            double averageRating, long reviewCount, Boolean publicSkill) {
         var skill = new Skill();
         skill.id = id;
         skill.name = name;
@@ -329,7 +341,7 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
         skill.updatedAt = updatedAt;
         // mutable ArrayList — 物化後不應再 mutate（query path 唯讀），但保持與 create() 行為一致避免後續混淆
         skill.aclEntries = aclEntries == null ? new ArrayList<>() : new ArrayList<>(aclEntries);
-        skill.publicSkill = false;
+        skill.publicSkill = Boolean.TRUE.equals(publicSkill);
         // S114a: owner_id derives from author for query-side factory (read-model path)
         skill.ownerId = author != null ? author : "unknown";
         skill.version = version;

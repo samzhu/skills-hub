@@ -71,4 +71,12 @@ And（而且）同 id 的 `GET /api/v1/skills/{id}` 回相同 `visibility/verifi
 - 無
 
 ## 狀態
-pending（待做）
+PASS — 2026-05-17
+
+## 執行結果
+- `Skill.fromRow(...)` 新增可帶 `skills.is_public` 的 overload；`GET /api/v1/skills` list row 不再固定回 `PRIVATE`。
+- `SkillQueryService.search(...)` list SQL 補齊 S142b list-safe 欄位：`verified`、`latestVersionPublishedAt`、`license`、`compatibility`、`versionCount`、`openFlagCount`。
+- 新增 `AC-S185-1` / `AC-S185-2` repository slice 測試。
+
+## 驗證結果
+PASS：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryServiceVisibilityTest` → `BUILD SUCCESSFUL in 2m 5s`

@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
@@ -69,6 +70,7 @@ public class SkillQueryService {
 	// raw JDBC rowMapper 不會走 Spring Data JDBC 的 user converter；
 	// acl_entries（List<String>）需手動 JSONB → List<String> 反序列化，故注入 ObjectMapper。
 	private static final TypeReference<List<String>> ACL_ENTRIES_TYPE = new TypeReference<>() {};
+	private static final TypeReference<Map<String, Object>> FRONTMATTER_TYPE = new TypeReference<>() {};
 
 	private final SkillRepository skillRepo;
 	private final SkillVersionRepository skillVersionRepo;
@@ -223,8 +225,25 @@ public class SkillQueryService {
 		var sql = new StringBuilder("""
 				SELECT id, name, description, author, category, category_display,
 				       latest_version, risk_level, status, download_count,
-				       created_at, updated_at, acl_entries, version,
-				       average_rating, review_count
+				       created_at, updated_at, acl_entries, version, is_public,
+				       average_rating, review_count,
+				       (SELECT sv.published_at
+				          FROM skill_versions sv
+				         WHERE sv.skill_id = skills.id
+				         ORDER BY sv.published_at DESC
+				         LIMIT 1) AS latest_version_published_at,
+				       (SELECT sv.frontmatter
+				          FROM skill_versions sv
+				         WHERE sv.skill_id = skills.id
+				         ORDER BY sv.published_at DESC
+				         LIMIT 1) AS latest_version_frontmatter,
+				       (SELECT COUNT(*)
+				          FROM skill_versions sv
+				         WHERE sv.skill_id = skills.id) AS version_count,
+				       (SELECT COUNT(*)
+				          FROM flags f
+				         WHERE f.skill_id = skills.id
+				           AND f.status = 'OPEN') AS open_flag_count
 				  FROM skills
 				""").append(statusClause).append(aclClause);
 		var countSql = new StringBuilder("SELECT COUNT(*) FROM skills")
@@ -333,7 +352,7 @@ public class SkillQueryService {
 		// S119: average_rating + review_count 兩 column 同 SELECT 一起讀；avg 為 nullable 時 (no review)
 		// rs.getDouble 回 0.0；count 為 NOT NULL DEFAULT 0 安全
 		// S159b Round 2 — 走 16-arg overload 多帶 category_display 保留原 case
-		return Skill.fromRow(
+		var skill = Skill.fromRow(
 				rs.getString("id"),
 				rs.getString("name"),
 				rs.getString("description"),
@@ -349,7 +368,17 @@ public class SkillQueryService {
 				parseAclEntries(rs.getString("acl_entries")),
 				version,
 				rs.getDouble("average_rating"),
-				rs.getLong("review_count"));
+				rs.getLong("review_count"),
+				rs.getObject("is_public", Boolean.class));
+		var frontmatter = parseFrontmatter(rs.getString("latest_version_frontmatter"));
+		var latestPublishedAt = rs.getTimestamp("latest_version_published_at");
+		return skill.withDetail(
+				skill.getStatus() == SkillStatus.PUBLISHED && skill.getRiskLevel() != null,
+				latestPublishedAt != null ? latestPublishedAt.toInstant() : null,
+				extractLicense(frontmatter),
+				extractCompatibility(frontmatter),
+				rs.getLong("version_count"),
+				rs.getLong("open_flag_count"));
 	}
 
 	/**
@@ -366,6 +395,17 @@ public class SkillQueryService {
 			return objectMapper.readValue(json, ACL_ENTRIES_TYPE);
 		} catch (Exception e) {
 			throw new IllegalStateException("Failed to parse acl_entries JSONB: " + json, e);
+		}
+	}
+
+	private Map<String, Object> parseFrontmatter(String json) {
+		if (json == null || json.isBlank()) {
+			return Map.of();
+		}
+		try {
+			return objectMapper.readValue(json, FRONTMATTER_TYPE);
+		} catch (Exception e) {
+			throw new IllegalStateException("Failed to parse latest version frontmatter JSONB: " + json, e);
 		}
 	}
 
