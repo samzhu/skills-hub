@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-17（S179 QA PASS；下一輪接 shipping-release）
+> 最後更新：2026-05-17（S179 shipped v4.72.0；Release Completeness Gate clean）
 
 ## 使用說明
 
@@ -40,7 +40,6 @@
 | S142a | SkillDetailPage v2 frontend rework | M-L(13-15) | S142b API contract | ✅ v4.22.0 — 318/318 Vitest PASS (6 tasks: T01 foundation + T02 hero + T03 tabs + T04 FileExplorer + T05 Sidebar + T06 page assembly); 0 TS production errors |
 | S142b | SkillDetailPage v2 backend supplement (SkillScore composite + SecurityReport 4-quad + Skill aggregate field projection) | S-M(8-10) | S135a ✅ | ✅ v4.1.0 — 41/41 tests PASS (21 SecurityCategoryMapper + 3 SecurityReport + 6 SkillScore + 5 QualityScore + 4 SkillQueryService + 2 APIContract) |
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⛔ superseded 2026-05-16 — 取代為 S189（舊 spec 已有 T01-T05/QA 歷史，但未 ship；關閉以免干擾 S186→S187 主線） |
-| S179 | Publish author anonymous login hint（未登入時作者欄位顯「請先登入後發布」，不再空白） | XS(7) | S154b ✅, S139 ✅ | ✅ QA PASS — next `$shipping-release S179` |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S187 | Skill SKILL.md 編輯頁（詳情頁 edit 導向 `/skills/{id}/edit`；版本頁籤只顯示紀錄；description 來自 latest SKILL.md） | M(13) | S142a ✅, S163 ✅, S176 ✅, S186 ✅, S188 ordering-only | 📐 in-design — UI scope split from S186；spec §1-5 ready for review；version input optional behavior delegated to S188 |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
@@ -91,6 +90,7 @@
 | v4.69.0 | S174 (Skill detail anonymous 401 not-found UX) | ✅ shipped 2026-05-17 — missing UUID anonymous 404 + detail 401/403/404 not-found copy；`verify-all.sh` 全綠 |
 | v4.70.0 | S192 (Author display name completion) | ✅ shipped 2026-05-17 — user-facing author/reviewer/comment labels use display data instead of raw `u_<id>`；semantic cards/reviews/comments/notifications covered；`verify-all.sh` 全綠 |
 | v4.71.0 | S193 (Semantic Search Score Transparency) | ✅ shipped 2026-05-17 — semantic logs include top hit scores；`/browse` semantic cards show `% 相符` from API score；`verify-all.sh` 全綠 |
+| v4.72.0 | S179 (Publish Author Anonymous Login Hint) | ✅ shipped 2026-05-17 — `/publish` anonymous author field shows `請先登入後發布`；`verify-all.sh` 全綠 |
 
 ---
 
@@ -261,6 +261,7 @@
 | S186 | Skill embedding 同表化 | M(14) | v4.66.0 |
 | S174 | Skill detail anonymous 401 not-found UX | XS(8) | v4.69.0 |
 | S193 | Semantic Search Score Transparency | S(11) | v4.71.0 |
+| S179 | Publish author anonymous login hint | S(9) | v4.72.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

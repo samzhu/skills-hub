@@ -1,7 +1,7 @@
 # S179 — Publish Author Anonymous Login Hint
 
 > SpecID: S179
-> Status: ✅ QA PASS — next `$shipping-release S179`
+> Status: ✅ shipped v4.72.0
 > Date: 2026-05-15
 > Size: XS(7)
 > Related: S004 publish UI, S139 login UI + lazy auth gate, S154/S154b author display identity, S176 explicit publish skill name
@@ -227,3 +227,21 @@ POC：not required — S179 只改既有 React page 的 local auth-state display
 - `cd frontend && npm test` → PASS（80 files / 464 tests）。
 
 QA verdict：PASS。本 spec 是前端 local UI state change，沒有新增 API、DB schema、後端 wiring、browser fixture 或 production deploy requirement。下一輪 `$shipping-release S179` 必須重新執行 `./scripts/verify-all.sh` 作為 release preflight，然後歸檔 spec、刪 task file、補 changelog / roadmap / tag。
+
+2026-05-17 Shipping Release：
+
+- Preflight：`cd frontend && npm test -- PublishPage` → PASS（1 file / 17 tests）。
+- Release gate：`./scripts/verify-all.sh` → PASS；V01=PASS、V02=INFO（line coverage 86.9%，covered=4735 / total=5451）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Production deploy：not run in this dev-loop release tick；S179 only has local release evidence.
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 1 | 只用既有 `useAuth()` / `useMe()` / React computed display，沒有新 framework API。 |
+| Uncertainty | 1 | 1 | AC 已明確指定 anonymous/loading/authenticated 三態顯示。 |
+| Dependencies | 2 | 3 | 實際相依 S139、S154b、S176 三個 shipped 行為：lazy login、read-only author display、no-author FormData。 |
+| Scope | 1 | 1 | production 只改 `PublishPage.tsx` 一個顯示段落。 |
+| Testing | 1 | 2 | 需要 Vitest component tests + full frontend verify + release `verify-all.sh`，但沒有後端/DB/browser fixture 新增。 |
+| Reversibility | 1 | 1 | 可用單一 commit 回復；不改 API、DB、持久資料或外部 contract。 |
+| **Total** | **7 / XS** | **9 / S** | Bucket shift XS→S；原因是 shipped dependency count 與 release testing 實際比初估高。 |

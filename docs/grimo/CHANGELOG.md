@@ -1,5 +1,25 @@
 # Changelog
 
+## [v4.72.0] — S179 Publish Author Anonymous Login Hint（2026-05-17）
+
+### Fixed
+
+- **Anonymous publish author hint** — `/publish` author field now shows `請先登入後發布` when `useAuth()` is anonymous, instead of rendering an empty author box.
+- **Loading author state** — while login state is still loading, the same field shows `正在確認登入狀態...` and does not render an empty handle chip.
+- **Publish submit guard** — anonymous submit still calls `auth.login()` and does not send `POST /api/v1/skills/upload`; `FormData` still does not include `author`.
+
+### Verification
+
+- `cd frontend && npm test -- PublishPage`：**PASS** — 1 file / 17 tests.
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.9%，covered=4735 / total=5451）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Production deploy：not run in this release tick；S179 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-15-S179-publish-author-anonymous-login-hint.md` → `docs/grimo/specs/archive/2026-05-15-S179-publish-author-anonymous-login-hint.md`
+- `docs/grimo/tasks/2026-05-17-S179-*.md` 已刪除。
+- Final size re-score：XS(7) → S(9)，原因是實際 release 依賴 S139/S154b/S176 三個已 ship 行為，並跑完 component tests + full `verify-all.sh`。
+
 ## [v4.71.0] — S193 Semantic Search Score Transparency（2026-05-17）
 
 ### Changed
