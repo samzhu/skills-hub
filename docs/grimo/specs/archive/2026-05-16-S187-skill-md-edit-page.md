@@ -1,6 +1,6 @@
 # S187: Skill SKILL.md 編輯頁
 
-> 規格：S187 | 大小：M(13) | 狀態：✅ QA PASS
+> 規格：S187 | 大小：M(13) | 狀態：✅ Shipped v4.73.0
 > 日期：2026-05-16
 > 對應：PRD P2 更新已有 skill 版本 / P1 技能詳情頁 / S142a SkillDetailPage v2 / S163 EditSkillModal / S176 explicit publish skill name / S186 embedding source / S188 version label optional input
 > 執行前置：S186 必須先 ship；S187 不在 S186 前啟動 task loop。
@@ -487,3 +487,15 @@ Verdict：PASS；local release gate 全綠，下一步是 `$shipping-release S18
 | `./scripts/verify-all.sh` | PASS；V01=PASS, V02=INFO `86.9% (4750 / 5467)`, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS；exit=0。 |
 
 Release completeness note：S187 implementation + QA 已完成，但 `docs/grimo/tasks/2026-05-17-S187-T*.md` 仍存在、spec 仍在 root specs、CHANGELOG / roadmap archive / release tag 尚未更新；下一輪 dev loop 必須先跑 `$shipping-release S187`，不能跳到 S189/S190。
+
+### Final Size Re-score（per estimation-scale.md）
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 2 | 2 | 仍沿用既有 `addVersion(...)`、`useSkillFile(...)`、Skill aggregate path；沒有新 SDK / DB schema / framework SPI。 |
+| Uncertainty | 2 | 2 | 版本頁籤拆分、description snapshot 來源、category-only update 都在設計內完成。 |
+| Dependencies | 2 | 2 | 依賴 S186/S188 已 ship；release 沒新增跨 spec dependency。 |
+| Scope | 3 | 3 | 實際橫跨 detail route、edit page、validate page、backend command/domain 與 E2E，符合 M 級 scope。 |
+| Testing | 3 | 4 | 除 frontend/backend tests 外，T06 補 `@S187` Playwright mobile/validate path，release gate 跑完整 `verify-all.sh`。 |
+| Reversibility | 1 | 1 | UI route / category-only API / description snapshot path 可回退，未做資料破壞 migration。 |
+| **Total** | **13 / M** | **14 / M** | Bucket 不變；實際增加的是 Playwright browser path + full release gate testing。 |

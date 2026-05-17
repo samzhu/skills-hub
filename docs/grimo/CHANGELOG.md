@@ -1,5 +1,29 @@
 # Changelog
 
+## [v4.73.0] — S187 Skill SKILL.md Edit Page（2026-05-17）
+
+### Changed
+
+- **Dedicated edit page** — skill detail edit action now opens `/skills/{id}/edit`, where authors can edit latest `SKILL.md` in a full text area or upload a zip / `SKILL.md` file as a new version.
+- **Version history cleanup** — the skill detail Versions tab now only shows version history; new-version upload no longer lives inside the history tab.
+- **Description source of truth** — `skills.description` is now refreshed from the latest validated `SKILL.md` frontmatter when a version is published; direct `PUT /skills/{id}` description edits return 400.
+- **Version validation flow** — after saving a new version, the UI goes to `/publish/validate?id={id}&mode=version`, shows new-version copy, waits for scan completion, then returns to skill detail.
+- **Category edit retained** — `/skills/{id}/edit` can still update platform category with a category-only request body that does not send `description`.
+
+### Verification
+
+- `cd frontend && npm run verify`：**PASS** — `SkillEditPage.tsx` category input uses server category + user draft derived value instead of a sync `setState` effect.
+- `cd backend && ./gradlew processAot`：**PASS** — current source does not reproduce the earlier stale `SecurityReportResponse` constructor compile error.
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.9%，covered=4750 / total=5467）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Release worktree gate：`./scripts/verify-all.sh` re-run from `.worktrees/S187-release` before local handoff commit：V01=PASS、V02=INFO（line coverage 86.7%，covered=4742 / total=5467）、V03=PASS、V04=SKIP、V05=SKIP、V06=SKIP、V07=SKIP、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。V04-V07 skip 是因乾淨 child worktree 沒有 gitignored frontend/e2e runtime prerequisites；上一輪 S187 QA gate 已在主 workspace 跑過 frontend/e2e 全綠。
+- Production deploy：not run in this release tick；S187 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-16-S187-skill-md-edit-page.md` → `docs/grimo/specs/archive/2026-05-16-S187-skill-md-edit-page.md`
+- `docs/grimo/tasks/2026-05-17-S187-*.md` 已刪除。
+- Final size re-score：M(13) → M(14)，原因是 T06 補 `@S187` Playwright mobile/validate path，並在 release worktree 跑完整 `verify-all.sh`。
+
 ## [v4.72.0] — S179 Publish Author Anonymous Login Hint（2026-05-17）
 
 ### Fixed
