@@ -1,26 +1,51 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, ArrowLeft, Check, FileText, Upload as UploadIcon } from 'lucide-react'
+import { addVersion } from '@/api/skills'
+import { skillKeys } from '@/api/queryKeys'
 import { AppShell } from '@/components/AppShell'
 import { ErrorState } from '@/components/ErrorState'
 import { useSkill } from '@/hooks/useSkill'
 import { useSkillFile } from '@/hooks/useSkillFiles'
+import { localizeApiError } from '@/lib/api-error-messages'
 import { validateFrontmatter } from './PublishPage.utils'
 
 type EditMode = 'text' | 'upload'
 
 /**
- * S187-T02：SKILL.md 編輯頁 shell。
- * 目前完成 latest SKILL.md text mode；submit / upload mode 留給後續 S187 tasks。
+ * S187-T02/T03：SKILL.md 編輯頁 shell + 新版本送出流程。
  */
 export function SkillEditPage() {
   const { id = '' } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const skillQuery = useSkill(id)
   const skillMdQuery = useSkillFile(id, 'SKILL.md')
   const [mode, setMode] = useState<EditMode>('text')
   const [skillMdText, setSkillMdText] = useState('')
+  const [version, setVersion] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [hydratedForSkill, setHydratedForSkill] = useState<string | null>(null)
   const [fileReadError, setFileReadError] = useState<string | null>(null)
+
+  const addVersionMutation = useMutation({
+    mutationFn: () => {
+      const file = mode === 'text'
+        ? new File([skillMdText], 'SKILL.md', { type: 'text/markdown' })
+        : selectedFile
+      if (!file) throw new Error('請選取檔案或貼上 SKILL.md 內容')
+      return addVersion(id, file, version)
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: skillKeys.detail(id) }),
+        queryClient.invalidateQueries({ queryKey: ['skills', id, 'versions'] }),
+        queryClient.invalidateQueries({ queryKey: ['skills', id, 'files'] }),
+      ])
+      navigate(`/publish/validate?id=${id}&mode=version`)
+    },
+  })
 
   useEffect(() => {
     if (!skillMdQuery.data || hydratedForSkill === id) return
@@ -53,10 +78,14 @@ export function SkillEditPage() {
     && fmValidation.errors.length === 0
     && !skillMdQuery.isLoading
     && !fileReadError
-  const saveDisabled = mode !== 'text' || !canSaveText
+  const canSaveUpload = mode === 'upload' && selectedFile != null
+  const saveDisabled = addVersionMutation.isPending || (mode === 'text' ? !canSaveText : !canSaveUpload)
 
   const loading = skillQuery.isLoading || skillMdQuery.isLoading
   const skillName = skillQuery.data?.name ?? id
+  const handleSaveVersion = () => {
+    addVersionMutation.mutate()
+  }
 
   return (
     <AppShell>
@@ -95,9 +124,10 @@ export function SkillEditPage() {
             <button
               type="button"
               disabled={saveDisabled}
+              onClick={handleSaveVersion}
               className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-[13px] font-medium text-primary-foreground hover:bg-foreground disabled:opacity-50"
             >
-              儲存新版本
+              {addVersionMutation.isPending ? '儲存中...' : '儲存新版本'}
             </button>
           </div>
         </div>
@@ -119,6 +149,13 @@ export function SkillEditPage() {
         {fileReadError && (
           <ErrorState className="mb-4" title="讀取 SKILL.md 失敗" message={fileReadError} />
         )}
+        {addVersionMutation.isError && (
+          <ErrorState
+            className="mb-4"
+            title="儲存新版本失敗"
+            message={localizeApiError(addVersionMutation.error)}
+          />
+        )}
 
         <div className="rounded-lg border border-border bg-card p-5">
           <div className="mb-4 inline-flex rounded-md border border-border bg-secondary p-0.5 text-[12px]">
@@ -130,65 +167,132 @@ export function SkillEditPage() {
             </ModeTab>
           </div>
 
-          {mode === 'text' ? (
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
-              <div>
-                <label
-                  htmlFor="skill-edit-skill-md"
-                  className="mb-1.5 block text-[12px] font-medium uppercase tracking-wide text-muted-foreground"
-                >
-                  SKILL.md 內容
-                </label>
-                <textarea
-                  id="skill-edit-skill-md"
-                  data-testid="skill-edit-skill-md-textarea"
-                  value={skillMdText}
-                  onChange={(e) => setSkillMdText(e.target.value)}
-                  disabled={loading}
-                  rows={22}
-                  className="min-h-[420px] w-full resize-y rounded-md border border-border bg-background px-3 py-2 font-mono text-[12.5px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:border-[rgba(255,255,255,0.20)] focus:outline-none disabled:opacity-70"
-                  placeholder="正在讀取 latest SKILL.md..."
-                />
-              </div>
+          <div className="mb-4">
+            <label
+              htmlFor="skill-edit-version"
+              className="mb-1.5 block text-[12px] font-medium uppercase tracking-wide text-muted-foreground"
+            >
+              版本號
+            </label>
+            <input
+              id="skill-edit-version"
+              value={version}
+              onChange={(e) => setVersion(e.target.value)}
+              placeholder="留白自動產生"
+              className="h-9 w-full max-w-xs rounded-md border border-border bg-background px-3 font-mono text-[13px] text-foreground placeholder:text-muted-foreground focus:border-[rgba(255,255,255,0.20)] focus:outline-none"
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              留白時系統沿用後端自動流水號；填值時會建立該版本標籤。
+            </p>
+          </div>
 
-              <aside className="space-y-3">
-                <section className="rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-3">
-                  <h2 className="mb-2 text-[12px] font-medium text-foreground">Frontmatter 檢查</h2>
-                  <div className="space-y-1.5 text-[12px]">
-                    <ValidationCheck
-                      testId="frontmatter-block-check"
-                      label="frontmatter"
-                      passed={fmValidation.hasFrontmatter}
-                    />
-                    <ValidationCheck
-                      testId="frontmatter-name-check"
-                      label="name"
-                      passed={fmValidation.hasName}
-                    />
-                    <ValidationCheck
-                      testId="frontmatter-description-check"
-                      label="description"
-                      passed={fmValidation.hasDescription}
-                    />
-                  </div>
-                  {fmValidation.errors.length > 0 && (
-                    <ul className="mt-2 list-disc pl-5 text-[11.5px] leading-relaxed text-[#F2A6A6]">
-                      {fmValidation.errors.map((err) => (
-                        <li key={err}>{err}</li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              </aside>
-            </div>
+          {mode === 'text' ? (
+            <TextModeEditor
+              skillMdText={skillMdText}
+              setSkillMdText={setSkillMdText}
+              loading={loading}
+              fmValidation={fmValidation}
+            />
           ) : (
-            <div className="rounded-md border border-dashed border-border bg-background p-6 text-[13px] text-muted-foreground">
-              上傳檔案模式會在下一個步驟接上送出流程。
-            </div>
+            <UploadMode selectedFile={selectedFile} setSelectedFile={setSelectedFile} />
           )}
         </div>
       </div>
     </AppShell>
+  )
+}
+
+function TextModeEditor({
+  skillMdText,
+  setSkillMdText,
+  loading,
+  fmValidation,
+}: {
+  skillMdText: string
+  setSkillMdText: (value: string) => void
+  loading: boolean
+  fmValidation: ReturnType<typeof validateFrontmatter>
+}) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+      <div>
+        <label
+          htmlFor="skill-edit-skill-md"
+          className="mb-1.5 block text-[12px] font-medium uppercase tracking-wide text-muted-foreground"
+        >
+          SKILL.md 內容
+        </label>
+        <textarea
+          id="skill-edit-skill-md"
+          data-testid="skill-edit-skill-md-textarea"
+          value={skillMdText}
+          onChange={(e) => setSkillMdText(e.target.value)}
+          disabled={loading}
+          rows={22}
+          className="min-h-[420px] w-full resize-y rounded-md border border-border bg-background px-3 py-2 font-mono text-[12.5px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:border-[rgba(255,255,255,0.20)] focus:outline-none disabled:opacity-70"
+          placeholder="正在讀取 latest SKILL.md..."
+        />
+      </div>
+
+      <aside className="space-y-3">
+        <section className="rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-3">
+          <h2 className="mb-2 text-[12px] font-medium text-foreground">Frontmatter 檢查</h2>
+          <div className="space-y-1.5 text-[12px]">
+            <ValidationCheck
+              testId="frontmatter-block-check"
+              label="frontmatter"
+              passed={fmValidation.hasFrontmatter}
+            />
+            <ValidationCheck
+              testId="frontmatter-name-check"
+              label="name"
+              passed={fmValidation.hasName}
+            />
+            <ValidationCheck
+              testId="frontmatter-description-check"
+              label="description"
+              passed={fmValidation.hasDescription}
+            />
+          </div>
+          {fmValidation.errors.length > 0 && (
+            <ul className="mt-2 list-disc pl-5 text-[11.5px] leading-relaxed text-[#F2A6A6]">
+              {fmValidation.errors.map((err) => (
+                <li key={err}>{err}</li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </aside>
+    </div>
+  )
+}
+
+function UploadMode({
+  selectedFile,
+  setSelectedFile,
+}: {
+  selectedFile: File | null
+  setSelectedFile: (file: File | null) => void
+}) {
+  return (
+    <div className="rounded-md border border-dashed border-border bg-background p-6">
+      <label
+        htmlFor="skill-edit-file"
+        className="mb-1.5 block text-[12px] font-medium uppercase tracking-wide text-muted-foreground"
+      >
+        Skill 套件
+      </label>
+      <input
+        id="skill-edit-file"
+        type="file"
+        accept=".zip,.md,text/markdown,application/zip"
+        onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+        className="block w-full text-[13px] text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-[13px] file:font-medium file:text-primary-foreground hover:file:bg-foreground"
+      />
+      <p className="mt-2 text-[12px] text-muted-foreground">
+        {selectedFile ? selectedFile.name : '可上傳 zip 套件或單一 SKILL.md。'}
+      </p>
+    </div>
   )
 }
 

@@ -58,6 +58,7 @@ const renderWith = (search: string, skill: typeof skillScanning) => {
           <Route path="/publish/validate" element={<PublishValidatePage />} />
           {/* Sentinel route — useEffect navigate redirect 後可斷言此 route 被命中 */}
           <Route path="/publish/review" element={<div>REDIRECTED_TO_REVIEW</div>} />
+          <Route path="/skills/:id" element={<div>REDIRECTED_TO_DETAIL</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -96,6 +97,22 @@ describe('PublishValidatePage — S098a', () => {
     // useEffect 會 navigate；sentinel route 會 render
     await waitFor(() => {
       expect(screen.getByText('REDIRECTED_TO_REVIEW')).toBeInTheDocument()
+    })
+  })
+
+  it('AC-S187-10: version 驗證完成後導回 detail', async () => {
+    renderWith('?id=skill-1&mode=version', skillDone)
+
+    await waitFor(() => {
+      expect(screen.getByText('REDIRECTED_TO_DETAIL')).toBeInTheDocument()
+    })
+  })
+
+  it('AC-S187-10: version flow 顯示新版本驗證中', async () => {
+    renderWith('?id=skill-1&mode=version', skillScanning)
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: '新版本驗證中' })).toBeInTheDocument()
     })
   })
 

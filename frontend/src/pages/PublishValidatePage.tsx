@@ -38,6 +38,8 @@ export function PublishValidatePage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const skillId = params.get('id') ?? ''
+  const mode = params.get('mode')
+  const isVersionFlow = mode === 'version'
 
   const { data: skill, error, isLoading } = useQuery<Skill>({
     queryKey: ['skills', skillId],
@@ -52,12 +54,12 @@ export function PublishValidatePage() {
   // S098a3-2: bundle-info hook fetch 失敗時 strip fall back 派生 placeholder（既有 UX 不破）
   const { data: bundleInfo } = useBundleInfo(skillId)
 
-  // S098a: scan 完成（riskLevel 設值）即 navigate 到 review；replace mode 避免 back-button 循環
+  // S098a/S187: create flow 掃描完成去 review；version flow 回 detail。
   useEffect(() => {
     if (skill?.riskLevel != null && skillId) {
-      navigate(`/publish/review?id=${skillId}`, { replace: true })
+      navigate(isVersionFlow ? `/skills/${skillId}` : `/publish/review?id=${skillId}`, { replace: true })
     }
-  }, [skill?.riskLevel, skillId, navigate])
+  }, [isVersionFlow, skill?.riskLevel, skillId, navigate])
 
   if (!skillId) {
     return (
@@ -84,10 +86,16 @@ export function PublishValidatePage() {
   return (
     <AppShell>
       <div className="mx-auto max-w-2xl">
-        <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">發佈流程</p>
-        <h1 className="mt-1 text-[22px] font-semibold tracking-tight">驗證進行中</h1>
+        <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {isVersionFlow ? '版本流程' : '發佈流程'}
+        </p>
+        <h1 className="mt-1 text-[22px] font-semibold tracking-tight">
+          {isVersionFlow ? '新版本驗證中' : '驗證進行中'}
+        </h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          系統正在掃描你的 bundle — 通常需要 5-15 秒。完成後自動跳轉至審視頁面。
+          {isVersionFlow
+            ? '系統正在掃描新版本 bundle — 通常需要 5-15 秒。完成後自動回到技能詳情頁。'
+            : '系統正在掃描你的 bundle — 通常需要 5-15 秒。完成後自動跳轉至審視頁面。'}
         </p>
 
         {/* S098a3-2: Upload-strip 顯實值。bundleInfo (BundleInfo) 來自 GET /skills/{id}/bundle-info；
@@ -183,7 +191,9 @@ export function PublishValidatePage() {
             <StatusCallout
               tone="success"
               icon={<Check className="h-4 w-4" />}
-              text={`掃描完成（risk: ${skill.riskLevel}）— 即將跳轉至審視頁面...`}
+              text={isVersionFlow
+                ? `掃描完成（risk: ${skill.riskLevel}）— 即將回到技能詳情頁...`
+                : `掃描完成（risk: ${skill.riskLevel}）— 即將跳轉至審視頁面...`}
             />
           )}
         </div>
