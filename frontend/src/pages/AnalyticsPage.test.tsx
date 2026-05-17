@@ -87,6 +87,19 @@ describe('AnalyticsPage — S100e Top 10 link defensive guard', () => {
     expect(screen.getByText('尚無下載記錄')).toBeInTheDocument()
   })
 
+  it('AC-S192-4: raw author id 可在 link href，但不出現在排行榜可見文字', () => {
+    mockUseOverview.mockReturnValue({
+      data: stats([{ name: '產生字幕檔', author: 'u_f7eb3a', downloads: 5 }]),
+      isLoading: false,
+      error: null,
+    })
+    renderWithProviders()
+
+    const link = screen.getByRole('link', { name: /產生字幕檔/ })
+    expect(link).toHaveAttribute('href', '/skills/u_f7eb3a/產生字幕檔')
+    expect(screen.queryByText('u_f7eb3a')).not.toBeInTheDocument()
+  })
+
   it('S156 #3: 「熱門排行」hero metric card 已移除（與下方 leaderboard 重複）', () => {
     mockUseOverview.mockReturnValue({
       data: stats([{ name: 'x', author: 'alice', downloads: 5 }]),

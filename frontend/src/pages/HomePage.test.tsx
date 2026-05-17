@@ -20,7 +20,7 @@ const mockSkillsPage = {
   page: { number: 0, size: 20, totalElements: 103, totalPages: 6 },
 }
 const mockSemanticResults = [
-  { id: 'semantic-1', name: 'semantic-dd', author: 'ai', description: 'semantic result', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 4, score: 0.91 },
+  { id: 'semantic-1', name: 'semantic-dd', author: 'u_f7eb3a', authorDisplayName: 'Sam Zhu', authorHandle: null, description: 'semantic result', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 4, score: 0.91 },
 ]
 const searchPlaceholder = '描述你想完成的任務或搜尋技能...'
 
@@ -226,6 +226,17 @@ describe('HomePage — S178 browse search request routing', () => {
     expect(urls.some((u) => u.includes('/api/v1/skills?') && u.includes('keyword=dd'))).toBe(false)
     expect(screen.queryByRole('button', { name: /無風險/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '下一頁' })).not.toBeInTheDocument()
+  })
+
+  it('AC-S192-3: semantic card 顯示 authorDisplayName 而不是 raw platform user id', async () => {
+    renderPage('/browse')
+    await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
+
+    fireEvent.change(screen.getByPlaceholderText(searchPlaceholder), { target: { value: 'dd' } })
+
+    await waitFor(() => expect(screen.getByText('semantic-dd')).toBeInTheDocument())
+    expect(screen.getByText('Sam Zhu')).toBeInTheDocument()
+    expect(screen.queryByText('u_f7eb3a')).not.toBeInTheDocument()
   })
 
   it('AC-S178-4: semantic zero result does not keyword-fallback', async () => {

@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { Sparkline } from '@/components/Sparkline'
 import { deleteSkill } from '@/api/skills'
 import { localizeApiError } from '@/lib/api-error-messages'
+import { getDisplayName } from '@/lib/displayName'
 import { useMe } from '@/hooks/useMe'
 import { useAuth } from '@/hooks/useAuth'
 import { useSkillList } from '@/hooks/useSkillList'
@@ -330,7 +331,7 @@ function SubscriptionRow({
           </span>
         </div>
         <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
-          <span>{row.authorDisplayName ?? row.author}</span>
+          <span>{getDisplayName({ author: row.author, authorDisplayName: row.authorDisplayName })}</span>
           <span> · 訂閱於 {row.subscribedAt.slice(0, 10)}</span>
         </p>
       </Link>

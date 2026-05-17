@@ -123,6 +123,22 @@ describe('ReviewsPanel (S098e2-T04)', () => {
     expect(screen.getByRole('button', { name: '撰寫評論' })).toBeInTheDocument()
   })
 
+  it('AC-S192-5: review row 顯示 authorDisplayName，刪除判斷仍使用 authorId', async () => {
+    mockFetchByUrl([
+      {
+        id: 'r-mine', skillId: SKILL_ID, authorId: 'u_f7eb3a', authorDisplayName: 'Sam Zhu',
+        authorHandle: null, rating: 5, content: '我寫的',
+        createdAt: '2026-05-03T03:00:00Z', updatedAt: '2026-05-03T03:00:00Z',
+      },
+    ])
+    renderPanel(skillFixture, 'u_f7eb3a')
+    await waitFor(() => expect(screen.getByText('我寫的')).toBeInTheDocument())
+
+    expect(screen.getByText('Sam Zhu')).toBeInTheDocument()
+    expect(screen.queryByText('u_f7eb3a')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '刪除我的評論' })).toBeInTheDocument()
+  })
+
   it('S098e2 AC-11: my own review row 顯示刪除按鈕', async () => {
     mockFetchByUrl([
       {

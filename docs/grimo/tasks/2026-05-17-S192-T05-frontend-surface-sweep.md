@@ -66,4 +66,23 @@ And（而且）route link / install command 仍可使用 technical segment
 - S192-T03 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-17
+Test: `PublishReviewPage.test.tsx`, `HomePage.test.tsx`, `MySkillsPage.test.tsx`, `AnalyticsPage.test.tsx`, `ReviewsPanel.test.tsx`, `RequestDetailPage.test.tsx`
+Files changed:
+- `frontend/src/pages/PublishReviewPage.tsx` (modified)
+- `frontend/src/pages/PublishReviewPage.test.tsx` (new)
+- `frontend/src/pages/HomePage.test.tsx` (modified)
+- `frontend/src/pages/MySkillsPage.tsx` (modified)
+- `frontend/src/pages/MySkillsPage.test.tsx` (modified)
+- `frontend/src/pages/AnalyticsPage.test.tsx` (modified)
+- `frontend/src/components/ReviewsPanel.tsx` (modified)
+- `frontend/src/components/ReviewsPanel.test.tsx` (modified)
+- `frontend/src/components/CommentList.tsx` (modified)
+- `frontend/src/pages/RequestDetailPage.test.tsx` (modified)
+Notes:
+- RED: `cd frontend && npm test -- PublishReviewPage HomePage MySkillsPage AnalyticsPage ReviewsPanel CommentList RequestDetailPage` → 5 failed（4 個 raw author id visible label；1 個 Analytics href encoding 測試期待修正）。
+- GREEN: same command → 6 files / 48 tests PASS。
+- Extra check: `cd frontend && npm run typecheck` → PASS。

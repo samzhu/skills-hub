@@ -282,6 +282,27 @@ describe('MySkillsPage — S145 subscription management tab', () => {
     expect(screen.getByText(/2026-05-08/)).toBeInTheDocument()
   })
 
+  it('S192: 訂閱 row 不把 raw platform user id 當作者 label 顯示', async () => {
+    setSubscriptionFetchMock([
+      {
+        skillId: 'skill-1',
+        skillName: 'deep-research',
+        author: 'u_f7eb3a',
+        authorDisplayName: null,
+        latestVersion: '1.2.0',
+        riskLevel: 'LOW',
+        status: 'PUBLISHED',
+        subscribedAt: '2026-05-08T10:15:30Z',
+      },
+    ])
+
+    renderPage()
+    fireEvent.click(await screen.findByRole('button', { name: /訂閱/ }))
+
+    expect(await screen.findByText('deep-research')).toBeInTheDocument()
+    expect(screen.queryByText('u_f7eb3a')).not.toBeInTheDocument()
+  })
+
   it('AC-S145-3: 點取消訂閱後呼叫 DELETE、移除 card、顯示 toast', async () => {
     setSubscriptionFetchMock([
       {

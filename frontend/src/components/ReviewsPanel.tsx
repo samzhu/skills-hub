@@ -8,6 +8,7 @@ import { useReviews } from '@/hooks/useReviews'
 import { createReview, deleteReview, type Review } from '@/api/reviews'
 import { skillKeys } from '@/api/queryKeys'
 import type { Skill } from '@/types/skill'
+import { getDisplayName } from '@/lib/displayName'
 import { localizeApiError } from '@/lib/api-error-messages'
 
 /**
@@ -145,7 +146,13 @@ function ReviewRow({
     <div className="rounded-md border border-border p-3">
       <div className="mb-2 flex items-center gap-2">
         <RatingStars value={review.rating} size={14} />
-        <span className="text-[12px] text-muted-foreground">{review.authorId}</span>
+        <span className="text-[12px] text-muted-foreground">
+          {getDisplayName({
+            author: review.authorId,
+            authorDisplayName: review.authorDisplayName,
+            authorHandle: review.authorHandle,
+          })}
+        </span>
         <span className="ml-auto text-[12px] text-muted-foreground">
           {new Date(review.createdAt).toLocaleDateString('zh-TW')}
         </span>

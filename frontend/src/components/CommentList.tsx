@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react'
 import type { RequestComment } from '@/api/skills'
+import { getDisplayName } from '@/lib/displayName'
 
 /**
  * S156c — Comment list；earliest first ASC（對齊 GitHub Issues 風格）。
@@ -51,7 +52,13 @@ function CommentRow({
     <li className="flex items-start gap-3 py-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-[13px] font-medium">{comment.authorId}</span>
+          <span className="text-[13px] font-medium">
+            {getDisplayName({
+              author: comment.authorId,
+              authorDisplayName: comment.authorDisplayName,
+              authorHandle: comment.authorHandle,
+            })}
+          </span>
           <span className="text-[11px] text-muted-foreground">
             {new Date(comment.createdAt).toLocaleString('zh-TW')}
           </span>

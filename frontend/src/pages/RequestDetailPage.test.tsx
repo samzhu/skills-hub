@@ -53,12 +53,16 @@ const sampleDetail = {
     {
       id: 'c1',
       authorId: 'u_bob',
+      authorDisplayName: 'Bob Lin',
+      authorHandle: null,
       content: '+1 我也需要',
       createdAt: '2026-05-03T11:00:00Z',
     },
     {
       id: 'c2',
       authorId: 'u_alice',
+      authorDisplayName: 'Alice Chen',
+      authorHandle: null,
       content: '附上更多 context',
       createdAt: '2026-05-03T12:00:00Z',
     },
@@ -154,6 +158,27 @@ describe('RequestDetailPage (S156c)', () => {
     // me=u_alice；c1.authorId=u_bob → no delete；c2.authorId=u_alice → 1 delete button
     const deleteButtons = screen.getAllByRole('button', { name: '刪除留言' })
     expect(deleteButtons).toHaveLength(1)
+  })
+
+  it('AC-S192-6: comment row 顯示 authorDisplayName，刪除判斷仍使用 authorId', async () => {
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/v1/requests/r1')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(sampleDetail) } as Response)
+      }
+      if (url.includes('/api/v1/me')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(meResponse) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ count: 0 }) } as Response)
+    })
+
+    renderPage('r1')
+
+    await waitFor(() => expect(screen.getByText('附上更多 context')).toBeInTheDocument())
+    expect(screen.getByText('Bob Lin')).toBeInTheDocument()
+    expect(screen.getByText('Alice Chen')).toBeInTheDocument()
+    expect(screen.queryByText('u_bob')).not.toBeInTheDocument()
+    expect(screen.queryByText('u_alice')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: '刪除留言' })).toHaveLength(1)
   })
 
   it('AC-9: 送出 comment → POST /comments + textarea 清空', async () => {
