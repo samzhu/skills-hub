@@ -18,7 +18,7 @@
 
 - `./scripts/verify-all.sh` in clean worktree `.worktrees/S186-ship`：**PASS** — V01=PASS、V02=INFO（line coverage 86.3%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
 - Targeted evidence：S186-T01~T08 all PASS；`SemanticSearchExplainEvidenceTest` recorded same-table `EXPLAIN (ANALYZE, BUFFERS)` evidence；`E2EEmbeddingConfigTest` verifies 3 docker fixtures pass threshold and 7 non-docker fixtures stay below threshold；S140 Playwright profile-paged case passed with only 3 docker-related skills.
-- Production deploy：DEFERRED — deploy S186 image, confirm new Cloud Run revision Ready with 100% traffic, call `/actuator/health/readiness` and `/api/v1/search/semantic?q=docker&limit=5`, then query latest revision `severity>=ERROR`; logged-in Chrome semantic-search UI verification still needs a callable Chrome automation tool or manual operation.
+- Production deploy：Cloud Build `57486911-e261-4ed9-8dbf-a459149b382a` built and pushed `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260517-011718`；Cloud Run revision `skillshub-00034-2c6` became Ready and serves 100% traffic；`/actuator/health/readiness` returned 200 `{"status":"UP"}`；`/api/v1/search/semantic?q=docker&limit=5` returned 200 `[]`（endpoint healthy, no current production docker result）；latest revision `severity>=ERROR` query after 2026-05-17T01:25Z returned no rows. Logged-in Chrome semantic-search UI verification still needs a callable Chrome automation tool or manual operation.
 
 ### Spec lifecycle
 

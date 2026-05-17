@@ -1,6 +1,6 @@
 # S186: Skill Embedding 同表化
 
-> 規格：S186 | 大小：M(14) | 狀態：✅ Done — v4.66.0 local release PASS; production deploy deferred
+> 規格：S186 | 大小：M(14) | 狀態：✅ Done — v4.66.0 local release PASS; production deploy PASS
 > 日期：2026-05-16
 > 對應：PRD P5 語意搜尋 / S107 semantic projection fields / S157 semantic search / S177 is_public-first search visibility / S185 list-detail projection consistency
 
@@ -461,7 +461,7 @@ POC: not required for task creation — §2.5 的 `SkillEmbeddingColocationPocTe
 
 ## 7. Implementation Results（local release PASS）
 
-T01-T08 已完成；本節保存 task-level implementation evidence、Phase 4 verification attempt、release gate evidence 與 final re-score。S186 local release gate 已通過；production deploy / Chrome evidence 依 §7.10 留到部署後補。
+T01-T08 已完成；本節保存 task-level implementation evidence、Phase 4 verification attempt、release gate evidence、production deploy evidence 與 final re-score。S186 local release gate 已通過；production deploy evidence 已補於 §7.11；Chrome 登入後 UI semantic search 覆測仍需可呼叫 Chrome automation tool 或人工操作。
 
 ### 7.1 Task Result Summary
 
@@ -725,7 +725,7 @@ git status --short
 | V08a `cd backend && ./gradlew processAot` | PASS | AOT processing 通過。 |
 | V08b `cd backend && ./gradlew --no-daemon -x test bootBuildImage ...` | PASS | native image build 通過。 |
 
-Production evidence：DEFERRED。S186 需要部署新版後才能證明 Cloud Run runtime 已套用 `skills.embedding` 同表查詢；目前已知 live revision 仍是 v4.65.0 changelog 記錄的 `skillshub-00032-9v8`。部署後請執行：
+Production evidence：原本 DEFERRED，已於 §7.11 補上。S186 需要部署新版後才能證明 Cloud Run runtime 已套用 `skills.embedding` 同表查詢；本節保留原 follow-up command 供後續 release tick 參考。
 
 ```bash
 export GCP_PROJECT_ID=cfh-vibe-lab
@@ -739,7 +739,22 @@ gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.serv
 
 預期結果：new revision Ready 且 100% traffic；`/actuator/health/readiness` 與 `/api/v1/search/semantic?q=docker&limit=5` 回 200；latest revision `severity>=ERROR` query 無 S186 新錯誤。Chrome 登入後 UI semantic search 覆測仍待可呼叫 Chrome automation tool 或人工操作。
 
-### 7.11 Final Size Re-score（per estimation-scale.md）
+### 7.11 Production Deploy Evidence（2026-05-17 09:28 CST）
+
+本輪部署 S186 image 到 production Cloud Run。
+
+| Check | Result | 實際看到什麼 |
+|---|---|---|
+| Cloud Build | PASS | Build `57486911-e261-4ed9-8dbf-a459149b382a`，image `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260517-011718`，status `SUCCESS`，duration `7M58S`。 |
+| Cloud Run replace | PASS | `gcloud run services replace temp/service.rendered.yaml --project=cfh-vibe-lab --region=asia-east1 --quiet` 建立新 revision 並完成 routing。 |
+| Revision readiness | PASS | `skillshub-00034-2c6` 是 latest ready revision，traffic `100`，app image 是 `20260517-011718`。 |
+| Readiness endpoint | PASS | `curl -i https://skillshub-644359853825.asia-east1.run.app/actuator/health/readiness` 回 HTTP 200，body `{"status":"UP"}`。 |
+| Semantic endpoint | PASS | `curl -i 'https://skillshub-644359853825.asia-east1.run.app/api/v1/search/semantic?q=docker&limit=5'` 回 HTTP 200，body `[]`；endpoint healthy，目前 production 沒有 docker semantic result。 |
+| Cloud Run ERROR logs | PASS | `gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="skillshub" AND severity>=ERROR AND timestamp>="2026-05-17T01:25:00Z"' ...` 無輸出，代表查詢時間窗內沒有 ERROR rows。 |
+
+Chrome UI evidence：未完成。本輪 execution context 沒有可呼叫的 Chrome automation namespace；登入後 UI semantic search 覆測仍待可用 Chrome tool 或人工操作。
+
+### 7.12 Final Size Re-score（per estimation-scale.md）
 
 | Dimension | Initial | Actual | Rationale |
 |---|---:|---:|---|
