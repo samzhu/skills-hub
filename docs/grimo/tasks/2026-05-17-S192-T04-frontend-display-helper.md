@@ -46,4 +46,19 @@ And（而且）install command 可以使用 `u_f7eb3a` 作為 technical segment
 - S192-T01 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-17
+Test: `displayName.test.ts` (`frontend/src/lib/displayName.test.ts`)
+Files changed:
+- `frontend/src/lib/displayName.ts` (modified)
+- `frontend/src/lib/displayName.test.ts` (modified)
+- `frontend/src/components/v2/InstallCard.tsx` (modified)
+- `frontend/src/types/skill.ts` (modified)
+- `frontend/src/api/reviews.ts` (modified)
+- `frontend/src/api/skills.ts` (modified)
+Notes:
+- RED: `cd frontend && npm test -- displayName` → 5 failed（`getDisplayName` 仍回 `u_a3f9c1`；`getAuthorRouteSegment` 尚不存在）。
+- GREEN: `cd frontend && npm test -- displayName` → 1 file / 8 tests PASS。
+- Extra check: `cd frontend && npm test -- displayName InstallCard` → 2 files / 15 tests PASS；`cd frontend && npm run typecheck` → PASS。

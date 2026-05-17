@@ -9,7 +9,12 @@ import { apiFetch, apiFetchVoid } from './client'
 export interface Review {
   id: string
   skillId: string
+  /** S192: platform user_id；delete ownership comparison 用，不是人類 label。 */
   authorId: string
+  /** S192: review row 的人類可讀 reviewer label。 */
+  authorDisplayName?: string | null
+  /** S192: reviewer handle，可作人類可讀 fallback。 */
+  authorHandle?: string | null
   rating: number
   content: string
   createdAt: string

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { getAuthorRouteSegment } from '@/lib/displayName'
 import type { Skill } from '@/types/skill'
 
 interface Props {
@@ -8,8 +9,8 @@ interface Props {
 
 export function InstallCard({ skill }: Props) {
   const [copied, setCopied] = useState(false)
-  // S154b — 走 user-facing handle slug；handle 缺 fallback user_id（永不顯 raw OAuth sub）
-  const cmd = `skills-hub install ${skill.authorHandle ?? skill.author}/${skill.name}`
+  // S192: install command 是 technical segment；handle 缺時可 fallback platform user_id。
+  const cmd = `skills-hub install ${getAuthorRouteSegment(skill)}/${skill.name}`
 
   function handleCopy() {
     navigator.clipboard.writeText(cmd).then(() => {

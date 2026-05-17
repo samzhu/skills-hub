@@ -47,11 +47,11 @@ export interface Skill {
   name: string
   /** 技能功能描述 */
   description: string
-  /** S154 — platform user_id (`u_<6hex>`)；對應 backend `Skill.author` 欄位。**不直接顯給 user**，走 `getDisplayName(skill)` 取人類可讀名。 */
+  /** S192: platform user_id (`u_<6hex>`)；行為用 id，不是人類 label。一般 UI 走 `getDisplayName(skill)`，route/install command 走 `getAuthorRouteSegment(skill)`。 */
   author: string
-  /** S154b — backend live-join 算出的 author display name（5-layer fallback）；nullable 表示 backend 也找不到（user 已刪等 edge case）。 */
+  /** S192: backend live-join 算出的 author display name；nullable 表示 display data 缺失，UI 不可 fallback 顯示 `author`。 */
   authorDisplayName?: string | null
-  /** S154b — author handle slug（user-facing）；用於 install command + `/users/{handle}` 等 URL；nullable 表示 backend 沒對應 user row。 */
+  /** S192: author handle slug；可作 user-facing fallback，也可作 install command / route segment。 */
   authorHandle?: string | null
   /** S154b — author email；**僅在** `contact_email_public=true` 時 backend 回此值，否則 backend 端 strip 為 null。前端 conditional `<mailto:>` button 用。 */
   authorEmail?: string | null
@@ -139,8 +139,12 @@ export interface SemanticSearchResult {
   name: string
   /** 技能功能描述 */
   description: string
-  /** 作者名稱 */
+  /** S192: platform user_id (`u_<6hex>`)；行為用 id，不是人類 label。 */
   author: string
+  /** S192: semantic result card 的人類可讀 author label。 */
+  authorDisplayName?: string | null
+  /** S192: semantic result route/install segment 的 user-facing slug。 */
+  authorHandle?: string | null
   /** 技能分類 canonical lowercase（V20 起 lowercase）— search/filter key */
   category: string
   /** S159b Round 2 — 分類 display 名稱保留原 CamelCase；舊資料 null，UI 用 `categoryLabel(...)` fallback */

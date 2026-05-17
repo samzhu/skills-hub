@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { getDisplayName } from './displayName'
+import { getAuthorRouteSegment, getDisplayName } from './displayName'
 
 /**
- * S154b T01 — `getDisplayName` 五層 fallback 邏輯驗證（純函式，無 React / DOM）。
+ * S192 T04 — `getDisplayName` 只產人類可讀 label；technical segment 走 `getAuthorRouteSegment`。
  *
- * Priority chain (per spec §2.2)：
+ * Priority chain (per S192 §2.5)：
  *   1. authorDisplayName  (S154 backend live join 結果)
  *   2. authorEmail        (取 @ 前段)
  *   3. authorHandle       (user-facing slug)
- *   4. author             (platform user_id u_<6hex>，最終 fallback)
+ *   4. missing label      (回空字串，避免一般 UI 顯示 platform user_id)
  *
- * 對齊 backend `DisplayNameResolver` 五層優先序 — 前後端永不顯 raw OAuth sub。
+ * 對齊 S192 display contract — platform user_id 只能出現在 route / install command segment。
  *
  * @see ../components/SkillCard.tsx
  * @see https://docs.spring.io/.../S154 backend §2.5
@@ -46,8 +46,8 @@ describe('getDisplayName', () => {
     ).toBe('alice-team')
   })
 
-  it('falls back to author user_id when all author fields missing (priority 4)', () => {
-    expect(getDisplayName({ author: 'u_a3f9c1' })).toBe('u_a3f9c1')
+  it('AC-S192-11: getDisplayName never returns raw platform user id', () => {
+    expect(getDisplayName({ author: 'u_a3f9c1' })).toBe('')
   })
 
   it('handles null author fields as missing (not "null" string)', () => {
@@ -58,7 +58,7 @@ describe('getDisplayName', () => {
         authorEmail: null,
         authorHandle: null,
       }),
-    ).toBe('u_a3f9c1')
+    ).toBe('')
   })
 
   it('handles empty string author fields as missing', () => {
@@ -69,6 +69,16 @@ describe('getDisplayName', () => {
         authorEmail: '',
         authorHandle: '',
       }),
-    ).toBe('u_a3f9c1')
+    ).toBe('')
+  })
+})
+
+describe('getAuthorRouteSegment', () => {
+  it('AC-S192-12: prefers authorHandle for commands and routes', () => {
+    expect(getAuthorRouteSegment({ author: 'u_a3f9c1', authorHandle: 'alice' })).toBe('alice')
+  })
+
+  it('AC-S192-12: may fall back to platform user id for commands and routes', () => {
+    expect(getAuthorRouteSegment({ author: 'u_a3f9c1', authorHandle: null })).toBe('u_a3f9c1')
   })
 })

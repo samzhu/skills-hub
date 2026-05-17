@@ -175,7 +175,12 @@ export function fetchRequests(opts?: RequestsQuery): Promise<SkillRequest[]> {
  */
 export interface RequestComment {
   id: string
+  /** S192: platform user_id；delete ownership comparison 用，不是人類 label。 */
   authorId: string
+  /** S192: comment row 的人類可讀 author label。 */
+  authorDisplayName?: string | null
+  /** S192: comment author handle，可作人類可讀 fallback。 */
+  authorHandle?: string | null
   content: string
   createdAt: string
 }
