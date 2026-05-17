@@ -343,7 +343,7 @@ Input 調整：
 
 | Task | 狀態 | 對應 AC | 驗證重點 |
 |---|---|---|---|
-| [S188-T01 Backend VersionLabelPolicy](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T01-backend-version-label-policy.md) | pending | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4 | `VersionLabelPolicyTest` 驗空白首版、下一號、自訂標籤與 unsafe label。 |
+| [S188-T01 Backend VersionLabelPolicy](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T01-backend-version-label-policy.md) | PASS | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4 | `VersionLabelPolicyTest` 驗空白首版、下一號、自訂標籤與 unsafe label。 |
 | [S188-T02 Backend Optional Version API](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T02-backend-api-optional-version.md) | pending | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4, AC-S188-8 | `/upload` 與 `/{id}/versions` 不送 version 時能寫 DB / storage；duplicate 與 unsafe label 有正確錯誤。 |
 | [S188-T03 Frontend Optional Version Forms](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T03-frontend-optional-version.md) | pending | AC-S188-5, AC-S188-6 | `/publish` 與新增版本表單 blank version 不 append `version`，也不被 required/pattern 擋住。 |
 | [S188-T04 Version Label Display, Docs, and Full Verify](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T04-display-docs-and-full-verify.md) | pending | AC-S188-7 + full spec verify | UI / docs 不再用 semver-only 文案；跑 backend/frontend S188 相關驗證並整理 §7。 |
@@ -363,4 +363,21 @@ POC：not required。
 
 ## 7. Implementation Results
 
-尚未實作。下一步從 S188-T01 開始，先新增 `VersionLabelPolicyTest` 的紅燈測試，再補最小 production code。
+### S188-T01 Backend VersionLabelPolicy — PASS（2026-05-17）
+
+Files:
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/command/VersionLabelPolicy.java`
+- `backend/src/test/java/io/github/samzhu/skillshub/skill/command/VersionLabelPolicyTest.java`
+
+Verification:
+- RED：`cd backend && ./gradlew test --tests '*VersionLabelPolicyTest'` failed at `compileTestJava` because `VersionLabelPolicy` did not exist.
+- GREEN：`cd backend && ./gradlew test --tests '*VersionLabelPolicyTest'` passed; Gradle printed `BUILD SUCCESSFUL in 2m 5s`.
+
+Result:
+- `initialOrRequested(null)` and blank string return `"1"`.
+- `nextOrRequested(null, ["1", "2", "2026.05-hotfix"])` returns `"3"`.
+- Custom labels such as `2026.05-hotfix`, `release-1`, and `0.1.0` are preserved after trimming.
+- Unsafe labels such as `../prod`, labels with whitespace, pure numeric `"0"`, and labels longer than 20 characters throw `IllegalArgumentException` with the fixed API-facing English message.
+
+Next:
+- S188-T02 wires this policy into `SkillCommandController`, `SkillCommandService`, and `Skill.recordVersionPublished`.
