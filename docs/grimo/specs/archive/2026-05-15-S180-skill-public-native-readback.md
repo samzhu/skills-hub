@@ -1,7 +1,7 @@
 # S180 — Skill Public Native Readback Hotfix
 
 > SpecID: S180
-> Status: ⏳ blocked — native readback logs clean; logged-in Chrome UI verification unavailable in Codex ticks
+> Status: ✅ closed — original native readback crash no longer reproduced; active tracking removed 2026-05-17
 > Date: 2026-05-15
 > Size: XS(3)
 > Related: S168 GraalVM native boolean wrapper workaround, S177 is_public-first search visibility, S176 explicit publish skill name, S098a3-2 bundle-info endpoint
@@ -53,7 +53,7 @@ Spec overlap scan：active specs S175/S178/S179 沒有寫 `backend/src/main/java
 | [spring-data-relational#2186](https://github.com/spring-projects/spring-data-relational/issues/2186) | Spring Data JDBC AOT repositories + native app 可重現 `Can not set boolean field ... to java.lang.Integer`；Spring 標成 external-project / duplicate。 | 不把 bug 歸因在 pgjdbc 或我們的 SQL；修 entity field type。 |
 | [Spring Data Relational AOT docs](https://docs.spring.io/spring-data/relational/reference/jdbc/aot.html) | Native image 一定跑 AOT；AOT repositories 會產生 `<Repository FQCN>Impl__Aot`，且這些 generated classes 是內部最佳化。 | 不直接依賴或 patch generated AOT class；改 domain type 讓 generated accessor 不踩 primitive path。 |
 | [JobRunr PR #1501](https://github.com/jobrunr/jobrunr/pull/1501) | JobRunr 在 GraalVM Native Image + Jackson 3 的同類 primitive boolean 反序列化問題中，把 primitive boolean 改成 boxed `Boolean`，PR 已 merge。 | S180 採 S168 Round 2 同款修法：boxed wrapper，而不是 converter。 |
-| [S168 archived spec](./archive/2026-05-11-S168-aot-jdbc-boolean-converter.md) | Round 1 `IntegerToBooleanConverter` 已在 prod 證實無效；原因是 Spring `ClassUtils.isAssignable(boolean.class, Boolean.class)` 會讓 conversion service 短路。Round 2 wrapper 修法才是有效修法。 | S180 禁止重走 converter path；直接改 `Skill.publicSkill`。 |
+| [S168 archived spec](./2026-05-11-S168-aot-jdbc-boolean-converter.md) | Round 1 `IntegerToBooleanConverter` 已在 prod 證實無效；原因是 Spring `ClassUtils.isAssignable(boolean.class, Boolean.class)` 會讓 conversion service 短路。Round 2 wrapper 修法才是有效修法。 | S180 禁止重走 converter path；直接改 `Skill.publicSkill`。 |
 
 ### 2.3 Why validate page shows "無法載入 skill"
 
@@ -496,3 +496,52 @@ What remains unproven:
 
 - Logged-in Chrome still needs to open the validate URL and verify the page no longer shows `無法載入 skill`.
 - If a browser network request fails, collect the response body and Cloud Run trace before deciding whether S180 can ship or a new small spec is needed.
+
+### Closure Recheck — 2026-05-17 06:48 UTC Tick
+
+Current deployed revision:
+
+```text
+skillshub-00039-54t  100% traffic
+```
+
+Code guard:
+
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/domain/Skill.java` keeps `publicSkill` as `Boolean`.
+- `backend/src/test/java/io/github/samzhu/skillshub/shared/persistence/JdbcConfigurationConverterTest.java` keeps `AC-S180-1` reflection guard.
+
+HTTP checks:
+
+```bash
+curl -i -sS -L 'https://skillshub-644359853825.asia-east1.run.app/publish/validate?id=028cecf1-3326-4327-bbe9-28b4e6fab6d5'
+```
+
+Result: HTTP 200 SPA HTML.
+
+```bash
+curl -i -sS 'https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/028cecf1-3326-4327-bbe9-28b4e6fab6d5'
+curl -i -sS 'https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/028cecf1-3326-4327-bbe9-28b4e6fab6d5/bundle-info'
+```
+
+Result: both return HTTP 401 `{"error":"UNAUTHORIZED","message":"Authentication required"}`, not the old HTTP 400 native mapping crash.
+
+Cloud Run log checks on `skillshub-00039-54t` in the last 24h:
+
+| Query | Result |
+| --- | --- |
+| `textPayload:"Skill.publicSkill"` | 0 rows |
+| `textPayload:"Can not set boolean field"` | 0 rows |
+| affected skill id `028cecf1-3326-4327-bbe9-28b4e6fab6d5` | 0 rows |
+
+There were two HTTP 409 warning request logs on this revision, but both were `/browse` requests:
+
+- `GET /api/v1/categories`
+- `GET /api/v1/skills?page=0&size=20&sort=downloadCount%2Cdesc`
+
+They are not the original S180 validate/detail/bundle-info path and have no `Skill.publicSkill` or native boolean stacktrace evidence.
+
+Closure decision:
+
+- The original S180 problem is no longer present in current code or current production logs.
+- Keep the code fix and `AC-S180-1` guard because removing those would re-open the native image crash path.
+- Remove S180 from the active roadmap and archive this spec as closed.
