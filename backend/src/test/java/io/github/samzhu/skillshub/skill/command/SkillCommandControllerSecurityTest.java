@@ -144,6 +144,36 @@ class SkillCommandControllerSecurityTest extends WebMvcSliceTestBase {
     }
 
     @Test
+    @DisplayName("AC-S188-2: write 通過後 PUT /versions 可省略 version，service 收到 null")
+    @Tag("AC-S188-2")
+    void authorizedAddVersionWithoutVersionParam_passesNullToService() throws Exception {
+        var skillId = "test-skill-id";
+        Mockito.when(currentUserProvider.current()).thenReturn(
+                new io.github.samzhu.skillshub.shared.security.CurrentUser(
+                        "alice", "alice-sub", "Alice", "alice@example.com", "alice",
+                        List.of("user"), List.of(), null));
+        Mockito.when(permissionEvaluator.hasPermission(
+                        ArgumentMatchers.any(), ArgumentMatchers.eq(skillId),
+                        ArgumentMatchers.eq("Skill"), ArgumentMatchers.eq("write")))
+                .thenReturn(true);
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/v1/skills/" + skillId + "/versions")
+                .file(new MockMultipartFile("file", "v.zip", "application/zip", new byte[]{1, 2, 3}))
+                .with(jwt()
+                        .jwt(j -> j.subject("alice")
+                                .claim("roles", List.of("user"))
+                                .claim("groups", List.<String>of()))
+                        .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+                .andExpect(status().isOk());
+
+        Mockito.verify(skillCommandService).addVersion(
+                ArgumentMatchers.eq(skillId),
+                ArgumentMatchers.any(byte[].class),
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.eq("Alice"));
+    }
+
+    @Test
     @DisplayName("AC-S144-2: alice (user:alice:delete 已 grant) DELETE /skills/{id} → 204 No Content")
     @Tag("AC-S144-2")
     void ownerDelete_returns204() throws Exception {

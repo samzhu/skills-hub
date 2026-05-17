@@ -60,6 +60,7 @@ public class SkillCommandService {
 	private final NamedParameterJdbcTemplate jdbc;
 	private final SkillGrantRepository grantRepo;
 	private final SkillGrantIdGenerator grantIdGenerator;
+	private final VersionLabelPolicy versionLabelPolicy;
 
 	public SkillCommandService(SkillRepository skillRepo,
 			SkillVersionRepository skillVersionRepo,
@@ -68,7 +69,8 @@ public class SkillCommandService {
 			SkillValidator skillValidator,
 			NamedParameterJdbcTemplate jdbc,
 			SkillGrantRepository grantRepo,
-			SkillGrantIdGenerator grantIdGenerator) {
+			SkillGrantIdGenerator grantIdGenerator,
+			VersionLabelPolicy versionLabelPolicy) {
 		this.skillRepo = skillRepo;
 		this.skillVersionRepo = skillVersionRepo;
 		this.storageService = storageService;
@@ -77,6 +79,7 @@ public class SkillCommandService {
 		this.jdbc = jdbc;
 		this.grantRepo = grantRepo;
 		this.grantIdGenerator = grantIdGenerator;
+		this.versionLabelPolicy = versionLabelPolicy;
 	}
 
 	@Transactional
@@ -99,14 +102,15 @@ public class SkillCommandService {
 	 * @param authorNameSnapshot publish 時 freeze 的 author 顯示名稱（nullable；無 OIDC name claim 時 null）
 	 */
 	@Transactional
-	public String uploadSkill(byte[] uploadedBytes, String skillName, String version, String author, String category,
+	public String uploadSkill(byte[] uploadedBytes, String skillName, @org.jspecify.annotations.Nullable String requestedVersion,
+			String author, String category,
 			io.github.samzhu.skillshub.skill.domain.Visibility visibility,
 			@org.jspecify.annotations.Nullable String authorNameSnapshot) throws IOException {
 		// S053: normalize plain .md → 合法 zip；若已是 zip 原樣返回。下游流程一致 zip contract。
 		var zipBytes = packageService.normalizeToZip(uploadedBytes);
 		log.atInfo()
 				.addKeyValue("skillName", skillName)
-				.addKeyValue("version", version)
+				.addKeyValue("requestedVersion", requestedVersion)
 				.addKeyValue("author", author)
 				.addKeyValue("uploadedSize", uploadedBytes.length)
 				.addKeyValue("zipSize", zipBytes.length)
@@ -129,6 +133,7 @@ public class SkillCommandService {
 		}
 
 		var description = (String) validation.metadata().get("description");
+		var version = versionLabelPolicy.initialOrRequested(requestedVersion);
 
 		var skill = Skill.create(new CreateSkillCommand(
 				skillName, description, author, category, visibility, authorNameSnapshot));
@@ -160,7 +165,8 @@ public class SkillCommandService {
 	}
 
 	/** S154 backward-compat 3-arg overload — null snapshot；既有 caller 不更新 author 顯示名稱。 */
-	public void addVersion(String skillId, byte[] uploadedBytes, String version) throws IOException {
+	public void addVersion(String skillId, byte[] uploadedBytes, @org.jspecify.annotations.Nullable String version)
+			throws IOException {
 		addVersion(skillId, uploadedBytes, version, null);
 	}
 
@@ -171,13 +177,14 @@ public class SkillCommandService {
 	 *                           取得）；null 代表不更新 snapshot（保留既有 freeze 值）
 	 */
 	@Transactional
-	public void addVersion(String skillId, byte[] uploadedBytes, String version,
+	public void addVersion(String skillId, byte[] uploadedBytes,
+			@org.jspecify.annotations.Nullable String requestedVersion,
 			@org.jspecify.annotations.Nullable String authorNameSnapshot) throws IOException {
 		// S053: normalize plain .md / subfolder zip → 標準化 zip（SKILL.md 在根）
 		var zipBytes = packageService.normalizeToZip(uploadedBytes);
 		log.atInfo()
 				.addKeyValue("skillId", skillId)
-				.addKeyValue("version", version)
+				.addKeyValue("requestedVersion", requestedVersion)
 				.addKeyValue("uploadedSize", uploadedBytes.length)
 				.addKeyValue("zipSize", zipBytes.length)
 				.log("開始新增版本");
@@ -199,6 +206,10 @@ public class SkillCommandService {
 
 		var skill = skillRepo.findById(skillId)
 				.orElseThrow(() -> new IllegalArgumentException("Skill not found: " + skillId));
+		var existingVersions = skillVersionRepo.findBySkillIdOrderByPublishedAtDesc(skillId).stream()
+				.map(SkillVersion::getVersion)
+				.toList();
+		var version = versionLabelPolicy.nextOrRequested(requestedVersion, existingVersions);
 
 		// AC-7 service-layer predicate — friendly error before DB UNIQUE 兜底
 		if (skillVersionRepo.existsBySkillIdAndVersion(skillId, version)) {

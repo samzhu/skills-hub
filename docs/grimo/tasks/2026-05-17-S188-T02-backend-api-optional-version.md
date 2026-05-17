@@ -60,4 +60,14 @@ And（而且）storage path 是 `skills/{skillId}/1/skill.zip`
 - S188-T01 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-17）
+
+## 實作結果
+- `SkillCommandController` 的 `/upload` 與 `/{id}/versions` multipart `version` 改成 optional。
+- `SkillCommandService` 先用 `VersionLabelPolicy` resolve 實際 label，再寫 `Skill.latestVersion`、`skill_versions.version` 與 `storagePath`。
+- `Skill.recordVersionPublished` 改用 S188 safe label 驗證，不再拒絕 `1`、`2`、`2026.05-hotfix`、`0.1.0` 這類非 semver-only label。
+- 既有 duplicate version path 保留 `VersionExistsException`，controller 仍回 409 `VERSION_EXISTS`。
+
+## 驗證結果
+- RED：`cd backend && ./gradlew test --tests '*SkillUploadExplicitNameTest' --tests '*SkillCommandControllerSecurityTest' --tests '*SkillPublishForgeryTest'` 先失敗 6 個 AC-S188 測試，包含 upload/PUT 缺 version 與 custom label 被 semver 檢查擋住。
+- GREEN：同一 command 通過，Gradle printed `BUILD SUCCESSFUL in 2m 45s`。

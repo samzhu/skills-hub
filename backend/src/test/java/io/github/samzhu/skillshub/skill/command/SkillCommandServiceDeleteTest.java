@@ -29,7 +29,8 @@ import io.github.samzhu.skillshub.storage.PackageService;
  * {@link SkillCommandService#deleteSkill(String, String)} through the same repository transaction path
  * production will use. Audit insertion is intentionally out of scope for T01; it is covered by T02.
  */
-@Import({SkillCommandService.class, PackageService.class, SkillValidator.class, SkillGrantIdGenerator.class})
+@Import({SkillCommandService.class, PackageService.class, SkillValidator.class, SkillGrantIdGenerator.class,
+        VersionLabelPolicy.class})
 class SkillCommandServiceDeleteTest extends RepositorySliceTestBase {
 
     @Autowired SkillCommandService commandService;

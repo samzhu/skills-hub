@@ -344,7 +344,7 @@ Input 調整：
 | Task | 狀態 | 對應 AC | 驗證重點 |
 |---|---|---|---|
 | [S188-T01 Backend VersionLabelPolicy](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T01-backend-version-label-policy.md) | PASS | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4 | `VersionLabelPolicyTest` 驗空白首版、下一號、自訂標籤與 unsafe label。 |
-| [S188-T02 Backend Optional Version API](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T02-backend-api-optional-version.md) | pending | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4, AC-S188-8 | `/upload` 與 `/{id}/versions` 不送 version 時能寫 DB / storage；duplicate 與 unsafe label 有正確錯誤。 |
+| [S188-T02 Backend Optional Version API](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T02-backend-api-optional-version.md) | PASS | AC-S188-1, AC-S188-2, AC-S188-3, AC-S188-4 | `/upload` 與 `/{id}/versions` 不送 version 時能寫 DB / storage；duplicate 與 unsafe label 有正確錯誤。 |
 | [S188-T03 Frontend Optional Version Forms](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T03-frontend-optional-version.md) | pending | AC-S188-5, AC-S188-6 | `/publish` 與新增版本表單 blank version 不 append `version`，也不被 required/pattern 擋住。 |
 | [S188-T04 Version Label Display, Docs, and Full Verify](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-17-S188-T04-display-docs-and-full-verify.md) | pending | AC-S188-7 + full spec verify | UI / docs 不再用 semver-only 文案；跑 backend/frontend S188 相關驗證並整理 §7。 |
 
@@ -381,3 +381,27 @@ Result:
 
 Next:
 - S188-T02 wires this policy into `SkillCommandController`, `SkillCommandService`, and `Skill.recordVersionPublished`.
+
+### S188-T02 Backend Optional Version API — PASS（2026-05-17）
+
+Files:
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/command/SkillCommandController.java`
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/command/SkillCommandService.java`
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/command/VersionLabelPolicy.java`
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/domain/Skill.java`
+- `backend/src/test/java/io/github/samzhu/skillshub/skill/command/SkillUploadExplicitNameTest.java`
+- `backend/src/test/java/io/github/samzhu/skillshub/skill/command/SkillCommandControllerSecurityTest.java`
+- `backend/src/test/java/io/github/samzhu/skillshub/skill/command/SkillPublishForgeryTest.java`
+
+Verification:
+- RED：`cd backend && ./gradlew test --tests '*SkillUploadExplicitNameTest' --tests '*SkillCommandControllerSecurityTest' --tests '*SkillPublishForgeryTest'` failed 6 AC-S188 tests because controller still required `version` and aggregate still rejected non-semver labels.
+- GREEN：same command passed; Gradle printed `BUILD SUCCESSFUL in 2m 45s`.
+
+Result:
+- `POST /api/v1/skills/upload` accepts missing `version`; service resolves it to `"1"` and stores `skills/{skillId}/1/skill.zip`.
+- `PUT /api/v1/skills/{id}/versions` accepts missing `version`; service resolves it to max existing numeric version + 1 while ignoring custom labels such as `2026.05-hotfix`.
+- Custom labels such as `0.1.0` and `2026.05-hotfix` store unchanged; duplicate labels still throw `VersionExistsException` and HTTP 409 via existing controller handler.
+- Unsafe labels such as `../prod` fail before a new `skill_versions` row is inserted.
+
+Next:
+- S188-T03 updates frontend forms so blank version is not appended to `FormData`.

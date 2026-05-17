@@ -22,6 +22,7 @@ import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
 import io.github.samzhu.skillshub.skill.command.ReactivateCommand;
 import io.github.samzhu.skillshub.skill.command.SuspendCommand;
 import io.github.samzhu.skillshub.skill.command.UpdateSkillCommand;
+import io.github.samzhu.skillshub.skill.command.VersionLabelPolicy;
 import io.github.samzhu.skillshub.skill.query.ViewerPermissions;
 
 /**
@@ -269,13 +270,6 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     private static final int DESCRIPTION_MAX = 1024;
 
     /**
-     * S056: 嚴格 semver MAJOR.MINOR.PATCH 三段（optional 連字 pre-release suffix）。
-     * 對齊 npm / Cargo / pip 慣例；DB column varchar(50) 邊界保護。
-     */
-    private static final java.util.regex.Pattern VERSION_REGEX =
-            java.util.regex.Pattern.compile("^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$");
-
-    /**
      * SkillQueryService 動態 SQL search 場景的 row → entity 物化 factory。
      * 一般查詢路徑（findById）走 {@link SkillRepository}，由 Spring Data JDBC 自動 mapping。
      * 跨 package 因 query 在 {@code skill.query} 而 aggregate 在 {@code skill.domain}，宣告 public。
@@ -379,20 +373,16 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
      * 取得後透傳；null 代表「不更新 snapshot」（既有值維持不動），non-null 代表 freeze 該值。
      */
     public void recordVersionPublished(String version, @org.jspecify.annotations.Nullable String snapshot) {
-        // S056: semver 預驗 — 違反 → IllegalArgumentException → 400 VALIDATION_ERROR
-        if (version == null || !VERSION_REGEX.matcher(version).matches()) {
-            throw new IllegalArgumentException(
-                    "Version must match semver MAJOR.MINOR.PATCH (got: " + version + ")");
-        }
+        var versionLabel = VersionLabelPolicy.validateLabel(version);
         SkillStatus next = this.status.publish();
-        this.latestVersion = version;
+        this.latestVersion = versionLabel;
         this.status = next;
         // S154: snapshot != null → freeze；null → 維持既有（避免 republish 路徑誤清 snapshot）
         if (snapshot != null) {
             this.authorNameSnapshot = snapshot;
         }
         this.updatedAt = Instant.now();
-        registerEvent(new SkillVersionPublishedFromAggregate(id, version));
+        registerEvent(new SkillVersionPublishedFromAggregate(id, versionLabel));
     }
 
     /**

@@ -142,6 +142,34 @@ class SkillPublishForgeryTest extends WebMvcSliceTestBase {
     }
 
     @Test
+    @DisplayName("AC-S188-1: multipart upload 可省略 version，service 收到 null")
+    @Tag("AC-S188-1")
+    void uploadWithoutVersionParam_passesNullToService() throws Exception {
+        Mockito.when(currentUserProvider.current()).thenReturn(new CurrentUser(
+                BOB_USER_ID, "bob-google-sub", BOB_DISPLAY_NAME, "bob@example.com",
+                "bob", List.of("user"), List.of(), null));
+        Mockito.when(skillCommandService.uploadSkill(
+                        ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(),
+                        ArgumentMatchers.any(),
+                        ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
+                .thenReturn("skill-id-with-auto-version");
+
+        var fakeZip = new MockMultipartFile("file", "skill.zip", "application/zip", new byte[]{0x50, 0x4b, 0x03, 0x04});
+
+        mockMvc.perform(multipart("/api/v1/skills/upload")
+                        .file(fakeZip)
+                        .param("skillName", "bob-platform-skill")
+                        .param("category", "testing")
+                        .with(jwt().jwt(j -> j.subject("bob-google-sub"))))
+                .andExpect(status().isCreated());
+
+        Mockito.verify(skillCommandService).uploadSkill(
+                ArgumentMatchers.any(), ArgumentMatchers.eq("bob-platform-skill"), ArgumentMatchers.isNull(),
+                ArgumentMatchers.eq(BOB_USER_ID), ArgumentMatchers.eq("testing"),
+                ArgumentMatchers.any(), ArgumentMatchers.eq(BOB_DISPLAY_NAME));
+    }
+
+    @Test
     @DisplayName("AC-3 Scenario B: Bob multipart 偽造 author=u_alice_xx → 仍寫 BOB user_id")
     @Tag("AC-3")
     void uploadWithForgedAuthorParam_serverOverridesToCurrentUser() throws Exception {

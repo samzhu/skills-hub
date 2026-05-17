@@ -88,7 +88,7 @@ public class SkillCommandController {
 	 *
 	 * @param file      技能套件 zip 檔（最大 10MB）
 	 * @param skillName 平台顯示名稱；canonical identity 仍是 skill id
-	 * @param version   語意化版本號（如 "1.0.0"）
+	 * @param version   version label；省略時自動使用 "1"
 	 * @param category  分類（如 DevOps、Testing）
 	 * @return 201 Created + {"id": "uuid"}
 	 */
@@ -96,7 +96,7 @@ public class SkillCommandController {
 	ResponseEntity<Map<String, String>> uploadSkill(
 			@RequestParam("file") MultipartFile file,
 			@RequestParam("skillName") String skillName,
-			@RequestParam("version") String version,
+			@RequestParam(name = "version", required = false) String version,
 			// S154 AC-3 forgery fix：dropped @RequestParam("author") — caller 傳的 author param Spring
 			// 預設 silently ignored；server 一律從 currentUserProvider 取 platform user_id。
 			@RequestParam("category") String category,
@@ -128,7 +128,7 @@ public class SkillCommandController {
 	}
 
 	/**
-	 * 為既有技能新增版本。版本號不可重複，否則回傳 409 Conflict。
+	 * 為既有技能新增版本。Version label 不可重複，否則回傳 409 Conflict。
 	 *
 	 * <p>S016：套用 row-level ACL — 呼叫者必須對該 skill 具 {@code write} 權限
 	 * （acl_entries 含 {@code user:<sub>:write} 或 {@code role:<role>:write} 或
@@ -138,7 +138,7 @@ public class SkillCommandController {
 	 *
 	 * @param id      技能 ID
 	 * @param file    新版本的 skill zip 檔
-	 * @param version 新版本號（如 "1.1.0"）
+	 * @param version version label；省略時自動使用 max numeric version + 1
 	 * @return 200 OK
 	 */
 	@PutMapping("/{id}/versions")
@@ -146,7 +146,7 @@ public class SkillCommandController {
 	ResponseEntity<Void> addVersion(
 			@PathVariable String id,
 			@RequestParam("file") MultipartFile file,
-			@RequestParam("version") String version) throws IOException {
+			@RequestParam(name = "version", required = false) String version) throws IOException {
 		// S154 AC-5: republish 時也更新 author_name_snapshot — Alice 改名後 republish snapshot 改新名
 		var current = currentUserProvider.current();
 		commandService.addVersion(id, file.getBytes(), version, current.name());

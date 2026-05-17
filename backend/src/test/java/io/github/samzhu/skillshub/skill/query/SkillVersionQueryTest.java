@@ -15,6 +15,7 @@ import io.github.samzhu.skillshub.shared.security.PrincipalContextService;
 import io.github.samzhu.skillshub.skill.command.CreateSkillCommand;
 import io.github.samzhu.skillshub.skill.command.PublishVersionCommand;
 import io.github.samzhu.skillshub.skill.command.SkillCommandService;
+import io.github.samzhu.skillshub.skill.command.VersionLabelPolicy;
 import io.github.samzhu.skillshub.skill.security.SkillGrantIdGenerator;
 import io.github.samzhu.skillshub.skill.validation.SkillValidator;
 import io.github.samzhu.skillshub.storage.PackageService;
@@ -31,7 +32,7 @@ import io.github.samzhu.skillshub.storage.PackageService;
  * 自動產生 — 兩次 publish 之間需 1ms 才能保證 sort 穩定。
  */
 @Import({SkillQueryService.class, SkillCommandService.class, PackageService.class, SkillValidator.class,
-        SkillGrantIdGenerator.class})
+        SkillGrantIdGenerator.class, VersionLabelPolicy.class})
 class SkillVersionQueryTest extends RepositorySliceTestBase {
 
     @Autowired

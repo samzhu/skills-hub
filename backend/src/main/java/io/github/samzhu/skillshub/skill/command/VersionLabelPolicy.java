@@ -46,6 +46,13 @@ public final class VersionLabelPolicy {
 	}
 
 	public String validateRequested(String requested) {
+		return validateLabel(requested);
+	}
+
+	public static String validateLabel(@Nullable String requested) {
+		if (requested == null) {
+			throw new IllegalArgumentException(INVALID_VERSION_MESSAGE);
+		}
 		var trimmed = requested.trim();
 		if (!SAFE_LABEL.matcher(trimmed).matches()) {
 			throw new IllegalArgumentException(INVALID_VERSION_MESSAGE);
