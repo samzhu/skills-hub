@@ -10,6 +10,12 @@ Codex 官方設計重點：
 - Codex Automation 觸發 skill 用 `$skill-name`，例如 `$planning-tasks S169`。
 - `planning-tasks` 是 spec implementation hub，不是唯一入口；先做 Skill Router，再進 Decision Tree。
 
+官方依據（2026-05-17 查證）：
+
+- Codex Automations docs: `https://developers.openai.com/codex/app/automations` — thread automations 要有 durable prompt，寫清楚每次醒來要做什麼、如何判斷是否回報、何時停止或請 user 介入；頻繁 worktree automation 要注意 worktree cleanup。
+- Codex Worktrees docs: `https://developers.openai.com/codex/app/worktrees` — Git repo 的 automations 可跑在 dedicated background worktree；worktree 用來避免干擾 Local，但 branch / handoff / merge 仍受 Git worktree 規則限制。
+- Codex app announcement: `https://openai.com/index/introducing-the-codex-app/` — worktrees 讓多個 agents 在同 repo 隔離工作；Automations 適合週期性背景工作，結果回到 review queue。
+
 ## Start-of-Tick Reads
 
 每 tick 開始先讀：
@@ -36,11 +42,67 @@ Codex 官方設計重點：
 
 1. 只做 1 個 unit of work：1 個 spec 推進，或 1 個 E2E / edge-case round。
 2. 優先收尾已經 active 的 spec / task；不要被新的 backlog row 分心。
-3. 至少產出 1 個可保存成果：程式 commit、文件 commit、progress log commit，或 blocker note commit。
+3. 至少產出 1 個可保存成果：程式 commit、文件 commit、progress log commit，或 blocker note commit。**例外：同一 blocker fingerprint 已在最近 progress note 記錄，且本 tick 沒有新資訊時，不要再製造重複 blocker commit；直接回 `BLOCKED`，並在 heartbeat message 說明「已記錄，等待 user action」。**
 4. 不要把 user unrelated changes 加進自己的 commit；local checkout 有使用者改動時，先改用 background worktree，或只 commit 自己 touched 的文件。
-5. 連續 3 次嘗試沒有 progress：寫 WIP / blocker note，commit，結束本 tick。
+5. 連續 3 次嘗試沒有 progress：若 blocker fingerprint 是新的，寫 WIP / blocker note 並 commit；若 fingerprint 未變，不要再 commit，通知 user 後暫停/刪除該 automation，直到 user 處理 blocker 後再重建或手動恢復。
 6. User mid-tick 提新需求：ack → 收尾目前 unit → commit → 把新需求排成 backlog row；不要同時做兩件事。
 7. tick 結尾回報 exactly one EXIT label。
+
+## Execution Environment Policy
+
+Codex App worktree 是背景工作區，不是 Local checkout 的替身。每 tick 先判斷自己在哪裡工作：
+
+```bash
+pwd
+git rev-parse --show-toplevel
+git worktree list
+git status --short
+```
+
+分類：
+
+| 情境 | 預設動作 |
+|---|---|
+| Local checkout 乾淨 | 可直接執行 ship / merge / docs update / deploy preflight。 |
+| Local checkout 有 unrelated changes，但本 tick 可在 worktree 完成且不需要 merge 回 Local | 使用 background worktree 或既有 automation worktree，commit 在該 worktree branch；結尾回報 branch / commit / merge 指令。 |
+| Local checkout 有 unrelated changes，且本 tick 目標是 merge/release 到 main | 先跑 Dirty Overlap Gate；若 overlap，停止，不 merge、不 stash、不 rebase release branch 追 blocker notes。 |
+| Codex-managed worktree 正在 rebase/merge conflict | 先完成、abort、或清理該 worktree；在 unresolved worktree 存在時不要再開新 worktree。 |
+
+Release / shipping 類工作要特別保守：`git merge --ff-only <release-branch>` 只在 Local checkout 乾淨或 dirty files 與 merge diff 無交集時執行。Production deploy 也只在 release commit 已在 main 且 `git status --short` 乾淨時執行。
+
+## Dirty Overlap Gate
+
+在任何 merge、rebase、shipping-release、或把 worktree 成果帶回 main 前，先跑：
+
+```bash
+git status --short
+git diff --name-only
+git diff --name-only --cached
+git diff --name-only main...<target-branch>
+```
+
+判斷：
+
+1. 若 Local dirty files 與 `<target-branch>` changed files 沒交集，可繼續，但 commit 只包含本 tick 自己產生的檔案。
+2. 若有交集，例如 `docs/grimo/specs/spec-roadmap.md` 同時被 user 修改、release branch 也會修改：
+   - 不 merge。
+   - 不 stash user changes。
+   - 不 commit user changes。
+   - 不為了維持 fast-forward 反覆 rebase release branch，除非本 tick 已有新的可保存成果需要保留。
+   - 寫一份 blocker note，內容包含 command、overlap path、target branch、user 可執行的下一步。
+3. 若相同 blocker note 已存在且資訊未變，停止本 tick，不再新增 blocker commit。
+
+Blocker fingerprint 格式：
+
+```text
+kind=<dirty-overlap|external-permission|tool-unavailable|verify-fail>
+target=<spec-id or branch or URL>
+paths=<sorted overlapping paths>
+command=<blocked command>
+reason=<one-line stable reason>
+```
+
+progress note 必須包含這個 fingerprint；後續 tick 看到同 fingerprint，就只回報，不再寫第二份 note。
 
 ## Worktree Audit
 
@@ -59,6 +121,13 @@ git status --short
 
 在孤兒 worktree 未處理前，不要建立新的 worktree。
 
+### Worktree Cleanup Rules
+
+- Codex-managed worktree 若只是用來 rebase / conflict resolution / isolated POC，本 tick 結束前要刪除。
+- 若 worktree 內有完成但未合併成果，結尾必須回報：worktree path、branch/commit、是否已 push、如何合回 main。
+- 不要讓 blocker note commit 推動 main 後，再把 release branch rebase 一次只為了等待下一輪；這會造成「blocker note → main 前進 → release branch 落後 → rebase → blocker 仍在」循環。
+- 若 automation 本身已跑在 Codex-managed worktree，優先把成果留在該 worktree branch / commit；不要手動建立 repo 內 `.worktrees/*`，除非需要額外隔離 POC。
+
 ## Decision Tree
 
 先跑 Skill Router。若 user goal 明確指定 skill 或工作類型，優先使用對應 skill；若 goal 是 general loop / next tick / continue roadmap，才跑下方 Decision Tree。
@@ -67,6 +136,7 @@ git status --short
 
 | # | 條件 | 動作 | Mode |
 |---|---|---|---|
+| 0 | Dirty Overlap Gate 發現本 tick 需要 merge/release/deploy，但 Local dirty files 會被覆蓋 | 若 fingerprint 新，寫 blocker note commit；若已記錄，停止並通知 user；不要切到其他 spec | Blocked |
 | 1 | `docs/grimo/specs/` 有 active spec doc（status 為 `📐` / `⏳` / `🚧` / `Dev` / `Plan`） | 讀該 spec + task files，用 `$planning-tasks S00N` 推進下一個 task 或 phase | A Dev |
 | 2 | active spec 實作完成且 QA PASS，但 roadmap / changelog / archive / tag 未完成 | 用 `$shipping-release` ship；不要 inline 模仿 release 流程 | A Ship |
 | 3 | roadmap 有 `📋` planned spec，但 `docs/grimo/specs/` 無對應 doc | 用 `$planning-spec S00N` 產出 §1-§5，更新 roadmap，commit，結束 tick | A Design |
@@ -176,9 +246,15 @@ Codex App Automation prompt 用這段作為 durable goal：
 
 ```text
 This wake-up is one Codex loop tick for /Users/samzhu/workspace/github-samzhu/skills-hub.
-Use a background worktree when available.
+Prefer the Codex App background worktree for independent implementation, verification, and E2E discovery. Use Local only for operations that must touch main directly, such as fast-forward release merge or production deploy after release.
 Read AGENTS.md and .codex/loop.md first.
 Then read docs/grimo/PRD.md, docs/grimo/specs/spec-roadmap.md, and docs/grimo/CHANGELOG.md.
+Run the Worktree Audit and Dirty Overlap Gate before merge/release/deploy:
+- git worktree list
+- git status --short
+- git diff --name-only
+- git diff --name-only --cached
+- when merging a branch: git diff --name-only main...<target-branch>
 Follow .codex/loop.md Decision Tree.
 Use .codex/loop.md Skill Router before coding:
 - $defining-product for PRD/product scope
@@ -198,7 +274,8 @@ Use .codex/loop.md Skill Router before coding:
 - $retro for repeated-process lessons
 Do exactly one unit of work.
 Do not stage or commit user unrelated changes.
-Commit at least one atomic result or blocker note when safe.
+Commit at least one atomic result or blocker note when safe. Exception: if the same blocker fingerprint is already recorded and no new evidence exists, do not create another blocker commit; report BLOCKED and wait for user action. After three unchanged blocker ticks, pause/delete the automation instead of creating noise.
+For dirty-overlap blockers, do not stash, overwrite, or commit user changes. Do not repeatedly rebase a release branch just because blocker notes moved main forward.
 End with exactly one EXIT label: DONE, WIP, BLOCKED, NO-BUGS-MODE-B, or WALL-HIT.
 ```
 
