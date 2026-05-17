@@ -57,7 +57,7 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
       const composeCard = page
         .getByRole('article')
         .filter({ has: page.getByRole('heading', { level: 3, name: 'docker-compose-helper' }) });
-      await expect(composeCard.getByText('alice')).toBeVisible();             // author
+      await expect(composeCard.getByText('Alice')).toBeVisible();             // author display name
       await expect(composeCard.getByText('DevOps', { exact: true })).toBeVisible();  // category pill
       await expect(composeCard.getByText('v1.0.0')).toBeVisible();            // version pill
     });

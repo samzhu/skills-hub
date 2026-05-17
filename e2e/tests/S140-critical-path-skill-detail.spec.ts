@@ -27,10 +27,10 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
     });
 
     await test.step('Then 詳情頁渲染：name H1 + author + 版本 v1.0.0 + 風險 badge + 下載次數 + Quality 區塊', async () => {
-      // Hero: H1 skill name + 作者：alice + version pill
-      // UI 改為 zh-TW localized 「作者：alice」（per PageHeader.tsx S140 後 UI rework）
+      // Hero: H1 skill name + 作者：Alice + version pill
+      // S192 後一般 UI 必須顯示人類可讀名稱，不能把 raw author id 當 label。
       await expect(page.getByRole('heading', { level: 1, name: 'docker-compose-helper' })).toBeVisible();
-      await expect(page.getByText('作者：alice')).toBeVisible();
+      await expect(page.getByText('作者：Alice')).toBeVisible();
       await expect(page.getByText('v1.0.0', { exact: true })).toBeVisible();
 
       // 4 MetricCard labels — 下載次數 / 評分 / 版本數 / (其他) per PageHeader.tsx S140 後 UI rework

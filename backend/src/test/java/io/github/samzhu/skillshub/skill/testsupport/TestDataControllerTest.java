@@ -78,7 +78,7 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
     }
 
     @Test
-    @DisplayName("POST /internal/test/seed/skill → delegate to SkillCommandService.uploadSkill + 回傳 id")
+    @DisplayName("POST /internal/test/seed/skill → seed author display row + delegate uploadSkill + 回傳 id")
     void seedSkill_invokesUploadSkill() throws Exception {
         var fakeId = "skill-uuid-001";
         var fakeZip = new byte[]{1, 2, 3};
@@ -92,6 +92,9 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
                     "name": "docker-helper",
                     "description": "Docker compose helper skill",
                     "author": "alice",
+                    "authorDisplayName": "Alice",
+                    "authorHandle": "alice",
+                    "authorEmail": "alice@example.test",
                     "category": "devops",
                     "version": "1.0.0"
                 }
@@ -105,7 +108,9 @@ class TestDataControllerTest extends WebMvcSliceTestBase {
 
         verify(skillCommandService, times(1)).uploadSkill(
             any(byte[].class), eq("docker-helper"), eq("1.0.0"),
-            eq("alice"), eq("devops"), eq(Visibility.PUBLIC), eq(null));
+            eq("alice"), eq("devops"), eq(Visibility.PUBLIC), eq("Alice"));
+
+        verify(jdbc).update(anyString(), any(Map.class));
     }
 
     @Test

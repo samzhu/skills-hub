@@ -11,6 +11,9 @@ import io.github.samzhu.skillshub.skill.domain.Visibility;
  * @param name           skill 顯示名（必填）
  * @param description    skill 簡述（必填；用於合成 SKILL.md frontmatter）
  * @param author         作者識別（必填）
+ * @param authorDisplayName S192 — test fixture 的作者人類可讀名稱
+ * @param authorHandle   S192 — test fixture 的作者 handle / route segment
+ * @param authorEmail    S192 — test fixture 的作者 email fallback
  * @param category       分類，例如 {@code "DevOps"} / {@code "Testing"}（必填）
  * @param version        版本號；null → {@code "1.0.0"}
  * @param visibility     可見性；null → {@link Visibility#PUBLIC}
@@ -20,6 +23,9 @@ public record SeedSkillRequest(
         String name,
         String description,
         String author,
+        String authorDisplayName,
+        String authorHandle,
+        String authorEmail,
         String category,
         String version,
         Visibility visibility,

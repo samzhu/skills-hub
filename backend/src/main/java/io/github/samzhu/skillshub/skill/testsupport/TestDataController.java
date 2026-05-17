@@ -31,7 +31,7 @@ import io.github.samzhu.skillshub.storage.PackageService;
  *
  * <p>3 個 endpoint：
  * <ul>
-     *   <li>{@code POST /internal/test/reset} — 單次 {@code TRUNCATE} 涵蓋 allowlist 15 張
+ *   <li>{@code POST /internal/test/reset} — 單次 {@code TRUNCATE} 涵蓋 allowlist 16 張
  *       application data tables（Flyway {@code schema_history} 保留），讓每個 Playwright
  *       test 走 deterministic empty state</li>
  *   <li>{@code POST /internal/test/seed/skill} — 透過 {@link SkillCommandService#uploadSkill}
@@ -60,7 +60,7 @@ class TestDataController {
             "collections", "collection_skills",
             "download_events", "domain_events", "event_publication",
             "notifications", "notification_preferences",
-            "requests", "request_votes", "reviews", "flags");
+            "requests", "request_votes", "reviews", "flags", "users");
 
     private final SkillCommandService skillCommandService;
     private final NamedParameterJdbcTemplate jdbc;
@@ -112,6 +112,7 @@ class TestDataController {
 
     @PostMapping("/seed/skill")
     ResponseEntity<Map<String, String>> seedSkill(@RequestBody SeedSkillRequest req) throws IOException {
+        seedAuthorDisplay(req);
         var skillMd = req.skillMdContent() != null
                 ? req.skillMdContent()
                 : synthesizeMinimalSkillMd(req.name(), req.description(), req.author());
@@ -120,7 +121,8 @@ class TestDataController {
         var version = req.version() != null ? req.version() : "1.0.0";
         var visibility = req.visibility() != null ? req.visibility() : Visibility.PUBLIC;
         var id = skillCommandService.uploadSkill(
-                zipBytes, req.name(), version, req.author(), req.category(), visibility, null);
+                zipBytes, req.name(), version, req.author(), req.category(), visibility,
+                blankToNull(req.authorDisplayName()));
         log.atInfo()
                 .addKeyValue("event", "test_data_seed_skill")
                 .addKeyValue("skillId", id)
@@ -129,6 +131,29 @@ class TestDataController {
                 .addKeyValue("version", version)
                 .log("E2E seed skill complete");
         return ResponseEntity.ok(Map.of("id", id));
+    }
+
+    private void seedAuthorDisplay(SeedSkillRequest req) {
+        var handle = coalesce(req.authorHandle(), req.author());
+        var email = coalesce(req.authorEmail(), handle + "@example.test");
+        var displayName = coalesce(req.authorDisplayName(), titleize(req.author()));
+        jdbc.update(
+                """
+                INSERT INTO users (id, oauth_provider, sub, email, name, handle, created_at, last_seen_at)
+                VALUES (:id, 'e2e', :sub, :email, :name, :handle, NOW(), NOW())
+                ON CONFLICT (id) DO UPDATE SET
+                    email = EXCLUDED.email,
+                    name = EXCLUDED.name,
+                    handle = EXCLUDED.handle,
+                    last_seen_at = NOW()
+                """,
+                new MapSqlParameterSource()
+                        .addValue("id", req.author())
+                        .addValue("sub", req.author())
+                        .addValue("email", email)
+                        .addValue("name", displayName)
+                        .addValue("handle", handle)
+                        .getValues());
     }
 
     @PostMapping("/seed/download-event")
@@ -206,5 +231,26 @@ class TestDataController {
 
                 %s
                 """.formatted(name, description, author, name, description);
+    }
+
+    private static String coalesce(String preferred, String fallback) {
+        var cleaned = blankToNull(preferred);
+        return cleaned != null ? cleaned : fallback;
+    }
+
+    private static String titleize(String value) {
+        var words = value.split("[-_]");
+        var result = new StringBuilder();
+        for (String word : words) {
+            if (word.isBlank()) continue;
+            if (!result.isEmpty()) result.append(' ');
+            result.append(Character.toUpperCase(word.charAt(0)));
+            if (word.length() > 1) result.append(word.substring(1));
+        }
+        return result.isEmpty() ? value : result.toString();
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

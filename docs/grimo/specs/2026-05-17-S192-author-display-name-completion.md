@@ -1,6 +1,6 @@
 # S192 - 作者顯示名稱一致性收斂
 
-> Status: ⏳ Dev — QA REJECT-FIX；V07 happy-path E2E shows blank author labels from S140 seed data；next `$planning-tasks S192`
+> Status: ⏳ Dev — T09 PASS；next `$verifying-quality S192`
 > Owner: Codex  
 > Date: 2026-05-17  
 > Size: M(13)  
@@ -276,6 +276,7 @@ POC：not required — S192 不新增 package、SDK、framework SPI、schema mig
 | 6 | `2026-05-17-S192-T06-source-scan-docs-guard.md` | AC-S192-8, Maintainability NFR | PASS | `rg -n "\\.(author|authorId)\\b" frontend/src --glob '*.tsx'` |
 | 7 | `2026-05-17-S192-T07-skillcard-fixture-display-data.md` | AC-S192-8, AC-S192-11 | PASS | `cd frontend && npm test -- SkillCard` |
 | 8 | `2026-05-17-S192-T08-user-display-fixture-isolation.md` | AC-S192-2 | PASS | `cd backend && ./gradlew test --tests "*UserDisplayServiceTest" --tests "*UserRepositoryTest"` |
+| 9 | `2026-05-17-S192-T09-e2e-author-display-seed.md` | AC-S192-3, AC-S192-10 | PASS | `cd backend && ./gradlew test --tests "*TestDataControllerTest"`；`cd e2e && npx playwright test tests/S140-critical-path-browse-search.spec.ts tests/S140-critical-path-skill-detail.spec.ts --grep @happy-path` |
 
 E2E artifact verification：not required for planning — S192 的 AC 都是 API DTO shape、React component text、notification title projection 或 source inspection；沒有新增 route、test seed endpoint、browser-only workflow、schema migration、credential injection 或 packaged artifact 行為。Phase 4 仍需重新評估並在 §7 記錄理由。
 
@@ -365,3 +366,11 @@ V07 failure details:
 Root cause: S192 intentionally changed normal UI labels so raw identifiers are not human-name fallbacks. Component tests proved the helper behavior, but the assembled S140 happy-path E2E seed still creates skills without display companion data for the author label. The fix must go through a new S192 task: update the e2e seed/display data path and S140 expectations so the browser sees a real author label (for example `Alice`) while install command / route segments may still use the technical segment.
 
 Verdict: REJECT-FIX. Do not ship S192 yet. Re-enter `$planning-tasks S192` and create a QA-fix task for the V07 author display seed/expectation mismatch, then re-run `$verifying-quality S192`.
+
+### S192-T09 QA Reject Fix
+
+`cd backend && ./gradlew test --tests "*TestDataControllerTest"` PASS（4 tests）。`/internal/test/seed/skill` 現在會在 seed skill 前寫入 `users` 顯示資料；slice test payload 明確帶 `authorDisplayName="Alice"`、`authorHandle="alice"`、`authorEmail="alice@example.test"`，並確認 `SkillCommandService.uploadSkill(...)` 收到 `authorNameSnapshot="Alice"`。
+
+`cd e2e && npx playwright test tests/S140-critical-path-browse-search.spec.ts tests/S140-critical-path-skill-detail.spec.ts --grep @happy-path` PASS（2 tests）。`/browse` 的 `docker-compose-helper` card 顯示 `Alice`；`/skills/{skillId}` detail header 顯示 `作者：Alice`。Technical route / command segment 仍保留 `alice`。
+
+Next step: re-run independent QA via `$verifying-quality S192`.

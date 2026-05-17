@@ -18,6 +18,9 @@ export type SkillSeed = {
   name: string;
   description: string;
   author: string;
+  authorDisplayName?: string;
+  authorHandle?: string;
+  authorEmail?: string;
   category: string;
   version?: string;                 // default '1.0.0' on backend
   visibility?: 'PUBLIC' | 'PRIVATE'; // default PUBLIC on backend
@@ -49,10 +52,25 @@ export async function resetAll(req: APIRequestContext): Promise<void> {
 }
 
 export async function seedSkill(req: APIRequestContext, data: SkillSeed): Promise<string> {
-  const res = await req.post(`${TEST_API_BASE}/seed/skill`, { data });
+  const authorHandle = data.authorHandle ?? data.author;
+  const payload = {
+    ...data,
+    authorDisplayName: data.authorDisplayName ?? displayNameFromAuthor(data.author),
+    authorHandle,
+    authorEmail: data.authorEmail ?? `${authorHandle}@example.test`,
+  };
+  const res = await req.post(`${TEST_API_BASE}/seed/skill`, { data: payload });
   expect(res.ok(), `seed/skill failed: ${res.status()} ${await res.text()}`).toBeTruthy();
   const body = await res.json();
   return body.id as string;
+}
+
+function displayNameFromAuthor(author: string): string {
+  return author
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map(part => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 export async function seedDownloadEvents(
