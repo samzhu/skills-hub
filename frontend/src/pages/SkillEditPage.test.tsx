@@ -208,3 +208,43 @@ describe('SkillEditPage — S187 version submit flow', () => {
     expect(screen.queryByText('REDIRECTED_TO_VERSION_VALIDATE')).not.toBeInTheDocument()
   })
 })
+
+describe('SkillEditPage — S187 category update', () => {
+  it('AC-S187-9: edit page 可更新 category 且 request body 不含 description', async () => {
+    let capturedBody: string | null = null
+    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url === '/api/v1/skills/skill-docker' && init?.method === 'PUT') {
+        capturedBody = init.body as string
+        return Promise.resolve(new Response(null, { status: 204 }))
+      }
+      if (url === '/api/v1/skills/skill-docker') {
+        return Promise.resolve(new Response(JSON.stringify(skillFixture), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }))
+      }
+      if (url === '/api/v1/skills/skill-docker/files/SKILL.md') {
+        return Promise.resolve(new Response(latestSkillMd, {
+          status: 200,
+          headers: { 'Content-Type': 'text/markdown' },
+        }))
+      }
+      return Promise.resolve(new Response(JSON.stringify({}), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+    })
+
+    renderPage()
+
+    const categoryInput = await screen.findByLabelText('分類')
+    fireEvent.change(categoryInput, { target: { value: 'Platform Tools' } })
+    fireEvent.click(screen.getByRole('button', { name: '儲存分類' }))
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull()
+    })
+    expect(JSON.parse(capturedBody!)).toEqual({ category: 'Platform Tools' })
+  })
+})

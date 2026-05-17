@@ -166,7 +166,7 @@ public class SkillCommandController {
 	}
 
 	/**
-	 * S163：owner update skill metadata（description / category）。
+	 * S187：owner update skill category。description 只能由 SKILL.md 新版本更新。
 	 *
 	 * <p>name / version 不在 {@link UpdateSkillCommand} DTO surface，Jackson 預設 ignore unknown
 	 * fields → 送 {@code {name, version}} 進來自動丟掉，aggregate 對應欄位不變。
@@ -177,8 +177,16 @@ public class SkillCommandController {
 	 */
 	@PutMapping("/{id}")
 	@PreAuthorize("hasPermission(#id, 'Skill', 'write')")
-	ResponseEntity<Void> update(@PathVariable String id, @RequestBody UpdateSkillCommand cmd) {
-		commandService.updateSkill(id, cmd, currentUserProvider.userId());
+	ResponseEntity<Void> update(@PathVariable String id, @RequestBody(required = false) Map<String, Object> body) {
+		if (body != null && body.containsKey("description")) {
+			throw new IllegalArgumentException(
+					"description must be updated by publishing a SKILL.md version");
+		}
+		var rawCategory = body == null ? null : body.get("category");
+		var category = rawCategory == null
+				? null
+				: rawCategory.toString();
+		commandService.updateSkill(id, new UpdateSkillCommand(category), currentUserProvider.userId());
 		return ResponseEntity.ok().build();
 	}
 

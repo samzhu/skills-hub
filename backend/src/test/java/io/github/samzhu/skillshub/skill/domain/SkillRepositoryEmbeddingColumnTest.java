@@ -40,7 +40,7 @@ class SkillRepositoryEmbeddingColumnTest extends RepositorySliceTestBase {
         updateEmbedding(saved.getId(), "docker compose helper", unitVector(), "test-embedding-model");
 
         var loaded = skillRepo.findById(saved.getId()).orElseThrow();
-        loaded.update(new UpdateSkillCommand("S186 embedding guard after normal edit", null), "alice");
+        loaded.update(new UpdateSkillCommand("Platform Tools"), "alice");
         skillRepo.save(loaded);
 
         var row = jdbc.queryForMap("""

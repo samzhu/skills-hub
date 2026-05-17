@@ -74,14 +74,10 @@ export function deleteSkill(id: string): Promise<void> {
   return apiFetchVoid(`/skills/${id}`, { method: 'DELETE' })
 }
 
-/**
- * S163 — PUT /api/v1/skills/{id} 改 description / category。
- * name / version 在 backend DTO surface 不接受（@JsonIgnoreProperties），送也會被丟。
- * 兩欄位都允許 null 表示「本次不動該欄位」；EditSkillModal 永遠帶兩欄位故無歧義。
- */
+/** S187 — PUT /api/v1/skills/{id} 只改 category；description 由新版 SKILL.md 更新。 */
 export function updateSkill(
   id: string,
-  body: { description?: string | null; category?: string | null }
+  body: { category?: string | null }
 ): Promise<void> {
   return apiFetchVoid(`/skills/${id}`, {
     method: 'PUT',

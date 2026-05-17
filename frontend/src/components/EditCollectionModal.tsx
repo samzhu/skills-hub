@@ -7,7 +7,7 @@ import { localizeApiError } from '@/lib/api-error-messages'
 /**
  * S164b — 編輯集合 metadata + skillIds modal。
  *
- * Mirror CreateCollectionModal pattern + EditSkillModal「prefill 當前值 + unchanged
+ * Mirror CreateCollectionModal pattern：「prefill 當前值 + unchanged
  * disable submit」設計（S163b 既驗）。skillIds 在 textarea 一行一個 UUID（與
  * CreateCollectionModal 一致；S150 frontend skill picker MVP 留 textarea）。
  *

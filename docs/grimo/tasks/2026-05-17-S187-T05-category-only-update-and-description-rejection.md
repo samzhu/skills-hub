@@ -65,4 +65,16 @@ And（而且）Alice 在 edit page 儲存分類時，request body 是 `{"categor
 - S187-T04 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-17）
+
+## 實作結果
+- `frontend/src/pages/SkillEditPage.tsx` 新增「分類」欄位與「儲存分類」動作，送出 body 只有 `{"category":"..."}`。
+- `frontend/src/api/skills.ts` 把 `updateSkill` 型別收斂成 category-only；`frontend/src/components/EditSkillModal.tsx` 與舊測試刪除。
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/command/SkillCommandController.java` 在 `PUT /api/v1/skills/{id}` 看到 body 含 `description` 時直接回 400，訊息為 `description must be updated by publishing a SKILL.md version`，不會呼叫 update service。
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/command/UpdateSkillCommand.java` 與 `Skill.update(...)` 改成只處理 category；description snapshot 仍只由 S187-T04 的 SKILL.md version publish path 更新。
+
+## 驗證結果
+- RED：`cd frontend && npm test -- SkillEditPage` → 先失敗，找不到 label `分類`。
+- RED：`cd backend && ./gradlew test --tests "*SkillUpdateControllerTest"` → 先失敗，direct description update 仍未被拒絕。
+- GREEN：`cd frontend && npm test -- SkillEditPage` → 5 tests passed。
+- GREEN：`cd backend && ./gradlew test --tests "*SkillUpdateControllerTest" -x processTestAot -x compileAotTestJava -x processAotTestResources` → 6 tests passed。

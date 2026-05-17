@@ -386,7 +386,7 @@ class SkillAggregateTest {
     void s159b_update_lowercasesCategory() {
         var skill = Skill.create(new CreateSkillCommand("normalize-update", "desc", "alice", "testing"));
         // 模擬 owner 編輯改成 "DEVOPS"（前端表單 user 自己打的）
-        skill.update(new UpdateSkillCommand("desc", "DEVOPS"), "alice");
+        skill.update(new UpdateSkillCommand("DEVOPS"), "alice");
         assertThat(skill.getCategory())
                 .as("update path 同 create — trim + toLowerCase 後存 state")
                 .isEqualTo("devops");
@@ -410,7 +410,7 @@ class SkillAggregateTest {
     @DisplayName("S159b Round 2 AC-R2-3: Skill.update() 改 category 時 dual-write 同步 display")
     void s159b_round2_update_preservesCategoryDisplay() {
         var skill = Skill.create(new CreateSkillCommand("dual-update", "desc", "alice", "DevOps"));
-        skill.update(new UpdateSkillCommand("desc", "DataOps"), "alice");
+        skill.update(new UpdateSkillCommand("DataOps"), "alice");
         assertThat(skill.getCategory()).isEqualTo("dataops");
         assertThat(skill.getCategoryDisplay())
                 .as("update 同樣 trim 保留 case")

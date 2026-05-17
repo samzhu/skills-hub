@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, ArrowLeft, Check, FileText, Upload as UploadIcon } from 'lucide-react'
-import { addVersion } from '@/api/skills'
+import { addVersion, updateSkill } from '@/api/skills'
 import { skillKeys } from '@/api/queryKeys'
 import { AppShell } from '@/components/AppShell'
 import { ErrorState } from '@/components/ErrorState'
@@ -25,8 +25,10 @@ export function SkillEditPage() {
   const [mode, setMode] = useState<EditMode>('text')
   const [skillMdText, setSkillMdText] = useState('')
   const [version, setVersion] = useState('')
+  const [category, setCategory] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [hydratedForSkill, setHydratedForSkill] = useState<string | null>(null)
+  const [hydratedCategoryForSkill, setHydratedCategoryForSkill] = useState<string | null>(null)
   const [fileReadError, setFileReadError] = useState<string | null>(null)
 
   const addVersionMutation = useMutation({
@@ -44,6 +46,16 @@ export function SkillEditPage() {
         queryClient.invalidateQueries({ queryKey: ['skills', id, 'files'] }),
       ])
       navigate(`/publish/validate?id=${id}&mode=version`)
+    },
+  })
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: () => updateSkill(id, { category: category.trim() }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: skillKeys.detail(id) }),
+        queryClient.invalidateQueries({ queryKey: ['skills'] }),
+      ])
     },
   })
 
@@ -69,6 +81,13 @@ export function SkillEditPage() {
     }
   }, [hydratedForSkill, id, skillMdQuery.data])
 
+  useEffect(() => {
+    if (!skillQuery.data || hydratedCategoryForSkill === id) return
+    if (category.trim().length > 0) return
+    setCategory(skillQuery.data.categoryDisplay ?? skillQuery.data.category ?? '')
+    setHydratedCategoryForSkill(id)
+  }, [category, hydratedCategoryForSkill, id, skillQuery.data])
+
   const fmValidation = useMemo(
     () => validateFrontmatter(skillMdText),
     [skillMdText],
@@ -80,11 +99,19 @@ export function SkillEditPage() {
     && !fileReadError
   const canSaveUpload = mode === 'upload' && selectedFile != null
   const saveDisabled = addVersionMutation.isPending || (mode === 'text' ? !canSaveText : !canSaveUpload)
+  const currentCategory = skillQuery.data?.categoryDisplay ?? skillQuery.data?.category ?? ''
+  const trimmedCategory = category.trim()
+  const categorySaveDisabled = updateCategoryMutation.isPending
+    || trimmedCategory.length === 0
+    || trimmedCategory === currentCategory.trim()
 
   const loading = skillQuery.isLoading || skillMdQuery.isLoading
   const skillName = skillQuery.data?.name ?? id
   const handleSaveVersion = () => {
     addVersionMutation.mutate()
+  }
+  const handleSaveCategory = () => {
+    updateCategoryMutation.mutate()
   }
 
   return (
@@ -117,9 +144,10 @@ export function SkillEditPage() {
             <button
               type="button"
               className="inline-flex h-9 items-center justify-center rounded-md border border-border px-3 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-              disabled
+              disabled={categorySaveDisabled}
+              onClick={handleSaveCategory}
             >
-              儲存分類
+              {updateCategoryMutation.isPending ? '儲存中...' : '儲存分類'}
             </button>
             <button
               type="button"
@@ -156,6 +184,13 @@ export function SkillEditPage() {
             message={localizeApiError(addVersionMutation.error)}
           />
         )}
+        {updateCategoryMutation.isError && (
+          <ErrorState
+            className="mb-4"
+            title="儲存分類失敗"
+            message={localizeApiError(updateCategoryMutation.error)}
+          />
+        )}
 
         <div className="rounded-lg border border-border bg-card p-5">
           <div className="mb-4 inline-flex rounded-md border border-border bg-secondary p-0.5 text-[12px]">
@@ -165,6 +200,22 @@ export function SkillEditPage() {
             <ModeTab active={mode === 'upload'} onClick={() => setMode('upload')}>
               <UploadIcon className="h-3 w-3" /> 上傳檔案
             </ModeTab>
+          </div>
+
+          <div className="mb-4">
+            <label
+              htmlFor="skill-edit-category"
+              className="mb-1.5 block text-[12px] font-medium uppercase tracking-wide text-muted-foreground"
+            >
+              分類
+            </label>
+            <input
+              id="skill-edit-category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="DevOps"
+              className="h-9 w-full max-w-xs rounded-md border border-border bg-background px-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-[rgba(255,255,255,0.20)] focus:outline-none"
+            />
           </div>
 
           <div className="mb-4">

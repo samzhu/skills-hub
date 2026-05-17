@@ -399,24 +399,16 @@ public class Skill extends AbstractAggregateRoot<Skill> implements Persistable<S
     }
 
     /**
-     * S163 — owner 改 description / category。name / version 不可改（DTO surface 已過濾）。
+     * S187 — owner 只能改 category。description snapshot 由新版本 SKILL.md frontmatter 更新。
      *
-     * <p>cmd 任一欄位 null 表示本次不動。trim 後落地；blank 視為「想清空」reject（mirror create）。
-     * 超出 length cap 比照 {@link #create} 同上限 reject。同 description / category 一字未動則
-     * skip event（避免每次 EditSkillModal click「儲存」都炸 listener）。
+     * <p>category null 表示本次不動。trim 後落地；blank 視為「想清空」reject（mirror create）。
+     * 同 category 一字未動則 skip event。
      */
     public void update(UpdateSkillCommand cmd, String updatedBy) {
         if (cmd == null) {
             throw new IllegalArgumentException("UpdateSkillCommand must not be null");
         }
         boolean changed = false;
-        if (cmd.description() != null) {
-            var desc = normalizeDescription(cmd.description());
-            if (!desc.equals(this.description)) {
-                this.description = desc;
-                changed = true;
-            }
-        }
         if (cmd.category() != null) {
             // S042 trim + S159b lowercase — 對齊 create()；V20 CHECK 要求 lowercase
             // S159b Round 2 — 同時 dual-write categoryDisplay 保留原 case

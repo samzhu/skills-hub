@@ -64,7 +64,7 @@ class SkillEmbeddingColocationPocTest extends RepositorySliceTestBase {
         updateEmbedding(saved.getId(), "docker compose helper", unitVector(0), "poc-model");
 
         var loaded = skillRepo.findById(saved.getId()).orElseThrow();
-        loaded.update(new UpdateSkillCommand("POC save keeps embedding after normal edit", null), "alice");
+        loaded.update(new UpdateSkillCommand("Platform Tools"), "alice");
         skillRepo.save(loaded);
 
         var embeddingContent = jdbc.queryForObject(

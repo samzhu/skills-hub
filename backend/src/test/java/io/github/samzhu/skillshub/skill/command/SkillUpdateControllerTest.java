@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
@@ -48,9 +49,10 @@ class SkillUpdateControllerTest extends WebMvcSliceTestBase {
     private CurrentUserProvider currentUserProvider;
 
     @Test
-    @DisplayName("AC-1: owner PUT /skills/{id} body={description:'new'} → 200 + service 收到 cmd")
+    @DisplayName("AC-S187-9: category-only update 仍成功")
+    @Tag("AC-S187-9")
     @Tag("AC-1")
-    void ownerUpdate_returns200() throws Exception {
+    void categoryOnlyUpdate_returns200() throws Exception {
         var skillId = "test-skill-id";
         Mockito.when(currentUserProvider.userId()).thenReturn("alice");
         Mockito.when(permissionEvaluator.hasPermission(
@@ -59,7 +61,7 @@ class SkillUpdateControllerTest extends WebMvcSliceTestBase {
 
         mockMvc.perform(put("/api/v1/skills/" + skillId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"description\":\"new desc\",\"category\":\"security\"}")
+                .content("{\"category\":\"security\"}")
                 .with(jwt()
                         .jwt(j -> j.subject("alice")
                                 .claim("roles", List.of("user"))
@@ -70,8 +72,59 @@ class SkillUpdateControllerTest extends WebMvcSliceTestBase {
         var captor = ArgumentCaptor.forClass(UpdateSkillCommand.class);
         Mockito.verify(skillCommandService).updateSkill(eq(skillId), captor.capture(), eq("alice"));
         var cmd = captor.getValue();
-        org.assertj.core.api.Assertions.assertThat(cmd.description()).isEqualTo("new desc");
         org.assertj.core.api.Assertions.assertThat(cmd.category()).isEqualTo("security");
+    }
+
+    @Test
+    @DisplayName("AC-S187-6: direct description update 被拒絕")
+    @Tag("AC-S187-6")
+    void directDescriptionUpdate_returns400() throws Exception {
+        var skillId = "test-skill-id";
+        Mockito.when(currentUserProvider.userId()).thenReturn("alice");
+        Mockito.when(permissionEvaluator.hasPermission(
+                        any(), eq(skillId), eq("Skill"), eq("write")))
+                .thenReturn(true);
+
+        mockMvc.perform(put("/api/v1/skills/" + skillId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"description\":\"Manual desc\"}")
+                .with(jwt()
+                        .jwt(j -> j.subject("alice")
+                                .claim("roles", List.of("user"))
+                                .claim("groups", List.<String>of()))
+                        .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(
+                    "description must be updated by publishing a SKILL.md version"));
+
+        Mockito.verify(skillCommandService, Mockito.never())
+                .updateSkill(Mockito.anyString(), Mockito.any(), Mockito.anyString());
+    }
+
+    @Test
+    @DisplayName("AC-S187-6: description + category body 被拒絕且不局部套用 category")
+    @Tag("AC-S187-6")
+    void directDescriptionWithCategory_returns400AndDoesNotUpdateCategory() throws Exception {
+        var skillId = "test-skill-id";
+        Mockito.when(currentUserProvider.userId()).thenReturn("alice");
+        Mockito.when(permissionEvaluator.hasPermission(
+                        any(), eq(skillId), eq("Skill"), eq("write")))
+                .thenReturn(true);
+
+        mockMvc.perform(put("/api/v1/skills/" + skillId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"description\":\"Manual desc\",\"category\":\"DevOps\"}")
+                .with(jwt()
+                        .jwt(j -> j.subject("alice")
+                                .claim("roles", List.of("user"))
+                                .claim("groups", List.<String>of()))
+                        .authorities(new SimpleGrantedAuthority("ROLE_user"))))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(
+                    "description must be updated by publishing a SKILL.md version"));
+
+        Mockito.verify(skillCommandService, Mockito.never())
+                .updateSkill(Mockito.anyString(), Mockito.any(), Mockito.anyString());
     }
 
     @Test
@@ -85,7 +138,7 @@ class SkillUpdateControllerTest extends WebMvcSliceTestBase {
 
         mockMvc.perform(put("/api/v1/skills/" + skillId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"description\":\"hijack\"}")
+                .content("{\"category\":\"hijack\"}")
                 .with(jwt()
                         .jwt(j -> j.subject("bob")
                                 .claim("roles", List.of("user"))
@@ -117,11 +170,10 @@ class SkillUpdateControllerTest extends WebMvcSliceTestBase {
                         .authorities(new SimpleGrantedAuthority("ROLE_user"))))
             .andExpect(status().isOk());
 
-        // 證明 name / version 沒滲入 service — captured cmd 兩個欄位皆 null
+        // 證明 name / version 沒滲入 service — captured cmd 的 category 為 null
         var captor = ArgumentCaptor.forClass(UpdateSkillCommand.class);
         Mockito.verify(skillCommandService).updateSkill(eq(skillId), captor.capture(), eq("alice"));
         var cmd = captor.getValue();
-        org.assertj.core.api.Assertions.assertThat(cmd.description()).isNull();
         org.assertj.core.api.Assertions.assertThat(cmd.category()).isNull();
     }
 

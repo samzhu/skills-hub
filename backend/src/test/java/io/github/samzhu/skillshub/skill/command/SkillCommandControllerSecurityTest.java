@@ -230,7 +230,7 @@ class SkillCommandControllerSecurityTest extends WebMvcSliceTestBase {
 
         mockMvc.perform(put("/api/v1/skills/" + skillId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"description\":\"updated by editor\",\"category\":\"devops\"}")
+                        .content("{\"category\":\"devops\"}")
                         .with(jwt()
                                 .jwt(j -> j.subject("bob")
                                         .claim("roles", List.of("user"))
