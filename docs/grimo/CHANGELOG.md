@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.67.0] — S185 Skill List / Detail Projection Consistency（2026-05-17）
+
+### Fixed
+
+- **List/detail visibility parity** — `GET /api/v1/skills` now maps `visibility` from `skills.is_public`, so browse cards match detail responses.
+- **List version field parity** — list rows now fill `verified`, `latestVersionPublishedAt`, `license`, `compatibility`, `versionCount`, and `openFlagCount` from `skill_versions` / `flags`.
+- **Category visibility counts** — `GET /api/v1/categories` now counts the same visible set as list search, so private-only categories do not appear for anonymous callers.
+- **List JSON privacy contract** — MockMvc contract evidence confirms safe list fields are present while `ownerId`, `aclEntries`, and `viewerPermissions` stay hidden.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.4%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；exit=0。
+- Targeted evidence：`SkillQueryServiceVisibilityTest` covers AC-S185-1/2/3；`SkillQueryControllerApiContractTest` covers AC-S185-4；both targeted Gradle runs passed before full QA.
+- Production deploy：deferred to next automation unit；AC-S185-5 production list/detail recheck and latest Cloud Run `severity>=ERROR` query remain pending.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-16-S185-skill-list-detail-projection-consistency.md` → `docs/grimo/specs/archive/2026-05-16-S185-skill-list-detail-projection-consistency.md`
+- `docs/grimo/tasks/2026-05-16-S185-*.md` 已刪除。
+- Final size re-score：XS(8) → XS(8)，原因是實作維持原定 raw JDBC projection + MockMvc contract scope，沒有新增依賴或 API shape pivot。
+
 ## [v4.66.0] — S186 Skill Embedding Colocation（2026-05-17）
 
 ### Changed

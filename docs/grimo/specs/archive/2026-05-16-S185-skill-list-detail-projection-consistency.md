@@ -1,7 +1,7 @@
 # S185 — Skill List / Detail Projection Consistency
 
 > SpecID: S185
-> Status: ⏳ QA PASS — release pending
+> Status: ✅ shipped — v4.67.0
 > Date: 2026-05-16
 > Size: XS(8)
 > Related: S119 list rating projection, S142b SkillDetailPage v2 backend supplement, S177 is_public-first search visibility, S184 visibility command contract
@@ -342,7 +342,7 @@ The method already has access to `principalContextService`, so it does not need 
 
 ## 6. Task Plan
 
-Planning status: S185-T01 and S185-T02 completed; QA PASS; release pending.
+Planning status: S185-T01 and S185-T02 completed; QA PASS; released as v4.67.0. Production deploy and AC-S185-5 recheck stay as the next automation unit.
 
 | Task | File | ACs | Status | Verification |
 | --- | --- | --- | --- | --- |
@@ -371,7 +371,7 @@ One-unit loop note: 2026-05-17 automation ticks implemented S185-T01, S185-T02, 
 - `GET /api/v1/skills` MockMvc JSON contract now asserts list-safe fields are present and privacy/action fields stay hidden in list view.
 - Verification: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryServiceVisibilityTest --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest` → `BUILD SUCCESSFUL in 2m 9s`.
 
-Pending: full QA, release, deploy, and AC-S185-5 production list/detail recheck.
+Full QA, release docs, roadmap update, and archive completed. Production deploy and AC-S185-5 production list/detail recheck are pending as the next automation unit.
 
 2026-05-17 QA PASS:
 
@@ -380,4 +380,12 @@ Pending: full QA, release, deploy, and AC-S185-5 production list/detail recheck.
 - Coverage: V02 LINE coverage = 86.4% (`covered=4608 / total=5332`).
 - Native image gate: V08b built `docker.io/library/skillshub-verify:local` successfully.
 
-Pending: `$shipping-release S185`, Cloud Build / Cloud Run deploy, and AC-S185-5 production list/detail recheck with Cloud Run `severity>=ERROR` log query.
+2026-05-17 Shipping Release PASS:
+
+- Release version: v4.67.0.
+- Changelog updated with S185 fix and verification evidence.
+- Roadmap S185 row marked shipped.
+- Task files `docs/grimo/tasks/2026-05-16-S185-T01-list-projection-fields.md` and `docs/grimo/tasks/2026-05-16-S185-T02-category-and-json-contract.md` removed.
+- Final size re-score: XS(8) → XS(8). The implementation stayed within the planned raw JDBC projection + MockMvc contract scope; no new dependencies, no API shape pivot, and full QA/native verification matched the initial testing risk.
+
+Pending: Cloud Build / Cloud Run deploy, and AC-S185-5 production list/detail recheck with Cloud Run `severity>=ERROR` log query.
