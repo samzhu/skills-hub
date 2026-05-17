@@ -1,6 +1,6 @@
 # S187: Skill SKILL.md 編輯頁
 
-> 規格：S187 | 大小：M(13) | 狀態：📐 in-design
+> 規格：S187 | 大小：M(13) | 狀態：⏳ Plan
 > 日期：2026-05-16
 > 對應：PRD P2 更新已有 skill 版本 / P1 技能詳情頁 / S142a SkillDetailPage v2 / S163 EditSkillModal / S176 explicit publish skill name / S186 embedding source / S188 version label optional input
 > 執行前置：S186 必須先 ship；S187 不在 S186 前啟動 task loop。
@@ -440,3 +440,17 @@ public void refreshDescriptionSnapshot(String description, String updatedBy) {
 ---
 
 <!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+POC：not required — S187 只重組既有 frontend route/page flow、沿用 `addVersion(...)`、`useSkillFile(...)`、existing Skill aggregate / version publish path；沒有新套件、未知 SDK、DB schema 或 framework SPI。Release gate 先修已完成：S186/S188/S179 都已 shipped，`docs/grimo/tasks/` 目前沒有舊 task 殘留。
+
+E2E 評估：S187 是 browser/UI flow，但主要行為可由 Vitest + backend tests 先紅綠；最後 T06 必須明確評估是否需要 `@S187` Playwright evidence 來驗 mobile layout 與 version validation assembly。若 T06 判定不新增 Playwright，必須在 §7 寫出實際不跑原因。
+
+| 順序 | Task file | AC | 狀態 | 驗證 |
+|---:|---|---|---|---|
+| 1 | `docs/grimo/tasks/2026-05-17-S187-T01-detail-route-version-history.md` | AC-S187-1, AC-S187-2 | pending | `cd frontend && npm test -- SkillDetailPage` |
+| 2 | `docs/grimo/tasks/2026-05-17-S187-T02-edit-page-text-mode.md` | AC-S187-3 | pending | `cd frontend && npm test -- SkillEditPage` |
+| 3 | `docs/grimo/tasks/2026-05-17-S187-T03-edit-page-submit-and-validate-flow.md` | AC-S187-4, AC-S187-7, AC-S187-10 | pending | `cd frontend && npm test -- SkillEditPage PublishValidatePage` |
+| 4 | `docs/grimo/tasks/2026-05-17-S187-T04-backend-description-snapshot.md` | AC-S187-5, AC-S187-7 | pending | `cd backend && ./gradlew test --tests "*SkillUpload*" --tests "*SkillCommand*"` |
+| 5 | `docs/grimo/tasks/2026-05-17-S187-T05-category-only-update-and-description-rejection.md` | AC-S187-6, AC-S187-9 | pending | `cd frontend && npm test -- SkillEditPage && cd ../backend && ./gradlew test --tests "*SkillUpdateControllerTest"` |
+| 6 | `docs/grimo/tasks/2026-05-17-S187-T06-browser-mobile-doc-sync.md` | AC-S187-8, AC-S187-10, docs sync | pending | `cd frontend && npm test -- SkillEditPage PublishValidatePage`; if required `cd e2e && npx playwright test --grep @S187` |
