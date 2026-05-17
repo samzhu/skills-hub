@@ -25,11 +25,14 @@ export function SkillEditPage() {
   const [mode, setMode] = useState<EditMode>('text')
   const [skillMdText, setSkillMdText] = useState('')
   const [version, setVersion] = useState('')
-  const [category, setCategory] = useState('')
+  const [categoryDraft, setCategoryDraft] = useState('')
+  const [categoryTouched, setCategoryTouched] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [hydratedForSkill, setHydratedForSkill] = useState<string | null>(null)
-  const [hydratedCategoryForSkill, setHydratedCategoryForSkill] = useState<string | null>(null)
   const [fileReadError, setFileReadError] = useState<string | null>(null)
+  const currentCategory = skillQuery.data?.categoryDisplay ?? skillQuery.data?.category ?? ''
+  const category = categoryTouched ? categoryDraft : currentCategory
+  const trimmedCategory = category.trim()
 
   const addVersionMutation = useMutation({
     mutationFn: () => {
@@ -50,7 +53,7 @@ export function SkillEditPage() {
   })
 
   const updateCategoryMutation = useMutation({
-    mutationFn: () => updateSkill(id, { category: category.trim() }),
+    mutationFn: () => updateSkill(id, { category: trimmedCategory }),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: skillKeys.detail(id) }),
@@ -81,13 +84,6 @@ export function SkillEditPage() {
     }
   }, [hydratedForSkill, id, skillMdQuery.data])
 
-  useEffect(() => {
-    if (!skillQuery.data || hydratedCategoryForSkill === id) return
-    if (category.trim().length > 0) return
-    setCategory(skillQuery.data.categoryDisplay ?? skillQuery.data.category ?? '')
-    setHydratedCategoryForSkill(id)
-  }, [category, hydratedCategoryForSkill, id, skillQuery.data])
-
   const fmValidation = useMemo(
     () => validateFrontmatter(skillMdText),
     [skillMdText],
@@ -99,8 +95,6 @@ export function SkillEditPage() {
     && !fileReadError
   const canSaveUpload = mode === 'upload' && selectedFile != null
   const saveDisabled = addVersionMutation.isPending || (mode === 'text' ? !canSaveText : !canSaveUpload)
-  const currentCategory = skillQuery.data?.categoryDisplay ?? skillQuery.data?.category ?? ''
-  const trimmedCategory = category.trim()
   const categorySaveDisabled = updateCategoryMutation.isPending
     || trimmedCategory.length === 0
     || trimmedCategory === currentCategory.trim()
@@ -212,7 +206,10 @@ export function SkillEditPage() {
             <input
               id="skill-edit-category"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) => {
+                setCategoryTouched(true)
+                setCategoryDraft(e.target.value)
+              }}
               placeholder="DevOps"
               className="h-9 w-full max-w-xs rounded-md border border-border bg-background px-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-[rgba(255,255,255,0.20)] focus:outline-none"
             />

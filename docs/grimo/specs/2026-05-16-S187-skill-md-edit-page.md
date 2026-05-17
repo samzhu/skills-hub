@@ -1,6 +1,6 @@
 # S187: Skill SKILL.md 編輯頁
 
-> 規格：S187 | 大小：M(13) | 狀態：⏳ Dev
+> 規格：S187 | 大小：M(13) | 狀態：✅ QA PASS
 > 日期：2026-05-16
 > 對應：PRD P2 更新已有 skill 版本 / P1 技能詳情頁 / S142a SkillDetailPage v2 / S163 EditSkillModal / S176 explicit publish skill name / S186 embedding source / S188 version label optional input
 > 執行前置：S186 必須先 ship；S187 不在 S186 前啟動 task loop。
@@ -457,7 +457,7 @@ E2E 評估：S187 是 browser/UI flow，但主要行為可由 Vitest + backend t
 
 ## 7. Implementation Results
 
-狀態：Implementation complete；等待 `$verifying-quality S187` 獨立 QA。
+狀態：QA PASS；等待 `$shipping-release S187` 歸檔 / changelog / tag。
 
 | AC | 結果 | Evidence |
 |---|---|---|
@@ -475,3 +475,15 @@ E2E 評估：S187 是 browser/UI flow，但主要行為可由 Vitest + backend t
 T06 補上的實際 bug fix：`Skill.riskLevel` 是 `@ReadOnlyProperty`，新版本發布若只改 aggregate 記憶體不會更新 DB；因此新增 `SkillRepository.clearRiskLevel(...)`，`SkillCommandService.addVersion(...)` / `publishVersion(...)` 儲存版本後把 `skills.risk_level` 清成 `NULL`。使用者點「儲存新版本」後，`/publish/validate?id=...&mode=version` 會先讀到 `riskLevel=null` 顯示「新版本驗證中」，等新掃描寫入 riskLevel 後才回 `/skills/{id}`。
 
 本輪 docs stale scan 未發現 `frontend/src/pages/docs/*` 仍宣稱 description 可直接在 modal/API 編輯；S187 文件中的 `EditSkillModal` 文字是現況掃描背景，不是產品現狀承諾。
+
+### QA Gate（2026-05-17）
+
+Verdict：PASS；local release gate 全綠，下一步是 `$shipping-release S187`。
+
+| Command | Result |
+|---|---|
+| `cd frontend && npm run verify` | PASS；`SkillEditPage.tsx` 分類欄位改成 server category + user draft derived value，移除同步 `setState` effect。 |
+| `cd backend && ./gradlew processAot` | PASS；前一輪 `verify-all.log` 的 `SecurityReportResponse` constructor error 在目前 source 不可重現。 |
+| `./scripts/verify-all.sh` | PASS；V01=PASS, V02=INFO `86.9% (4750 / 5467)`, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS；exit=0。 |
+
+Release completeness note：S187 implementation + QA 已完成，但 `docs/grimo/tasks/2026-05-17-S187-T*.md` 仍存在、spec 仍在 root specs、CHANGELOG / roadmap archive / release tag 尚未更新；下一輪 dev loop 必須先跑 `$shipping-release S187`，不能跳到 S189/S190。
