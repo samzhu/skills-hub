@@ -93,7 +93,7 @@ Scenario: 上傳合法的純 markdown skill
   Then 平台驗證 SKILL.md 格式符合 agentskills.io 規範
   And 自動標記為「低風險」
   And skill 進入「已上架」狀態
-  And 建立版本號 v1.0.0
+  And 建立版本號（未輸入時自動為 v1；作者也可自訂版本號）
 
 Scenario: 上傳含 scripts 的 skill
   Given 作者準備了含 scripts/ 目錄的 skill 資料夾
@@ -110,9 +110,9 @@ Scenario: 上傳不合規的 skill
   And skill 不會上架
 
 Scenario: 更新已有 skill 的版本
-  Given 作者已有一個 v1.0.0 的 skill 在平台上
+  Given 作者已有一個 v1 的 skill 在平台上
   When 作者上傳新版本
-  Then 平台建立 v1.1.0（或作者指定的版本號）
+  Then 平台建立下一個流水號版本（如 v2），或使用作者指定的版本號
   And 舊版本仍可下載
   And 詳情頁顯示完整版本歷史
 ```

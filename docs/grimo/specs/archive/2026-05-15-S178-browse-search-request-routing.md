@@ -1,7 +1,8 @@
 # S178 — Browse Search Entry Point Cleanup
 
 > SpecID: S178
-> Status: ⏳ in-progress
+> Status: ⛔ superseded 2026-05-16 — 取代為 **S189**
+> Superseded By: S189 — S178 已有 T01-T05/QA 歷史但未 ship；改由 S189 乾淨承接，避免干擾 S186→S187 主線。
 > Date: 2026-05-15
 > Size: S(9)
 > Related: S157 semantic search LAB enablement, S177 is_public-first search visibility, S094b dedicated semantic search page (superseded at UI route level by S178), S104 filter-active empty state, S106 browse sort mapping

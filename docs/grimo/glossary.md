@@ -20,7 +20,7 @@
 | 戰情室 | War Room | `WarRoom` | 臨時性的跨組織協作空間 |
 | 合作專案 | Collaborative Project | `Project` | 跨部門/跨公司的專案組合空間 |
 | 語意搜尋 | Semantic Search | `SemanticSearch` | 用 AI embedding 做自然語言能力匹配的搜尋 |
-| 版本 | Version | `Version` | 技能的版本號（semver 格式） |
+| 版本標籤 | Version Label | `version` | 技能版本的顯示與下載識別字串；作者可自訂，未輸入時系統用同一 skill 內的純數字流水號從 `1` 開始自動建立 |
 | 社群回報 | Community Flag | `Flag` | 使用者對已上架技能提交的問題回報 |
 | 使用數據 | Analytics | `Analytics` | 技能的下載次數、使用頻率等統計數據 |
 | 領域事件 | Domain Event | `DomainEvent` | 記錄領域中發生的不可變事實（如 SkillCreated, SkillVersionPublished） |

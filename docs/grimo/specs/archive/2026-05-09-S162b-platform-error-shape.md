@@ -1,8 +1,32 @@
 # S162b: API consistency — 401/403 走平台 ErrorResponse shape
 
-> Spec: S162b | Size: S(5) | Status: ⏸ deferred（2026-05-13 暫緩待研究）
+> Spec: S162b | Size: S(5) | Status: ⛔ cancelled / no-op（2026-05-16 查證後關閉）
 > Date: 2026-05-09
 > Origin: 拆自 S162 META — API consistency 補強；S162 v4.34/v4.35 ship 415/500，AC-1/2 (401/403) 拆出此 spec
+
+---
+
+## 0. Closure Decision（2026-05-16）
+
+**結論：不實作，關閉本 spec。**
+
+`frontend/src/api/auth.ts:30` 的登入探測只看 HTTP status：`GET /api/v1/me` 回 401 時直接 `return null`，前端不需要讀 401 body 裡的 `error` code 或 message 來呈現 UI。未登入狀態目前由 AppShell / MySkills / Notifications 等頁面顯示「登入」或空狀態，不依賴 `ErrorResponse`。
+
+`backend/src/main/java/io/github/samzhu/skillshub/shared/security/SecurityConfig.java:194` 的受保護路徑與 Spring Security filter chain 確實會讓部分 401/403 不走 `GlobalExceptionHandler`，所以原始技術觀察成立；但目前沒有產品需求要在 401 body 呈現額外資訊，也沒有前端流程消費 `AUTHENTICATION_REQUIRED` / `PERMISSION_DENIED` 這組新 code。
+
+`backend/src/main/java/io/github/samzhu/skillshub/shared/api/GlobalExceptionHandler.java:632` 已處理 controller / service 內丟出的 `AccessDeniedException`，並回現有平台 code：`UNAUTHORIZED` / `ACCESS_DENIED`。若未來真的需要統一 Security filter chain 的 JSON body，應另開小 spec，沿用現有 `UNAUTHORIZED` / `ACCESS_DENIED`，不要導入本 spec 草案裡的 `AUTHENTICATION_REQUIRED` / `PERMISSION_DENIED`。
+
+查證指令：
+
+```bash
+cd backend && ./gradlew test -x processTestAot \
+  --tests 'io.github.samzhu.skillshub.shared.security.MeControllerTest.me_withoutJwt_returns401' \
+  --tests 'io.github.samzhu.skillshub.shared.security.AdminControllerTest.adminEcho_withViewerJwt_returns403' \
+  --tests 'io.github.samzhu.skillshub.community.CommentControllerTest.delete_nonAuthor_returns403' \
+  --tests 'io.github.samzhu.skillshub.shared.api.GlobalExceptionHandlerTest.accessDeniedFromAuthenticatedReturns403'
+```
+
+結果：`BUILD SUCCESSFUL`。不加 `-x processTestAot` 時失敗在既有 generated AOT 檔名衝突（`SkillshubApplication__TestContext009_BeanDefinitions.java already exists`），不是 S162b 行為本身。
 
 ---
 

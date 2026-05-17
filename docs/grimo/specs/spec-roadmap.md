@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-16（修正順序：S186 embedding 同表化先處理；S187 edit page 等 S186 ship 後再做）
+> 最後更新：2026-05-16（S162b 查證後 no-op 關閉；S178 關閉並由 S189 乾淨承接；當前主線維持 S186 → S187）
 
 ## 使用說明
 
@@ -40,12 +40,14 @@
 | S142a | SkillDetailPage v2 frontend rework | M-L(13-15) | S142b API contract | ✅ v4.22.0 — 318/318 Vitest PASS (6 tasks: T01 foundation + T02 hero + T03 tabs + T04 FileExplorer + T05 Sidebar + T06 page assembly); 0 TS production errors |
 | S142b | SkillDetailPage v2 backend supplement (SkillScore composite + SecurityReport 4-quad + Skill aggregate field projection) | S-M(8-10) | S135a ✅ | ✅ v4.1.0 — 41/41 tests PASS (21 SecurityCategoryMapper + 3 SecurityReport + 6 SkillScore + 5 QualityScore + 4 SkillQueryService + 2 APIContract) |
 | S174 | Skill detail anonymous 401 not-found UX | XS(3) | S153 ✅, S122 ✅ | 📋 planned — Round 68 production Chrome found `/skills/{missing-id}` shows generic retry because API returns 401 before 404 |
-| S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⏳ in-progress — T01-T04 PASS: `/browse` semantic-only request contract, `/search` route removal, intent-summary deletion, docs/E2E sync；pending QA/ship |
+| S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⛔ superseded 2026-05-16 — 取代為 S189（舊 spec 已有 T01-T05/QA 歷史，但未 ship；關閉以免干擾 S186→S187 主線） |
 | S179 | Publish author anonymous login hint（未登入時作者欄位顯「請先登入後發布」，不再空白） | XS(7) | S154b ✅, S139 ✅ | 📐 in-design — spec ready for review |
 | S180 | Skill public native readback hotfix（`skills.is_public` native image 讀回不再把 Boolean 塞進 primitive boolean） | XS(3) | S168 ✅, S177 ✅ | ⏳ blocked — latest revision log recheck clean；logged-in Chrome UI verification unavailable in Codex ticks |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | 📋 planned — task files created (T01/T02 pending)；Round 69 production API found same skill list returns PRIVATE/versionCount=0 while detail returns PUBLIC/versionCount=1 |
 | S186 | Skill embedding 同表化（`skills.embedding` 取代 `vector_store`；一般 Skill 讀取不撈 embedding） | M(13) | S107 ✅, S157 ✅, S177 ✅, S185 ordering-only | ⏳ Dev — T01-T06 PASS；S186 §7 has EXPLAIN evidence; next: Phase 4 verification / QA；S187 waits until S186 ships |
-| S187 | Skill SKILL.md 編輯頁（詳情頁 edit 導向 `/skills/{id}/edit`；版本頁籤只顯示紀錄；description 來自 latest SKILL.md） | M(13) | S142a ✅, S163 ✅, S176 ✅, S186 ✅ required | 📐 in-design / ⏸ implementation waits for S186 — UI scope split from S186；spec §1-5 ready for review but do not start tasks until S186 ships |
+| S187 | Skill SKILL.md 編輯頁（詳情頁 edit 導向 `/skills/{id}/edit`；版本頁籤只顯示紀錄；description 來自 latest SKILL.md） | M(13) | S142a ✅, S163 ✅, S176 ✅, S186 required, S188 ordering-only | 📐 in-design / ⏸ implementation waits for S186 — UI scope split from S186；version input optional behavior delegated to S188 |
+| S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | S(8) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | 📐 in-design — spec §1-5 ready for review；可先於 S187 實作 |
+| S189 | Browse 搜尋入口驗證與收版（S178 superseded；重新驗證 `/browse` semantic-only contract、遷移 evidence tag、乾淨 ship） | S(9) | S186 required, S187 ordering-only | 📐 in-design — carry-over verification & ship；排在 S187 後，避免搜尋 cleanup 與 edit page 主線混雜 |
 
 ---
 
@@ -131,7 +133,7 @@
 | S161b'' | Request.description markdown safe subset (OWASP HtmlPolicyBuilder allowlist) — javascript: URL 擋 | S(3) | S161b' ✅ | ✅ shipped 2026-05-12 — MarkdownSafeDeserializer + 11/11 cases PASS |
 | S161c | V19 Flyway migration backfill 既存 stored XSS payload | XS(2) | S161 ✅ | ✅ shipped 2026-05-12 46eee1e |
 | S162 | API response consistency — 統一 error shape (415/500) | S(5) | — | ✅ v4.34.0+v4.35.0 — AC-3 415 + AC-5 500 fallback ship；AC-6 framework default；AC-1/2/8b 拆 S162b/c |
-| S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | ⏸ deferred 2026-05-13 — 暫緩待研究；S169 先不消費 final error shape |
+| S162b | API consistency — 401/403 走平台 ErrorResponse（SecurityConfig.exceptionHandling.authenticationEntryPoint + accessDeniedHandler） | S(5) | — | ⛔ cancelled/no-op 2026-05-16 — 技術觀察成立，但目前前端只用 401 status 判斷未登入，不消費 body error code；spec file moved to `specs/archive/`；若未來需要統一 filter-chain body，另開小 spec 並沿用 `UNAUTHORIZED` / `ACCESS_DENIED` |
 | S162c | API consistency — ownership 409→403 split spec superseded | S(6) | — | ⛔ superseded 2026-05-13 — 整合進 S169；舊 spec 已移 archive，不作實作依據 |
 | S163 | Skill owner management — PUT update + visibility toggle（registry 不需 suspend；私人 = revoke public:* ACL）| S(5) → 三段 ship | S144 ✅ | ✅ **shipped 2026-05-12 — 全部 8 ACs PASS**（backend 136564d + EditSkillModal fbce208 + visibility toggle 本 tick）|
 | S163b | Skill owner frontend — EditSkillModal（AC-7）+ PageHeader 編輯 button | XS(3) | S163 ✅ | ✅ shipped 2026-05-12 fbce208 |

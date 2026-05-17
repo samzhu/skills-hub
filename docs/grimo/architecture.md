@@ -85,8 +85,8 @@ Skill events 是跨模組可訂閱的公開 domain events，放在 `skill.domain
 | Event | Trigger | Payload |
 |-------|---------|---------|
 | `SkillCreatedEvent` | `Skill.create(cmd)` | name, description, author, category, isPublic |
-| `SkillVersionPublishedEvent` | `SkillVersion.publish(cmd)` | version, storagePath, fileSize, allowedTools, sourceEventId |
-| `SkillVersionPublishedFromAggregate` | `Skill.recordVersionPublished(version)`（state-change marker） | version |
+| `SkillVersionPublishedEvent` | `SkillVersion.publish(cmd)` | version label, storagePath, fileSize, allowedTools, sourceEventId |
+| `SkillVersionPublishedFromAggregate` | `Skill.recordVersionPublished(version)`（state-change marker） | version label |
 | `SkillSuspendedEvent` | `Skill.suspend(cmd)` | reason, suspendedBy |
 | `SkillReactivatedEvent` | `Skill.reactivate(cmd)` | reason |
 | `SkillDownloadedEvent` | `Skill.recordDownload()` | version, eventId |
@@ -413,12 +413,12 @@ S023 採 hybrid listener migration — 11 個 listener 中 9 個改 `@Applicatio
 ```
 skills (PK: id; UNIQUE: name)
 ├── name (lowercase-hyphen) / description / author / category / tags(JSONB)
-├── latest_version (semver) / risk_level / status / download_count
+├── latest_version (version label) / risk_level / status / download_count
 ├── created_at / updated_at TIMESTAMPTZ
 └── INDEX (category, status)
 
 skill_versions (PK: id; FK → skills)
-├── skill_id / version / storage_path (GCS) / file_size
+├── skill_id / version label / storage_path (GCS) / file_size
 ├── risk_findings JSONB / frontmatter JSONB
 ├── published_at / changelog
 └── INDEX (skill_id, published_at DESC)
