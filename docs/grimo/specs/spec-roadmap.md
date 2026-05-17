@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-17（新增 S191 發佈結果語意整理與 S192 作者顯示名稱一致性收斂）
+> 最後更新：2026-05-17（S193 semantic score transparency POC verified，進入 Dev-ready）
 
 ## 使用說明
 
@@ -50,6 +50,7 @@
 | S190 | Security Risk Reason UI（LOW + 0 findings 顯示 allowed-tools/scripts 原因、掃描空狀態說明、下載/查看檔案/回報疑慮三動作） | S(11) | S147 ✅, S183 ✅, S142b ✅ | 📐 in-design — spec ready for review；HTML prototype 已新增 |
 | S191 | 發佈結果與上架語意整理（先不做人工審核；移除審核佇列/24 小時/reviewer approve 文案；修 MEDIUM 文案） | S(9) | S096d4a ✅, S096d5a ✅, S098b ✅, S111 ✅, S190 ordering-only | 📐 in-design — spec ready for review |
 | S192 | 作者顯示名稱一致性收斂（全 repo 掃掉 user-facing raw `u_<id>`；補 PublishReview、semantic result cards、reviews/comments 等漏網路徑與 API display 欄位） | M(13) | S154 ✅, S154b ✅, S177 ✅, S186 ✅ | ⏳ Dev-ready — user approved 2026-05-17；next `$planning-tasks S192` |
+| S193 | Semantic Search Score Transparency（沿用 Spring AI score 排序；補 top-hit score logging + semantic card 相符度呈現） | XS(5) | S157 ✅, S177 ✅, S186 ✅, S189 ordering-only | ⏳ Dev-ready — Spring AI PgVectorStore POC verified；next `$planning-tasks S193` |
 
 ---
 
