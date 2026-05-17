@@ -30,20 +30,22 @@ IMPORTANT: Follow these in every session.
 
   **「聽不懂」/「白話一點」/「重講」= 硬訊號 — 整題從新的實體 lead 重寫**（不是改一個詞、不是換個比喻、不是縮短句子）。適用所有 grill / proposal / option presentation / cross-domain explanation / QA finding / ship summary。
 
-> Loop 操作層面的 3 條原則（Loop-Hint-Verify / Spec-Only-Handoff / No-Spec-Means-E2E）寫在 `.claude/loop.md`；Codex Automation 版本寫在 `.codex/loop.md`，不重複於此。
+> Automation-specific 工作流不要塞回 `AGENTS.md`。本檔只放穩定 repo 規則；Codex automation 要依 prompt 明確讀 `.codex/loop.dev.md`（功能開發）或 `.codex/loop.site-audit.md`（正式站巡檢）。舊的 `.codex/loop.md` 保留給 legacy / general loop。
 
-## Workflow Skills
+## Goal Routing
 
-```
-$defining-product → $planning-project → $planning-spec S00N
-    → $planning-tasks S00N ⟺ $implementing-task (loop)
-    → [subagent QA: $verifying-quality] → $shipping-release
-```
+當次要做什麼由 user goal 或 Codex Automation prompt 指定；`AGENTS.md` 不承載完整狀態機。
 
-Specialist skills are routed by goal:
-
-| Goal / 狀態 | Skill |
+| Goal | Entry file / skill |
 |---|---|
+| 一次性 feature / bug | 讀相關 spec + touched code，直接完成該 scope |
+| 功能開發 automation | 讀 `.codex/loop.dev.md`，由 NEXT_SKILL 推進 |
+| 正式站巡檢 automation | 讀 `.codex/loop.site-audit.md`，可產 docs-only finding/result 或 `Auto-Draft` production bug spec；人類確認前 dev loop 不執行 |
+| legacy / general loop | 讀 `.codex/loop.md` |
+| 純設計 | `$planning-spec SNNN` |
+| spec 實作 | `$planning-tasks SNNN`；`$implementing-task` 只由它路由 |
+| QA gate | `$verifying-quality SNNN` |
+| release / ship | `$shipping-release SNNN` |
 | 同錯誤連續出現、build/test/CI 沒進展 | `$root-cause-debugging` |
 | Spring Boot config / profile / properties / starter 選型 | `$springboot-project-architect` |
 | Browser E2E / Playwright / acceptance test | `$playwright-expert` |
@@ -52,21 +54,6 @@ Specialist skills are routed by goal:
 | 隔離 POC / 多輪 debug / hotfix | `$using-git-worktrees` |
 | 交班 / 接班 | `$handover` / `$takeover` |
 | 反覆卡住後檢討 | `$retro` |
-
-## Codex Goal-Driven Workflow
-
-`AGENTS.md` 只放穩定 repo 規則；當次要做什麼由 user goal / Codex Automation prompt 指定；feature 真相與驗收標準寫在 spec doc。
-
-Codex 執行前先判斷 goal 類型：
-
-| Goal 類型 | 必讀 | 執行方式 |
-|---|---|---|
-| 單次 feature / bug | 相關 spec doc + touched code | 直接完成該 scope，跑最小必要 verify |
-| `next spec tick` / `continue roadmap` / `loop` / automation wake-up | `.codex/loop.md` + roadmap + progress ledger | 照 `.codex/loop.md` 只做 1 個 unit，結尾回 EXIT label |
-| 純設計 | `docs/grimo/PRD.md` + roadmap + 相關 ADR | 用 `$planning-spec` 產出 spec，不實作 |
-| spec 實作 | 對應 spec + task files | 用 `$planning-tasks` 作為 hub；不要直接繞過 task loop |
-| release / ship | spec §7 + verify result + changelog/roadmap | 用 `$shipping-release`；不要 inline 模仿 release 流程 |
-| debug / config / e2e / skill authoring / handover | 對應 specialty docs + `.codex/loop.md` Skill Router | 用對應 specialist skill，不硬塞進 `$planning-tasks` |
 
 Codex skill 觸發使用 `$skill-name`（例如 `$planning-tasks S169`）。Claude Code slash command 可使用 `/planning-tasks S169`；文件若同時服務兩邊，兩種寫法都可標註，但 Codex Automation prompt 必須優先使用 `$skill-name`。
 
@@ -88,7 +75,11 @@ Codex skill 觸發使用 `$skill-name`（例如 `$planning-tasks S169`）。Clau
 | `docs/grimo/CHANGELOG.md` | What shipped + when (appended by `/shipping-release`) |
 | `docs/grimo/adr/ADR-NNN-<slug>.md` | In-development decisions that extend or contradict PRD |
 | `docs/grimo/debugging-playbook.md` | Symptom-indexed root-cause catalog — 跨 spec native/AOT pitfall family；新 family 在 `/shipping-release` 時 append（規則見檔尾「維護規則」段）|
-| `.codex/loop.md` | Codex App Automation 每 tick 的 decision tree / EXIT label / prompt contract |
+| `.codex/loop.dev.md` | Codex 功能開發 automation 狀態機：NEXT_SKILL、worktree policy、exit label |
+| `.codex/loop.site-audit.md` | Codex 正式站巡檢 automation 狀態機：production flow、finding format、docs-only write scope |
+| `.codex/prompts/dev-loop.md` | 可貼到 Codex App 的功能開發 automation prompt |
+| `.codex/prompts/site-audit-loop.md` | 可貼到 Codex App 的正式站巡檢 automation prompt |
+| `.codex/loop.md` | Legacy / general Codex loop 狀態機；新 automation 優先使用專用 loop |
 | `docs/grimo/codex-loop-automation.md` | Claude `/loop` → Codex Automations 的移植說明與可貼上的 prompt |
 
 
@@ -98,7 +89,11 @@ Codex skill 觸發使用 `$skill-name`（例如 `$planning-tasks S169`）。Clau
 skills-hub/
 ├── AGENTS.md                          ← Codex repo instructions
 ├── CLAUDE.md                          ← Claude Code repo instructions
-├── .codex/loop.md                     ← Codex automation tick state machine
+├── .codex/
+│   ├── loop.dev.md                    ← Codex 功能開發 automation 狀態機
+│   ├── loop.site-audit.md             ← Codex 正式站巡檢 automation 狀態機
+│   ├── loop.md                        ← legacy / general loop
+│   └── prompts/                       ← 可貼到 Codex App 的 automation prompt 原稿
 ├── docs/grimo/
 │   ├── PRD.md                         ← 產品需求文件
 │   ├── codex-loop-automation.md       ← Codex loop 操作說明
