@@ -1,6 +1,6 @@
 # S192 - 作者顯示名稱一致性收斂
 
-> Status: ⏳ Dev — T09 PASS；next `$verifying-quality S192`
+> Status: ✅ QA PASS；next `$shipping-release S192`
 > Owner: Codex  
 > Date: 2026-05-17  
 > Size: M(13)  
@@ -374,3 +374,23 @@ Verdict: REJECT-FIX. Do not ship S192 yet. Re-enter `$planning-tasks S192` and c
 `cd e2e && npx playwright test tests/S140-critical-path-browse-search.spec.ts tests/S140-critical-path-skill-detail.spec.ts --grep @happy-path` PASS（2 tests）。`/browse` 的 `docker-compose-helper` card 顯示 `Alice`；`/skills/{skillId}` detail header 顯示 `作者：Alice`。Technical route / command segment 仍保留 `alice`。
 
 Next step: re-run independent QA via `$verifying-quality S192`.
+
+### QA Review 2026-05-17 — PASS
+
+`./scripts/verify-all.sh` exit=0 after T09 seeded author display data for the browser happy-path fixture. V07 now proves `/browse` and skill detail show `Alice` instead of a blank author label, while route/install technical segments can still use `alice`.
+
+| Command | Result | Evidence |
+|---|---|---|
+| V01 `./gradlew clean test jacocoTestReport` | PASS | backend tests completed; JaCoCo report generated |
+| V02 JaCoCo LINE summary | INFO | 86.9% line coverage (`covered=4731 / total=5447`) |
+| V03 `./gradlew jacocoTestCoverageVerification` | PASS | coverage gate passed |
+| V04 `cd frontend && npm test` | PASS | frontend Vitest gate passed |
+| V05 `cd frontend && npm run verify` | PASS | ESLint + TypeScript passed |
+| V06 `cd frontend && npm test -- --coverage` | PASS | frontend coverage gate passed |
+| V07 `cd e2e && npx playwright test --grep @happy-path` | PASS | S140 browse/detail happy-path E2E passed after T09 seed fix |
+| V08a `./gradlew processAot` | PASS | AOT processing passed |
+| V08b `./gradlew --no-daemon -x test bootBuildImage ...` | PASS | native image build passed |
+
+Testability gate: CLEAR. AC-S192-1 through AC-S192-12 have test or source-inspection evidence in §7; no manual-only acceptance criterion remains.
+
+Verdict: PASS. S192 is ready for `$shipping-release S192`.
