@@ -1,6 +1,6 @@
 # S193: Semantic Search Score Transparency
 
-> 規格：S193 | 大小：XS(5) | 狀態：⏳ Dev-ready — Spring AI PgVectorStore POC verified；next `$planning-tasks S193`
+> 規格：S193 | 大小：XS(5) | 狀態：⏳ Plan — task files created；next `$planning-tasks S193`
 > 日期：2026-05-17
 > 來源：Production browse search report — `/browse` 輸入「甜點」後回傳公開「產生字幕檔」
 > 對應：S157 semantic search enablement / S177 search visibility / S186 skills.embedding 同表化 / S189 browse search entry point
@@ -248,16 +248,20 @@ Log top 3 only. The goal is debugging relevance, not dumping the whole result li
 
 ---
 
-## 6. 開發交接
+## 6. Task Plan
 
-下一步：`$planning-tasks S193`
+POC：not required for task creation — §7 已用本 repo 實際 `spring-ai-pgvector-store-2.0.0-M6.jar` 驗證 Spring AI PgVectorStore 的 threshold / distance / score 行為；S193 不引入新套件、不改 SQL 公式，只補可觀測性與 UI 證據。
 
-交接重點：
+| 順序 | Task file | AC | 狀態 | 驗證 |
+|---:|---|---|---|---|
+| 1 | `docs/grimo/tasks/2026-05-17-S193-T01-backend-score-logging.md` | AC-S193-1, AC-S193-2, AC-S193-3, AC-S193-4 | pending | `cd backend && ./gradlew test --tests "*SemanticSearch*"` |
+| 2 | `docs/grimo/tasks/2026-05-17-S193-T02-browse-score-visibility.md` | AC-S193-5, AC-S193-6 | pending | `cd frontend && npm test -- SkillCard`；`cd e2e && npx playwright test --grep @S193`；`./scripts/verify-all.sh` |
 
-- 不改 semantic search 算法；POC 已驗證目前公式與 Spring AI PgVectorStore M6 一致。
-- 第一個 task 應補 backend log：`query`、`resultsCount`、`topHitIds`、`topHitNames`、`topHitScores`。
-- 第二個 task 應確認 `/browse` card 顯示 semantic API 回來的 `score` / 相符度。
-- 測試重點是「score 高代表更接近」與「response 由高到低排序」，不是把 `甜點 -> 產生字幕檔` 改成空結果。
+執行順序：
+
+- T01 先讓 backend response score / ordering / log evidence 可查。這一步完成後，production log 能直接看到 `resultsCount` 與 top hit scores，不必靠 request sequence 推理。
+- T02 再確認 `/browse` 的卡片顯示 semantic API 回來的 score，並新增瀏覽器證據。現有 `SkillCard` 已有「XX% 相符」badge，task 要確認 assembled `/browse` path 真的把 semantic `score` 傳到 card。
+- 不改 semantic search 算法、不調高 threshold、不加 keyword overlap guard；測試重點是 score 越高越接近、response 由高到低排序、低分命中在 UI 上有明確相符度。
 
 ## 7. 驗證結果
 
