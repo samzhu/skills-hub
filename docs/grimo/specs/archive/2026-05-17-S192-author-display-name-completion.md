@@ -1,6 +1,6 @@
 # S192 - 作者顯示名稱一致性收斂
 
-> Status: ✅ QA PASS；next `$shipping-release S192`
+> Status: ✅ shipped v4.70.0
 > Owner: Codex  
 > Date: 2026-05-17  
 > Size: M(13)  
@@ -394,3 +394,15 @@ Next step: re-run independent QA via `$verifying-quality S192`.
 Testability gate: CLEAR. AC-S192-1 through AC-S192-12 have test or source-inspection evidence in §7; no manual-only acceptance criterion remains.
 
 Verdict: PASS. S192 is ready for `$shipping-release S192`.
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 2 | 2 | Existing S154/S154b identity pattern and existing DTO/frontend helper surfaces were reused; no new framework, schema migration, or external service. |
+| Uncertainty | 2 | 2 | The planned display-vs-identifier split held; QA only found a fixture/display-data gap, not a design pivot. |
+| Dependencies | 2 | 2 | Cross-module changes touched shared/security, search, review, community, notification, skill, frontend, and e2e fixtures, but no new package or service dependency. |
+| Scope | 3 | 3 | Six backend/frontend surfaces plus docs and E2E seed support matched the original M-sized cross-cutting scope. |
+| Testing | 2 | 3 | Full verification required backend/frontend suites, frontend coverage, Playwright happy-path, AOT, and native image build; T09 added browser fixture evidence after QA reject. |
+| Reversibility | 2 | 2 | API fields were additive and UI helper behavior is localized; reverting would be moderate because several surfaces now depend on display companion fields. |
+| **Total** | **13 / M** | **14 / M** | Bucket unchanged; actual score +1 because the release gate exposed and fixed the browser fixture path. |

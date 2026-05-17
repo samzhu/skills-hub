@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.70.0] — S192 Author Display Name Completion（2026-05-17）
+
+### Changed
+
+- **User-facing author labels** — publish review, skill cards, semantic search cards, subscriptions, reviews, request comments, and new notification titles now display human-readable author data instead of raw `u_<id>` platform user ids.
+- **Display vs identifier split** — frontend display helpers no longer treat `author` / `authorId` as a visible fallback, while route segments, filters, install commands, ACL checks, and delete ownership comparisons still use stable ids or handles.
+- **Semantic search result shape** — semantic result DTOs now include author display companion fields for rendering without changing embedding search text or ranking.
+- **E2E seed data** — `/internal/test/seed/skill` now seeds author display data before browser assertions run, so `/browse` and skill detail show `Alice` instead of a blank author label.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.9%）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Targeted evidence：`cd backend && ./gradlew test --tests "*TestDataControllerTest"` PASS；`cd e2e && npx playwright test tests/S140-critical-path-browse-search.spec.ts tests/S140-critical-path-skill-detail.spec.ts --grep @happy-path` PASS；S192 AC-S192-1~12 covered in spec §7.
+- Production deploy：not run in this release tick；S192 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-17-S192-author-display-name-completion.md` → `docs/grimo/specs/archive/2026-05-17-S192-author-display-name-completion.md`
+- `docs/grimo/tasks/2026-05-17-S192-*.md` 已刪除。
+- Final size re-score：M(13) → M(14)，原因是 full release gate 後新增 T09 e2e seed/display-data 修正，確保 `/browse` 與 skill detail assembled browser path 顯示作者名稱。
+
 ## [v4.69.0] — S174 Skill Detail Anonymous Not-Found UX（2026-05-17）
 
 ### Fixed
