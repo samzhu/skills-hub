@@ -112,11 +112,21 @@ git status --short
 - 普通 implementation 不因 Local checkout dirty files 停止。
 - 只檢查目前 worktree 的 dirty state，避免 stage unrelated changes。
 - 只有 merge、release、deploy、handoff 回 Local 前，才跑 Dirty Overlap Gate。
+- 不要刪除目前這個 Codex App execution worktree；它由 Codex App 管理 lifecycle。tick 結束時要留下乾淨 commit，並回報 worktree path、branch、commit、handoff / merge 狀態。
 
 如果 automation 跑在 Local checkout：
 
 - `git status --short` 有 unrelated runtime/code/config 變更時，不要直接實作會碰同一批檔案的 task。
 - 若只是 unrelated docs 變更，dev loop 可在自己的 touched files 範圍內繼續，但不要 stage user docs。
+
+### Worktree Cleanup
+
+automation 如果另外手動建立 child worktree / POC worktree，tick 結束前必須收尾：
+
+1. 若 worktree 內沒有要保留的變更：確認 `git status --short` 乾淨後，從主 checkout 執行 `git worktree remove <path>`。
+2. 若 worktree 內有完成成果：先 commit，回報 branch / commit / merge 或 cherry-pick 指令；合回或確認保留後再 remove。
+3. 若 worktree 內有 blocker evidence：commit blocker note 或回報 path + branch + blocker fingerprint；不要留下沒有說明的孤兒 worktree。
+4. 不要刪 Codex App 當前 execution worktree；只清理本 tick 額外建立的 worktree。
 
 ## Dirty Overlap Gate
 
@@ -153,7 +163,8 @@ git diff --name-only main...<target-branch>
 7. 更新 spec / task / changelog / roadmap 中對應的結果。
 8. 只 stage 本 tick 自己改的檔案。
 9. commit 一個 atomic result，或在不能安全 commit 時回 `BLOCKED`。
-10. 結尾回 exactly one EXIT label。
+10. 清理本 tick 額外建立的 child worktree；Codex App execution worktree 只回報，不刪。
+11. 結尾回 exactly one EXIT label。
 
 ## Write Scope
 
@@ -196,6 +207,9 @@ Dev loop 不應修改：
 
 Commit:
 - <hash or none>
+
+Worktree:
+- <current worktree path / branch / commit / cleanup result>
 
 NEXT_SKILL:
 - <下一輪建議的 $skill-name or none>

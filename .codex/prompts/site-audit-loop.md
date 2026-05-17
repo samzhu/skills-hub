@@ -36,6 +36,7 @@ Do not deploy.
 Do not treat Local runtime dirty files as blockers because this loop is docs-only.
 Do not modify docs/grimo/specs/spec-roadmap.md.
 If creating a production bug spec, mark it Status: Auto-Draft and automation_status: auto-draft. Do not create task files. Do not mark it planned or active. Dev-loop must not execute it until a human changes it to Approved-for-Dev or adds an executable roadmap row.
+Do not delete the current Codex App execution worktree. If this tick creates any additional child worktree, clean it up before exit according to .codex/loop.site-audit.md.
 
 If browser/Chrome tools are unavailable, do not pretend UI verification happened. Write a tool-unavailable docs-only note only when useful, then return BLOCKED.
 

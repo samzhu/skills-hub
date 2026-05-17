@@ -246,12 +246,22 @@ Site-audit loop 是 docs-only：
 - 不跑 Dirty Overlap Gate，除非要 merge / handoff / release（正常不會）。
 - 只 stage 本 tick 新增或更新的 `docs/grimo/site-audit/**` finding/result。
 - 若本輪新增 Auto-Draft spec，只 stage 本 tick 新增的 spec draft，不 stage roadmap，不 stage task files。
+- 若跑在 Codex App background worktree，不要刪除目前 execution worktree；tick 結束時回報 worktree path、branch、commit。
 
 如果 docs-only path 與 user local docs dirty state 衝突：
 
 - 不覆寫 user changes。
 - 改用新的 finding file name。
 - 若無法安全新增新檔，回 `BLOCKED`。
+
+### Worktree Cleanup
+
+site-audit loop 原則上不需要再手動建立額外 worktree。若本 tick 另外建立 child worktree / POC worktree，結束前必須收尾：
+
+1. 沒有要保留的變更：確認 `git status --short` 乾淨後，從主 checkout 執行 `git worktree remove <path>`。
+2. 有 docs-only finding / Auto-Draft spec：先 commit，回報 branch / commit / handoff 指令；合回或確認保留後再 remove。
+3. 有 tool-unavailable / blocker evidence：寫 docs-only note 或回報 path + branch + blocker fingerprint；不要留下沒有說明的孤兒 worktree。
+4. 不要刪 Codex App 當前 execution worktree；只清理本 tick 額外建立的 worktree。
 
 ## One Tick Algorithm
 
@@ -264,7 +274,8 @@ Site-audit loop 是 docs-only：
 7. 無 bug：新增或更新一份 audit result。
 8. 只 stage docs-only output。
 9. commit docs-only result；不能安全 commit 時回 `BLOCKED`。
-10. 結尾回 exactly one EXIT label。
+10. 清理本 tick 額外建立的 child worktree；Codex App execution worktree 只回報，不刪。
+11. 結尾回 exactly one EXIT label。
 
 ## Exit Labels
 
@@ -291,6 +302,9 @@ Evidence:
 
 Commit:
 - <hash or none>
+
+Worktree:
+- <current worktree path / branch / commit / cleanup result>
 
 Next audit:
 - <下一輪建議 flow>

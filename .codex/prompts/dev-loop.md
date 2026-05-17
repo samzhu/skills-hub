@@ -34,6 +34,7 @@ Do not modify docs/grimo/site-audit/** unless the user explicitly asks to conver
 Do not execute specs marked Status: Auto-Draft or automation_status: auto-draft. These are site-audit drafts and require human approval before dev-loop may plan or implement them.
 
 If running in a Codex background worktree, do not block ordinary implementation on Local checkout dirty files. Only run Dirty Overlap Gate before merge, release, deploy, or handoff back to Local, exactly as described in .codex/loop.dev.md.
+Do not delete the current Codex App execution worktree. If this tick creates any additional child worktree, clean it up before exit according to .codex/loop.dev.md.
 
 Never stage or commit unrelated user changes. If repo files conflict about NEXT_SKILL, report the conflicting file paths and return BLOCKED instead of guessing.
 
