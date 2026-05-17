@@ -126,15 +126,40 @@ class SkillQueryServiceVisibilityTest extends RepositorySliceTestBase {
         assertThat(result.getOpenFlagCount()).isEqualTo(1L);
     }
 
+    @Test
+    @DisplayName("AC-S185-3: category counts use same visibility filter as skill list")
+    @Tag("AC-S185-3")
+    void categoryCountsUseSameVisibilityFilterAsSkillList() {
+        seed("testing-public", true, List.of(), null, "testing");
+        seed("video-private", false, List.of(), null, "video");
+        when(principalContextService.currentPrincipalKeys()).thenReturn(Set.of());
+
+        var categories = queryService.getCategoryCounts();
+
+        assertThat(categories)
+                .extracting(CategoryCount::name)
+                .contains("testing")
+                .doesNotContain("video");
+        assertThat(categories)
+                .filteredOn(category -> category.name().equals("testing"))
+                .singleElement()
+                .extracting(CategoryCount::count)
+                .isEqualTo(1L);
+    }
+
     private String seed(String name, boolean isPublic, List<String> aclEntries) {
         return seed(name, isPublic, aclEntries, null);
     }
 
     private String seed(String name, boolean isPublic, List<String> aclEntries, String riskLevel) {
+        return seed(name, isPublic, aclEntries, riskLevel, "testing");
+    }
+
+    private String seed(String name, boolean isPublic, List<String> aclEntries, String riskLevel, String category) {
         var now = Instant.now();
         var id = UUID.randomUUID().toString();
         skillRepo.save(Skill.fromRow(
-                id, name, "S177 keyword fixture", "u_alice0", "testing",
+                id, name, "S177 keyword fixture", "u_alice0", category,
                 "1.0.0", riskLevel, "PUBLISHED", 0L, now, now, aclEntries, null));
         jdbc.update("UPDATE skills SET is_public = :isPublic, risk_level = :riskLevel WHERE id = :id",
                 new org.springframework.jdbc.core.namedparam.MapSqlParameterSource()

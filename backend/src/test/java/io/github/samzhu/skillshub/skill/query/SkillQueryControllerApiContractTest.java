@@ -124,6 +124,34 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
     }
 
     @Test
+    @DisplayName("AC-S185-4: list JSON keeps privacy contract while exposing filled list fields")
+    @Tag("AC-S185-4")
+    void listJsonKeepsPrivacyContractWhileExposingFilledListFields() throws Exception {
+        var skillId = "s185-contract-" + uniqueSuffix();
+        var fixture = Skill.fromRow(skillId, "s185-contract", "fixture", "alice", "testing",
+                "Testing", "1.0.0", "LOW", "PUBLISHED", 0L, Instant.parse("2026-05-15T21:00:00Z"),
+                Instant.parse("2026-05-15T21:01:00Z"), List.of("user:alice:read"), null,
+                0.0, 0L, true)
+                .withDetail(true, Instant.parse("2026-05-15T21:06:42Z"), "MIT",
+                        List.of("codex"), 1L, 0L)
+                .withViewerPermissions(new ViewerPermissions(true, true, true, true, true, true, true));
+        Mockito.when(skillQueryService.search(
+                        ArgumentMatchers.isNull(), ArgumentMatchers.isNull(),
+                        ArgumentMatchers.isNull(), ArgumentMatchers.any()))
+                .thenReturn(new PageImpl<>(List.of(fixture)));
+
+        mockMvc.perform(get("/api/v1/skills"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].visibility").value("PUBLIC"))
+                .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].verified").value(true))
+                .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].latestVersionPublishedAt").exists())
+                .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].versionCount").value(1))
+                .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].ownerId").doesNotExist())
+                .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].aclEntries").doesNotExist())
+                .andExpect(jsonPath("$.content[?(@.id == '" + skillId + "')].viewerPermissions").doesNotExist());
+    }
+
+    @Test
     @DisplayName("S159b AC-4: GET /skills?category=Testing controller 起手 lowercase → service 收到 'testing'")
     @Tag("AC-4")
     void s159b_searchCategoryParam_lowercasedBeforeServiceCall() throws Exception {

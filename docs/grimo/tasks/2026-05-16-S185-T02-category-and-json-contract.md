@@ -75,4 +75,20 @@ And（而且）response body 不包含 `content[0].ownerId`、`content[0].aclEnt
 - S185-T01 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-17
+Test: `categoryCountsUseSameVisibilityFilterAsSkillList` (`backend/src/test/java/io/github/samzhu/skillshub/skill/query/SkillQueryServiceVisibilityTest.java`)
+Test: `listJsonKeepsPrivacyContractWhileExposingFilledListFields` (`backend/src/test/java/io/github/samzhu/skillshub/skill/query/SkillQueryControllerApiContractTest.java`)
+Files changed:
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/query/SkillQueryService.java` (modified)
+- `backend/src/test/java/io/github/samzhu/skillshub/skill/query/SkillQueryServiceVisibilityTest.java` (modified)
+- `backend/src/test/java/io/github/samzhu/skillshub/skill/query/SkillQueryControllerApiContractTest.java` (modified)
+Notes: `GET /api/v1/categories` now applies the same `is_public OR acl_entries ??| readPatterns` visibility set as `GET /api/v1/skills`; list JSON contract now asserts `visibility/verified/latestVersionPublishedAt/versionCount` exist and `ownerId/aclEntries/viewerPermissions` do not.
+
+## 驗證結果
+PASS：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryServiceVisibilityTest --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest` → `BUILD SUCCESSFUL in 2m 9s`
+
+## Production evidence note
+Not run in this tick. S185 still needs full QA / release / deploy before AC-S185-5 production list/detail recheck can be captured.

@@ -492,15 +492,19 @@ public class SkillQueryService {
 	 */
 	public List<CategoryCount> getCategoryCounts() {
 		// S031: 與 search() 一致，只計 PUBLISHED；避免 sidebar 顯示「DevOps (16)」但 list 只給 13 的不一致
+		var aclPatterns = readPatterns(principalContextService.currentPrincipalKeys());
+		// S185: category sidebar 必須和 list 使用同一組可見資料，否則 anonymous 會看到 private-only count。
 		return jdbc.query("""
 				SELECT category AS name, COUNT(*) AS count
 				  FROM skills
 				 WHERE category IS NOT NULL
 				   AND status = 'PUBLISHED'
+				   AND (is_public = TRUE OR acl_entries ??| :aclPatterns)
 				 GROUP BY category
 				 ORDER BY count DESC
 				""",
-				new MapSqlParameterSource(),
+				new MapSqlParameterSource("aclPatterns",
+						new SqlParameterValue(Types.ARRAY, aclPatterns.toArray(new String[0]))),
 				(rs, rowNum) -> new CategoryCount(rs.getString("name"), rs.getLong("count")));
 	}
 

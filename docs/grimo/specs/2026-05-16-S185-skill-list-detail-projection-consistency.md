@@ -342,12 +342,12 @@ The method already has access to `principalContextService`, so it does not need 
 
 ## 6. Task Plan
 
-Planning status: task files created; S185-T01 completed, S185-T02 pending.
+Planning status: S185-T01 and S185-T02 completed; QA / release pending.
 
 | Task | File | ACs | Status | Verification |
 | --- | --- | --- | --- | --- |
 | S185-T01 | `docs/grimo/tasks/2026-05-16-S185-T01-list-projection-fields.md` | AC-S185-1, AC-S185-2 | PASS — 2026-05-17 | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryServiceVisibilityTest` → `BUILD SUCCESSFUL in 2m 5s` |
-| S185-T02 | `docs/grimo/tasks/2026-05-16-S185-T02-category-and-json-contract.md` | AC-S185-3, AC-S185-4, AC-S185-5 evidence hook | pending | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryServiceVisibilityTest --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest` |
+| S185-T02 | `docs/grimo/tasks/2026-05-16-S185-T02-category-and-json-contract.md` | AC-S185-3, AC-S185-4, AC-S185-5 evidence hook | PASS — 2026-05-17 | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryServiceVisibilityTest --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest` → `BUILD SUCCESSFUL in 2m 9s` |
 
 Execution order:
 
@@ -355,7 +355,7 @@ Execution order:
 2. S185-T02 then applies the same visibility clause to category counts and adds the MockMvc JSON contract guard.
 3. After both tasks pass, run `cd backend && ./gradlew test`, deploy through Cloud Build when needed, and capture AC-S185-5 production list/detail recheck plus Cloud Run `severity>=ERROR` log result.
 
-One-unit loop note: 2026-05-17 automation tick implemented S185-T01 only because `.codex/loop.md` requires one clear commit per tick. Next tick should enter S185-T02 via `$implementing-task`.
+One-unit loop note: 2026-05-17 automation ticks implemented S185-T01 and S185-T02 as separate commits because `.codex/loop.md` requires one clear commit per tick. Next tick should enter QA / release preflight via `$planning-tasks S185`.
 
 ## 7. Results
 
@@ -365,4 +365,10 @@ One-unit loop note: 2026-05-17 automation tick implemented S185-T01 only because
 - List rows now include S142b list-safe fields from `skill_versions` / `flags`.
 - Verification: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryServiceVisibilityTest` → `BUILD SUCCESSFUL in 2m 5s`.
 
-Pending: S185-T02 category count visibility filter, JSON contract test, and production recheck evidence after release.
+2026-05-17 S185-T02 PASS:
+
+- `GET /api/v1/categories` now counts only skills visible to the current caller, using the same `is_public OR acl_entries ??| readPatterns` rule as `GET /api/v1/skills`.
+- `GET /api/v1/skills` MockMvc JSON contract now asserts list-safe fields are present and privacy/action fields stay hidden in list view.
+- Verification: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryServiceVisibilityTest --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest` → `BUILD SUCCESSFUL in 2m 9s`.
+
+Pending: full QA, release, deploy, and AC-S185-5 production list/detail recheck.
