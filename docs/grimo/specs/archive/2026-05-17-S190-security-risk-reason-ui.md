@@ -2,7 +2,7 @@
 
 > SpecID: S190
 > Date: 2026-05-17
-> Status: ✅ QA PASS — ready for $shipping-release S190
+> Status: ✅ shipped v4.74.0
 > Type: Full-stack UX clarity spec
 > Estimate: S(11)
 > Depends: S147 ✅, S183 ✅, S142b ✅
@@ -730,4 +730,26 @@ Browser E2E is not required at task-planning time. S190 changes a component that
 
 QA gate found one stale E2E expectation: S140 AC-3 still waited for `無風險` while S190 intentionally renders NONE as `未發現風險`. Updated `e2e/tests/S140-critical-path-publish.spec.ts`, reran V07 successfully, then reran the full `./scripts/verify-all.sh` with exit=0.
 
-S190 is ready for `$shipping-release S190`.
+### Release Verification
+
+| Command | Result |
+|---|---|
+| `./scripts/verify-all.sh` | PASS — V01=PASS, V02=INFO (line coverage 86.9%, covered=4828 / total=5554), V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS; `Verdict: ✅ all CRITICAL passed; exit=0`. |
+
+Production deploy was not run in this release tick; S190 has local release evidence only.
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 2 | 2 | Existing JSONB report map, `SkillVersion.allowedTools`, and React tab patterns worked as planned; no framework pivot. |
+| Uncertainty | 1 | 1 | The product language was concrete before implementation: separate `RiskLevel`, `finding`, and `riskReason`. |
+| Dependencies | 2 | 3 | Actual work depended on S147 scanner findings, S183 security UI, S142b report API, plus S140 E2E wording compatibility. |
+| Scope | 2 | 3 | Backend response/scanner/domain parsing, frontend API/components/docs pages, prototypes, and E2E expectation all changed. |
+| Testing | 2 | 3 | Release required backend Spring tests, frontend component/full tests, Playwright `@happy-path`, AOT, and image build. |
+| Reversibility | 2 | 2 | `riskReasons` is additive and fallback-safe, but it is persisted in `risk_assessment` and exposed in the API contract. |
+| **Total** | **11 / S** | **14 / M** | Bucket shift S→M; root cause: cross-surface wording/API/docs/E2E sync was broader than the initial UI clarity estimate. |
+
+### Release Result
+
+S190 shipped as `v4.74.0`.

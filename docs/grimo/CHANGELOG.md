@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.74.0] — S190 Security Risk Reason UI（2026-05-17）
+
+### Changed
+
+- **Risk reasons in security reports** — `GET /security-report` now returns `riskReasons[]`, so `LOW + 0 findings` can explain whether the level came from `allowed-tools`, `scripts/`, findings, or a clean NONE case.
+- **Security tab clarity** — the skill detail Security tab now shows reason cards and the available actions (`下載技能`, `查看檔案`, `回報疑慮`) instead of leaving users with only an empty findings list.
+- **NONE wording** — user-facing NONE labels now say `未發現風險`, with copy that says this is not a 100% safety guarantee.
+- **Docs and prototype sync** — risk tier docs, upload docs, first-skill docs, glossary, and HTML prototypes now use the same `RiskLevel` / `finding` / `riskReason` language.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.9%，covered=4828 / total=5554）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Targeted evidence：`cd backend && ./gradlew test --tests '*SecurityReportServiceTest' --tests '*SecurityReportControllerTest' --tests '*SkillVersionAggregateTest' --tests '*ScanOrchestratorTest'` PASS；`cd frontend && npm test -- SecurityTab.test.tsx RiskBadge.test.tsx` PASS（22 tests）；`cd e2e && npx playwright test --grep @happy-path` PASS（10 tests）。
+- Production deploy：not run in this release tick；S190 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-17-S190-security-risk-reason-ui.md` → `docs/grimo/specs/archive/2026-05-17-S190-security-risk-reason-ui.md`
+- `docs/grimo/tasks/2026-05-17-S190-*.md` 已刪除。
+- Final size re-score：S(11) → M(14)，原因是實際 ship 需要同步 backend API、scanner persistence、domain parser、frontend UI、docs/prototype 與 S140 Playwright wording gate。
+
 ## [v4.73.0] — S187 Skill SKILL.md Edit Page（2026-05-17）
 
 ### Changed

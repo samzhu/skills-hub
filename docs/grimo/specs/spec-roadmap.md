@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-17（S187 shipped v4.73.0；Release Completeness Gate clean）
+> 最後更新：2026-05-17（S190 shipped v4.74.0；Release Completeness Gate clean）
 
 ## 使用說明
 
@@ -43,8 +43,7 @@
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
 | S189 | Browse 搜尋入口驗證與收版（S178 superseded；重新驗證 `/browse` semantic-only contract、遷移 evidence tag、乾淨 ship） | S(9) | S186 required, S187 ordering-only | 📐 in-design — carry-over verification & ship；排在 S187 後，避免搜尋 cleanup 與 edit page 主線混雜 |
-| S190 | Security Risk Reason UI（LOW + 0 findings 顯示 allowed-tools/scripts 原因、掃描空狀態說明、下載/查看檔案/回報疑慮三動作） | S(11) | S147 ✅, S183 ✅, S142b ✅ | ✅ QA PASS — `verify-all.sh` exit=0；next `$shipping-release S190` |
-| S191 | 發佈結果與上架語意整理（先不做人工審核；移除審核佇列/24 小時/reviewer approve 文案；修 MEDIUM 文案） | S(9) | S096d4a ✅, S096d5a ✅, S098b ✅, S111 ✅, S190 ordering-only | 📐 in-design — spec ready for review |
+| S191 | 發佈結果與上架語意整理（先不做人工審核；移除審核佇列/24 小時/reviewer approve 文案；修 MEDIUM 文案） | S(9) | S096d4a ✅, S096d5a ✅, S098b ✅, S111 ✅, S190 ✅ ordering-only | 📐 in-design — spec ready for review |
 
 ---
 
@@ -91,6 +90,7 @@
 | v4.71.0 | S193 (Semantic Search Score Transparency) | ✅ shipped 2026-05-17 — semantic logs include top hit scores；`/browse` semantic cards show `% 相符` from API score；`verify-all.sh` 全綠 |
 | v4.72.0 | S179 (Publish Author Anonymous Login Hint) | ✅ shipped 2026-05-17 — `/publish` anonymous author field shows `請先登入後發布`；`verify-all.sh` 全綠 |
 | v4.73.0 | S187 (Skill SKILL.md edit page) | ✅ shipped 2026-05-17 — detail edit opens `/skills/{id}/edit`；versions tab read-only；description comes from latest SKILL.md；`verify-all.sh` 全綠 |
+| v4.74.0 | S190 (Security Risk Reason UI) | ✅ shipped 2026-05-17 — security report returns `riskReasons[]`；LOW + 0 findings shows allowed-tools/scripts reasons；NONE label says `未發現風險`；`verify-all.sh` 全綠 |
 
 ---
 
@@ -263,6 +263,7 @@
 | S193 | Semantic Search Score Transparency | S(11) | v4.71.0 |
 | S179 | Publish author anonymous login hint | S(9) | v4.72.0 |
 | S187 | Skill SKILL.md edit page | M(14) | v4.73.0 |
+| S190 | Security Risk Reason UI | M(14) | v4.74.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |
