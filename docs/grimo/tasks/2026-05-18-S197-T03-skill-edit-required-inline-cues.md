@@ -52,5 +52,13 @@ And（而且）正在讀取 SKILL.md 的 text mode 不誤顯 upload mode 的 req
 ## 前置條件
 - S197-T02 PASS
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-18
+Test: `AC-S197-6`, `AC-S197-7` (`frontend/src/pages/SkillEditPage.test.tsx`)
+Files changed:
+- `frontend/src/pages/SkillEditPage.tsx` (modified)
+- `frontend/src/pages/SkillEditPage.test.tsx` (modified)
+Notes: RED confirmed with `cd frontend && npm test -- SkillEditPage` failing 3 new S197 cases; GREEN confirmed with `cd frontend && npm test -- SkillEditPage` passing 15 tests.

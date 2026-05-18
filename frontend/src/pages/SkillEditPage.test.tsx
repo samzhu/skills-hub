@@ -474,3 +474,50 @@ describe('SkillEditPage — S187 category update', () => {
     expect(JSON.parse(capturedBody!)).toEqual({ category: 'Platform Tools' })
   })
 })
+
+describe('SkillEditPage — S197 required inline cues', () => {
+  it('AC-S197-6: 清空分類顯示分類不可空白且儲存分類 disabled', async () => {
+    renderPage()
+
+    const categoryInput = await screen.findByLabelText(/分類/)
+    fireEvent.change(categoryInput, { target: { value: ' ' } })
+    fireEvent.blur(categoryInput)
+
+    const categoryError = screen.getByText('分類不可空白')
+    expect(screen.getByRole('button', { name: '儲存分類' })).toBeDisabled()
+    expect(categoryInput).toHaveAttribute('aria-invalid', 'true')
+    expect(categoryInput).toHaveAttribute('aria-describedby', expect.stringContaining(categoryError.id))
+  })
+
+  it('AC-S197-6: upload mode 未選檔顯示請選擇 zip 或 SKILL.md', async () => {
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /上傳檔案/ }))
+
+    expect(screen.getByRole('button', { name: '儲存新版本' })).toBeDisabled()
+    expect(screen.getByText('請選擇 zip 或 SKILL.md')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /貼上文本/ }))
+
+    expect(screen.queryByText('請選擇 zip 或 SKILL.md')).not.toBeInTheDocument()
+  })
+
+  it('AC-S197-7: SkillEdit required errors connect aria-invalid and aria-describedby', async () => {
+    renderPage()
+
+    const categoryInput = await screen.findByLabelText(/分類/)
+    fireEvent.change(categoryInput, { target: { value: '' } })
+    fireEvent.blur(categoryInput)
+
+    const categoryError = screen.getByText('分類不可空白')
+    expect(categoryInput).toHaveAttribute('aria-invalid', 'true')
+    expect(categoryInput).toHaveAttribute('aria-describedby', expect.stringContaining(categoryError.id))
+
+    fireEvent.click(screen.getByRole('button', { name: /上傳檔案/ }))
+
+    const uploadError = screen.getByText('請選擇 zip 或 SKILL.md')
+    const dropzone = screen.getByTestId('file-dropzone')
+    expect(dropzone).toHaveAttribute('aria-invalid', 'true')
+    expect(dropzone).toHaveAttribute('aria-describedby', expect.stringContaining(uploadError.id))
+  })
+})

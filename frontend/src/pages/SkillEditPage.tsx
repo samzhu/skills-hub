@@ -36,6 +36,12 @@ export function SkillEditPage() {
   const currentCategory = skillQuery.data?.categoryDisplay ?? skillQuery.data?.category ?? ''
   const category = categoryTouched ? categoryDraft : currentCategory
   const trimmedCategory = category.trim()
+  const categoryError = categoryTouched && trimmedCategory.length === 0
+    ? '分類不可空白'
+    : null
+  const uploadRequiredError = mode === 'upload' && selectedFile == null
+    ? '請選擇 zip 或 SKILL.md'
+    : null
 
   const addVersionMutation = useMutation({
     mutationFn: () => {
@@ -205,12 +211,9 @@ export function SkillEditPage() {
           </div>
 
           <div className="mb-4">
-            <label
-              htmlFor="skill-edit-category"
-              className="mb-1.5 block text-[12px] font-medium uppercase tracking-wide text-muted-foreground"
-            >
+            <FieldLabel htmlFor="skill-edit-category" requiredMarkId="skill-edit-category-required-mark">
               分類
-            </label>
+            </FieldLabel>
             <input
               id="skill-edit-category"
               value={category}
@@ -218,9 +221,15 @@ export function SkillEditPage() {
                 setCategoryTouched(true)
                 setCategoryDraft(e.target.value)
               }}
+              onBlur={() => setCategoryTouched(true)}
               placeholder="DevOps"
+              required
+              maxLength={50}
+              aria-invalid={categoryError ? true : undefined}
+              aria-describedby={describedBy(categoryError && 'skill-edit-category-error')}
               className="h-9 w-full max-w-xs rounded-md border border-border bg-background px-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-[rgba(255,255,255,0.20)] focus:outline-none"
             />
+            <FieldMessage id="skill-edit-category-error" message={categoryError} />
           </div>
 
           <div className="mb-4">
@@ -250,7 +259,11 @@ export function SkillEditPage() {
               fmValidation={fmValidation}
             />
           ) : (
-            <UploadMode selectedFile={selectedFile} setSelectedFile={setSelectedFile} />
+            <UploadMode
+              selectedFile={selectedFile}
+              setSelectedFile={setSelectedFile}
+              requiredError={uploadRequiredError}
+            />
           )}
         </div>
       </div>
@@ -361,24 +374,26 @@ function TextModeEditor({
 function UploadMode({
   selectedFile,
   setSelectedFile,
+  requiredError,
 }: {
   selectedFile: File | null
   setSelectedFile: (file: File | null) => void
+  requiredError: string | null
 }) {
   return (
     <div className="rounded-md border border-border bg-background p-4">
-      <label
-        htmlFor="skill-edit-file"
-        className="mb-1.5 block text-[12px] font-medium uppercase tracking-wide text-muted-foreground"
-      >
+      <FieldLabel htmlFor="skill-edit-file" requiredMarkId="skill-edit-file-required-mark">
         Skill 套件
-      </label>
+      </FieldLabel>
       <FileDropZone
         inputId="skill-edit-file"
         selectedFile={selectedFile}
         onFileSelect={setSelectedFile}
+        error={requiredError}
+        describedBy="skill-edit-file-help"
+        errorId="skill-edit-file-error"
       />
-      <p className="mt-2 text-[12px] text-muted-foreground">
+      <p id="skill-edit-file-help" className="mt-2 text-[12px] text-muted-foreground">
         可上傳 zip 套件或單一 SKILL.md。
       </p>
     </div>
@@ -431,5 +446,47 @@ function ModeTab({
     >
       {children}
     </button>
+  )
+}
+
+function describedBy(...ids: Array<string | null | false | undefined>) {
+  const value = ids.filter(Boolean).join(' ')
+  return value || undefined
+}
+
+function FieldLabel({
+  htmlFor,
+  requiredMarkId,
+  className = '',
+  children,
+}: {
+  htmlFor: string
+  requiredMarkId?: string
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <div className={`mb-1.5 flex items-center gap-1 text-[12px] font-medium uppercase tracking-wide text-muted-foreground ${className}`}>
+      <label htmlFor={htmlFor}>{children}</label>
+      {requiredMarkId && <RequiredMark id={requiredMarkId} />}
+    </div>
+  )
+}
+
+function RequiredMark({ id }: { id: string }) {
+  return (
+    <>
+      <span id={id} data-testid={id} aria-hidden="true" className="text-destructive">*</span>
+      <span className="sr-only">必填</span>
+    </>
+  )
+}
+
+function FieldMessage({ id, message }: { id: string; message: string | null }) {
+  if (!message) return null
+  return (
+    <p id={id} className="mt-1 text-[11.5px] text-destructive">
+      {message}
+    </p>
   )
 }
