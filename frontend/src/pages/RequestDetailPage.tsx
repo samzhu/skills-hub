@@ -14,6 +14,7 @@ import {
 } from '@/hooks/useRequestDetail'
 import { useMe } from '@/hooks/useMe'
 import { localizeApiError } from '@/lib/api-error-messages'
+import { getDisplayName } from '@/lib/displayName'
 
 /**
  * S156c — /requests/:id detail page。
@@ -78,6 +79,14 @@ export function RequestDetailPage() {
     })
   }
 
+  const createdDate = new Date(request.createdAt).toLocaleDateString('zh-TW')
+  const requesterDisplayName = getDisplayName({
+    author: request.requesterId,
+    authorDisplayName: request.requesterDisplayName,
+    authorHandle: request.requesterHandle,
+  })
+  const requesterMeta = requesterDisplayName ? `${requesterDisplayName} · ${createdDate}` : createdDate
+
   return (
     <AppShell>
       {/* Back link */}
@@ -95,7 +104,7 @@ export function RequestDetailPage() {
         <div className="min-w-0 flex-1">
           <h1 className="text-[22px] font-semibold tracking-tight">{request.title}</h1>
           <p className="mt-1 text-[12px] text-muted-foreground">
-            {request.requesterId} · {new Date(request.createdAt).toLocaleDateString('zh-TW')}
+            {requesterMeta}
           </p>
         </div>
         {request.canDelete && (

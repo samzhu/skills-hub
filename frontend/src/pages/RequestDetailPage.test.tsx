@@ -45,6 +45,8 @@ const sampleDetail = {
   title: '需要 k8s autoscaler skill',
   description: '需要 k8s HPA 自動建議\n（多行測試）',
   requesterId: 'u_alice',
+  requesterDisplayName: 'Alice Chen',
+  requesterHandle: 'alice',
   voteCount: 12,
   createdAt: '2026-05-03T10:00:00Z',
   updatedAt: '2026-05-03T10:00:00Z',
@@ -176,9 +178,56 @@ describe('RequestDetailPage (S156c)', () => {
     await waitFor(() => expect(screen.getByText('附上更多 context')).toBeInTheDocument())
     expect(screen.getByText('Bob Lin')).toBeInTheDocument()
     expect(screen.getByText('Alice Chen')).toBeInTheDocument()
-    expect(screen.queryByText('u_bob')).not.toBeInTheDocument()
-    expect(screen.queryByText('u_alice')).not.toBeInTheDocument()
+    expect(document.body.textContent).not.toContain('u_bob')
+    expect(document.body.textContent).not.toContain('u_alice')
     expect(screen.getAllByRole('button', { name: '刪除留言' })).toHaveLength(1)
+  })
+
+  it('AC-S200-3: detail header 顯示 requesterDisplayName，不顯 requesterId', async () => {
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/v1/requests/r1')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(sampleDetail) } as Response)
+      }
+      if (url.includes('/api/v1/me')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(meResponse) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ count: 0 }) } as Response)
+    })
+
+    renderPage('r1')
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Chen · 2026/5/3')).toBeInTheDocument()
+    })
+    expect(document.body.textContent).not.toContain('u_alice')
+  })
+
+  it('AC-S200-5: display data 缺失時 UI 不 fallback 顯示 u_<id>', async () => {
+    const detailWithoutDisplay = {
+      ...sampleDetail,
+      requesterId: 'u_missing',
+      requesterDisplayName: null,
+      requesterHandle: null,
+      comments: [],
+      canDelete: false,
+    }
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/v1/requests/r1')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(detailWithoutDisplay) } as Response)
+      }
+      if (url.includes('/api/v1/me')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(meResponse) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ count: 0 }) } as Response)
+    })
+
+    renderPage('r1')
+
+    await waitFor(() => {
+      expect(screen.getByText('2026/5/3')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/.+ · 2026\/5\/3/)).not.toBeInTheDocument()
+    expect(document.body.textContent).not.toContain('u_missing')
   })
 
   it('AC-9: 送出 comment → POST /comments + textarea 清空', async () => {

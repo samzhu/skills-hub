@@ -62,5 +62,17 @@ And（而且）comment delete 判斷仍用 `comment.authorId`
 ## 前置條件
 - S200-T01 PASS
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-19
+Test: `AC-S200-3: detail header 顯示 requesterDisplayName，不顯 requesterId`、`AC-S200-5: display data 缺失時 UI 不 fallback 顯示 u_<id>` (`frontend/src/pages/RequestDetailPage.test.tsx`)
+Files changed:
+- `frontend/src/api/skills.ts` (modified)
+- `frontend/src/pages/RequestDetailPage.tsx` (modified)
+- `frontend/src/pages/RequestDetailPage.test.tsx` (modified)
+Notes:
+- RED: `cd frontend && npm test -- RequestDetailPage.test.tsx` failed because page text still contained `u_alice` and missing display data rendered `u_missing · 2026/5/3`.
+- GREEN: same command PASS — `9 tests passed`，`Test Files 1 passed`。
+- `RequestDetailPage` header now renders `requesterDisplayName` / `requesterHandle` through `getDisplayName(...)`; when both are missing, it renders only the date.

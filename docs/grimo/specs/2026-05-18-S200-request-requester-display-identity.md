@@ -1,6 +1,6 @@
 # S200: Request Requester Display Identity
 
-> 規格：S200 | 大小：XS(4) | 狀態：⏳ Plan
+> 規格：S200 | 大小：XS(4) | 狀態：⏳ QA
 > 日期：2026-05-18
 > 對應：S192 作者顯示名稱一致性收斂、S156c Request voting board、S196 Request Board tabs
 
@@ -256,5 +256,21 @@ E2E：not required for planning — S200 的 user-visible behavior 可由 backen
 - `GET /api/v1/requests/{id}` detail response 現在保留 `requesterId`，並多回 `requesterDisplayName` / `requesterHandle`。
 - `canDelete` 仍用 `users.current().userId().equals(request.getRequesterId())`，不看 display name。
 
-待辦：
-- S200-T02：前端 `RequestDetailPage` header 改用 requester display 欄位，缺 display data 時不顯示 raw `u_<id>`。
+### 2026-05-19 — S200-T02 frontend requester display header
+
+| Task | 狀態 | 檔案 | 驗證 |
+|---|---|---|---|
+| S200-T02 | PASS | `skills.ts`, `RequestDetailPage.tsx`, `RequestDetailPage.test.tsx` | `cd frontend && npm test -- RequestDetailPage.test.tsx` PASS — 9 tests passed，`Test Files 1 passed` |
+
+實作結果：
+- `SkillRequest` type 現在接收 `requesterDisplayName` / `requesterHandle`，對齊 S200-T01 的 API response。
+- `RequestDetailPage` header 會用 `getDisplayName({ author: requesterId, authorDisplayName: requesterDisplayName, authorHandle: requesterHandle })` 產生人類可讀 label。
+- display label 有值時顯示 `Alice Chen · 2026/5/3`；display data 缺失時只顯示 `2026/5/3`，不把 `u_missing` 放進畫面文字。
+- 既有 S192 comment row 測試改用 `document.body.textContent` 檢查 raw id，避免 header 合併文字漏檢。
+
+RED / GREEN：
+- RED：`cd frontend && npm test -- RequestDetailPage.test.tsx` failed — page text still contained `u_alice`; missing display data rendered `u_missing · 2026/5/3`。
+- GREEN：same command PASS — 9 tests passed，`Test Files 1 passed`。
+
+下一步：
+- S200-T01 / S200-T02 都是 PASS；local implementation done，下一輪進 `$verifying-quality S200`。

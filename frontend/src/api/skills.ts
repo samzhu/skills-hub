@@ -143,6 +143,10 @@ export interface SkillRequest {
   title: string
   description: string
   requesterId: string
+  /** S200: requester 的人類可讀 label；不可用 requesterId 當 UI fallback。 */
+  requesterDisplayName?: string | null
+  /** S200: requester handle，可作 display label fallback。 */
+  requesterHandle?: string | null
   voteCount: number
   createdAt: string
   updatedAt: string
