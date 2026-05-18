@@ -109,4 +109,71 @@ describe('skills API — S188 optional version FormData', () => {
       message: 'Version upload failed: 503',
     })
   })
+
+  it('AC-S199-1: uploadSkill preserves response findings on validation error', async () => {
+    const findings = [
+      {
+        section: 'skill_md',
+        severity: 'error' as const,
+        title: 'skill_md_line_count: SKILL.md has 589 lines (max 500)',
+        hint: null,
+      },
+    ]
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: 'VALIDATION_ERROR',
+        message: 'SKILL.md validation failed',
+        findings,
+      }),
+    } as Response))
+
+    let thrown: unknown
+    try {
+      await uploadSkill(
+        new File(['skill'], 'SKILL.md', { type: 'text/markdown' }),
+        'Team Skill',
+        '',
+        'DevOps',
+      )
+    } catch (err) {
+      thrown = err
+    }
+
+    expect(ApiError.is(thrown)).toBe(true)
+    expect(thrown).toMatchObject({
+      name: 'ApiError',
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      message: 'SKILL.md validation failed',
+      findings,
+    })
+    expect(localizeApiError(thrown)).toBe('驗證失敗：SKILL.md validation failed')
+    expect((thrown as ApiError).findings?.[0]?.title).toBe('skill_md_line_count: SKILL.md has 589 lines (max 500)')
+  })
+
+  it('AC-S199-1: uploadSkill keeps fallback when validation body has no findings', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: 'VALIDATION_ERROR',
+        message: 'SKILL.md validation failed',
+      }),
+    } as Response))
+
+    await expect(uploadSkill(
+      new File(['skill'], 'SKILL.md', { type: 'text/markdown' }),
+      'Team Skill',
+      undefined,
+      'DevOps',
+    )).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      message: 'SKILL.md validation failed',
+      findings: undefined,
+    })
+  })
 })

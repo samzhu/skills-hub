@@ -1,6 +1,6 @@
 # S199: Publish Failed Actionable Validation Copy
 
-> 規格：S199 | 大小：XS(4) | 狀態：⏳ Plan
+> 規格：S199 | 大小：XS(4) | 狀態：⏳ Dev
 > 日期：2026-05-18
 > 對應：PRD P2「驗證失敗回具體錯誤」、S098b/S098b3-2 publish failed page、S198 validator recommendation split
 

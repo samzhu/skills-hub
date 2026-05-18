@@ -46,4 +46,12 @@ And（而且）沒有 findings 的 error body 仍走既有 localized fallback
 - 無
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-19
+Test: AC-S199-1 uploadSkill preserves response findings on validation error (`frontend/src/api/skills.test.ts`)
+Files changed:
+- `frontend/src/api/skills.ts` (modified)
+- `frontend/src/api/skills.test.ts` (modified)
+Notes: `uploadSkill()` 的 400 JSON body 現在保留 `findings[]` 並傳入 `ApiError`；沒有 `findings` 的 response 仍維持原本 message/code fallback。

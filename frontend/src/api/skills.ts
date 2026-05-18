@@ -395,8 +395,8 @@ export async function uploadSkill(
   if (!res.ok) {
     // S040: 與 apiFetch 對齊 — 拋 ApiError 攜 status + code，讓 caller 可走 i18n 翻譯
     const body = await res.json().catch(() => ({}))
-    const b = body as { message?: string; error?: string }
-    throw new ApiError(res.status, b.message ?? `Upload failed: ${res.status}`, b.error)
+    const b = body as { message?: string; error?: string; findings?: ValidationFinding[] }
+    throw new ApiError(res.status, b.message ?? `Upload failed: ${res.status}`, b.error, b.findings)
   }
   return res.json() as Promise<{ id: string }>
 }
