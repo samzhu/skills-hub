@@ -1,6 +1,6 @@
 # S195: Skill Edit Upload Validation UX
 
-> 規格：S195 | 大小：S(9) | 狀態：📐 in-design
+> 規格：S195 | 大小：S(9) | 狀態：📋 planned
 > 日期：2026-05-18
 > 對應：PRD P2「驗證失敗回具體錯誤」、S187 edit page、S098b3-2 structured findings
 
@@ -224,3 +224,31 @@ function ValidationFindingsList({ findings }: { findings?: ValidationFinding[] }
 ---
 
 <!-- Sections 6-7 added by /planning-tasks after implementation -->
+
+## 6. Task Plan
+
+POC：not required。S195 不新增套件、不接新外部 API，也不包新的 framework SPI；改動點是既有 `FileDropZone`、既有 multipart `addVersion()` raw fetch、既有 `SkillEditPage` error render path。pre-flight 對照 PRD P2 後，設計方向仍符合「驗證失敗要回具體欄位與原因」：後端 validator 規則不變，frontend 把既有 `findings[]` 顯示出來。
+
+E2E：required for AC-S195-6。AC-S195-1 到 AC-S195-5 會用 Vitest + React Testing Library 驗 DOM、FormData 與 `ApiError.findings`；AC-S195-6 是 mobile 可視性，JSDOM 不會計算實際版面，因此最後一個 task 要補一個 `@S195` browser check，390px viewport 下驗 dropzone 文案與主要 action 按鈕可見。
+
+| 順序 | Task | 檔案 | 覆蓋 AC | 驗證命令 | 前置 |
+|------|------|------|---------|----------|------|
+| 1 | [S195-T01 FileDropZone input hook](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S195-T01-filedropzone-input-hook.md) | `FileDropZone.tsx`, `FileDropZone.test.tsx` | AC-S195-1 | `cd frontend && npm test -- FileDropZone` | 無 |
+| 2 | [S195-T02 addVersion preserves validation findings](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S195-T02-addversion-findings-propagation.md) | `skills.ts`, `skills.test.ts` | AC-S195-4 | `cd frontend && npm test -- skills.test api-error-messages` | 無 |
+| 3 | [S195-T03 Edit upload mode uses FileDropZone](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S195-T03-edit-upload-dropzone-flow.md) | `SkillEditPage.tsx`, `SkillEditPage.test.tsx` | AC-S195-1, AC-S195-2, AC-S195-5 | `cd frontend && npm test -- SkillEditPage` | T01 |
+| 4 | [S195-T04 Edit page shows validation findings and mobile evidence](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S195-T04-edit-findings-and-mobile-evidence.md) | `SkillEditPage.tsx`, `SkillEditPage.test.tsx`, `e2e/tests/S195-skill-edit-upload-validation-ux.spec.ts` | AC-S195-3, AC-S195-6 | `cd frontend && npm test -- SkillEditPage`; `cd e2e && npx playwright test --grep @S195` | T02, T03 |
+
+### AC Coverage
+
+| AC | Task | 具體證據 |
+|----|------|----------|
+| AC-S195-1 | T01, T03 | `SkillEditPage.test.tsx` 點「上傳檔案」後查得到「拖拽 zip 或 md 檔到此處」與「或點擊選取檔案」。 |
+| AC-S195-2 | T03 | `SkillEditPage.test.tsx` 捕捉 PUT `/versions` FormData，確認 `file.name == "handover.zip"`。 |
+| AC-S195-3 | T04 | `SkillEditPage.test.tsx` 餵 400 findings，錯誤區塊主標是第一筆 error finding title，次要文字保留 generic backend message。 |
+| AC-S195-4 | T02 | `skills.test.ts` 確認 `addVersion()` throw 的 `ApiError.findings` 等於 response body。 |
+| AC-S195-5 | T03 | `SkillEditPage.test.tsx` 選 `handover.txt` 後看到「只接受 .zip / .md」，PUT 未被呼叫。 |
+| AC-S195-6 | T04 | `@S195` browser check 在 390px viewport 驗 dropzone 文案與「儲存分類」「儲存新版本」可見。 |
+
+## 7. Implementation Results
+
+尚未實作。T01-T04 仍為 `pending`。
