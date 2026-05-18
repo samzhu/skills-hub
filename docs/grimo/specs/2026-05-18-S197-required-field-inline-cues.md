@@ -1,6 +1,6 @@
 # S197: 必填欄位即時提示 UX
 
-> 規格：S197 | 大小：S(8) | 狀態：📐 in-design
+> 規格：S197 | 大小：S(8) | 狀態：⏳ Plan
 > 日期：2026-05-18
 > 對應：PRD §P2 / S004 / S176 / S187 / S195
 
@@ -202,7 +202,29 @@ Browser E2E 暫不列為必做：這次不新增 route、不改 backend、不依
 
 ## 6. Task Plan
 
-待 `$planning-tasks S197` 產生。
+POC：not required — S197 不新增套件、SDK、framework SPI、schema migration 或 browser-only API；只調整既有 React form state、`FileDropZone` props、RTL tests 與 UI DESIGN 文件。Phase 0 pre-flight 已對照 PRD P2、S176/S188/S195 shipped findings、目前 `PublishPage` / `SkillEditPage` / `FileDropZone` 實作；未發現需要回到 `$planning-spec` 的設計矛盾。
+
+E2E：not required for planning — S197 改的是表單必填提示、component props、RTL 可驗證的 DOM text / attributes 與 docs sync；沒有新增 route、test seed endpoint、後端 contract、credential injection 或真瀏覽器-only API。若實作時改成依賴 native submit focus 或瀏覽器 constraint validation bubble，Phase 4 需重新評估 Browser/Playwright 證據。
+
+| 順序 | Task | 主要檔案 | 覆蓋 AC | 驗證方式 | 前置 |
+|---:|---|---|---|---|---|
+| 1 | [S197-T01 Publish 必填欄位 inline 提示](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S197-T01-publish-required-inline-cues.md) | `PublishPage.tsx`, `PublishPage.test.tsx` | AC-S197-1, AC-S197-2, AC-S197-4, AC-S197-5, AC-S197-7 | `cd frontend && npm test -- PublishPage` | 無 |
+| 2 | [S197-T02 FileDropZone required error contract](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S197-T02-filedropzone-required-error-contract.md) | `FileDropZone.tsx`, `FileDropZone.test.tsx` | AC-S197-3, AC-S197-7 | `cd frontend && npm test -- FileDropZone` | 無 |
+| 3 | [S197-T03 SkillEdit 分類與 upload mode 缺欄原因](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S197-T03-skill-edit-required-inline-cues.md) | `SkillEditPage.tsx`, `SkillEditPage.test.tsx` | AC-S197-6, AC-S197-7 | `cd frontend && npm test -- SkillEditPage` | T02 |
+| 4 | [S197-T04 DESIGN 必填表單規則同步](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S197-T04-design-required-form-rule-sync.md) | `docs/grimo/ui/DESIGN.md` | AC-S197-8 | `rg -n "必填\|aria-describedby\|required" docs/grimo/ui/DESIGN.md` | T01, T02, T03 |
+
+### AC Coverage
+
+| AC | Task | 可驗證輸出 |
+|---|---|---|
+| AC-S197-1 | T01 | `/publish` label 顯示 required mark；`版本號` 不顯示 required mark。 |
+| AC-S197-2 | T01 | 分類空白時畫面顯示 `請填寫分類`，且沒有 `POST /api/v1/skills/upload`。 |
+| AC-S197-3 | T02 | `FileDropZone` 顯示 `請選擇 zip 或 SKILL.md`，副檔名錯誤仍顯示既有訊息。 |
+| AC-S197-4 | T01 | text mode 空白顯示 `請貼上 SKILL.md 內容`；frontmatter 錯誤仍顯示 `缺必填欄位：description`。 |
+| AC-S197-5 | T01 | `版本號` optional，空白 FormData 不含 `version`。 |
+| AC-S197-6 | T03 | edit page 分類清空顯示 `分類不可空白`；upload mode 未選檔顯示 `請選擇 zip 或 SKILL.md`。 |
+| AC-S197-7 | T01, T02, T03 | required mark、`aria-invalid`、`aria-describedby` 都可由 RTL assertion 或 source inspection 驗證。 |
+| AC-S197-8 | T04 | `docs/grimo/ui/DESIGN.md` 記錄 Publish/Edit required mark + inline error rule。 |
 
 ## 7. Results
 

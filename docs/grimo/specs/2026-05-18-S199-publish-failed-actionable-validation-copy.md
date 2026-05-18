@@ -1,6 +1,6 @@
 # S199: Publish Failed Actionable Validation Copy
 
-> 規格：S199 | 大小：XS(4) | 狀態：📐 in-design
+> 規格：S199 | 大小：XS(4) | 狀態：⏳ Plan
 > 日期：2026-05-18
 > 對應：PRD P2「驗證失敗回具體錯誤」、S098b/S098b3-2 publish failed page、S198 validator recommendation split
 
@@ -15,7 +15,7 @@
 你的 bundle 沒通過 SKILL.md 驗證。請依下方錯誤訊息修正後重新上傳；目前 registry 沒有寫入任何記錄。
 ```
 
-這兩句只告訴 user「沒有寫入」，沒有說「為什麼失敗、要改哪個檔案、改完會發生什麼」。如果後端 response 有 `findings[]`，但 [uploadSkill()](/Users/samzhu/.codex/worktrees/81d8/skills-hub/frontend/src/api/skills.ts:398) 沒把 `findings` 放進 `ApiError`，`PublishPage` 轉址到 failed page 時 [PublishFailedPage.tsx](/Users/samzhu/.codex/worktrees/81d8/skills-hub/frontend/src/pages/PublishFailedPage.tsx:104) 只能拿到 generic `msg`，最後 user 只看到 `SKILL.md validation failed`。
+這兩句只告訴 user「沒有寫入」，沒有說「為什麼失敗、要改哪個檔案、改完會發生什麼」。如果後端 response 有 `findings[]`，但 [uploadSkill()](/Users/samzhu/workspace/github-samzhu/skills-hub/frontend/src/api/skills.ts:398) 沒把 `findings` 放進 `ApiError`，`PublishPage` 轉址到 failed page 時 [PublishFailedPage.tsx](/Users/samzhu/workspace/github-samzhu/skills-hub/frontend/src/pages/PublishFailedPage.tsx:104) 只能拿到 generic `msg`，最後 user 只看到 `SKILL.md validation failed`。
 
 S199 要讓 failed page 的第一屏直接回答：
 
@@ -57,8 +57,8 @@ PublishFailedPage
 
 | 問題 | 位置 | 現在 user 看到 | 應改成 |
 |------|------|----------------|--------|
-| `findings[]` 遺失 | [skills.ts](/Users/samzhu/.codex/worktrees/81d8/skills-hub/frontend/src/api/skills.ts:398) | `SKILL.md validation failed` | 第一筆 finding title 能進 failed page。 |
-| top callout generic | [PublishFailedPage.tsx](/Users/samzhu/.codex/worktrees/81d8/skills-hub/frontend/src/pages/PublishFailedPage.tsx:123) | 「沒通過 SKILL.md 驗證」 | 「SKILL.md 有 589 行，目前上限 500 行」這種具體主因。 |
+| `findings[]` 遺失 | [skills.ts](/Users/samzhu/workspace/github-samzhu/skills-hub/frontend/src/api/skills.ts:398) | `SKILL.md validation failed` | 第一筆 finding title 能進 failed page。 |
+| top callout generic | [PublishFailedPage.tsx](/Users/samzhu/workspace/github-samzhu/skills-hub/frontend/src/pages/PublishFailedPage.tsx:123) | 「沒通過 SKILL.md 驗證」 | 「SKILL.md 有 589 行，目前上限 500 行」這種具體主因。 |
 | raw backend code 不好懂 | `skill_md_line_count: ...` | user 看到 rule id + 英文 | UI 轉成繁中：「SKILL.md 太長：589 行，目前上限 500 行。」 |
 | 沒有下一步 | same page | 「請依下方錯誤訊息修正」 | 針對已知 rule 顯示具體修法；未知 rule 顯示保守 fallback。 |
 | 直訪 failed URL 沒 findings | query string 只有 msg | 只能 generic | 顯示「此頁缺少詳細錯誤，請從上傳頁重送，或打開 Network 查看 `/api/v1/skills/upload` response」。 |
@@ -74,7 +74,7 @@ PublishFailedPage
 | `Missing required field: description` | `SKILL.md frontmatter 缺少 description。` | `在 --- 區塊加入 description，描述技能做什麼與何時使用。` |
 | `No YAML frontmatter found` | `SKILL.md 最上方缺少 YAML frontmatter。` | `檔案開頭要有 ---、name、description、---，後面再寫 Markdown 內容。` |
 | `Invalid YAML:` | `SKILL.md frontmatter 的 YAML 格式錯誤。` | `檢查縮排、冒號後空格、引號是否成對。` |
-| `body_present:` | `SKILL.md frontmatter 後面沒有任何說明內容。` | `在第二個 --- 後加入此技能的使用步驟。` |
+| `body_present:` | `SKILL.md frontmatter 後面沒有使用說明內容。` | `在第二個 --- 後加入此技能的使用步驟。Skills Hub 不收只有 metadata、沒有 instructions body 的空 skill。` |
 | fallback | 第一筆 finding title 原文 | `請依這筆錯誤修改 SKILL.md 後重新上傳。` |
 
 ### 2.4 UI sketch
@@ -164,3 +164,29 @@ cd frontend && npm test -- skills.test PublishFailedPage
 - 不改 validator 規則；500 行是否擋 upload 由 S198 處理。
 - 不改後端 `ValidationFinding` schema。
 - 不新增後端 log；S199 只讓 user 在 UI 看到清楚原因。
+
+## 6. Task Plan
+
+POC：not required — S199 不新增 API schema、route、套件或 browser-only API；只把既有 `ValidationFinding[]` 從 `uploadSkill()` 傳到 `ApiError`，並在 `PublishFailedPage` 做 pure copy mapping。Phase 0 pre-flight 已對照 PRD P2、S098b3-2/S195 shipped findings、目前 `uploadSkill()` / `addVersion()` 差異；設計方向仍成立。
+
+E2E：not required for planning — S199 可由 Vitest 驗證 error payload propagation、router state findings render、fallback copy 與 raw backend title retention。沒有新增 route、後端 contract、test seed endpoint 或需要真瀏覽器才觸發的 behavior。Phase 4 仍需重新評估是否要補一次 browser click-through；若 task 實作改到 navigation behavior 或 history state，需補 Browser/Playwright evidence。
+
+| 順序 | Task | 主要檔案 | 覆蓋 AC | 驗證方式 | 前置 |
+|---:|---|---|---|---|---|
+| 1 | [S199-T01 uploadSkill 保留 structured findings](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S199-T01-upload-skill-preserves-findings.md) | `skills.ts`, `skills.test.ts` | AC-S199-1 | `cd frontend && npm test -- skills.test` | 無 |
+| 2 | [S199-T02 PublishFailedPage 顯示具體 validation 主因與下一步](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S199-T02-publish-failed-actionable-copy.md) | `PublishFailedPage.tsx`, `PublishFailedPage.test.tsx` | AC-S199-2, AC-S199-3, AC-S199-4, AC-S199-5, AC-S199-6 | `cd frontend && npm test -- PublishFailedPage` | T01 |
+
+### AC Coverage
+
+| AC | Task | 可驗證輸出 |
+|---|---|---|
+| AC-S199-1 | T01 | `uploadSkill()` thrown `ApiError.findings[0].title` 保留 backend finding title。 |
+| AC-S199-2 | T02 | failed page top callout 顯示第一筆 finding 的繁中主因。 |
+| AC-S199-3 | T02 | line-count finding 顯示實際行數 / 上限與 `references/` 下一步。 |
+| AC-S199-4 | T02 | missing field / YAML / body_present known errors 顯示具體修法。 |
+| AC-S199-5 | T02 | 沒有 findings 時顯示 detail-unavailable fallback。 |
+| AC-S199-6 | T02 | known rule 轉繁中後仍保留 `原始訊息：...`。 |
+
+## 7. Results
+
+待實作後填寫。

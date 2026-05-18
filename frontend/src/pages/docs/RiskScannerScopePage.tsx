@@ -24,7 +24,7 @@ export function RiskScannerScopePage() {
         <a href="https://owasp.org/www-project-top-10-for-large-language-model-applications/" className="text-[#C9C5F2] hover:underline">
           OWASP LLM Top 10 v1.1
         </a>
-        。本頁透明列出我們對每項威脅的涵蓋程度，給 consumer 安裝前判斷風險的參考。「Pass」不等於 100% 安全 — 仍須對 SKILL.md 內容做最後審視。
+        。本頁透明列出我們對每項威脅的涵蓋程度，給 consumer 安裝前判斷風險的參考。「Pass」不等於 100% 安全；安裝前仍要查看 SKILL.md 內容。
       </p>
 
       <H2>OWASP LLM01-10 對應表</H2>

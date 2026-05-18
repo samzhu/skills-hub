@@ -48,7 +48,17 @@ describe('PublishFailedPage — S098b', () => {
     renderWith('?state=B&id=abc-123')
 
     const pageText = document.body.textContent ?? ''
-    const removedTerms = ['已' + '送審', '人工審核' + '佇列', '審核員' + '核准', '24 ' + '小時', 'review' + 'er', 'app' + 'rove', 'rej' + 'ect']
+    const removedTerms = [
+      '已' + '送審',
+      '人工審核' + '佇列',
+      '人工' + '上' + '架',
+      '審核員' + '核准',
+      '審' + '視' + '頁' + '面',
+      '24 ' + '小時',
+      'review' + 'er',
+      'app' + 'rove',
+      'rej' + 'ect',
+    ]
     for (const removed of removedTerms) {
       expect(pageText).not.toContain(removed)
     }

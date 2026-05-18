@@ -21,7 +21,7 @@ export function RiskTiersPage() {
       <p className="mt-3 text-[18px] leading-relaxed text-[#A8A49C]">
         每次發佈 skill 都會跑自動掃描器，依以下規則歸類為四級之一。Tier 決定
         consumer 在搜尋結果上看到的標示色與安全報告提示。HIGH 代表掃描器找到
-        高風險 pattern；目前不提供人工上架通知流程。
+        高風險 pattern；目前沒有人工核准流程。
       </p>
 
       <Tier
@@ -41,7 +41,7 @@ export function RiskTiersPage() {
         toneBg="rgba(29,158,117,0.10)"
         toneBorder="rgba(29,158,117,0.30)"
         toneText="#6FD8B0"
-        title="自動上架"
+        title="自動發佈"
         body="掃描結果可以是 findings=[]，但 package 有 scripts/ 或 allowed-tools。安全頁會顯示原因，例如這個技能可以要求 AI 使用 Bash、Write，或 package 內包含 scripts/ 檔案。"
       />
 
@@ -51,9 +51,9 @@ export function RiskTiersPage() {
         toneBg="rgba(239,159,39,0.10)"
         toneBorder="rgba(239,159,39,0.30)"
         toneText="#FAC775"
-        title="自動上架（顯警示標）"
+        title="發佈完成（顯警示標）"
         body="Scripts 存在且偵測到中等風險模式（例：寬鬆 file system 寫入、network call 至外部 trusted-source registry）。最多 3 個外部 URL 限制；Consumers 在搜尋與詳情頁上看得到 MEDIUM 標。"
-        note="MEDIUM 仍自動上架，但 consumer 端會看到警示色 — 鼓勵安裝前先審視 scripts/ 內容。"
+        note="MEDIUM 仍會完成發佈，但 consumer 端會看到警示色；安裝前請先查看 scripts/ 內容。"
       />
 
       <Tier

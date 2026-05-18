@@ -366,7 +366,7 @@ pages:
     auth: true
     prototype: "docs/grimo/ui/prototype/Skills Hub Publish Flow.html"
     status: "implemented"
-    note: "Step 3 — frontmatter + risk scan review"
+    note: "Step 3 — publish result with frontmatter + risk scan summary"
     beam: ["Publish CTA"]
 
   - component: "PublishFailedPage"
@@ -374,7 +374,7 @@ pages:
     auth: true
     prototype: "docs/grimo/ui/prototype/Skills Hub Publish Failures.html"
     status: "implemented"
-    beam: ["Re-upload CTA (State A)", "Submit for review CTA (State B)"]
+    beam: ["Re-upload CTA (State A)", "View security report CTA (State B)"]
 
   - component: "AnalyticsPage"
     route: "/analytics"

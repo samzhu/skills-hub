@@ -62,7 +62,7 @@ export function PublishFailedPage() {
           <p className="mt-1 text-[13px] text-muted-foreground">
             {state === 'A'
               ? '請依下方提示修正 SKILL.md，再重新上傳 zip 套件'
-              : '掃描偵測到 HIGH 級風險。平台目前不提供人工上架審核通知；請查看安全報告，或修正套件後重新上傳。'}
+              : '掃描偵測到 HIGH 級風險。平台目前沒有人工核准流程；請查看安全報告，或修正套件後重新上傳。'}
           </p>
         </div>
 
@@ -234,7 +234,7 @@ function StateBHighRiskReview({ id }: { id: string | null }) {
           <p className="mt-1 text-[13px] leading-relaxed text-[#A8A49C]">
             掃描 detector 觸發 HIGH 級風險規則（如 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[12px]">curl | bash</code>、
             存取 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[12px]">~/.ssh</code> / <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[12px]">~/.aws</code> 等）。
-            平台目前不提供人工上架審核通知；請查看技能詳情中的安全報告，或修正套件後重新上傳。
+            平台目前沒有人工核准流程；請查看技能詳情中的安全報告，或修正套件後重新上傳。
           </p>
           {id && (
             <div className="mt-3 flex flex-wrap items-center gap-3 text-[12px] text-[#A8A49C]">

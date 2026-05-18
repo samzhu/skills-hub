@@ -150,7 +150,7 @@ ISO 8601 or RFC 2822 variant.
           Bash、Write」或「包含 scripts/ 檔案」。
         </RiskRow>
         <RiskRow tier="MEDIUM" tone="warning">
-          <strong>附警告標籤上架。</strong> Scripts 存在但無危險 pattern — 最多 3 個外部 URL
+          <strong>發佈完成並顯示警告標籤。</strong> Scripts 存在但無危險 pattern — 最多 3 個外部 URL
           且都在 trusted-source registry。Consumers 在搜尋時看得到 tier。
         </RiskRow>
         <RiskRow tier="HIGH" tone="danger">

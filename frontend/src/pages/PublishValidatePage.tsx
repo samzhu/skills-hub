@@ -13,7 +13,7 @@ import type { Skill } from '@/types/skill'
  * S098a — `/publish/validate?id={skillId}` Step 2 中介驗證頁。
  *
  * 對齊 docs/grimo/ui/prototype/Skills Hub Publish Step 2.html。
- * 4-step stepper：Upload → Validate (active) → Review → Live。
+ * 4-step stepper：上傳 → 驗證 (active) → 掃描 → 發佈結果。
  * Poll `/skills/{id}` 每 2s 直到 risk_level 設值即 navigate `/publish/review?id=X`。
  *
  * Trim from M(10) → XS(5)：
@@ -30,8 +30,8 @@ type StepStatus = 'done' | 'active' | 'future'
 const STEPS: { num: number; label: string }[] = [
   { num: 1, label: '上傳' },
   { num: 2, label: '驗證' },
-  { num: 3, label: '審視' },
-  { num: 4, label: '上架' },
+  { num: 3, label: '掃描' },
+  { num: 4, label: '發佈結果' },
 ]
 
 export function PublishValidatePage() {
@@ -75,12 +75,12 @@ export function PublishValidatePage() {
     )
   }
 
-  // 各步狀態：scanning 中 = (Upload done, Validate active, Review/Live future)；
+  // 各步狀態：scanning 中 = (上傳 done, 驗證 active, 掃描/發佈結果 future)；
   // error = 同步顯示但下方加 callout
   const stepStatus = (idx: number): StepStatus => {
     if (idx === 0) return 'done' // Upload 已完（既然到此頁）
     if (idx === 1) return 'active' // Validate 進行中
-    return 'future' // Review / Live
+    return 'future' // 掃描 / 發佈結果
   }
 
   return (
@@ -95,7 +95,7 @@ export function PublishValidatePage() {
         <p className="mt-1 text-[13px] text-muted-foreground">
           {isVersionFlow
             ? '系統正在掃描新版本 bundle — 通常需要 5-15 秒。完成後自動回到技能詳情頁。'
-            : '系統正在掃描你的 bundle — 通常需要 5-15 秒。完成後自動跳轉至審視頁面。'}
+            : '系統正在掃描你的 bundle — 通常需要 5-15 秒。完成後自動跳轉至發佈結果頁。'}
         </p>
 
         {/* S098a3-2: Upload-strip 顯實值。bundleInfo (BundleInfo) 來自 GET /skills/{id}/bundle-info；
@@ -193,7 +193,7 @@ export function PublishValidatePage() {
               icon={<Check className="h-4 w-4" />}
               text={isVersionFlow
                 ? `掃描完成（risk: ${skill.riskLevel}）— 即將回到技能詳情頁...`
-                : `掃描完成（risk: ${skill.riskLevel}）— 即將跳轉至審視頁面...`}
+                : `掃描完成（risk: ${skill.riskLevel}）— 即將跳轉至發佈結果頁...`}
             />
           )}
         </div>

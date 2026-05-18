@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
  *   注意：NONE ≠ certified safe，僅表示未抓到 known patterns（tooltip 補語意 caveat）
  * - LOW  藍 (info-soft) — 0 findings 但聲明 capability，OR findings 全 LOW
  * - MEDIUM 琥珀 (warning-soft) — 含腳本但無危險模式，需人工複核
- * - HIGH 紅 (danger-soft) — 危險指令或敏感路徑，應優先審查
+ * - HIGH 紅 (danger-soft) — 危險指令或敏感路徑，應優先查看安全報告
  *
  * 色彩用 inline-style hex 對齊 DESIGN.md v2 dark theme semantic palette
  * （rgba alpha overlay on dark bg；text 用 light variants like #6FD8B0）。

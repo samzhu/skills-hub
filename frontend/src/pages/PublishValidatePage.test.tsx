@@ -84,8 +84,8 @@ describe('PublishValidatePage — S098a', () => {
     // Step labels visible
     expect(screen.getByText('上傳')).toBeInTheDocument()
     expect(screen.getByText('驗證')).toBeInTheDocument()
-    expect(screen.getByText('審視')).toBeInTheDocument()
-    expect(screen.getByText('上架')).toBeInTheDocument()
+    expect(screen.getByText('掃描')).toBeInTheDocument()
+    expect(screen.getByText('發佈結果')).toBeInTheDocument()
     // Scanning callout includes 「進行中」+ skill name
     await waitFor(() => {
       expect(screen.getByText(/風險掃描進行中/)).toBeInTheDocument()

@@ -11,7 +11,7 @@ package io.github.samzhu.skillshub.security;
  *   <li>{@link #LOW} — 0 findings 但聲明 capability（含 scripts 或 allowed-tools），無 demonstrated 風險；
  *       OR findings 全為 LOW severity</li>
  *   <li>{@link #MEDIUM} — 含腳本但無危險模式，需人工複核（max severity = MEDIUM）</li>
- *   <li>{@link #HIGH} — 偵測到危險指令或敏感路徑存取，應優先審查（max severity = HIGH）</li>
+ *   <li>{@link #HIGH} — 偵測到危險指令或敏感路徑存取，應優先查看安全報告（max severity = HIGH）</li>
  * </ul>
  */
 public enum RiskLevel {
@@ -21,6 +21,6 @@ public enum RiskLevel {
 	LOW,
 	/** 含腳本但無危險模式，需人工複核。 */
 	MEDIUM,
-	/** 含危險指令或敏感路徑，應優先審查。 */
+	/** 含危險指令或敏感路徑，應優先查看安全報告。 */
 	HIGH
 }

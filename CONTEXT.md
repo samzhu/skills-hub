@@ -56,6 +56,10 @@ _Avoid_: Risk level, security category
 The detailed scan result that explains why a skill has findings and where those findings are located.
 _Avoid_: Risk badge, risk lights
 
+**Publish Result**:
+The page shown after upload validation and risk scanning finish, summarizing whether a skill version was published and what risk level was assigned.
+_Avoid_: review or approval wording
+
 **Public Visibility**:
 Whether a skill is readable by everyone, determined by the skill's visibility state.
 _Avoid_: Public ACL
@@ -115,6 +119,7 @@ _Avoid_: Display name, author name
 - **Risk Lights** show the **Risk Level** at a glance; they do not represent security categories or individual scanner rules.
 - A **Security Report** may contain many **Security Findings**, but the **Risk Level** is still the canonical summary shown in list/detail headers.
 - A **Security Finding** can explain a **Risk Level**, but it is not itself the **Risk Level**.
+- The publish flow steps are upload, validation, risk scan, and **Publish Result**. There is no user-facing review or listing approval step in the MVP publish flow.
 - **Public Visibility** is represented by a **Public Grant**.
 - An **Explicit Grant** targets a user, group, or company; it never targets "public".
 - A **Public Grant** is not an **Explicit Grant** and does not expand into ACL entries.
@@ -161,6 +166,7 @@ _Avoid_: Display name, author name
 - "intent summary" was attached only to the removed `/search` page. Resolved: remove the UI component and API instead of keeping an unused LLM path.
 - "four lights" was used as if each light mapped to a category. Resolved: **Risk Lights** map only to the skill's **Risk Level**.
 - "findings count" was used as a possible substitute for risk. Resolved: **Security Findings** are supporting detail; **Risk Level** is the canonical header summary.
+- "/publish/review" was previously described as a review surface. Resolved: call it **Publish Result** because the page displays the completed publish/scan result; it is not a manual review or listing approval surface.
 - "public grant" was used as if it were an explicit user/group/company ACL grant. Resolved: **Public Grant** represents **Public Visibility**, but it is not an **Explicit Grant** and does not expand into ACL entries.
 - "public" appeared as a share target. Resolved: public is **Public Visibility** in the page header; **Share Targets** are user, group, or company only.
 - "visibility/ACL projection" was used during S186 discussion to mean `vector_store.is_public` and `vector_store.acl_entries`. Resolved: call this **Vector Read Scope**; it is a deprecated search-index copy, while `skills.is_public` and `skills.acl_entries` remain the query-side read state.

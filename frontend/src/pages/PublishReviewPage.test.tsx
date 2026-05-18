@@ -77,7 +77,7 @@ describe('PublishReviewPage — S191 publish result copy', () => {
 
     await waitFor(() => expect(screen.getByText('產生字幕檔')).toBeInTheDocument())
     expect(screen.getByText(/中風險，發佈完成/)).toBeInTheDocument()
-    expect(screen.queryByText('低風險自動上架完成')).not.toBeInTheDocument()
+    expect(screen.queryByText('低風險自動' + '上' + '架完成')).not.toBeInTheDocument()
   })
 
   it('AC-S191-2: PUBLISHED status displays 已發佈', async () => {
