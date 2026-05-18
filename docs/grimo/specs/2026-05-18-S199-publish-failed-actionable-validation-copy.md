@@ -1,6 +1,6 @@
 # S199: Publish Failed Actionable Validation Copy
 
-> 規格：S199 | 大小：XS(4) | 狀態：⏳ QA
+> 規格：S199 | 大小：XS(4) | 狀態：⏳ Release — QA PASS
 > 日期：2026-05-18
 > 對應：PRD P2「驗證失敗回具體錯誤」、S098b/S098b3-2 publish failed page、S198 validator recommendation split
 
@@ -189,7 +189,7 @@ E2E：not required for planning — S199 可由 Vitest 驗證 error payload prop
 
 ## 7. Results
 
-### Local Implementation — 2026-05-19（pending QA）
+### Local Implementation — 2026-05-19
 
 | Task | Status | Evidence |
 |---|---|---|
@@ -206,4 +206,24 @@ E2E：not required for planning — S199 可由 Vitest 驗證 error payload prop
 - `PublishFailedPage` 會把 known validation title 轉成繁中主因與下一步，並在細節列保留 `原始訊息：...` 方便排查。
 - 沒有 router state `findings[]` 時，頁面不再只顯示 generic `SKILL.md validation failed`，改顯示「這次失敗頁沒有收到詳細錯誤內容。」並提示重新上傳或查看 `/api/v1/skills/upload response`。
 
-Next: `$verifying-quality S199`。
+### QA Review — 2026-05-19
+
+Verdict: PASS — ready for `$shipping-release S199`.
+
+| Layer | Result | Detail |
+|---|---|---|
+| Automated tests | PASS | `cd frontend && npm test -- skills.test PublishFailedPage`：PASS — 2 files / 17 tests。`./scripts/verify-all.sh`：PASS — V01=PASS、V02=INFO、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；exit=0。 |
+| Coverage / Integration | PASS | V02 line coverage 87.2%（covered=4868 / total=5582）；V03 coverage gate PASS。S199 只改 `uploadSkill()` error parsing 與 `PublishFailedPage` copy mapping，沒有新增 backend route、DB schema、profile 或 native DTO；V07 browser happy-path、V08a AOT、V08b native image build 仍 PASS。 |
+| Manual verification | N-A | 第一屏文字、下一步、fallback 與 raw backend title 都由 React Testing Library render assertions 覆蓋；沒有只能靠人工點擊確認的互動。 |
+| Testability gate | CLEAR | AC-S199-1 對應 `frontend/src/api/skills.test.ts`；AC-S199-2/3/4/5/6 對應 `frontend/src/pages/PublishFailedPage.test.tsx`，並在本輪指令中實際跑過。 |
+
+QA findings:
+- CRITICAL：none。
+- IMPORTANT：none。
+- MINOR：none。
+
+Design sync:
+- §2.3 的 line-count / missing field / YAML / body-present mapping 都有 production code 分支；backend 目前 `ValidationFinding.hint` 為 null，S199 的 frontend next-step copy 會被使用。
+- S198 已把 `skill_md_line_count` 從 hard error 改成 warning；S199 保留 line-count copy 是相容既有 response / 歷史 failure state，不代表重新把 500 行變成 hard block。
+
+Next: `$shipping-release S199`。
