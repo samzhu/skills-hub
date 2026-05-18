@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { AppShell } from '@/components/AppShell'
 import { EmptyState } from '@/components/EmptyState'
+import { RequestCreatePanel } from '@/components/RequestCreatePanel'
 import { VoteButton } from '@/components/VoteButton'
 import { useRequests } from '@/hooks/useRequests'
 import type { SkillRequest } from '@/api/skills'
@@ -76,13 +77,8 @@ export function RequestBoardPage() {
           role="tabpanel"
           aria-labelledby={createTabId}
           tabIndex={0}
-          className="rounded-lg border border-border bg-card p-6"
         >
-          <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">我要開需求</p>
-          <h2 className="mt-1 text-[18px] font-semibold tracking-tight">把工作問題開成一筆 skill 需求</h2>
-          <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
-            Inline form 會在下一個 S196 task 接上；目前先建立可辨識的頁籤與空狀態入口。
-          </p>
+          <RequestCreatePanel onCreated={() => setActiveTab('browse')} />
         </section>
       )}
     </AppShell>

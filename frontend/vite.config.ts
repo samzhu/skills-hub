@@ -11,6 +11,9 @@ export default defineConfig({
     },
   },
   server: {
+    fs: {
+      allow: [path.resolve(__dirname, '..')],
+    },
     proxy: {
       '/api/v1': {
         target: 'http://localhost:8080',

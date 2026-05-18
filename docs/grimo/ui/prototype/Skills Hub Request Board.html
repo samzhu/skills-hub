@@ -199,7 +199,7 @@ button{cursor:pointer}
       <div class="hero-copy">
         <div class="eyebrow">Request Guild</div>
         <h1 class="hero-title">只要有人需要，<br />就會有<span>勇者</span>出現。</h1>
-        <p class="hero-sub">這頁主要做兩件事：先瀏覽大家缺哪些 skill，再把自己的工作問題開成新需求。需求沒有指定負責人；大家按「我也要」把痛點推上來，有空的技能作者再自願接手。</p>
+        <p class="hero-sub">這頁主要做兩件事：先瀏覽大家缺哪些 skill，再把自己的工作問題開成新需求。需求沒有指定負責人；大家按「我也要」把痛點推上來，技能作者可以從討論裡回應。</p>
         <div class="hero-actions">
           <button class="primary-btn" type="button" data-open-tab="browse">瀏覽需求</button>
           <button class="secondary-btn" type="button" data-open-tab="create">開新需求</button>
@@ -273,7 +273,6 @@ button{cursor:pointer}
                 </div>
               </div>
               <div class="request-actions">
-                <button class="action-primary" type="button">我來當勇者</button>
                 <button class="action-muted" type="button">查看討論</button>
               </div>
             </article>
@@ -290,15 +289,14 @@ button{cursor:pointer}
                 </div>
                 <p class="request-desc">升 Spring Boot 或 Gradle plugin 時，想要 skill 自動看 managed versions、找 deprecated API、列出需要改的 import path。</p>
                 <div class="request-meta">
-                  <span class="helper"><span class="mini-avatar">AW</span> allen wang 接手</span>
+                  <span class="helper"><span class="mini-avatar">AW</span> allen wang 留言</span>
                   <span>5 天前</span>
                   <span class="tag">java</span>
                   <span class="tag">gradle</span>
                 </div>
               </div>
               <div class="request-actions">
-                <button class="action-muted" type="button">加入協作</button>
-                <button class="action-muted" type="button">查看進度</button>
+                <button class="action-muted" type="button">查看討論</button>
               </div>
             </article>
 
@@ -321,7 +319,6 @@ button{cursor:pointer}
                 </div>
               </div>
               <div class="request-actions">
-                <button class="action-primary" type="button">我來當勇者</button>
                 <button class="action-muted" type="button">查看討論</button>
               </div>
             </article>
@@ -367,8 +364,8 @@ button{cursor:pointer}
           <article class="card">
             <div class="card-head">
               <div>
-                <h2 class="card-title">勇者排行榜</h2>
-                <p class="card-desc">依結案貢獻計算。</p>
+                <h2 class="card-title">留言動態</h2>
+                <p class="card-desc">最近有人補充情境的需求。</p>
               </div>
             </div>
             <div class="rank-list">
@@ -398,7 +395,7 @@ button{cursor:pointer}
       <div class="create-layout">
         <article class="card create-card">
           <h2 class="card-title">我要開需求</h2>
-          <p class="card-desc">寫你真的遇到的工作問題；送出後大家可以按「我也要」，有空的作者再自願接手。</p>
+          <p class="card-desc">寫你真的遇到的工作問題；送出後大家可以按「我也要」，技能作者可以從討論裡回應。</p>
           <div class="field">
             <label for="title">需求標題</label>
             <input id="title" type="text" value="每次做月報都要手動抓三個平台數據" />
@@ -406,20 +403,6 @@ button{cursor:pointer}
           <div class="field">
             <label for="desc">工作問題</label>
             <textarea id="desc">我每個月要從 GA、Ads、內部後台各抓一份 CSV，再貼到同一份 spreadsheet。希望有 skill 可以照固定欄位整理成月報資料表。</textarea>
-          </div>
-          <div class="field">
-            <label for="result">希望 skill 幫我做到什麼</label>
-            <textarea id="result">輸入月份後自動抓資料、合併欄位、輸出成固定格式的月報資料表。</textarea>
-          </div>
-          <div class="field">
-            <label for="category">分類</label>
-            <select id="category">
-              <option>browser</option>
-              <option>spreadsheet</option>
-              <option>java</option>
-              <option>frontend</option>
-              <option>design</option>
-            </select>
           </div>
           <div class="submit-row">
             <span class="hint">不需要指定負責人；需求會先進入投票列表。</span>
@@ -438,7 +421,7 @@ button{cursor:pointer}
             <div class="rule-list">
               <div class="rule-item"><strong>1. 出現在瀏覽需求</strong>其他人可以搜尋、留言、按「我也要」。</div>
               <div class="rule-item"><strong>2. 票數推高排序</strong>「我也要」越多，需求越容易被看見。</div>
-              <div class="rule-item"><strong>3. 勇者自願接手</strong>有人想做時可以接手或加入協作。</div>
+              <div class="rule-item"><strong>3. 作者自願回覆</strong>有人想做時可以在 detail 頁留言協作。</div>
             </div>
           </article>
 

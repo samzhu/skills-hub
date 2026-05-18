@@ -2,7 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useAuth } from '@/hooks/useAuth'
+import designSource from '../../../docs/grimo/ui/DESIGN.md?raw'
+import requestBoardPrototype from '../../../docs/grimo/ui/prototype/Skills Hub Request Board.html?raw'
 import { RequestBoardPage } from './RequestBoardPage'
+
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: vi.fn(),
+}))
+
+const mockUseAuth = vi.mocked(useAuth)
 
 /**
  * S096g2-T04 — RequestBoardPage AC-15 / AC-16 / AC-17 isolation tests。
@@ -73,9 +82,21 @@ const sampleRequests = [
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockUseAuth.mockReturnValue({
+    status: 'authenticated',
+    user: {
+      userId: 'u_alice',
+      handle: 'alice',
+      sub: 'alice',
+      email: 'alice@example.com',
+      name: 'Alice',
+    },
+    login: vi.fn(),
+    logout: vi.fn(),
+  })
 })
 
-describe('RequestBoardPage (S196-T01)', () => {
+describe('RequestBoardPage (S196)', () => {
   it('AC-S196-1: /requests 顯示瀏覽需求與我要開需求 tabs', async () => {
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/v1/requests') && !url.includes('/vote')) {
@@ -223,5 +244,85 @@ describe('RequestBoardPage (S196-T01)', () => {
       const votedButton = screen.getByRole('button', { name: '已投票，再點取消' })
       expect(within(votedButton).getByText('39')).toBeInTheDocument()
     })
+  })
+
+  it('AC-S196-3: 我要開需求 tab inline submit 送出 title 與 description', async () => {
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/api/v1/requests') && init?.method === 'POST') {
+        return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ id: 'r-new' }) } as Response)
+      }
+      if (url.includes('/api/v1/requests') && !url.includes('/vote')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(sampleRequests) } as Response)
+      }
+      if (url.includes('/api/v1/me')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(meResponse) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ count: 0 }) } as Response)
+    })
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('tab', { name: '我要開需求' }))
+    fireEvent.change(screen.getByLabelText('需求標題（最多 200 字）'), {
+      target: { value: 'docker compose linter' },
+    })
+    fireEvent.change(screen.getByLabelText('需求說明（最多 2000 字）'), {
+      target: { value: '檢查 compose.yaml 結構' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '送出需求' }))
+
+    await waitFor(() => {
+      const postCall = ((globalThis as any).fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        (call) => String(call[0]).includes('/api/v1/requests') && call[1]?.method === 'POST',
+      )
+      expect(postCall).toBeDefined()
+      expect(postCall![1]?.body).toBe(JSON.stringify({
+        title: 'docker compose linter',
+        description: '檢查 compose.yaml 結構',
+      }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /瀏覽需求/ })).toHaveAttribute('aria-selected', 'true')
+    })
+  })
+
+  it('AC-S196-3: 未登入按送出需求不送 POST 並走 login', async () => {
+    const login = vi.fn()
+    mockUseAuth.mockReturnValue({
+      status: 'anonymous',
+      login,
+      logout: vi.fn(),
+    })
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/v1/requests') && !url.includes('/vote')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(sampleRequests) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ count: 0 }) } as Response)
+    })
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('tab', { name: '我要開需求' }))
+    await waitFor(() => {
+      expect(screen.getByLabelText('需求標題（最多 200 字）')).toBeEnabled()
+    })
+    fireEvent.change(screen.getByLabelText('需求標題（最多 200 字）'), {
+      target: { value: 'docker compose linter' },
+    })
+    fireEvent.change(screen.getByLabelText('需求說明（最多 2000 字）'), {
+      target: { value: '檢查 compose.yaml 結構' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '送出需求' }))
+
+    const calls = ((globalThis as any).fetch as ReturnType<typeof vi.fn>).mock.calls
+    expect(calls.some((call) => String(call[0]).includes('/api/v1/requests') && call[1]?.method === 'POST')).toBe(false)
+    expect(login).toHaveBeenCalledTimes(1)
+  })
+
+  it('AC-S196-7: /requests design/prototype wording 不描述 status tab 或 claim/fulfill', () => {
+    expect(designSource).toContain('two primary tabs')
+    expect(designSource).toContain('inline create')
+    expect(`${designSource}\n${requestBoardPrototype}`).not.toMatch(/尚無勇者|接手中|已結案|claim|fulfill/)
   })
 })

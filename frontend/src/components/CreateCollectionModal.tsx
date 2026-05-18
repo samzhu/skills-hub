@@ -11,7 +11,7 @@ import type { Skill } from '@/types/skill'
 /**
  * S096f2-T04 — 建立集合 modal。
  *
- * Mirror CreateRequestModal pattern：fixed overlay + form card + cancel/submit buttons。
+ * Mirror standard modal pattern：fixed overlay + form card + cancel/submit buttons。
  * 4 個欄位：name (≤200) / description (≤2000, optional) / category (≤100) / skillIds list。
  *
  * **Skill picker MVP 走 textarea**（per spec §2.6 trim — fancy multi-select picker
@@ -20,7 +20,7 @@ import type { Skill } from '@/types/skill'
  * csv message — 失敗訊息直接 echo 給使用者。
  *
  * onSuccess invalidate `['collections']` 觸發 useCollections refetch + onClose。
- * 與 CreateRequestModal 一致：無 toast，靠 modal close + list refresh 視覺回饋。
+ * 無 toast，靠 modal close + list refresh 視覺回饋。
  */
 export function CreateCollectionModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('')

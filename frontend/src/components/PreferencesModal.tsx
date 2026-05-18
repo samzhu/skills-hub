@@ -9,7 +9,7 @@ import { localizeApiError } from '@/lib/api-error-messages'
 /**
  * S096h2-T04 — 通知訂閱偏好 modal（3 個 toggle）。
  *
- * Mirror CreateRequestModal pattern：fixed overlay + card + cancel/save buttons。
+ * Mirror standard modal pattern：fixed overlay + card + cancel/save buttons。
  * 開啟時 lazy fetch 當前 preferences；本地 state 只記 user edits，draft 由 render-time
  * 推導（per React 19 docs「Adjusting some state when a prop changes」— derive in render
  * 比 useEffect+setState sync 不會 cascading render，避免 react-hooks/set-state-in-effect）。
