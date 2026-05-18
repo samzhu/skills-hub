@@ -1,6 +1,6 @@
-# S197: SKILL.md Recommendations Not Hard Errors
+# S198: SKILL.md Recommendations Not Hard Errors
 
-> 規格：S197 | 大小：XS(5) | 狀態：📐 in-design
+> 規格：S198 | 大小：XS(5) | 狀態：📐 in-design
 > 日期：2026-05-18
 > 對應：PRD P2「驗證 SKILL.md 格式符合 agentskills.io 規範」、S135a quality score、S194 compatibility warning
 
@@ -25,7 +25,7 @@
 }
 ```
 
-這筆 response 代表 [SkillValidator.java](/Users/samzhu/.codex/worktrees/81d8/skills-hub/backend/src/main/java/io/github/samzhu/skillshub/skill/validation/SkillValidator.java:76) 把 `SKILL.md` 超過 500 行當成上傳阻擋條件。但 agentskills.io 官方規格把 500 行寫在 progressive disclosure 建議，不是 validation 的硬性條件。S197 要把「官方建議」跟「官方必要格式」分清楚：必要格式錯誤才擋上傳；建議未達成時允許發佈，但在 `ValidationResult.warnings()`、quality score、UI finding 顯示扣分或提醒。
+這筆 response 代表 [SkillValidator.java](/Users/samzhu/.codex/worktrees/81d8/skills-hub/backend/src/main/java/io/github/samzhu/skillshub/skill/validation/SkillValidator.java:76) 把 `SKILL.md` 超過 500 行當成上傳阻擋條件。但 agentskills.io 官方規格把 500 行寫在 progressive disclosure 建議，不是 validation 的硬性條件。S198 要把「官方建議」跟「官方必要格式」分清楚：必要格式錯誤才擋上傳；建議未達成時允許發佈，但在 `ValidationResult.warnings()`、quality score、UI finding 顯示扣分或提醒。
 
 不做 production code 修改，直到本 spec 被確認並進入 task 實作。
 
@@ -44,7 +44,7 @@
 
 ### 2.2 目前程式盤點
 
-| 現況 | 位置 | 現在行為 | S197 判斷 |
+| 現況 | 位置 | 現在行為 | S198 判斷 |
 |------|------|----------|-----------|
 | `SKILL.md` 超過 500 行 | [SkillValidator.java](/Users/samzhu/.codex/worktrees/81d8/skills-hub/backend/src/main/java/io/github/samzhu/skillshub/skill/validation/SkillValidator.java:76) | `ValidationResult.valid=false`，upload 回 400。 | 改成 warning；upload 可成功；quality `lineCount` 扣分。 |
 | frontmatter 後 body 空白 | [SkillValidator.java](/Users/samzhu/.codex/worktrees/81d8/skills-hub/backend/src/main/java/io/github/samzhu/skillshub/skill/validation/SkillValidator.java:116) | `body_present` error，upload 回 400。 | 需要確認：官方說 SKILL.md 是 metadata + instructions，但 body 又寫「無格式限制」。建議改成 warning 或至少拆出產品自訂 policy，不再聲稱是 agentskills.io hard validation。 |
@@ -90,45 +90,45 @@ cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.validation
 
 | AC | 優先級 | 驗證方式 | 標題 |
 |----|--------|----------|------|
-| AC-S197-1 | 必做 | Test | 589 行 `SKILL.md` 不擋 upload validator |
-| AC-S197-2 | 必做 | Test | 589 行 `SKILL.md` 產生 line-count warning |
-| AC-S197-3 | 必做 | Test | quality score lineCount dimension 扣分 |
-| AC-S197-4 | 必做 | Test | 缺 `name` / invalid YAML / bad `name` 仍回 hard error |
-| AC-S197-5 | 必做 | Test | body quality recommendations 仍是 warnings |
-| AC-S197-6 | 需確認 | Decision | empty body 是 warning 還是平台自訂 hard policy |
+| AC-S198-1 | 必做 | Test | 589 行 `SKILL.md` 不擋 upload validator |
+| AC-S198-2 | 必做 | Test | 589 行 `SKILL.md` 產生 line-count warning |
+| AC-S198-3 | 必做 | Test | quality score lineCount dimension 扣分 |
+| AC-S198-4 | 必做 | Test | 缺 `name` / invalid YAML / bad `name` 仍回 hard error |
+| AC-S198-5 | 必做 | Test | body quality recommendations 仍是 warnings |
+| AC-S198-6 | 需確認 | Decision | empty body 是 warning 還是平台自訂 hard policy |
 
-**AC-S197-1: 589 行 SKILL.md 不擋 upload validator**
+**AC-S198-1: 589 行 SKILL.md 不擋 upload validator**
 - Given（前提）`SKILL.md` 有合法 frontmatter 與 589 行 body
 - When（動作）呼叫 `SkillValidator.validate(content)`
 - Then（結果）`result.valid()` 是 `true`
 - And（而且）`result.errors()` 不含 `skill_md_line_count`
 
-**AC-S197-2: 589 行 SKILL.md 產生 line-count warning**
+**AC-S198-2: 589 行 SKILL.md 產生 line-count warning**
 - Given（前提）同一份 589 行 `SKILL.md`
 - When（動作）呼叫 `SkillValidator.validate(content)`
 - Then（結果）`result.warnings()` 含 `skill_md_line_count`
 - And（而且）warning 文字說明 `recommended max 500`，不可再寫 `max 500` 造成 hard limit 語感
 
-**AC-S197-3: quality score lineCount dimension 扣分**
+**AC-S198-3: quality score lineCount dimension 扣分**
 - Given（前提）quality listener 讀到 589 行 `SKILL.md`
 - When（動作）`QualityScoreService` 建立 VALIDATION axis
 - Then（結果）`dimensions.lineCount.score < 100`
 - And（而且）`totalScore < 100`
 - And（而且）reasoning 顯示 `589 / 500 recommended lines`
 
-**AC-S197-4: 明確 schema 錯誤仍回 hard error**
+**AC-S198-4: 明確 schema 錯誤仍回 hard error**
 - Given（前提）`SKILL.md` 缺 `name`
 - When（動作）呼叫 `SkillValidator.validate(content)`
 - Then（結果）`result.valid()` 是 `false`
 - And（而且）`result.errors()` 含 `Missing required field: name`
 
-**AC-S197-5: body quality recommendations 仍是 warnings**
+**AC-S198-5: body quality recommendations 仍是 warnings**
 - Given（前提）body 沒有 example heading 或 code fence
 - When（動作）呼叫 `SkillValidator.validate(content)`
 - Then（結果）`result.valid()` 是 `true`
 - And（而且）`result.warnings()` 含 `body_examples`
 
-**AC-S197-6: empty body policy 需確認**
+**AC-S198-6: empty body policy 需確認**
 - Given（前提）`SKILL.md` 只有合法 frontmatter，沒有 instructions body
 - When（動作）呼叫 `SkillValidator.validate(content)`
 - Then（結果）目前是 `body_present` hard error
@@ -138,11 +138,11 @@ cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.validation
 
 | 檔案 | 動作 | 說明 |
 |------|------|------|
-| `backend/src/main/java/io/github/samzhu/skillshub/skill/validation/SkillValidator.java` | modify | 500 行檢查從 `errors` 改 `warnings`；`body_present` 依 AC-S197-6 決策處理。 |
+| `backend/src/main/java/io/github/samzhu/skillshub/skill/validation/SkillValidator.java` | modify | 500 行檢查從 `errors` 改 `warnings`；`body_present` 依 AC-S198-6 決策處理。 |
 | `backend/src/main/java/io/github/samzhu/skillshub/score/QualityScoreService.java` | modify | `lineOk` 改讀 `warnings`；`lineCount` dimension 用 recommended 文案；分數扣在 quality。 |
 | `backend/src/test/java/io/github/samzhu/skillshub/skill/validation/SkillValidatorTest.java` | modify | `lineCountExceedsMax` 改成 warning test；新增 schema hard error 保護測試。 |
 | `backend/src/test/java/io/github/samzhu/skillshub/score/QualityScoreServiceTest.java` | modify | 新增 long SKILL.md quality penalty test。 |
-| `docs/grimo/specs/archive/2026-05-05-S135a-backend-quality-score.md` | no change | 歷史 spec 不改；S197 作為後續修正記錄。 |
+| `docs/grimo/specs/archive/2026-05-05-S135a-backend-quality-score.md` | no change | 歷史 spec 不改；S198 作為後續修正記錄。 |
 | `docs/grimo/CHANGELOG.md` | shipping | ship 時記錄「官方建議不擋 upload，只扣 quality」。 |
 
 ## 5. 開放問題
@@ -152,5 +152,5 @@ cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.validation
 | empty body 要不要擋？ | 建議先改 warning，但在 publish review / quality 顯示很低分。 | 官方 validation 著重 frontmatter/naming；body content 無格式限制。空 body 不是好 skill，但不應冒充官方格式錯。 |
 | 5000 tokens 要不要實作？ | 暫不做。 | Java 端沒有 tokenizer；用 line count warning 已能處理本次 production bug。 |
 | upload failed page 是否要顯示 warning？ | 不需要，因為 warning 不導到 failed page。 | warning 應出現在 publish review / skill quality，不是 failure page。 |
-| 是否要引用 `skills-ref validate`？ | 後續可加 research task，不放 S197 必做。 | 先修目前錯誤分流；引入 reference library 會是新依賴與 build decision。 |
+| 是否要引用 `skills-ref validate`？ | 後續可加 research task，不放 S198 必做。 | 先修目前錯誤分流；引入 reference library 會是新依賴與 build decision。 |
 
