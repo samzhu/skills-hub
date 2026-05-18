@@ -420,6 +420,7 @@ pages:
     prototype: "docs/grimo/ui/prototype/Skills Hub Request Board.html"
     status: "implemented"
     beam: []
+    note: "S196 in-design: page direction is two primary tabs — `瀏覽需求` and `我要開需求`; no status tabs or claim/fulfill UI."
 
   - component: "RequestDetailPage"
     route: "/requests/:id"

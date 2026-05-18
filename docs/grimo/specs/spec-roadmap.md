@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-18（S194 shipped v4.77.0；Release Completeness Gate clean）
+> 最後更新：2026-05-18（S196 in-design；Request Board 兩頁籤 UX）
 
 ## 使用說明
 
@@ -43,6 +43,7 @@
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
 | S195 | Skill edit upload validation UX（編輯頁重用 FileDropZone；PUT /versions 400 顯示 structured findings） | S(9) | S098b3-2 ✅, S187 ✅, S194 ordering-only | 📐 in-design |
+| S196 | Request Board 兩頁籤 UX（`瀏覽需求` / `我要開需求`；inline 開需求；排行只當輔助訊號） | XS(8) | S156c ✅ | 📐 in-design |
 ---
 
 ## 🏁 Milestones
