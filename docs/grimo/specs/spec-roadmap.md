@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-18（S196 shipped v4.79.0；Request Board two-tab UX）
+> 最後更新：2026-05-18（S198 in-design；publish failed actionable validation copy）
 
 ## 使用說明
 
@@ -42,6 +42,8 @@
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⛔ superseded 2026-05-16 — 取代為 S189（舊 spec 已有 T01-T05/QA 歷史，但未 ship；關閉以免干擾 S186→S187 主線） |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
+| S197 | SKILL.md Recommendations Not Hard Errors（官方建議不擋 upload；500 行等 best practice 轉 warning + quality 扣分） | XS(5) | S135a ✅, S194 ✅ | 📐 in-design — production upload 589 lines 被擋；官方 spec 500 lines 是 recommendation |
+| S198 | Publish Failed Actionable Validation Copy（失敗頁第一屏顯示具體原因、行數/欄位與下一步，不只顯示 generic validation failed） | XS(4) | S098b ✅, S098b3-2 ✅, S195 ✅ | 📐 in-design — uploadSkill findings 未傳到 failed page；top callout 文案不說明 why/how |
 ---
 
 ## 🏁 Milestones
