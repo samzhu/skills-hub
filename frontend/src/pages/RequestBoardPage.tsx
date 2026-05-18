@@ -2,73 +2,225 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { AppShell } from '@/components/AppShell'
 import { EmptyState } from '@/components/EmptyState'
-import { CreateRequestModal } from '@/components/CreateRequestModal'
 import { VoteButton } from '@/components/VoteButton'
-import { AuthGatedButton } from '@/components/AuthGatedButton'
 import { useRequests } from '@/hooks/useRequests'
 import type { SkillRequest } from '@/api/skills'
 
 /**
- * S096g2 → S156c — Request Board at `/requests`（voting-board pivot）。
- *
- * 移除 claim/release/fulfill 流程：card 不再顯 status pill / ActionBar；title 改成
- * <Link to="/requests/:id"> 跳 detail page（T04 加 route）。剩餘互動：vote toggle + 發起新需求。
- *
- * Sort chips defer per spec §2.4 trim list；MVP 預設 votes desc。
+ * S196-T01 — Request Board browse shell.
+ * Two primary tabs only: browse demand or create a new demand inline.
  */
 export function RequestBoardPage() {
-  const { data: requests, isLoading } = useRequests()
-  const [showModal, setShowModal] = useState(false)
+  const [activeTab, setActiveTab] = useState<RequestBoardTab>('browse')
+  const [sort, setSort] = useState<RequestSortMode>('votes')
+  const { data: requests, isLoading } = useRequests({ sort })
+  const requestCount = requests?.length ?? 0
+
+  const browseTabId = 'request-board-tab-browse'
+  const createTabId = 'request-board-tab-create'
+  const browsePanelId = 'request-board-panel-browse'
+  const createPanelId = 'request-board-panel-create'
 
   return (
     <AppShell>
       <div className="mb-6">
         <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">需求看板</p>
-        <h1 className="mt-1 text-[22px] font-semibold tracking-tight">技能需求看板</h1>
+        <h1 className="mt-1 text-[22px] font-semibold tracking-tight">只要有人需要，就會有勇者出現。</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          沒找到需要的 skill？發起需求讓社群投票表達「我也要」— 票數高的需求作者會看到並決定是否實作。
+          先瀏覽大家缺哪些 skill，再把自己的工作問題開成新需求。
         </p>
-        <div className="mt-3 flex items-center gap-3">
-          {/* S139 lazy gate */}
-          <AuthGatedButton
-            type="button"
-            onClick={() => setShowModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground hover:bg-primary/90"
+
+        <div
+          role="tablist"
+          aria-label="需求看板模式"
+          className="mt-4 inline-flex rounded-lg border border-border bg-card p-1"
+        >
+          <RequestTabButton
+            id={browseTabId}
+            panelId={browsePanelId}
+            selected={activeTab === 'browse'}
+            onClick={() => setActiveTab('browse')}
           >
-            發起新需求
-          </AuthGatedButton>
+            瀏覽需求
+            {requestCount > 0 && <span className="font-mono text-[11px]">{requestCount}</span>}
+          </RequestTabButton>
+          <RequestTabButton
+            id={createTabId}
+            panelId={createPanelId}
+            selected={activeTab === 'create'}
+            onClick={() => setActiveTab('create')}
+          >
+            我要開需求
+          </RequestTabButton>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">載入中...</div>
-      ) : !requests || requests.length === 0 ? (
-        <EmptyState
-          tone="invite"
-          headline="目前還沒人發起需求。"
-          sub="點上方「發起新需求」描述你希望的 skill；社群投票表達「我也要」，作者看到票數高的需求自然會考慮實作。"
-          secondaryAction={{ label: '回去瀏覽現有技能', href: '/browse' }}
-        />
+      {activeTab === 'browse' ? (
+        <section
+          id={browsePanelId}
+          role="tabpanel"
+          aria-labelledby={browseTabId}
+          tabIndex={0}
+        >
+          <RequestBrowsePanel
+            isLoading={isLoading}
+            requests={requests ?? []}
+            sort={sort}
+            onSortChange={setSort}
+            onCreateRequest={() => setActiveTab('create')}
+          />
+        </section>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border bg-card">
-          {requests.map((req, i) => (
-            <RequestRow key={req.id} req={req} isLast={i === requests.length - 1} />
-          ))}
-        </div>
+        <section
+          id={createPanelId}
+          role="tabpanel"
+          aria-labelledby={createTabId}
+          tabIndex={0}
+          className="rounded-lg border border-border bg-card p-6"
+        >
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">我要開需求</p>
+          <h2 className="mt-1 text-[18px] font-semibold tracking-tight">把工作問題開成一筆 skill 需求</h2>
+          <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
+            Inline form 會在下一個 S196 task 接上；目前先建立可辨識的頁籤與空狀態入口。
+          </p>
+        </section>
       )}
-
-      {showModal && <CreateRequestModal onClose={() => setShowModal(false)} />}
     </AppShell>
   )
 }
 
-function RequestRow({ req, isLast }: { req: SkillRequest; isLast: boolean }) {
+type RequestBoardTab = 'browse' | 'create'
+type RequestSortMode = 'votes' | 'created'
+
+function RequestTabButton({
+  id,
+  panelId,
+  selected,
+  onClick,
+  children,
+}: {
+  id: string
+  panelId: string
+  selected: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      id={id}
+      type="button"
+      role="tab"
+      aria-selected={selected}
+      aria-controls={panelId}
+      tabIndex={selected ? 0 : -1}
+      onClick={onClick}
+      className={
+        'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] font-medium transition ' +
+        (selected ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')
+      }
+    >
+      {children}
+    </button>
+  )
+}
+
+function RequestBrowsePanel({
+  isLoading,
+  requests,
+  sort,
+  onSortChange,
+  onCreateRequest,
+}: {
+  isLoading: boolean
+  requests: SkillRequest[]
+  sort: RequestSortMode
+  onSortChange: (sort: RequestSortMode) => void
+  onCreateRequest: () => void
+}) {
+  if (isLoading) {
+    return <div className="flex items-center justify-center py-16 text-muted-foreground">載入中...</div>
+  }
+
+  if (requests.length === 0) {
+    return (
+      <EmptyState
+        tone="invite"
+        headline="目前還沒人發起需求。"
+        sub="點「我要開需求」描述你希望的 skill；社群投票表達「我也要」，作者看到票數高的需求自然會考慮實作。"
+        primaryAction={{ label: '我要開需求', onClick: onCreateRequest }}
+      />
+    )
+  }
+
+  const rankedRequests = [...requests].sort((a, b) => b.voteCount - a.voteCount)
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[12px] text-muted-foreground">社群用投票把最需要的 skill 往前推。</p>
+          <div className="inline-flex rounded-md border border-border bg-card p-1" aria-label="需求排序">
+            <SortButton active={sort === 'votes'} onClick={() => onSortChange('votes')}>
+              票數最高
+            </SortButton>
+            <SortButton active={sort === 'created'} onClick={() => onSortChange('created')}>
+              最新
+            </SortButton>
+          </div>
+        </div>
+        <div className="grid gap-3">
+          {requests.map((req) => (
+            <RequestCard key={req.id} req={req} />
+          ))}
+        </div>
+      </div>
+
+      <aside className="rounded-lg border border-border bg-card p-4">
+        <h2 className="text-[14px] font-semibold">需求排行榜</h2>
+        <ol aria-label="需求排行榜" className="mt-3 space-y-2">
+          {rankedRequests.map((req, index) => (
+            <li key={req.id} className="flex items-start gap-2 text-[12px]">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted font-mono text-[10px] text-muted-foreground">
+                {index + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate font-medium">{req.title}</span>
+              <span className="font-mono text-muted-foreground">{req.voteCount}</span>
+            </li>
+          ))}
+        </ol>
+      </aside>
+    </div>
+  )
+}
+
+function SortButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={
+        'rounded px-3 py-1 text-[12px] font-medium transition ' +
+        (active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')
+      }
+    >
+      {children}
+    </button>
+  )
+}
+
+function RequestCard({ req }: { req: SkillRequest }) {
   return (
     <div
-      className={
-        'flex items-center gap-4 px-4 py-3 hover:bg-muted/30 ' +
-        (isLast ? '' : 'border-b border-border')
-      }
+      className="grid gap-4 rounded-lg border border-border bg-card p-4 hover:bg-muted/20 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
     >
       <VoteButton requestId={req.id} initialCount={req.voteCount} />
       <div className="min-w-0 flex-1">

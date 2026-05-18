@@ -68,5 +68,15 @@ And（而且）主要 action 是切到 `我要開需求` tab，不是跳到 `/br
 ## 前置條件
 - 無
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-18
+Test: `RequestBoardPage (S196-T01)` (`frontend/src/pages/RequestBoardPage.test.tsx`)
+Files changed:
+- `frontend/src/pages/RequestBoardPage.tsx` (modified)
+- `frontend/src/pages/RequestBoardPage.test.tsx` (modified)
+- `docs/grimo/tasks/2026-05-18-S196-T01-request-board-browse-tabs.md` (modified)
+- `docs/grimo/specs/spec-roadmap.md` (modified)
+Notes: `cd frontend && npm test -- RequestBoardPage` PASS（1 file / 5 tests）；`cd frontend && npm run verify` PASS。
