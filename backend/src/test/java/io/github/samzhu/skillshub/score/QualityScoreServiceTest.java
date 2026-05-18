@@ -24,7 +24,6 @@ import io.github.samzhu.skillshub.score.judge.QualityJudge;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionPublishedEvent;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
 import io.github.samzhu.skillshub.skill.validation.SkillValidator;
-import io.github.samzhu.skillshub.skill.validation.ValidationResult;
 import io.github.samzhu.skillshub.storage.PackageService;
 import io.github.samzhu.skillshub.storage.StorageService;
 
@@ -65,6 +64,42 @@ class QualityScoreServiceTest {
                                                 QualityJudge judge, SkillScoreRepository repo,
                                                 SkillVersionRepository versionRepo) {
         return new QualityScoreService(new SkillValidator(), judge, repo, versionRepo, storage, pkg);
+    }
+
+    private static SkillScore validationRowForContent(String content) throws Exception {
+        var storage = mock(StorageService.class);
+        var pkg = mock(PackageService.class);
+        var judge = mock(QualityJudge.class);
+        var repo = mock(SkillScoreRepository.class);
+        var versionRepo = mock(SkillVersionRepository.class);
+
+        when(storage.download(anyString())).thenReturn(new byte[]{1});
+        when(pkg.extractSkillMd(any())).thenReturn(content);
+        when(judge.evaluatorVersion()).thenReturn("stub@v0");
+        when(judge.judgeImplementation(anyString())).thenReturn(
+                stubResponse("Conciseness", "Actionability", "WorkflowClarity", "ProgressiveDisclosure", 3));
+        when(judge.judgeActivation(anyString())).thenReturn(
+                stubResponse("Specificity", "Completeness", "TriggerTermQuality", "Distinctiveness", 3));
+        when(versionRepo.findBySkillIdAndVersion(anyString(), anyString())).thenReturn(Optional.empty());
+
+        var event = SkillVersionPublishedEvent.of("skill-s194", "1.0.0", "skills/test.zip", 100L,
+                Map.of("name", "test-skill", "description", "A test skill for quality scoring."),
+                List.of());
+
+        @SuppressWarnings("unchecked")
+        var captor = ArgumentCaptor.forClass(Iterable.class);
+        service(storage, pkg, judge, repo, versionRepo).evaluateAndPersist(event);
+        verify(repo).saveAll(captor.capture());
+
+        return ((List<SkillScore>) captor.getValue()).stream()
+                .filter(r -> r.getAxis() == QualityAxis.VALIDATION)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> dimension(SkillScore row, String key) {
+        return (Map<String, Object>) row.getDimensions().get(key);
     }
 
     @Test
@@ -172,6 +207,123 @@ class QualityScoreServiceTest {
         assertThat(validationRow.getTotalScore()).isEqualByComparingTo("100.00");
         assertThat(validationRow.getDimensions()).containsKey("lineCount");
         assertThat(validationRow.getDimensions()).containsKey("bodyPresent");
+    }
+
+    @Test
+    @DisplayName("AC-S194-6: VALIDATION all-pass official frontmatter keeps totalScore 100 and official-format dimension 100")
+    @Tag("AC-S194-6")
+    void officialFrontmatterKeepsValidation100() throws Exception {
+        var row = validationRowForContent("""
+                ---
+                name: test-skill
+                description: A test skill for quality scoring.
+                allowed-tools: "Read Glob"
+                metadata:
+                  author: howielab
+                ---
+                # Test Skill
+
+                ## Steps
+                1. Run the command
+
+                ## Example
+                ```bash
+                run-test
+                ```
+                """);
+
+        assertThat(row.getTotalScore()).isEqualByComparingTo("100.00");
+        assertThat(dimension(row, "frontmatterOfficialFormat"))
+                .containsEntry("score", 100)
+                .containsEntry("reasoning", "frontmatter follows agentskills.io official format");
+    }
+
+    @Test
+    @DisplayName("AC-S194-6: allowed-tools list reduces frontmatterOfficialFormat and totalScore")
+    @Tag("AC-S194-6")
+    void allowedToolsListReducesFrontmatterOfficialFormatScore() throws Exception {
+        var row = validationRowForContent("""
+                ---
+                name: test-skill
+                description: A test skill for quality scoring.
+                allowed-tools: [Read, Glob]
+                ---
+                # Test Skill
+
+                ## Steps
+                1. Run the command
+
+                ## Example
+                ```bash
+                run-test
+                ```
+                """);
+
+        assertThat(row.getTotalScore()).isEqualByComparingTo("97.14");
+        assertThat(dimension(row, "frontmatterOfficialFormat"))
+                .containsEntry("score", 80);
+        assertThat(dimension(row, "frontmatterOfficialFormat").get("reasoning").toString())
+                .contains("allowed-tools");
+    }
+
+    @Test
+    @DisplayName("AC-S194-6: metadata tags list reduces frontmatterOfficialFormat and totalScore")
+    @Tag("AC-S194-6")
+    void metadataTagsListReducesFrontmatterOfficialFormatScore() throws Exception {
+        var row = validationRowForContent("""
+                ---
+                name: test-skill
+                description: A test skill for quality scoring.
+                metadata:
+                  tags: [session-management, context-preservation]
+                ---
+                # Test Skill
+
+                ## Steps
+                1. Run the command
+
+                ## Example
+                ```bash
+                run-test
+                ```
+                """);
+
+        assertThat(row.getTotalScore()).isEqualByComparingTo("97.14");
+        assertThat(dimension(row, "frontmatterOfficialFormat"))
+                .containsEntry("score", 80);
+        assertThat(dimension(row, "frontmatterOfficialFormat").get("reasoning").toString())
+                .contains("metadata: key 'tags'");
+    }
+
+    @Test
+    @DisplayName("AC-S194-6: multiple frontmatter compatibility warnings only apply one official-format penalty")
+    @Tag("AC-S194-6")
+    void multipleFrontmatterWarningsApplyOnePenalty() throws Exception {
+        var row = validationRowForContent("""
+                ---
+                name: test-skill
+                description: A test skill for quality scoring.
+                allowed-tools: [Read, Glob]
+                metadata:
+                  tags: [session-management, context-preservation]
+                ---
+                # Test Skill
+
+                ## Steps
+                1. Run the command
+
+                ## Example
+                ```bash
+                run-test
+                ```
+                """);
+
+        assertThat(row.getTotalScore()).isEqualByComparingTo("97.14");
+        assertThat(dimension(row, "frontmatterOfficialFormat"))
+                .containsEntry("score", 80);
+        assertThat(row.getDimensions().get("warnings").toString())
+                .contains("allowed-tools")
+                .contains("metadata: key 'tags'");
     }
 
     @Test

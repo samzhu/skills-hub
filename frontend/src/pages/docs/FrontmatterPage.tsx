@@ -46,10 +46,20 @@ export function FrontmatterPage() {
           { name: 'author', type: 'string', limit: '—', note: '署名；可為個人 / team 名' },
           { name: 'license', type: 'string', limit: 'SPDX ID（如 MIT）', note: '建議填 — 顯示於 detail page' },
           { name: 'compatibility', type: 'array<string>', limit: '—', note: '宣告相容 agent（如 ["claude-code", "cursor"]）' },
-          { name: 'metadata', type: 'object', limit: '—', note: '自訂 KV 對；agent 可讀但 Skills Hub 不額外處理' },
-          { name: 'allowed-tools', type: 'array<string>', limit: '—', note: '宣告 skill 預期 agent 可使用的 tool；存在時即使 findings=[]，安全頁也會用 LOW 說明原因' },
+          { name: 'metadata', type: 'string key/value', limit: '官方格式：value 皆為 string', note: '自訂 KV 對；agent 可讀但 Skills Hub 不額外處理' },
+          { name: 'allowed-tools', type: 'string', limit: '官方格式：空白分隔字串', note: '宣告 skill 預期 agent 可使用的 tool；存在時即使 findings=[]，安全頁也會用 LOW 說明原因' },
         ]}
       />
+
+      <Callout>
+        Skills Hub 會接受常見非官方格式，例如
+        <code className="mx-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">allowed-tools</code>
+        YAML list 或
+        <code className="mx-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">metadata.tags</code>
+        array，但會標成 compatibility warning，並降低品質評分的
+        <code className="ml-1 rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">VALIDATION</code>
+        分數；滿分只保留給 agentskills.io 官方 frontmatter 格式。
+      </Callout>
 
       <Callout>
         加了 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">allowed-tools</code> 或

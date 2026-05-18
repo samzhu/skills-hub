@@ -1,6 +1,6 @@
 # S194: SKILL.md Structured Metadata Compatibility
 
-> 規格：S194 | 大小：S(10) | 狀態：📐 in-design
+> 規格：S194 | 大小：S(11) | 狀態：✅ shipped v4.77.0
 > 日期：2026-05-18
 > 對應：PRD P2「上傳合法 skill」、S135a `metadata_value_string` hard rule、production failure `PUT /api/v1/skills/{id}/versions` 400
 
@@ -224,4 +224,74 @@ var totalScore = average(scores);
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+POC：not required。S194 不新增套件、不接新外部 API，也不包新的 framework SPI；改動點是既有 `SkillValidator` 對 SnakeYAML parsed value 的型別判斷、既有 `QualityScoreService` 的分數公式、既有 docs page 的文字。pre-flight 對照 PRD P2 後，設計方向仍符合「驗證 SKILL.md 格式、失敗時回具體欄位與原因」：官方格式是滿分，常見非官方格式放行但留下 warning 與 VALIDATION 扣分。
+
+E2E：not required。S194 不改 publish/edit UI 流程；真正的編輯頁檔案拖拽與 400 finding 顯示在 S195 處理。本 spec 用 validator unit test、quality score unit test、command module integration test、docs render test 覆蓋所有 AC。
+
+| 順序 | Task | 檔案 | 覆蓋 AC | 驗證命令 | 前置 |
+|------|------|------|---------|----------|------|
+| 1 | [S194-T01 Validator frontmatter compatibility warnings](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S194-T01-validator-frontmatter-compatibility.md) | `SkillValidator.java`, `SkillValidatorTest.java` | AC-S194-2, AC-S194-3, AC-S194-4 | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.validation.SkillValidatorTest` | 無 |
+| 2 | [S194-T02 VALIDATION score deducts compatibility frontmatter](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S194-T02-quality-frontmatter-official-format-score.md) | `QualityScoreService.java`, `QualityScoreServiceTest.java` | AC-S194-6 | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.score.QualityScoreServiceTest` | T01 |
+| 3 | [S194-T03 addVersion accepts handover-style compatible zip](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S194-T03-command-version-compatibility-integration.md) | `SkillUploadAllowedToolsTest.java` | AC-S194-1, AC-S194-3 | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.command.SkillUploadAllowedToolsTest` | T01 |
+| 4 | [S194-T04 Frontmatter docs show official format and compatibility penalty](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S194-T04-frontmatter-docs-and-roadmap-sync.md) | `FrontmatterPage.tsx`, `FrontmatterPage.test.tsx`, `SkillValidator.java` comment | AC-S194-5 | `cd frontend && npm test -- FrontmatterPage` | T01, T02 |
+
+### AC Coverage
+
+| AC | Task | 具體證據 |
+|----|------|----------|
+| AC-S194-1 | T03 | `addVersion(...)` 後 `skill_versions` 有新 row，`frontmatter.allowed-tools` 與 `metadata.tags` 保留 list。 |
+| AC-S194-2 | T01 | `ValidationResult.valid() == true`，warnings 含官方格式提示。 |
+| AC-S194-3 | T01, T03 | validator errors 含 nested metadata object；addVersion 不新增版本 row。 |
+| AC-S194-4 | T01 | string-only metadata 與 official `allowed-tools` string 不產生 frontmatter compatibility warning。 |
+| AC-S194-5 | T04 | `/docs/frontmatter` render test 查得到官方格式與 compatibility penalty 文字。 |
+| AC-S194-6 | T02 | VALIDATION `totalScore < 100.00`，`frontmatterOfficialFormat.score = 80`；官方格式回到 `100.00`。 |
+
+## 7. Implementation Results
+
+### 7.1 Task Results
+
+| Task | 結果 | 實際驗證 |
+|------|------|----------|
+| T01 Validator frontmatter compatibility warnings | PASS | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.validation.SkillValidatorTest -x processTestAot`：29 tests / 0 failures / 0 errors。未加 `-x processTestAot` 的單測 command 先被本機 `localhost:47432` connection refused 擋在測試前；release QA 用 `./scripts/verify-all.sh` 補跑完整 backend gate。 |
+| T02 VALIDATION score deducts compatibility frontmatter | PASS | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.score.QualityScoreServiceTest`：8 tests / 0 failures / 0 errors。 |
+| T03 addVersion accepts handover-style compatible zip | PASS | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.command.SkillUploadAllowedToolsTest`：8 tests / 0 failures / 0 errors。 |
+| T04 Frontmatter docs show official format and compatibility penalty | PASS | `cd frontend && npm test -- FrontmatterPage`：1 test file / 1 test PASS。 |
+
+### 7.2 Acceptance Evidence
+
+| AC | 結果 | 證據 |
+|----|------|------|
+| AC-S194-1 | PASS | `SkillUploadAllowedToolsTest` 的 addVersion case 建立新 `skill_versions` row，並確認 `frontmatter.allowed-tools` 與 `metadata.tags` 都保留 list。 |
+| AC-S194-2 | PASS | `SkillValidatorTest` 確認 `allowed-tools` YAML list、`metadata` number/list 會讓 `ValidationResult.valid == true`，warnings 以 `frontmatter_official_format:` 開頭並寫出 agentskills.io 官方格式。 |
+| AC-S194-3 | PASS | `SkillValidatorTest` 與 `SkillUploadAllowedToolsTest` 確認 nested metadata object 仍 invalid，addVersion 不新增 `2.1.0` row。 |
+| AC-S194-4 | PASS | `SkillValidatorTest` 確認 string-only metadata 與官方 `allowed-tools` string 不產生 frontmatter compatibility warning。 |
+| AC-S194-5 | PASS | `FrontmatterPage.test.tsx` render `/docs/frontmatter` 內容，確認頁面顯示 `allowed-tools` 官方格式是空白分隔字串、`metadata` 是 string key/value，並顯示 compatibility warning 會降低 VALIDATION 分數。 |
+| AC-S194-6 | PASS | `QualityScoreServiceTest` 確認 compatibility warning 讓 VALIDATION total score 低於 `100.00`，`frontmatterOfficialFormat.score = 80`；官方格式維持 `100.00`。 |
+
+### 7.3 QA Gate
+
+`2026-05-18T07:40:27Z` 於 `$shipping-release S194` tick 重新執行 `./scripts/verify-all.sh`，結果：
+
+```text
+V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS
+PASS=8, FAIL=0, SKIP=0
+Verdict: all CRITICAL passed; exit=0
+```
+
+V02 line coverage 是 `87.2%`（covered=4864 / total=5580）。
+
+QA 判定：PASS。S194 已完成本機 release 檢查；release tick 已接續 archive spec、清除 S194 task files、更新 CHANGELOG / roadmap shipped row、建立 release tag。
+
+### 7.4 Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 2 | 2 | 改既有 `SkillValidator` / `QualityScoreService`，沒有新增外部 API 或套件；官方格式 vs compatibility warning 仍要保留 S135a 設計意圖。 |
+| Uncertainty | 1 | 1 | SBE 來自具體 production 400 與 handover frontmatter shape；實作期間沒有新增產品問題。 |
+| Dependencies | 2 | 2 | 依賴 S135a quality score 與 S187 addVersion path，兩者都已 ship。 |
+| Scope | 2 | 2 | 觸及 backend validator、quality scoring、addVersion integration test、docs page；仍落在既有模組與既有 API shape。 |
+| Testing | 2 | 3 | 除 validator/score unit tests，還需要 Spring command integration test、frontend render test、完整 `verify-all.sh`（Testcontainers、Playwright、AOT/native image）。 |
+| Reversibility | 1 | 1 | 沒有 schema migration 或 API 欄位變更；可用單一 commit 回復 compatibility warning 與 score dimension。 |
+| **Total** | **10 / S** | **11 / S** | Bucket 不變；實際測試複雜度比設計估計高一點。 |

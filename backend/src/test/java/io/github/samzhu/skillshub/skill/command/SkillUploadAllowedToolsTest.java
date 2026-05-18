@@ -7,6 +7,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -22,6 +24,8 @@ import org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode;
 import io.github.samzhu.skillshub.TestcontainersConfiguration;
 import io.github.samzhu.skillshub.skill.domain.SkillRepository;
 import io.github.samzhu.skillshub.skill.domain.SkillVersionRepository;
+import io.github.samzhu.skillshub.shared.api.SkillValidationException;
+import io.github.samzhu.skillshub.shared.api.ValidationFinding;
 
 /**
  * S018 T5 — uploadSkill → SkillVersionReadModel.allowedTools first-class 持久化驗證（AC-13）。
@@ -180,6 +184,68 @@ class SkillUploadAllowedToolsTest {
                 .containsEntry("description", "Published description");
     }
 
+    @Test
+    @DisplayName("AC-S194-1: addVersion accepts handover-compatible allowed-tools and metadata tags lists")
+    @Tag("AC-S194-1")
+    void addVersionAcceptsHandoverCompatibleFrontmatterLists() throws IOException {
+        var platformName = "handover-compatible-" + UUID.randomUUID().toString().substring(0, 8);
+        var packageV1 = "handover-package-v1-" + UUID.randomUUID().toString().substring(0, 8);
+        var v1 = createZipWithFrontmatter(packageV1, "Official initial version", "Read Glob");
+        var skillId = commandService.uploadSkill(v1, platformName, "1.0.0", "owner", "testing", null, null);
+
+        var packageV2 = "handover-package-v2-" + UUID.randomUUID().toString().substring(0, 8);
+        var v2 = createZipWithRawFrontmatter(packageV2, "Handover compatible version", """
+                allowed-tools:
+                  - Read
+                  - Glob
+                  - Bash(git:*)
+                metadata:
+                  tags: [session-management, context-preservation, cross-agent]
+                """);
+
+        commandService.addVersion(skillId, v2, "2.0.0");
+
+        var version = versionRepo.findBySkillIdAndVersion(skillId, "2.0.0").orElseThrow();
+        assertThat(version.getAllowedTools()).containsExactly("Read", "Glob", "Bash(git:*)");
+
+        var frontmatter = version.getFrontmatter();
+        var allowedTools = (List<?>) frontmatter.get("allowed-tools");
+        assertThat(allowedTools.stream().map(String::valueOf).toList())
+                .contains("Read", "Glob", "Bash(git:*)");
+
+        var metadata = (Map<?, ?>) frontmatter.get("metadata");
+        var tags = (List<?>) metadata.get("tags");
+        assertThat(tags.stream().map(String::valueOf).toList())
+                .contains("session-management", "context-preservation", "cross-agent");
+    }
+
+    @Test
+    @DisplayName("AC-S194-3: addVersion rejects nested metadata object and does not create version row")
+    @Tag("AC-S194-3")
+    void addVersionRejectsNestedMetadataAndKeepsVersionRowsUnchanged() throws IOException {
+        var platformName = "nested-metadata-" + UUID.randomUUID().toString().substring(0, 8);
+        var packageV1 = "nested-package-v1-" + UUID.randomUUID().toString().substring(0, 8);
+        var v1 = createZipWithFrontmatter(packageV1, "Official initial version", "Read Glob");
+        var skillId = commandService.uploadSkill(v1, platformName, "1.0.0", "owner", "testing", null, null);
+        var versionCountBefore = versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId).size();
+
+        var packageV2 = "nested-package-v2-" + UUID.randomUUID().toString().substring(0, 8);
+        var nestedMetadata = createZipWithRawFrontmatter(packageV2, "Nested metadata version", """
+                metadata:
+                  owner:
+                    team: platform
+                """);
+
+        assertThatThrownBy(() -> commandService.addVersion(skillId, nestedMetadata, "2.1.0"))
+                .isInstanceOf(SkillValidationException.class)
+                .satisfies(error -> assertThat(((SkillValidationException) error).findings())
+                        .extracting(ValidationFinding::title)
+                        .contains("metadata: key 'owner' nested object is not supported"));
+
+        assertThat(versionRepo.findBySkillIdAndVersion(skillId, "2.1.0")).isEmpty();
+        assertThat(versionRepo.findBySkillIdOrderByPublishedAtDesc(skillId)).hasSize(versionCountBefore);
+    }
+
     /**
      * 產生最小可通過 SkillValidator 的 zip：含 SKILL.md 含 frontmatter（name + description
      * + 可選 allowed-tools）。
@@ -190,15 +256,19 @@ class SkillUploadAllowedToolsTest {
 
     private byte[] createZipWithFrontmatter(String skillName, String description, String allowedToolsLine)
             throws IOException {
+        var extraFrontmatter = allowedToolsLine == null ? "" : "allowed-tools: \"" + allowedToolsLine + "\"\n";
+        return createZipWithRawFrontmatter(skillName, description, extraFrontmatter);
+    }
+
+    private byte[] createZipWithRawFrontmatter(String skillName, String description, String extraFrontmatter)
+            throws IOException {
         var baos = new ByteArrayOutputStream();
         try (var zos = new ZipOutputStream(baos)) {
             zos.putNextEntry(new ZipEntry("SKILL.md"));
             var sb = new StringBuilder("---\n");
             sb.append("name: ").append(skillName).append("\n");
             sb.append("description: ").append(description).append("\n");
-            if (allowedToolsLine != null) {
-                sb.append("allowed-tools: \"").append(allowedToolsLine).append("\"\n");
-            }
+            sb.append(extraFrontmatter);
             sb.append("---\n# ").append(skillName);
             zos.write(sb.toString().getBytes(StandardCharsets.UTF_8));
             zos.closeEntry();

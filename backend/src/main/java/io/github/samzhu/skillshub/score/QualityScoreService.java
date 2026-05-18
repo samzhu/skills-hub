@@ -34,8 +34,9 @@ public class QualityScoreService {
 
     private static final Logger log = LoggerFactory.getLogger(QualityScoreService.class);
 
-    // SkillValidator hard rules count (approximate) for VALIDATION totalScore calculation
-    private static final int HARD_RULE_COUNT = 6;
+    private static final int VALIDATION_DIMENSION_COUNT = 7;
+    private static final int FRONTMATTER_COMPATIBILITY_WARNING_SCORE = 80;
+    private static final String FRONTMATTER_COMPATIBILITY_WARNING_PREFIX = "frontmatter_official_format:";
 
     private final SkillValidator validator;
     private final QualityJudge judge;
@@ -109,6 +110,10 @@ public class QualityScoreService {
         boolean descOk = !result.errors().stream().anyMatch(e -> e.contains("description"));
         boolean fieldsOk = !result.errors().stream().anyMatch(e -> e.contains("Missing required"));
         boolean toolsOk = !result.errors().stream().anyMatch(e -> e.contains("allowed-tools"));
+        var frontmatterWarnings = result.warnings().stream()
+                .filter(warning -> warning.startsWith(FRONTMATTER_COMPATIBILITY_WARNING_PREFIX))
+                .toList();
+        boolean frontmatterOfficialOk = frontmatterWarnings.isEmpty();
 
         var dims = new LinkedHashMap<String, Object>();
         dims.put("lineCount", Map.of("score", lineOk ? 100 : 0, "reasoning", lineCount + " / 500 lines"));
@@ -117,13 +122,19 @@ public class QualityScoreService {
         dims.put("descriptionConstraints", Map.of("score", descOk ? 100 : 0, "reasoning", descOk ? "description within constraints" : "description constraint failed"));
         dims.put("requiredFields", Map.of("score", fieldsOk ? 100 : 0, "reasoning", fieldsOk ? "name + description present" : "missing required fields"));
         dims.put("allowedTools", Map.of("score", toolsOk ? 100 : 0, "reasoning", toolsOk ? "allowed-tools valid" : "allowed-tools constraint failed"));
+        dims.put("frontmatterOfficialFormat", Map.of(
+                "score", frontmatterOfficialOk ? 100 : FRONTMATTER_COMPATIBILITY_WARNING_SCORE,
+                "reasoning", frontmatterOfficialOk
+                        ? "frontmatter follows agentskills.io official format"
+                        : String.join("; ", frontmatterWarnings)));
         if (!result.warnings().isEmpty()) {
             dims.put("warnings", result.warnings());
         }
 
-        int passCount = (lineOk ? 1 : 0) + (bodyOk ? 1 : 0) + (nameOk ? 1 : 0)
-                + (descOk ? 1 : 0) + (fieldsOk ? 1 : 0) + (toolsOk ? 1 : 0);
-        var totalScore = BigDecimal.valueOf((double) passCount / HARD_RULE_COUNT * 100)
+        int scoreSum = (lineOk ? 100 : 0) + (bodyOk ? 100 : 0) + (nameOk ? 100 : 0)
+                + (descOk ? 100 : 0) + (fieldsOk ? 100 : 0) + (toolsOk ? 100 : 0)
+                + (frontmatterOfficialOk ? 100 : FRONTMATTER_COMPATIBILITY_WARNING_SCORE);
+        var totalScore = BigDecimal.valueOf((double) scoreSum / VALIDATION_DIMENSION_COUNT)
                 .setScale(2, RoundingMode.HALF_UP);
 
         return SkillScore.of(skillId, skillVersionId, version, QualityAxis.VALIDATION, totalScore, dims, judge.evaluatorVersion(), sourceEventId);

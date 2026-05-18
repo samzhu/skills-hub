@@ -108,8 +108,10 @@ public class SkillValidator {
 			}
 		}
 
-		// S018 AC-14 + S135a AC-S135a-5：嚴格化欄位約束
-		validateFieldConstraints(parsed, errors);
+		var warnings = new ArrayList<String>();
+
+		// S018 AC-14 + S135a AC-S135a-5 + S194：嚴格錯誤與相容匯入 warning 分流
+		validateFieldConstraints(parsed, errors, warnings);
 
 		// S135a AC-S135a-5：body 存在性（frontmatter 後需有非空 body）
 		var body = extractBody(skillMdContent);
@@ -123,7 +125,6 @@ public class SkillValidator {
 		}
 
 		// S135a AC-S135a-6：body 品質建議（非阻斷性 warnings）
-		var warnings = new ArrayList<String>();
 		validateBodyWarnings(body, warnings);
 
 		return new ValidationResult(true, Collections.unmodifiableMap(new LinkedHashMap<>(parsed)),
@@ -131,10 +132,9 @@ public class SkillValidator {
 	}
 
 	/**
-	 * S018 AC-14 + S135a AC-S135a-5：嚴格化檢查 — name / description / compatibility /
-	 * allowed-tools / metadata 值型別。違規累積至 errors list，不短路。
+	 * S018 / S135a / S194：官方格式錯誤進 errors；相容匯入形狀進 warnings。
 	 */
-	private void validateFieldConstraints(Map<String, Object> parsed, List<String> errors) {
+	private void validateFieldConstraints(Map<String, Object> parsed, List<String> errors, List<String> warnings) {
 		// name：leading/trailing hyphen → 特定訊息；consecutive hyphen → 特定訊息；其他 → regex 訊息
 		var name = parsed.get("name");
 		if (name != null) {
@@ -168,44 +168,63 @@ public class SkillValidator {
 			}
 		}
 
-		// S073: allowed-tools 支援兩種 frontmatter 形狀（與 canonical agentskills.io spec 對齊）：
-		//   1. YAML list（block 或 flow seq）— Anthropic 自家 SKILL.md 慣用形狀
-		//   2. 空白分隔 string — 既有測試 fixture 與 v2.50.0 之前唯一支援形狀（向後相容）
-		// 不能 fallback 到 toString()：ArrayList.toString() 為 "[a, b]"，會被誤切成 `[a,` / `b]` 全部不過 regex。
+		// S194：list 是 compatibility mode；官方 agentskills.io 格式仍是 space-separated string。
 		var allowedTools = parsed.get("allowed-tools");
 		if (allowedTools != null) {
 			List<String> tokens;
+			boolean compatibilityList = false;
 			if (allowedTools instanceof List<?> list) {
+				compatibilityList = true;
 				tokens = list.stream().map(String::valueOf).toList();
 			} else {
 				var s = allowedTools.toString().trim();
 				tokens = s.isBlank() ? List.of() : List.of(s.split("\\s+"));
 			}
+			var tokenError = false;
 			for (var token : tokens) {
 				if (token.isBlank()) continue;
 				if (!ALLOWED_TOOL_TOKEN_REGEX.matcher(token).matches()) {
 					errors.add("Field 'allowed-tools' contains invalid token: " + token);
+					tokenError = true;
 					break;   // 一個違規足以拒收，不重複報相同 root cause
 				}
 			}
+			if (compatibilityList && !tokenError) {
+				warnings.add("frontmatter_official_format: allowed-tools uses YAML list; agentskills.io expects a space-separated string");
+			}
 		}
 
-		// S135a AC-S135a-5：metadata 子物件各 value 須為 string
-		validateMetadataFieldTypes(parsed, errors);
+		validateMetadataFieldTypes(parsed, errors, warnings);
 	}
 
 	/**
-	 * S135a AC-S135a-5：metadata 子物件各 value 必須是 string；int / boolean / nested map 拒收。
+	 * S194：metadata scalar 相容匯入；nested object / nested list 仍拒收。
 	 */
-	private void validateMetadataFieldTypes(Map<String, Object> parsed, List<String> errors) {
+	private void validateMetadataFieldTypes(Map<String, Object> parsed, List<String> errors, List<String> warnings) {
 		var metadata = parsed.get("metadata");
 		if (metadata instanceof Map<?, ?> metaMap) {
 			for (var entry : metaMap.entrySet()) {
-				if (!(entry.getValue() instanceof String)) {
-					errors.add("metadata: key '" + entry.getKey() + "' value must be a string");
+				var key = String.valueOf(entry.getKey());
+				var value = entry.getValue();
+				if (value instanceof String) {
+					continue;
 				}
+				if (value instanceof Map<?, ?>) {
+					errors.add("metadata: key '" + key + "' nested object is not supported");
+					continue;
+				}
+				if (value instanceof List<?> list && containsNestedValue(list)) {
+					errors.add("metadata: key '" + key + "' nested list/object values are not supported");
+					continue;
+				}
+				warnings.add("frontmatter_official_format: metadata: key '" + key
+						+ "' uses non-string value; agentskills.io expects string values");
 			}
 		}
+	}
+
+	private boolean containsNestedValue(List<?> list) {
+		return list.stream().anyMatch(item -> item instanceof Map<?, ?> || item instanceof List<?>);
 	}
 
 	/**

@@ -185,8 +185,9 @@ class SkillValidatorTest {
 	}
 
 	@Test
-	@DisplayName("S073 AC-1: allowed-tools YAML block sequence（canonical Anthropic 形狀）→ valid")
+	@DisplayName("AC-S194-2: allowed-tools YAML list is valid with official-format warning")
 	@Tag("S073")
+	@Tag("AC-S194-2")
 	void allowedToolsBlockSequenceValid() {
 		var content = """
 				---
@@ -204,6 +205,8 @@ class SkillValidatorTest {
 
 		assertThat(result.valid()).isTrue();
 		assertThat(result.errors()).isEmpty();
+		assertThat(result.warnings()).contains(
+				"frontmatter_official_format: allowed-tools uses YAML list; agentskills.io expects a space-separated string");
 	}
 
 	@Test
@@ -320,8 +323,8 @@ class SkillValidatorTest {
 	}
 
 	@Test
-	@DisplayName("AC-S135a-5: metadata.foo = 123（int 非 string）→ metadata key value must be string")
-	@Tag("AC-S135a-5")
+	@DisplayName("AC-S194-2: metadata.foo = 123（int 非 string）→ valid with official-format warning")
+	@Tag("AC-S194-2")
 	void metadataValueNonString() {
 		var content = """
 				---
@@ -335,8 +338,102 @@ class SkillValidatorTest {
 
 		var result = validator.validate(content);
 
+		assertThat(result.valid()).isTrue();
+		assertThat(result.errors()).isEmpty();
+		assertThat(result.warnings()).contains(
+				"frontmatter_official_format: metadata: key 'foo' uses non-string value; agentskills.io expects string values");
+	}
+
+	@Test
+	@DisplayName("AC-S194-2: scalar and scalar-list metadata values are valid with official-format warning")
+	@Tag("AC-S194-2")
+	void scalarAndScalarListMetadataValidWithWarning() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				metadata:
+				  score: 10
+				  enabled: true
+				  tags: [session-management, context-preservation]
+				---
+				# Body
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isTrue();
+		assertThat(result.errors()).isEmpty();
+		assertThat(result.warnings()).contains(
+				"frontmatter_official_format: metadata: key 'score' uses non-string value; agentskills.io expects string values",
+				"frontmatter_official_format: metadata: key 'enabled' uses non-string value; agentskills.io expects string values",
+				"frontmatter_official_format: metadata: key 'tags' uses non-string value; agentskills.io expects string values");
+	}
+
+	@Test
+	@DisplayName("AC-S194-3: nested metadata object remains invalid")
+	@Tag("AC-S194-3")
+	void nestedMetadataObjectInvalid() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				metadata:
+				  owner:
+				    team: platform
+				---
+				# Body
+				""";
+
+		var result = validator.validate(content);
+
 		assertThat(result.valid()).isFalse();
-		assertThat(result.errors()).contains("metadata: key 'foo' value must be a string");
+		assertThat(result.errors()).contains("metadata: key 'owner' nested object is not supported");
+	}
+
+	@Test
+	@DisplayName("AC-S194-3: metadata list containing object remains invalid")
+	@Tag("AC-S194-3")
+	void metadataListContainingObjectInvalid() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				metadata:
+				  tags:
+				    - session-management
+				    - owner:
+				        team: platform
+				---
+				# Body
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isFalse();
+		assertThat(result.errors()).contains("metadata: key 'tags' nested list/object values are not supported");
+	}
+
+	@Test
+	@DisplayName("AC-S194-4: string-only metadata and allowed-tools string produce no official-format warning")
+	@Tag("AC-S194-4")
+	void officialFrontmatterHasNoOfficialFormatWarning() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				allowed-tools: "Read Glob"
+				metadata:
+				  author: howielab
+				---
+				# Body
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isTrue();
+		assertThat(result.errors()).isEmpty();
+		assertThat(result.warnings()).noneMatch(warning -> warning.startsWith("frontmatter_official_format:"));
 	}
 
 	@Test

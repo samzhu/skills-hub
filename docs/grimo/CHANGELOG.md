@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.77.0] — S194 SKILL.md Frontmatter Compatibility（2026-05-18）
+
+### Changed
+
+- **Frontmatter compatibility mode** — `SKILL.md` validation now accepts common non-official shapes such as `allowed-tools` YAML lists and scalar/list `metadata` values, while emitting `frontmatter_official_format:` warnings instead of blocking publish.
+- **Nested metadata still rejected** — nested metadata objects or nested list items remain validation errors, so arbitrary deep user input does not spread into API/UI consumers.
+- **VALIDATION score penalty** — Quality scoring now includes `frontmatterOfficialFormat`; accepted compatibility warnings lower VALIDATION score, while official agentskills.io frontmatter keeps 100.
+- **Frontmatter docs aligned** — `/docs/frontmatter` now says `allowed-tools` official format is a space-separated string and `metadata` official format is string key/value, with Skills Hub compatibility behavior called out separately.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.2%，covered=4864 / total=5580）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Targeted evidence：`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.validation.SkillValidatorTest -x processTestAot` PASS（29 tests）；`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.score.QualityScoreServiceTest` PASS（8 tests）；`cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.command.SkillUploadAllowedToolsTest` PASS（8 tests）；`cd frontend && npm test -- FrontmatterPage` PASS（1 test）。
+- Production deploy：not run in this release tick；S194 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-18-S194-skill-md-structured-metadata-compatibility.md` → `docs/grimo/specs/archive/2026-05-18-S194-skill-md-structured-metadata-compatibility.md`
+- `docs/grimo/tasks/2026-05-18-S194-*.md` 已刪除。
+- Final size re-score：S(10) → S(11)，原因是實際 release 需要 Spring command integration test、frontend docs render test、完整 `verify-all.sh`（Testcontainers、Playwright、AOT/native image）。
+
 ## [v4.76.0] — S191 Publish Review Copy Reality Check（2026-05-18）
 
 ### Changed
