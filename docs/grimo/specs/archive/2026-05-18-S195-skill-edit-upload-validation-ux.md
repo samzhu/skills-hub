@@ -1,6 +1,6 @@
 # S195: Skill Edit Upload Validation UX
 
-> 規格：S195 | 大小：S(9) | 狀態：✅ QA PASS
+> 規格：S195 | 大小：S(11) | 狀態：✅ shipped v4.78.0
 > 日期：2026-05-18
 > 對應：PRD P2「驗證失敗回具體錯誤」、S187 edit page、S098b3-2 structured findings
 
@@ -299,3 +299,29 @@ AC evidence:
 | AC-S195-6 | VERIFIED | `e2e/tests/S195-skill-edit-upload-validation-ux.spec.ts` runs at 390px and verifies the dropzone text plus「儲存分類」「儲存新版本」remain visible. |
 
 Code/design sync check: S195 stayed inside the planned frontend/edit-upload scope. No backend validator rule changed, no new dependency was added, and no product docs outside this spec need updating before release.
+
+### Shipping Verification 2026-05-18
+
+`$shipping-release S195` re-ran the deterministic release gate in the current tick:
+
+- `./scripts/verify-all.sh` → PASS；V01=PASS, V02=INFO coverage 87.2% (covered=4866 / total=5580), V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`
+
+Production deploy：not run in this release tick；S195 has local release evidence only.
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---|---|---|
+| Tech risk | 1 | 1 | Existing `FileDropZone`, `ApiError`, and `SkillEditPage` patterns worked as designed; no backend validator or new API mechanism was needed. |
+| Uncertainty | 1 | 1 | ACs stayed concrete: edit upload mode, findings propagation, and mobile visibility. |
+| Dependencies | 2 | 3 | Actual release depended on S098b3-2 structured findings, S187 edit page, and S194 ordering/validator behavior already being shipped. |
+| Scope | 2 | 2 | Three frontend production files plus tests and one Playwright spec; still a bounded frontend/edit-upload change. |
+| Testing | 2 | 3 | Shipping required Vitest, Playwright `@S195`, frontend lint/typecheck, full frontend coverage, backend tests, AOT, and native image build through `verify-all.sh`. |
+| Reversibility | 1 | 1 | No schema, backend contract, or persistent data migration; revert is a single frontend/UI behavior rollback. |
+| **Total** | **9 / S** | **11 / S** | Same bucket, higher score because release verification added Playwright + native-image gate and three shipped-spec dependencies. |
+
+### Release Lifecycle
+
+- `docs/grimo/specs/2026-05-18-S195-skill-edit-upload-validation-ux.md` → `docs/grimo/specs/archive/2026-05-18-S195-skill-edit-upload-validation-ux.md`
+- `docs/grimo/tasks/2026-05-18-S195-*.md` deleted.
+- Released as `v4.78.0`.

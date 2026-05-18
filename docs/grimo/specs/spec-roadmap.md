@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-18（S196 in-design；Request Board 兩頁籤 UX）
+> 最後更新：2026-05-18（S195 shipped v4.78.0；S196 in-design）
 
 ## 使用說明
 
@@ -42,7 +42,6 @@
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⛔ superseded 2026-05-16 — 取代為 S189（舊 spec 已有 T01-T05/QA 歷史，但未 ship；關閉以免干擾 S186→S187 主線） |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
-| S195 | Skill edit upload validation UX（編輯頁重用 FileDropZone；PUT /versions 400 顯示 structured findings） | S(9) | S098b3-2 ✅, S187 ✅, S194 ordering-only | 📋 planned |
 | S196 | Request Board 兩頁籤 UX（`瀏覽需求` / `我要開需求`；inline 開需求；排行只當輔助訊號） | XS(8) | S156c ✅ | 📐 in-design |
 ---
 
@@ -93,6 +92,7 @@
 | v4.75.0 | S189 (Browse search entry point verification) | ✅ shipped 2026-05-18 — `/browse` 空白只打 catalog、有字只打 semantic；`@S189` Playwright request contract；`verify-all.sh` 全綠 |
 | v4.76.0 | S191 (Publish review copy reality check) | ✅ shipped 2026-05-18 — MEDIUM/result/status copy 對齊 current backend；移除 publication review queue wording；`verify-all.sh` 全綠 |
 | v4.77.0 | S194 (SKILL.md frontmatter compatibility) | ✅ shipped 2026-05-18 — `allowed-tools` list / `metadata.tags` array 相容匯入；compatibility warning 會扣 VALIDATION 分；nested metadata object 仍擋；`verify-all.sh` 全綠 |
+| v4.78.0 | S195 (Skill edit upload validation UX) | ✅ shipped 2026-05-18 — edit page upload mode 重用 FileDropZone；`PUT /versions` 400 顯示 structured findings；`@S195` mobile evidence；`verify-all.sh` 全綠 |
 
 ---
 
@@ -269,6 +269,7 @@
 | S189 | Browse search entry point verification | S(11) | v4.75.0 |
 | S191 | Publish review copy reality check | S(11) | v4.76.0 |
 | S194 | SKILL.md frontmatter compatibility | S(11) | v4.77.0 |
+| S195 | Skill edit upload validation UX | S(11) | v4.78.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

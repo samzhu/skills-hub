@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.78.0] — S195 Skill Edit Upload Validation UX（2026-05-18）
+
+### Changed
+
+- **Edit upload dropzone** — `/skills/{id}/edit` upload mode now reuses `FileDropZone`, so edit-page version upload shows the same「拖拽 zip 或 md 檔到此處」flow as `/publish`.
+- **Version validation findings** — `PUT /versions` 400 responses now preserve `findings[]` in `ApiError`, letting the edit page show the first validation finding title as the main fix-it message instead of only `SKILL.md validation failed`.
+- **Invalid extension guard** — edit upload mode now keeps `.zip` / `.md` client-side guard behavior from `FileDropZone` and does not send `PUT /versions` for `.txt`.
+- **Mobile edit upload evidence** — 390px browser evidence confirms the dropzone text and main action buttons remain visible.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.2%，covered=4866 / total=5580）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Targeted evidence：`cd frontend && npm test -- FileDropZone skills.test api-error-messages SkillEditPage` PASS（4 files / 30 tests）；`cd e2e && npx playwright test --grep @S195` PASS（1 test）；`cd frontend && npm run verify` PASS。
+- Production deploy：not run in this release tick；S195 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-18-S195-skill-edit-upload-validation-ux.md` → `docs/grimo/specs/archive/2026-05-18-S195-skill-edit-upload-validation-ux.md`
+- `docs/grimo/tasks/2026-05-18-S195-*.md` 已刪除。
+- Final size re-score：S(9) → S(11)，原因是實際 release 需要 S098b3-2 / S187 / S194 三個已 ship 前置、`@S195` Playwright mobile evidence、以及完整 `verify-all.sh`（backend, frontend, E2E, AOT/native image）。
+
 ## [v4.77.0] — S194 SKILL.md Frontmatter Compatibility（2026-05-18）
 
 ### Changed
