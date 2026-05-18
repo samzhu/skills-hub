@@ -1,6 +1,6 @@
 # S198: SKILL.md Recommendations Not Hard Errors
 
-> 規格：S198 | 大小：XS(5) | 狀態：✅ QA PASS — ready for `$shipping-release S198`
+> 規格：S198 | 大小：XS(7) | 狀態：✅ shipped v4.81.0
 > 日期：2026-05-18
 > 對應：PRD P2「驗證 SKILL.md 格式符合 agentskills.io 規範」、S135a quality score、S194 compatibility warning
 
@@ -201,6 +201,7 @@ Verdict: **PASS**。S198 的 task files 已全部 PASS；本輪 `$verifying-qual
 |---|---|
 | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.validation.SkillValidatorTest --tests io.github.samzhu.skillshub.score.QualityScoreServiceTest` | PASS — `BUILD SUCCESSFUL in 2m`; XML reports `SkillValidatorTest` 32 tests / 0 failures / 0 errors and `QualityScoreServiceTest` 9 tests / 0 failures / 0 errors |
 | `./scripts/verify-all.sh` | PASS — V01=PASS, V02=INFO line coverage 87.2% (covered=4868 / total=5582), V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS; `Verdict: ✅ all CRITICAL passed; exit=0` |
+| `./scripts/verify-all.sh`（shipping-release tick rerun） | PASS — V01=PASS, V02=INFO line coverage 87.2% (covered=4870 / total=5582), V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS; `Verdict: ✅ all CRITICAL passed; exit=0` |
 
 ### 7.3 AC Results
 
@@ -231,3 +232,15 @@ Design sync:
 - §2 hard error / warning split still matches implementation.
 - §4 file plan matches the actual changed files.
 - No new dependency, schema, endpoint, browser flow, or glossary term was introduced.
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 1 | 只改既有 `SkillValidator` 與 `QualityScoreService` 分流；S194/S135a 已驗證相同 warning/quality pattern。 |
+| Uncertainty | 1 | 1 | §3 AC 在實作前已具體列出 589 行、schema hard error、empty body policy 與 quality 扣分行為；沒有 scope pivot。 |
+| Dependencies | 1 | 1 | 只依賴已 ship 的 S135a/S194，沒有新外部系統、套件或 migration。 |
+| Scope | 1 | 2 | 實際改動是 2 個 production files + 2 個 test files，落在單一 backend 行為面但超過 1-3 production/test 小改的最小值。 |
+| Testing | 1 | 1 | AC 全由 backend unit tests 驗證；release tick 另跑標準 `verify-all.sh`，但 S198 本身沒有新增 Spring context、Docker 或 browser-only 行為。 |
+| Reversibility | 1 | 1 | 可由單一 commit 還原；沒有 schema、API contract 或 persisted data format 變更。 |
+| **Total** | **5 / XS** | **7 / XS** | 仍是 XS；初始 `XS(5)` 是舊 roadmap 點數，ship 後依六維制校正為 `XS(7)`。 |

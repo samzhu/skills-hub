@@ -1,5 +1,25 @@
 # Changelog
 
+## [v4.81.0] — S198 SKILL.md 建議不擋上傳（2026-05-19）
+
+### Changed
+
+- **SKILL.md line-count recommendation** — 589 行的合法 `SKILL.md` 不再因 `skill_md_line_count` 被 validator 擋住；500 行上限現在是 `recommended max 500` warning。
+- **Quality score penalty** — VALIDATION axis 的 `lineCount` dimension 會對超過建議行數扣分，reasoning 顯示 `589 / 500 recommended lines`，讓品質面板保留提醒。
+- **Platform-policy wording** — empty body 仍是 hard error，但錯誤原因改成 Skills Hub 上架政策：frontmatter 後沒有 instructions body 的空 skill 不收。
+
+### Verification
+
+- `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.validation.SkillValidatorTest --tests io.github.samzhu.skillshub.score.QualityScoreServiceTest`：**PASS** — `SkillValidatorTest` 32 tests + `QualityScoreServiceTest` 9 tests，0 failures / 0 errors。
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.2%，covered=4870 / total=5582）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Production deploy：not run in this release tick；S198 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-18-S198-skill-md-recommendations-not-hard-errors.md` → `docs/grimo/specs/archive/2026-05-18-S198-skill-md-recommendations-not-hard-errors.md`
+- `docs/grimo/tasks/2026-05-18-S198-*.md` 已刪除。
+- Final size re-score：XS(5) → XS(7)，原因是實際改動為 2 production + 2 test files，AC 仍由 backend unit tests 完整覆蓋，並重跑完整 `verify-all.sh`（backend, frontend, Playwright, AOT/native image）。
+
 ## [v4.80.0] — S197 必填欄位即時提示 UX（2026-05-19）
 
 ### Changed
