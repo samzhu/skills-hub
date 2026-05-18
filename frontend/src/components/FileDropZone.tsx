@@ -20,6 +20,12 @@ interface FileDropZoneProps {
   maxSizeBytes?: number
   /** S195：讓外部 label 可以指向隱藏 file input。 */
   inputId?: string
+  /** S197：caller 傳入未選檔等 required error；內部副檔名 / 大小錯誤會優先顯示。 */
+  error?: string | null
+  /** S197：外部 help text id，會併入 dropzone wrapper 的 aria-describedby。 */
+  describedBy?: string
+  /** S197：外部 error text id；未傳時用元件預設 id。 */
+  errorId?: string
 }
 
 /**
@@ -37,11 +43,16 @@ export function FileDropZone({
   accept = '.zip,.md',
   maxSizeBytes = DEFAULT_MAX_SIZE_BYTES,
   inputId,
+  error,
+  describedBy,
+  errorId = 'file-dropzone-error',
 }: FileDropZoneProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [sizeError, setSizeError] = useState<string | null>(null)
   // 透過 ref 程式化觸發隱藏的 <input> click，達到自訂樣式的點擊選取效果
   const inputRef = useRef<HTMLInputElement>(null)
+  const visibleError = sizeError ?? error ?? null
+  const describedByIds = [describedBy, visibleError ? errorId : null].filter(Boolean).join(' ')
 
   /**
    * S037：集中 file 處理 — drag 與 click 兩條 path 都先過 guard。
@@ -94,6 +105,9 @@ export function FileDropZone({
     <div>
       <div
         // 點擊整個區域時，程式化觸發隱藏 input 的 click 事件以開啟系統選檔對話框
+        data-testid="file-dropzone"
+        aria-invalid={visibleError ? true : undefined}
+        aria-describedby={describedByIds || undefined}
         onClick={() => inputRef.current?.click()}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -131,9 +145,9 @@ export function FileDropZone({
           }}
         />
       </div>
-      {/* S037: size guard 錯誤訊息 — 超限時 inline 顯示，不阻止 user 重新選檔 */}
-      {sizeError && (
-        <p className="mt-2 text-sm text-destructive">{sizeError}</p>
+      {/* S197：內部檔案錯誤優先；沒有內部錯誤時顯示 caller required error。 */}
+      {visibleError && (
+        <p id={errorId} className="mt-2 text-sm text-destructive">{visibleError}</p>
       )}
     </div>
   )

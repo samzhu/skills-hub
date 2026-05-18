@@ -83,4 +83,56 @@ describe('FileDropZone — S037/S048/S053', () => {
     fireEvent.change(input, { target: { files: [mdFile] } })
     expect(onFileSelect).toHaveBeenCalled()
   })
+
+  it('AC-S197-3: FileDropZone shows required error from caller', () => {
+    render(
+      <FileDropZone
+        onFileSelect={vi.fn()}
+        selectedFile={null}
+        error="請選擇 zip 或 SKILL.md"
+        errorId="publish-file-error"
+      />,
+    )
+
+    expect(screen.getByText('請選擇 zip 或 SKILL.md')).toBeInTheDocument()
+    const dropzone = screen.getByTestId('file-dropzone')
+    expect(dropzone).toHaveAttribute('aria-invalid', 'true')
+    expect(dropzone.getAttribute('aria-describedby')).toContain('publish-file-error')
+  })
+
+  it('AC-S197-3: invalid extension still shows extension error instead of required error', () => {
+    const onFileSelect = vi.fn()
+    const { container } = render(
+      <FileDropZone
+        onFileSelect={onFileSelect}
+        selectedFile={null}
+        error="請選擇 zip 或 SKILL.md"
+        errorId="publish-file-error"
+      />,
+    )
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement
+
+    fireEvent.change(input, { target: { files: [makeFile('handover.txt', 100)] } })
+
+    expect(screen.getByText('只接受 .zip / .md 檔，目前是 handover.txt')).toBeInTheDocument()
+    expect(screen.queryByText('請選擇 zip 或 SKILL.md')).toBeNull()
+    expect(onFileSelect).not.toHaveBeenCalled()
+  })
+
+  it('AC-S197-7: FileDropZone exposes aria-invalid and aria-describedby when error exists', () => {
+    render(
+      <FileDropZone
+        onFileSelect={vi.fn()}
+        selectedFile={null}
+        error="請選擇 zip 或 SKILL.md"
+        errorId="publish-file-error"
+        describedBy="publish-file-help"
+      />,
+    )
+
+    const dropzone = screen.getByTestId('file-dropzone')
+    expect(dropzone).toHaveAttribute('aria-invalid', 'true')
+    expect(dropzone.getAttribute('aria-describedby')).toContain('publish-file-help')
+    expect(dropzone.getAttribute('aria-describedby')).toContain('publish-file-error')
+  })
 })

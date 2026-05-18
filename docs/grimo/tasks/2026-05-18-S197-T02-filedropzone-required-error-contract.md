@@ -51,5 +51,13 @@ And（而且）不呼叫 `onFileSelect`
 ## 前置條件
 - 無
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-18
+Test: `AC-S197-3`, `AC-S197-7` (`frontend/src/components/FileDropZone.test.tsx`)
+Files changed:
+- `frontend/src/components/FileDropZone.tsx` (modified)
+- `frontend/src/components/FileDropZone.test.tsx` (modified)
+Notes: RED confirmed with `cd frontend && npm test -- FileDropZone` failing 2 new S197 cases; GREEN confirmed with `cd frontend && npm test -- FileDropZone` passing 10 tests.
