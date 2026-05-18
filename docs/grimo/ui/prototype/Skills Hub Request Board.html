@@ -1,523 +1,489 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
 <meta charset="utf-8" />
-<title>Skills Hub · Request Board</title>
-<meta name="viewport" content="width=1240" />
+<title>Skills Hub · 需求勇者公會</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
-:root {
-  --bg:#0B0B0D; --bg-2:#111114; --bg-3:#18181C;
-  --ink:#F0EFE8; --ink-2:#B0ACA0; --ink-3:#6E6B63;
-  --line:rgba(255,255,255,0.07); --line-2:rgba(255,255,255,0.11);
-  --accent:#7F77DD; --green:#1D9E75; --amber:#EF9F27; --red:#E24B4A;
-  --r-sm:4px; --r-md:8px; --r-lg:12px; --r-pill:999px;
-  --mono:'JetBrains Mono',ui-monospace,monospace;
-  --sans:'Inter',system-ui,sans-serif;
+:root{
+  --bg:#08080A;
+  --bg-2:#0F0F12;
+  --bg-3:#171719;
+  --bg-4:#1E1E22;
+  --ink:#EEECEA;
+  --ink-2:#A8A49C;
+  --ink-3:#5E5B55;
+  --line:rgba(255,255,255,.07);
+  --line-2:rgba(255,255,255,.12);
+  --accent:#7F77DD;
+  --accent-soft:rgba(127,119,221,.14);
+  --accent-text:#C9C5F2;
+  --green:#1D9E75;
+  --green-soft:rgba(29,158,117,.14);
+  --green-text:#6FD8B0;
+  --amber:#EF9F27;
+  --amber-soft:rgba(239,159,39,.14);
+  --amber-text:#FAC775;
+  --red:#E24B4A;
+  --red-soft:rgba(226,75,74,.14);
+  --blue:#378ADD;
+  --blue-soft:rgba(55,138,221,.14);
+  --blue-text:#B0D5F2;
+  --pink:#D9388A;
+  --pink-soft:rgba(217,56,138,.14);
+  --radius:8px;
+  --sans:"Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;min-height:100vh}
-
-/* Nav */
-.nav{display:flex;align-items:center;justify-content:space-between;padding:13px 26px;border-bottom:0.5px solid var(--line);background:rgba(11,11,13,0.92);backdrop-filter:blur(12px);position:sticky;top:0;z-index:40}
-.nav-brand{display:flex;align-items:center;gap:10px}
-.nav-logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#7F77DD,#D9388A 55%,#EF9F27);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#0B0B0D}
-.nav-name{font-size:15px;font-weight:500}
-.nav-org{font-size:11px;color:var(--ink-3);padding:2px 7px;border-radius:4px;background:rgba(255,255,255,0.05);margin-left:8px}
-.nav-links{display:flex;gap:20px;font-size:13px;color:var(--ink-2)}
-.nav-links .on{color:var(--ink);font-weight:500}
-.nav-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,0.6),rgba(29,158,117,0.6));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--ink)}
-
-/* Beam CTA */
-.beam-wrap{position:relative;padding:1.5px;border-radius:var(--r-md);background:#18181C;overflow:hidden;isolation:isolate;flex-shrink:0}
-.beam-wrap::before,.beam-wrap::after{content:'';position:absolute;inset:-120%;background:conic-gradient(from 0deg,transparent 0deg,transparent 197deg,rgba(127,119,221,0.95) 230deg,rgba(217,56,138,0.95) 268deg,rgba(239,159,39,0.95) 300deg,rgba(29,158,117,0.95) 332deg,rgba(55,138,221,0.95) 360deg,transparent 360deg);animation:spin 1.96s linear infinite;pointer-events:none;z-index:0}
-.beam-wrap::after{filter:blur(10px);opacity:0.55}
-@keyframes spin{to{transform:rotate(360deg)}}
-.beam-btn{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;background:#F0EFE8;color:#0B0B0D;font-size:13px;font-weight:500;padding:9px 16px;border-radius:calc(var(--r-md) - 1.5px);border:none;cursor:pointer;white-space:nowrap}
-
-/* Page head */
-.page-head{padding:28px 26px 22px;border-bottom:0.5px solid var(--line);background:radial-gradient(ellipse 800px 280px at 30% 0%,rgba(127,119,221,0.10),transparent 70%),radial-gradient(ellipse 600px 200px at 80% 0%,rgba(217,56,138,0.07),transparent 70%)}
-.breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3);margin-bottom:10px}
-.breadcrumb .sep{opacity:0.4}
-.breadcrumb .cur{color:var(--ink-2)}
-.head-top{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:18px}
-.page-title{font-size:24px;font-weight:500;letter-spacing:-0.006em;margin-bottom:6px}
-.page-sub{font-size:13px;color:var(--ink-2);max-width:580px;line-height:1.6}
-.head-right{display:flex;gap:8px;align-items:flex-start;flex-shrink:0;margin-top:28px}
-
-/* Summary stats */
-.sum-row{display:flex;gap:10px;flex-wrap:wrap}
-.s-chip{display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:var(--r-pill);border:0.5px solid var(--line-2);font-size:12px;color:var(--ink-2)}
-.s-chip .dot{width:6px;height:6px;border-radius:50%}
-.s-chip .n{font-weight:500;color:var(--ink)}
-
-/* Filter + search bar */
-.toolbar{display:flex;align-items:center;gap:10px;padding:14px 26px;border-bottom:0.5px solid var(--line);flex-wrap:wrap}
-.search-box{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:0.5px solid var(--line-2);border-radius:var(--r-md);padding:8px 12px;flex:1;max-width:360px}
-.search-box input{background:transparent;border:none;outline:none;color:var(--ink);font-family:var(--sans);font-size:13px;flex:1}
-.search-box input::placeholder{color:var(--ink-3)}
-.filter-chips{display:flex;gap:6px;flex-wrap:wrap}
-.f-chip{font-size:12px;padding:5px 11px;border-radius:var(--r-pill);border:0.5px solid var(--line-2);color:var(--ink-2);cursor:pointer;white-space:nowrap}
-.f-chip.on{background:rgba(127,119,221,0.12);border-color:rgba(127,119,221,0.35);color:#C9C5F2;font-weight:500}
-.sort-select{font-family:var(--sans);font-size:12px;color:var(--ink-2);background:var(--bg-2);border:0.5px solid var(--line-2);border-radius:var(--r-md);padding:6px 10px;cursor:pointer;margin-left:auto}
-
-/* Body */
-.body{display:grid;grid-template-columns:1fr 300px;gap:0}
-
-/* Request list */
-.req-list{padding:20px 26px;display:flex;flex-direction:column;gap:12px;border-right:0.5px solid var(--line)}
-
-/* Request card */
-.req-card{display:flex;gap:0;background:var(--bg-2);border:0.5px solid var(--line);border-radius:var(--r-lg);overflow:hidden;transition:border-color 0.15s}
-.req-card:hover{border-color:var(--line-2)}
-.req-card.claimed{border-color:rgba(127,119,221,0.25)}
-.req-card.hot{border-color:rgba(217,56,138,0.2)}
-
-/* Vote column */
-.vote-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding:16px 14px 16px 16px;border-right:0.5px solid var(--line);min-width:64px;cursor:pointer}
-.vote-arrow{font-size:16px;color:var(--ink-3);line-height:1;transition:color 0.15s}
-.vote-col:hover .vote-arrow{color:var(--accent)}
-.vote-col.voted .vote-arrow{color:var(--accent)}
-.vote-count{font-size:15px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-0.01em}
-.vote-col.voted .vote-count{color:var(--accent)}
-.vote-label{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.05em}
-
-/* Card body */
-.req-body{flex:1;min-width:0;padding:14px 16px}
-.req-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px}
-.req-title{font-size:15px;font-weight:500;line-height:1.3}
-.req-badges{display:flex;gap:6px;align-items:center;flex-shrink:0;flex-wrap:wrap}
-.status-pill{font-size:10px;font-weight:500;padding:3px 8px;border-radius:var(--r-pill)}
-.status-pill.open{background:rgba(255,255,255,0.06);color:var(--ink-2)}
-.status-pill.claimed{background:rgba(127,119,221,0.15);color:#C9C5F2}
-.status-pill.in-progress{background:rgba(239,159,39,0.15);color:#FAC775}
-.status-pill.fulfilled{background:rgba(29,158,117,0.15);color:#6FD8B0}
-.cat-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
-.req-desc{font-size:13px;color:var(--ink-2);line-height:1.55;margin-bottom:10px}
-.req-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--ink-3)}
-.req-meta .author{display:flex;align-items:center;gap:4px}
-.req-meta .mini-av{width:16px;height:16px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,0.5),rgba(29,158,117,0.5));display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:500;color:var(--ink)}
-.req-meta .tag{padding:1px 6px;border-radius:var(--r-pill);background:rgba(255,255,255,0.05);border:0.5px solid var(--line);color:var(--ink-3)}
-.req-meta .sep{width:2px;height:2px;border-radius:50%;background:var(--ink-3)}
-
-/* Claim bar (only on claimed/in-progress cards) */
-.claim-bar{padding:10px 16px;border-top:0.5px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(127,119,221,0.05)}
-.claimer{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)}
-.claimer .av{width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,0.6),rgba(55,138,221,0.6));display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;color:var(--ink)}
-.claim-actions{display:flex;gap:6px}
-.claim-btn{font-size:11px;padding:4px 10px;border-radius:var(--r-sm);border:0.5px solid var(--line-2);background:transparent;color:var(--ink-2);cursor:pointer}
-.claim-btn.primary{background:rgba(127,119,221,0.12);border-color:rgba(127,119,221,0.3);color:#C9C5F2}
-
-/* Skill link row (fulfilled) */
-.fulfilled-bar{padding:10px 16px;border-top:0.5px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:rgba(29,158,117,0.05)}
-.fulfilled-info{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)}
-.fulfilled-icon{width:22px;height:22px;border-radius:6px;background:rgba(29,158,117,0.18);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:500;font-family:var(--mono);color:#9FE1CB}
-
-/* Post request panel */
-.sidebar{padding:20px 18px;border-left:0.5px solid var(--line)}
-.sb-section{margin-bottom:26px}
-.sb-title{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px}
-
-.post-form{display:flex;flex-direction:column;gap:10px}
-.form-field label{display:block;font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px}
-.form-input{width:100%;background:var(--bg-2);border:0.5px solid var(--line-2);border-radius:var(--r-md);padding:9px 12px;color:var(--ink);font-family:var(--sans);font-size:13px;outline:none;resize:none}
-.form-input:focus{border-color:rgba(127,119,221,0.5);box-shadow:0 0 0 2px rgba(127,119,221,0.08)}
-.form-input::placeholder{color:var(--ink-3)}
-.char-count{font-size:10px;color:var(--ink-3);text-align:right;margin-top:2px}
-
-.trending-list{display:flex;flex-direction:column;gap:6px}
-.trending-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:var(--r-md);border:0.5px solid var(--line);cursor:pointer}
-.trending-item:hover{background:rgba(255,255,255,0.03)}
-.t-votes{font-size:13px;font-weight:500;color:var(--ink-2);min-width:28px;text-align:right;font-variant-numeric:tabular-nums}
-.t-title{font-size:12px;color:var(--ink);line-height:1.4}
-.t-meta{font-size:10px;color:var(--ink-3);margin-top:1px;font-family:var(--mono)}
-
-/* Activity feed */
-.activity-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--line);font-size:12px}
-.activity-item:last-child{border-bottom:none}
-.act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
-.act-content{flex:1;min-width:0;color:var(--ink-2);line-height:1.45}
-.act-content strong{color:var(--ink);font-weight:500}
-.act-time{font-size:10px;color:var(--ink-3);font-family:var(--mono);white-space:nowrap;margin-top:1px}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55}
+body{
+  background:
+    radial-gradient(ellipse 900px 420px at 22% -8%,rgba(127,119,221,.13),transparent 62%),
+    radial-gradient(ellipse 620px 300px at 86% 4%,rgba(29,158,117,.09),transparent 66%),
+    var(--bg);
+}
+a{color:inherit;text-decoration:none}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.shell{min-height:100vh}
+.topbar{position:sticky;top:0;z-index:30;border-bottom:1px solid var(--line);background:rgba(8,8,10,.92);backdrop-filter:blur(14px)}
+.topbar-inner{height:56px;max-width:1240px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:24px}
+.brand{display:flex;align-items:center;gap:10px;min-width:150px}
+.brand-mark{width:30px;height:30px;border:1px solid var(--line-2);border-radius:8px;background:linear-gradient(135deg,rgba(127,119,221,.28),rgba(29,158,117,.18));display:grid;place-items:center;font-weight:800;font-size:13px}
+.brand-name{font-weight:700;letter-spacing:0}
+.nav{display:flex;align-items:center;gap:18px;flex:1;color:var(--ink-2);font-size:13px}
+.nav .active{color:var(--ink);font-weight:600}
+.account{display:flex;align-items:center;gap:10px;color:var(--ink-2);font-size:13px}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,rgba(127,119,221,.65),rgba(55,138,221,.55));display:grid;place-items:center;color:var(--ink);font-size:11px;font-weight:700}
+.page{max-width:1240px;margin:0 auto;padding:28px 24px 54px}
+.guild-hero{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:18px;align-items:stretch;margin-bottom:18px}
+.hero-copy{border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));padding:24px;position:relative;overflow:hidden}
+.hero-copy::after{content:"";position:absolute;right:24px;top:22px;width:88px;height:88px;border:1px solid var(--line);border-radius:8px;background:
+  linear-gradient(90deg,transparent 0 38%,rgba(238,236,234,.08) 38% 44%,transparent 44% 100%),
+  linear-gradient(0deg,transparent 0 42%,rgba(238,236,234,.08) 42% 48%,transparent 48% 100%);
+  opacity:.5;transform:rotate(10deg)}
+.eyebrow{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent-text);margin-bottom:8px}
+.hero-title{font-size:34px;line-height:1.08;font-weight:800;letter-spacing:0;margin:0 0 10px}
+.hero-title span{color:var(--amber-text)}
+.hero-sub{max-width:680px;margin:0;color:var(--ink-2);font-size:14px}
+.hero-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px}
+.primary-btn,.secondary-btn,.small-btn{border-radius:8px;border:1px solid transparent;display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:8px 13px;font-weight:600;font-size:13px}
+.primary-btn{background:var(--ink);color:#08080A}
+.secondary-btn{border-color:var(--line-2);background:rgba(255,255,255,.04);color:var(--ink-2)}
+.small-btn{min-height:30px;padding:6px 10px;border-color:var(--line-2);background:transparent;color:var(--ink-2);font-size:12px}
+.hero-panel{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-2);padding:18px;display:flex;flex-direction:column;justify-content:space-between;gap:16px}
+.panel-title{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;font-weight:700}
+.panel-note{font-size:12px;color:var(--ink-3)}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.025);padding:11px}
+.stat-number{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1;color:var(--ink)}
+.stat-label{margin-top:5px;color:var(--ink-3);font-size:12px}
+.tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:18px 0 22px}
+.tab{height:48px;border-radius:8px;border:1px solid var(--line);background:var(--bg-2);color:var(--ink-2);font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
+.tab.active{background:var(--ink);border-color:var(--ink);color:#08080A}
+.tab-count{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.tab.active .tab-count{color:rgba(8,8,10,.62)}
+.pane{display:none}
+.pane.active{display:block}
+.rankings{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;margin-bottom:18px}
+.card{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-2)}
+.card-head{padding:16px 16px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.card-title{margin:0;font-size:15px;font-weight:800}
+.card-desc{margin:3px 0 0;color:var(--ink-3);font-size:12px}
+.rank-list{padding:0 16px 14px;display:flex;flex-direction:column;gap:8px}
+.rank-row{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:10px}
+.rank-row:first-child{border-top:0;padding-top:0}
+.rank-no{font-family:var(--mono);color:var(--amber-text);font-weight:800;font-size:13px}
+.rank-main{min-width:0}
+.rank-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-meta{font-size:11px;color:var(--ink-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-score{font-family:var(--mono);font-weight:700;color:var(--ink)}
+.section-grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.search{flex:1;min-width:260px;display:flex;align-items:center;gap:8px;border:1px solid var(--line-2);border-radius:8px;background:var(--bg-2);padding:9px 11px;color:var(--ink-3)}
+.search input{width:100%;border:0;background:transparent;color:var(--ink);outline:0;font-size:13px}
+.chip{border:1px solid var(--line-2);border-radius:999px;background:transparent;color:var(--ink-2);height:32px;padding:0 12px;font-size:12px}
+.chip.active{border-color:rgba(127,119,221,.45);background:var(--accent-soft);color:var(--accent-text);font-weight:700}
+.request-list{display:flex;flex-direction:column;gap:10px}
+.request-card{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-2);display:grid;grid-template-columns:84px minmax(0,1fr) auto;gap:0;overflow:hidden}
+.request-card.hot{border-color:rgba(239,159,39,.32)}
+.vote-box{border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:128px;background:rgba(255,255,255,.018)}
+.vote-button{width:56px;height:34px;border-radius:8px;border:1px solid rgba(127,119,221,.36);background:var(--accent-soft);color:var(--accent-text);font-weight:800;white-space:nowrap}
+.vote-count{font-family:var(--mono);font-size:19px;font-weight:800}
+.vote-label{font-size:11px;color:var(--ink-3)}
+.request-body{padding:14px 16px;min-width:0}
+.request-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.request-title{font-size:15px;font-weight:800;min-width:0}
+.pill{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:700;white-space:nowrap}
+.pill.open{background:var(--blue-soft);color:var(--blue-text)}
+.pill.progress{background:var(--amber-soft);color:var(--amber-text)}
+.pill.closed{background:var(--green-soft);color:var(--green-text)}
+.pill.hot{background:var(--pink-soft);color:#F0A2C5}
+.request-desc{margin:0;color:var(--ink-2);font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.request-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px;color:var(--ink-3);font-size:11px}
+.tag{border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.035);padding:2px 7px;color:var(--ink-3)}
+.helper{display:flex;align-items:center;gap:6px;color:var(--ink-2)}
+.mini-avatar{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,rgba(29,158,117,.6),rgba(55,138,221,.5));display:grid;place-items:center;font-size:8px;color:var(--ink);font-weight:800}
+.request-actions{padding:14px;display:flex;flex-direction:column;justify-content:center;gap:8px;min-width:142px}
+.action-primary{border:1px solid rgba(29,158,117,.35);border-radius:8px;background:var(--green-soft);color:var(--green-text);font-weight:800;font-size:12px;padding:8px 10px}
+.action-muted{border:1px solid var(--line-2);border-radius:8px;background:transparent;color:var(--ink-2);font-size:12px;padding:8px 10px}
+.side-stack{display:flex;flex-direction:column;gap:16px}
+.post-card{padding:16px}
+.field{margin-top:12px}
+.field label{display:block;color:var(--ink-3);font-size:12px;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;border:1px solid var(--line-2);border-radius:8px;background:var(--bg);color:var(--ink);outline:0;padding:10px 11px;font-size:13px}
+.field textarea{min-height:116px;resize:vertical}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:rgba(127,119,221,.55);box-shadow:0 0 0 2px rgba(127,119,221,.08)}
+.submit-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}
+.hint{color:var(--ink-3);font-size:11px}
+.create-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+.create-card{padding:18px}
+.create-card textarea{min-height:150px}
+.rule-list{padding:0 16px 16px;display:grid;gap:10px}
+.rule-item{border-top:1px solid var(--line);padding-top:10px;color:var(--ink-2);font-size:12px}
+.rule-item:first-child{border-top:0;padding-top:0}
+.rule-item strong{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+.closed-list{padding:0 16px 16px;display:flex;flex-direction:column;gap:8px}
+.closed-item{border-top:1px solid var(--line);padding-top:10px}
+.closed-item:first-child{border-top:0;padding-top:0}
+.closed-title{font-weight:700;font-size:13px}
+.closed-meta{margin-top:2px;color:var(--ink-3);font-size:11px}
+.legend{display:grid;gap:8px;padding:0 16px 16px}
+.legend-row{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%}
+@media (max-width:960px){
+  .topbar-inner{padding:0 16px}.nav{display:none}.page{padding:20px 16px 44px}
+  .guild-hero,.rankings,.section-grid,.create-layout{grid-template-columns:1fr}
+  .request-card{grid-template-columns:72px minmax(0,1fr)}
+  .request-actions{grid-column:1/-1;min-width:0;flex-direction:row;border-top:1px solid var(--line)}
+  .tabs{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .hero-title{font-size:28px}
+  .request-card{grid-template-columns:1fr}
+  .vote-box{min-height:auto;flex-direction:row;justify-content:flex-start;padding:12px 14px;border-right:0;border-bottom:1px solid var(--line)}
+  .stat-grid{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
-
-<!-- Nav -->
-<nav class="nav">
-  <div class="nav-brand">
-    <div class="nav-logo">S</div>
-    <span class="nav-name">Skills Hub</span>
-    <span class="nav-org">Engineering org</span>
-  </div>
-  <div class="nav-links">
-    <span>Browse</span>
-    <span>Collections</span>
-    <span class="on">Requests</span>
-    <span>Publish</span>
-    <span>Docs</span>
-  </div>
-  <div class="nav-avatar">MK</div>
-</nav>
-
-<!-- Page head -->
-<div class="page-head">
-  <div class="breadcrumb">
-    <span>Skills Hub</span><span class="sep">/</span><span class="cur">Request Board</span>
-  </div>
-  <div class="head-top">
-    <div>
-      <h1 class="page-title">Request Board</h1>
-      <p class="page-sub">Something missing from the registry? Post a request, upvote what you need, or claim a request to build it. Publishers can earn recognition by fulfilling high-vote requests.</p>
-    </div>
-    <div class="head-right">
-      <div class="beam-wrap">
-        <button class="beam-btn">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Post a Request
-        </button>
+<div class="shell">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#">
+        <span class="brand-mark">S</span>
+        <span class="brand-name">Skills Hub</span>
+      </a>
+      <nav class="nav" aria-label="主要導覽">
+        <a href="#">瀏覽</a>
+        <a href="#">集合</a>
+        <a class="active" href="#">需求</a>
+        <a href="#">我的技能</a>
+        <a href="#">發佈</a>
+        <a href="#">數據</a>
+        <a href="#">文件</a>
+      </nav>
+      <div class="account">
+        <span>Chen Jesse</span>
+        <span class="avatar">CJ</span>
       </div>
     </div>
-  </div>
-  <div class="sum-row">
-    <div class="s-chip"><span class="dot" style="background:#7F77DD"></span><span class="n">84</span> open requests</div>
-    <div class="s-chip"><span class="dot" style="background:#EF9F27"></span><span class="n">12</span> in progress</div>
-    <div class="s-chip"><span class="dot" style="background:#1D9E75"></span><span class="n">37</span> fulfilled</div>
-    <div class="s-chip"><span class="dot" style="background:#378ADD"></span><span class="n">312</span> upvotes this week</div>
-  </div>
+  </header>
+
+  <main class="page">
+    <section class="guild-hero">
+      <div class="hero-copy">
+        <div class="eyebrow">Request Guild</div>
+        <h1 class="hero-title">只要有人需要，<br />就會有<span>勇者</span>出現。</h1>
+        <p class="hero-sub">這頁主要做兩件事：先瀏覽大家缺哪些 skill，再把自己的工作問題開成新需求。需求沒有指定負責人；大家按「我也要」把痛點推上來，有空的技能作者再自願接手。</p>
+        <div class="hero-actions">
+          <button class="primary-btn" type="button" data-open-tab="browse">瀏覽需求</button>
+          <button class="secondary-btn" type="button" data-open-tab="create">開新需求</button>
+        </div>
+      </div>
+      <aside class="hero-panel" aria-label="本週概況">
+        <div>
+          <div class="panel-title">
+            <span>需求看板概況</span>
+            <span class="pill hot">人氣升溫</span>
+          </div>
+          <p class="panel-note">票數高的需求會出現在需求排行；這裡先用「我也要」票數讓大家看見痛點。</p>
+        </div>
+        <div class="stat-grid">
+            <div class="stat">
+              <div class="stat-number">42</div>
+              <div class="stat-label">需求總數</div>
+            </div>
+            <div class="stat">
+              <div class="stat-number">7</div>
+              <div class="stat-label">本週新增</div>
+            </div>
+          <div class="stat">
+            <div class="stat-number">189</div>
+            <div class="stat-label">我也要票數</div>
+          </div>
+            <div class="stat">
+              <div class="stat-number">16</div>
+              <div class="stat-label">本月留言</div>
+            </div>
+        </div>
+      </aside>
+    </section>
+
+    <div class="tabs" role="tablist" aria-label="需求主功能">
+      <button class="tab active" type="button" data-tab="browse" aria-selected="true">瀏覽需求 <span class="tab-count">42</span></button>
+      <button class="tab" type="button" data-tab="create" aria-selected="false">我要開需求</button>
+    </div>
+
+    <section class="pane active" data-pane="browse">
+      <div class="section-grid">
+        <div>
+          <div class="toolbar">
+            <label class="search" aria-label="搜尋需求">
+              <span>⌕</span>
+              <input type="search" placeholder="搜尋需求、分類或使用情境" />
+            </label>
+            <button class="chip active" type="button">票數最高</button>
+            <button class="chip" type="button">最新</button>
+            <button class="chip" type="button">我投過</button>
+          </div>
+
+          <div class="request-list" aria-label="需求列表">
+            <article class="request-card hot">
+              <div class="vote-box">
+                <button class="vote-button" type="button">我也要</button>
+                <div class="vote-count">38</div>
+                <div class="vote-label">票</div>
+              </div>
+              <div class="request-body">
+                <div class="request-top">
+                  <div class="request-title">每月報表跨平台自動抓數據</div>
+                  <span class="pill hot">需求排行 #1</span>
+                </div>
+                <p class="request-desc">每次月報都要手動從三個平台抓數據、貼到 Sheets、再整理成圖表。希望有 skill 可以照清單登入平台、匯出數據、合併成固定格式。</p>
+                <div class="request-meta">
+                  <span>Chen Jesse 發起</span>
+                  <span>3 天前</span>
+                  <span class="tag">browser</span>
+                  <span class="tag">spreadsheet</span>
+                </div>
+              </div>
+              <div class="request-actions">
+                <button class="action-primary" type="button">我來當勇者</button>
+                <button class="action-muted" type="button">查看討論</button>
+              </div>
+            </article>
+
+            <article class="request-card">
+              <div class="vote-box">
+                <button class="vote-button" type="button">我也要</button>
+                <div class="vote-count">24</div>
+                <div class="vote-label">票</div>
+              </div>
+              <div class="request-body">
+                <div class="request-top">
+                  <div class="request-title">Gradle dependency upgrade reviewer</div>
+                </div>
+                <p class="request-desc">升 Spring Boot 或 Gradle plugin 時，想要 skill 自動看 managed versions、找 deprecated API、列出需要改的 import path。</p>
+                <div class="request-meta">
+                  <span class="helper"><span class="mini-avatar">AW</span> allen wang 接手</span>
+                  <span>5 天前</span>
+                  <span class="tag">java</span>
+                  <span class="tag">gradle</span>
+                </div>
+              </div>
+              <div class="request-actions">
+                <button class="action-muted" type="button">加入協作</button>
+                <button class="action-muted" type="button">查看進度</button>
+              </div>
+            </article>
+
+            <article class="request-card">
+              <div class="vote-box">
+                <button class="vote-button" type="button">我也要</button>
+                <div class="vote-count">19</div>
+                <div class="vote-label">票</div>
+              </div>
+              <div class="request-body">
+                <div class="request-top">
+                  <div class="request-title">Figma component spec extractor</div>
+                </div>
+                <p class="request-desc">把 Figma frame 裡的 spacing、顏色 token、元件狀態整理成 markdown spec，方便工程師照著做頁面。</p>
+                <div class="request-meta">
+                  <span>sammy hsu 發起</span>
+                  <span>1 週前</span>
+                  <span class="tag">design</span>
+                  <span class="tag">frontend</span>
+                </div>
+              </div>
+              <div class="request-actions">
+                <button class="action-primary" type="button">我來當勇者</button>
+                <button class="action-muted" type="button">查看討論</button>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <aside class="side-stack">
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <h2 class="card-title">需求排行榜</h2>
+                <p class="card-desc">依「我也要」票數排序，讓最常被提到的痛點浮上來。</p>
+              </div>
+            </div>
+            <div class="rank-list">
+              <div class="rank-row">
+                <div class="rank-no">1.</div>
+                <div class="rank-main">
+                  <div class="rank-name">每月報表跨平台自動抓數據</div>
+                  <div class="rank-meta">data / browser</div>
+                </div>
+                <div class="rank-score">38 票</div>
+              </div>
+              <div class="rank-row">
+                <div class="rank-no">2.</div>
+                <div class="rank-main">
+                  <div class="rank-name">Gradle dependency upgrade reviewer</div>
+                  <div class="rank-meta">java</div>
+                </div>
+                <div class="rank-score">24 票</div>
+              </div>
+              <div class="rank-row">
+                <div class="rank-no">3.</div>
+                <div class="rank-main">
+                  <div class="rank-name">Figma component spec extractor</div>
+                  <div class="rank-meta">design</div>
+                </div>
+                <div class="rank-score">19 票</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <h2 class="card-title">勇者排行榜</h2>
+                <p class="card-desc">依結案貢獻計算。</p>
+              </div>
+            </div>
+            <div class="rank-list">
+              <div class="rank-row">
+                <div class="rank-no">1.</div>
+                <div class="rank-main">
+                  <div class="rank-name">kream lin</div>
+                  <div class="rank-meta">完成 Playwright trace analyzer</div>
+                </div>
+                <div class="rank-score">4 次</div>
+              </div>
+              <div class="rank-row">
+                <div class="rank-no">2.</div>
+                <div class="rank-main">
+                  <div class="rank-name">sammy hsu</div>
+                  <div class="rank-meta">完成 Spring profile auditor</div>
+                </div>
+                <div class="rank-score">2 次</div>
+              </div>
+            </div>
+          </article>
+        </aside>
+      </div>
+    </section>
+
+    <section class="pane" data-pane="create">
+      <div class="create-layout">
+        <article class="card create-card">
+          <h2 class="card-title">我要開需求</h2>
+          <p class="card-desc">寫你真的遇到的工作問題；送出後大家可以按「我也要」，有空的作者再自願接手。</p>
+          <div class="field">
+            <label for="title">需求標題</label>
+            <input id="title" type="text" value="每次做月報都要手動抓三個平台數據" />
+          </div>
+          <div class="field">
+            <label for="desc">工作問題</label>
+            <textarea id="desc">我每個月要從 GA、Ads、內部後台各抓一份 CSV，再貼到同一份 spreadsheet。希望有 skill 可以照固定欄位整理成月報資料表。</textarea>
+          </div>
+          <div class="field">
+            <label for="result">希望 skill 幫我做到什麼</label>
+            <textarea id="result">輸入月份後自動抓資料、合併欄位、輸出成固定格式的月報資料表。</textarea>
+          </div>
+          <div class="field">
+            <label for="category">分類</label>
+            <select id="category">
+              <option>browser</option>
+              <option>spreadsheet</option>
+              <option>java</option>
+              <option>frontend</option>
+              <option>design</option>
+            </select>
+          </div>
+          <div class="submit-row">
+            <span class="hint">不需要指定負責人；需求會先進入投票列表。</span>
+            <button class="primary-btn" type="button">送出需求</button>
+          </div>
+        </article>
+
+        <aside class="side-stack">
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <h2 class="card-title">送出後會發生什麼</h2>
+                <p class="card-desc">需求先被大家看見，再用票數排優先度。</p>
+              </div>
+            </div>
+            <div class="rule-list">
+              <div class="rule-item"><strong>1. 出現在瀏覽需求</strong>其他人可以搜尋、留言、按「我也要」。</div>
+              <div class="rule-item"><strong>2. 票數推高排序</strong>「我也要」越多，需求越容易被看見。</div>
+              <div class="rule-item"><strong>3. 勇者自願接手</strong>有人想做時可以接手或加入協作。</div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <h2 class="card-title">最近有人也要</h2>
+                <p class="card-desc">這些需求正在被更多人推上來。</p>
+              </div>
+            </div>
+            <div class="closed-list">
+              <div class="closed-item">
+                <div class="closed-title">每月報表跨平台自動抓數據</div>
+                <div class="closed-meta">Chen Jesse + allen wang 也要 · 38 票</div>
+              </div>
+              <div class="closed-item">
+                <div class="closed-title">Gradle dependency upgrade reviewer</div>
+                <div class="closed-meta">sammy hsu 也要 · 24 票</div>
+              </div>
+            </div>
+          </article>
+        </aside>
+      </div>
+    </section>
+  </main>
 </div>
-
-<!-- Toolbar -->
-<div class="toolbar">
-  <div class="search-box">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-3);flex-shrink:0"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-    <input placeholder="Search requests…" />
-  </div>
-  <div class="filter-chips">
-    <span class="f-chip on">All</span>
-    <span class="f-chip">Open</span>
-    <span class="f-chip">In Progress</span>
-    <span class="f-chip">Fulfilled</span>
-    <span class="f-chip">My votes</span>
-  </div>
-  <select class="sort-select">
-    <option>Sort: Most votes</option>
-    <option>Sort: Newest</option>
-    <option>Sort: Recently active</option>
-  </select>
-</div>
-
-<!-- Body -->
-<div class="body">
-
-  <!-- Request list -->
-  <div class="req-list">
-
-    <!-- Card 1: Hot, open -->
-    <div class="req-card hot">
-      <div class="vote-col voted">
-        <div class="vote-arrow">▲</div>
-        <div class="vote-count" style="color:var(--accent)">47</div>
-        <div class="vote-label">votes</div>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div class="req-body">
-          <div class="req-top">
-            <div class="req-title">Terraform module scaffolder with remote state + locking</div>
-            <div class="req-badges">
-              <span style="font-size:10px;font-weight:500;padding:2px 7px;border-radius:var(--r-pill);background:rgba(217,56,138,0.12);color:#DDB0E9">🔥 Hot</span>
-              <span class="status-pill open">Open</span>
-              <span class="cat-dot" style="background:rgba(127,119,221,0.6);border-radius:2px"></span>
-            </div>
-          </div>
-          <p class="req-desc">Need a skill that generates a complete Terraform module with remote state backend (S3+DynamoDB), workspace support, and provider version pinning. Existing `terraform-module-author` doesn't handle remote state setup.</p>
-          <div class="req-meta">
-            <span class="author">
-              <span class="mini-av">JL</span> jlee
-            </span>
-            <span class="sep"></span>
-            <span>14 days ago</span>
-            <span class="sep"></span>
-            <span>6 comments</span>
-            <span class="sep"></span>
-            <span class="tag">devops</span>
-            <span class="tag">terraform</span>
-            <span class="tag">infra</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card 2: In progress, claimed -->
-    <div class="req-card claimed">
-      <div class="vote-col">
-        <div class="vote-arrow">▲</div>
-        <div class="vote-count">31</div>
-        <div class="vote-label">votes</div>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div class="req-body">
-          <div class="req-top">
-            <div class="req-title">OpenAPI spec generator from Express / FastAPI route handlers</div>
-            <div class="req-badges">
-              <span class="status-pill in-progress">In Progress</span>
-              <span class="cat-dot" style="background:rgba(55,138,221,0.6);border-radius:2px"></span>
-            </div>
-          </div>
-          <p class="req-desc">Analyze route files and generate OpenAPI 3.1 YAML with path params, request bodies, and response schemas inferred from type annotations. Should handle both Express (TS) and FastAPI (Python).</p>
-          <div class="req-meta">
-            <span class="author"><span class="mini-av">SR</span> sarah.r</span>
-            <span class="sep"></span>
-            <span>21 days ago</span>
-            <span class="sep"></span>
-            <span>9 comments</span>
-            <span class="sep"></span>
-            <span class="tag">api</span>
-            <span class="tag">openapi</span>
-            <span class="tag">docs</span>
-          </div>
-        </div>
-        <div class="claim-bar">
-          <div class="claimer">
-            <div class="av">DK</div>
-            <span>Claimed by <strong style="color:var(--ink)">devkumar</strong> · started 3 days ago</span>
-          </div>
-          <div class="claim-actions">
-            <button class="claim-btn">Follow</button>
-            <button class="claim-btn primary">View progress</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card 3: Fulfilled -->
-    <div class="req-card">
-      <div class="vote-col">
-        <div class="vote-arrow" style="color:var(--ink-3)">▲</div>
-        <div class="vote-count" style="color:var(--ink-3)">28</div>
-        <div class="vote-label">votes</div>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div class="req-body">
-          <div class="req-top">
-            <div class="req-title">GitHub Actions workflow linter with fix suggestions</div>
-            <div class="req-badges">
-              <span class="status-pill fulfilled">Fulfilled</span>
-              <span class="cat-dot" style="background:rgba(239,159,39,0.6);border-radius:2px"></span>
-            </div>
-          </div>
-          <p class="req-desc">Validate .github/workflows/*.yml files against GitHub's schema, detect common mistakes (missing `on:`, wrong runner labels, deprecated `set-output`), and suggest fixes inline.</p>
-          <div class="req-meta">
-            <span class="author"><span class="mini-av">MP</span> mpark</span>
-            <span class="sep"></span>
-            <span>2 months ago</span>
-            <span class="sep"></span>
-            <span>4 comments</span>
-            <span class="sep"></span>
-            <span class="tag">github-actions</span>
-            <span class="tag">ci-cd</span>
-          </div>
-        </div>
-        <div class="fulfilled-bar">
-          <div class="fulfilled-info">
-            <div class="fulfilled-icon">GA</div>
-            <span>Fulfilled by <strong style="color:var(--ink)">gha-workflow-builder v1.5.2</strong> · published by devops-team</span>
-          </div>
-          <button style="font-size:11px;padding:4px 10px;border-radius:var(--r-sm);border:0.5px solid rgba(29,158,117,0.3);background:rgba(29,158,117,0.08);color:#6FD8B0;cursor:pointer">
-            Install skill →
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card 4: Open -->
-    <div class="req-card">
-      <div class="vote-col">
-        <div class="vote-arrow">▲</div>
-        <div class="vote-count">19</div>
-        <div class="vote-label">votes</div>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div class="req-body">
-          <div class="req-top">
-            <div class="req-title">SQL migration generator (diff two schema files → migration SQL)</div>
-            <div class="req-badges">
-              <span class="status-pill open">Open</span>
-              <span class="cat-dot" style="background:rgba(239,159,39,0.5);border-radius:2px"></span>
-            </div>
-          </div>
-          <p class="req-desc">Given two SQL schema files (current vs. target), generate the migration SQL with `ALTER TABLE`, `CREATE INDEX`, and `DROP` statements. Must handle column renames and FK constraints.</p>
-          <div class="req-meta">
-            <span class="author"><span class="mini-av">TA</span> t.ames</span>
-            <span class="sep"></span>
-            <span>5 days ago</span>
-            <span class="sep"></span>
-            <span>2 comments</span>
-            <span class="sep"></span>
-            <span class="tag">sql</span>
-            <span class="tag">database</span>
-            <span class="tag">migrations</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card 5: Open, with claim CTA -->
-    <div class="req-card">
-      <div class="vote-col">
-        <div class="vote-arrow">▲</div>
-        <div class="vote-count">14</div>
-        <div class="vote-label">votes</div>
-      </div>
-      <div style="flex:1;min-width:0">
-        <div class="req-body">
-          <div class="req-top">
-            <div class="req-title">Datadog SLO + monitor config generator from service manifest</div>
-            <div class="req-badges">
-              <span class="status-pill open">Open</span>
-              <span class="cat-dot" style="background:rgba(55,138,221,0.5);border-radius:2px"></span>
-            </div>
-          </div>
-          <p class="req-desc">Read a service manifest (name, SLI definitions, alert thresholds) and emit Terraform or JSON configs for Datadog monitors and SLOs. Would save 2–3h per new service onboarding.</p>
-          <div class="req-meta">
-            <span class="author"><span class="mini-av">CW</span> cwong</span>
-            <span class="sep"></span>
-            <span>8 days ago</span>
-            <span class="sep"></span>
-            <span>1 comment</span>
-            <span class="sep"></span>
-            <span class="tag">datadog</span>
-            <span class="tag">observability</span>
-            <span class="tag">slo</span>
-          </div>
-        </div>
-        <div class="claim-bar" style="background:rgba(255,255,255,0.02)">
-          <span style="font-size:12px;color:var(--ink-3)">No one has claimed this yet</span>
-          <button class="claim-btn primary">Claim &amp; build this →</button>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Sidebar -->
-  <div class="sidebar">
-
-    <!-- Post request form -->
-    <div class="sb-section">
-      <div class="sb-title">Post a Request</div>
-      <div class="post-form">
-        <div class="form-field">
-          <label>What do you need?</label>
-          <input class="form-input" placeholder="e.g. Terraform module scaffolder with remote state…" style="padding:9px 12px" />
-        </div>
-        <div class="form-field">
-          <label>Describe the use case</label>
-          <textarea class="form-input" rows="4" placeholder="What problem does this solve? Include any specific tools, languages, or formats…"></textarea>
-          <div class="char-count">0 / 400</div>
-        </div>
-        <div class="form-field">
-          <label>Category</label>
-          <select class="form-input">
-            <option value="">Select a category…</option>
-            <option>DevOps &amp; Infra</option>
-            <option>Testing</option>
-            <option>Documentation</option>
-            <option>Security</option>
-            <option>Data &amp; ETL</option>
-            <option>Frontend</option>
-          </select>
-        </div>
-        <div class="beam-wrap" style="border-radius:var(--r-md);width:100%">
-          <button class="beam-btn" style="width:100%;justify-content:center;border-radius:calc(var(--r-md) - 1.5px)">
-            Submit Request
-          </button>
-        </div>
-        <p style="font-size:11px;color:var(--ink-3);line-height:1.5;text-align:center">Requests with 10+ votes get surfaced to verified publishers on Mondays.</p>
-      </div>
-    </div>
-
-    <!-- Trending requests -->
-    <div class="sb-section">
-      <div class="sb-title">Trending this week</div>
-      <div class="trending-list">
-        <div class="trending-item">
-          <div class="t-votes">47</div>
-          <div>
-            <div class="t-title">Terraform remote state scaffolder</div>
-            <div class="t-meta">devops · +12 votes today</div>
-          </div>
-        </div>
-        <div class="trending-item">
-          <div class="t-votes">31</div>
-          <div>
-            <div class="t-title">OpenAPI spec from route handlers</div>
-            <div class="t-meta">api · in progress</div>
-          </div>
-        </div>
-        <div class="trending-item">
-          <div class="t-votes">19</div>
-          <div>
-            <div class="t-title">SQL migration generator</div>
-            <div class="t-meta">database · +5 votes today</div>
-          </div>
-        </div>
-        <div class="trending-item">
-          <div class="t-votes">14</div>
-          <div>
-            <div class="t-title">Datadog SLO config generator</div>
-            <div class="t-meta">observability · claim available</div>
-          </div>
-        </div>
-        <div class="trending-item">
-          <div class="t-votes">11</div>
-          <div>
-            <div class="t-title">Proto3 → TypeScript types generator</div>
-            <div class="t-meta">api · open</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Recent activity -->
-    <div class="sb-section">
-      <div class="sb-title">Recent Activity</div>
-      <div>
-        <div class="activity-item">
-          <span class="act-dot" style="background:#7F77DD"></span>
-          <div class="act-content">
-            <div><strong>devkumar</strong> claimed OpenAPI spec generator</div>
-            <div class="act-time">3 days ago</div>
-          </div>
-        </div>
-        <div class="activity-item">
-          <span class="act-dot" style="background:#1D9E75"></span>
-          <div class="act-content">
-            <div>GHA workflow linter request <strong>fulfilled</strong> by devops-team</div>
-            <div class="act-time">1 week ago</div>
-          </div>
-        </div>
-        <div class="activity-item">
-          <span class="act-dot" style="background:#EF9F27"></span>
-          <div class="act-content">
-            <div><strong>jlee</strong> posted Terraform remote state request</div>
-            <div class="act-time">14 days ago</div>
-          </div>
-        </div>
-        <div class="activity-item">
-          <span class="act-dot" style="background:#378ADD"></span>
-          <div class="act-content">
-            <div>SQL migration request reached <strong>15 votes</strong></div>
-            <div class="act-time">2 days ago</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
+<script>
+document.querySelectorAll('[data-tab]').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.tab;
+    document.querySelectorAll('[data-tab]').forEach((item) => {
+      const active = item === tab;
+      item.classList.toggle('active', active);
+      item.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-pane]').forEach((pane) => {
+      pane.classList.toggle('active', pane.dataset.pane === target);
+    });
+  });
+});
+document.querySelectorAll('[data-open-tab]').forEach((button) => {
+  button.addEventListener('click', () => {
+    document.querySelector(`[data-tab="${button.dataset.openTab}"]`)?.click();
+  });
+});
+</script>
 </body>
 </html>
