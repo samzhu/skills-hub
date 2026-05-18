@@ -35,6 +35,8 @@ public class QualityScoreService {
     private static final Logger log = LoggerFactory.getLogger(QualityScoreService.class);
 
     private static final int VALIDATION_DIMENSION_COUNT = 7;
+    private static final int SKILL_MD_RECOMMENDED_MAX_LINES = 500;
+    private static final String SKILL_MD_LINE_COUNT_WARNING_PREFIX = "skill_md_line_count:";
     private static final int FRONTMATTER_COMPATIBILITY_WARNING_SCORE = 80;
     private static final String FRONTMATTER_COMPATIBILITY_WARNING_PREFIX = "frontmatter_official_format:";
 
@@ -103,8 +105,9 @@ public class QualityScoreService {
                                              String content, String sourceEventId) {
         ValidationResult result = validator.validate(content);
 
-        long lineCount = content.isEmpty() ? 0L : content.lines().count();
-        boolean lineOk = !result.errors().stream().anyMatch(e -> e.contains("line_count"));
+        long lineCount = countSkillMdLines(content);
+        boolean lineOk = result.warnings().stream()
+                .noneMatch(warning -> warning.startsWith(SKILL_MD_LINE_COUNT_WARNING_PREFIX));
         boolean bodyOk = !result.errors().stream().anyMatch(e -> e.contains("body_present"));
         boolean nameOk = !result.errors().stream().anyMatch(e -> e.contains("name"));
         boolean descOk = !result.errors().stream().anyMatch(e -> e.contains("description"));
@@ -116,7 +119,9 @@ public class QualityScoreService {
         boolean frontmatterOfficialOk = frontmatterWarnings.isEmpty();
 
         var dims = new LinkedHashMap<String, Object>();
-        dims.put("lineCount", Map.of("score", lineOk ? 100 : 0, "reasoning", lineCount + " / 500 lines"));
+        dims.put("lineCount", Map.of(
+                "score", lineOk ? 100 : 0,
+                "reasoning", lineCount + " / " + SKILL_MD_RECOMMENDED_MAX_LINES + " recommended lines"));
         dims.put("bodyPresent", Map.of("score", bodyOk ? 100 : 0, "reasoning", bodyOk ? "body section present" : "missing body after frontmatter"));
         dims.put("nameFormat", Map.of("score", nameOk ? 100 : 0, "reasoning", nameOk ? "valid name format" : "name fails format rules"));
         dims.put("descriptionConstraints", Map.of("score", descOk ? 100 : 0, "reasoning", descOk ? "description within constraints" : "description constraint failed"));
@@ -176,5 +181,9 @@ public class QualityScoreService {
 
     private static String lcFirst(String s) {
         return s == null || s.isEmpty() ? s : Character.toLowerCase(s.charAt(0)) + s.substring(1);
+    }
+
+    private static long countSkillMdLines(String content) {
+        return content == null || content.isEmpty() ? 0L : content.split("\n", -1).length;
     }
 }

@@ -97,6 +97,12 @@ class QualityScoreServiceTest {
                 .orElseThrow();
     }
 
+    private static String validSkillWithTotalLines(int totalLines) {
+        var header = "---\nname: test-skill\ndescription: A test skill for quality scoring.\n---\n";
+        var headerLines = 4;
+        return header + "line\n".repeat(totalLines - headerLines - 1);
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<String, Object> dimension(SkillScore row, String key) {
         return (Map<String, Object>) row.getDimensions().get(key);
@@ -207,6 +213,21 @@ class QualityScoreServiceTest {
         assertThat(validationRow.getTotalScore()).isEqualByComparingTo("100.00");
         assertThat(validationRow.getDimensions()).containsKey("lineCount");
         assertThat(validationRow.getDimensions()).containsKey("bodyPresent");
+    }
+
+    @Test
+    @DisplayName("AC-S198-3: quality score lineCount dimension deducts for recommended max warning")
+    @Tag("AC-S198-3")
+    void lineCountRecommendationReducesValidationScore() throws Exception {
+        var row = validationRowForContent(validSkillWithTotalLines(589));
+
+        assertThat((Integer) dimension(row, "lineCount").get("score")).isLessThan(100);
+        assertThat(row.getTotalScore()).isLessThan(new java.math.BigDecimal("100.00"));
+        assertThat(dimension(row, "lineCount"))
+                .containsEntry("reasoning", "589 / 500 recommended lines");
+        assertThat(row.getDimensions().get("warnings").toString())
+                .contains("skill_md_line_count")
+                .contains("recommended max 500");
     }
 
     @Test

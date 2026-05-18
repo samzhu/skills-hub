@@ -51,5 +51,22 @@ And（而且）既有 all-pass totalScore 仍是 `100.00`
 ## 前置條件
 - S198-T01 PASS
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+
+Date: 2026-05-19
+
+Test:
+- RED: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.score.QualityScoreServiceTest` — failed before code change with 9 tests / 1 failed: AC-S198-3.
+- GREEN: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.score.QualityScoreServiceTest` — PASS, `BUILD SUCCESSFUL in 1m 56s`; XML reports 9 tests / 0 failures / 0 errors.
+
+Files changed:
+- `backend/src/main/java/io/github/samzhu/skillshub/score/QualityScoreService.java`
+- `backend/src/test/java/io/github/samzhu/skillshub/score/QualityScoreServiceTest.java`
+
+Notes:
+- 589 行 `SKILL.md` 現在讓 VALIDATION `lineCount.score < 100`，`totalScore < 100`，reasoning 是 `589 / 500 recommended lines`。
+- `warnings` dimension 保留 `skill_md_line_count: ... recommended max 500`，讓 UI / diagnostic 可以顯示 validator 的原始 warning。
+- 官方格式且 500 行內的 all-pass case 仍回 `100.00`。
