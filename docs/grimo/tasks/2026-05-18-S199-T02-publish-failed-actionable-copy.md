@@ -66,4 +66,12 @@ And（而且）頁面提示 `重新上傳一次` 或 `查看 /api/v1/skills/uplo
 - S199-T01 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-19
+Test: AC-S199-2/3/4/5/6 actionable validation copy (`frontend/src/pages/PublishFailedPage.test.tsx`)
+Files changed:
+- `frontend/src/pages/PublishFailedPage.tsx` (modified)
+- `frontend/src/pages/PublishFailedPage.test.tsx` (modified)
+Notes: `/publish/failed` 現在優先使用 router state `findings[]` 顯示繁中主因、下一步與原始 backend title；沒有 `findings` 但有 URL `msg` 時改顯示 detail-unavailable fallback。

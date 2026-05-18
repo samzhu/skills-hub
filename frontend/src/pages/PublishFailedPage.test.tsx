@@ -32,9 +32,8 @@ describe('PublishFailedPage — S098b', () => {
   it('AC-1: state=A renders frontmatter validation error tone', () => {
     renderWith('?state=A&msg=Missing%20required%20field%3A%20name')
     expect(screen.getByRole('heading', { level: 1, name: '發佈未通過驗證' })).toBeInTheDocument()
-    expect(screen.getByText('驗證在第 2 步停止 — 沒有任何資料寫入。')).toBeInTheDocument()
-    // msg pre-block decoded
-    expect(screen.getByText('Missing required field: name')).toBeInTheDocument()
+    expect(screen.getAllByText('這次失敗頁沒有收到詳細錯誤內容。').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/查看 \/api\/v1\/skills\/upload response/).length).toBeGreaterThan(0)
   })
 
   it('AC-S191-3: state=B explains HIGH risk scan result without manual review claims', () => {
@@ -89,7 +88,7 @@ describe('PublishFailedPage — S098b3-2 structured findings', () => {
       { section: 'skill_md', severity: 'warning', title: 'description 建議超過 20 字', hint: '目前 12 字' },
     ]
     renderWith('?state=A&msg=fallback', { findings, msg: 'fallback' })
-    expect(screen.getByText('Missing required field: name')).toBeInTheDocument()
+    expect(screen.getAllByText('SKILL.md frontmatter 缺少 name。').length).toBeGreaterThan(0)
     expect(screen.getByText('description 建議超過 20 字')).toBeInTheDocument()
     expect(screen.getByText('目前 12 字')).toBeInTheDocument()
     // flat msg fallback NOT shown when structured findings present
@@ -98,6 +97,63 @@ describe('PublishFailedPage — S098b3-2 structured findings', () => {
 
   it('AC-S098b3-2-2: no router state → fallback to ?msg= URL param as single error row', () => {
     renderWith('?state=A&msg=Missing%20required%20field%3A%20name')
-    expect(screen.getByText('Missing required field: name')).toBeInTheDocument()
+    expect(screen.getAllByText('這次失敗頁沒有收到詳細錯誤內容。').length).toBeGreaterThan(0)
+  })
+})
+
+describe('PublishFailedPage — S199 actionable validation copy', () => {
+  it('AC-S199-2 / AC-S199-3 / AC-S199-6: line-count finding renders concrete cause, next step, and raw title', () => {
+    const findings: ValidationFinding[] = [
+      {
+        section: 'skill_md',
+        severity: 'error',
+        title: 'skill_md_line_count: SKILL.md has 589 lines (max 500)',
+        hint: null,
+      },
+    ]
+
+    renderWith('?state=A&msg=ignored', { findings })
+
+    expect(screen.getAllByText('SKILL.md 太長：589 行，目前上限 500 行。').length).toBeGreaterThan(0)
+    expect(screen.queryByText('驗證在第 2 步停止 — 沒有任何資料寫入。')).not.toBeInTheDocument()
+    expect(screen.getAllByText(/references\//).length).toBeGreaterThan(0)
+    expect(screen.getByText('原始訊息：skill_md_line_count: SKILL.md has 589 lines (max 500)')).toBeInTheDocument()
+  })
+
+  it('AC-S199-4: missing-name finding shows concrete fix', () => {
+    const findings: ValidationFinding[] = [
+      { section: 'skill_md', severity: 'error', title: 'Missing required field: name', hint: null },
+    ]
+
+    renderWith('?state=A', { findings })
+
+    expect(screen.getAllByText('SKILL.md frontmatter 缺少 name。').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/name: my-skill/).length).toBeGreaterThan(0)
+    expect(screen.getByText('原始訊息：Missing required field: name')).toBeInTheDocument()
+  })
+
+  it('AC-S199-4: body_present finding explains Skills Hub upload policy', () => {
+    const findings: ValidationFinding[] = [
+      {
+        section: 'skill_md',
+        severity: 'error',
+        title: 'body_present: SKILL.md has no body content after frontmatter',
+        hint: null,
+      },
+    ]
+
+    renderWith('?state=A', { findings })
+
+    expect(screen.getAllByText('SKILL.md frontmatter 後面沒有使用說明內容。').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Skills Hub 不收只有 metadata、沒有 instructions body 的空 skill。/).length).toBeGreaterThan(0)
+  })
+
+  it('AC-S199-5: generic URL message without findings shows detail-unavailable fallback', () => {
+    renderWith('?state=A&msg=%E9%A9%97%E8%AD%89%E5%A4%B1%E6%95%97%EF%BC%9ASKILL.md%20validation%20failed')
+
+    expect(screen.getAllByText('這次失敗頁沒有收到詳細錯誤內容。').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/重新上傳一次/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/查看 \/api\/v1\/skills\/upload response/).length).toBeGreaterThan(0)
+    expect(screen.queryByText('驗證失敗：SKILL.md validation failed')).not.toBeInTheDocument()
   })
 })

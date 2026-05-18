@@ -99,13 +99,21 @@ type ErrRow = {
   severity: 'error' | 'warning'
   title: string
   hint?: string
+  rawTitle?: string
 }
 
 function StateAFrontmatterError({ msg, findings: structuredFindings }: { msg: string | null; findings?: ValidationFinding[] }) {
-  // S098b3-2: prefer structured findings from router state; fallback to flat msg as single error row
-  const findings: ErrRow[] = structuredFindings && structuredFindings.length > 0
-    ? structuredFindings.map((f) => ({ severity: f.severity, title: f.title, hint: f.hint ?? undefined }))
-    : msg ? [{ severity: 'error', title: msg }] : []
+  const hasStructuredFindings = structuredFindings && structuredFindings.length > 0
+  const detailUnavailable = {
+    severity: 'error' as const,
+    title: '這次失敗頁沒有收到詳細錯誤內容。',
+    hint: '請回到上傳頁重新上傳一次；若你要協助排查，請查看 /api/v1/skills/upload response。',
+  }
+  // S098b3-2/S199: router state findings are authoritative; URL msg is only a no-detail fallback.
+  const findings: ErrRow[] = hasStructuredFindings
+    ? structuredFindings.map(formatValidationFinding)
+    : msg ? [detailUnavailable] : []
+  const primaryFinding = findings[0] ?? detailUnavailable
 
   return (
     <div className="space-y-4">
@@ -120,9 +128,9 @@ function StateAFrontmatterError({ msg, findings: structuredFindings }: { msg: st
         <div className="flex items-start gap-3">
           <AlertOctagon className="mt-0.5 h-5 w-5 shrink-0 text-[#F2A6A6]" />
           <div className="flex-1">
-            <h2 className="text-[14px] font-semibold text-[#F2A6A6]">驗證在第 2 步停止 — 沒有任何資料寫入。</h2>
+            <h2 className="text-[14px] font-semibold text-[#F2A6A6]">{primaryFinding.title}</h2>
             <p className="mt-1 text-[13px] leading-relaxed text-[#A8A49C]">
-              你的 bundle 沒通過 SKILL.md 驗證。請依下方錯誤訊息修正後重新上傳；目前 registry 沒有寫入任何記錄。
+              目前 registry 沒有寫入任何記錄。下一步：{primaryFinding.hint}
             </p>
           </div>
         </div>
@@ -143,6 +151,42 @@ function StateAFrontmatterError({ msg, findings: structuredFindings }: { msg: st
       <ValidationSection title="風險掃描" sub="尚未執行 — 修正 SKILL.md 後再跑" status="skipped" rows={[]} />
     </div>
   )
+}
+
+function formatValidationFinding(finding: ValidationFinding): ErrRow {
+  const copy = validationFindingCopy(finding.title)
+  return {
+    severity: finding.severity,
+    title: copy.title,
+    hint: finding.hint ?? copy.nextStep,
+    rawTitle: copy.rawTitle,
+  }
+}
+
+function validationFindingCopy(rawTitle: string): { title: string; nextStep: string; rawTitle?: string } {
+  // S199: backend line-count title carries numbers only in this stable sentence shape.
+  const lineCountMatch = rawTitle.match(/^skill_md_line_count:\s*SKILL\.md has (\d+) lines \(max (\d+)\)$/)
+  if (lineCountMatch) {
+    const [, actual, limit] = lineCountMatch
+    return {
+      title: `SKILL.md 太長：${actual} 行，目前上限 ${limit} 行。`,
+      nextStep: '先把詳細內容移到 references/，SKILL.md 只保留啟動時一定要看的步驟。S198 會把這條改成品質扣分，不再擋上傳。',
+      rawTitle,
+    }
+  }
+  const knownCopies: Array<[startsWith: string, title: string, nextStep: string]> = [
+    ['Missing required field: name', 'SKILL.md frontmatter 缺少 name。', '在檔案最上方的 --- 區塊加入 name，例如 name: my-skill。'],
+    ['Missing required field: description', 'SKILL.md frontmatter 缺少 description。', '在 --- 區塊加入 description，描述技能做什麼與何時使用。'],
+    ['No YAML frontmatter found', 'SKILL.md 最上方缺少 YAML frontmatter。', '檔案開頭要有 ---、name、description、---，後面再寫 Markdown 內容。'],
+    ['Invalid YAML:', 'SKILL.md frontmatter 的 YAML 格式錯誤。', '檢查縮排、冒號後空格、引號是否成對。'],
+    ['body_present:', 'SKILL.md frontmatter 後面沒有使用說明內容。', '在第二個 --- 後加入此技能的使用步驟。Skills Hub 不收只有 metadata、沒有 instructions body 的空 skill。'],
+  ]
+  const known = knownCopies.find(([startsWith]) => rawTitle.startsWith(startsWith))
+  if (known) {
+    const [, title, nextStep] = known
+    return { title, nextStep, rawTitle }
+  }
+  return { title: rawTitle, nextStep: '請依這筆錯誤修改 SKILL.md 後重新上傳。' }
 }
 
 // S098b3: V-section component — header + status badge + (optional) err-rows list
@@ -206,6 +250,9 @@ function ValidationSection({
                 <p className="text-[13px] font-medium text-[#EEECEA] break-words">{row.title}</p>
                 {row.hint && (
                   <p className="mt-0.5 text-[12px] leading-relaxed text-[#A8A49C]">{row.hint}</p>
+                )}
+                {row.rawTitle && (
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-[#A8A49C]">原始訊息：{row.rawTitle}</p>
                 )}
               </div>
             </div>

@@ -1,6 +1,6 @@
 # S199: Publish Failed Actionable Validation Copy
 
-> 規格：S199 | 大小：XS(4) | 狀態：⏳ Dev
+> 規格：S199 | 大小：XS(4) | 狀態：⏳ QA
 > 日期：2026-05-18
 > 對應：PRD P2「驗證失敗回具體錯誤」、S098b/S098b3-2 publish failed page、S198 validator recommendation split
 
@@ -189,4 +189,21 @@ E2E：not required for planning — S199 可由 Vitest 驗證 error payload prop
 
 ## 7. Results
 
-待實作後填寫。
+### Local Implementation — 2026-05-19（pending QA）
+
+| Task | Status | Evidence |
+|---|---|---|
+| S199-T01 uploadSkill 保留 structured findings | PASS | `cd frontend && npm test -- skills.test` — 6 tests passed |
+| S199-T02 PublishFailedPage 顯示具體 validation 主因與下一步 | PASS | `cd frontend && npm test -- PublishFailedPage` — 11 tests passed |
+
+### Acceptance Check
+
+`cd frontend && npm test -- skills.test PublishFailedPage`：PASS — 2 files / 17 tests。
+
+### Implementation Notes
+
+- `uploadSkill()` 400 body 現在保留 `findings[]`，`PublishPage` 轉址到 `/publish/failed` 時不會丟失第一筆 finding。
+- `PublishFailedPage` 會把 known validation title 轉成繁中主因與下一步，並在細節列保留 `原始訊息：...` 方便排查。
+- 沒有 router state `findings[]` 時，頁面不再只顯示 generic `SKILL.md validation failed`，改顯示「這次失敗頁沒有收到詳細錯誤內容。」並提示重新上傳或查看 `/api/v1/skills/upload response`。
+
+Next: `$verifying-quality S199`。
