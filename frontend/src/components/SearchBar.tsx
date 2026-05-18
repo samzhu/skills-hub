@@ -19,8 +19,9 @@ interface SearchBarProps {
  * S089: 改用自寫的 `BeamFrame`（取代 border-beam npm package）。
  *
  * 研究結論（S084 §2.2）：border-beam npm light theme 用 rgba(0,0,0,x) 黑色透明
- * inner-shadow，在 #FFFFFF 白背景物理上做不出 glow。Prototype HTML
- * (`skills_hub_homepage_mockup.html` `.sh-search-wrap`) 直接 hand-roll
+ * inner-shadow，在 #FFFFFF 白背景物理上做不出 glow。S084 historical prototype
+ * 規則已整理到 DESIGN.md；current page reference 是
+ * `docs/grimo/ui/prototype/Skills Hub Homepage.html`。Search wrapper 直接 hand-roll
  * conic-gradient + 1px padding wrapper，與 DESIGN.md `card-featured` pattern 1:1 對齊。
  *
  * BeamFrame 1:1 port prototype CSS：transparent 0-300° → accent 紫 #7F77DD 330° →

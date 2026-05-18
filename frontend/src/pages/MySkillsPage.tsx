@@ -25,7 +25,8 @@ import type { Skill } from '@/types/skill'
 /**
  * S094a — `/my-skills` Author Dashboard.
  *
- * 對齊 docs/grimo/ui/prototype/my_skills_author_dashboard.html (README ll.69-87).
+ * 對齊 docs/grimo/ui/DESIGN.md Page Inventory +
+ * docs/grimo/ui/prototype/Skills Hub My Skills.html。
  *
  * 設計重點:
  * - Hero: author identity hook (P6 SBE「作者查看自己的數據」)
@@ -400,7 +401,7 @@ function SkillRow({ skill, isLast, onDelete }: { skill: Skill; isLast: boolean; 
         </div>
         <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">{skill.description}</p>
       </Link>
-      {/* S096d3: 30d sparkline column (per prototype my_skills_author_dashboard.html) */}
+      {/* S096d3: 30d sparkline column (per Skills Hub My Skills.html prototype) */}
       <div className="hidden shrink-0 sm:block" aria-label="30d download trend">
         {trend && <Sparkline data={trend} width={64} height={20} />}
       </div>

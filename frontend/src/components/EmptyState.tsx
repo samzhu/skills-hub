@@ -6,7 +6,8 @@ import { BeamFrame } from './BeamFrame'
 /**
  * S094c → S098h2 — 4-tone empty state component (dark theme migration).
  *
- * 對齊 docs/grimo/ui/prototype/empty_state_collection_four_tones.html (v2 dark)。
+ * 對齊 docs/grimo/ui/DESIGN.md Page Inventory +
+ * docs/grimo/ui/prototype/Skills Hub Empty States.html。
  * S098h2 sister fix to S098h: 原 light-theme inline hex (`#181818` text on
  * `bg-white` container) 在 v2 dark page 上 theme-mismatch — 視覺與其他元件
  * （SkillCard / FieldCard 等已 dark-token 的元件）對不上。

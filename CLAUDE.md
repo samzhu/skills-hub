@@ -51,6 +51,7 @@ IMPORTANT: Follow these in every session.
 | `docs/grimo/development-standards.md` | Code conventions, package layout, testing rules (§7), forbidden patterns |
 | `docs/grimo/qa-strategy.md` | Test pipeline, verification commands (ecosystem-native preferred) |
 | `docs/grimo/glossary.md` | Bilingual (zh-TW + English) domain terms |
+| `docs/grimo/ui/DESIGN.md` | Current UI source of truth — dark tokens, component rules, route/page inventory, prototype mapping |
 | `docs/grimo/specs/spec-roadmap.md` | Live roadmap — all specs, milestones, Backlog |
 | `docs/grimo/specs/YYYY-MM-DD-S<NNN>-<slug>.md` | In-flight spec (§1-5 design, §6 task plan, §7 results) |
 | `docs/grimo/specs/archive/` | Shipped specs — permanent record |
@@ -73,8 +74,9 @@ skills-hub/
 │   ├── glossary.md                    ← 術語表（中英文 + code naming）
 │   ├── specs/
 │   │   └── spec-roadmap.md            ← 規格路線圖（milestones + estimation）
-│   ├── ui/                            ← UI 設計稿（HTML mockups + 設計說明）
-│   │   └── README.md                  ← 設計決策、頁面清單、元件規範
+│   ├── ui/                            ← UI 設計稿（DESIGN.md + HTML mockups）
+│   │   ├── DESIGN.md                  ← current UI source of truth：tokens、頁面清單、prototype mapping
+│   │   └── prototype/                 ← `Skills Hub *.html` page mockups
 │   └── adr/                           ← 架構決策記錄（開發中新增）
 │
 ├── backend/                           ← Spring Boot 後端（Java 25, Gradle 9.4.1）

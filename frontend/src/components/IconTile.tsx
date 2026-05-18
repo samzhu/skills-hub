@@ -3,7 +3,7 @@
  *
  * Square tiles holding 2-letter initials sized at sm (24) / md (30) / lg (40) / xl (52)。
  * Tile color from category palette (NEVER from risk palette — DESIGN.md strictness).
- * Per `skills_hub_homepage_mockup.html` `.sh-icon.{purple|blue|teal|coral|amber|pink}` 配色。
+ * Per `docs/grimo/ui/prototype/Skills Hub Homepage.html` icon-tile palette.
  */
 
 type Size = 'sm' | 'md' | 'lg' | 'xl'

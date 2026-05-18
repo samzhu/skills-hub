@@ -76,7 +76,7 @@ cat > .claude/loop.md << 'EOF'
    - 🔲 未設計 → 執行 /planning-spec 完成設計（→ ⏳ Design）
    - ⏳ Design（已設計，依賴都 ✅）→ 執行 /planning-tasks 完成實作
    - 實作通過驗證後 → 執行 /shipping-release 出貨（→ ✅）
-2. 前端相關 spec 設計前先讀 docs/grimo/ui/README.md
+2. 前端相關 spec 設計前先讀 docs/grimo/ui/DESIGN.md
 3. 每次只處理一個 spec，完成後進入下一輪
 4. 所有 spec 都 ✅ 後停止
 5. 遵守依賴關係：依賴未完成就跳過，找下一個可處理的 spec

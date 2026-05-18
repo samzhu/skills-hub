@@ -9,7 +9,7 @@ interface MetricCardProps {
 }
 
 /**
- * S088: 重寫對齊 prototype `platform_analytics_dashboard_admin_view.html` `.sh-metric` 結構。
+ * S088: 重寫對齊 docs/grimo/ui/prototype/Skills Hub Analytics.html metric 結構。
  *
  * - hairline border + 14px padding + lg radius (per `.sh-card`)
  * - label 11px caps + accent-mid color (一致整 dashboard label-caps 風格)

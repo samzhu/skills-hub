@@ -1,11 +1,43 @@
 ---
-version: beta
+version: stable
 name: Skills Hub
 description: >
   Enterprise-internal AI agent skills registry. UI balances developer-tool
   transparency (event names exposed, risk rule IDs visible, similarity scores
   shown) with modern dark-mode craft. Built for engineers who read changelogs
   but appreciate intentional design.
+
+# ── Source of Truth ─────────────────────────────────────────────────────────
+#
+# This file is the stable, single UI design index. It owns:
+# 1. global tokens and component rules,
+# 2. route-to-page inventory,
+# 3. prototype mapping for each frontend page,
+# 4. design-source cleanup rules for future specs and code comments.
+#
+# Historical S081/S085-S088/S094 specs and snake_case prototype filenames remain
+# archive records only. They must not be cited as the active design source for new
+# implementation work unless the citation clearly says "historical".
+source_of_truth:
+  canonical:
+    stable_ui_index: "docs/grimo/ui/DESIGN.md"
+    tokens_and_components: "docs/grimo/ui/DESIGN.md"
+    page_mockups: "docs/grimo/ui/prototype/Skills Hub *.html"
+    route_reality: "frontend/src/App.tsx"
+    design_history: "docs/grimo/specs/archive/2026-05-02-S096-ui-v2-dark-theme-meta.md"
+    parity_history: "docs/grimo/specs/archive/2026-05-02-S098-prototype-completeness-audit.md"
+
+  superseded:
+    - "docs/grimo/ui/README.md — file is not present; do not cite README line numbers"
+    - "docs/prototype/*.html — old path from S084; use docs/grimo/ui/prototype/"
+    - "snake_case prototype names such as my_skills_author_dashboard.html, semantic_search_results_page.html, empty_state_collection_four_tones.html, platform_analytics_dashboard_admin_view.html"
+    - "S081 light theme tokens — replaced by S096b dark theme"
+
+  rule:
+    - "When frontend routes or page-level design change, update Page Inventory in this file in the same spec."
+    - "Frontend comments should cite either this Page Inventory or the exact `Skills Hub *.html` prototype filename."
+    - "If a prototype and current implementation disagree, check `frontend/src/App.tsx` for route reality and record the design decision here."
+    - "Do not add a second UI index. Keep this file as the stable design entry point."
 
 # ── Theming ────────────────────────────────────────────────────────────────
 theme: dark
@@ -114,7 +146,7 @@ beam:
   description: >
     The single animated motion primitive in the entire product.
     Implemented via `border-beam@1.0.1` npm package (BeamFrame component).
-    A colorful gradient ring rotates around the border of exactly ONE element
+    A colorful gradient ring rotates around the border of one primary element
     per visible viewport. Scarcity is what makes it meaningful.
 
   implementation: "border-beam npm package — BeamFrame wrapper"
@@ -129,7 +161,7 @@ beam:
     - Hero search bar (Landing, Homepage)
     - Primary CTA button — one per page
     - FileDropZone (Publish Step 1)
-    - Featured / top-match skill card (SearchResultsPage)
+    - Featured / top-match skill card (Landing popular skills, /browse semantic mode)
 
   forbidden:
     - Metric cards
@@ -137,6 +169,9 @@ beam:
     - Sidebar rows
     - Secondary or ghost buttons
     - Any decorative container
+
+  exceptions:
+    - "LandingPage may show BeamFrame on the hero CTA, first popular SkillCard, and final CTA because S096e1 accepted the marketing-page exception. Other app pages keep one active BeamFrame per visible viewport."
 
 # ── Elevation & Depth ───────────────────────────────────────────────────────
 elevation:
@@ -271,99 +306,173 @@ pages:
   - component: "LandingPage"
     route: "/"
     auth: false
-    beam: ["hero search bar", "Browse CTA", "final CTA"]
+    prototype: "docs/grimo/ui/prototype/Skills Hub Landing.html"
+    status: "implemented"
+    beam: ["Browse CTA", "first popular SkillCard", "final CTA"]
+    note: "Marketing-page exception to the one-beam app-page rule."
 
   - component: "HomePage"
     route: "/browse"
     aliases: ["/skills"]
     auth: true
+    prototype: "docs/grimo/ui/prototype/Skills Hub Homepage.html"
+    status: "implemented"
     beam: ["hero search bar (SearchBar)"]
+    note: "Browse and semantic search now live on this page; there is no separate SearchResultsPage route."
 
   - component: "SkillDetailPage"
-    route: "/skills/:id"
+    routes: ["/skills/:id", "/skills/:author/:name"]
     canonical: "/skills/:author/:name"
     auth: true
-    beam: ["Download / Install CTA"]
+    prototype: "docs/grimo/ui/prototype/Skills Hub Skill Detail v2.html"
+    fallback_prototype: "docs/grimo/ui/prototype/Skills Hub Skill Detail.html"
+    status: "implemented"
+    beam: ["Download CTA via PageHeader"]
+
+  - component: "SkillEditPage"
+    route: "/skills/:id/edit"
+    auth: true
+    prototype: "inherits Publish Step 1 / Step 2 editing flow patterns"
+    status: "implemented"
+    beam: []
 
   - component: "VersionDiffPage"
     route: "/skills/:id/diff"
+    intended_canonical_route: "/skills/:author/:name/diff?from=&to="
     auth: true
-    beam: ["Install latest version CTA"]
+    prototype: "docs/grimo/ui/prototype/Skills Hub Version Diff.html"
+    status: "implemented"
+    beam: []
+    note: "Current route is id-based in App.tsx; canonical author/name diff route is documented intent, not wired."
 
   - component: "PublishPage"
     route: "/publish"
     auth: true
+    prototype: "docs/grimo/ui/prototype/Skills Hub Publish Step 1.html"
+    status: "implemented"
     note: "Step 1 — FileDropZone"
     beam: ["FileDropZone border"]
 
   - component: "PublishValidatePage"
     route: "/publish/validate"
     auth: true
+    prototype: "docs/grimo/ui/prototype/Skills Hub Publish Step 2.html"
+    status: "implemented"
     note: "Step 2 — auto-poll + auto-navigate to /publish/review"
     beam: []
 
   - component: "PublishReviewPage"
     route: "/publish/review"
     auth: true
+    prototype: "docs/grimo/ui/prototype/Skills Hub Publish Flow.html"
+    status: "implemented"
     note: "Step 3 — frontmatter + risk scan review"
     beam: ["Publish CTA"]
 
   - component: "PublishFailedPage"
     route: "/publish/failed"
     auth: true
+    prototype: "docs/grimo/ui/prototype/Skills Hub Publish Failures.html"
+    status: "implemented"
     beam: ["Re-upload CTA (State A)", "Submit for review CTA (State B)"]
 
   - component: "AnalyticsPage"
     route: "/analytics"
     auth: true
-    beam: ["Downloads 30d metric card (featured)"]
+    prototype: "docs/grimo/ui/prototype/Skills Hub Analytics.html"
+    status: "implemented"
+    beam: []
+    note: "Metric cards must not use BeamFrame."
 
   - component: "MySkillsPage"
     route: "/my-skills"
     auth: true
+    prototype: "docs/grimo/ui/prototype/Skills Hub My Skills.html"
+    status: "implemented"
     beam: ["Publish new skill CTA"]
 
   - component: "FlagsQueuePage"
     route: "/flags"
     auth: true
     role: admin/reviewer
-    beam: ["Approve & publish CTA"]
-    note: "Admin review queue — replaces earlier /admin/review design"
-
-  - component: "SearchResultsPage"
-    route: "/search"
-    auth: true
-    beam: ["featured top-match SkillCard"]
+    prototype: "docs/grimo/ui/prototype/Skills Hub Admin Review.html"
+    status: "implemented as reviewer flag queue"
+    beam: []
+    note: "Production route is /flags. Prototype name still says Admin Review; /admin/review is not routed."
 
   - component: "CollectionsPage"
     route: "/collections"
     auth: true
-    beam: ["Install Collection CTA on featured bundle", "New Collection CTA"]
+    prototype: "docs/grimo/ui/prototype/Skills Hub Collection.html"
+    status: "implemented"
+    beam: []
+
+  - component: "CollectionDetailPage"
+    route: "/collections/:id"
+    auth: true
+    prototype: "derived detail page; no standalone prototype"
+    status: "implemented"
+    beam: []
 
   - component: "RequestBoardPage"
     route: "/requests"
     auth: true
-    beam: ["Post a Request CTA"]
+    prototype: "docs/grimo/ui/prototype/Skills Hub Request Board.html"
+    status: "implemented"
+    beam: []
+
+  - component: "RequestDetailPage"
+    route: "/requests/:id"
+    auth: true
+    prototype: "derived detail page; no standalone prototype"
+    status: "implemented"
+    beam: []
 
   - component: "NotificationsPage"
     route: "/notifications"
     auth: true
+    prototype: "docs/grimo/ui/prototype/Skills Hub Notifications.html"
+    status: "implemented"
     beam: []
 
   - component: "YourFirstSkillPage"
     route: "/docs/your-first-skill"
     auth: true
+    prototype: "docs/grimo/ui/prototype/Skills Hub Docs.html"
+    status: "implemented"
     beam: ["Upload your bundle CTA at article end"]
 
   - component: "docs/* (OverviewPage, RiskTiersPage, SkillMdSpecPage, FrontmatterPage, BundleStructurePage, UploadValidatePage, VersioningPage, SemanticSearchPage, RestApiPage, EventPayloadPage, RiskScannerScopePage)"
-    route: "/docs/:slug"
+    routes: ["/docs", "/docs/:slug"]
     auth: true
+    prototype: "docs/grimo/ui/prototype/Skills Hub Docs.html"
+    status: "implemented"
+    note: "/docs redirects to /docs/overview."
+    beam: []
+
+  - component: "GroupsPage"
+    route: "/groups"
+    auth: true
+    prototype: "no standalone UI prototype; follows app shell, table, and tree controls"
+    status: "implemented"
     beam: []
 
   - component: "AuthDebugPage"
     route: "/auth-debug"
     auth: false
+    prototype: "dev-only; no production UI prototype"
+    status: "implemented"
     note: "Dev-only — shows OAuth token info; only meaningful with real-oauth backend profile"
+    beam: []
+
+  - component: "Security risk UI prototypes"
+    routes: ["inline in publish/review/security/report contexts"]
+    auth: true
+    prototypes:
+      - "docs/grimo/ui/prototype/Skills Hub Security Risk Lights UI.html"
+      - "docs/grimo/ui/prototype/Skills Hub Security Report Issue Code UI.html"
+      - "docs/grimo/ui/prototype/Skills Hub Security Reason UI.html"
+    status: "reference prototypes for risk reason/report UI, not standalone routes"
     beam: []
 
 # ── Risk System ─────────────────────────────────────────────────────────────

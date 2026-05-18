@@ -460,7 +460,7 @@ Spring AI auto-config 保持關閉：base config 設 `spring.ai.model.chat=none`
 ### UI Design References
 
 設計稿位於 `docs/grimo/ui/`，含互動 HTML mockups。
-前端 spec（S002, S004 等）設計前必須先讀 `docs/grimo/ui/README.md`，了解設計決策、頁面清單與元件規範。
+前端 spec（S002, S004 等）設計前必須先讀 `docs/grimo/ui/DESIGN.md`，了解設計決策、頁面清單、prototype 對應與元件規範。
 
 ```
 frontend/

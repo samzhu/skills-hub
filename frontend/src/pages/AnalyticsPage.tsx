@@ -5,7 +5,7 @@ import { ErrorState } from '@/components/ErrorState'
 import { useOverview } from '@/hooks/useAnalytics'
 
 /**
- * S088: 重寫對齊 prototype `platform_analytics_dashboard_admin_view.html`：
+ * S088: 重寫對齊 docs/grimo/ui/prototype/Skills Hub Analytics.html：
  * - hero row (H1 + sub-text)
  * - metric strip 4-up + label-caps 統一風格
  * - top-skills 排行卡 hairline border + accent-bar progress（per DESIGN.md
