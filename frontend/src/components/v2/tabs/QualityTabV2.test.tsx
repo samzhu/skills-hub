@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 import { QualityTabV2 } from './QualityTabV2'
 import type { SkillScores } from '@/api/scores'
@@ -7,15 +7,28 @@ const mockScores: SkillScores = {
   skillId: 's1', skillVersionId: 'v1', skillVersion: '1.0.0',
   evaluatedAt: '2026-05-07T00:00:00Z', evaluatorVersion: 'v1',
   validation: {
-    totalScore: 100,
+    totalScore: 97,
     dimensions: {
-      schemaCompliance: { score: 3, reasoning: 'Schema is fully compliant with the spec.' },
-      descriptionQuality: { score: 2, reasoning: 'Description could be more detailed.' },
+      lineCount: { score: 100, reasoning: '136 / 500 lines.' },
+      frontmatterOfficialFormat: { score: 80, reasoning: 'allowed-tools accepted but YAML list warning.' },
+      warnings: ['frontmatter_official_format: allowed-tools uses YAML list'],
     },
   },
-  implementation: { totalScore: 85, dimensions: {} },
-  activation: { totalScore: 92, dimensions: {} },
-  total: 92,
+  implementation: {
+    totalScore: 85,
+    dimensions: {
+      conciseness: { score: 3, reasoning: 'Concise enough for the registry.' },
+      actionability: { score: 2, reasoning: 'Actionable but could name sharper triggers.' },
+    },
+  },
+  activation: {
+    totalScore: 67,
+    dimensions: {
+      distinctiveness: { score: 1, reasoning: 'Some overlap with existing skills.' },
+      triggerTermQuality: { score: 0, reasoning: 'Trigger terms are missing.' },
+    },
+  },
+  total: 83,
   skillScore: 89,
 }
 
@@ -27,15 +40,49 @@ describe('QualityTabV2', () => {
     expect(screen.getByText('觸發能力')).toBeTruthy()
   })
 
-  it('AC-S142a-12: ScoreDot rendered per dimension', () => {
+  it('AC-S201-1: validation 100 renders 通過 100/100', () => {
+    render(<QualityTabV2 scores={mockScores} />)
+    expect(screen.getByText('Line Count')).toBeTruthy()
+    expect(screen.getByText('通過 100/100')).toBeTruthy()
+  })
+
+  it('AC-S201-2: validation 80 renders 注意 80/100', () => {
+    render(<QualityTabV2 scores={mockScores} />)
+    expect(screen.getByText('Frontmatter Official Format')).toBeTruthy()
+    expect(screen.getByText('注意 80/100')).toBeTruthy()
+  })
+
+  it('AC-S201-3: validation warnings render 提醒 row', () => {
+    render(<QualityTabV2 scores={mockScores} />)
+    expect(screen.getByText('Warnings')).toBeTruthy()
+    expect(screen.getByText('提醒 1')).toBeTruthy()
+    expect(screen.getByText('frontmatter_official_format: allowed-tools uses YAML list')).toBeTruthy()
+    expect(screen.queryByText('undefined/3')).toBeNull()
+  })
+
+  it('AC-S201-4: implementation and activation render 0-3 status labels', () => {
+    render(<QualityTabV2 scores={mockScores} />)
+    expect(screen.getByText('滿分 3/3')).toBeTruthy()
+    expect(screen.getByText('可接受 2/3')).toBeTruthy()
+    expect(screen.getByText('偏弱 1/3')).toBeTruthy()
+    expect(screen.getByText('缺失 0/3')).toBeTruthy()
+  })
+
+  it('AC-S201-5: warnings array never renders undefined score', () => {
     const { container } = render(<QualityTabV2 scores={mockScores} />)
-    // 2 dimensions in validation section → 2 ScoreDots
-    expect(container.querySelectorAll('[data-testid="score-dot"]').length).toBeGreaterThanOrEqual(2)
+    expect(container.querySelectorAll('[data-testid="score-dot"]').length).toBe(0)
+    expect(screen.queryByText(/undefined/)).toBeNull()
+  })
+
+  it('AC-S201-6: axis total score and progress bar remain driven by totalScore', () => {
+    render(<QualityTabV2 scores={mockScores} />)
+    expect(within(screen.getByTestId('axis-validation')).getByText('97')).toBeTruthy()
+    expect(screen.getByTestId('axis-progress-validation')).toHaveStyle({ width: '97%' })
   })
 
   it('AC-S142a-12: reasoning 預設展開，顯示較少 button visible', () => {
     render(<QualityTabV2 scores={mockScores} />)
-    expect(screen.getByText('Schema is fully compliant with the spec.')).toBeTruthy()
+    expect(screen.getByText('136 / 500 lines.')).toBeTruthy()
     expect(screen.getAllByText('顯示較少').length).toBeGreaterThan(0)
   })
 
