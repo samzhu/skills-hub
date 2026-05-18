@@ -1,6 +1,6 @@
 # S197: 必填欄位即時提示 UX
 
-> 規格：S197 | 大小：S(8) | 狀態：⏳ QA
+> 規格：S197 | 大小：S(8) | 狀態：⏳ Dev (QA fix required)
 > 日期：2026-05-18
 > 對應：PRD §P2 / S004 / S176 / S187 / S195
 
@@ -228,7 +228,7 @@ E2E：not required for planning — S197 改的是表單必填提示、component
 
 ## 7. Results
 
-狀態：local implementation PASS；independent QA pending。`$shipping-release S197` 尚未符合 precondition，因為本 spec 還沒有 `$verifying-quality S197` 的 PASS verdict，也還沒有 `./scripts/verify-all.sh` release gate 證據。
+狀態：QA REJECT-FIX 2026-05-19。`$shipping-release S197` 尚未符合 precondition，因為 AC-S197-3 在 `/publish` file mode 的實際頁面路徑沒有 inline 缺檔案提示；下一步回 `$planning-tasks S197` 補 QA fix task。
 
 ### 7.1 Task Results
 
@@ -270,4 +270,21 @@ E2E：not required。S197 沒有新增 route、後端 API、credential injection
 
 ### 7.4 Next Step
 
-下一步應執行 `$verifying-quality S197`。QA PASS 且 release gate 證據補齊後，才可執行 `$shipping-release S197`。
+下一步應執行 `$planning-tasks S197`，建立 QA fix task：`PublishPage` file mode 未選檔時要把 `請選擇 zip 或 SKILL.md` 傳給 `FileDropZone` 並補 page-level test。QA PASS 且 release gate 證據補齊後，才可執行 `$shipping-release S197`。
+
+### 7.5 Independent QA Review（2026-05-19）
+
+Verdict：REJECT-FIX。自動驗證全綠，但 AC-S197-3 的 `/publish` 實際頁面路徑沒有被滿足。
+
+| Layer | Result | Detail |
+|---|---|---|
+| Automated tests | PASS | `cd frontend && npm test -- PublishPage SkillEditPage FileDropZone && npm run verify` → 3 files / 46 tests PASS，ESLint + TypeScript PASS。 |
+| Full verify | PASS | `./scripts/verify-all.sh` → V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。 |
+| Manual verification | N/A | S197 沒有人工操作才可驗的外部流程；缺口是可由 component/page test 補上的 DOM 行為。 |
+| Testability gate | BLOCKED | AC-S197-3 目前只有 `FileDropZone` component test，沒有 `/publish` page-level test 證明 file mode 未選檔時使用者會看到 inline 缺檔案提示。 |
+
+#### Findings
+
+| Severity | AC | Finding | Evidence | Required fix |
+|---|---|---|---|---|
+| CRITICAL | AC-S197-3 | `/publish` file mode 未選檔時，實際 `PublishPage` 沒有把 required error 傳給 `FileDropZone`。使用者填完技能名稱與分類但未選檔，只看到 `發佈技能` disabled 與 required mark，沒有看到 `請選擇 zip 或 SKILL.md`。 | `frontend/src/pages/PublishPage.tsx:194` 只有 `<FileDropZone inputId="publish-file" onFileSelect={setFile} selectedFile={file} />`；`frontend/src/components/FileDropZone.test.tsx:87` 只證明 caller 傳入 `error` 時元件會顯示，但 `PublishPage` 沒有傳。 | 新增 QA fix task：`PublishPage` 在 file mode、submit attempt 或足以讓 disabled button 有欄位原因時傳入 `error="請選擇 zip 或 SKILL.md"`、`describedBy`、`errorId`，並在 `PublishPage.test.tsx` 加 AC-S197-3 page-level assertion。 |
