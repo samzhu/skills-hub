@@ -1,6 +1,6 @@
 # S201: Quality Score 單項狀態顯示
 
-> 規格：S201 | 大小：XS(5) | 狀態：⏳ Dev
+> 規格：S201 | 大小：XS(5) | 狀態：✅ QA PASS
 > 日期：2026-05-18
 > 對應：PRD P1「技能詳情頁」、S135a Backend Quality Score、S142a SkillDetailPage v2、S198 Recommendations Not Hard Errors
 
@@ -372,4 +372,45 @@ POC：not required。
 
 ## 7. Results
 
-待實作後填寫。
+### 7.1 Implementation Summary
+
+| Task | Result | Evidence |
+|---|---|---|
+| T01 | PASS | `frontend/src/components/v2/shared/scoreStatus.ts` 新增 `scoreStatus(...)` / `isDimensionScore(...)`；`ScoreStatusIndicator` 顯示 12px 圓圈 + 文字。 |
+| T02 | PASS | `QualityTabV2` 改用 `ScoreStatusIndicator` / `WarningStatusIndicator`；`warnings` 顯示 `Warnings` + `提醒 {count}`，不再當 `DimensionScore`。 |
+| T03 | PASS | `docs/grimo/ui/DESIGN.md` 與 prototype 記錄 `quality-status-indicator`、三色分數規則、12px 圓圈 + 文字。 |
+
+### 7.2 QA Evidence (2026-05-19)
+
+| Command | Result |
+|---|---|
+| `cd frontend && npm test -- QualityTabV2 ScoreStatusIndicator` | PASS — 2 test files / 15 tests。 |
+| `cd frontend && npm run verify` | PASS — ESLint `--max-warnings 0` + `tsc -b`。 |
+| `rg -n "quality-status\|ScoreStatusIndicator\|通過 100/100\|滿分 3/3" docs/grimo/ui/DESIGN.md` | PASS — 找到 `quality-status-indicator`、`ScoreStatusIndicator / WarningStatusIndicator`、`通過 100/100`、`滿分 3/3`。 |
+| `rg -n "通過 100/100\|注意 80/100\|滿分 3/3\|12px" "docs/grimo/ui/prototype/Skills Hub Skill Detail Quality Signals Research.html"` | PASS — prototype 有 12px 規則與 0-100 / 0-3 狀態文案。 |
+| `./scripts/verify-all.sh` | PASS — `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS`；JaCoCo line coverage `87.4% (4885 / 5591)`；frontend full suite `82 files / 519 tests`；native image `skillshub-verify:local` build PASS。 |
+
+### 7.3 AC Result Table
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC-S201-1 | PASS | `ScoreStatusIndicator.test.tsx` 與 `QualityTabV2.test.tsx` 斷言 `validation score=100` 顯 `通過 100/100`，12px 綠色圓圈存在。 |
+| AC-S201-2 | PASS | `ScoreStatusIndicator.test.tsx` 與 `QualityTabV2.test.tsx` 斷言 `validation score=80` 顯 `注意 80/100`。 |
+| AC-S201-3 | PASS | `QualityTabV2.test.tsx` 斷言 `warnings: string[]` 變成 `Warnings` row、右側 `提醒 1`，warning 文字可見。 |
+| AC-S201-4 | PASS | `ScoreStatusIndicator.test.tsx` 與 `QualityTabV2.test.tsx` 斷言 `滿分 3/3`、`可接受 2/3`、`偏弱 1/3`、`缺失 0/3`。 |
+| AC-S201-5 | PASS | `isDimensionScore(...)` 對 `string[]` 回 `false`；`QualityTabV2.test.tsx` 斷言不出現 `undefined/3`，也不再 render 舊 `score-dot`。 |
+| AC-S201-6 | PASS | `QualityTabV2.test.tsx` 斷言 `validation.totalScore=97` 時 header 顯 `97`，`axis-progress-validation` width 是 `97%`。 |
+| AC-S201-7 | PASS | DESIGN 與 prototype grep 皆找到三色狀態規則、12px 圓圈、Validation `100/100` 與 Implementation/Activation `3/3` 文案。 |
+
+### 7.4 QA Review
+
+| Layer | Result | Detail |
+|---|---|---|
+| Automated tests | PASS | Targeted S201 tests PASS；`./scripts/verify-all.sh` V01/V03/V04/V05/V06 全 PASS。 |
+| Coverage / Integration | PASS | JaCoCo line coverage 87.4% > 80%；V07 happy-path browser test PASS；V08a `processAot` PASS；V08b native image build PASS。 |
+| Manual verification | N/A | S201 不改 route、API、DB schema、互動流程；AC 全部由 component test 或 docs grep 驗證。 |
+| Testability gate | CLEAR | AC-S201-1~7 都有可執行 evidence，沒有需要新測試基礎設施的 AC。 |
+
+QA verdict：PASS。
+
+Next action：`$shipping-release S201`。Release 時仍需清 `docs/grimo/tasks/` 的 S201 task files、歸檔 spec、更新 `docs/grimo/CHANGELOG.md` / `spec-roadmap.md` shipped row，並建立下一個版本 tag。
