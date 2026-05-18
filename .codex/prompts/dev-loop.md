@@ -8,6 +8,8 @@
 - Model / reasoning effort: default coding model；大型 spec 再調高。
 
 ```text
+在本對話 每十分鐘自動執行
+
 This wake-up is one development loop tick for /Users/samzhu/workspace/github-samzhu/skills-hub.
 
 Use Codex App background worktree execution. This automation is a development orchestrator, not a production site audit and not a deployment runner.
