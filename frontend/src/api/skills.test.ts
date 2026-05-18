@@ -97,7 +97,7 @@ describe('skills API — S188 optional version FormData', () => {
       ok: false,
       status: 503,
       json: async () => { throw new Error('not json') },
-    } as Response))
+    } as unknown as Response))
 
     await expect(addVersion(
       'skill-docker',

@@ -233,7 +233,7 @@ describe('SkillEditPage — S187 version submit flow', () => {
   })
 
   it('AC-S195-5: invalid extension shows inline error and does not PUT', async () => {
-    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, _init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input.toString()
       if (url === '/api/v1/skills/skill-docker') {
         return Promise.resolve(new Response(JSON.stringify(skillFixture), {

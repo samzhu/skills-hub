@@ -1,6 +1,6 @@
 # S195: Skill Edit Upload Validation UX
 
-> 規格：S195 | 大小：S(9) | 狀態：📋 planned
+> 規格：S195 | 大小：S(9) | 狀態：✅ QA PASS
 > 日期：2026-05-18
 > 對應：PRD P2「驗證失敗回具體錯誤」、S187 edit page、S098b3-2 structured findings
 
@@ -262,4 +262,40 @@ E2E：required for AC-S195-6。AC-S195-1 到 AC-S195-5 會用 Vitest + React Tes
 
 ### Current Gate
 
-Implementation tasks are complete. Independent QA and full release verification have not run yet, so S195 is not ready for `$shipping-release` in this tick.
+Independent QA and full release verification passed on 2026-05-18. S195 is ready for `$shipping-release S195`, but is not shipped yet: task files still exist, this spec is still in the root specs folder, the changelog has no S195 release entry, the roadmap row is not shipped/archived, and no release tag exists.
+
+### QA Review 2026-05-18 — PASS
+
+`$verifying-quality S195` re-read the spec, task files, QA strategy, development standards, and changed files. The first full gate found two S195 test hygiene blockers in V05:
+
+- `frontend/src/pages/SkillEditPage.test.tsx:236` had an unused `init` mock parameter; fixed to `_init`.
+- `frontend/src/api/skills.test.ts:96` directly cast a minimal mock object to `Response`; fixed to `as unknown as Response` so TypeScript accepts the intentional fixture.
+
+After those fixes, the relevant commands passed:
+
+| Command | Result | Evidence |
+|---------|--------|----------|
+| `cd frontend && npm test -- FileDropZone skills.test api-error-messages SkillEditPage` | PASS | 4 files / 30 tests passed |
+| `cd e2e && npx playwright test --grep @S195` | PASS | 1 browser test passed; AC-S195-6 checked 390px edit upload layout |
+| `cd frontend && npm run verify` | PASS | ESLint and `tsc -b` passed after the two test fixture fixes |
+| `./scripts/verify-all.sh` | PASS | V01=PASS, V02=INFO coverage 87.2%, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS; exit=0 |
+
+| Layer | Result | Detail |
+|-------|--------|--------|
+| Automated tests | PASS | S195 targeted Vitest, full frontend tests, lint/typecheck, backend tests, coverage verification, and AOT/native build all passed through `verify-all.sh`. |
+| Coverage / Integration | PASS | JaCoCo line coverage 87.2%; `@S195` browser test covered the mobile edit upload DOM path; `@happy-path` E2E also passed in the full gate. |
+| Manual verification | N-A | AC-S195-1 through AC-S195-6 all have automated evidence; no manual-only instruction is needed. |
+| Testability gate | CLEAR | Every AC maps to a runnable Vitest or Playwright assertion. |
+
+AC evidence:
+
+| AC | QA result | Evidence |
+|----|-----------|----------|
+| AC-S195-1 | VERIFIED | `SkillEditPage.test.tsx` shows upload mode renders「拖拽 zip 或 md 檔到此處」and「或點擊選取檔案」. |
+| AC-S195-2 | VERIFIED | `SkillEditPage.test.tsx` captures `PUT /versions` FormData and verifies `file.name == "handover.zip"`. |
+| AC-S195-3 | VERIFIED | `SkillEditPage.test.tsx` feeds 400 `findings[]` and verifies the first error finding title is the main message. |
+| AC-S195-4 | VERIFIED | `skills.test.ts` verifies `addVersion()` preserves `ApiError.findings` and keeps localized fallback text. |
+| AC-S195-5 | VERIFIED | `SkillEditPage.test.tsx` selects `handover.txt`, sees「只接受 .zip / .md」, and confirms no PUT request is sent. |
+| AC-S195-6 | VERIFIED | `e2e/tests/S195-skill-edit-upload-validation-ux.spec.ts` runs at 390px and verifies the dropzone text plus「儲存分類」「儲存新版本」remain visible. |
+
+Code/design sync check: S195 stayed inside the planned frontend/edit-upload scope. No backend validator rule changed, no new dependency was added, and no product docs outside this spec need updating before release.
