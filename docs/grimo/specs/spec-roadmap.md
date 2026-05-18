@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-18（S196 planned；Request Board two-tab UX）
+> 最後更新：2026-05-18（S196 shipped v4.79.0；Request Board two-tab UX）
 
 ## 使用說明
 
@@ -42,7 +42,6 @@
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⛔ superseded 2026-05-16 — 取代為 S189（舊 spec 已有 T01-T05/QA 歷史，但未 ship；關閉以免干擾 S186→S187 主線） |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
-| S196 | Request Board 兩頁籤 UX（`瀏覽需求` / `我要開需求`；inline 開需求；排行只當輔助訊號） | XS(8) | S156c ✅ | ⏳ Dev |
 ---
 
 ## 🏁 Milestones
@@ -93,6 +92,7 @@
 | v4.76.0 | S191 (Publish review copy reality check) | ✅ shipped 2026-05-18 — MEDIUM/result/status copy 對齊 current backend；移除 publication review queue wording；`verify-all.sh` 全綠 |
 | v4.77.0 | S194 (SKILL.md frontmatter compatibility) | ✅ shipped 2026-05-18 — `allowed-tools` list / `metadata.tags` array 相容匯入；compatibility warning 會扣 VALIDATION 分；nested metadata object 仍擋；`verify-all.sh` 全綠 |
 | v4.78.0 | S195 (Skill edit upload validation UX) | ✅ shipped 2026-05-18 — edit page upload mode 重用 FileDropZone；`PUT /versions` 400 顯示 structured findings；`@S195` mobile evidence；`verify-all.sh` 全綠 |
+| v4.79.0 | S196 (Request Board 兩頁籤 UX) | ✅ shipped 2026-05-18 — `/requests` 改為 `瀏覽需求` / `我要開需求`；inline 開需求；保留 vote/detail/comment；`verify-all.sh` 全綠 |
 
 ---
 
@@ -359,6 +359,7 @@
 | S096f2 | Collections full feature | M(13) | v3.8.0 |
 | S096g1 | Request Board read-only stub | XS(5) | v2.80.0 |
 | S096g2 | Request Board full feature | S(11) | v3.6.0 |
+| S196 | Request Board 兩頁籤 UX | S(9) | v4.79.0 |
 | S096h1 | Notifications stub + bell badge | XS(6) | v2.82.0 |
 | S096h2 | Notifications full projection | M(12) | v3.7.0 |
 | S097 | Swap BeamFrame to border-beam package | XS(4) | v2.85.0 |

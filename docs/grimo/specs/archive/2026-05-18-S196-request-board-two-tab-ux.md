@@ -346,8 +346,23 @@ S196 是 frontend-only request board UX 調整。這次沒有新增 DB migration
 | `cd frontend && npm run verify` | PASS — ESLint 與 `tsc -b` 通過。 |
 | `./scripts/verify-all.sh` | PASS — V01=PASS, V02=INFO line coverage 87.2%, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS; exit=0. |
 
-### 7.5 Release Follow-up
+### 7.5 Release Completion
 
-S196 implementation and QA are complete, but release is not complete yet. Root spec remains in `docs/grimo/specs/`, task files remain in `docs/grimo/tasks/`, `docs/grimo/CHANGELOG.md` has no S196 release entry, `docs/grimo/specs/spec-roadmap.md` still marks S196 as Dev, and there is no S196 release tag.
+`$shipping-release S196` 在 2026-05-18 rerun local release gate before archive:
 
-Next skill: `$shipping-release S196`.
+- `cd frontend && npm test -- RequestBoardPage` — PASS, 1 file / 8 tests.
+- `./scripts/verify-all.sh` — PASS, V01=PASS, V02=INFO line coverage 87.2%, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS; exit=0.
+
+Release artifacts updated in the same tick: PRD P8 current flow, CHANGELOG v4.79.0, roadmap shipped row, archive move, task cleanup, and release tag.
+
+### 7.6 Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 1 | Existing React, TanStack Query, `VoteButton`, and request APIs all worked as designed; no framework pivot. |
+| Uncertainty | 1 | 1 | User request and S196 ACs were concrete: two main tabs and no status/claim UI. |
+| Dependencies | 1 | 2 | Actual ship depended on shipped S156c request API shape and S195-clean release base. |
+| Scope | 2 | 2 | Frontend page, inline panel, tests, prototype/DESIGN, and PRD sync stayed within a single UI feature slice. |
+| Testing | 2 | 2 | RTL component tests plus `npm run verify` and full `verify-all.sh`; no new Playwright spec or backend test fixture was needed. |
+| Reversibility | 1 | 1 | UI-only change with no DB migration, no new endpoint, and no persisted format change. |
+| **Total** | **8 / XS** | **9 / S** | Bucket shift XS→S; actual release needed S156c/S195 dependency accounting plus product doc sync. |

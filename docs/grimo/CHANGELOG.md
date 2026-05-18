@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.79.0] — S196 Request Board 兩頁籤 UX（2026-05-18）
+
+### Changed
+
+- **Request Board two-tab flow** — `/requests` now presents `瀏覽需求` and `我要開需求` as the two primary modes, so users can browse existing requests or open a new one without a modal.
+- **Inline request creation** — the old create-request dialog is replaced by an inline form inside the `我要開需求` tab; successful submit posts `{title, description}`, refreshes requests, and returns to browsing.
+- **Browse board ranking** — the browse tab keeps voting, detail links, and a `需求排行榜` from the same request list; sort controls only call `sort=votes` or `sort=created`.
+- **No retired status UI** — the page and prototype no longer describe `尚無勇者` / `接手中` / `已結案`, claim, or fulfill behavior; PRD P8 now matches the shipped post → vote/comment flow.
+
+### Verification
+
+- `cd frontend && npm test -- RequestBoardPage`：**PASS** — 1 file / 8 tests.
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.2%，covered=4866 / total=5580）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Production deploy：not run in this release tick；S196 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-18-S196-request-board-two-tab-ux.md` → `docs/grimo/specs/archive/2026-05-18-S196-request-board-two-tab-ux.md`
+- `docs/grimo/tasks/2026-05-18-S196-*.md` 已刪除。
+- Final size re-score：XS(8) → S(9)，原因是實際 release 需要 S156c/S195 dependency accounting、PRD P8 current-flow sync、component tests、以及完整 `verify-all.sh`（backend, frontend, E2E, AOT/native image）。
+
 ## [v4.78.0] — S195 Skill Edit Upload Validation UX（2026-05-18）
 
 ### Changed

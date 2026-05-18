@@ -251,18 +251,20 @@ Scenario: 集合分類與篩選
 
 ---
 
-### P8 — 技能需求看板（Request Board）📋 (S096g, planned)
+### P8 — 技能需求看板（Request Board）✅ (S096g / S156c / S196)
 
-讓使用者公開發起「我需要這種 skill」的需求，社群投票決定優先級，作者可認領後實作。
+讓使用者公開發起「我需要這種 skill」的需求，社群用投票決定優先級，並可在需求詳情留言補充脈絡。
+
+Current MVP flow：`/requests` 有 `瀏覽需求` / `我要開需求` 兩個主頁籤；需求生命週期是 post → vote / comment，不提供 claim / fulfill 狀態流程。
 
 **SBE Acceptance Criteria：**
 
 ```
 Scenario: 發起需求
   Given 使用者在搜尋「kubernetes auto-scaling」找不到合適 skill
-  When 點選「請求這個 skill」並寫下需求 title + description
-  Then 需求進入 /requests 看板，狀態 OPEN
-  And 預設投票數 1（發起人自動算 1 票）
+  When 在 /requests 點選「我要開需求」並寫下需求 title + description
+  Then 需求出現在 /requests 的「瀏覽需求」頁籤
+  And 其他使用者可以投票或進入詳情留言
 
 Scenario: 投票推升優先級
   Given 「k8s autoscaler skill」需求已開啟 7 天
@@ -270,12 +272,11 @@ Scenario: 投票推升優先級
   Then 票數變 6
   And 該需求在「依票數排序」list 中升至前段
 
-Scenario: 認領與實作
+Scenario: 留言補充需求
   Given 「k8s autoscaler skill」累計 12 票
-  When `platform-team` 作者點選「Claim」
-  Then 該需求狀態變 IN-PROGRESS
-  And 作者上傳對應 skill 後，需求狀態變 FULFILLED
-  And 系統自動 link 該 skill 到原始需求
+  When 同事進入需求詳情並補充使用情境
+  Then 該留言顯示在需求詳情頁
+  And 看板仍用票數與建立時間排序需求
 ```
 
 ---
