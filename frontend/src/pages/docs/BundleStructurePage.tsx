@@ -54,7 +54,7 @@ export function BundleStructurePage() {
         <li>整 bundle zip ≤ 5MB</li>
         <li>單檔 ≤ 1MB（避免大 binary）</li>
         <li>檔案數 ≤ 50</li>
-        <li>禁止符號連結 / hidden files (.DS_Store / .git/) — Skills Hub 上傳會 reject</li>
+        <li>禁止符號連結 / hidden files (.DS_Store / .git/) — Skills Hub 上傳會擋下</li>
       </ul>
 
       <Callout>

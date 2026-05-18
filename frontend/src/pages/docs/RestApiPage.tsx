@@ -81,7 +81,7 @@ export function RestApiPage() {
       <EndpointGroup
         rows={[
           { method: 'POST', path: '/api/v1/skills/{skillId}/flags', note: '使用者回報 skill 問題；body: { reason, severity }' },
-          { method: 'GET', path: '/api/v1/skills/{skillId}/flags', note: '列出該 skill 的 flag 紀錄（reviewer 用）' },
+          { method: 'GET', path: '/api/v1/skills/{skillId}/flags', note: '列出該 skill 的 flag 紀錄（回報處理用）' },
         ]}
       />
 

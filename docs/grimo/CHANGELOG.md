@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.76.0] — S191 Publish Review Copy Reality Check（2026-05-18）
+
+### Changed
+
+- **Publish review result copy** — `/publish/review` now maps `MEDIUM` to「中風險，發佈完成」and maps backend status `PUBLISHED` to「已發佈」instead of showing raw enum text.
+- **High-risk result page** — `/publish/failed?state=B` now explains HIGH scan results and next actions without claiming a manual publication review queue, reviewer notification, or 24-hour approval flow.
+- **Current docs alignment** — risk tier docs, upload docs, first-skill docs, landing copy, notifications copy, type comments, PRD, and glossary now describe automated validation + automated risk scan as the current workflow.
+- **Flag review wording separated** — community flag pages remain「待審回報」but no longer leak `reviewer` wording into publication-review copy.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.9%，covered=4828 / total=5554）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Targeted evidence：`cd frontend && npm test -- PublishReviewPage` PASS（3 tests）；`cd frontend && npm test -- PublishFailedPage` PASS（7 tests）；frontend publication-review source scan PASS（no matches）；backend review-state source scan PASS（no matches）；`git diff --name-only -- backend` empty.
+- Production deploy：not run in this release tick；S191 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-17-S191-publish-review-copy-reality-check.md` → `docs/grimo/specs/archive/2026-05-17-S191-publish-review-copy-reality-check.md`
+- `docs/grimo/tasks/2026-05-18-S191-*.md` 已刪除。
+- Final size re-score：S(9) → S(11)，原因是 current-doc sweep 找到 §2.4 以外的 publication-review wording，並補了 source checks + full `verify-all.sh` release gate。
+
 ## [v4.75.0] — S189 Browse Search Entry Point Verification（2026-05-18）
 
 ### Changed

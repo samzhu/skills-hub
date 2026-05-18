@@ -1,6 +1,6 @@
 # S191 - 發佈結果與上架語意整理
 
-> Status: 📐 in-design  
+> Status: ✅ shipped v4.76.0
 > Owner: Codex  
 > Date: 2026-05-17  
 > Scope: Frontend UI copy, frontend tests, product docs alignment, backend source inspection only  
@@ -236,3 +236,118 @@ Keep no reviewer queue, but make HIGH risk non-public.
 - `docs/grimo/PRD.md` has older lines that say HIGH goes to review while another section says manual review is out-of-scope. S191 must resolve the current-MVP wording without rewriting historical shipped specs.
 - Generic words like `reviewer` are still valid for community flags. The implementation must remove publication-review claims without breaking flag-review copy.
 - If `PublishFailedPage` keeps the `state=B` route name internally, tests should assert visible copy, not internal route labels.
+
+## 6. Task Plan
+
+### Pre-flight validation
+
+- POC: not required — S191 changes existing frontend copy, frontend tests, docs, and source checks only. No new package, SDK, framework SPI, backend state machine, database table, or external API is introduced.
+- Product alignment: PRD says manual review remains backlog/out-of-scope; S191 resolves current-MVP copy so it describes automated validation + automated risk scan only.
+- Existing knowledge read: S096d4a established `/publish/review`; S096d5a established polling on the same page; S190 established risk-reason UI. S191 does not revise those mechanics.
+
+### Ordered tasks
+
+| Task | AC mapping | Scope | Verification |
+| --- | --- | --- | --- |
+| T01 | AC-S191-1, AC-S191-2 | `/publish/review` MEDIUM copy and status zh-TW label | `cd frontend && npm test -- PublishReviewPage` |
+| T02 | AC-S191-3 | `/publish/failed?state=B` HIGH scan-result copy and negative review-term assertions | `cd frontend && npm test -- PublishFailedPage` |
+| T03 | AC-S191-4, AC-S191-5, AC-S191-6 | Current frontend docs, `types/skill.ts`, PRD, glossary copy alignment | frontend doc tests/source search |
+| T04 | AC-S191-7 | Full frontend verify plus backend publication-review source checks | `cd frontend && npm run verify`; backend `rg` checks |
+
+### E2E decision
+
+E2E not required for task planning — S191 changes existing static copy and component render output. The visible behavior is covered by component tests and source checks; no new browser flow, seed endpoint, backend schema, async listener, credential injection, or external boundary is added.
+
+## 7. Implementation Results
+
+### Verification results
+
+| Check | Command | Result |
+| --- | --- | --- |
+| T01 targeted test | `cd frontend && npm test -- PublishReviewPage` | ✅ 3/3 tests PASS |
+| T02 targeted test | `cd frontend && npm test -- PublishFailedPage` | ✅ 7/7 tests PASS |
+| Current docs/page tests | `cd frontend && npm test -- OverviewPage YourFirstSkillPage LandingPage` | ✅ 9/9 tests PASS |
+| Frontend full tests | `cd frontend && npm test` | ✅ 80 files / 476 tests PASS |
+| Frontend verify | `cd frontend && npm run verify` | ✅ eslint + `tsc -b` PASS |
+| Frontend publication-review source check | `rg -n "人工審核佇列|已送審|審核員核准|24 小時|reviewer|approve|reject" frontend/src/pages frontend/src/components frontend/src/types` | ✅ no hits |
+| PRD/glossary source check | `rg -n "人工審核流程|待審核|approve/reject|人工審核佇列" docs/grimo/PRD.md docs/grimo/glossary.md` | ✅ no hits |
+| Backend review-state source check | `rg -n "PENDING_REVIEW|APPROVED|REJECTED|review_queue|ReviewQueue" backend/src/main backend/src/test` | ✅ no hits |
+| Backend diff check | `git diff --name-only -- backend` | ✅ no backend files changed |
+
+### Task results
+
+| Task | Status | Result |
+| --- | --- | --- |
+| S191-T01 | ✅ PASS | `/publish/review` now shows MEDIUM as「中風險，發佈完成」and maps `PUBLISHED` to「已發佈」. |
+| S191-T02 | ✅ PASS | `/publish/failed?state=B` now explains HIGH scan result and next actions without publication-review claims. |
+| S191-T03 | ✅ PASS | Current frontend docs, landing/notification copy, type comments, PRD, and glossary now describe automated scan + risk result. |
+| S191-T04 | ✅ PASS | Frontend verify passed; backend workflow remained unchanged. |
+
+### AC results
+
+| AC | Result | Evidence |
+| --- | --- | --- |
+| AC-S191-1 | ✅ PASS | `PublishReviewPage.test.tsx` asserts MEDIUM copy and absence of「低風險自動上架完成」. |
+| AC-S191-2 | ✅ PASS | `PublishReviewPage.test.tsx` asserts「已發佈」and absence of raw `PUBLISHED`. |
+| AC-S191-3 | ✅ PASS | `PublishFailedPage.test.tsx` asserts State B HIGH-risk scan copy and absence of removed review terms. |
+| AC-S191-4 | ✅ PASS | Frontend source check returned no publication-review promise terms in current pages/components/types. |
+| AC-S191-5 | ✅ PASS | Community flag route remains「待審回報」, but literal `reviewer` publication wording was removed from current frontend source. |
+| AC-S191-6 | ✅ PASS | `docs/grimo/PRD.md` and `docs/grimo/glossary.md` now describe automated validation + automated risk scan; manual publication review is described as unenabled backlog/out-of-scope using current wording. |
+| AC-S191-7 | ✅ PASS | Backend review-state source check returned no hits and backend diff is empty. |
+
+### Key findings
+
+- `PublishReviewPage.tsx` had two user-visible mismatches: MEDIUM reused LOW copy, and the status row printed raw `PUBLISHED`. Both are now mapped through explicit frontend dictionaries.
+- `PublishFailedPage.tsx` State B previously described a manual queue. The route remains the HIGH-risk warning route, but copy now tells the user to inspect the security report or upload a fixed package.
+- The source sweep found extra current docs outside §2.4 (`RiskScannerScopePage`, `BundleStructurePage`, `RestApiPage`, `NotificationsPage`, flag UI labels). These were adjusted where the wording implied publication review or used literal `reviewer/reject`; community flag behavior itself was not changed.
+- No backend behavior changed. Existing backend broad `reviewer|reject` hits are pre-existing community flag tests, validation test names, score fixtures, or suspend/reactivate reasons, not new publication-review workflow code.
+
+### QA Review
+
+Date: 2026-05-18
+
+| Layer | Result | Detail |
+| --- | --- | --- |
+| Automated tests | PASS | `./scripts/verify-all.sh` exit=0. V01/V03 backend tests + JaCoCo gate PASS; V04-V06 frontend tests/verify/coverage PASS. |
+| Coverage / Integration | PASS | V02 LINE coverage 86.9% (4828/5554); V07 Playwright happy-path PASS; V08a processAot PASS; V08b native image build PASS (`skillshub-verify:local`). |
+| Manual verification | N/A | S191 changes static copy, docs, and component-rendered text; no human-only workflow remains. |
+| Testability gate | CLEAR | All ACs have executable evidence through Vitest tests, source checks, `verify-all.sh`, and backend diff/source inspection. |
+
+QA evidence:
+
+```text
+▸ Results: V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS
+▸ Counts:  PASS=8, FAIL=0, SKIP=0
+▸ Verdict: ✅ all CRITICAL passed; exit=0
+```
+
+AC verification classification:
+
+| AC | Classification | QA evidence |
+| --- | --- | --- |
+| AC-S191-1 | VERIFIED | `PublishReviewPage.test.tsx` covers MEDIUM copy; `./scripts/verify-all.sh` V04/V06 PASS. |
+| AC-S191-2 | VERIFIED | `PublishReviewPage.test.tsx` covers zh-TW status label and absence of raw `PUBLISHED`; V04/V06 PASS. |
+| AC-S191-3 | VERIFIED | `PublishFailedPage.test.tsx` covers HIGH copy and absence of removed review terms; V04/V06 PASS. |
+| AC-S191-4 | VERIFIED | `rg -n "人工審核佇列|已送審|審核員核准|24 小時|reviewer|approve|reject" frontend/src/pages frontend/src/components frontend/src/types` returned no hits. |
+| AC-S191-5 | VERIFIED | `AppShell` keeps「待審回報」for community flags; no publication-review wording remains in current frontend source. |
+| AC-S191-6 | VERIFIED | PRD/glossary reviewed; current workflow says automated validation + automated risk scan, and manual publication review is unenabled backlog/out-of-scope wording. |
+| AC-S191-7 | VERIFIED | Backend source check for `PENDING_REVIEW|APPROVED|REJECTED|review_queue|ReviewQueue` returned no hits; `git diff --name-only -- backend` returned no files. |
+
+QA findings:
+
+- PASS — no blocking findings.
+- MINOR note: Broad backend searches still find pre-existing generic `reviewer` / `reject` words in community flag tests, validation test names, score fixtures, and suspend/reactivate reason examples. They are outside S191 publication-review scope and no backend file changed.
+
+Verdict: PASS. S191 is ready for `$shipping-release S191`.
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+| --- | --- | --- | --- |
+| Tech risk | 1 | 1 | Existing React/Vitest/docs-only workflow; no new API, backend state, schema, SDK, or framework SPI. |
+| Uncertainty | 1 | 1 | Product decision was explicit: automated scan result only, no manual publication review. |
+| Dependencies | 3 | 3 | Copy had to align with multiple shipped flows: S096d4a, S096d5a, S098b, S111, and S190. |
+| Scope | 2 | 3 | Actual source sweep touched more current files than §2.4 listed, including risk scanner scope docs, bundle/rest docs, notification copy, flag UI wording, PRD, and glossary. |
+| Testing | 1 | 2 | Component tests and source checks were enough for ACs, plus full project release gate via `verify-all.sh`; no new E2E spec or backend test infra. |
+| Reversibility | 1 | 1 | Text/tests/docs-only changes; no persisted data or external contract change. |
+| **Total** | **9 / S** | **11 / S** | Bucket unchanged; final size is larger within S because current-doc sweep found extra publication-review wording outside the initial file list. |

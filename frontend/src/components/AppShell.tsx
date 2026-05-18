@@ -21,7 +21,7 @@ const navLinks = [
   { path: '/my-skills', label: '我的技能' }, // S094a: author dashboard
   { path: '/publish', label: '發佈' },
   { path: '/analytics', label: '數據' },
-  { path: '/flags', label: '待審回報' }, // S098e3-T04: reviewer queue
+  { path: '/flags', label: '待審回報' }, // S098e3-T04: community flag queue
   // S143: /docs canonical entry — 由 App.tsx redirect 接走至 /docs/overview
   { path: '/docs', label: '文件' },
 ] as const

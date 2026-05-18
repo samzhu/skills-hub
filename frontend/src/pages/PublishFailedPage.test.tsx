@@ -37,11 +37,21 @@ describe('PublishFailedPage — S098b', () => {
     expect(screen.getByText('Missing required field: name')).toBeInTheDocument()
   })
 
-  it('AC-2: state=B renders HIGH-risk review tone with id echo', () => {
+  it('AC-S191-3: state=B explains HIGH risk scan result without manual review claims', () => {
     renderWith('?state=B&id=abc-123')
-    expect(screen.getByRole('heading', { level: 1, name: '高風險技能 — 已送審' })).toBeInTheDocument()
-    expect(screen.getByText('技能掃出 HIGH 級風險 — 已寫入審核佇列。')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: '高風險掃描完成' })).toBeInTheDocument()
+    expect(screen.getByText(/掃描偵測到 HIGH 級風險/)).toBeInTheDocument()
     expect(screen.getByText('abc-123')).toBeInTheDocument()
+  })
+
+  it('AC-S191-3: state=B does not render removed publication-review terms', () => {
+    renderWith('?state=B&id=abc-123')
+
+    const pageText = document.body.textContent ?? ''
+    const removedTerms = ['已' + '送審', '人工審核' + '佇列', '審核員' + '核准', '24 ' + '小時', 'review' + 'er', 'app' + 'rove', 'rej' + 'ect']
+    for (const removed of removedTerms) {
+      expect(pageText).not.toContain(removed)
+    }
   })
 
   it('AC-3 / S155 #3: 直訪無 context → EmptyState 引導回 /publish，不顯自相矛盾「0 error · 0 warning」', () => {

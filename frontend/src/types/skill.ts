@@ -1,7 +1,7 @@
 /**
  * 技能生命週期狀態（對齊 backend `SkillStatus` enum；S018 三狀態機）。
  * - DRAFT：草稿，尚未對外發佈
- * - PUBLISHED：已上架，可供搜尋與下載
+ * - PUBLISHED：已發佈；搜尋與下載可見性仍由公開狀態與權限判斷
  * - SUSPENDED：已停用，因安全風險或違規而下架，不可下載（S028 frontend sync）
  */
 export type SkillStatus = 'DRAFT' | 'PUBLISHED' | 'SUSPENDED'
@@ -15,7 +15,7 @@ export type Visibility = 'PUBLIC' | 'PRIVATE'
  * - NONE：pure docs skill — 0 findings + 無 scripts/ + 無 allowed-tools
  * - LOW：0 findings 但有 capability declaration；OR findings 全 LOW severity
  * - MEDIUM：含腳本但未偵測到高風險模式
- * - HIGH：偵測到高風險模式，應謹慎使用
+ * - HIGH：偵測到高風險模式，結果頁提示查看安全報告或修正後重新上傳
  */
 export type RiskLevel = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH'
 

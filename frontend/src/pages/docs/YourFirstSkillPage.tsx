@@ -154,14 +154,14 @@ ISO 8601 or RFC 2822 variant.
           且都在 trusted-source registry。Consumers 在搜尋時看得到 tier。
         </RiskRow>
         <RiskRow tier="HIGH" tone="danger">
-          <strong>暫停上架，等待人工審核。</strong> 偵測到 dangerous patterns（<Code>rm -rf</Code>、
+          <strong>高風險警示。</strong> 偵測到 dangerous patterns（<Code>rm -rf</Code>、
           <Code>curl | bash</Code>、<Code>~/.ssh</Code>、<Code>~/.aws</Code> 等敏感路徑或可疑 shell）。
+          發佈結果會要求作者查看安全報告或修正後重新上傳。
         </RiskRow>
       </div>
       <Callout tone="warn">
-        <strong>HIGH risk 不等於 rejection。</strong> Reviewer 會選一個：approve（含 audit log
-        備註）/ ask author to fix specific findings / reject。完整規則目錄之後會在
-        <Code>/docs/risk-tiers</Code>。
+        <strong>HIGH risk 不等於人工核准狀態。</strong> 它只代表 scanner 找到高風險 pattern；
+        完整規則目錄在 <Code>/docs/risk-tiers</Code>。
       </Callout>
 
       {/* §6 Final CTA */}

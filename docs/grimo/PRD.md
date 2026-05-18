@@ -101,7 +101,7 @@ Scenario: 上傳含 scripts 的 skill
   Then 平台驗證 SKILL.md 格式
   And 自動執行風險評估掃描
   And skill 標記為對應風險等級（中/高）
-  And skill 進入「待審核」狀態
+  And skill 保持已發佈，結果頁顯示對應風險提示
 
 Scenario: 上傳不合規的 skill
   Given 作者上傳的資料夾缺少 SKILL.md 或 frontmatter 格式錯誤
@@ -135,7 +135,7 @@ Scenario: package 內含危險指令
   When 風險評估引擎掃描
   Then 標記為「高風險」
   And 列出 issue code、具體危險項目、所在檔案/行號與修法建議
-  And skill 進入「待審核」狀態
+  And 結果頁提示查看安全報告或修正後重新上傳
 
 Scenario: 含外部依賴的 package
   Given skill zip 內任一文字檔下載或引用外部 URL
@@ -316,7 +316,7 @@ Scenario: 全部已讀 + 偏好設定
 | B3 | 社群回報與評分 | 使用者 flag 問題 skill、星級評分、文字評論 |
 | B4 | 一鍵安裝（深度連結） | 網頁 Install 按鈕透過 URL scheme 觸發本地安裝 |
 | B5 | 一鍵安裝（CLI） | `skills-hub install org/my-skill` 命令列安裝 |
-| B6 | 人工審核流程 | 高風險 skill 指定審核者 approve/reject |
+| B6 | 人工上架 review（未啟用） | 高風險 skill 指定處理者核准或退回 |
 | B7 | 組織層級管理 | 集團 → 公司 → 部門樹狀結構 |
 | B8 | 軟結構 | 戰情室、合作專案等跨組織彈性團隊空間 |
 | B9 | MCP Server 支援 | 擴展支援 MCP Server 類型的技能 |
@@ -355,7 +355,7 @@ Scenario: 全部已讀 + 偏好設定
 - 軟結構（戰情室/合作專案）
 - CLI 安裝工具
 - 深度連結安裝
-- 人工審核流程
+- 人工上架 review（未啟用）
 - MCP Server 支援
 - Prompt Templates
 - 收益分潤機制
@@ -455,7 +455,7 @@ Scenario: 全部已讀 + 偏好設定
 |------|------|----------|
 | **低風險** | package 內無危險 issue；或只有低嚴重度 finding | 自動通過，直接上架 |
 | **中風險** | package 內有中嚴重度 issue，例如有限外部依賴或可疑資料流 | 自動上架，標記風險等級 |
-| **高風險** | package 內任一文字檔含高嚴重度 issue（prompt injection、惡意程式碼組合、系統服務修改、寫死 secret、敏感資料外送等） | 標記高風險，進入待審核（MVP 先標記，人工審核流程在 Backlog） |
+| **高風險** | package 內任一文字檔含高嚴重度 issue（prompt injection、惡意程式碼組合、系統服務修改、寫死 secret、敏感資料外送等） | 標記高風險，顯示安全報告與修法建議；人工上架 review 尚未啟用 |
 
 ### 自動掃描項目
 - zip 內所有 UTF-8 文字檔掃描（不只 `SKILL.md` 或 `scripts/`）

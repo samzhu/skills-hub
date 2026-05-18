@@ -82,7 +82,7 @@ export function NotificationsPage() {
         <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">即時更新</p>
         <h1 className="mt-1 text-[22px] font-semibold tracking-tight">通知中心</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          訂閱的 skill 有新版本、被回報、進入審核、需求看板回應 — 都會出現在這裡。
+          訂閱的 skill 有新版本、收到回報、風險狀態更新、需求看板回應 — 都會出現在這裡。
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -132,7 +132,7 @@ export function NotificationsPage() {
         <EmptyState
           tone="clear"
           headline="都看完了，沒有未讀通知。"
-          sub="當你訂閱的 skill 發布新版本、收到回報、進入審核時，新通知會即時出現在這裡。"
+          sub="當你訂閱的 skill 發布新版本、收到回報或風險狀態更新時，新通知會即時出現在這裡。"
           stats={[
             { value: '0', label: '本週新通知' },
             { value: '0', label: '未讀' },

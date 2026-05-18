@@ -4,6 +4,8 @@ import { MemoryRouter, Routes, Route } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PublishReviewPage } from './PublishReviewPage'
 
+let skillOverride: Partial<Record<string, unknown>> = {}
+
 const renderPage = () => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -19,6 +21,7 @@ const renderPage = () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  skillOverride = {}
   ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
     if (url.includes('/api/v1/skills/s1')) {
       return Promise.resolve({
@@ -48,6 +51,7 @@ beforeEach(() => {
             compatibility: [],
             versionCount: 1,
             openFlagCount: 0,
+            ...skillOverride,
           }),
       } as Response)
     }
@@ -62,5 +66,25 @@ describe('PublishReviewPage — S192 author display', () => {
     await waitFor(() => expect(screen.getByText('產生字幕檔')).toBeInTheDocument())
     expect(screen.getByText('Sam Zhu')).toBeInTheDocument()
     expect(screen.queryByText('u_f7eb3a')).not.toBeInTheDocument()
+  })
+})
+
+describe('PublishReviewPage — S191 publish result copy', () => {
+  it('AC-S191-1: MEDIUM risk displays medium-risk published copy', async () => {
+    skillOverride = { riskLevel: 'MEDIUM' }
+
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('產生字幕檔')).toBeInTheDocument())
+    expect(screen.getByText(/中風險，發佈完成/)).toBeInTheDocument()
+    expect(screen.queryByText('低風險自動上架完成')).not.toBeInTheDocument()
+  })
+
+  it('AC-S191-2: PUBLISHED status displays 已發佈', async () => {
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('產生字幕檔')).toBeInTheDocument())
+    expect(screen.getByText('已發佈')).toBeInTheDocument()
+    expect(screen.queryByText('PUBLISHED')).not.toBeInTheDocument()
   })
 })

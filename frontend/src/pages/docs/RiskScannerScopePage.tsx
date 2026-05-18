@@ -90,7 +90,7 @@ export function RiskScannerScopePage() {
         title="LLM08 — Excessive Agency"
         threat="LLM 被授予過多自主權致非預期行為。"
         coverage="covered"
-        details="allowed-tools 越多分越高；HIGH 自動進審核。Consumer 詳情頁顯 allowed-tools 列表方便評估 agency budget。"
+        details="allowed-tools 越多分越高；HIGH 顯示高風險警示。Consumer 詳情頁顯 allowed-tools 列表方便評估 agency budget。"
       />
 
       <Item

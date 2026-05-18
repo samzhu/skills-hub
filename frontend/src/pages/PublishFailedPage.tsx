@@ -9,7 +9,7 @@ import type { ValidationFinding } from '@/types/skill'
  *
  * 對齊 docs/grimo/ui/prototype/Skills Hub Publish Failures.html 兩個 state：
  * - State A：frontmatter / 上傳 validation 失敗（紅色 callout, blocked, 須修檔重傳）
- * - State B：scan 完成 risk_level=HIGH（橘色 callout, 進入人工審核佇列）
+ * - State B：scan 完成 risk_level=HIGH（橘色 callout, 顯示安全報告與重傳動作）
  *
  * Trim from S(8) → XS(4)：本 commit 只 ship State A flow（PublishPage onError →
  * navigate /publish/failed?state=A&msg=...）。State B redirect from
@@ -57,12 +57,12 @@ export function PublishFailedPage() {
       <div className="mx-auto max-w-2xl">
         <div className="mb-[14px]">
           <h1 className="m-0 text-[22px] font-medium leading-[1.2]">
-            {state === 'A' ? '發佈未通過驗證' : '高風險技能 — 已送審'}
+            {state === 'A' ? '發佈未通過驗證' : '高風險掃描完成'}
           </h1>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {state === 'A'
               ? '請依下方提示修正 SKILL.md，再重新上傳 zip 套件'
-              : '掃描偵測到 HIGH 級風險，技能已進入人工審核佇列；reviewer 將通知作者'}
+              : '掃描偵測到 HIGH 級風險。平台目前不提供人工上架審核通知；請查看安全報告，或修正套件後重新上傳。'}
           </p>
         </div>
 
@@ -216,7 +216,7 @@ function ValidationSection({
   )
 }
 
-// ============== State B — High risk submitted for review ==============
+// ============== State B — High risk scan warning ==============
 
 function StateBHighRiskReview({ id }: { id: string | null }) {
   return (
@@ -230,16 +230,21 @@ function StateBHighRiskReview({ id }: { id: string | null }) {
       <div className="flex items-start gap-3">
         <AlertOctagon className="mt-0.5 h-5 w-5 shrink-0 text-[#FAC775]" />
         <div className="flex-1">
-          <h2 className="text-[14px] font-semibold text-[#FAC775]">技能掃出 HIGH 級風險 — 已寫入審核佇列。</h2>
+          <h2 className="text-[14px] font-semibold text-[#FAC775]">技能掃出 HIGH 級風險 — 請先查看安全報告。</h2>
           <p className="mt-1 text-[13px] leading-relaxed text-[#A8A49C]">
             掃描 detector 觸發 HIGH 級風險規則（如 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[12px]">curl | bash</code>、
             存取 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[12px]">~/.ssh</code> / <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[12px]">~/.aws</code> 等）。
-            技能未即時上架；reviewer 會在 24 小時內審核並通知作者。
+            平台目前不提供人工上架審核通知；請查看技能詳情中的安全報告，或修正套件後重新上傳。
           </p>
           {id && (
-            <p className="mt-3 text-[12px] text-[#A8A49C]">
-              技能 ID：<code className="rounded bg-[#171719] px-1.5 py-0.5 font-mono text-[12px] text-[#EEECEA]">{id}</code>
-            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-[12px] text-[#A8A49C]">
+              <p>
+                技能 ID：<code className="rounded bg-[#171719] px-1.5 py-0.5 font-mono text-[12px] text-[#EEECEA]">{id}</code>
+              </p>
+              <Link to={`/skills/${id}`} className="font-medium text-[#FAC775] underline underline-offset-4">
+                查看技能詳情
+              </Link>
+            </div>
           )}
         </div>
       </div>

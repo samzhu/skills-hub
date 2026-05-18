@@ -75,7 +75,7 @@ export function FlagSubmitModal({ skillId, onClose }: { skillId: string; onClose
             rows={3}
             maxLength={500}
             className="w-full rounded-md border border-border bg-background p-2 text-[13px]"
-            placeholder="補充細節幫助 reviewer 判斷"
+            placeholder="補充細節幫助回報處理者判斷"
           />
         </div>
 

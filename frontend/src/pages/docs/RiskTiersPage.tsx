@@ -20,8 +20,8 @@ export function RiskTiersPage() {
       <h1 className="text-[30px] font-semibold tracking-tight text-[#EEECEA]">風險層級</h1>
       <p className="mt-3 text-[18px] leading-relaxed text-[#A8A49C]">
         每次發佈 skill 都會跑自動掃描器，依以下規則歸類為四級之一。Tier 決定
-        skill 是否即時上架，以及 consumer 在搜尋結果上看到的標示色。所有層級
-        都仍為合法 skill — HIGH ≠ rejection，僅代表需 reviewer 審視。
+        consumer 在搜尋結果上看到的標示色與安全報告提示。HIGH 代表掃描器找到
+        高風險 pattern；目前不提供人工上架通知流程。
       </p>
 
       <Tier
@@ -53,7 +53,7 @@ export function RiskTiersPage() {
         toneText="#FAC775"
         title="自動上架（顯警示標）"
         body="Scripts 存在且偵測到中等風險模式（例：寬鬆 file system 寫入、network call 至外部 trusted-source registry）。最多 3 個外部 URL 限制；Consumers 在搜尋與詳情頁上看得到 MEDIUM 標。"
-        note="MEDIUM 仍自動上架，但 consumer 端會看到警示色 — 鼓勵 reviewer pass / 個人安裝前審視 scripts/ 內容。"
+        note="MEDIUM 仍自動上架，但 consumer 端會看到警示色 — 鼓勵安裝前先審視 scripts/ 內容。"
       />
 
       <Tier
@@ -62,9 +62,9 @@ export function RiskTiersPage() {
         toneBg="rgba(226,75,74,0.08)"
         toneBorder="rgba(226,75,74,0.30)"
         toneText="#F2A6A6"
-        title="暫不上架，待審核員核准"
-        body="偵測到 dangerous patterns — rm -rf、curl | bash 等 RCE 模式、~/.ssh / ~/.aws 等敏感路徑存取、可疑 shell 解析行為。Skill 暫不上架，進入人工審核佇列；reviewer 可選 approve / 退回作者修正 / reject。"
-        note="HIGH ≠ rejection。Reviewer 可能 approve 並附 audit log 備註；亦可能 ask author to fix 特定 finding 後重交。"
+        title="高風險警示"
+        body="偵測到 dangerous patterns — rm -rf、curl | bash 等 RCE 模式、~/.ssh / ~/.aws 等敏感路徑存取、可疑 shell 解析行為。頁面會顯示 HIGH 標示與安全報告，作者可修正套件後重新上傳。"
+        note="HIGH 不是人工核准狀態。它只代表目前掃描結果需要使用者先看安全報告，再決定是否分享或安裝。"
       />
 
       <h2 className="mt-10 text-[22px] font-semibold tracking-tight text-[#EEECEA]">遇到 HIGH 風險怎麼辦？</h2>
@@ -74,8 +74,7 @@ export function RiskTiersPage() {
         替換為固定版本下載、或避免 SSH/AWS 設定檔讀取。
       </p>
       <p className="mt-2 text-[16px] leading-relaxed text-[#A8A49C]">
-        Reviewer：在 admin review queue 看完整掃描報告（每 finding 含 rule
-        ID + 行號），佐以作者送審理由判斷 approve / reject。
+        消費者：安裝前查看完整掃描報告（每 finding 含 rule ID + 行號），再決定是否信任此技能。
       </p>
 
       <nav className="mt-10 flex items-center justify-between border-t border-[rgba(255,255,255,0.06)] pt-5 text-[16px]">

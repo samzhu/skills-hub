@@ -6,7 +6,7 @@
 | 技能市集 | Skills Hub / Registry | `SkillsHub` | 本平台，企業內部的技能集中管理與分發平台 |
 | 技能作者 | Skill Author / Publisher | `Publisher` | 建立並發佈技能到平台的使用者角色 |
 | 技能消費者 | Skill Consumer | `Consumer` | 瀏覽、搜尋、下載技能的使用者角色 |
-| 管理者 | Admin | `Admin` | 管理平台設定、使用者、審核的角色 |
+| 管理者 | Admin | `Admin` | 管理平台設定、使用者與社群回報處理的角色 |
 | 風險等級 | Risk Level | `RiskLevel` | 技能的安全風險分級：NONE / LOW / MEDIUM / HIGH（per ADR-future S096c；NONE = 0 findings + no scripts + no allowed-tools；S190 起 NONE 對外顯示為「未發現風險」，避免被讀成安全保證） |
 | 風險評估 | Risk Assessment | `RiskAssessment` | 對技能內容的自動安全掃描與分級 |
 | 風險原因 | Risk Reason | `RiskReason` | S190 起，安全報告中解釋「為什麼是此風險等級」的可讀原因；與 finding 分開，原因可能來自 allowed-tools、scripts/ 或 findings，但不一定代表有檔案行號可修 |
@@ -46,7 +46,7 @@
 | 證據檔 | Evidence Contract | `e2e/results/evidence.json` | `playwright-expert` VERIFY mode 產出的跨 skill 契約檔，給 `/verifying-quality` 讀取；schema 含 spec_id / stats / per-test ok / trace_paths |
 | 技能分數 | Skill Score | `skillScore` | S142b 複合評分公式：`round(0.6 × qualityTotal + 0.4 × securityScore)`；securityScore 為 null（未掃描）時 skillScore = null；出現在 GET /scores 回應 |
 | 安全報告 | Security Report | `SecurityReportResponse` | 技能安全掃描明細；S142b 保留 legacy `checks` 相容欄位，S147 起新增 `categories/findings`，每筆 finding 可帶 issue code、檔案/行號、evidence、remediation、confidence；出現在 GET /security-report 回應 |
-| 已驗證 | Verified | `verified` | S142b 衍生旗標：`status === 'PUBLISHED' && riskLevel != null`；表示「平台已完成品質 + 安全兩階段審查」，不是安全保證；出現在 GET /skills/{id} 回應 |
+| 已驗證 | Verified | `verified` | S142b 衍生旗標：`status === 'PUBLISHED' && riskLevel != null`；表示「SKILL.md 驗證與自動風險掃描已完成」，不是人工核准，也不是安全保證；出現在 GET /skills/{id} 回應 |
 | 平台識別碼 | Platform User ID | `userId` (`u_<6hex>`) | S154 起，平台對 user 的 internal PK；解耦 OAuth provider 的 sub；ACL principal / `skills.author` / `skills.owner_id` 都用此 ID（`u_a3f9c1` 格式）；S192 起，一般 user-facing UI 不可把此值當作者/留言者/評論者顯示名稱，只能用於 API filter、ACL、delete ownership、route/install command fallback 等行為或技術識別場景；同一個人換 OAuth provider 仍是不同 user_id（per S154 §2.4 Pattern A）|
 | 顯示用 slug | Handle | `handle` | S154 起，user 在平台上的可讀短名稱（`alice`）；install command + `/api/v1/skills/{handle}/{name}` URL 用它；user 可改、撞名時自動加 `-2/-3` 後綴 |
 | OAuth 識別碼 | OAuth Sub | `sub` | OAuth provider 給的 raw subject identifier（Google: 21 位數字；GitHub: 數字 ID）；S154 起只在 `users.sub` 出現，**不**在業務表（`skills` / `acl_entries`）|

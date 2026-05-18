@@ -13,7 +13,7 @@ import { FLAG_TYPE_LABEL } from '@/lib/flag-labels'
  * List 所有 OPEN flags（跨 skill），每 row 帶 Resolve / Dismiss action button。
  * 點 Resolve → PATCH status=RESOLVED；row 從 OPEN list filter out（refetch
  * 後 query 不再含此 flag）。MVP 任何登入 user 皆可看 (per spec §2.1
- * Feature First)；未來 reviewer role gate 由 @PreAuthorize 補。
+ * Feature First)；未來回報處理角色 gate 由 @PreAuthorize 補。
  *
  * Trim：
  * - skill name 顯示走 link to `/skills/{skillId}`，user 點進去看 detail；
@@ -101,7 +101,7 @@ function FlagQueueRow({
             <span>{new Date(flag.createdAt).toLocaleDateString('zh-TW')}</span>
           </div>
         </div>
-        {/* S139 lazy gate — anonymous reviewer 點 Resolve/Dismiss 跳 OAuth */}
+        {/* S139 lazy gate — anonymous flag handler 點 Resolve/Dismiss 跳 OAuth */}
         <div className="flex shrink-0 items-center gap-2">
           <AuthGatedButton
             type="button"

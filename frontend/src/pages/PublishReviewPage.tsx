@@ -8,7 +8,20 @@ import { RiskBadge } from '@/components/RiskBadge'
 import { fetchSkillById } from '@/api/skills'
 import { getDisplayName } from '@/lib/displayName'
 import { categoryLabel } from '@/lib/text'
-import type { Skill } from '@/types/skill'
+import type { RiskLevel, Skill, SkillStatus } from '@/types/skill'
+
+const STATUS_LABEL: Record<SkillStatus, string> = {
+  DRAFT: '草稿',
+  PUBLISHED: '已發佈',
+  SUSPENDED: '已停用',
+}
+
+const RISK_RESULT_COPY: Record<RiskLevel, string> = {
+  NONE: '未偵測到安全風險，發佈完成。',
+  LOW: '低風險，發佈完成。',
+  MEDIUM: '中風險，發佈完成；請查看安全報告與檔案內容後再分享或安裝。',
+  HIGH: '高風險掃描完成；請查看安全報告或修正套件後重新上傳。',
+}
 
 /**
  * S096d4a — `/publish/review?id={skillId}` post-upload result page.
@@ -42,9 +55,7 @@ export function PublishReviewPage() {
     refetchIntervalInBackground: false,
   })
 
-  // S098b2: HIGH-risk auto-redirect → 專屬 /publish/failed?state=B 頁
-  // PublishReviewPage 角色為「成功 + scan 完成」展示；HIGH 風險意味需審核而非簡單發佈成功，
-  // 動向專屬 page 比 inline callout 更顯著（user 不會誤以為已上架）。
+  // S098b2/S191: HIGH risk uses the dedicated warning page; no manual publication-review claim here.
   useEffect(() => {
     if (skill?.riskLevel === 'HIGH' && skillId) {
       navigate(`/publish/failed?state=B&id=${skillId}`, { replace: true })
@@ -71,7 +82,7 @@ export function PublishReviewPage() {
         <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">發佈完成</p>
         <h1 className="mt-1 text-[22px] font-semibold tracking-tight">技能已上傳 — 檢視結果</h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          系統已接收套件並啟動風險掃描。風險等級顯示後即可分享連結；HIGH 風險 skill 進入人工審核佇列。
+          系統已接收套件並啟動風險掃描。風險等級顯示後即可查看結果與安全報告。
         </p>
 
         {isLoading ? (
@@ -107,7 +118,7 @@ export function PublishReviewPage() {
                 <Field label="作者" value={getDisplayName(skill)} />
                 <Field label="分類" value={categoryLabel(skill)} />
                 <Field label="版本" value={`v${skill.latestVersion ?? '—'}`} mono />
-                <Field label="狀態" value={skill.status} />
+                <Field label="狀態" value={STATUS_LABEL[skill.status]} />
               </dl>
             </div>
 
@@ -118,8 +129,15 @@ export function PublishReviewPage() {
                 風險掃描進行中 — 每 2 秒自動更新（無需手動重新整理）
               </div>
             ) : (
-              <div className="mt-4 rounded-md p-3 text-[13px]" style={{ backgroundColor: 'rgba(29,158,117,0.14)', color: '#9FE1CB' }}>
-                {skill.riskLevel === 'NONE' ? '未發現任何 risk patterns — auto-published.' : '低風險自動上架完成'}
+              <div
+                className="mt-4 rounded-md p-3 text-[13px]"
+                style={
+                  skill.riskLevel === 'MEDIUM' || skill.riskLevel === 'HIGH'
+                    ? { backgroundColor: 'rgba(239,159,39,0.14)', color: '#FAC775' }
+                    : { backgroundColor: 'rgba(29,158,117,0.14)', color: '#9FE1CB' }
+                }
+              >
+                {RISK_RESULT_COPY[skill.riskLevel]}
               </div>
             )}
 

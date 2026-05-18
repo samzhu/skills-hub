@@ -93,7 +93,7 @@ export function LandingPage() {
       <section className="grid grid-cols-2 divide-x divide-border border-y border-border md:grid-cols-4">
         <StatCell value={stats?.totalSkills ?? '—'} label="已發佈技能" sub={stats ? `跨 ${stats.activePublishers} 位發佈者` : ''} />
         <StatCell value={stats?.downloads30d.toLocaleString() ?? '—'} label="近 30 日下載" sub="滾動視窗" />
-        <StatCell value={stats ? `${stats.autoPublishPct}%` : '—'} label="自動上架率（低風險）" sub="首次上傳通過掃描" />
+        <StatCell value={stats ? `${stats.autoPublishPct}%` : '—'} label="低風險比例" sub="首次上傳通過掃描" />
         <StatCell value={stats?.activePublishers ?? '—'} label="活躍發佈者" sub="跨整個組織" />
       </section>
 
@@ -102,7 +102,7 @@ export function LandingPage() {
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">登錄中即時</p>
         <h2 className="mt-2 text-[28px] font-medium tracking-tight">你的團隊今天就在用的技能</h2>
         <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-          每個技能都自動掃描。低風險立即上架；高風險進入人工審核隊列。
+          每個技能都自動掃描。低風險可直接分享；高風險會顯示安全報告與修正提示。
         </p>
         <div className="mt-8 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {(popularSkills?.content ?? []).slice(0, 6).map((s, i) => (

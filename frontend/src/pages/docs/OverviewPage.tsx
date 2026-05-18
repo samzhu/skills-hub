@@ -33,7 +33,7 @@ export function OverviewPage() {
         <FeatureCard
           icon={<ShieldCheck className="h-4 w-4 text-[#6FD8B0]" />}
           title="自動風險評分"
-          body="每次發佈跑掃描器，分四級（NONE/LOW/MEDIUM/HIGH）；HIGH 進審核佇列，其餘自動上架。"
+          body="每次發佈跑掃描器，分四級（NONE/LOW/MEDIUM/HIGH）；結果頁顯示風險等級與安全報告入口。"
         />
         <FeatureCard
           icon={<Search className="h-4 w-4 text-[#7F77DD]" />}
