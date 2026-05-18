@@ -1,6 +1,6 @@
 # S199: Publish Failed Actionable Validation Copy
 
-> 規格：S199 | 大小：XS(4) | 狀態：⏳ Release — QA PASS
+> 規格：S199 | 大小：XS(7) | 狀態：✅ Shipped v4.82.0
 > 日期：2026-05-18
 > 對應：PRD P2「驗證失敗回具體錯誤」、S098b/S098b3-2 publish failed page、S198 validator recommendation split
 
@@ -226,4 +226,20 @@ Design sync:
 - §2.3 的 line-count / missing field / YAML / body-present mapping 都有 production code 分支；backend 目前 `ValidationFinding.hint` 為 null，S199 的 frontend next-step copy 會被使用。
 - S198 已把 `skill_md_line_count` 從 hard error 改成 warning；S199 保留 line-count copy 是相容既有 response / 歷史 failure state，不代表重新把 500 行變成 hard block。
 
-Next: `$shipping-release S199`。
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 1 | 沿用既有 `ApiError.findings`、React Router state 與 `PublishFailedPage` layout，沒有新框架或 backend schema。 |
+| Uncertainty | 1 | 1 | S195 已證明 `addVersion()` findings 傳遞模式；S199 只是把同模式補到 `uploadSkill()`。 |
+| Dependencies | 1 | 1 | 只依賴已 shipped 的 S098b/S098b3-2/S195/S198 行為，沒有外部套件。 |
+| Scope | 1 | 2 | 實際改 2 production + 2 test files，另同步 publish-failure prototype 文案。 |
+| Testing | 1 | 1 | AC 全由 Vitest render/API tests 驗證；release gate 另跑完整 `verify-all.sh`。 |
+| Reversibility | 1 | 1 | 回滾只會恢復舊錯誤文案與 findings 傳遞，不影響資料庫或 API schema。 |
+| **Total** | **6 / XS** | **7 / XS** | Bucket 不變；roadmap 點數以實際 XS(7) 記錄。 |
+
+### Release — 2026-05-19
+
+- Version: v4.82.0
+- Local release verification: `cd frontend && npm test -- skills.test PublishFailedPage` PASS（2 files / 17 tests）；`./scripts/verify-all.sh` PASS（V01/V03/V04/V05/V06/V07/V08a/V08b all PASS）。
+- Production deploy: not run in this release tick；S199 has local release evidence only。

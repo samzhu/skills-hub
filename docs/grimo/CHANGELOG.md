@@ -1,5 +1,27 @@
 # Changelog
 
+## [v4.82.0] — S199 Publish Failed Actionable Validation Copy（2026-05-19）
+
+### Changed
+
+- **Upload validation findings preserved** — `uploadSkill()` 遇到 `POST /api/v1/skills/upload` 400 response 時會把 `findings[]` 放進 `ApiError`，`/publish/failed` 可以拿到第一筆 validation finding。
+- **Actionable failed-page copy** — `/publish/failed?state=A` 第一屏改顯示具體主因與下一步，例如 `SKILL.md frontmatter 缺少 name。`、`SKILL.md frontmatter 的 YAML 格式錯誤。`、`SKILL.md frontmatter 後面沒有使用說明內容。`。
+- **Debug detail retained** — known validation title 轉成繁中後，細節列仍保留 `原始訊息：...`，排查時可以對回 backend response。
+- **No-detail fallback clarified** — URL 只有 generic `msg`、沒有 router state `findings[]` 時，頁面顯示 `這次失敗頁沒有收到詳細錯誤內容。`，提示重新上傳或查看 `/api/v1/skills/upload response`。
+- **Publish-failure prototype sync** — `Skills Hub Publish Failures.html` 的 State A prototype 對齊 S199 的繁中第一屏與 next-step copy。
+
+### Verification
+
+- `cd frontend && npm test -- skills.test PublishFailedPage`：**PASS** — 2 files / 17 tests。
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.2%，covered=4870 / total=5582）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Production deploy：not run in this release tick；S199 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-18-S199-publish-failed-actionable-validation-copy.md` → `docs/grimo/specs/archive/2026-05-18-S199-publish-failed-actionable-validation-copy.md`
+- `docs/grimo/tasks/2026-05-18-S199-*.md` 已刪除。
+- Final size re-score：XS(4) → XS(7)，原因是實際改動為 2 production + 2 test files，並同步 publish-failure prototype 文案；AC 由 Vitest 完整覆蓋，並重跑完整 `verify-all.sh`（backend, frontend, Playwright, AOT/native image）。
+
 ## [v4.81.0] — S198 SKILL.md 建議不擋上傳（2026-05-19）
 
 ### Changed

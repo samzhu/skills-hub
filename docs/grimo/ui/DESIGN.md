@@ -384,6 +384,7 @@ pages:
     auth: true
     prototype: "docs/grimo/ui/prototype/Skills Hub Publish Failures.html"
     status: "implemented"
+    note: "S199: State A first screen uses structured findings to show concrete SKILL.md cause, next step, and raw backend title."
     beam: ["Re-upload CTA (State A)", "View security report CTA (State B)"]
 
   - component: "AnalyticsPage"

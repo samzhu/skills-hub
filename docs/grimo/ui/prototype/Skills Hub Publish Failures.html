@@ -127,14 +127,14 @@ html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-siz
 <!-- ───────── STATE A: Format error ───────── -->
 <div class="state-head">
   <div class="state-num">A</div>
-  <h2 class="state-title">Validation failed — format error</h2>
-  <span class="state-sub">Missing required SKILL.md field · blocked before storage</span>
+  <h2 class="state-title">驗證未通過 — SKILL.md 格式錯誤</h2>
+  <span class="state-sub">第一屏顯示具體原因與下一步 · blocked before storage</span>
 </div>
 
 <div class="page">
   <div class="page-hero">
-    <h1>Publish a skill</h1>
-    <p>Validation failed — fix the errors below and re-upload your bundle</p>
+    <h1>發佈未通過驗證</h1>
+    <p>請依下方提示修正 SKILL.md，再重新上傳 zip 套件</p>
   </div>
 
   <div class="stepper">
@@ -150,8 +150,8 @@ html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-siz
   <div class="body">
     <div class="main">
       <div class="callout red">
-        <div class="h">Validation stopped at step 2 — nothing stored yet.</div>
-        Your bundle did not pass SKILL.md validation. Fix the errors below and re-upload. No data has been written to the registry.
+        <div class="h">SKILL.md frontmatter 缺少 name。</div>
+        目前 registry 沒有寫入任何記錄。下一步：在檔案最上方的 --- 區塊加入 name，例如 name: my-skill。
       </div>
 
       <!-- SKILL.md: FAILED -->
@@ -160,36 +160,29 @@ html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-siz
           <div class="v-head-left">
             <div class="v-icon fail">✗</div>
             <div>
-              <div class="v-title">SKILL.md validation failed</div>
-              <div class="v-sub">1 error · 1 warning</div>
+              <div class="v-title">SKILL.md 驗證失敗</div>
+              <div class="v-sub">1 error · 0 warning</div>
             </div>
           </div>
-          <span class="v-badge fail">Failed</span>
+          <span class="v-badge fail">失敗</span>
         </div>
         <div class="err-row">
           <div class="err-icon err">✗</div>
           <div>
-            <div class="err-name">Missing required field: <code style="font-family:var(--mono);font-size:11px;background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">name</code></div>
-            <div class="err-hint">at line 2 · field must be a non-empty string ≤ 64 chars</div>
-          </div>
-        </div>
-        <div class="err-row">
-          <div class="err-icon warn">!</div>
-          <div>
-            <div class="err-name">Description may reduce discoverability</div>
-            <div class="err-hint">at line 4 · "Great tool" has no concrete verbs or domain nouns — embeddings will be weak</div>
+            <div class="err-name">SKILL.md frontmatter 缺少 name。</div>
+            <div class="err-hint">原始訊息：Missing required field: name</div>
           </div>
         </div>
       </div>
 
-      <!-- Bundle structure: PASS -->
-      <div class="v-section">
+      <!-- Bundle structure: NOT RUN -->
+      <div class="v-section" style="opacity:.5">
         <div class="v-head">
           <div class="v-head-left">
-            <div class="v-icon pass">✓</div>
-            <div><div class="v-title">Bundle structure</div><div class="v-sub">12 files · no scripts/ directory</div></div>
+            <div class="v-icon" style="background:rgba(255,255,255,.05);color:var(--ink-3)">—</div>
+            <div><div class="v-title">Bundle 結構</div><div class="v-sub">尚未驗證 — SKILL.md 通過後執行</div></div>
           </div>
-          <span class="v-badge pass">Pass</span>
+          <span class="v-badge" style="background:rgba(255,255,255,.05);color:var(--ink-3)">略過</span>
         </div>
       </div>
 
@@ -198,17 +191,17 @@ html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-siz
         <div class="v-head">
           <div class="v-head-left">
             <div class="v-icon" style="background:rgba(255,255,255,.05);color:var(--ink-3)">—</div>
-            <div><div class="v-title">Risk scan</div><div class="v-sub">Not run — fix SKILL.md errors first</div></div>
+            <div><div class="v-title">風險掃描</div><div class="v-sub">尚未執行 — 修正 SKILL.md 後再跑</div></div>
           </div>
-          <span class="v-badge" style="background:rgba(255,255,255,.05);color:var(--ink-3)">Skipped</span>
+          <span class="v-badge" style="background:rgba(255,255,255,.05);color:var(--ink-3)">略過</span>
         </div>
       </div>
     </div>
 
     <aside class="sidebar">
       <div class="sb-card">
-        <div class="sb-label">Nothing stored yet</div>
-        <div class="sb-info">No events have been written. This skill does not exist in the registry. Re-upload once you've fixed the errors.</div>
+        <div class="sb-label">尚未寫入資料</div>
+        <div class="sb-info">目前沒有 events 被寫入；這個技能還不存在於 registry。修正 SKILL.md 後重新上傳。</div>
       </div>
       <div class="sb-card">
         <div class="sb-label">Quick fix</div>
