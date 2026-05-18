@@ -11,6 +11,20 @@ const makeFile = (name: string, sizeBytes: number, content = 'x') =>
   new File([content.repeat(sizeBytes)], name, { type: 'application/zip' })
 
 describe('FileDropZone — S037/S048/S053', () => {
+  it('AC-S195-1: inputId wires label-compatible hidden file input', () => {
+    const { container } = render(
+      <FileDropZone
+        inputId="skill-edit-file"
+        onFileSelect={vi.fn()}
+        selectedFile={null}
+      />,
+    )
+
+    const input = container.querySelector('#skill-edit-file')
+    expect(input).toBeInstanceOf(HTMLInputElement)
+    expect(input).toHaveAttribute('type', 'file')
+  })
+
   it('AC-1: empty state shows 拖拽 zip 或 md 檔到此處 prompt', () => {
     render(<FileDropZone onFileSelect={vi.fn()} selectedFile={null} />)
     expect(screen.getByText('拖拽 zip 或 md 檔到此處')).toBeInTheDocument()

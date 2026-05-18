@@ -48,5 +48,17 @@ And（而且）`FileDropZone` 未收到 `inputId` 時，`/publish` 既有 drag/d
 ## 前置條件
 - 無
 
+## 實作結果
+
+- `FileDropZoneProps` 新增 `inputId?: string`。
+- hidden `<input type="file">` 會收到 `id={inputId}`，讓 edit page 可以用外部 label 指向它。
+- 既有 `/publish` 預設 `accept=".zip,.md"`、副檔名 guard、大小 guard、文案都未改。
+
+## 驗證結果
+
+執行：`cd frontend && npm test -- FileDropZone`
+
+結果：PASS — 1 test file / 7 tests。
+
 ## 狀態
-pending（待做）
+PASS

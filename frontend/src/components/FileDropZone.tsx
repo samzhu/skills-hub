@@ -18,6 +18,8 @@ interface FileDropZoneProps {
    * 超限時 inline 錯誤訊息顯示，`onFileSelect` 不會被呼叫，避免 user 浪費頻寬上傳到 backend 才得 413。
    */
   maxSizeBytes?: number
+  /** S195：讓外部 label 可以指向隱藏 file input。 */
+  inputId?: string
 }
 
 /**
@@ -34,6 +36,7 @@ export function FileDropZone({
   selectedFile,
   accept = '.zip,.md',
   maxSizeBytes = DEFAULT_MAX_SIZE_BYTES,
+  inputId,
 }: FileDropZoneProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [sizeError, setSizeError] = useState<string | null>(null)
@@ -117,6 +120,7 @@ export function FileDropZone({
         )}
         {/* 實際的 file input 隱藏，樣式由外層 div 代替 */}
         <input
+          id={inputId}
           ref={inputRef}
           type="file"
           accept={accept}
