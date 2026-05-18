@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Skills Hub Skill Detail Quality Signals Research</title>
+  <style>
+    :root {
+      --bg: #08080A;
+      --bg-2: #0F0F12;
+      --bg-3: #171719;
+      --ink: #EEECEA;
+      --ink-2: #A8A49C;
+      --ink-3: #6B6760;
+      --line: rgba(255,255,255,0.08);
+      --line-2: rgba(255,255,255,0.13);
+      --accent: #7F77DD;
+      --accent-text: #C9C5F2;
+      --pink: #D9388A;
+      --amber: #EF9F27;
+      --amber-text: #FAC775;
+      --green: #1D9E75;
+      --green-text: #6FD8B0;
+      --red: #E24B4A;
+      --red-text: #F2A6A6;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); }
+    main { width: min(1180px, calc(100vw - 32px)); margin: 0 auto; padding: 32px 0 56px; }
+    header { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: end; padding-bottom: 22px; border-bottom: 0.5px solid var(--line); }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(28px, 4vw, 44px); font-weight: 560; letter-spacing: 0; }
+    h2 { font-size: 22px; font-weight: 620; margin-bottom: 4px; }
+    h3 { font-size: 15px; font-weight: 620; }
+    .sub { color: var(--ink-2); font-size: 14px; line-height: 1.6; margin-top: 8px; max-width: 820px; }
+    .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    .hero-score {
+      width: 154px;
+      border: 0.5px solid var(--line-2);
+      border-radius: 8px;
+      background: var(--bg-2);
+      padding: 14px;
+      text-align: right;
+    }
+    .hero-score span { display: block; font-size: 13px; color: var(--ink-3); margin-bottom: 8px; }
+    .hero-score strong { font-size: 42px; line-height: 1; font-weight: 560; }
+
+    .research {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin: 22px 0 30px;
+    }
+    .research-item {
+      border: 0.5px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg-2);
+      padding: 16px;
+      min-height: 134px;
+    }
+    .research-item .label { color: var(--accent-text); font-size: 12px; margin-bottom: 8px; }
+    .research-item p { color: var(--ink-2); font-size: 13px; line-height: 1.55; }
+
+    .section {
+      margin-top: 24px;
+      padding-top: 22px;
+      border-top: 0.5px solid var(--line);
+    }
+    .axis-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 10px;
+    }
+    .axis-score { font-size: 32px; font-weight: 560; line-height: 1; }
+    .scorebar {
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(127,119,221,0.13);
+      overflow: hidden;
+      margin: 10px 0 14px;
+    }
+    .scorebar > div {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--pink) 60%, var(--amber));
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--ink-2);
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 0.5px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      border-radius: 999px;
+      padding: 4px 9px;
+    }
+    .legend span::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+    }
+
+    .rows {
+      border: 0.5px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.025);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 180px 1fr auto;
+      gap: 14px;
+      align-items: start;
+      padding: 14px 16px;
+      border-bottom: 0.5px solid var(--line);
+    }
+    .row:last-child { border-bottom: 0; }
+    .dim { color: var(--ink); font-size: 14px; font-weight: 560; }
+    .reason { color: var(--ink-2); font-size: 13px; line-height: 1.55; }
+    .meta { color: var(--ink-3); font-size: 12px; margin-top: 5px; }
+
+    .status {
+      min-width: 112px;
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 2px;
+      font-size: 12px;
+      font-weight: 620;
+      white-space: nowrap;
+    }
+    .status::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.05);
+      flex: 0 0 auto;
+    }
+    .pass,
+    .perfect { color: var(--green-text); }
+    .warn,
+    .info { color: var(--amber-text); }
+    .fail { color: var(--red-text); }
+
+    .problem {
+      margin-top: 18px;
+      border: 0.5px solid rgba(239,159,39,0.34);
+      border-radius: 8px;
+      background: rgba(239,159,39,0.08);
+      padding: 14px 16px;
+      color: var(--ink-2);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .problem strong { color: var(--amber-text); font-weight: 650; }
+
+    .sources {
+      margin-top: 28px;
+      border-top: 0.5px solid var(--line);
+      padding-top: 18px;
+      color: var(--ink-3);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+    .sources a { color: var(--accent-text); text-decoration: none; }
+    .sources a:hover { text-decoration: underline; }
+
+    @media (max-width: 820px) {
+      main { width: min(100vw - 24px, 720px); padding-top: 22px; }
+      header, .axis-head { grid-template-columns: 1fr; }
+      .hero-score { width: 100%; text-align: left; }
+      .research { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; gap: 8px; }
+      .status { justify-self: start; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Skill 明細頁品質訊號示意</h1>
+        <p class="sub">目標：保留彩虹線當作整個區塊分數，但把目前不明確的圓點改成帶文字的單項結果。使用者不需要猜顏色，就能知道「這一項通過、只是提醒、還是需要修」。</p>
+      </div>
+      <div class="hero-score">
+        <span>目前這個 skill</span>
+        <strong>99</strong>
+      </div>
+    </header>
+
+    <section class="research" aria-label="research summary">
+      <div class="research-item">
+        <div class="label">原本要做什麼</div>
+        <p>明細頁要讓使用者在下載前看懂三件事：SKILL.md 是否符合規格、內容是否容易執行、description 是否容易被 agent 觸發。</p>
+      </div>
+      <div class="research-item">
+        <div class="label">現在卡住哪裡</div>
+        <p><span class="mono">ScoreDot</span> 只懂 0-3 分，但規格驗證回傳 0-100 分與 warnings 陣列，所以 100 分也可能顯示橘點，warnings 變成紅點。</p>
+      </div>
+      <div class="research-item">
+        <div class="label">競品學到什麼</div>
+        <p>Tessl 把 Quality 拆成 Validation / Implementation / Activation，並直接寫出 pass、warning、fail 與修正建議；GitHub、JetBrains 的 badge 也用 tooltip/text 限定意義。</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="axis-head">
+        <div>
+          <h2>規格驗證</h2>
+          <p class="sub">Specification compliance & completeness</p>
+        </div>
+        <div class="axis-score">97</div>
+      </div>
+      <div class="scorebar" aria-hidden="true"><div style="width: 97%"></div></div>
+      <div class="legend">
+        <span>彩虹線：整個區塊分數</span>
+        <span style="color: var(--green-text)">綠色：通過</span>
+        <span style="color: var(--amber-text)">黃色：注意或提醒</span>
+        <span style="color: var(--red-text)">紅色：需要修正</span>
+      </div>
+      <div class="rows">
+        <div class="row">
+          <div class="dim">Warnings</div>
+          <div>
+            <p class="reason">allowed-tools uses YAML list; agentskills.io expects a space-separated string.</p>
+            <p class="meta">這是可上架的相容性提醒，不該只顯示一顆紅點。</p>
+          </div>
+          <div class="status info">提醒 1</div>
+        </div>
+        <div class="row">
+          <div class="dim">Line Count</div>
+          <div><p class="reason">136 / 500 lines</p></div>
+          <div class="status pass">通過 100/100</div>
+        </div>
+        <div class="row">
+          <div class="dim">Name Format</div>
+          <div><p class="reason">valid name format</p></div>
+          <div class="status pass">通過 100/100</div>
+        </div>
+        <div class="row">
+          <div class="dim">Body Present</div>
+          <div><p class="reason">body section present</p></div>
+          <div class="status pass">通過 100/100</div>
+        </div>
+        <div class="row">
+          <div class="dim">Allowed Tools</div>
+          <div><p class="reason">allowed-tools valid</p></div>
+          <div class="status pass">通過 100/100</div>
+        </div>
+        <div class="row">
+          <div class="dim">Required Fields</div>
+          <div><p class="reason">name + description present</p></div>
+          <div class="status pass">通過 100/100</div>
+        </div>
+        <div class="row">
+          <div class="dim">Frontmatter Official Format</div>
+          <div>
+            <p class="reason">allowed-tools 可以被平台接受，但官方格式期待空白分隔字串。下一版可以把 YAML list 改成 <span class="mono">allowed-tools: Read Write Edit Bash</span>。</p>
+          </div>
+          <div class="status warn">注意 80/100</div>
+        </div>
+      </div>
+      <div class="problem">
+        <strong>這裡的改法重點：</strong>規格驗證使用 0-100 的狀態籤，不再套用 3/3 的圓點。warnings 變成提醒列，使用者可以分辨「可接受但建議改」和「真的壞掉」。
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="axis-head">
+        <div>
+          <h2>實作品質</h2>
+          <p class="sub">Code quality & best practices</p>
+        </div>
+        <div class="axis-score">100</div>
+      </div>
+      <div class="scorebar" aria-hidden="true"><div style="width: 100%"></div></div>
+      <div class="rows">
+        <div class="row">
+          <div class="dim">Conciseness</div>
+          <div><p class="reason">The skill body is highly focused, with every sentence serving a unique purpose.</p></div>
+          <div class="status perfect">滿分 3/3</div>
+        </div>
+        <div class="row">
+          <div class="dim">Actionability</div>
+          <div><p class="reason">The content provides exact patterns, file references, command examples, and edge-case handling.</p></div>
+          <div class="status perfect">滿分 3/3</div>
+        </div>
+        <div class="row">
+          <div class="dim">Workflow Clarity</div>
+          <div><p class="reason">The document establishes a clear sequential workflow with decision branches and checkpoints.</p></div>
+          <div class="status perfect">滿分 3/3</div>
+        </div>
+        <div class="row">
+          <div class="dim">Progressive Disclosure</div>
+          <div><p class="reason">Critical instructions lead the document, with supporting details and examples later.</p></div>
+          <div class="status perfect">滿分 3/3</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="axis-head">
+        <div>
+          <h2>觸發能力</h2>
+          <p class="sub">Discoverability & usage clarity</p>
+        </div>
+        <div class="axis-score">100</div>
+      </div>
+      <div class="scorebar" aria-hidden="true"><div style="width: 100%"></div></div>
+      <div class="rows">
+        <div class="row">
+          <div class="dim">Specificity</div>
+          <div><p class="reason">The description lists exact scenarios, file types, the agentskills.io standard, and non-English trigger phrases.</p></div>
+          <div class="status perfect">滿分 3/3</div>
+        </div>
+        <div class="row">
+          <div class="dim">Completeness</div>
+          <div><p class="reason">It defines what the skill does, when to use it, and when not to use it.</p></div>
+          <div class="status perfect">滿分 3/3</div>
+        </div>
+        <div class="row">
+          <div class="dim">Distinctiveness</div>
+          <div><p class="reason">The skill focuses on authoring and auditing agent skills, not general prompt engineering.</p></div>
+          <div class="status perfect">滿分 3/3</div>
+        </div>
+        <div class="row">
+          <div class="dim">Trigger Term Quality</div>
+          <div><p class="reason">The description includes domain words such as SKILL.md, frontmatter, agentskills.io, audit, optimize, and scaffold.</p></div>
+          <div class="status perfect">滿分 3/3</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sources">
+      <p>研究依據：Tessl Registry 的 skill review 說明把 Review Score 拆成 Validation Checks、Implementation Score、Activation Score，且明列 90%+、70-89%、低於 70% 的意義；GitHub Marketplace badge 文件說 badge 需要 tooltip 說明，且明確提醒 badge 不代表第三方程式碼已被檢查；JetBrains Verified Vendor 文件也把「真實廠商」和「plugin 品質」分開說明。agentskills.io specification 建議 SKILL.md 保持 500 行以下，並用 name / description 做啟動階段的 metadata。</p>
+      <p>Links: <a href="https://tessl.io/registry/tessl-master/tessl-master/files/docs/evaluate/evaluating-skills.md">Tessl skill review</a> · <a href="https://docs.github.com/en/apps/github-marketplace/github-marketplace-overview/about-marketplace-badges">GitHub marketplace badges</a> · <a href="https://plugins.jetbrains.com/docs/marketplace/verified-vendor-badge.html">JetBrains verified vendor</a> · <a href="https://agentskills.io/specification">agentskills.io specification</a></p>
+    </section>
+  </main>
+</body>
+</html>

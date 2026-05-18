@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-18（S199 in-design；publish failed actionable validation copy）
+> 最後更新：2026-05-18（S201 in-design；Quality Score 單項狀態顯示）
 
 ## 使用說明
 
@@ -45,6 +45,7 @@
 | S197 | 必填欄位即時提示 UX（Publish / Edit required mark + inline error，不等 submit 才顯示 native bubble） | S(8) | S176 ✅, S188 ✅, S195 ✅ | 📐 in-design — spec opened 2026-05-18 |
 | S198 | SKILL.md Recommendations Not Hard Errors（官方建議不擋 upload；500 行等 best practice 轉 warning + quality 扣分） | XS(5) | S135a ✅, S194 ✅ | 📐 in-design — production upload 589 lines 被擋；官方 spec 500 lines 是 recommendation |
 | S199 | Publish Failed Actionable Validation Copy（失敗頁第一屏顯示具體原因、行數/欄位與下一步，不只顯示 generic validation failed） | XS(4) | S098b ✅, S098b3-2 ✅, S195 ✅ | 📐 in-design — uploadSkill findings 未傳到 failed page；top callout 文案不說明 why/how |
+| S201 | Quality Score 單項狀態顯示（Quality tab 圓點改為綠/黃/紅 12px 圓圈 + 分數文字；Validation 用 100/100，Implementation/Activation 用 3/3） | XS(5) | S135a ✅, S142a ✅, S198 ordering-only | ⏳ Plan — task files T01-T03 ready；manual mode stops before implementation |
 ---
 
 ## 🏁 Milestones
