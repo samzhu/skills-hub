@@ -1,6 +1,6 @@
 # S196: Request Board 兩頁籤 UX
 
-> 規格：S196 | 大小：XS(8) | 狀態：⏳ Design
+> 規格：S196 | 大小：XS(8) | 狀態：Approved-for-Dev
 > 日期：2026-05-18
 > 對應：PRD §P8 / S156c / `docs/grimo/ui/prototype/Skills Hub Request Board.html`
 
@@ -33,7 +33,7 @@
 | Dependency | 類型 | 判斷 |
 |---|---|---|
 | S156c | Code-level shipped | 已提供 simplified request API 與 frontend route。本 spec 只重排 UI，不 import 未 shipped 型別。 |
-| S195 | 無重疊 | Active spec 是 Skill edit upload validation UX，與 `/requests` 無共同 production files。 |
+| S195 | 已 shipped v4.78.0 | Release Completeness Gate 乾淨；與 `/requests` 無共同 production files。 |
 
 ## 2. 研究與設計
 
@@ -47,7 +47,7 @@
 | `frontend/src/api/skills.ts` | `fetchRequests({sort})` 只支援 `votes | created`；`SkillRequest` 沒有 status field。 | 排序 controls 只做 `票數最高` / `最新` / local `我投過` hint，不設 status filter。 |
 | `frontend/src/components/VoteButton.tsx` | Vote button already has optimistic toggle、`aria-pressed`、server response sync。 | 需求卡沿用 `VoteButton`，不重寫投票狀態。 |
 | `docs/grimo/ui/DESIGN.md` | `/requests` prototype source 是 `docs/grimo/ui/prototype/Skills Hub Request Board.html`。 | prototype 已更新成兩頁籤示意；implementation 要同步該方向。 |
-| [WAI-ARIA APG Tabs Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) | Tabs 是一組只顯示一個 panel 的內容；active tab 要 `aria-selected=true`，其他 tab 要 `false`。 | `瀏覽需求` / `我要開需求` 要用 `role="tablist"`、`role="tab"`、`role="tabpanel"` 與 keyboard 可操作狀態。 |
+| [WAI-ARIA APG Tabs Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) | Tabs 是一組只顯示一個 panel 的內容；active tab 要 `aria-selected=true`，其他 tab 要 `false`；APG 也要求 `tablist` / `tab` / `tabpanel` roles 與 `aria-controls` / `aria-labelledby` 對應。 | `瀏覽需求` / `我要開需求` 要用 `role="tablist"`、`role="tab"`、`role="tabpanel"`，active tab 以 `aria-selected` 標示；panel 用 `aria-labelledby` 接回 tab。 |
 
 ### 2.2 架構設計
 
@@ -128,6 +128,20 @@ Mobile:
 | T02 | `frontend/src/components/RequestCreatePanel.tsx` 或併入 page | `CreateRequestModal.tsx` | 在 `我要開需求` tab 填 title/description 後 POST `/requests` | 未登入時走 `AuthGatedButton` login，不直接 POST | not required |
 | T03 | `RequestBoardPage` list/ranking layout | `VoteButton.tsx`, `useRequests.ts` | `票數最高` 呼叫 `sort=votes`，`最新` 呼叫 `sort=created` | 不傳 `?status=`，避免 S159a 400 | not required |
 | T04 | Tests + design sync | `RequestBoardPage.test.tsx`, prototype, DESIGN | RTL 驗 tabs、form POST、sort query、no spec ID leak | 測試不依賴 CSS class 或 pixel snapshot | not required |
+
+### 2.6 Planning-Spec Readiness Check
+
+`$planning-spec S196` 在 2026-05-18 重新核對：
+
+| Check | Result |
+|---|---|
+| Release Completeness Gate | PASS — S195 已 archive、CHANGELOG/roadmap 有 v4.78.0、`git tag --points-at HEAD` 顯示 `v4.78.0`，沒有 S195 task 殘留。 |
+| Active overlap scan | PASS — root `docs/grimo/specs/` 只剩 S196；S196 是 `/requests` frontend-only，沒有與已 shipped S195 的 `SkillEditPage` / `FileDropZone` 範圍重疊。 |
+| Existing implementation scan | PASS — `RequestBoardPage.tsx` 仍是 single list + `CreateRequestModal`；`useRequests` 已支援 `sort`; `VoteButton` 已有 optimistic toggle + `aria-pressed`。 |
+| Design source sync | PASS — `docs/grimo/ui/DESIGN.md` 已把 `/requests` note 指向 S196 two-tab direction；prototype 已有 `瀏覽需求` / `我要開需求` tabs。 |
+| Research citation | PASS — WAI-ARIA APG Tabs Pattern official page confirms roles, `aria-selected`, and tab/panel relationships. |
+
+Design verdict：sections 1-5 are concrete enough for `/planning-tasks S196`; no POC needed.
 
 ## 3. 驗收條件（SBE）
 
@@ -266,6 +280,20 @@ function RequestBoardPage() {
 | `docs/grimo/ui/prototype/Skills Hub Request Board.html` | modify | 已更新成兩頁籤示意；implementation 後確認同步。 |
 | `docs/grimo/ui/DESIGN.md` | modify | `/requests` page inventory note 加 S196 two-tab direction。 |
 | `docs/grimo/specs/spec-roadmap.md` | modify | 新增 S196 active row。 |
+
+### 5.1 AC Well-Formedness / Handoff Check
+
+| AC | Singular | Unambiguous | Implementation-free | Verifiable | Bounded |
+|---|---|---|---|---|---|
+| AC-S196-1 | PASS | PASS | PASS | PASS | PASS |
+| AC-S196-2 | PASS | PASS | PASS | PASS | PASS |
+| AC-S196-3 | PASS | PASS | PASS | PASS | PASS |
+| AC-S196-4 | PASS | PASS | PASS | PASS | PASS |
+| AC-S196-5 | PASS | PASS | PASS | PASS | PASS |
+| AC-S196-6 | PASS | PASS | PASS | PASS | PASS |
+| AC-S196-7 | PASS | PASS | PASS | PASS | PASS |
+
+Handoff：下一步跑 `$planning-tasks S196`，產生 task files 後才開始改 `frontend/**`。
 
 ---
 
