@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-19（S197 QA PASS；next `$shipping-release S197`）
+> 最後更新：2026-05-19（S197 shipped v4.80.0；next `$planning-tasks S198`）
 
 ## 使用說明
 
@@ -42,7 +42,6 @@
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⛔ superseded 2026-05-16 — 取代為 S189（舊 spec 已有 T01-T05/QA 歷史，但未 ship；關閉以免干擾 S186→S187 主線） |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
-| S197 | 必填欄位即時提示 UX（Publish / Edit required mark + inline error，不等 submit 才顯示 native bubble） | S(8) | S176 ✅, S188 ✅, S195 ✅ | ✅ QA PASS 2026-05-19 — `verify-all.sh` 全綠；next `$shipping-release S197` |
 | S198 | SKILL.md Recommendations Not Hard Errors（官方建議不擋 upload；500 行等 best practice 轉 warning + quality 扣分） | XS(5) | S135a ✅, S194 ✅ | ⏳ Plan — task files created 2026-05-18；empty body remains Skills Hub policy hard error |
 | S199 | Publish Failed Actionable Validation Copy（失敗頁第一屏顯示具體原因、行數/欄位與下一步，不只顯示 generic validation failed） | XS(4) | S098b ✅, S098b3-2 ✅, S195 ✅ | ⏳ Plan — task files created 2026-05-18；manual mode stops before implementation |
 | S200 | Request requester display identity（需求詳情 header 不顯 `u_<id>`；request DTO 補 requesterDisplayName/requesterHandle） | XS(4) | S192 ✅, S156c ✅, S196 ✅ | ⏳ Plan — task files created 2026-05-18；manual mode stops before implementation |
@@ -98,6 +97,7 @@
 | v4.77.0 | S194 (SKILL.md frontmatter compatibility) | ✅ shipped 2026-05-18 — `allowed-tools` list / `metadata.tags` array 相容匯入；compatibility warning 會扣 VALIDATION 分；nested metadata object 仍擋；`verify-all.sh` 全綠 |
 | v4.78.0 | S195 (Skill edit upload validation UX) | ✅ shipped 2026-05-18 — edit page upload mode 重用 FileDropZone；`PUT /versions` 400 顯示 structured findings；`@S195` mobile evidence；`verify-all.sh` 全綠 |
 | v4.79.0 | S196 (Request Board 兩頁籤 UX) | ✅ shipped 2026-05-18 — `/requests` 改為 `瀏覽需求` / `我要開需求`；inline 開需求；保留 vote/detail/comment；`verify-all.sh` 全綠 |
+| v4.80.0 | S197 (Required field inline cues) | ✅ shipped 2026-05-19 — Publish/Edit required mark + inline missing-field copy；`verify-all.sh` 全綠 |
 
 ---
 
@@ -275,6 +275,7 @@
 | S191 | Publish review copy reality check | S(11) | v4.76.0 |
 | S194 | SKILL.md frontmatter compatibility | S(11) | v4.77.0 |
 | S195 | Skill edit upload validation UX | S(11) | v4.78.0 |
+| S197 | 必填欄位即時提示 UX | S(10) | v4.80.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

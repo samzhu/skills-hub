@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.80.0] — S197 必填欄位即時提示 UX（2026-05-19）
+
+### Changed
+
+- **Publish required-field cues** — `/publish` 的技能名稱、分類、Skill 套件 / SKILL.md 內容一開始就有 required mark；分類空白顯示 `請填寫分類`，text mode 空白顯示 `請貼上 SKILL.md 內容`。
+- **Publish file mode missing-file copy** — 使用者填完技能名稱與分類但未選檔時，`FileDropZone` 會顯示 `請選擇 zip 或 SKILL.md`，並用 `publish-file-error` 接上 `aria-describedby`。
+- **Edit-page required reasons** — `/skills/{id}/edit` 分類清空顯示 `分類不可空白`，upload mode 未選檔顯示 `請選擇 zip 或 SKILL.md`。
+- **Required-field design sync** — `docs/grimo/ui/DESIGN.md` 已記錄 Publish/Edit required mark、inline error、`aria-invalid` / `aria-describedby` 與 required color 規則。
+
+### Verification
+
+- `cd frontend && npm test -- PublishPage SkillEditPage FileDropZone`：**PASS** — 3 files / 48 tests。
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.2%，covered=4864 / total=5580）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Production deploy：not run in this release tick；S197 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-18-S197-required-field-inline-cues.md` → `docs/grimo/specs/archive/2026-05-18-S197-required-field-inline-cues.md`
+- `docs/grimo/tasks/2026-05-19-S197-*.md` 已刪除。
+- Final size re-score：S(8) → S(10)，原因是 QA re-review 補出 `/publish` file mode page-level contract、追加 S197-T05，並重跑完整 `verify-all.sh`（backend, frontend, Playwright, AOT/native image）。
+
 ## [v4.79.0] — S196 Request Board 兩頁籤 UX（2026-05-18）
 
 ### Changed
