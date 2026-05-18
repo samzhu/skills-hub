@@ -126,6 +126,11 @@ export function PublishPage() {
   const categoryError = shouldShowError('category') && category.trim().length === 0
     ? '請填寫分類'
     : null
+  const fileError = mode === 'file'
+    && !file
+    && (submitted || (skillName.trim().length > 0 && category.trim().length > 0))
+    ? '請選擇 zip 或 SKILL.md'
+    : null
   const textContentError = mode === 'text'
     && shouldShowError('skillMdText')
     && skillMdText.trim().length === 0
@@ -191,7 +196,17 @@ export function PublishPage() {
                 <FieldLabel htmlFor="publish-file" requiredMarkId="publish-file-required-mark">
                   Skill 套件
                 </FieldLabel>
-                <FileDropZone inputId="publish-file" onFileSelect={setFile} selectedFile={file} />
+                <FileDropZone
+                  inputId="publish-file"
+                  onFileSelect={setFile}
+                  selectedFile={file}
+                  error={fileError}
+                  describedBy="publish-file-help"
+                  errorId="publish-file-error"
+                />
+                <p id="publish-file-help" className="mt-1 text-[11px] text-muted-foreground">
+                  請上傳 .zip 套件或單一 SKILL.md 檔案。
+                </p>
               </div>
             ) : (
               <div>

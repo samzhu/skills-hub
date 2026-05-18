@@ -1,6 +1,6 @@
 # S197: 必填欄位即時提示 UX
 
-> 規格：S197 | 大小：S(8) | 狀態：⏳ Dev (QA fix required)
+> 規格：S197 | 大小：S(8) | 狀態：⏳ QA
 > 日期：2026-05-18
 > 對應：PRD §P2 / S004 / S176 / S187 / S195
 
@@ -212,6 +212,7 @@ E2E：not required for planning — S197 改的是表單必填提示、component
 | 2 | S197-T02 FileDropZone required error contract | `FileDropZone.tsx`, `FileDropZone.test.tsx` | AC-S197-3, AC-S197-7 | `cd frontend && npm test -- FileDropZone` | 無 |
 | 3 | S197-T03 SkillEdit 分類與 upload mode 缺欄原因 | `SkillEditPage.tsx`, `SkillEditPage.test.tsx` | AC-S197-6, AC-S197-7 | `cd frontend && npm test -- SkillEditPage` | T02 |
 | 4 | S197-T04 DESIGN 必填表單規則同步 | `docs/grimo/ui/DESIGN.md` | AC-S197-8 | `rg -n "必填\|aria-describedby\|required" docs/grimo/ui/DESIGN.md` | T01, T02, T03 |
+| 5 | S197-T05 Publish file mode required error page contract | `PublishPage.tsx`, `PublishPage.test.tsx` | AC-S197-3, AC-S197-7 | `cd frontend && npm test -- PublishPage` | T02, QA §7.5 |
 
 ### AC Coverage
 
@@ -220,6 +221,7 @@ E2E：not required for planning — S197 改的是表單必填提示、component
 | AC-S197-1 | T01 | `/publish` label 顯示 required mark；`版本號` 不顯示 required mark。 |
 | AC-S197-2 | T01 | 分類空白時畫面顯示 `請填寫分類`，且沒有 `POST /api/v1/skills/upload`。 |
 | AC-S197-3 | T02 | `FileDropZone` 顯示 `請選擇 zip 或 SKILL.md`，副檔名錯誤仍顯示既有訊息。 |
+| AC-S197-3 QA fix | T05 | `/publish` file mode 也把 `請選擇 zip 或 SKILL.md` 傳給 `FileDropZone`，且 page-level test 驗 `publish-file-error`。 |
 | AC-S197-4 | T01 | text mode 空白顯示 `請貼上 SKILL.md 內容`；frontmatter 錯誤仍顯示 `缺必填欄位：description`。 |
 | AC-S197-5 | T01 | `版本號` optional，空白 FormData 不含 `version`。 |
 | AC-S197-6 | T03 | edit page 分類清空顯示 `分類不可空白`；upload mode 未選檔顯示 `請選擇 zip 或 SKILL.md`。 |
@@ -228,7 +230,7 @@ E2E：not required for planning — S197 改的是表單必填提示、component
 
 ## 7. Results
 
-狀態：QA REJECT-FIX 2026-05-19。`$shipping-release S197` 尚未符合 precondition，因為 AC-S197-3 在 `/publish` file mode 的實際頁面路徑沒有 inline 缺檔案提示；下一步回 `$planning-tasks S197` 補 QA fix task。
+狀態：local implementation PASS 2026-05-19。`$shipping-release S197` 尚未符合 precondition；下一步是 `$verifying-quality S197`，重新確認 QA fix 後才可 release。
 
 ### 7.1 Task Results
 
@@ -238,6 +240,7 @@ E2E：not required for planning — S197 改的是表單必填提示、component
 | S197-T02 FileDropZone required error contract | PASS | `FileDropZone.test.tsx` 覆蓋 caller required error、副檔名錯誤優先、`aria-invalid` / `aria-describedby`。 |
 | S197-T03 SkillEdit 分類與 upload mode 缺欄原因 | PASS | `SkillEditPage.test.tsx` 覆蓋分類清空顯示 `分類不可空白`、upload mode 未選檔顯示 `請選擇 zip 或 SKILL.md`、a11y attributes。 |
 | S197-T04 DESIGN 必填表單規則同步 | PASS | `docs/grimo/ui/DESIGN.md` 已記錄 Publish/Edit required mark、inline error、`aria-invalid` / `aria-describedby`、required color 與 category/risk palette 分離。 |
+| S197-T05 Publish file mode required error page contract | PASS | `PublishPage.test.tsx` 覆蓋 `/publish` file mode 未選檔顯示 `請選擇 zip 或 SKILL.md`、`publish-file-error` a11y contract、以及 `.txt` 副檔名錯誤優先。 |
 
 ### 7.2 Verification
 
@@ -246,6 +249,12 @@ cd frontend && npm test -- PublishPage SkillEditPage FileDropZone
 ```
 
 PASS — 3 files / 46 tests.
+
+```bash
+cd frontend && npm test -- PublishPage
+```
+
+PASS — 1 file / 23 tests（含 S197-T05 QA fix）。
 
 ```bash
 cd frontend && npm run verify
@@ -261,7 +270,7 @@ E2E：not required。S197 沒有新增 route、後端 API、credential injection
 |---|---|---|
 | AC-S197-1 | PASS | `PublishPage.test.tsx` 驗 `/publish` 必填 label 顯示 required mark，`版本號` 不顯示 required mark。 |
 | AC-S197-2 | PASS | `PublishPage.test.tsx` 驗分類空白顯示 `請填寫分類`，且不呼叫 upload API。 |
-| AC-S197-3 | PASS | `FileDropZone.test.tsx` 驗 required error 與副檔名錯誤優先順序。 |
+| AC-S197-3 | PASS | `FileDropZone.test.tsx` 驗 required error 與副檔名錯誤優先順序；`PublishPage.test.tsx` 驗 `/publish` file mode 也會顯示 `請選擇 zip 或 SKILL.md`。 |
 | AC-S197-4 | PASS | `PublishPage.test.tsx` 驗 text mode 空白顯示 `請貼上 SKILL.md 內容`，frontmatter 缺 `description` 仍顯示原錯誤。 |
 | AC-S197-5 | PASS | `PublishPage.test.tsx` 驗 `版本號` optional，空白時 FormData 不含 `version`。 |
 | AC-S197-6 | PASS | `SkillEditPage.test.tsx` 驗 edit page 分類與 upload mode 缺欄原因。 |
@@ -270,7 +279,7 @@ E2E：not required。S197 沒有新增 route、後端 API、credential injection
 
 ### 7.4 Next Step
 
-下一步應執行 `$planning-tasks S197`，建立 QA fix task：`PublishPage` file mode 未選檔時要把 `請選擇 zip 或 SKILL.md` 傳給 `FileDropZone` 並補 page-level test。QA PASS 且 release gate 證據補齊後，才可執行 `$shipping-release S197`。
+下一步應執行 `$verifying-quality S197`。QA PASS 且 release gate 證據補齊後，才可執行 `$shipping-release S197`。
 
 ### 7.5 Independent QA Review（2026-05-19）
 

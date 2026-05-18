@@ -373,6 +373,35 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
     expect(await screen.findByText('缺必填欄位：description')).toBeInTheDocument()
   })
 
+  it('AC-S197-3: Publish file mode 未選檔顯示 inline required error', async () => {
+    renderPublishPage()
+
+    fireEvent.change(screen.getByLabelText('技能名稱'), { target: { value: 'Team Transcribe' } })
+    fireEvent.change(screen.getByPlaceholderText('DevOps'), { target: { value: 'DevOps' } })
+
+    expect(await screen.findByText('請選擇 zip 或 SKILL.md')).toBeInTheDocument()
+    const dropzone = screen.getByTestId('file-dropzone')
+    expect(dropzone).toHaveAttribute('aria-invalid', 'true')
+    expect(dropzone.getAttribute('aria-describedby')).toContain('publish-file-help')
+    expect(dropzone.getAttribute('aria-describedby')).toContain('publish-file-error')
+    expect(screen.getByRole('button', { name: /發佈技能/ })).toBeDisabled()
+  })
+
+  it('AC-S197-3: Publish file mode 副檔名錯誤優先於 required error', async () => {
+    renderPublishPage()
+
+    fireEvent.change(screen.getByLabelText('技能名稱'), { target: { value: 'Team Transcribe' } })
+    fireEvent.change(screen.getByPlaceholderText('DevOps'), { target: { value: 'DevOps' } })
+    expect(await screen.findByText('請選擇 zip 或 SKILL.md')).toBeInTheDocument()
+
+    const fileInput = screen.getByLabelText('Skill 套件') as HTMLInputElement
+    const invalidFile = new File(['hello'], 'notes.txt', { type: 'text/plain' })
+    fireEvent.change(fileInput, { target: { files: [invalidFile] } })
+
+    expect(await screen.findByText(/只接受 \.zip \/ \.md 檔/)).toBeInTheDocument()
+    expect(screen.queryByText('請選擇 zip 或 SKILL.md')).toBeNull()
+  })
+
   it('AC-S197-7: Publish required fields connect aria-invalid and aria-describedby', async () => {
     renderPublishPage()
 
