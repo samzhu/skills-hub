@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import { ApiError } from './client'
 import { addVersion, uploadSkill } from './skills'
+import { localizeApiError } from '@/lib/api-error-messages'
 
 describe('skills API — S188 optional version FormData', () => {
   it('AC-S188-5: uploadSkill omits blank version from FormData', async () => {
@@ -46,5 +48,65 @@ describe('skills API — S188 optional version FormData', () => {
     expect(capturedForm).not.toBeNull()
     expect(capturedForm!.get('file')).toBeInstanceOf(File)
     expect(capturedForm!.get('version')).toBeNull()
+  })
+
+  it('AC-S195-4: addVersion preserves response findings on validation error', async () => {
+    const findings = [
+      {
+        section: 'skill_md',
+        severity: 'error' as const,
+        title: "metadata: key 'owner' nested object is not supported",
+        hint: null,
+      },
+    ]
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: 'VALIDATION_ERROR',
+        message: 'SKILL.md validation failed',
+        findings,
+      }),
+    } as Response))
+
+    let thrown: unknown
+    try {
+      await addVersion(
+        'skill-docker',
+        new File(['zip'], 'skill.zip', { type: 'application/zip' }),
+        '2',
+      )
+    } catch (err) {
+      thrown = err
+    }
+
+    expect(ApiError.is(thrown)).toBe(true)
+    expect(thrown).toMatchObject({
+      name: 'ApiError',
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      message: 'SKILL.md validation failed',
+      findings,
+    })
+    expect(localizeApiError(thrown)).toBe('驗證失敗：SKILL.md validation failed')
+    expect((thrown as ApiError).findings?.[0]?.title).toBe("metadata: key 'owner' nested object is not supported")
+  })
+
+  it('AC-S195-4: addVersion keeps fallback message when error body is not JSON', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => { throw new Error('not json') },
+    } as Response))
+
+    await expect(addVersion(
+      'skill-docker',
+      new File(['zip'], 'skill.zip', { type: 'application/zip' }),
+      '2',
+    )).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 503,
+      message: 'Version upload failed: 503',
+    })
   })
 })

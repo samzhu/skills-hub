@@ -1,5 +1,5 @@
 import { apiFetch, apiFetchVoid, ApiError } from './client'
-import type { Skill, SpringPage, CategoryCount, SkillVersion, Visibility } from '../types/skill'
+import type { Skill, SpringPage, CategoryCount, SkillVersion, Visibility, ValidationFinding } from '../types/skill'
 
 /**
  * 技能搜尋參數。所有欄位皆為可選；
@@ -420,8 +420,8 @@ export async function addVersion(skillId: string, file: File, version?: string):
   if (!res.ok) {
     // S040: 與 apiFetch 對齊 — 拋 ApiError 攜 status + code
     const body = await res.json().catch(() => ({}))
-    const b = body as { message?: string; error?: string }
-    throw new ApiError(res.status, b.message ?? `Version upload failed: ${res.status}`, b.error)
+    const b = body as { message?: string; error?: string; findings?: ValidationFinding[] }
+    throw new ApiError(res.status, b.message ?? `Version upload failed: ${res.status}`, b.error, b.findings)
   }
 }
 

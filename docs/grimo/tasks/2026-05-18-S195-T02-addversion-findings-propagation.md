@@ -68,4 +68,13 @@ And（而且）`localizeApiError(error)` 仍回 `驗證失敗：SKILL.md validat
 - 無
 
 ## 狀態
-pending（待做）
+PASS（2026-05-18）
+
+## 實作結果
+- `frontend/src/api/skills.ts`：`addVersion()` 的 error body type 增加 `findings?: ValidationFinding[]`，並把 `b.findings` 傳進 `new ApiError(...)` 第四個參數。
+- `frontend/src/api/skills.test.ts`：新增 `AC-S195-4` 測試，確認 400 `VALIDATION_ERROR` body 的 `findings[]` 會保留在 `ApiError.findings`，且 `localizeApiError(error)` 仍回 `驗證失敗：SKILL.md validation failed`。
+- 同檔補 non-JSON body fallback 測試，確認仍回 `Version upload failed: 503`。
+
+## 驗證結果
+- PASS：`cd frontend && npm test -- skills.test api-error-messages`
+- 結果：2 test files passed；11 tests passed。
