@@ -136,6 +136,16 @@ name: docker-helper
 })
 
 describe('SkillEditPage — S187 version submit flow', () => {
+  it('AC-S195-1: edit upload mode shows drag/drop dropzone', async () => {
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /上傳檔案/ }))
+
+    expect(screen.getByText('拖拽 zip 或 md 檔到此處')).toBeInTheDocument()
+    expect(screen.getByText('或點擊選取檔案')).toBeInTheDocument()
+    expect(screen.getByLabelText('Skill 套件')).toHaveAttribute('id', 'skill-edit-file')
+  })
+
   it('AC-S187-4: upload mode 建立新版本後進驗證中', async () => {
     let capturedForm: FormData | null = null
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
@@ -178,6 +188,86 @@ describe('SkillEditPage — S187 version submit flow', () => {
     await waitFor(() => {
       expect(screen.getByText('REDIRECTED_TO_VERSION_VALIDATE')).toBeInTheDocument()
     })
+  })
+
+  it('AC-S195-2: edit upload mode sends selected zip to PUT versions', async () => {
+    let capturedUrl: string | null = null
+    let capturedForm: FormData | null = null
+    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url === '/api/v1/skills/skill-docker') {
+        return Promise.resolve(new Response(JSON.stringify(skillFixture), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }))
+      }
+      if (url === '/api/v1/skills/skill-docker/files/SKILL.md') {
+        return Promise.resolve(new Response(latestSkillMd, {
+          status: 200,
+          headers: { 'Content-Type': 'text/markdown' },
+        }))
+      }
+      if (url === '/api/v1/skills/skill-docker/versions' && init?.method === 'PUT') {
+        capturedUrl = url
+        capturedForm = init.body as FormData
+        return Promise.resolve(new Response(null, { status: 204 }))
+      }
+      return Promise.resolve(new Response(JSON.stringify({}), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+    })
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /上傳檔案/ }))
+    const file = new File(['zip-bytes'], 'handover.zip', { type: 'application/zip' })
+    fireEvent.change(screen.getByLabelText('Skill 套件'), { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: '儲存新版本' }))
+
+    await waitFor(() => {
+      expect(capturedForm).not.toBeNull()
+    })
+    expect(capturedUrl).toBe('/api/v1/skills/skill-docker/versions')
+    expect((capturedForm!.get('file') as File).name).toBe('handover.zip')
+  })
+
+  it('AC-S195-5: invalid extension shows inline error and does not PUT', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url === '/api/v1/skills/skill-docker') {
+        return Promise.resolve(new Response(JSON.stringify(skillFixture), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }))
+      }
+      if (url === '/api/v1/skills/skill-docker/files/SKILL.md') {
+        return Promise.resolve(new Response(latestSkillMd, {
+          status: 200,
+          headers: { 'Content-Type': 'text/markdown' },
+        }))
+      }
+      return Promise.resolve(new Response(JSON.stringify({}), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+    })
+    globalThis.fetch = fetchMock
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /上傳檔案/ }))
+    const file = new File(['txt'], 'handover.txt', { type: 'text/plain' })
+    fireEvent.change(screen.getByLabelText('Skill 套件'), { target: { files: [file] } })
+
+    expect(screen.getByText('只接受 .zip / .md 檔，目前是 handover.txt')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '儲存新版本' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: '儲存新版本' }))
+
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/v1/skills/skill-docker/versions',
+      expect.objectContaining({ method: 'PUT' }),
+    )
   })
 
   it('AC-S187-7: duplicate version 不覆寫舊版本且留在 edit page', async () => {

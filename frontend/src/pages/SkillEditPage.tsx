@@ -6,6 +6,7 @@ import { addVersion, updateSkill } from '@/api/skills'
 import { skillKeys } from '@/api/queryKeys'
 import { AppShell } from '@/components/AppShell'
 import { ErrorState } from '@/components/ErrorState'
+import { FileDropZone } from '@/components/FileDropZone'
 import { useSkill } from '@/hooks/useSkill'
 import { useSkillFile } from '@/hooks/useSkillFiles'
 import { localizeApiError } from '@/lib/api-error-messages'
@@ -323,22 +324,20 @@ function UploadMode({
   setSelectedFile: (file: File | null) => void
 }) {
   return (
-    <div className="rounded-md border border-dashed border-border bg-background p-6">
+    <div className="rounded-md border border-border bg-background p-4">
       <label
         htmlFor="skill-edit-file"
         className="mb-1.5 block text-[12px] font-medium uppercase tracking-wide text-muted-foreground"
       >
         Skill 套件
       </label>
-      <input
-        id="skill-edit-file"
-        type="file"
-        accept=".zip,.md,text/markdown,application/zip"
-        onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
-        className="block w-full text-[13px] text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-[13px] file:font-medium file:text-primary-foreground hover:file:bg-foreground"
+      <FileDropZone
+        inputId="skill-edit-file"
+        selectedFile={selectedFile}
+        onFileSelect={setSelectedFile}
       />
       <p className="mt-2 text-[12px] text-muted-foreground">
-        {selectedFile ? selectedFile.name : '可上傳 zip 套件或單一 SKILL.md。'}
+        可上傳 zip 套件或單一 SKILL.md。
       </p>
     </div>
   )

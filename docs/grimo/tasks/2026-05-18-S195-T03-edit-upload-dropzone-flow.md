@@ -66,4 +66,14 @@ And（而且）未發出 `PUT /api/v1/skills/skill-docker/versions`
 - S195-T01 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-18）
+
+## 實作結果
+- `frontend/src/pages/SkillEditPage.tsx`：`UploadMode` 改用 `FileDropZone`，並用 `inputId="skill-edit-file"` 讓 `Skill 套件` label 指向隱藏 file input。
+- `frontend/src/pages/SkillEditPage.test.tsx`：新增 `AC-S195-1` 測試，確認 upload mode 顯示「拖拽 zip 或 md 檔到此處」與「或點擊選取檔案」。
+- 同檔新增 `AC-S195-2` 測試，確認選 `handover.zip` 後按「儲存新版本」會送 `PUT /api/v1/skills/skill-docker/versions`，且 FormData 的 `file.name` 是 `handover.zip`。
+- 同檔新增 `AC-S195-5` 測試，確認選 `handover.txt` 會顯示「只接受 .zip / .md 檔，目前是 handover.txt」，且不送 PUT。
+
+## 驗證結果
+- PASS：`cd frontend && npm test -- SkillEditPage`
+- 結果：1 test file passed；9 tests passed。
