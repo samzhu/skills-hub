@@ -3,6 +3,8 @@
 | 中文 | English | Code Naming | 說明 |
 |------|---------|-------------|------|
 | 技能 | Skill | `Skill` | 遵循 agentskills.io 規範的 SKILL.md 資料夾，AI agent 可載入使用的能力單元 |
+| 官方格式合規 | Official Format Compliance | `officialFormat` | SKILL.md frontmatter 完全符合 agentskills.io specification 的格式要求；例如 `metadata` 是 string key/value map、`allowed-tools` 是空白分隔字串。這是品質評分滿分標準 |
+| 相容模式 | Compatibility Mode | `compatibilityMode` | Skills Hub 為了匯入常見既有技能而接受的非官方 frontmatter 形狀；可建立版本，但會產生 compatibility warning，並降低 VALIDATION 分數 |
 | 技能市集 | Skills Hub / Registry | `SkillsHub` | 本平台，企業內部的技能集中管理與分發平台 |
 | 技能作者 | Skill Author / Publisher | `Publisher` | 建立並發佈技能到平台的使用者角色 |
 | 技能消費者 | Skill Consumer | `Consumer` | 瀏覽、搜尋、下載技能的使用者角色 |
