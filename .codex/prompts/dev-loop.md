@@ -19,7 +19,12 @@ Read and follow:
 4. docs/grimo/specs/spec-roadmap.md
 5. docs/grimo/CHANGELOG.md
 
-Then read active spec docs and docs/grimo/tasks/ only when .codex/loop.dev.md says they are relevant.
+This automation must treat repo files as the only state. Do not reuse the previous tick's suggested NEXT_SKILL unless the current repo snapshot still proves it.
+
+After the first reads, take a fresh development-state snapshot before choosing NEXT_SKILL:
+- re-read docs/grimo/specs/spec-roadmap.md Active / planned rows for status changes such as a spec moving from in-design to Plan / in-progress;
+- list docs/grimo/tasks/ and match task files back to their SNNN spec;
+- read the matching active spec doc when roadmap or task files mention an active SNNN.
 
 Before selecting any new planned or active spec, run the Release Completeness Gate from .codex/loop.dev.md:
 - scan root docs/grimo/specs/*.md, docs/grimo/tasks/, docs/grimo/CHANGELOG.md, docs/grimo/specs/spec-roadmap.md, and git tags;

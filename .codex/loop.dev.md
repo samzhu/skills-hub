@@ -48,6 +48,12 @@ Dev loop 不負責：
 4. `docs/grimo/specs/spec-roadmap.md`
 5. `docs/grimo/CHANGELOG.md`
 
+讀完固定檔案後，NEXT_SKILL 前必須重新建立一次 current repo snapshot：
+
+- 重新檢查 `docs/grimo/specs/spec-roadmap.md` 的 Active / planned rows，不沿用上一 tick 回報的 next action。
+- 列出 `docs/grimo/tasks/`，用 task filename 的 `SNNN` 對回 spec；若 task files 已存在，代表 spec 可能已從設計進入 task / implementation loop。
+- roadmap 或 task files 指向 active `SNNN` 時，讀該 spec doc 的 header、§6 task plan、§7 results，再決定 `$planning-spec` / `$planning-tasks` / `$verifying-quality` / `$shipping-release`。
+
 依狀態再讀：
 
 - `docs/grimo/specs/<active-spec>.md`
@@ -185,17 +191,18 @@ git diff --name-only main...<target-branch>
 ## One Tick Algorithm
 
 1. 讀 Start-of-Tick files。
-2. 跑基本 worktree audit。
-3. 先跑 Release Completeness Gate：找已完成但未歸檔 / 未 tag / 未清 task 的 spec。
-4. 若 Gate 找到未收尾 spec，NEXT_SKILL 固定為 `$shipping-release SNNN`；只有 Gate 乾淨才找 active / planned spec。
-5. 選 exactly one NEXT_SKILL，並在回報中寫出選它的 repo evidence。
-6. 呼叫該 skill，讓它完成一個可保存成果。
-7. 跑該 skill 要求的最小必要 verify。
-8. 更新 spec / task / changelog / roadmap 中對應的結果。
-9. 只 stage 本 tick 自己改的檔案。
-10. commit 一個 atomic result，或在不能安全 commit 時回 `BLOCKED`。
-11. 清理本 tick 額外建立的 child worktree；Codex App execution worktree 只回報，不刪。
-12. 結尾回 exactly one EXIT label。
+2. 重建 current repo snapshot：重新讀 roadmap Active / planned rows、列出 tasks、讀 task 指向的 active spec doc。
+3. 跑基本 worktree audit。
+4. 先跑 Release Completeness Gate：找已完成但未歸檔 / 未 tag / 未清 task 的 spec。
+5. 若 Gate 找到未收尾 spec，NEXT_SKILL 固定為 `$shipping-release SNNN`；只有 Gate 乾淨才用 current repo snapshot 找 active / planned spec。
+6. 選 exactly one NEXT_SKILL，並在回報中寫出選它的 repo evidence。
+7. 呼叫該 skill，讓它完成一個可保存成果。
+8. 跑該 skill 要求的最小必要 verify。
+9. 更新 spec / task / changelog / roadmap 中對應的結果。
+10. 只 stage 本 tick 自己改的檔案。
+11. commit 一個 atomic result，或在不能安全 commit 時回 `BLOCKED`。
+12. 清理本 tick 額外建立的 child worktree；Codex App execution worktree 只回報，不刪。
+13. 結尾回 exactly one EXIT label。
 
 ## Write Scope
 
