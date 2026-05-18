@@ -216,6 +216,16 @@ components:
     padding: "9px 12px"
     focus: "border-color rgba(127,119,221,.5), box-shadow 0 0 0 2px rgba(127,119,221,.08)"
 
+  required-field:
+    applies-to:
+      - "PublishPage required fields: 技能名稱, Skill 套件 / SKILL.md 內容, 分類"
+      - "SkillEditPage required fields: 分類, upload mode Skill 套件"
+    required-mark: "Visible `*` or small dot with `aria-hidden=true`, plus adjacent sr-only text `必填`"
+    inline-error: "Use short zh-TW field messages such as `請填寫分類`, `請貼上 SKILL.md 內容`, `請選擇 zip 或 SKILL.md`, `分類不可空白`"
+    a11y: "When an error is visible, set `aria-invalid=true` on the input/textarea/dropzone wrapper and include the error id in `aria-describedby`; preserve any help-text id in the same attribute."
+    disabled-action-rule: "Disabled primary buttons must not be the only explanation; the responsible field needs inline text."
+    palette-rule: "Required marks and inline errors use the danger text token only. Do not add required-state colors to the category palette or risk palette."
+
   search-hero:
     treatment: BorderBeam
     inner: "background bg-2"

@@ -47,5 +47,12 @@ And（而且）required mark 顏色不得混進 category palette / risk palette 
 - S197-T02 PASS
 - S197-T03 PASS
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-18
+Test: `AC-S197-8` (`docs/grimo/ui/DESIGN.md`)
+Files changed:
+- `docs/grimo/ui/DESIGN.md` (modified)
+Notes: RED confirmed with `rg -n "必填|aria-describedby|required" docs/grimo/ui/DESIGN.md` returning no matches; GREEN confirmed with the same command returning the `required-field` rule, `必填`, `aria-invalid`, `aria-describedby`, and the palette separation rule.
