@@ -1,5 +1,30 @@
 # Changelog
 
+## [v4.84.0] — S201 Quality Score 單項狀態顯示（2026-05-19）
+
+### Changed
+
+- **Quality tab readable status** — `QualityTabV2` 小項右側改成 12px 綠 / 黃 / 紅圓圈 + 文字，不再只顯示孤立圓點。
+- **Validation uses 100-point labels** — Validation 小項現在顯示 `通過 100/100`、`注意 80/100`、`需修正 0/100`。
+- **Implementation / Activation use 3-point labels** — Implementation 與 Activation 小項現在顯示 `滿分 3/3`、`可接受 2/3`、`偏弱 1/3`、`缺失 0/3`。
+- **Warnings are status rows** — `validation.dimensions.warnings` 會顯示為 `Warnings` + `提醒 {count}`，不再被當成 `DimensionScore`，畫面不會出現 `undefined/3`。
+- **Quality status design sync** — `docs/grimo/ui/DESIGN.md` 與 prototype 已記錄 `quality-status-indicator`、12px 圓圈、三色分數狀態與「不是 risk/category palette」規則。
+
+### Verification
+
+- `cd frontend && npm test -- QualityTabV2 ScoreStatusIndicator`：**PASS** — 2 test files / 15 tests。
+- `cd frontend && npm run verify`：**PASS** — ESLint `--max-warnings 0` + `tsc -b`。
+- `rg -n "quality-status|ScoreStatusIndicator|通過 100/100|滿分 3/3" docs/grimo/ui/DESIGN.md`：**PASS**。
+- `rg -n "通過 100/100|注意 80/100|滿分 3/3|12px" "docs/grimo/ui/prototype/Skills Hub Skill Detail Quality Signals Research.html"`：**PASS**。
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.4%，covered=4885 / total=5591）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Production deploy：not run in this release tick；S201 has local release evidence only。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-18-S201-quality-score-status-indicators.md` → `docs/grimo/specs/archive/2026-05-18-S201-quality-score-status-indicators.md`
+- `docs/grimo/tasks/2026-05-18-S201-*.md` 已刪除。
+- Final size re-score：XS(5) → XS(8)，原因是實際改動包含 5 個 frontend production files、2 個 frontend test files、2 個 UI docs/prototype files，並重跑完整 `verify-all.sh`（backend, frontend, Playwright, AOT/native image）。
+
 ## [v4.83.0] — S200 Request Requester Display Identity（2026-05-19）
 
 ### Changed

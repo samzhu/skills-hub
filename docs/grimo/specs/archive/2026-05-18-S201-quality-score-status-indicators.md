@@ -1,6 +1,6 @@
 # S201: Quality Score 單項狀態顯示
 
-> 規格：S201 | 大小：XS(5) | 狀態：✅ QA PASS
+> 規格：S201 | 大小：XS(8) | 狀態：✅ shipped v4.84.0
 > 日期：2026-05-18
 > 對應：PRD P1「技能詳情頁」、S135a Backend Quality Score、S142a SkillDetailPage v2、S198 Recommendations Not Hard Errors
 
@@ -413,4 +413,25 @@ POC：not required。
 
 QA verdict：PASS。
 
-Next action：`$shipping-release S201`。Release 時仍需清 `docs/grimo/tasks/` 的 S201 task files、歸檔 spec、更新 `docs/grimo/CHANGELOG.md` / `spec-roadmap.md` shipped row，並建立下一個版本 tag。
+Release note：`$shipping-release S201` 已於 2026-05-19 完成；S201 task files 已刪除，spec 已歸檔，`CHANGELOG.md` / `spec-roadmap.md` / `v4.84.0` tag 已同步。
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 1 | 現有 React / TypeScript / RTL test 即可完成；沒有新 framework、DB schema、API endpoint 或外部服務。 |
+| Uncertainty | 1 | 1 | production `/scores` shape 與 source code 已確認：Validation 是 0-100，Implementation / Activation 是 0-3，`warnings` 是 `string[]`。 |
+| Dependencies | 1 | 1 | 只依賴已 shipped 的 S135a / S142a / S198 contract；沒有新增 package。 |
+| Scope | 1 | 2 | 實際改動包含 5 個 frontend production files、2 個 frontend test files、2 個 UI docs/prototype files，加上 spec/task/release docs。 |
+| Testing | 1 | 2 | AC 由 `ScoreStatusIndicator` / `QualityTabV2` component tests 與 docs grep 驗證，release gate 另跑完整 `verify-all.sh`。 |
+| Reversibility | 1 | 1 | 回滾只恢復 Quality tab 狀態顯示與 frontend type guard；不改資料庫或 API contract。 |
+| **Total** | **6 / XS** | **8 / XS** | Bucket 不變；roadmap 點數以實際 XS(8) 記錄。 |
+
+### Release — 2026-05-19
+
+- Version: v4.84.0
+- Targeted frontend: `cd frontend && npm test -- QualityTabV2 ScoreStatusIndicator` PASS — 2 test files / 15 tests。
+- Frontend compile/lint: `cd frontend && npm run verify` PASS — ESLint `--max-warnings 0` + `tsc -b`。
+- UI docs check: DESIGN / prototype grep PASS — 找到 `quality-status-indicator`、`ScoreStatusIndicator`、`通過 100/100`、`注意 80/100`、`滿分 3/3`、`12px`。
+- Local release verification: `./scripts/verify-all.sh` PASS — V01=PASS、V02=INFO（line coverage 87.4%，covered=4885 / total=5591）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Production deploy: not run in this release tick；S201 has local release evidence only。
