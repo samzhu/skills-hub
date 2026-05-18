@@ -62,5 +62,16 @@ And（而且）修改 `requesterDisplayName` 不會影響 `canDelete`
 ## 前置條件
 - 無
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-19
+Test: `detail_requestIncludesRequesterDisplayFields`、`list_requestIncludesRequesterDisplayFields`、`detail_canDeleteUsesRequesterIdNotDisplayName` (`backend/src/test/java/io/github/samzhu/skillshub/community/RequestDetailQueryTest.java`)
+Files changed:
+- `backend/src/main/java/io/github/samzhu/skillshub/community/RequestQueryController.java` (modified)
+- `backend/src/test/java/io/github/samzhu/skillshub/community/RequestDetailQueryTest.java` (modified)
+Notes:
+- RED: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.community.RequestDetailQueryTest` failed with missing JSON paths `requesterDisplayName` / `requesterHandle`.
+- GREEN: same command PASS — `10 tests completed`，`BUILD SUCCESSFUL in 2m 13s`。
+- `canDelete` 仍用 `requesterId` 比對 current user；display 欄位只回給 UI 顯示。

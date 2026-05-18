@@ -51,8 +51,12 @@ class RequestQueryController {
 
     @GetMapping
     List<RequestResponse> list(@RequestParam(required = false) String sort) {
-        return service.listRequests(sort).stream()
-                .map(RequestResponse::from)
+        var requests = service.listRequests(sort);
+        var requesterDisplays = userDisplayService.resolveAll(requests.stream()
+                .map(Request::getRequesterId)
+                .toList(), false);
+        return requests.stream()
+                .map(request -> RequestResponse.from(request, requesterDisplays.get(request.getRequesterId())))
                 .toList();
     }
 
@@ -68,7 +72,8 @@ class RequestQueryController {
                 .map(comment -> CommentDto.from(comment, authorDisplays.get(comment.getAuthorId())))
                 .toList();
         var canDelete = isAuthenticated() && users.current().userId().equals(request.getRequesterId());
-        return RequestDetailResponse.from(request, comments, canDelete);
+        var requesterDisplay = userDisplayService.resolve(request.getRequesterId(), false);
+        return RequestDetailResponse.from(request, requesterDisplay, comments, canDelete);
     }
 
     /**
@@ -89,30 +94,39 @@ class RequestQueryController {
             String title,
             String description,
             String requesterId,
+            String requesterDisplayName,
+            String requesterHandle,
             long voteCount,
             Instant createdAt,
             Instant updatedAt
     ) {
-        static RequestResponse from(Request r) {
+        static RequestResponse from(Request r, UserDisplay requesterDisplay) {
             return new RequestResponse(r.getId(), r.getTitle(), r.getDescription(), r.getRequesterId(),
+                    requesterDisplay == null ? null : requesterDisplay.displayName(),
+                    requesterDisplay == null ? null : requesterDisplay.handle(),
                     r.getVoteCount(), r.getCreatedAt(), r.getUpdatedAt());
         }
     }
 
-    /** S156c AC-4 — detail DTO；list response superset（多 comments + canDelete）。 */
+    /** S156c AC-4 + S200 — detail DTO；requester display 欄位只做畫面文字。 */
     record RequestDetailResponse(
             String id,
             String title,
             String description,
             String requesterId,
+            String requesterDisplayName,
+            String requesterHandle,
             long voteCount,
             Instant createdAt,
             Instant updatedAt,
             List<CommentDto> comments,
             boolean canDelete
     ) {
-        static RequestDetailResponse from(Request r, List<CommentDto> comments, boolean canDelete) {
+        static RequestDetailResponse from(Request r, UserDisplay requesterDisplay, List<CommentDto> comments,
+                boolean canDelete) {
             return new RequestDetailResponse(r.getId(), r.getTitle(), r.getDescription(), r.getRequesterId(),
+                    requesterDisplay == null ? null : requesterDisplay.displayName(),
+                    requesterDisplay == null ? null : requesterDisplay.handle(),
                     r.getVoteCount(), r.getCreatedAt(), r.getUpdatedAt(), comments, canDelete);
         }
     }

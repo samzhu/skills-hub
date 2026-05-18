@@ -73,6 +73,48 @@ class RequestDetailQueryTest {
     }
 
     @Test
+    @Tag("AC-S200-1")
+    @DisplayName("AC-S200-1: request detail API 回 requester display companion")
+    void detail_requestIncludesRequesterDisplayFields() throws Exception {
+        seedUser("u_aa1111", "alice@example.com", "Alice Chen", "alice");
+        var requestId = requestService.createRequest("字幕工具", "需要 srt helper", "u_aa1111");
+
+        mockMvc.perform(get("/api/v1/requests/" + requestId).with(user("u_aa1111")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requesterId").value("u_aa1111"))
+                .andExpect(jsonPath("$.requesterDisplayName").value("Alice Chen"))
+                .andExpect(jsonPath("$.requesterHandle").value("alice"));
+    }
+
+    @Test
+    @Tag("AC-S200-2")
+    @DisplayName("AC-S200-2: request list API 回 requester display companion")
+    void list_requestIncludesRequesterDisplayFields() throws Exception {
+        seedUser("u_bb2222", "bob@example.com", "Bob Lin", "bob");
+        var requestId = requestService.createRequest("部署協助", "需要 cloud run helper", "u_bb2222");
+
+        mockMvc.perform(get("/api/v1/requests"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(requestId))
+                .andExpect(jsonPath("$[0].requesterId").value("u_bb2222"))
+                .andExpect(jsonPath("$[0].requesterDisplayName").value("Bob Lin"))
+                .andExpect(jsonPath("$[0].requesterHandle").value("bob"));
+    }
+
+    @Test
+    @Tag("AC-S200-4")
+    @DisplayName("AC-S200-4: canDelete 仍用 requesterId 不用 display name")
+    void detail_canDeleteUsesRequesterIdNotDisplayName() throws Exception {
+        seedUser("u_aa1111", "alice@example.com", "Visible Name", "visible");
+        var requestId = requestService.createRequest("刪除權限", "display 欄位不參與權限", "u_aa1111");
+
+        mockMvc.perform(get("/api/v1/requests/" + requestId).with(user("u_aa1111")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requesterDisplayName").value("Visible Name"))
+                .andExpect(jsonPath("$.canDelete").value(true));
+    }
+
+    @Test
     @Tag("AC-4")
     @DisplayName("AC-4 happy: GET as requester (alice) → 200 + comments ASC + canDelete=true")
     void detail_asRequester_canDeleteTrue() throws Exception {
@@ -172,7 +214,11 @@ class RequestDetailQueryTest {
         jdbc.update("""
                 INSERT INTO users (id, oauth_provider, sub, email, name, handle, created_at, last_seen_at)
                 VALUES (?, 'google', ?, ?, ?, ?, NOW(), NOW())
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (id) DO UPDATE
+                SET email = EXCLUDED.email,
+                    name = EXCLUDED.name,
+                    handle = EXCLUDED.handle,
+                    last_seen_at = NOW()
                 """, id, id + "-sub", email, name, handle);
     }
 

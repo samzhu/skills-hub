@@ -245,4 +245,16 @@ E2E：not required for planning — S200 的 user-visible behavior 可由 backen
 
 ## 7. Results
 
-待實作後填寫。
+### 2026-05-19 — S200-T01 backend requester display companion
+
+| Task | 狀態 | 檔案 | 驗證 |
+|---|---|---|---|
+| S200-T01 | PASS | `RequestQueryController.java`, `RequestDetailQueryTest.java` | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.community.RequestDetailQueryTest` PASS — 10 tests completed，`BUILD SUCCESSFUL in 2m 13s` |
+
+實作結果：
+- `GET /api/v1/requests` list row 現在保留 `requesterId`，並多回 `requesterDisplayName` / `requesterHandle`。
+- `GET /api/v1/requests/{id}` detail response 現在保留 `requesterId`，並多回 `requesterDisplayName` / `requesterHandle`。
+- `canDelete` 仍用 `users.current().userId().equals(request.getRequesterId())`，不看 display name。
+
+待辦：
+- S200-T02：前端 `RequestDetailPage` header 改用 requester display 欄位，缺 display data 時不顯示 raw `u_<id>`。
