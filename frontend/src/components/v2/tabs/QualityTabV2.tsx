@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import type { SkillScores, AxisScore } from '@/api/scores'
+import type { SkillScores, AxisScore, DimensionScore } from '@/api/scores'
 import { ScoreDot } from '../shared/ScoreDot'
+import { isDimensionScore } from '../shared/scoreStatus'
 
 const AXIS_LABELS: Record<string, { zh: string; sub: string }> = {
   validation:     { zh: '規格驗證',  sub: 'Specification compliance & completeness' },
@@ -15,6 +16,9 @@ function formatDimName(key: string): string {
 function AxisSection({ axisKey, axis }: { axisKey: string; axis: AxisScore }) {
   const [expanded, setExpanded] = useState(true)
   const label = AXIS_LABELS[axisKey] ?? { zh: axisKey, sub: '' }
+  const dimensionEntries = Object.entries(axis.dimensions).filter(
+    (entry): entry is [string, DimensionScore] => isDimensionScore(entry[1]),
+  )
 
   return (
     <div data-testid={`axis-${axisKey}`} style={{ marginBottom: 24 }}>
@@ -36,8 +40,8 @@ function AxisSection({ axisKey, axis }: { axisKey: string; axis: AxisScore }) {
       </div>
       {/* Dimensions table */}
       <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '0.5px solid var(--line, rgba(255,255,255,0.08))', overflow: 'hidden' }}>
-        {Object.entries(axis.dimensions).map(([key, dim], idx) => (
-          <div key={key} style={{ padding: '10px 14px', borderBottom: idx < Object.keys(axis.dimensions).length - 1 ? '0.5px solid var(--line, rgba(255,255,255,0.08))' : 'none' }}>
+        {dimensionEntries.map(([key, dim], idx) => (
+          <div key={key} style={{ padding: '10px 14px', borderBottom: idx < dimensionEntries.length - 1 ? '0.5px solid var(--line, rgba(255,255,255,0.08))' : 'none' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               <span style={{ fontSize: 12, color: 'var(--ink-2, rgba(238,236,234,0.7))' }}>{formatDimName(key)}</span>
               <ScoreDot score={dim.score} max={3} />

@@ -1,4 +1,5 @@
-import type { SkillScores, AxisScore } from '@/api/scores'
+import type { SkillScores, AxisScore, DimensionScore } from '@/api/scores'
+import { isDimensionScore } from './v2/shared/scoreStatus'
 
 /** S135b §4.4 — axis 名稱中文對照（不可更動）。 */
 const AXIS_LABELS: Record<string, string> = {
@@ -31,6 +32,10 @@ function ScoreDots({ score, max = 3 }: { score: number; max?: number }) {
 }
 
 function AxisSection({ label, axis }: { label: string; axis: AxisScore }) {
+  const dimensionEntries = Object.entries(axis.dimensions).filter(
+    (entry): entry is [string, DimensionScore] => isDimensionScore(entry[1]),
+  )
+
   return (
     <div className="mb-6">
       <div className="mb-2 flex items-center justify-between">
@@ -38,7 +43,7 @@ function AxisSection({ label, axis }: { label: string; axis: AxisScore }) {
         <span className="text-[12px] font-medium text-muted-foreground">{axis.totalScore}%</span>
       </div>
       <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
-        {Object.entries(axis.dimensions).map(([key, dim]) => (
+        {dimensionEntries.map(([key, dim]) => (
           <div key={key}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-[12px] text-muted-foreground">{formatDimName(key)}</span>

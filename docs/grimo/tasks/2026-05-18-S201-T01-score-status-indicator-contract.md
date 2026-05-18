@@ -82,4 +82,22 @@ And（而且）呼叫方必須先用 type guard 判斷，不能直接讀 `value.
 - 無
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-19
+Test: `ScoreStatusIndicator.test.tsx`（`frontend/src/components/v2/shared/ScoreStatusIndicator.test.tsx`）
+Files changed:
+- `frontend/src/api/scores.ts`（modified）— `AxisScore.dimensions` 改成 `Record<string, DimensionScore | string[]>`，讓 `warnings` 不再偽裝成 score object。
+- `frontend/src/components/v2/shared/scoreStatus.ts`（new）— `scoreStatus(...)` 與 `isDimensionScore(...)` contract。
+- `frontend/src/components/v2/shared/ScoreStatusIndicator.tsx`（new）— 12px 圓圈 + 文字狀態 component。
+- `frontend/src/components/v2/shared/ScoreStatusIndicator.test.tsx`（new）— AC-S201-1 / 2 / 4 / 5。
+- `frontend/src/components/QualityTab.tsx`（modified）— 用 `isDimensionScore(...)` 過濾 score rows，避免舊 tab 把 `warnings` 當 score。
+- `frontend/src/components/v2/tabs/QualityTabV2.tsx`（modified）— 用 `isDimensionScore(...)` 過濾 score rows；T02 會接上 warnings row 與三色狀態列。
+RED:
+- `cd frontend && npm test -- ScoreStatusIndicator` failed：`Failed to resolve import "./ScoreStatusIndicator"`，證明 helper/component 尚未存在。
+GREEN:
+- `cd frontend && npm test -- ScoreStatusIndicator` PASS：1 file / 4 tests。
+- `cd frontend && npm test -- ScoreStatusIndicator QualityTabV2` PASS：2 files / 10 tests。
+- `cd frontend && npm run verify` PASS：ESLint `--max-warnings 0` + `tsc -b`。
+Notes: T01 只建立 status contract 與 type guard；Quality tab 的 `ScoreStatusIndicator` 接線、warnings row 顯示與 axis progress 驗證留在 S201-T02。

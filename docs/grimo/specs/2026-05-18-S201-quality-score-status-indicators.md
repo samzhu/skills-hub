@@ -1,6 +1,6 @@
 # S201: Quality Score 單項狀態顯示
 
-> 規格：S201 | 大小：XS(5) | 狀態：⏳ Plan
+> 規格：S201 | 大小：XS(5) | 狀態：⏳ Dev
 > 日期：2026-05-18
 > 對應：PRD P1「技能詳情頁」、S135a Backend Quality Score、S142a SkillDetailPage v2、S198 Recommendations Not Hard Errors
 

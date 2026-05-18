@@ -2,14 +2,17 @@ import { apiFetch, ApiError } from './client'
 
 /** S135b — 品質評分單一維度的分數與解說。 */
 export interface DimensionScore {
-  score: number      // 0-3
+  score: number      // validation: 0-100; implementation/activation: 0-3
   reasoning: string
 }
+
+/** S201 — dimension value can be a score object or warning messages from validation. */
+export type DimensionValue = DimensionScore | string[]
 
 /** 某一評估軸（VALIDATION / IMPLEMENTATION / ACTIVATION）的結果。 */
 export interface AxisScore {
   totalScore: number // 0-100
-  dimensions: Record<string, DimensionScore>
+  dimensions: Record<string, DimensionValue>
 }
 
 /** GET /api/v1/skills/{id}/scores 的回應 shape（S135a shipped；S142b 加 skillScore）。 */
