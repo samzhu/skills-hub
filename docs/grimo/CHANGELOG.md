@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.75.0] — S189 Browse Search Entry Point Verification（2026-05-18）
+
+### Changed
+
+- **Browse request contract evidence** — `/browse` 空白搜尋只打 catalog API，有搜尋文字只打 `GET /api/v1/search/semantic?q=...`，不再把搜尋字串偷偷送到 `/api/v1/skills?keyword=...`。
+- **S189 evidence labels** — frontend tests、hook tests、docs CTA test 與 Playwright semantic path 都改掛 `AC-S189-*` / `@S189`，S178 歷史證據保留在 archived spec。
+- **S186 terminology sync** — S140 Playwright semantic E2E 註解改成 `skills.embedding` / `skills.embedding_*`，對齊 S186 後向量搜尋同表化實作。
+- **Removed search-page drift guard** — source scan 確認 `SearchResultsPage`、intent summary hook/service/controller、`/api/v1/search/intent` 都沒有殘留。
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 86.9%，covered=4828 / total=5554）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Targeted evidence：`cd frontend && npm test -- HomePage App SemanticSearchPage` PASS（4 files / 32 tests）；`cd frontend && npm test -- HomePage App SearchBar SemanticSearchPage useSkillList useDebouncedValue` PASS（7 files / 40 tests）；`cd e2e && npx playwright test --grep @S189` PASS（1 test）；intent summary source scan PASS（no matches）。
+- Production deploy：not run in this release tick；S189 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-16-S189-browse-search-entry-point-verify-ship.md` → `docs/grimo/specs/archive/2026-05-16-S189-browse-search-entry-point-verify-ship.md`
+- `docs/grimo/tasks/2026-05-18-S189-*.md` 已刪除。
+- Final size re-score：S(9) → S(11)，原因是實際 ship 需同步 S186 後 `skills.embedding` 語意、S140 Playwright evidence label、frontend/docs hook labels 與完整 `verify-all.sh` gate。
+
 ## [v4.74.0] — S190 Security Risk Reason UI（2026-05-17）
 
 ### Changed

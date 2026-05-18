@@ -86,8 +86,8 @@ function renderAppAt(initialPath: string) {
   )
 }
 
-describe('S178 AC-8: /search route removed', () => {
-  it('AC-S178-8: /search?q=dd falls through to NotFoundPage', () => {
+describe('S189 AC-6: /search route removed', () => {
+  it('AC-S189-6: /search?q=dd falls through to NotFoundPage', () => {
     renderAppAt('/search?q=dd')
 
     expect(screen.getByText('404')).toBeInTheDocument()

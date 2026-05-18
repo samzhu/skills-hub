@@ -27,14 +27,14 @@ describe('useSkillList', () => {
     })
   })
 
-  it('AC-S178-2: enabled false stops catalog list fetch', () => {
+  it('AC-S189-2: enabled false stops catalog list fetch', () => {
     renderHook(() => useSkillList({ page: 0, size: 20 }, { enabled: false }), {
       wrapper: createWrapper(),
     })
     expect(mockFetchSkills).not.toHaveBeenCalled()
   })
 
-  it('AC-S178-1: existing callers without options still fetch catalog list', async () => {
+  it('AC-S189-1: existing callers without options still fetch catalog list', async () => {
     const { result } = renderHook(() => useSkillList({ page: 0, size: 20 }), {
       wrapper: createWrapper(),
     })

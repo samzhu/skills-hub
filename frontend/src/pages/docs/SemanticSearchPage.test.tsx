@@ -24,8 +24,8 @@ beforeEach(() => {
   } as Response)
 })
 
-describe('SemanticSearchPage — S178 browse search routing docs', () => {
-  it('AC-S178-10: docs CTA opens browse as the semantic search entry', () => {
+describe('SemanticSearchPage — S189 browse search routing docs', () => {
+  it('AC-S189-7: docs CTA opens browse as the semantic search entry', () => {
     renderPage()
 
     const cta = screen.getByRole('link', { name: '前往瀏覽頁試試語意搜尋 →' })

@@ -7,7 +7,7 @@ describe('useDebouncedValue', () => {
     vi.useRealTimers()
   })
 
-  it('AC-S178-3: debounce publishes only the final query', () => {
+  it('AC-S189-3: debounce publishes only the final query', () => {
     vi.useFakeTimers()
     const { result, rerender } = renderHook(
       ({ value }) => useDebouncedValue(value, 300),

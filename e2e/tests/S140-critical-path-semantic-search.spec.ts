@@ -1,7 +1,7 @@
 // S140 critical-path E2E — AC-5 (PRD P5: Semantic search routing).
 //
 // /browse 搜尋列 → useSemanticSearch hook → backend
-// SemanticSearchService → vector_store cosine search。E2E profile：
+// SemanticSearchService → skills.embedding same-row cosine search。E2E profile：
 //   1) E2EEmbeddingConfig.@Primary word-overlap stub embedder（S168 升級）
 //   2) skillshub.search.semantic-similarity-threshold = 0.1（過濾雜訊但保留 overlap）
 //
@@ -14,13 +14,13 @@
 import { test, expect, profiles } from './_fixtures';
 
 test.describe('S140 — E2E Critical Path Backfill', () => {
-  test('AC-5: 自然語言查詢觸發語意搜尋路徑並回傳穩定排序結果 @S140 @S178 @ac-5 @happy-path @profile-paged', async ({
+  test('AC-5 / AC-S189-8: 自然語言查詢觸發語意搜尋路徑並回傳穩定排序結果 @S140 @S189 @ac-5 @ac-8 @happy-path @profile-paged', async ({
     page,
     request,
   }) => {
     await test.step('Given platform seeded with 10 skills (paged profile, mixed categories)', async () => {
       await profiles.paged(request);
-      // SearchProjection async listener 處理 SkillCreatedEvent → vector_store row insert
+      // SearchProjection async listener 處理 SkillCreatedEvent → skills.embedding_* update
       // 加 buffer 等 Modulith outbox AFTER_COMMIT listener catch up（10 skill seed × 平均 200ms async listener）
       await page.waitForTimeout(2000);
     });

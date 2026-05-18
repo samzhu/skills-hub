@@ -17,7 +17,7 @@ describe('SearchBar', () => {
     expect(input.value).toBe('docker')
   })
 
-  it('AC-S178-12: placeholder matches semantic entry', () => {
+  it('AC-S189-2: placeholder matches semantic entry', () => {
     render(<SearchBar value="" onChange={vi.fn()} />)
     expect(screen.getByPlaceholderText(placeholder)).toBeInTheDocument()
     expect(screen.queryByPlaceholderText('搜尋名稱、描述或分類...')).not.toBeInTheDocument()

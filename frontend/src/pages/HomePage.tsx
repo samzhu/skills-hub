@@ -58,14 +58,14 @@ export function HomePage() {
   const isCatalogMode = !hasSearchInput
   const isDebouncingSearch = hasSearchInput && debouncedQuery !== trimmedQuery
 
-  // S178: semantic mode waits for the debounced query; catalog mode passes blank to keep the hook disabled.
+  // S189: semantic mode waits for the debounced query; catalog mode passes blank to keep the hook disabled.
   const {
     data: semanticResults,
     isLoading: semanticLoading,
     error: semanticError,
   } = useSemanticSearch(isSemanticMode ? debouncedQuery : '')
 
-  // S178: catalog mode never sends keyword fallback while the search box has text.
+  // S189: catalog mode never sends keyword fallback while the search box has text.
   // S100b: sort param 改 server-side 派遣 — backend Spring Pageable 接收 sort=field,direction
   const { data: skillsPage, isLoading: listLoading, error: listError } = useSkillList({
     category: category ?? undefined,

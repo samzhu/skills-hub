@@ -193,8 +193,8 @@ describe('HomePage — S104 filter-active 0-hits UX', () => {
   })
 })
 
-describe('HomePage — S178 browse search request routing', () => {
-  it('AC-S178-1: initial browse uses catalog API only', async () => {
+describe('HomePage — S189 browse search request routing', () => {
+  it('AC-S189-1: initial browse uses catalog API only', async () => {
     renderPage('/browse')
     await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
 
@@ -206,7 +206,7 @@ describe('HomePage — S178 browse search request routing', () => {
     expect(screen.getByRole('button', { name: '下一頁' })).toBeInTheDocument()
   })
 
-  it('AC-S178-2/3: search input uses only final debounced semantic API', async () => {
+  it('AC-S189-2/3: search input uses only final debounced semantic API', async () => {
     renderPage('/browse')
     await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
     ;((globalThis as any).fetch as ReturnType<typeof vi.fn>).mockClear()
@@ -254,7 +254,7 @@ describe('HomePage — S178 browse search request routing', () => {
     expect(urls.some((u) => u.includes('/api/v1/skills?') && u.includes('keyword=dd'))).toBe(false)
   })
 
-  it('AC-S178-4: semantic zero result does not keyword-fallback', async () => {
+  it('AC-S189-4: semantic zero result does not keyword-fallback', async () => {
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/v1/skills')) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(mockSkillsPage) } as Response)
@@ -282,7 +282,7 @@ describe('HomePage — S178 browse search request routing', () => {
     expect(screen.getByText(/清除搜尋並瀏覽分類/)).toBeInTheDocument()
   })
 
-  it('AC-S178-5: semantic error does not keyword-fallback', async () => {
+  it('AC-S189-4: semantic error does not keyword-fallback', async () => {
     ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes('/api/v1/skills')) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(mockSkillsPage) } as Response)
@@ -309,7 +309,7 @@ describe('HomePage — S178 browse search request routing', () => {
     expect(urls.some((u) => u.includes('/api/v1/skills?') && u.includes('keyword=dd'))).toBe(false)
   })
 
-  it('AC-S178-6/7: clearing search returns to unfiltered catalog API from /skills alias', async () => {
+  it('AC-S189-5: clearing search returns to unfiltered catalog API from /skills alias', async () => {
     renderPage('/skills')
     await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: /無風險/ }))
