@@ -1,6 +1,6 @@
 # S200: Request Requester Display Identity
 
-> 規格：S200 | 大小：XS(4) | 狀態：⏳ QA
+> 規格：S200 | 大小：XS(4) | 狀態：✅ QA PASS / local release PASS
 > 日期：2026-05-18
 > 對應：S192 作者顯示名稱一致性收斂、S156c Request voting board、S196 Request Board tabs
 
@@ -217,8 +217,7 @@ cd frontend && npm test -- RequestDetailPage.test.tsx
 | Task | Scope | BDD anchor |
 |---|---|---|
 | T01 | Backend request DTO display companion | Alice 開需求後 `GET /requests/{id}` 與 `GET /requests` 都回 `Alice Chen` display 欄位。 |
-| T02 | Frontend detail header render | Alice 開的需求 header 顯示 `Alice Chen · 日期`，整頁不出現 `u_alice`。 |
-| T03 | Missing display defensive test | 後端或 fixture 缺 display data 時，UI 只顯日期，不把 `requesterId` 當 fallback。 |
+| T02 | Frontend detail header render + missing display defensive test | Alice 開的需求 header 顯示 `Alice Chen · 日期`，整頁不出現 `u_alice`；display data 缺失時只顯日期，不把 `requesterId` 當 fallback。 |
 
 POC: not required。這是 S192 已驗證過的 display companion pattern 延伸，不新增 schema、library、framework API 或 browser-only 行為。
 
@@ -273,4 +272,30 @@ RED / GREEN：
 - GREEN：same command PASS — 9 tests passed，`Test Files 1 passed`。
 
 下一步：
-- S200-T01 / S200-T02 都是 PASS；local implementation done，下一輪進 `$verifying-quality S200`。
+- S200-T01 / S200-T02 都是 PASS；local implementation done，已進入 `$verifying-quality S200`。
+
+### 2026-05-19 — QA Review / local release evidence
+
+| 檢查 | 結果 | 證據 |
+|---|---|---|
+| S200 backend command | PASS | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.community.RequestDetailQueryTest` -> `BUILD SUCCESSFUL in 2m 13s`。 |
+| S200 frontend command | PASS | `cd frontend && npm test -- RequestDetailPage.test.tsx` -> 9 tests passed，`Test Files 1 passed`。 |
+| Repo full local check | PASS | `./scripts/verify-all.sh` -> `Results: V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS`；`Verdict: ✅ all CRITICAL passed; exit=0`。 |
+
+AC evidence:
+
+| AC | 結果 | 證據 |
+|---|---|---|
+| AC-S200-1 | PASS | `RequestDetailQueryTest` 的 `@Tag("AC-S200-1")` 檢查 detail JSON 回 `requesterDisplayName` / `requesterHandle`。 |
+| AC-S200-2 | PASS | `RequestDetailQueryTest` 的 `@Tag("AC-S200-2")` 檢查 list JSON row 回 requester display companion。 |
+| AC-S200-3 | PASS | `RequestDetailPage.test.tsx` 的 `AC-S200-3` 檢查 header 顯示 `Alice Chen · 2026/5/3` 且畫面不含 `u_alice`。 |
+| AC-S200-4 | PASS | `RequestDetailQueryTest` 的 `@Tag("AC-S200-4")` 檢查 `canDelete` 仍由 `requesterId` 比對 current user。 |
+| AC-S200-5 | PASS | `RequestDetailPage.test.tsx` 的 `AC-S200-5` 檢查 display data 缺失時只顯日期且畫面不含 `u_missing`。 |
+
+Source scan:
+- `rg "@Tag(\"AC-S200|AC-S200-" ...` 找到 S200 後端與前端驗收標籤。
+- `RequestDetailPage.tsx` header 現在用 `getDisplayName(...)` 產生 requester label；`requesterId` 只作為 helper input 與權限/API id，不直接當畫面標題文字。
+
+Manual browser step: not required。S200 沒新增 route、test seed endpoint、schema migration、credential injection 或真瀏覽器-only workflow；API JSON 與 React DOM text 已由上方 command 驗證，`./scripts/verify-all.sh` 的 V07 也已 PASS。
+
+Verdict: PASS — local release PASS；下一步 `$shipping-release S200`。
