@@ -1,6 +1,6 @@
 # S200: Request Requester Display Identity
 
-> 規格：S200 | 大小：XS(4) | 狀態：✅ QA PASS / local release PASS
+> 規格：S200 | 大小：XS(8) | 狀態：✅ shipped v4.83.0
 > 日期：2026-05-18
 > 對應：S192 作者顯示名稱一致性收斂、S156c Request voting board、S196 Request Board tabs
 
@@ -299,3 +299,23 @@ Source scan:
 Manual browser step: not required。S200 沒新增 route、test seed endpoint、schema migration、credential injection 或真瀏覽器-only workflow；API JSON 與 React DOM text 已由上方 command 驗證，`./scripts/verify-all.sh` 的 V07 也已 PASS。
 
 Verdict: PASS — local release PASS；下一步 `$shipping-release S200`。
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 1 | 沿用 S192 的 `UserDisplayService` 與 `getDisplayName(...)`，沒有新框架、schema 或外部 API。 |
+| Uncertainty | 1 | 1 | bug 來源明確：request detail header 直接 render `requesterId`；修法是既有 display companion pattern 延伸。 |
+| Dependencies | 1 | 1 | 只依賴已 shipped 的 S192 / S156c / S196 行為，沒有新增套件。 |
+| Scope | 1 | 2 | 實際改 2 backend files + 3 frontend files，並同步 S200 spec / roadmap / DESIGN release docs。 |
+| Testing | 1 | 2 | AC 由 backend MockMvc JSON tests + frontend React page tests 覆蓋；release gate 另跑完整 `verify-all.sh`。 |
+| Reversibility | 1 | 1 | 回滾只恢復舊 request display contract / header label，不改資料庫或 request lifecycle。 |
+| **Total** | **6 / XS** | **8 / XS** | Bucket 不變；roadmap 點數以實際 XS(8) 記錄。 |
+
+### Release — 2026-05-19
+
+- Version: v4.83.0
+- Targeted backend: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.community.RequestDetailQueryTest` PASS — `BUILD SUCCESSFUL in 2m 17s`；JUnit XML 顯示 10 tests / 0 failures / 0 errors。
+- Targeted frontend: `cd frontend && npm test -- RequestDetailPage.test.tsx` PASS — 1 file / 9 tests。
+- Local release verification: `./scripts/verify-all.sh` PASS — V01=PASS、V02=INFO（line coverage 87.3%，covered=4883 / total=5591）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Production deploy: not run in this release tick；S200 has local release evidence only。

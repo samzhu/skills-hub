@@ -439,6 +439,7 @@ pages:
     prototype: "derived detail page; no standalone prototype"
     status: "implemented"
     beam: []
+    note: "S200 implemented: header meta renders requesterDisplayName/requesterHandle via getDisplayName(...); missing display data shows only the date and never renders raw requesterId."
 
   - component: "NotificationsPage"
     route: "/notifications"

@@ -1,5 +1,27 @@
 # Changelog
 
+## [v4.83.0] — S200 Request Requester Display Identity（2026-05-19）
+
+### Changed
+
+- **Request API requester display companion** — `GET /api/v1/requests` 與 `GET /api/v1/requests/{id}` 保留 `requesterId`，並多回 `requesterDisplayName` / `requesterHandle`。
+- **Request detail human label** — `/requests/:id` header 現在顯示 `Alice Chen · 2026/5/3` 這類人類可讀 label；display data 缺失時只顯日期，不 fallback 顯示 `u_<id>`。
+- **Delete ownership unchanged** — `canDelete` 仍用 current user id 對 `requesterId`，display fields 不參與刪除權限判斷。
+- **Request detail UI docs synced** — `docs/grimo/ui/DESIGN.md` 的 `RequestDetailPage` note 已補上 requester display identity 規則。
+
+### Verification
+
+- `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.community.RequestDetailQueryTest`：**PASS** — `BUILD SUCCESSFUL in 2m 17s`；JUnit XML 顯示 10 tests / 0 failures / 0 errors。
+- `cd frontend && npm test -- RequestDetailPage.test.tsx`：**PASS** — 1 file / 9 tests。
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.3%，covered=4883 / total=5591）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- Production deploy：not run in this release tick；S200 has local release evidence only.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-18-S200-request-requester-display-identity.md` → `docs/grimo/specs/archive/2026-05-18-S200-request-requester-display-identity.md`
+- `docs/grimo/tasks/2026-05-18-S200-*.md` 已刪除。
+- Final size re-score：XS(4) → XS(8)，原因是實際改動為 2 backend + 3 frontend files，AC 由 backend MockMvc JSON tests 與 frontend React page tests 覆蓋，並重跑完整 `verify-all.sh`（backend, frontend, Playwright, AOT/native image）。
+
 ## [v4.82.0] — S199 Publish Failed Actionable Validation Copy（2026-05-19）
 
 ### Changed

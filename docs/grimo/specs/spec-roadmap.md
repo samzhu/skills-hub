@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-19（S200 QA PASS / local release PASS；next `$shipping-release S200`）
+> 最後更新：2026-05-19（S200 shipped v4.83.0；next `$planning-tasks S201`）
 
 ## 使用說明
 
@@ -42,7 +42,6 @@
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⛔ superseded 2026-05-16 — 取代為 S189（舊 spec 已有 T01-T05/QA 歷史，但未 ship；關閉以免干擾 S186→S187 主線） |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
-| S200 | Request requester display identity（需求詳情 header 不顯 `u_<id>`；request DTO 補 requesterDisplayName/requesterHandle） | XS(4) | S192 ✅, S156c ✅, S196 ✅ | ⏳ Release — QA PASS / local release PASS；next `$shipping-release S200` |
 | S201 | Quality Score 單項狀態顯示（Quality tab 圓點改為綠/黃/紅 12px 圓圈 + 分數文字；Validation 用 100/100，Implementation/Activation 用 3/3） | XS(5) | S135a ✅, S142a ✅, S198 ✅ | ⏳ Plan — task files T01-T03 ready；manual mode stops before implementation |
 ---
 
@@ -98,6 +97,7 @@
 | v4.80.0 | S197 (Required field inline cues) | ✅ shipped 2026-05-19 — Publish/Edit required mark + inline missing-field copy；`verify-all.sh` 全綠 |
 | v4.81.0 | S198 (SKILL.md recommendations not hard errors) | ✅ shipped 2026-05-19 — 500 行等官方建議不擋 upload；warning + quality 扣分；`verify-all.sh` 全綠 |
 | v4.82.0 | S199 (Publish Failed Actionable Validation Copy) | ✅ shipped 2026-05-19 — failed page 第一屏顯示 validation 具體原因與下一步；`verify-all.sh` 全綠 |
+| v4.83.0 | S200 (Request requester display identity) | ✅ shipped 2026-05-19 — request detail header 顯示 requesterDisplayName/requesterHandle，不再顯示 `u_<id>`；`verify-all.sh` 全綠 |
 
 ---
 
@@ -278,6 +278,7 @@
 | S197 | 必填欄位即時提示 UX | S(10) | v4.80.0 |
 | S198 | SKILL.md 建議不擋上傳 | XS(7) | v4.81.0 |
 | S199 | Publish failed actionable validation copy | XS(7) | v4.82.0 |
+| S200 | Request requester display identity | XS(8) | v4.83.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |
