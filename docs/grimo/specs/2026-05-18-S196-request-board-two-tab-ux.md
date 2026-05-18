@@ -1,6 +1,6 @@
 # S196: Request Board 兩頁籤 UX
 
-> 規格：S196 | 大小：XS(8) | 狀態：Approved-for-Dev
+> 規格：S196 | 大小：XS(8) | 狀態：QA-PASS
 > 日期：2026-05-18
 > 對應：PRD §P8 / S156c / `docs/grimo/ui/prototype/Skills Hub Request Board.html`
 
@@ -14,7 +14,7 @@
 
 ```
 /requests
-  ├─ 瀏覽需求：搜尋 / 排序 / 我也要 / 需求排行 / 勇者排行提示
+  ├─ 瀏覽需求：票數最高 / 最新 / 我也要 / 需求排行 / detail link
   └─ 我要開需求：inline form 發起需求，不再跳 modal
 ```
 
@@ -44,7 +44,7 @@
 | `docs/grimo/PRD.md` §P8 | Request Board 的產品目的：使用者公開發起需求，社群投票決定優先級。舊 PRD 提過 claim/fulfill，但 S156c 已取消該流程。 | UI 文案要聚焦「發起需求 + 我也要投票」，不要再把頁面做成接案系統。 |
 | `docs/grimo/specs/archive/2026-05-12-S156c-request-voting-board.md` | S156c 明確把 Request 從 post → claim → fulfill 改成 post → vote / comment。`status`、`claimerId`、`fulfilledSkillId` 已移除。 | 本 spec 不新增「尚無勇者 / 接手中 / 已結案」主頁籤，也不傳 `?status=` query。 |
 | `frontend/src/pages/RequestBoardPage.tsx` | 現在頁面只顯示 header、`發起新需求` CTA、列表 row，create flow 是 modal。 | 改成 two-tab page；`CreateRequestModal` 可被 inline panel 取代。 |
-| `frontend/src/api/skills.ts` | `fetchRequests({sort})` 只支援 `votes | created`；`SkillRequest` 沒有 status field。 | 排序 controls 只做 `票數最高` / `最新` / local `我投過` hint，不設 status filter。 |
+| `frontend/src/api/skills.ts` | `fetchRequests({sort})` 只支援 `votes | created`；`SkillRequest` 沒有 status field。 | 排序 controls 只做 `票數最高` / `最新`，不設 status filter。 |
 | `frontend/src/components/VoteButton.tsx` | Vote button already has optimistic toggle、`aria-pressed`、server response sync。 | 需求卡沿用 `VoteButton`，不重寫投票狀態。 |
 | `docs/grimo/ui/DESIGN.md` | `/requests` prototype source 是 `docs/grimo/ui/prototype/Skills Hub Request Board.html`。 | prototype 已更新成兩頁籤示意；implementation 要同步該方向。 |
 | [WAI-ARIA APG Tabs Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/) | Tabs 是一組只顯示一個 panel 的內容；active tab 要 `aria-selected=true`，其他 tab 要 `false`；APG 也要求 `tablist` / `tab` / `tabpanel` roles 與 `aria-controls` / `aria-labelledby` 對應。 | `瀏覽需求` / `我要開需求` 要用 `role="tablist"`、`role="tab"`、`role="tabpanel"`，active tab 以 `aria-selected` 標示；panel 用 `aria-labelledby` 接回 tab。 |
@@ -93,10 +93,10 @@ Desktop:
 
 瀏覽需求 tab
 ┌──────────────────────────────┬───────────────────┐
-│ 搜尋框 [票數最高] [最新] [我投過] │ 需求排行榜        │
+│ [票數最高] [最新]               │ 需求排行榜        │
 │ ┌我也要 38│需求 title / desc│按鈕┐ │ 1. 月報抓數據 38 │
 │ ┌我也要 24│需求 title / desc│按鈕┐ │ 2. Gradle... 24  │
-│ ┌我也要 19│需求 title / desc│按鈕┐ │ 勇者排行榜        │
+│ ┌我也要 19│需求 title / desc│按鈕┐ │ detail → 留言頁    │
 └──────────────────────────────┴───────────────────┘
 
 我要開需求 tab
@@ -104,8 +104,7 @@ Desktop:
 │ 我要開需求 form               │ 送出後會發生什麼   │
 │ - 需求標題                    │ 1. 出現在瀏覽需求 │
 │ - 工作問題                    │ 2. 票數推高排序   │
-│ - 希望 skill 做到什麼          │ 3. 作者自願接手   │
-│ - 分類                        │                   │
+│                               │ 3. 大家可留言補充 │
 │ [送出需求]                    │                   │
 └──────────────────────────────┴───────────────────┘
 ```
@@ -116,7 +115,7 @@ Mobile:
 [瀏覽需求 42]
 [我要開需求]
 
-瀏覽需求：搜尋 → chips → request cards → rankings
+瀏覽需求：sort chips → request cards → rankings
 我要開需求：form → rule cards
 ```
 
@@ -314,4 +313,41 @@ Execution notes:
 
 ## 7. Implementation Results
 
-Pending — added after task implementation and QA.
+### 7.1 Verdict
+
+`$verifying-quality S196` 在 2026-05-18 完成：QA PASS。
+
+S196 是 frontend-only request board UX 調整。這次沒有新增 DB migration、後端 endpoint、後端狀態欄位、Playwright 測試檔或 production deploy 步驟；既有 `verify-all.sh` 的 V07 happy-path E2E 已確認現有關鍵瀏覽器流程仍可跑完。
+
+### 7.2 Implemented Tasks
+
+| Task | Result | Evidence |
+|---|---|---|
+| `S196-T01` Request Board browse tabs and ranking | PASS | `docs/grimo/tasks/2026-05-18-S196-T01-request-board-browse-tabs.md` 記錄 PASS；`frontend/src/pages/RequestBoardPage.tsx` 提供 two-tab shell、`sort=votes|created`、需求卡、投票與排行榜。 |
+| `S196-T02` Inline request creation panel and design sync | PASS | `docs/grimo/tasks/2026-05-18-S196-T02-inline-create-panel-design-sync.md` 記錄 PASS；`frontend/src/components/RequestCreatePanel.tsx` 提供 inline form；prototype/DESIGN 已同步 S196 two-tab 方向。 |
+
+### 7.3 Acceptance Results
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC-S196-1 | PASS | `frontend/src/pages/RequestBoardPage.test.tsx` 驗 `瀏覽需求` / `我要開需求` tabs，且沒有 `尚無勇者`、`接手中`、`已結案` tabs。 |
+| AC-S196-2 | PASS | `RequestBoardPage.test.tsx` 驗三張需求卡、`我也要` vote button、detail link 與 `需求排行榜` 票數順序。 |
+| AC-S196-3 | PASS | `RequestBoardPage.test.tsx` 驗 inline form 送 `POST /api/v1/requests`，body 只有 `title` / `description`；未登入時不送 POST 並走 login。 |
+| AC-S196-4 | PASS | `RequestBoardPage.test.tsx` 驗 request URL 只出現 `sort=votes` / `sort=created`，沒有 `status=`。 |
+| AC-S196-5 | PASS | `RequestBoardPage.test.tsx` 驗空狀態 action 會切到 `我要開需求` tab。 |
+| AC-S196-6 | PASS | `RequestBoardPage.test.tsx` 驗 `tablist`、`tab`、`tabpanel`、`aria-selected`、`aria-controls`、`aria-labelledby` 對應。 |
+| AC-S196-7 | PASS | `RequestBoardPage.test.tsx` 讀 `docs/grimo/ui/DESIGN.md` 與 prototype，確認保留 `瀏覽需求` / `我要開需求`，且不描述 status tab 或 claim/fulfill。 |
+
+### 7.4 Verification Commands
+
+| Command | Result |
+|---|---|
+| `cd frontend && npm test -- RequestBoardPage` | PASS — 1 test file, 8 tests passed. |
+| `cd frontend && npm run verify` | PASS — ESLint 與 `tsc -b` 通過。 |
+| `./scripts/verify-all.sh` | PASS — V01=PASS, V02=INFO line coverage 87.2%, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS; exit=0. |
+
+### 7.5 Release Follow-up
+
+S196 implementation and QA are complete, but release is not complete yet. Root spec remains in `docs/grimo/specs/`, task files remain in `docs/grimo/tasks/`, `docs/grimo/CHANGELOG.md` has no S196 release entry, `docs/grimo/specs/spec-roadmap.md` still marks S196 as Dev, and there is no S196 release tag.
+
+Next skill: `$shipping-release S196`.
