@@ -57,7 +57,13 @@ IMPORTANT: Follow these in every session.
 
 Codex skill 觸發使用 `$skill-name`（例如 `$planning-tasks S169`）。Claude Code slash command 可使用 `/planning-tasks S169`；文件若同時服務兩邊，兩種寫法都可標註，但 Codex Automation prompt 必須優先使用 `$skill-name`。
 
-Spec 生命週期判斷：`docs/grimo/specs/` 根目錄只放 in-flight spec；已完成 / QA PASS 但尚未進 `docs/grimo/specs/archive/`、未清 `docs/grimo/tasks/`、未更新 `docs/grimo/CHANGELOG.md` 與 `spec-roadmap.md` 的項目，不能視為 done。功能開發 automation 需依 `.codex/loop.dev.md` 先跑 `$shipping-release SNNN` 收尾，再推進下一個 spec。
+## Workflow Skills
+
+7 skills form the development pipeline:
+
+`$defining-product` → `$planning-project` → `$planning-spec SNNN` → `$planning-tasks SNNN` ↔ `$implementing-task` → `$verifying-quality SNNN` → `$shipping-release SNNN`
+
+`local implementation PASS` / task PASS 不等於可 release；它下一步是 `$verifying-quality SNNN`。只有 QA PASS / local release PASS / ready-to-ship 的 spec 尚未進 `docs/grimo/specs/archive/`、未清 `docs/grimo/tasks/`、未更新 `docs/grimo/CHANGELOG.md` 與 `spec-roadmap.md`、或缺 tag 時，才用 `$shipping-release SNNN` 收尾；細節依 `.codex/loop.dev.md`。
 
 ## Where things live (read this before ls-ing)
 

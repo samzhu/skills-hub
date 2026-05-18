@@ -21,6 +21,14 @@ Read and follow:
 
 This automation must treat repo files as the only state. Do not reuse the previous tick's suggested NEXT_SKILL unless the current repo snapshot still proves it.
 
+Canonical workflow:
+`$defining-product` → `$planning-project` → `$planning-spec SNNN`
+→ `$planning-tasks SNNN` ↔ `$implementing-task`
+→ `$verifying-quality SNNN`
+→ `$shipping-release SNNN`
+
+`local implementation PASS` / task PASS means the next workflow step is `$verifying-quality SNNN`, not `$shipping-release SNNN`. Choose `$shipping-release SNNN` only after QA PASS / local release PASS / ready-to-ship evidence exists.
+
 After the first reads, take a fresh development-state snapshot before choosing NEXT_SKILL:
 - re-read docs/grimo/specs/spec-roadmap.md Active / planned rows for status changes such as a spec moving from in-design to Plan / in-progress;
 - list docs/grimo/tasks/ and match task files back to their SNNN spec;
@@ -28,8 +36,9 @@ After the first reads, take a fresh development-state snapshot before choosing N
 
 Before selecting any new planned or active spec, run the Release Completeness Gate from .codex/loop.dev.md:
 - scan root docs/grimo/specs/*.md, docs/grimo/tasks/, docs/grimo/CHANGELOG.md, docs/grimo/specs/spec-roadmap.md, and git tags;
-- if a spec has completed implementation or QA PASS evidence but is not archived, still has task files, has no CHANGELOG release entry, has no roadmap shipped/archived row, or is missing the expected release tag, choose `$shipping-release SNNN`;
-- do not move to a later planned spec until that older completed spec is archived by `$shipping-release`.
+- if a spec has QA PASS / local release PASS / ready-to-ship evidence but is not archived, still has task files, has no CHANGELOG release entry, has no roadmap shipped/archived row, or is missing the expected release tag, choose `$shipping-release SNNN`;
+- if a spec only has local implementation PASS, task PASS, ⏳ QA, independent QA pending, or next `$verifying-quality SNNN`, choose `$verifying-quality SNNN`;
+- do not move to a later planned spec until that older release-ready spec is archived by `$shipping-release`.
 
 Do exactly one development unit:
 - infer exactly one NEXT_SKILL from repo files using .codex/loop.dev.md;
@@ -50,6 +59,6 @@ Treat docs/grimo/specs/spec-roadmap.md as a shared roadmap ledger. Normal roadma
 Never stage or commit unrelated user changes. If repo files conflict about NEXT_SKILL, report the conflicting file paths and return BLOCKED instead of guessing.
 
 End with exactly one EXIT label from .codex/loop.dev.md: DONE, WIP, BLOCKED, or WALL-HIT.
-Return DONE only when the Release Completeness Gate is clean after this tick. If a spec is implemented or QA PASS but still needs `$shipping-release`, return WIP or BLOCKED and name `$shipping-release SNNN` as the next action.
+Return DONE only when the Release Completeness Gate is clean after this tick. If a spec is QA PASS / local release PASS and still needs `$shipping-release`, return WIP or BLOCKED and name `$shipping-release SNNN` as the next action. If a spec is local implementation PASS but QA pending, return WIP and name `$verifying-quality SNNN` as the next action.
 Also report the NEXT_SKILL chosen for this tick, the repo evidence used to choose it, and the suggested NEXT_SKILL for the next tick or "none".
 ```

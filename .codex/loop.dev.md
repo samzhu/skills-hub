@@ -38,6 +38,14 @@ Dev loop 不負責：
 - Codex Prompting: `https://developers.openai.com/codex/prompting` — 複雜工作拆成小而可驗證的步驟。
 - Agents Orchestration: `https://developers.openai.com/api/docs/guides/agents/orchestration` — specialist 只有在不同工作需要不同 instruction / tools / policy 時才拆；開發 loop 保持一個 manager，specialist 用 skill 呼叫。
 
+## Canonical Workflow
+
+Dev loop 的 spec pipeline 固定是：
+
+`$defining-product` → `$planning-project` → `$planning-spec SNNN` → `$planning-tasks SNNN` ↔ `$implementing-task` → `$verifying-quality SNNN` → `$shipping-release SNNN`
+
+`local implementation PASS` / task PASS 只代表可進 QA，不代表可 release。只有 QA PASS / local release PASS / ready-to-ship evidence 出現後，Release Completeness Gate 才能把 NEXT_SKILL 改成 `$shipping-release SNNN`。
+
 ## Start-of-Tick Reads
 
 每 tick 先讀：
@@ -74,11 +82,11 @@ Dev loop 不負責：
 | Repo fact | Meaning |
 |---|---|
 | spec doc 標示 `Status: Auto-Draft` 或 `automation_status: auto-draft` | 這是 site-audit 自動開立草稿；dev loop 必須忽略，不得規劃或實作 |
-| `docs/grimo/specs/` 根目錄有 spec doc，且 §7 / QA / roadmap / task evidence 顯示 AC 已完成或 QA PASS，但 changelog / roadmap release row / archive / tag 任一缺失 | 這不是新功能入口；下一步必須先 `$shipping-release SNNN`，不得跳到下一個 planned spec |
+| `docs/grimo/specs/` 根目錄有 spec doc，且 §7 / QA / roadmap / task evidence 明確顯示 QA PASS / local release PASS / ready-to-ship，但 changelog / roadmap release row / archive / tag 任一缺失 | 這不是新功能入口；下一步必須先 `$shipping-release SNNN`，不得跳到下一個 planned spec |
 | `docs/grimo/tasks/` 還有 `SNNN` task file，且對應 spec 已 QA PASS 或已標 Done / Shipped | 這是未收尾 release；下一步必須先 `$shipping-release SNNN` 清 task、歸檔 spec、更新 changelog / roadmap |
 | `docs/grimo/specs/spec-roadmap.md` 有 planned row，但沒有 spec doc | 下一步是 `$planning-spec SNNN` |
 | spec doc 已有設計章節，且標示 `Status: Approved-for-Dev` / roadmap 明確排入 planned 或 active，但 task files 不存在或未完成 | 下一步是 `$planning-tasks SNNN` |
-| task files / spec result 顯示 implementation 完成，但 QA 尚未 PASS | 下一步是 `$verifying-quality SNNN`，通常由 `$planning-tasks` 路由；若 automation 明確位於 QA gate 可直接呼叫 |
+| task files / spec result 顯示 local implementation PASS / task PASS，但沒有 QA PASS / local release PASS / ready-to-ship evidence | 下一步是 `$verifying-quality SNNN`，通常由 `$planning-tasks` 路由；若 automation 明確位於 QA gate 可直接呼叫 |
 | QA PASS，但 changelog / roadmap / archive / tag 未完成 | 下一步是 `$shipping-release SNNN` |
 | 沒有 active / planned / releasable spec | 回 `DONE`，說明目前沒有 dev work |
 
@@ -86,7 +94,9 @@ NEXT_SKILL 要從檔案事實推導，不從上一輪聊天記憶推導。自動
 
 ### Release Completeness Gate
 
-每 tick 選新 spec 前，先掃 `docs/grimo/specs/*.md`、`docs/grimo/tasks/*S*.md`、`docs/grimo/CHANGELOG.md`、`docs/grimo/specs/spec-roadmap.md`、`git tag --points-at HEAD`。若任何 spec 已實作完成或 QA PASS，但仍在 `docs/grimo/specs/` 根目錄、task file 還存在、CHANGELOG 無版本記錄、roadmap 沒有 shipped / archived row、或 git tag 缺失，NEXT_SKILL 必須是 `$shipping-release SNNN`。
+每 tick 選新 spec 前，先掃 `docs/grimo/specs/*.md`、`docs/grimo/tasks/*S*.md`、`docs/grimo/CHANGELOG.md`、`docs/grimo/specs/spec-roadmap.md`、`git tag --points-at HEAD`。Release Completeness Gate 只攔已經具備 QA PASS / local release PASS / ready-to-ship evidence 的 spec：若這類 spec 仍在 `docs/grimo/specs/` 根目錄、task file 還存在、CHANGELOG 無版本記錄、roadmap 沒有 shipped / archived row、或 git tag 缺失，NEXT_SKILL 必須是 `$shipping-release SNNN`。
+
+若只看到 `local implementation PASS`、task PASS、`⏳ QA`、`independent QA pending`、或 spec / roadmap 寫著 next `$verifying-quality SNNN`，這還不是 release candidate；NEXT_SKILL 必須是 `$verifying-quality SNNN`。
 
 「完成 spec」在 dev loop 中只代表 `$shipping-release` 已做完這些檔案事實：
 
@@ -106,10 +116,10 @@ NEXT_SKILL 要從檔案事實推導，不從上一輪聊天記憶推導。自動
 |---|---|
 | user goal 明確指定 product scope / PRD | `$defining-product` |
 | user goal 明確指定 project roadmap / architecture | `$planning-project` |
-| 已完成 / QA PASS 的 spec 還沒通過 Release Completeness Gate | `$shipping-release SNNN` |
+| QA PASS / local release PASS / ready-to-ship 的 spec 還沒通過 Release Completeness Gate | `$shipping-release SNNN` |
 | roadmap 有 planned spec，但缺 spec doc | `$planning-spec SNNN` |
 | spec doc 已設計完成，且非 `Auto-Draft`，要拆 task / 實作 / consolidate / QA | `$planning-tasks SNNN` |
-| spec task 全 PASS，但需要獨立 QA | `$verifying-quality SNNN` |
+| spec local implementation PASS / task PASS，但需要獨立 QA | `$verifying-quality SNNN` |
 | QA PASS 且需要 release docs / archive / tag | `$shipping-release SNNN` |
 | 同錯誤連續 2 次以上，且 fix 沒讓錯誤改變 | `$root-cause-debugging` |
 | Spring Boot config / profile / property / starter 選型 | `$springboot-project-architect` |
@@ -193,8 +203,8 @@ git diff --name-only main...<target-branch>
 1. 讀 Start-of-Tick files。
 2. 重建 current repo snapshot：重新讀 roadmap Active / planned rows、列出 tasks、讀 task 指向的 active spec doc。
 3. 跑基本 worktree audit。
-4. 先跑 Release Completeness Gate：找已完成但未歸檔 / 未 tag / 未清 task 的 spec。
-5. 若 Gate 找到未收尾 spec，NEXT_SKILL 固定為 `$shipping-release SNNN`；只有 Gate 乾淨才用 current repo snapshot 找 active / planned spec。
+4. 先跑 Release Completeness Gate：找 QA PASS / local release PASS / ready-to-ship 但未歸檔 / 未 tag / 未清 task 的 spec。
+5. 若 Gate 找到 release-ready 未收尾 spec，NEXT_SKILL 固定為 `$shipping-release SNNN`；若只找到 local implementation PASS / QA pending，NEXT_SKILL 是 `$verifying-quality SNNN`；只有 Gate 乾淨才用 current repo snapshot 找 active / planned spec。
 6. 選 exactly one NEXT_SKILL，並在回報中寫出選它的 repo evidence。
 7. 呼叫該 skill，讓它完成一個可保存成果。
 8. 跑該 skill 要求的最小必要 verify。
