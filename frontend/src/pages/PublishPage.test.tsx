@@ -317,4 +317,75 @@ describe('PublishPage — S154b 作者欄位 read-only', () => {
     expect(versionInput.getAttribute('pattern')).toBeNull()
     expect(screen.getByText(/留白時系統會自動產生版本號/)).toBeInTheDocument()
   })
+
+  it('AC-S197-1: Publish 必填欄位一開始就有 required mark', () => {
+    renderPublishPage()
+
+    expect(screen.getByTestId('publish-skill-name-required-mark')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByTestId('publish-file-required-mark')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByTestId('publish-category-required-mark')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.queryByTestId('publish-version-required-mark')).toBeNull()
+    expect(screen.getAllByText('必填').length).toBeGreaterThanOrEqual(3)
+
+    const versionInput = screen.getByLabelText('版本號') as HTMLInputElement
+    expect(versionInput.required).toBe(false)
+  })
+
+  it('AC-S197-2: Publish 分類空白顯示請填寫分類且不送 upload', async () => {
+    const fetchSpy = vi.fn()
+    ;(globalThis as any).fetch = fetchSpy
+
+    renderPublishPage()
+
+    fireEvent.click(screen.getByRole('button', { name: /貼上文本/ }))
+    fireEvent.change(screen.getByPlaceholderText(/name: my-skill/), {
+      target: { value: '---\nname: internal-package-name\ndescription: a useful skill\n---\n# body' },
+    })
+    fireEvent.change(screen.getByLabelText('技能名稱'), { target: { value: 'Team Transcribe' } })
+
+    const categoryInput = screen.getByPlaceholderText('DevOps') as HTMLInputElement
+    fireEvent.blur(categoryInput)
+
+    expect(await screen.findByText('請填寫分類')).toBeInTheDocument()
+    expect(categoryInput).toHaveAttribute('aria-invalid', 'true')
+    expect(categoryInput.getAttribute('aria-describedby')).toContain('publish-category-error')
+    expect(screen.getByRole('button', { name: /發佈技能/ })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: /發佈技能/ }))
+    expect(fetchSpy).not.toHaveBeenCalledWith('/api/v1/skills/upload', expect.anything())
+  })
+
+  it('AC-S197-4: Text mode 空白顯示請貼上 SKILL.md 內容且 frontmatter 錯誤維持原訊息', async () => {
+    renderPublishPage()
+
+    fireEvent.click(screen.getByRole('button', { name: /貼上文本/ }))
+    const textarea = screen.getByLabelText('SKILL.md 內容') as HTMLTextAreaElement
+    fireEvent.blur(textarea)
+
+    expect(await screen.findByText('請貼上 SKILL.md 內容')).toBeInTheDocument()
+    expect(textarea).toHaveAttribute('aria-invalid', 'true')
+    expect(textarea.getAttribute('aria-describedby')).toContain('publish-skill-md-error')
+
+    fireEvent.change(textarea, {
+      target: { value: '---\nname: only-name\n---\n# body' },
+    })
+
+    expect(screen.queryByText('請貼上 SKILL.md 內容')).toBeNull()
+    expect(await screen.findByText('缺必填欄位：description')).toBeInTheDocument()
+  })
+
+  it('AC-S197-7: Publish required fields connect aria-invalid and aria-describedby', async () => {
+    renderPublishPage()
+
+    const skillNameInput = screen.getByLabelText('技能名稱') as HTMLInputElement
+    fireEvent.blur(skillNameInput)
+    expect(await screen.findByText('請填寫技能名稱')).toBeInTheDocument()
+    expect(skillNameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(skillNameInput.getAttribute('aria-describedby')).toContain('publish-skill-name-help')
+    expect(skillNameInput.getAttribute('aria-describedby')).toContain('publish-skill-name-error')
+
+    fireEvent.change(skillNameInput, { target: { value: 'Team Transcribe' } })
+    expect(screen.queryByText('請填寫技能名稱')).toBeNull()
+    expect(skillNameInput).not.toHaveAttribute('aria-invalid')
+    expect(skillNameInput.getAttribute('aria-describedby')).toBe('publish-skill-name-help')
+  })
 })

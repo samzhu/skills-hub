@@ -59,5 +59,13 @@ And（而且）輸入缺 `description` 的 frontmatter 後，畫面顯示既有 
 ## 前置條件
 - 無
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-18
+Test: `AC-S197-1`, `AC-S197-2`, `AC-S197-4`, `AC-S197-5`, `AC-S197-7` (`frontend/src/pages/PublishPage.test.tsx`)
+Files changed:
+- `frontend/src/pages/PublishPage.tsx` (modified)
+- `frontend/src/pages/PublishPage.test.tsx` (modified)
+Notes: RED confirmed with `cd frontend && npm test -- PublishPage` failing 4 new S197 cases; GREEN confirmed with `cd frontend && npm test -- PublishPage` passing 21 tests.

@@ -26,12 +26,19 @@ import { validateFrontmatter } from './PublishPage.utils'
  * 上傳成功後 navigate 到 /publish/validate?id=X stepper page。
  */
 type Mode = 'file' | 'text'
+type RequiredField = 'skillName' | 'skillMdText' | 'category'
 
 export function PublishPage() {
   const [mode, setMode] = useState<Mode>('file')
   const [file, setFile] = useState<File | null>(null)
   const [skillMdText, setSkillMdText] = useState('')
   const [skillName, setSkillName] = useState('')
+  const [touched, setTouched] = useState<Record<RequiredField, boolean>>({
+    skillName: false,
+    skillMdText: false,
+    category: false,
+  })
+  const [submitted, setSubmitted] = useState(false)
   // S099b3: 文本 mode preview pane toggle
   const [showPreview, setShowPreview] = useState(false)
   // S188：留白時由 backend 自動產生 v1，填值時作為自訂版本標籤。
@@ -69,6 +76,10 @@ export function PublishPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setSubmitted(true)
+    if (skillNameError || categoryError || textContentError || submitDisabled) {
+      return
+    }
     // S139 lazy gate：anonymous / loading 直接跳 OAuth（returnTo 用當前頁面），
     // 完成登入後 SuccessHandler 帶回 /publish；表單欄位狀態保留與否屬 future work
     // （per spec §1 非目標：表單狀態保留 — 留給後續 spec）
@@ -104,9 +115,27 @@ export function PublishPage() {
     return { label: label || '正在確認作者...', handle: me.handle || null }
   }, [auth.status, me])
 
+  const shouldShowError = (field: RequiredField) => touched[field] || submitted
+  const markTouched = (field: RequiredField) => {
+    setTouched((prev) => ({ ...prev, [field]: true }))
+  }
+
+  const skillNameError = shouldShowError('skillName') && skillName.trim().length === 0
+    ? '請填寫技能名稱'
+    : null
+  const categoryError = shouldShowError('category') && category.trim().length === 0
+    ? '請填寫分類'
+    : null
+  const textContentError = mode === 'text'
+    && shouldShowError('skillMdText')
+    && skillMdText.trim().length === 0
+    ? '請貼上 SKILL.md 內容'
+    : null
+
   // submit disable rule per mode；text mode 加 frontmatter validation gate
   const submitDisabled = mutation.isPending
     || skillName.trim().length === 0
+    || category.trim().length === 0
     || (mode === 'file'
       ? !file
       : skillMdText.trim().length === 0 || fmValidation.errors.length > 0)
@@ -137,29 +166,40 @@ export function PublishPage() {
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="publish-skill-name" className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">技能名稱</label>
+              <FieldLabel htmlFor="publish-skill-name" requiredMarkId="publish-skill-name-required-mark">
+                技能名稱
+              </FieldLabel>
               <Input
                 id="publish-skill-name"
                 value={skillName}
                 onChange={(e) => setSkillName(e.target.value)}
+                onBlur={() => markTouched('skillName')}
                 placeholder="transcribe-video"
                 required
                 maxLength={64}
+                aria-invalid={skillNameError ? true : undefined}
+                aria-describedby={describedBy('publish-skill-name-help', skillNameError && 'publish-skill-name-error')}
               />
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p id="publish-skill-name-help" className="mt-1 text-[11px] text-muted-foreground">
                 平台列表顯示名稱，可和 SKILL.md 裡的 name 不同，最多 64 字元。
               </p>
+              <FieldMessage id="publish-skill-name-error" message={skillNameError} />
             </div>
 
             {mode === 'file' ? (
-              <FileDropZone onFileSelect={setFile} selectedFile={file} />
+              <div>
+                <FieldLabel htmlFor="publish-file" requiredMarkId="publish-file-required-mark">
+                  Skill 套件
+                </FieldLabel>
+                <FileDropZone inputId="publish-file" onFileSelect={setFile} selectedFile={file} />
+              </div>
             ) : (
               <div>
                 {/* S099b3: textarea + preview toggle header */}
                 <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">
+                  <FieldLabel htmlFor="publish-skill-md" requiredMarkId="publish-skill-md-required-mark" className="mb-0">
                     SKILL.md 內容
-                  </span>
+                  </FieldLabel>
                   <button
                     type="button"
                     onClick={() => setShowPreview((prev) => !prev)}
@@ -172,11 +212,15 @@ export function PublishPage() {
                 </div>
                 <div className={showPreview ? 'grid gap-3 md:grid-cols-2' : ''}>
                   <textarea
+                    id="publish-skill-md"
                     value={skillMdText}
                     onChange={(e) => setSkillMdText(e.target.value)}
+                    onBlur={() => markTouched('skillMdText')}
                     placeholder={`---\nname: my-skill\ndescription: 一段精煉描述「skill 做什麼 + agent 何時該呼叫」\nlicense: MIT\n---\n\n# My Skill\n\nInvoke this skill when ...`}
                     required
                     rows={14}
+                    aria-invalid={textContentError ? true : undefined}
+                    aria-describedby={describedBy('publish-skill-md-help', textContentError && 'publish-skill-md-error')}
                     className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-[12.5px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:border-[rgba(255,255,255,0.20)] focus:outline-none"
                   />
                   {showPreview && skillMdText.trim().length > 0 && (
@@ -186,9 +230,10 @@ export function PublishPage() {
                     </div>
                   )}
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p id="publish-skill-md-help" className="mt-1 text-[11px] text-muted-foreground">
                   含 YAML frontmatter（必填 <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">name</code> + <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">description</code>）+ markdown 內文。詳見 <Link to="/docs/skill-md-spec" className="text-[#C9C5F2] hover:underline">SKILL.md 規範</Link>。
                 </p>
+                <FieldMessage id="publish-skill-md-error" message={textContentError} />
                 {/* S099b2: live validation feedback — 顯給作者 quick check */}
                 {skillMdText.trim().length > 0 && (
                   <div className="mt-2 rounded-md border border-[rgba(255,255,255,0.06)] bg-[#0F0F12] p-2 text-[12px]">
@@ -222,15 +267,21 @@ export function PublishPage() {
                 </p>
               </div>
               <div>
-                <label htmlFor="publish-category" className="mb-1.5 block text-[12px] font-medium text-muted-foreground uppercase tracking-wide">分類</label>
+                <FieldLabel htmlFor="publish-category" requiredMarkId="publish-category-required-mark">
+                  分類
+                </FieldLabel>
                 <Input
                   id="publish-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
+                  onBlur={() => markTouched('category')}
                   placeholder="DevOps"
                   required
                   maxLength={50}
+                  aria-invalid={categoryError ? true : undefined}
+                  aria-describedby={describedBy(categoryError && 'publish-category-error')}
                 />
+                <FieldMessage id="publish-category-error" message={categoryError} />
               </div>
             </div>
 
@@ -301,6 +352,48 @@ export function PublishPage() {
         </div>
       </div>
     </AppShell>
+  )
+}
+
+function describedBy(...ids: Array<string | null | false | undefined>) {
+  const value = ids.filter(Boolean).join(' ')
+  return value || undefined
+}
+
+function FieldLabel({
+  htmlFor,
+  requiredMarkId,
+  className = '',
+  children,
+}: {
+  htmlFor: string
+  requiredMarkId?: string
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={`mb-1.5 flex items-center gap-1 text-[12px] font-medium text-muted-foreground uppercase tracking-wide ${className}`}>
+      <label htmlFor={htmlFor}>{children}</label>
+      {requiredMarkId && <RequiredMark id={requiredMarkId} />}
+    </div>
+  )
+}
+
+function RequiredMark({ id }: { id: string }) {
+  return (
+    <>
+      <span id={id} data-testid={id} aria-hidden="true" className="text-destructive">*</span>
+      <span className="sr-only">必填</span>
+    </>
+  )
+}
+
+function FieldMessage({ id, message }: { id: string; message: string | null }) {
+  if (!message) return null
+  return (
+    <p id={id} className="mt-1 text-[11.5px] text-destructive">
+      {message}
+    </p>
   )
 }
 
