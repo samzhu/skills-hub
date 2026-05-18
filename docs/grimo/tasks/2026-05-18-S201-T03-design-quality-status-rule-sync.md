@@ -59,4 +59,17 @@ rg -n "通過 100/100|注意 80/100|滿分 3/3|12px" "docs/grimo/ui/prototype/Sk
 - S201-T02 PASS
 
 ## 狀態
-pending（待做）
+PASS
+
+## Result
+Date: 2026-05-19
+Test: docs grep inspection（`docs/grimo/ui/DESIGN.md` / `docs/grimo/ui/prototype/Skills Hub Skill Detail Quality Signals Research.html`）
+Files changed:
+- `docs/grimo/ui/DESIGN.md`（modified）— 新增 `quality-status-indicator` 規則，寫明 `ScoreStatusIndicator` / `WarningStatusIndicator`、12px 圓圈、三色分數狀態、Validation 100/100 與 Implementation / Activation 3/3 尺度。
+- `docs/grimo/ui/prototype/Skills Hub Skill Detail Quality Signals Research.html`（modified）— prototype legend 補 `12px 圓圈 + 文字`，滿分列改用綠色 `status pass`，並明寫不使用舊版紫色圓點。
+RED:
+- `rg -n "quality-status|ScoreStatusIndicator|通過 100/100|滿分 3/3" docs/grimo/ui/DESIGN.md` exit=1，表示 DESIGN 尚未記錄 S201 Quality status 規則。
+GREEN:
+- `rg -n "quality-status|ScoreStatusIndicator|通過 100/100|滿分 3/3" docs/grimo/ui/DESIGN.md` PASS。
+- `rg -n "通過 100/100|注意 80/100|滿分 3/3|12px" "docs/grimo/ui/prototype/Skills Hub Skill Detail Quality Signals Research.html"` PASS。
+Notes: S201 三個 task 目前皆 PASS；下一步是 `$verifying-quality S201`。

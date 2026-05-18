@@ -241,6 +241,23 @@ components:
     medium: { bg: amber-soft,  text: amber-text,  label: "中風險",  note: "scripts present, no dangerous patterns" }
     high:   { bg: red-soft,    text: red-text,    label: "高風險",  note: "dangerous command or sensitive path" }
 
+  quality-status-indicator:
+    component: "ScoreStatusIndicator / WarningStatusIndicator"
+    applies-to: "Skill detail Quality tab dimension rows only"
+    dot-size: "12px circle; text label is always visible, never color-only"
+    palette-rule: "This is a quality score status, not risk-pill and not category palette. Do not reuse purple full-score dots here."
+    axis-total-rule: "Quality tab rainbow line and axis header number use axis.totalScore only; row status uses dimension score."
+    validation:
+      pass: { text: "通過 100/100", color: green-text, input: "score = 100" }
+      warn: { text: "注意 {score}/100", color: amber-text, input: "score = 1..99" }
+      fail: { text: "需修正 0/100", color: red-text, input: "score = 0" }
+      warnings: { text: "提醒 {count}", color: amber-text, input: "warnings: string[]" }
+    implementation_activation:
+      full: { text: "滿分 3/3", color: green-text, input: "score = 3" }
+      acceptable: { text: "可接受 2/3", color: amber-text, input: "score = 2" }
+      weak: { text: "偏弱 1/3", color: red-text, input: "score = 1" }
+      missing: { text: "缺失 0/3", color: red-text, input: "score = 0" }
+
   status-pill:
     note: "Shown only when status ≠ PUBLISHED (published skills show no pill in SkillCard)"
     draft:      { bg: "rgba(239,159,39,0.14)", text: amber-text, label: "草稿" }
@@ -556,6 +573,7 @@ rules:
     - "Use ✦ (Source Serif Pro italic) only for AI-inference moments"
     - "Distinguish empty-state tones: seeding ≠ no-results ≠ all-clear"
     - "Keep risk palette strictly separate from category palette"
+    - "Keep quality-status-indicator colors scoped to Quality tab score states"
     - "Map frontend/design/infra categories to cat-infra token (same blue)"
 
   dont:
@@ -563,6 +581,7 @@ rules:
     - "Use gradients except the BorderBeam and the two named hero glows"
     - "Put beam on metric cards, nav, sidebar, or secondary buttons"
     - "Mix risk colors (green/amber/red) with category color chips"
+    - "Use purple ScoreDot semantics for Quality tab full scores; full quality status is green `滿分 3/3`"
     - "Use serif font anywhere except ✦ sparkle"
     - "Show more than one beam element simultaneously"
     - "Write marketing copy in product chrome ('unlock your potential' etc.)"

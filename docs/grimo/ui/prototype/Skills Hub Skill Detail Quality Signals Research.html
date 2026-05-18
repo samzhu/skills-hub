@@ -157,8 +157,7 @@
       box-shadow: 0 0 0 3px rgba(255,255,255,0.05);
       flex: 0 0 auto;
     }
-    .pass,
-    .perfect { color: var(--green-text); }
+    .pass { color: var(--green-text); }
     .warn,
     .info { color: var(--amber-text); }
     .fail { color: var(--red-text); }
@@ -235,6 +234,7 @@
       <div class="scorebar" aria-hidden="true"><div style="width: 97%"></div></div>
       <div class="legend">
         <span>彩虹線：整個區塊分數</span>
+        <span>12px 圓圈 + 文字：單項分數狀態</span>
         <span style="color: var(--green-text)">綠色：通過</span>
         <span style="color: var(--amber-text)">黃色：注意或提醒</span>
         <span style="color: var(--red-text)">紅色：需要修正</span>
@@ -282,7 +282,7 @@
         </div>
       </div>
       <div class="problem">
-        <strong>這裡的改法重點：</strong>規格驗證使用 0-100 的狀態籤，不再套用 3/3 的圓點。warnings 變成提醒列，使用者可以分辨「可接受但建議改」和「真的壞掉」。
+        <strong>這裡的改法重點：</strong>規格驗證使用 0-100 的狀態籤，不再套用 3/3 的圓點。warnings 變成提醒列，滿分也使用綠色狀態，不使用舊版紫色圓點。
       </div>
     </section>
 
@@ -299,22 +299,22 @@
         <div class="row">
           <div class="dim">Conciseness</div>
           <div><p class="reason">The skill body is highly focused, with every sentence serving a unique purpose.</p></div>
-          <div class="status perfect">滿分 3/3</div>
+          <div class="status pass">滿分 3/3</div>
         </div>
         <div class="row">
           <div class="dim">Actionability</div>
           <div><p class="reason">The content provides exact patterns, file references, command examples, and edge-case handling.</p></div>
-          <div class="status perfect">滿分 3/3</div>
+          <div class="status pass">滿分 3/3</div>
         </div>
         <div class="row">
           <div class="dim">Workflow Clarity</div>
           <div><p class="reason">The document establishes a clear sequential workflow with decision branches and checkpoints.</p></div>
-          <div class="status perfect">滿分 3/3</div>
+          <div class="status pass">滿分 3/3</div>
         </div>
         <div class="row">
           <div class="dim">Progressive Disclosure</div>
           <div><p class="reason">Critical instructions lead the document, with supporting details and examples later.</p></div>
-          <div class="status perfect">滿分 3/3</div>
+          <div class="status pass">滿分 3/3</div>
         </div>
       </div>
     </section>
@@ -332,22 +332,22 @@
         <div class="row">
           <div class="dim">Specificity</div>
           <div><p class="reason">The description lists exact scenarios, file types, the agentskills.io standard, and non-English trigger phrases.</p></div>
-          <div class="status perfect">滿分 3/3</div>
+          <div class="status pass">滿分 3/3</div>
         </div>
         <div class="row">
           <div class="dim">Completeness</div>
           <div><p class="reason">It defines what the skill does, when to use it, and when not to use it.</p></div>
-          <div class="status perfect">滿分 3/3</div>
+          <div class="status pass">滿分 3/3</div>
         </div>
         <div class="row">
           <div class="dim">Distinctiveness</div>
           <div><p class="reason">The skill focuses on authoring and auditing agent skills, not general prompt engineering.</p></div>
-          <div class="status perfect">滿分 3/3</div>
+          <div class="status pass">滿分 3/3</div>
         </div>
         <div class="row">
           <div class="dim">Trigger Term Quality</div>
           <div><p class="reason">The description includes domain words such as SKILL.md, frontmatter, agentskills.io, audit, optimize, and scaffold.</p></div>
-          <div class="status perfect">滿分 3/3</div>
+          <div class="status pass">滿分 3/3</div>
         </div>
       </div>
     </section>
