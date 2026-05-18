@@ -15,7 +15,7 @@ import org.yaml.snakeyaml.Yaml;
  *
  * <p>驗證流程：
  * <ol>
- *   <li>行數上限檢查（500 行）</li>
+ *   <li>S198：行數建議檢查（500 行，warning）</li>
  *   <li>提取 {@code ---} 分隔符之間的 YAML frontmatter</li>
  *   <li>使用 SnakeYAML 解析 frontmatter</li>
  *   <li>驗證 {@link #REQUIRED_FIELDS} 中所有必填欄位皆存在</li>
@@ -44,7 +44,7 @@ public class SkillValidator {
 	/** S018 AC-14：compatibility 上限 500 字元。 */
 	private static final int COMPATIBILITY_MAX = 500;
 
-	/** S135a AC-S135a-5：SKILL.md 行數上限。 */
+	/** S198：agentskills.io progressive disclosure 建議值；超過時只產生 warning。 */
 	private static final int SKILL_MD_MAX_LINES = 500;
 
 	/**
@@ -73,12 +73,7 @@ public class SkillValidator {
 			return ValidationResult.of(false, Map.of(), List.of("SKILL.md content is empty"));
 		}
 
-		// S135a AC-S135a-5：行數上限 500
 		var lineCount = skillMdContent.split("\n", -1).length;
-		if (lineCount > SKILL_MD_MAX_LINES) {
-			return ValidationResult.of(false, Map.of(),
-					List.of("skill_md_line_count: SKILL.md has " + lineCount + " lines (max " + SKILL_MD_MAX_LINES + ")"));
-		}
 
 		// 提取 frontmatter 區塊（--- 與 --- 之間的 YAML 文字）
 		var yamlContent = extractFrontmatter(skillMdContent);
@@ -109,6 +104,10 @@ public class SkillValidator {
 		}
 
 		var warnings = new ArrayList<String>();
+		if (lineCount > SKILL_MD_MAX_LINES) {
+			warnings.add("skill_md_line_count: SKILL.md has " + lineCount
+					+ " lines (recommended max " + SKILL_MD_MAX_LINES + ")");
+		}
 
 		// S018 AC-14 + S135a AC-S135a-5 + S194：嚴格錯誤與相容匯入 warning 分流
 		validateFieldConstraints(parsed, errors, warnings);
@@ -116,7 +115,7 @@ public class SkillValidator {
 		// S135a AC-S135a-5：body 存在性（frontmatter 後需有非空 body）
 		var body = extractBody(skillMdContent);
 		if (body.isBlank()) {
-			errors.add("body_present: SKILL.md has no body content after frontmatter");
+			errors.add("body_present: SKILL.md frontmatter 後面沒有使用說明內容；Skills Hub 不收只有 metadata、沒有 instructions body 的空 skill。");
 		}
 
 		if (!errors.isEmpty()) {

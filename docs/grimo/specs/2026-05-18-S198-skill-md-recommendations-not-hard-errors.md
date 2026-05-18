@@ -1,6 +1,6 @@
 # S198: SKILL.md Recommendations Not Hard Errors
 
-> 規格：S198 | 大小：XS(5) | 狀態：⏳ Plan
+> 規格：S198 | 大小：XS(5) | 狀態：⏳ Dev
 > 日期：2026-05-18
 > 對應：PRD P2「驗證 SKILL.md 格式符合 agentskills.io 規範」、S135a quality score、S194 compatibility warning
 

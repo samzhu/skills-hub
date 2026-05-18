@@ -67,5 +67,23 @@ And（而且）`result.warnings()` 含 `body_examples`
 ## 前置條件
 - 無
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+
+Date: 2026-05-19
+
+Test:
+- RED: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.validation.SkillValidatorTest` — failed before code change with 32 tests / 3 failed: AC-S198-1, AC-S198-2, AC-S198-6.
+- GREEN: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.validation.SkillValidatorTest` — PASS, `BUILD SUCCESSFUL in 2m`.
+
+Files changed:
+- `backend/src/main/java/io/github/samzhu/skillshub/skill/validation/SkillValidator.java`
+- `backend/src/test/java/io/github/samzhu/skillshub/skill/validation/SkillValidatorTest.java`
+
+Notes:
+- `589` 行 `SKILL.md` 現在回 `valid=true`，`errors` 不含 `skill_md_line_count`，`warnings` 含 `skill_md_line_count: ... recommended max 500`。
+- 缺 `name`、invalid YAML、bad `name` 仍是 hard error。
+- `body_present` 仍是 hard error，但錯誤文案改成 Skills Hub 上架政策：`SKILL.md frontmatter 後面沒有使用說明內容；Skills Hub 不收只有 metadata、沒有 instructions body 的空 skill。`
+- 官方來源：[agentskills.io Specification](https://agentskills.io/specification) 的 Progressive disclosure 段落把 main `SKILL.md` under 500 lines 寫成 recommendation；Validation 段落聚焦 frontmatter validity 與 naming conventions。

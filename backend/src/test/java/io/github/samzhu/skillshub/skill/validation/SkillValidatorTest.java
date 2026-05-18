@@ -251,15 +251,25 @@ class SkillValidatorTest {
 	// =========== S135a AC-S135a-5: 6 hard error rules ===========
 
 	@Test
-	@DisplayName("AC-S135a-5: SKILL.md 超過 500 行 → skill_md_line_count error")
-	@Tag("AC-S135a-5")
-	void lineCountExceedsMax() {
-		var lines = "---\nname: ok\ndescription: ok\n---\n" + "line\n".repeat(498);
-		// 4 frontmatter + 498 body = 502 lines > 500
-		var result = validator.validate(lines);
+	@DisplayName("AC-S198-1: 589 行 SKILL.md 不擋 upload validator")
+	@Tag("AC-S198-1")
+	void lineCountRecommendationDoesNotBlockValidation() {
+		var result = validator.validate(validSkillWithTotalLines(589));
 
-		assertThat(result.valid()).isFalse();
-		assertThat(result.errors()).anyMatch(e -> e.startsWith("skill_md_line_count:") && e.contains("max 500"));
+		assertThat(result.valid()).isTrue();
+		assertThat(result.errors()).noneMatch(e -> e.startsWith("skill_md_line_count:"));
+	}
+
+	@Test
+	@DisplayName("AC-S198-2: 589 行 SKILL.md 產生 line-count recommended warning")
+	@Tag("AC-S198-2")
+	void lineCountRecommendationProducesWarning() {
+		var result = validator.validate(validSkillWithTotalLines(589));
+
+		assertThat(result.warnings())
+				.anyMatch(w -> w.startsWith("skill_md_line_count:")
+						&& w.contains("589")
+						&& w.contains("recommended max 500"));
 	}
 
 	@Test
@@ -437,15 +447,46 @@ class SkillValidatorTest {
 	}
 
 	@Test
-	@DisplayName("AC-S135a-5: frontmatter 後無 body content → body_present error")
-	@Tag("AC-S135a-5")
+	@DisplayName("AC-S198-6: empty body 仍擋 upload 但說明為 Skills Hub 上架政策")
+	@Tag("AC-S198-6")
 	void bodyAbsent() {
 		var content = "---\nname: ok-name\ndescription: ok\n---\n";
 
 		var result = validator.validate(content);
 
 		assertThat(result.valid()).isFalse();
-		assertThat(result.errors()).contains("body_present: SKILL.md has no body content after frontmatter");
+		assertThat(result.errors()).contains(
+				"body_present: SKILL.md frontmatter 後面沒有使用說明內容；Skills Hub 不收只有 metadata、沒有 instructions body 的空 skill。");
+	}
+
+	@Test
+	@DisplayName("AC-S198-4: 明確 schema 錯誤仍回 hard error")
+	@Tag("AC-S198-4")
+	void schemaErrorsRemainHardErrors() {
+		var missingName = """
+				---
+				description: Some skill
+				---
+				# Body
+				""";
+		var invalidYaml = """
+				---
+				name: [unterminated
+				description: ok
+				---
+				# Body
+				""";
+		var badName = """
+				---
+				name: Bad-Name
+				description: ok
+				---
+				# Body
+				""";
+
+		assertThat(validator.validate(missingName).errors()).contains("Missing required field: name");
+		assertThat(validator.validate(invalidYaml).errors()).anyMatch(e -> e.startsWith("Invalid YAML:"));
+		assertThat(validator.validate(badName).errors()).anyMatch(e -> e.contains("name") && e.contains("regex"));
 	}
 
 	// =========== S135a AC-S135a-6: 3 soft warning rules ===========
@@ -466,6 +507,26 @@ class SkillValidatorTest {
 		var result = validator.validate(content);
 
 		assertThat(result.valid()).isTrue();
+		assertThat(result.warnings()).contains("body_examples: no example heading or code fence detected");
+	}
+
+	@Test
+	@DisplayName("AC-S198-5: body quality recommendations 仍是 warnings")
+	@Tag("AC-S198-5")
+	void bodyQualityRecommendationsRemainWarnings() {
+		var content = """
+				---
+				name: ok-name
+				description: ok
+				---
+				# My Skill
+				This skill does something useful.
+				""";
+
+		var result = validator.validate(content);
+
+		assertThat(result.valid()).isTrue();
+		assertThat(result.errors()).isEmpty();
 		assertThat(result.warnings()).contains("body_examples: no example heading or code fence detected");
 	}
 
@@ -518,6 +579,12 @@ class SkillValidatorTest {
 		assertThat(result.valid()).isTrue();
 		assertThat(result.errors()).isEmpty();
 		assertThat(result.warnings()).isEmpty();
+	}
+
+	private String validSkillWithTotalLines(int totalLines) {
+		var header = "---\nname: ok-name\ndescription: ok\n---\n";
+		var headerLines = 4;
+		return header + "line\n".repeat(totalLines - headerLines - 1);
 	}
 
 }
