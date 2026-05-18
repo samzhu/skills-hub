@@ -1,6 +1,6 @@
 # S197: 必填欄位即時提示 UX
 
-> 規格：S197 | 大小：S(8) | 狀態：⏳ Dev
+> 規格：S197 | 大小：S(8) | 狀態：⏳ QA
 > 日期：2026-05-18
 > 對應：PRD §P2 / S004 / S176 / S187 / S195
 
@@ -208,10 +208,10 @@ E2E：not required for planning — S197 改的是表單必填提示、component
 
 | 順序 | Task | 主要檔案 | 覆蓋 AC | 驗證方式 | 前置 |
 |---:|---|---|---|---|---|
-| 1 | [S197-T01 Publish 必填欄位 inline 提示](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S197-T01-publish-required-inline-cues.md) | `PublishPage.tsx`, `PublishPage.test.tsx` | AC-S197-1, AC-S197-2, AC-S197-4, AC-S197-5, AC-S197-7 | `cd frontend && npm test -- PublishPage` | 無 |
-| 2 | [S197-T02 FileDropZone required error contract](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S197-T02-filedropzone-required-error-contract.md) | `FileDropZone.tsx`, `FileDropZone.test.tsx` | AC-S197-3, AC-S197-7 | `cd frontend && npm test -- FileDropZone` | 無 |
-| 3 | [S197-T03 SkillEdit 分類與 upload mode 缺欄原因](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S197-T03-skill-edit-required-inline-cues.md) | `SkillEditPage.tsx`, `SkillEditPage.test.tsx` | AC-S197-6, AC-S197-7 | `cd frontend && npm test -- SkillEditPage` | T02 |
-| 4 | [S197-T04 DESIGN 必填表單規則同步](/Users/samzhu/workspace/github-samzhu/skills-hub/docs/grimo/tasks/2026-05-18-S197-T04-design-required-form-rule-sync.md) | `docs/grimo/ui/DESIGN.md` | AC-S197-8 | `rg -n "必填\|aria-describedby\|required" docs/grimo/ui/DESIGN.md` | T01, T02, T03 |
+| 1 | S197-T01 Publish 必填欄位 inline 提示 | `PublishPage.tsx`, `PublishPage.test.tsx` | AC-S197-1, AC-S197-2, AC-S197-4, AC-S197-5, AC-S197-7 | `cd frontend && npm test -- PublishPage` | 無 |
+| 2 | S197-T02 FileDropZone required error contract | `FileDropZone.tsx`, `FileDropZone.test.tsx` | AC-S197-3, AC-S197-7 | `cd frontend && npm test -- FileDropZone` | 無 |
+| 3 | S197-T03 SkillEdit 分類與 upload mode 缺欄原因 | `SkillEditPage.tsx`, `SkillEditPage.test.tsx` | AC-S197-6, AC-S197-7 | `cd frontend && npm test -- SkillEditPage` | T02 |
+| 4 | S197-T04 DESIGN 必填表單規則同步 | `docs/grimo/ui/DESIGN.md` | AC-S197-8 | `rg -n "必填\|aria-describedby\|required" docs/grimo/ui/DESIGN.md` | T01, T02, T03 |
 
 ### AC Coverage
 
@@ -228,4 +228,46 @@ E2E：not required for planning — S197 改的是表單必填提示、component
 
 ## 7. Results
 
-待實作後填寫。
+狀態：local implementation PASS；independent QA pending。`$shipping-release S197` 尚未符合 precondition，因為本 spec 還沒有 `$verifying-quality S197` 的 PASS verdict，也還沒有 `./scripts/verify-all.sh` release gate 證據。
+
+### 7.1 Task Results
+
+| Task | Result | 實際輸出 |
+|---|---|---|
+| S197-T01 Publish 必填欄位 inline 提示 | PASS | `PublishPage.test.tsx` 覆蓋 required mark、分類缺欄 inline error、text mode 空白、frontmatter 錯誤、版本號 optional、`aria-describedby`。 |
+| S197-T02 FileDropZone required error contract | PASS | `FileDropZone.test.tsx` 覆蓋 caller required error、副檔名錯誤優先、`aria-invalid` / `aria-describedby`。 |
+| S197-T03 SkillEdit 分類與 upload mode 缺欄原因 | PASS | `SkillEditPage.test.tsx` 覆蓋分類清空顯示 `分類不可空白`、upload mode 未選檔顯示 `請選擇 zip 或 SKILL.md`、a11y attributes。 |
+| S197-T04 DESIGN 必填表單規則同步 | PASS | `docs/grimo/ui/DESIGN.md` 已記錄 Publish/Edit required mark、inline error、`aria-invalid` / `aria-describedby`、required color 與 category/risk palette 分離。 |
+
+### 7.2 Verification
+
+```bash
+cd frontend && npm test -- PublishPage SkillEditPage FileDropZone
+```
+
+PASS — 3 files / 46 tests.
+
+```bash
+cd frontend && npm run verify
+```
+
+PASS — `eslint . --max-warnings 0` 與 `tsc -b` 都通過。
+
+E2E：not required。S197 沒有新增 route、後端 API、credential injection、test seed endpoint 或真瀏覽器-only 行為；這次行為都能由 RTL DOM text / attributes 與 TypeScript/ESLint 驗證。
+
+### 7.3 AC Results
+
+| AC | Result | 證據 |
+|---|---|---|
+| AC-S197-1 | PASS | `PublishPage.test.tsx` 驗 `/publish` 必填 label 顯示 required mark，`版本號` 不顯示 required mark。 |
+| AC-S197-2 | PASS | `PublishPage.test.tsx` 驗分類空白顯示 `請填寫分類`，且不呼叫 upload API。 |
+| AC-S197-3 | PASS | `FileDropZone.test.tsx` 驗 required error 與副檔名錯誤優先順序。 |
+| AC-S197-4 | PASS | `PublishPage.test.tsx` 驗 text mode 空白顯示 `請貼上 SKILL.md 內容`，frontmatter 缺 `description` 仍顯示原錯誤。 |
+| AC-S197-5 | PASS | `PublishPage.test.tsx` 驗 `版本號` optional，空白時 FormData 不含 `version`。 |
+| AC-S197-6 | PASS | `SkillEditPage.test.tsx` 驗 edit page 分類與 upload mode 缺欄原因。 |
+| AC-S197-7 | PASS | `PublishPage.test.tsx`、`FileDropZone.test.tsx`、`SkillEditPage.test.tsx` 驗 `aria-invalid` / `aria-describedby` 與 required mark accessible text。 |
+| AC-S197-8 | PASS | `docs/grimo/ui/DESIGN.md` 已同步 required field rule，並保留 required color 與 category/risk palette 分離。 |
+
+### 7.4 Next Step
+
+下一步應執行 `$verifying-quality S197`。QA PASS 且 release gate 證據補齊後，才可執行 `$shipping-release S197`。
