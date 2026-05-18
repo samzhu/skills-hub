@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, ArrowLeft, Check, FileText, Upload as UploadIcon } from 'lucide-react'
+import { ApiError } from '@/api/client'
 import { addVersion, updateSkill } from '@/api/skills'
 import { skillKeys } from '@/api/queryKeys'
 import { AppShell } from '@/components/AppShell'
@@ -10,6 +11,7 @@ import { FileDropZone } from '@/components/FileDropZone'
 import { useSkill } from '@/hooks/useSkill'
 import { useSkillFile } from '@/hooks/useSkillFiles'
 import { localizeApiError } from '@/lib/api-error-messages'
+import type { ValidationFinding } from '@/types/skill'
 import { validateFrontmatter } from './PublishPage.utils'
 
 type EditMode = 'text' | 'upload'
@@ -175,8 +177,13 @@ export function SkillEditPage() {
         {addVersionMutation.isError && (
           <ErrorState
             className="mb-4"
-            title="儲存新版本失敗"
-            message={localizeApiError(addVersionMutation.error)}
+            title={primaryValidationMessage(addVersionMutation.error) ?? '儲存新版本失敗'}
+            message={(
+              <>
+                <span>{versionErrorMessage(addVersionMutation.error)}</span>
+                <ValidationFindingsList findings={validationFindings(addVersionMutation.error)} />
+              </>
+            )}
           />
         )}
         {updateCategoryMutation.isError && (
@@ -248,6 +255,41 @@ export function SkillEditPage() {
         </div>
       </div>
     </AppShell>
+  )
+}
+
+function validationFindings(error: unknown): ValidationFinding[] {
+  if (!ApiError.is(error)) return []
+  return error.findings ?? []
+}
+
+function primaryValidationMessage(error: unknown): string | null {
+  const findings = validationFindings(error)
+  return findings.find((finding) => finding.severity === 'error')?.title
+    ?? findings[0]?.title
+    ?? null
+}
+
+function versionErrorMessage(error: unknown): string {
+  const findings = validationFindings(error)
+  if (findings.length > 0 && ApiError.is(error) && error.message) {
+    return `儲存新版本失敗：${error.message}`
+  }
+  return localizeApiError(error)
+}
+
+function ValidationFindingsList({ findings }: { findings: ValidationFinding[] }) {
+  if (findings.length === 0) return null
+
+  return (
+    <span className="mt-2 block space-y-1 text-[12px] leading-relaxed">
+      {findings.map((finding, index) => (
+        <span key={`${finding.section}-${finding.title}-${index}`} className="block">
+          <span className="block break-words">{`${finding.severity} · ${finding.section} · ${finding.title}`}</span>
+          {finding.hint && <span className="mt-0.5 block break-words opacity-80">{finding.hint}</span>}
+        </span>
+      ))}
+    </span>
   )
 }
 

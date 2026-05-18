@@ -251,4 +251,15 @@ E2E：required for AC-S195-6。AC-S195-1 到 AC-S195-5 會用 Vitest + React Tes
 
 ## 7. Implementation Results
 
-尚未實作。T01-T04 仍為 `pending`。
+### Task Results
+
+| Task | Status | Evidence |
+|------|--------|----------|
+| T01 FileDropZone input hook | PASS | `cd frontend && npm test -- FileDropZone` → 1 file / 7 tests passed |
+| T02 addVersion preserves validation findings | PASS | `cd frontend && npm test -- skills.test api-error-messages` → 2 files / 11 tests passed |
+| T03 Edit upload mode uses FileDropZone | PASS | `cd frontend && npm test -- SkillEditPage` → 1 file / 9 tests passed |
+| T04 Edit page shows validation findings and mobile evidence | PASS | `cd frontend && npm test -- SkillEditPage` → 1 file / 12 tests passed；`cd e2e && npx playwright test --grep @S195` → 1 test passed |
+
+### Current Gate
+
+Implementation tasks are complete. Independent QA and full release verification have not run yet, so S195 is not ready for `$shipping-release` in this tick.

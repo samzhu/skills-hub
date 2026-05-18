@@ -270,6 +270,125 @@ describe('SkillEditPage — S187 version submit flow', () => {
     )
   })
 
+  it('AC-S195-3: edit page promotes first error finding title as primary validation error', async () => {
+    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url === '/api/v1/skills/skill-docker') {
+        return Promise.resolve(new Response(JSON.stringify(skillFixture), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }))
+      }
+      if (url === '/api/v1/skills/skill-docker/files/SKILL.md') {
+        return Promise.resolve(new Response(latestSkillMd, {
+          status: 200,
+          headers: { 'Content-Type': 'text/markdown' },
+        }))
+      }
+      if (url === '/api/v1/skills/skill-docker/versions' && init?.method === 'PUT') {
+        return Promise.resolve(new Response(JSON.stringify({
+          error: 'VALIDATION_ERROR',
+          message: 'SKILL.md validation failed',
+          findings: [
+            {
+              section: 'skill_md',
+              severity: 'warning',
+              title: 'frontmatter_official_format: metadata.tags array accepted in compatibility mode',
+              hint: null,
+            },
+            {
+              section: 'skill_md',
+              severity: 'error',
+              title: "metadata: key 'owner' nested object is not supported",
+              hint: '請把 metadata.owner 改成純字串。',
+            },
+          ],
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }))
+      }
+      return Promise.resolve(new Response(JSON.stringify({}), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+    })
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /上傳檔案/ }))
+    fireEvent.change(screen.getByLabelText('Skill 套件'), {
+      target: { files: [new File(['zip'], 'handover.zip', { type: 'application/zip' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '儲存新版本' }))
+
+    await waitFor(() => {
+      expect(screen.getByText("metadata: key 'owner' nested object is not supported")).toBeInTheDocument()
+    })
+    expect(screen.getByText('儲存新版本失敗：SKILL.md validation failed')).toBeInTheDocument()
+    expect(screen.getByText("error · skill_md · metadata: key 'owner' nested object is not supported")).toBeInTheDocument()
+    expect(screen.getByText('請把 metadata.owner 改成純字串。')).toBeInTheDocument()
+    expect(screen.getByText(/warning · skill_md · frontmatter_official_format/)).toBeInTheDocument()
+  })
+
+  it('AC-S195-3: edit page falls back to localized message when findings are missing', async () => {
+    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url === '/api/v1/skills/skill-docker') {
+        return Promise.resolve(new Response(JSON.stringify(skillFixture), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }))
+      }
+      if (url === '/api/v1/skills/skill-docker/files/SKILL.md') {
+        return Promise.resolve(new Response(latestSkillMd, {
+          status: 200,
+          headers: { 'Content-Type': 'text/markdown' },
+        }))
+      }
+      if (url === '/api/v1/skills/skill-docker/versions' && init?.method === 'PUT') {
+        return Promise.resolve(new Response(JSON.stringify({
+          error: 'VERSION_EXISTS',
+          message: 'Version already exists',
+        }), {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' },
+        }))
+      }
+      return Promise.resolve(new Response(JSON.stringify({}), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+    })
+
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /上傳檔案/ }))
+    fireEvent.change(screen.getByLabelText('Skill 套件'), {
+      target: { files: [new File(['zip'], 'handover.zip', { type: 'application/zip' })] },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '儲存新版本' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('儲存新版本失敗')).toBeInTheDocument()
+    })
+    expect(screen.getByText('此版本號已存在，請改用其他版本號。')).toBeInTheDocument()
+    expect(screen.queryByText(/error · skill_md/)).not.toBeInTheDocument()
+  })
+
+  it('AC-S195-6: mobile upload mode keeps dropzone and primary actions visible', async () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: /上傳檔案/ }))
+
+    expect(screen.getByText('拖拽 zip 或 md 檔到此處')).toBeVisible()
+    expect(screen.getByText('或點擊選取檔案')).toBeVisible()
+    expect(screen.getByRole('link', { name: '取消' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '儲存分類' })).toBeVisible()
+    expect(screen.getByRole('button', { name: '儲存新版本' })).toBeVisible()
+  })
+
   it('AC-S187-7: duplicate version 不覆寫舊版本且留在 edit page', async () => {
     globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input.toString()

@@ -71,4 +71,16 @@ And（而且）主要 action 按鈕仍可見
 - S195-T03 PASS
 
 ## 狀態
-pending（待做）
+PASS（2026-05-18）
+
+## 實作結果
+- `frontend/src/pages/SkillEditPage.tsx`：新增 `primaryValidationMessage()`、`versionErrorMessage()`、`ValidationFindingsList()`；`addVersionMutation` 失敗且 `ApiError.findings` 有值時，錯誤主標優先顯示第一筆 `severity === "error"` finding title，下面顯示 `儲存新版本失敗：SKILL.md validation failed` 與 findings row。
+- `frontend/src/pages/SkillEditPage.test.tsx`：新增 `AC-S195-3` 測試，確認 first error finding title 會升成主標、次要文字保留 backend generic message、row 顯示 `error · skill_md · ...` 與 hint；也補 findings 缺失時回到既有 localized duplicate version 文案。
+- `frontend/src/pages/SkillEditPage.test.tsx`：新增 `AC-S195-6` DOM 層 mobile upload mode 檢查，確認 dropzone 文案和主要 action 按鈕可見。
+- `e2e/tests/S195-skill-edit-upload-validation-ux.spec.ts`：新增 `@S195 @ac-S195-6` Playwright mobile evidence，390px viewport 下進入 edit upload mode 後檢查 dropzone 文案與「儲存分類」「儲存新版本」可見且未超出 viewport。
+
+## 驗證結果
+- PASS：`cd frontend && npm test -- SkillEditPage`
+- 結果：1 test file passed；12 tests passed。
+- PASS：`cd e2e && npx playwright test --grep @S195`
+- 結果：1 Playwright test passed。
