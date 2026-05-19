@@ -6,6 +6,26 @@
 - **Node.js 20 LTS** (frontend build)
 - **TypeScript ~6.0.2** (frontend strict mode)
 
+## Project Structure Design
+
+Skills Hub 採「production app、frontend source、E2E runner、project records」四區分工。每個目錄的存在理由如下：
+
+| Path | Owns | Design reason |
+|------|------|---------------|
+| `backend/` | Spring Boot production app、domain modules、migrations、packaged static resources、container image build。 | 最終 Cloud Run 跑一個 Spring Boot image；backend 是唯一 production artifact owner。E2E reset/seed support 不可放回 production source set。 |
+| `frontend/` | React 19 SPA source、component tests、lint/typecheck。 | 前端 source 只在開發與 build 階段存在；production 不啟 Vite dev server，build output 才會進 backend static resources。 |
+| `e2e/` | Playwright workspace、production-image Compose target、external fixtures、browser auth state、E2E reports。 | Browser E2E 同時碰 frontend/backend/DB/OAuth，不能隸屬任一側；S202 後它負責建 `skillshub:e2e-local` 並從外部準備測試資料。 |
+| `docs/grimo/` | PRD、architecture、development standards、QA strategy、spec roadmap、spec archive、changelog、ADR、test-case ledger。 | repo 檔案是 automation state；spec/task/QA/release 決策要可追溯，不靠對話記憶。 |
+| `docs/grimo/tasks/` | in-flight task files only。 | task files 是暫時工作指令；ship 時必須刪除，永久紀錄留在 spec §6/§7 與 archive。 |
+| `docs/grimo/specs/archive/` | shipped or superseded specs。 | root `docs/grimo/specs/` 只留 `spec-roadmap.md` 與仍在設計/實作/QA 的 spec，避免 dev loop 誤判下一步。 |
+
+結構規則：
+
+- Backend module 邊界遵循 Spring Modulith：每個 module 一個頂層 package，跨 module 用 public API 或 domain event，不直接注入別的 module private service。
+- Frontend 不承擔 production runtime；任何「只有 Vite dev server 才成立」的行為都不能算 shipped。
+- E2E fixture 不回寫 production app。需要測 aggregate behavior 時走正式 `/api/v1/*`；沒有 production write API 的 projection row 才可由 guarded SQL 寫入 disposable DB。
+- 文件不是附錄。改 architecture / verification / package behavior 時，必須同步 `docs/grimo/*.md` 的對應 owner 檔案，見本文件「E2E / QA 文件責任分工」。
+
 ## Code Style
 
 ### Java (Backend)
@@ -115,6 +135,34 @@
   - Browser login 要走 mock OAuth2 Login session，保存 `playwright/.auth/*.json`；不要手寫 cookie 或直接塞 frontend auth state。
   - Production app 不得新增 reset/seed HTTP route 或 deterministic E2E Spring profile/resource；`assertProductionArtifactClean` 會在 backend `check` 掃 artifact。
 - E2E runtime activation：Playwright `webServer` 使用 `npm run image:build` + Docker Compose，不啟 Vite dev server，不啟 test-flavored backend app。`workers: 1` 仍是 V07 預設，因 fixture manifest 與 shared baseline 是 per-run 共享狀態。
+
+### QA 防護層（從 spec 到 release）
+
+每次改動至少要知道自己會被哪幾層擋。不要只說「有測試」，要能指出跑哪個 command 會看到什麼結果。
+
+| Layer | Command / file | Blocks |
+|-------|----------------|--------|
+| 1. Spec / AC trace | `docs/grimo/specs/<SNNN>.md` §3/§6/§7、`docs/grimo/tasks/*SNNN*.md` | AC 沒被 task/test 覆蓋、任務完成但結果沒寫回永久 spec。 |
+| 2. Backend behavior + module boundary | V01 `cd backend && ./gradlew clean test jacocoTestReport`、V03 `./gradlew jacocoTestCoverageVerification` | Java compile error、Spring context wiring、Modulith boundary、DB/Testcontainers、backend coverage gate。 |
+| 3. Frontend behavior + type safety | V04 `cd frontend && npm test`、V05 `npm run verify`、V06 `npm test -- --coverage` | React UI 行為、TypeScript 型別、ESLint、frontend coverage gate。 |
+| 4. Production-image browser path | V07 `cd e2e && npx playwright test --grep @happy-path` | 只在真組裝才會出現的錯：static build 沒進 image、Compose/OAuth/DB wiring、fixture manifest、正式 `/api/v1/*` 路徑壞掉。 |
+| 5. AOT / native image | V08a `./gradlew processAot`、V08b `./gradlew bootBuildImage ... -Pspring.profiles.active=aot,local` | GraalVM reflection metadata、AOT build-time bean discovery、container layer、native image static analysis。 |
+| 6. Release completeness | `$shipping-release`：archive spec、刪 task files、CHANGELOG、roadmap shipped row、tag。 | QA PASS 但還留 root spec/task、沒有 changelog/tag、dev loop 下一輪誤開新 spec。 |
+
+若某層不適用，要在 spec §7 寫明理由。例如純 docs spec 可用 evidence-only AC；browser/UI workflow 不可跳過 V07，因 unit/component tests 不會啟 production image。
+
+### E2E / QA 文件責任分工（S202 後）
+
+S202 後，browser E2E 的 ground truth 分散在多個 `docs/grimo/*.md` 檔案。改 E2E runner、fixture、verification registry、或 production artifact gate 時，必須同步下表，不要只改其中一份：
+
+| File | 負責內容 | 何時要改 |
+|------|----------|----------|
+| `docs/grimo/PRD.md` | 產品層決策；D28 定義 Critical Path browser E2E 打 production packaged image，不打 test-flavored app。 | 改變 V07 測什麼產品能力、或改變「正式 app image vs dev server」取捨時。 |
+| `docs/grimo/architecture.md` | `e2e/` workspace、Compose topology、fixture manifest、mock OAuth、artifact clean gate 的 runtime 設計。 | 改 `e2e/compose.e2e.yaml`、Playwright project graph、fixture output shape、或 image build path 時。 |
+| `docs/grimo/development-standards.md` | 新 spec / task 必須遵守的開發規則，例如不新增 `/internal/test/*` route、fixture data 要走 production API、projection SQL 必須 DB guard。 | 新增或移除 E2E fixture 寫法、test naming/tagging rule、或 production artifact 禁止項時。 |
+| `docs/grimo/qa-strategy.md` | Verification Command Registry；`scripts/verify-all.sh` 的 V01-V08 行為、skip 條件、evidence 要求。 | 新增/刪除 verify command、改 V07/V08 command、改 coverage/native/image gate 時。 |
+| `docs/grimo/test-cases.md` | Mode B user-flow ledger；哪些正例/反例/邊界還只是 planned，哪些已由 V07 production image gate 覆蓋。 | 新增 browser E2E scenario、把 ledger case 轉成實際 Playwright spec、或調整未補的反例/邊界清單時。 |
+| `docs/grimo/glossary.md` | 跨文件共用術語，例如 Fixture Manifest、Test Data Seed、E2E Test。 | 新增 runner/fixture/test profile 名詞，或重新命名既有術語時。 |
 
 ### 測試金字塔規範（S025a 起；per spec §3 + qa-strategy.md §Layer 1 細則）
 
@@ -276,10 +324,40 @@ Reviewer checklist：
 
 ## Build & Deploy
 
-- Build: `./gradlew build`（含前端 build + 後端 build + test）
-- Container: `./gradlew bootBuildImage` 或 Dockerfile
-- Deploy target: GCP Cloud Run（GraalVM native image，per architecture.md GraalVM AOT Strategy 段）
-- CI pipeline: build → test → container build → deploy
+### 包版策略
+
+Skills Hub 的 shipped artifact 是單一 Spring Boot container image。React source 不直接部署；`frontend/dist` 會被複製進 `backend/src/main/resources/static/`，再由 Spring Boot image 對外服務。
+
+| Context | Command | Output / rule |
+|---------|---------|---------------|
+| Local backend dev | `cd backend && ./gradlew bootRun` | 啟 Spring Boot；本機開發用，不代表 production package。 |
+| Local frontend dev | `cd frontend && npm run dev` | 啟 Vite hot reload；只給開發者操作 UI，不進 release evidence。 |
+| Full local verification | `./scripts/verify-all.sh` | V01-V08 都 PASS 才能 ship；V07 會建 production packaged image，V08b 會跑 native image build。 |
+| E2E package target | `cd e2e && npm run image:build` | 建 `skillshub:e2e-local`；用 production packaged app + static frontend，不用 Vite dev server。 |
+| CI / production image | Cloud Build：`npm ci && npm run build` → copy `frontend/dist` → `./gradlew bootBuildImage --imageName=<AR>:$SHORT_SHA` | Artifact Registry 取得 image；GCP profile 的 AOT/Secret Manager parity 由 Cloud Build step 擔任 canonical gate。 |
+| Manual deploy path | `scripts/gcp/03-build-push.sh` | Script 自帶 frontend build/copy + backend image build/push；只有 user 明確要求 deploy 時使用。 |
+
+### 包版重點
+
+- `bootBuildImage` 是 package gate，不是普通 unit test。它會抓到 GraalVM native-image static analysis、reflection metadata、container layer 失敗。
+- V08a/V08b 的 AOT build-time key 必須是 `SKILLSHUB_AOT_GENAI_API_KEY` 或 `aot-placeholder-key`；不要要求真 Gemini key 才能編譯 native image。
+- V07 可用 `backend/config/application-secrets.properties` 的 dev key 產 semantic fixtures，但只能進 process env，log 必須 redacted，不能寫進 tracked file。
+- Production image 不包含 `/internal/test/*`、`application-e2e.yaml`、deterministic E2E config、或 backend test support package。`assertProductionArtifactClean` 在 V01 `check` path 擋這類回歸。
+- Release commit 只做 release ledger：archive spec、刪 task files、CHANGELOG、roadmap、tag。不要把新 feature code 混進 release-only commit。
+- 版本 tag 不移動既有 tag。若下一個號碼已被早期設計 commit 使用，ship 用下一個可用版本，並在 changelog / roadmap 說清楚。
+
+### 防踩雷 Checklist
+
+每個 spec / release 前至少掃一次：
+
+1. `docs/grimo/specs/<SNNN>.md` §7 有沒有寫實際 command output？只有「應該可以」不算 evidence。
+2. `docs/grimo/tasks/` 是否還有已 QA PASS spec 的 task file？有的話下一步是 `$shipping-release`，不是開新 spec。
+3. Browser E2E 是否真的跑 production image？log 要看得到 `skillshub:e2e-local` / Compose / fixture manifest，不是 Vite dev server。
+4. AOT/native image 是否用 fake build-time key？`processAot` / `bootBuildImage` 不該需要真 Gemini key。
+5. Secret 是否只出現在 ignored config 或 process env？`verify-all.log` / docs / diff 不得出現實際 key。
+6. 新增 Spring async listener 時，是否用 `@ApplicationModuleListener`、Scenario test、idempotent write？不要回到 30s Awaitility。
+7. 新增 JSON/Jackson contract 時，是否走 Spring auto-configured `JsonMapper` / MockMvc？不要用 `new ObjectMapper()` 做 false-positive test。
+8. 新增 production package behavior 時，是否同步 `PRD.md`、`architecture.md`、`development-standards.md`、`qa-strategy.md`、`test-cases.md`、`glossary.md` 的 owner 段落？
 
 ## Upstream Issue Tracking
 

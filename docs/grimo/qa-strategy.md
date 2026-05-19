@@ -71,6 +71,18 @@ Spring Modulith 的 `ApplicationModules.verify()` 確保：
 | V08a | `./gradlew processAot` | CRITICAL | — | AOT-bake-time smoke（~30s）；抓 S158 類 prod-only bug（Jackson default-view-inclusion）；不依 Docker / GraalVM；V07 已跑 processAot 故 cache hit |
 | V08b | `./gradlew --no-daemon -x test bootBuildImage --imageName=skillshub-verify:local -Pspring.profiles.active=aot,local` | CRITICAL | `SKIP_NATIVE=1` env / Docker daemon 不可用 | Paketo native-image buildpack；抓 GraalVM native-image static analysis / reflection metadata / container layer failure；~10min cold；本機 dev `SKIP_NATIVE=1` opt-out（明示風險）。**profile=aot,local**（非 cloudbuild 的 gcp,aot,lab）：gcp profile 觸發 SM ConfigData 需 ADC + 計費，`application-aot.yaml` 設計為 aot 本地 disable SM；gcp-profile-only AOT bug 由 cloudbuild.yaml step 3 在 CI push 時擔當 canonical gate（90/10 split） |
 
+### V07 / V08 操作規則（S202 後）
+
+`scripts/verify-all.sh` 是 registry 的可執行版本；改下列任何規則時，必須同時改本表與 script。
+
+| Gate | Rule | Expected evidence |
+|------|------|-------------------|
+| V07 semantic fixture key | 若 shell 沒有 `SKILLSHUB_E2E_GENAI_API_KEY`，script 可從 `backend/config/application-secrets.properties` 讀 `skillshub.genai.api-key` 到 process env；不得把 key 寫進 tracked file 或 log。 | `verify-all.log` 只出現 `loaded SKILLSHUB_E2E_GENAI_API_KEY ... (value redacted)`，不能出現實際 key 值。 |
+| V07 production target | Playwright 必須測 `skillshub:e2e-local` production packaged image + `e2e/compose.e2e.yaml`，不啟 Vite dev server、不啟 backend test-flavored app。 | `e2e/results/fixtures.json` 存在；Playwright report/test-results 可追到 setup fixtures/auth、chromium tests、teardown。 |
+| V07 fixture writes | Aggregate data 走正式 `/api/v1/*`；projection-only data 才能由 `e2e/fixtures/projection-seed.ts` 寫 SQL，且 DB guard 只允許 disposable `skillshub_e2e`。 | Fixture unit/setup tests 應覆蓋 DB guard 正/反例；browser tests 讀 manifest，不在 test body 直接 reset global state。 |
+| V08a/V08b AOT key | AOT build-time 只帶 `SKILLSHUB_AOT_GENAI_API_KEY` 或預設 `aot-placeholder-key` 到 `SKILLSHUB_GENAI_API_KEY`；不得要求真 Gemini key 才能 `processAot` 或 `bootBuildImage`。 | `./scripts/verify-all.sh` V08a/V08b PASS；本機缺真 key 時仍能完成 AOT/native image build。 |
+| Secret leak check | QA / release 記錄可寫「從 config 載入且 redacted」，不可貼 key。 | `rg "AIza|SKILLSHUB_E2E_GENAI_API_KEY=.*[A-Za-z0-9_-]{20,}|skillshub\\.genai\\.api-key=.*[A-Za-z0-9_-]{20,}" verify-all.log docs/grimo` 應無命中。 |
+
 ### Known Limitations
 
 | Item | Workaround | Why not enroll |
@@ -88,6 +100,20 @@ Spring Modulith 的 `ApplicationModules.verify()` 確保：
 | `cd frontend && npm run coverage` | `package.json` 無此 script + `@vitest/coverage-v8` 未裝；待獨立 frontend coverage spec（即 §Verification Pipeline §Coverage L23-25 宣告但尚未實作部分）|
 
 ---
+
+## Release Defense Model
+
+`./scripts/verify-all.sh` 是 release 前必跑的總入口；它把下列防線串起來。若某 spec 不跑其中一層，spec §7 必須寫明「為什麼不適用」與替代 evidence。
+
+| Defense | Registry IDs | What must be true |
+|---------|--------------|-------------------|
+| Backend correctness | V01, V03 | `./gradlew clean test jacocoTestReport` 與 coverage gate PASS；JUnit XML 不是 0 tests；Modulith boundary tests 在 V01 內跑過。 |
+| Frontend correctness | V04, V05, V06 | Vitest、ESLint、TypeScript、frontend coverage gate PASS；user-visible copy / layout behavior 不只靠人工看畫面。 |
+| Production browser assembly | V07 | Playwright 跑 production packaged image + Compose disposable DB + mock OAuth + external fixture manifest；不是 Vite dev server，也不是 backend test-flavored app。 |
+| AOT / native package | V08a, V08b | `processAot` 與 `bootBuildImage` PASS；AOT build-time 不需要真 DB、GCP credential、Secret Manager、或真 Gemini key。 |
+| Release ledger | `$shipping-release` | spec 已歸檔、task files 已刪、CHANGELOG 有版本、roadmap 有 shipped row、tag 指到 release commit。 |
+
+這個模型的目的不是多跑 command，而是讓不同類型的錯在對應位置失敗：unit/slice 測 business rule，V07 測真組裝，V08 測 native image，release ledger 防 automation 下一輪誤判狀態。
 
 ## Three-Layer Verification
 
@@ -192,6 +218,18 @@ class MyControllerTest extends WebMvcSliceTestBase {
 | 跨瀏覽器 | Playwright 預設 chromium（headless shell）；新增 Firefox / WebKit project 待規模需要時加 |
 | 上傳/下載流程 | 由 happy-path spec 涵蓋；大檔案 / 異常格式邊界由 backend integration test（Testcontainers）涵蓋，不重複放 E2E |
 | 風險評估準確度 | 準備已知危險/安全的 skill 樣本驗證（仍含人工抽驗，非全自動） |
+
+#### Browser E2E evidence checklist
+
+跑 `cd e2e && npx playwright test --grep @happy-path` 或 V07 時，QA 記錄至少要能回答：
+
+| Check | Evidence |
+|-------|----------|
+| app 來源 | log 顯示 `npm run image:build` / `skillshub:e2e-local`，不是 Vite dev server。 |
+| fixture 來源 | `e2e/results/fixtures.json` 有本輪 manifest；browser spec 透過 manifest 取 skill/request/user id。 |
+| auth 來源 | `playwright/.auth/*.json` 由 mock OAuth2 Login setup project 產生；測 `/api/v1/me` 或 AuthArea 顯示。 |
+| route purity | browser/helper source 不呼叫 `/internal/test/*`；production artifact clean gate 已在 V01 `check` 內跑。 |
+| failure artefact | 失敗時 `e2e/test-results/` 有 trace/screenshot/video；本機用 `npx playwright show-trace <trace.zip>` 打開。 |
 
 ---
 
