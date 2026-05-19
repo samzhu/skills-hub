@@ -32,6 +32,49 @@ section() { log ""; log "=== $(TS) | $1 ==="; }
 CRIT_FAIL=0
 RESULTS=()   # bash 3.2 indexed array（避用 associative）
 
+read_properties_value() {  # $1=file $2=key
+  local file="$1"
+  local key="$2"
+  awk -F= -v want="${key}" '
+    /^[[:space:]]*(#|$)/ { next }
+    {
+      k=$1
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", k)
+      if (k == want) {
+        sub(/^[^=]*=/, "", $0)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+        print
+        exit
+      }
+    }
+  ' "${file}"
+}
+
+load_e2e_genai_key_if_available() {
+  if [[ -n "${SKILLSHUB_E2E_GENAI_API_KEY:-}" ]]; then
+    log "▸ V07: SKILLSHUB_E2E_GENAI_API_KEY already set (value redacted)"
+    return 0
+  fi
+
+  local secrets_file="${REPO_ROOT}/backend/config/application-secrets.properties"
+  if [[ ! -f "${secrets_file}" ]]; then
+    log "▸ V07: backend/config/application-secrets.properties not found; E2E semantic fixture key not loaded"
+    return 0
+  fi
+
+  local dev_key
+  dev_key="$(read_properties_value "${secrets_file}" "skillshub.genai.api-key")"
+  if [[ -z "${dev_key}" ]]; then
+    log "▸ V07: skillshub.genai.api-key missing from backend/config/application-secrets.properties"
+    return 0
+  fi
+
+  export SKILLSHUB_E2E_GENAI_API_KEY="${dev_key}"
+  log "▸ V07: loaded SKILLSHUB_E2E_GENAI_API_KEY from backend/config/application-secrets.properties (value redacted)"
+}
+
+AOT_GENAI_ENV='SKILLSHUB_GENAI_API_KEY="${SKILLSHUB_AOT_GENAI_API_KEY:-aot-placeholder-key}"'
+
 run_critical() {  # $1=ID  $2=desc  $3=command-str
   section "$1 [CRITICAL] $2"
   if eval "$3" >> "${LOG}" 2>&1; then
@@ -112,6 +155,7 @@ run_skip_if "V06" "cd frontend && npm test -- --coverage" \
 # S202 後 active path 會由 e2e/playwright.config.ts 建 production packaged image，
 # 再用 Compose 啟 disposable DB + mock OAuth + app image；setup projects 產
 # fixture manifest/auth storage，再跑 browser tests。managed by /playwright-expert。
+load_e2e_genai_key_if_available
 run_skip_if "V07" "cd e2e && npx playwright test --grep @happy-path" \
   "[ ! -d '${REPO_ROOT}/e2e/node_modules' ] || [ ! -f '${REPO_ROOT}/e2e/playwright.config.ts' ] || ! grep -rq '@happy-path' '${REPO_ROOT}/e2e/tests/' 2>/dev/null" \
   "(cd '${REPO_ROOT}/e2e' && npx playwright test --grep @happy-path)"
@@ -120,7 +164,7 @@ run_skip_if "V07" "cd e2e && npx playwright test --grep @happy-path" \
 # Jackson default-view-inclusion）。always run；不依 Docker / GraalVM。
 # 與 V07 重複跑 processAot 是 cache hit，cost 接近 0。
 run_critical "V08a" "./gradlew processAot" \
-  "(cd '${REPO_ROOT}/backend' && ./gradlew processAot)"
+  "(cd '${REPO_ROOT}/backend' && ${AOT_GENAI_ENV} ./gradlew processAot)"
 
 # V08b: Full native image build — 抓 GraalVM native-image static analysis、
 # reflection metadata 缺、Paketo container layer 失敗。預設 ON（完整防線）；
@@ -140,7 +184,7 @@ if [[ "${SKIP_NATIVE:-0}" != "0" ]]; then
 elif ! docker info >/dev/null 2>&1; then
   log "▸ V08b: SKIP - Docker daemon not available"; RESULTS+=("V08b=SKIP")
 else
-  if (cd "${REPO_ROOT}/backend" && ./gradlew --no-daemon -x test bootBuildImage \
+  if (cd "${REPO_ROOT}/backend" && SKILLSHUB_GENAI_API_KEY="${SKILLSHUB_AOT_GENAI_API_KEY:-aot-placeholder-key}" ./gradlew --no-daemon -x test bootBuildImage \
        --imageName=skillshub-verify:local \
        -Pspring.profiles.active=aot,local) >> "${LOG}" 2>&1; then
     log "▸ V08b: PASS"; RESULTS+=("V08b=PASS")

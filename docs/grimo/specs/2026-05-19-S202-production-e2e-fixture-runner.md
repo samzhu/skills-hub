@@ -1,6 +1,6 @@
 # S202: Production E2E Fixture Runner
 
-> 規格：S202 | 大小：M(14) | 狀態：⏳ Dev
+> 規格：S202 | 大小：M(14) | 狀態：✅ QA PASS — ready for shipping
 > 日期：2026-05-19  
 > 對應：PRD Critical Path P1-P6、ADR-007、V07 Playwright gate
 
@@ -977,10 +977,24 @@ Manual planning mode stops here. Do not start implementation until explicitly in
 
 - `e2e/playwright.config.ts` now enables semantic fixture seeding for `npx playwright test --grep @happy-path`, so V07 fails at setup with `semantic E2E requires SKILLSHUB_E2E_GENAI_API_KEY` when the key is missing instead of later returning empty `/browse` results.
 - The dev key in `backend/config/application-secrets.properties` can be exported as `SKILLSHUB_E2E_GENAI_API_KEY` for local V07. With that env var set, `cd e2e && npx playwright test --grep @happy-path` PASS: 16 passed.
+- `scripts/verify-all.sh` now loads that local dev key into `SKILLSHUB_E2E_GENAI_API_KEY` for V07 when the shell env is missing, while AOT compile/image build uses only `SKILLSHUB_AOT_GENAI_API_KEY` or the default `aot-placeholder-key` as a build-time fake key. The key value is redacted in logs and never written to tracked files.
 - Updated three browser specs to match the shipped S189/S202 contract: `/browse` search input calls only `/api/v1/search/semantic`, real Gemini embeddings do not guarantee exact 3-result keyword filtering, and S202 setup fixtures seed the disposable DB once before tests instead of exposing `/internal/test/reset` for per-test empty DB state. Empty-result controls remain covered by frontend component tests.
 - `cd e2e && npx playwright test --project chromium --grep "AC-4: 從詳情頁下載"` PASS against `skillshub:e2e-local`, confirming the production image, Compose DB, fixture manifest, mock OAuth storageState, and download-count fixture path still work without a semantic key.
 - `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.ai.AiModelConfigTest --tests io.github.samzhu.skillshub.score.QualityScoreListenerTest` PASS after moving the disabled quality judge stub into production source.
 - `rg "Pattern 1|TestDataController|/internal/test|application-e2e" docs/grimo/PRD.md docs/grimo/architecture.md docs/grimo/development-standards.md docs/grimo/qa-strategy.md docs/grimo/test-cases.md docs/grimo/glossary.md docs/grimo/adr` only returns ADR-007 / ADR-008 historical or superseded text.
 - `./scripts/verify-all.sh` PASS with `SKILLSHUB_E2E_GENAI_API_KEY` set: V01=PASS, V02=INFO line coverage 87.4%, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=PASS; exit=0.
 
-S202 local implementation is complete. Next workflow step is `$verifying-quality S202`.
+### 2026-05-19 — Independent QA Review PASS
+
+| Layer | Result | Detail |
+|-------|--------|--------|
+| Automated tests | PASS | `env -u SKILLSHUB_E2E_GENAI_API_KEY SKIP_NATIVE=1 ./scripts/verify-all.sh` PASS: V01=PASS, V02=INFO line coverage 87.5%, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V08a=PASS, V08b=SKIP by explicit dev opt-out; exit=0. |
+| Coverage / Integration | PASS | V07 loaded `SKILLSHUB_E2E_GENAI_API_KEY` from `backend/config/application-secrets.properties` with value redacted and ran 16 `@happy-path` browser tests against the production packaged image + Compose DB. Full native-image build was verified separately with `cd backend && SKILLSHUB_GENAI_API_KEY="${SKILLSHUB_AOT_GENAI_API_KEY:-aot-placeholder-key}" ./gradlew --no-daemon -x test bootBuildImage --imageName=skillshub-verify:local -Pspring.profiles.active=aot,local`: BUILD SUCCESSFUL in 3m54s. |
+| Manual verification | N/A | S202 acceptance criteria are covered by scripted backend/frontend/E2E checks; no manual-only AC remains. |
+| Testability gate | CLEAR | AC-S202-1..9 have executable evidence in T01-T07 plus V07/V08a/V08b release checks; no UNTESTABLE or MANUAL-MISSING AC. |
+
+- Code quality review PASS: changed runtime scripts only read the local dev key into process env for V07, redact the value in logs, and never write it to tracked files. AOT build-time checks use `SKILLSHUB_AOT_GENAI_API_KEY` or `aot-placeholder-key`, so native compilation no longer depends on a real Gemini key.
+- Secret check PASS: `rg` only finds the redacted log message and tracked code/doc references, not the development key value.
+- Design sync PASS: `docs/grimo/qa-strategy.md` V07/V08a/V08b registry already matches the implemented commands, and S202 §7 now records the local release evidence.
+
+Verdict: PASS. S202 local release gate is complete and the next workflow step is `$shipping-release S202`.

@@ -41,6 +41,7 @@ cp -a "${ROOT_DIR}/frontend/dist/." "${STATIC_DIR}/"
 
 (
   cd "${ROOT_DIR}/backend"
+  SKILLSHUB_GENAI_API_KEY="${SKILLSHUB_AOT_GENAI_API_KEY:-aot-placeholder-key}" \
   SKILLSHUB_QUALITY_JUDGE_ENABLED=false \
   SKILLSHUB_SCANNER_ENGINES_LLM_ENABLED=false \
   ./gradlew --no-daemon -x test bootBuildImage \
