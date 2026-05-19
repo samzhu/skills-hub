@@ -1,0 +1,65 @@
+name: skillshub-e2e
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: skillshub_e2e
+      POSTGRES_USER: skillshub
+      POSTGRES_PASSWORD: skillshub
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skillshub -d skillshub_e2e"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  mock-oauth2-server:
+    image: ghcr.io/navikt/mock-oauth2-server:3.0.1
+    volumes:
+      - ../backend/config/oauth-mock-config.json:/app/config.json:ro
+    ports:
+      - "${SKILLSHUB_E2E_OAUTH_PORT:-9000}:8080"
+    environment:
+      JSON_CONFIG_PATH: /app/config.json
+      LOG_LEVEL: INFO
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8080/skills-hub-dev/.well-known/openid-configuration > /dev/null"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+      start_period: 5s
+
+  app:
+    image: ${SKILLSHUB_E2E_IMAGE:-skillshub:e2e-local}
+    depends_on:
+      db:
+        condition: service_healthy
+      mock-oauth2-server:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/skillshub_e2e
+      SPRING_DATASOURCE_USERNAME: skillshub
+      SPRING_DATASOURCE_PASSWORD: skillshub
+      SKILLSHUB_DB_URL: jdbc:postgresql://db:5432/skillshub_e2e?ApplicationName=skillshub-e2e&currentSchema=public&reWriteBatchedInserts=true&socketTimeout=30
+      SKILLSHUB_DB_USER: skillshub
+      SKILLSHUB_DB_PASSWORD: skillshub
+      SKILLSHUB_STORAGE_LOCAL_PATH: /tmp/skillshub-e2e-storage
+      SKILLSHUB_SECURITY_OAUTH_ENABLED: "true"
+      SKILLSHUB_SECURITY_OAUTH_LOGIN_ENABLED: "true"
+      SKILLSHUB_SCANNER_ENGINES_LLM_ENABLED: "false"
+      SKILLSHUB_SEARCH_SEMANTIC_SIMILARITY_THRESHOLD: "0.1"
+      SKILLSHUB_GENAI_API_KEY: ${SKILLSHUB_E2E_GENAI_API_KEY:-e2e-placeholder-key}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://mock-oauth2-server:8080/skills-hub-dev
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_SKILLSHUB_CLIENT_ID: developer-client
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_SKILLSHUB_CLIENT_SECRET: secret
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_SKILLSHUB_SCOPE: openid,email,profile
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_SKILLSHUB_REDIRECT_URI: "{baseUrl}/login/oauth2/code/{registrationId}"
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_SKILLSHUB_CLIENT_AUTHENTICATION_METHOD: client_secret_basic
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_SKILLSHUB_AUTHORIZATION_GRANT_TYPE: authorization_code
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_SKILLSHUB_PROVIDER: skillshube2e
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_SKILLSHUBE2E_ISSUER_URI: http://mock-oauth2-server:8080/skills-hub-dev
+    ports:
+      - "${SKILLSHUB_E2E_PORT:-8080}:8080"
