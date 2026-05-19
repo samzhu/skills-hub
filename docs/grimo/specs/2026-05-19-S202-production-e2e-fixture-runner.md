@@ -1,6 +1,6 @@
 # S202: Production E2E Fixture Runner
 
-> 規格：S202 | 大小：M(14) | 狀態：📐 in-design  
+> 規格：S202 | 大小：M(14) | 狀態：⏳ Plan
 > 日期：2026-05-19  
 > 對應：PRD Critical Path P1-P6、ADR-007、V07 Playwright gate
 
@@ -22,7 +22,7 @@ S202 要讓瀏覽器 E2E 完整驗測「基於 codebase build 出來、正式會
 | 建立 `e2e/compose.e2e.yaml` 啟動 disposable DB + mock OAuth server + production app image | 不新增 production app private test endpoint |
 | Playwright 改用 setup/teardown project dependencies | 不做任何 test-flavored app |
 | `e2e/fixtures/*` 產生 `e2e/results/fixtures.json` | 不把 fixture runner 部署到 Cloud Run |
-| 更新 ADR / architecture / development standards / QA / glossary 的 E2E 規則 | 不把 Docker Compose 納入 backend 單元測試 |
+| 更新 PRD / architecture / development standards / QA / test-cases / glossary / ADR 的 E2E 規則 | 不把 Docker Compose 納入 backend 單元測試 |
 | 以 `local` runtime profile 在 disposable DB + filesystem storage 跑 production codebase image，並用 mock OAuth 驗 OAuth2 Login session | 不把 V07 升級成 Cloud Run profile parity test（Cloud SQL Auth Proxy / GCS / Secret Manager / 真實 Google OAuth consent 仍由 deploy smoke / site-audit 驗） |
 
 ### 估算
@@ -63,6 +63,8 @@ Total = 14，M。
 | `docs/grimo/adr/ADR-007-browser-e2e-playwright.md:23-29` | ADR-007 accepted Pattern 1：backend test API endpoint seeding。 | S202 會取代 ADR-007 的 fixture pattern，需新增 ADR 或修訂 ADR-007。 |
 | `docs/grimo/development-standards.md:111-117` | 開發標準目前把 `TestDataController` 當 E2E fixture seeding 標準。 | S202 ship 時必須同步改 standards，否則後續 spec 會照舊規則新增 test endpoint。 |
 | `docs/grimo/qa-strategy.md:70` | V07 標準命令是 `cd e2e && npx playwright test --grep @happy-path`。 | 盡量保留 V07 命令不變，把 orchestration 收進 `e2e/playwright.config.ts` 與 setup project。 |
+| `docs/grimo/PRD.md` | PRD Critical Path P1-P6 是 V07 browser E2E 的產品依據，但目前沒有記錄「production image E2E」這個驗測決策。 | S202 ship 時要在 PRD decision log / QA-related note 補一句：critical path browser E2E 驗正式 app image，不以 in-app test endpoint 代表正式能力。 |
+| `docs/grimo/test-cases.md` | E2E ledger 仍是 2026-05-02 Mode B catalogue，結尾還說 browser-level scenarios defer until backend stabilizes。 | S202 ship 時要更新 ledger：V07 已是 Playwright gate；fixture 來源改 `FixtureManifest` / production API / guarded projection seed。 |
 | [Gradle Java Plugin](https://docs.gradle.org/current/userguide/java_plugin.html) | `jar` assembles production JAR from `main` source set。 | E2E reset/seed controller 不應放在 `backend/src/main/java`。 |
 | [Spring Boot Gradle OCI image](https://docs.spring.io/spring-boot/gradle-plugin/packaging-oci-image.html) | `bootBuildImage` 從 executable archive 建 OCI image。 | 掃 archive 是第一道 gate；Compose E2E 應跑同樣 production archive 產出的 image。 |
 | [Playwright setup and teardown](https://playwright.dev/docs/test-global-setup-teardown) | 官方推薦 project dependencies；setup 會進 report、trace 可保留、fixtures 可使用。 | 用 `setup fixtures` / `teardown fixtures` projects，不用 `globalSetup`。 |
@@ -502,15 +504,13 @@ Pass condition:
 
 | Task 候選 | Class / file | 來源 | 正向情境 | 反向情境 | POC |
 |-----------|--------------|------|----------|----------|-----|
-| T01 | `e2e/package.json` + `e2e/compose.e2e.yaml` | Cloud Build + Docker Compose docs | `npm run image:build && docker compose up -d --wait` 後 app health is UP，`/` 回 production SPA，git status 沒有 static diff | DB 不 healthy 時 app 不啟動；image 缺 static app 時 AC-S202-7 fail；build 留下 tracked static diff 時 fail | required |
-| T02 | production artifact cleanup | Gradle/Spring Boot docs + Docker image gate | `jar tf ... | rg forbidden` 無輸出；`docker export skillshub:e2e-local | tar -tf - | rg forbidden` 無輸出 | 任一 forbidden class/resource 出現在 archive 或 image filesystem 時 gate fail | not required |
-| T03 | `e2e/fixtures/setup.fixtures.ts` | Playwright project dependencies docs | setup project 建資料並寫 manifest | `/internal/test/reset` 回 2xx 時 setup fail | required |
-| T04 | `e2e/fixtures/production-api-seed.ts` | `SkillCommandController.java` | 上傳合法 skill zip 後 manifest 有 id | API 400/401/500 時 setup fail with readable message | required |
-| T05 | `e2e/fixtures/auth.setup.ts` | current Google login implementation + Playwright auth docs | 匿名 header 顯示「登入」；developer storageState header 顯示 avatar/dropdown；`/api/v1/me` 回 mock email/name/picture | issuer mismatch / token exchange 失敗時 setup auth fail with readable message | required |
-| T06 | `e2e/fixtures/projection-seed.ts` | migrations + analytics code | analytics UI 顯示固定下載數/分數 | DB guard 不通過時不執行 SQL | required |
-| T07 | `e2e/tests/_fixtures.ts` | current `_fixtures.ts` | browser tests 讀 manifest + auth storage helpers | `rg '/internal/test' e2e/tests` 無輸出 | not required |
-| T08 | `docs/grimo/adr/ADR-008-production-e2e-fixture-runner.md` | ADR-007 conflict | 新 ADR 明確取代 Pattern 1 | 文件仍指向 TestDataController 時 doc gate fail | not required |
-| T09 | `docs/grimo/architecture.md`, `development-standards.md`, `qa-strategy.md`, `glossary.md` | current docs | 文件改成外部 fixture runner 標準 | `rg 'TestDataController|/internal/test' docs/grimo/*.md docs/grimo/adr` 只剩歷史 archive 或 S202 風險描述 | not required |
+| T01 | production artifact cleanup | Gradle/Spring Boot docs + Docker image gate | `jar tf ... | rg forbidden` 無輸出；`POST /internal/test/reset` 回 404 或 405 | 任一 forbidden class/resource 出現在 archive，或 route 回 2xx/3xx 時 gate fail | required |
+| T02 | `e2e/package.json` + `e2e/compose.e2e.yaml` | Cloud Build + Docker Compose docs | `npm run image:build && docker compose up -d --wait` 後 app health is UP，`/` 回 production SPA，git status 沒有 static diff | DB 不 healthy 時 app 不啟動；image 缺 static app 時 AC-S202-7 fail；build 留下 tracked static diff 時 fail | required |
+| T03 | `e2e/fixtures/setup.fixtures.ts`, `manifest.ts`, `db-guard.ts`, `teardown.fixtures.ts` | Playwright project dependencies docs | setup project reset disposable DB、拒絕 `/internal/test/reset` 2xx、寫出 manifest | DB guard 指到非 e2e DB 時 destructive SQL fail | required |
+| T04 | `e2e/fixtures/production-api-seed.ts`, `e2e/tests/_fixtures.ts` | `SkillCommandController.java` + current `_fixtures.ts` | 上傳合法 skill zip 後 manifest 有 id；browser tests 讀 manifest | API 400/401/500 時 setup fail with readable message；`rg '/internal/test' e2e/tests` 有命中時 fail | required |
+| T05 | `e2e/fixtures/projection-seed.ts` | migrations + analytics/search code | analytics/quality/semantic fixture rows 寫入後，manifest skill 可回固定下載數/分數/semantic data | DB guard 不通過時不執行 SQL；semantic case 缺 `SKILLSHUB_E2E_GENAI_API_KEY` 時 fail with readable message | required |
+| T06 | `e2e/fixtures/auth.setup.ts` | current Google login implementation + Playwright auth docs | 匿名 header 顯示「登入」；developer/viewer storageState 讓 `/api/v1/me` 回 mock email/name/picture | issuer mismatch / token exchange 失敗時 setup auth fail with readable message | required |
+| T07 | docs + `scripts/verify-all.sh` | current docs + ADR conflict | PRD / architecture / standards / QA / test-cases / glossary / ADR 全部改成 production image E2E + external fixture runner；V07 仍可由 registry 跑 | 文件仍指向新增 `TestDataController` 或 `/internal/test/*` fixture pattern 時 doc gate fail | not required |
 
 ## 3. 驗收條件（SBE）
 
@@ -593,7 +593,7 @@ Pass condition:
 **AC-S202-8: 文件規則同步取代 ADR-007 Pattern 1**
 
 - Given（前提）S202 implementation 完成
-- When（動作）執行 `rg 'Pattern 1|TestDataController|/internal/test|application-e2e' docs/grimo/architecture.md docs/grimo/development-standards.md docs/grimo/qa-strategy.md docs/grimo/glossary.md docs/grimo/adr`
+- When（動作）執行 `rg 'Pattern 1|TestDataController|/internal/test|application-e2e' docs/grimo/PRD.md docs/grimo/architecture.md docs/grimo/development-standards.md docs/grimo/qa-strategy.md docs/grimo/test-cases.md docs/grimo/glossary.md docs/grimo/adr`
 - Then（結果）只允許出現在歷史說明、archive spec、或明確標為 superseded 的 ADR-007 文字
 - And（而且）新的 ADR 或 ADR-007 修訂版把標準 fixture pattern 寫成「Production app + e2e Compose + external fixture runner」
 
@@ -868,11 +868,13 @@ S202 ship 時要同步修訂：
 
 | 文件 | 必改內容 |
 |------|----------|
+| `docs/grimo/PRD.md` | Decision log / QA note 補上 S202：Critical Path browser E2E 驗 production app image；不把 `/internal/test/*` 當正式能力的一部分。 |
 | `docs/grimo/adr/ADR-007-browser-e2e-playwright.md` | 保留 Playwright / `e2e/` workspace / V07 tool 選型歷史；狀態或備註標明 fixture seeding Pattern 1 被 ADR-008 superseded。 |
 | `docs/grimo/adr/ADR-008-production-e2e-fixture-runner.md` | 新增正式決策：E2E 驗測正式會用的 image；fixture seeding 從 backend test API 改成 production image + e2e Compose + external fixture runner。 |
 | `docs/grimo/architecture.md` | `skill/testsupport` 從 backend module map 移除；E2E workspace 說明改 Compose。 |
 | `docs/grimo/development-standards.md` | E2E fixture seeding 標準改成 `e2e/fixtures` + manifest；禁止 production app test endpoint。 |
 | `docs/grimo/qa-strategy.md` | V07 說明改為 Compose production app gate；保留命令。 |
+| `docs/grimo/test-cases.md` | E2E ledger 補 S202 後的新執行模型：happy-path browser cases 由 production image + fixture manifest 驗；負例/邊界 ledger 保留作未來 E2E backfill。 |
 | `docs/grimo/glossary.md` | `Test Data Seed` code naming 從 `TestDataController` 改為 `FixtureManifest` / `FixtureRunner`。 |
 
 ## 5. 檔案規劃
@@ -902,12 +904,69 @@ S202 ship 時要同步修訂：
 | `e2e/tests/*.spec.ts` | modify | shared read-only baseline 改讀 manifest；mutable/ad-hoc data 改用 production API helper 建 per-test unique skill；需要多 user 的 spec 顯式指定 `asUser` 或 `storageState`。 |
 | `scripts/verify-all.sh` | modify if needed | V07 命令保留；若 artifact gate 是 shell 而非 Gradle task，需接進 registry。 |
 | `docs/grimo/adr/ADR-008-production-e2e-fixture-runner.md` | new | 記錄取代 ADR-007 Pattern 1 的正式決策：E2E 驗測正式會用的 image，fixture tooling 留在 app 外。 |
+| `docs/grimo/PRD.md` | modify | 補 S202 decision / QA note：Critical Path E2E 驗 production image。 |
 | `docs/grimo/architecture.md` | modify | backend module map 和 E2E workspace 段落更新。 |
 | `docs/grimo/development-standards.md` | modify | E2E fixture seeding 標準更新。 |
 | `docs/grimo/qa-strategy.md` | modify | V07 描述更新。 |
+| `docs/grimo/test-cases.md` | modify | E2E ledger 更新為 production image + fixture manifest 模式。 |
 | `docs/grimo/glossary.md` | modify | fixture term 更新。 |
 | `docs/grimo/specs/spec-roadmap.md` | modify | S202 row 狀態更新。 |
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+### POC Decision
+
+POC: required。
+
+S202 的 POC 不是獨立 toy project，而是「production image + disposable DB + mock OAuth + Playwright setup」這個真組裝。原因是 spec §2.10 的風險都在實際 runtime 邊界：
+
+- `skillshub:e2e-local` 是否真的包含 production static frontend
+- app image 是否能用 Compose DB env 啟動
+- mock OAuth 的 issuer / authorization / token / JWKS URI 是否能同時讓 host browser 與 app container 通過
+- production upload API 是否能用 mock Bearer JWT seed skill
+- projection SQL 是否只碰 disposable `skillshub_e2e`
+- semantic fixture 是否用 E2E GenAI key，而不是 zero vector 或 deterministic app bean
+
+因此 POC 綁在 T01-T06 的第一輪驗證中執行，每個 task 檔都明列 `先做 POC` 與 pass command。T07 只做文件/verification registry 同步，不另做 POC。
+
+### Task Order
+
+| Task | 檔案 | 覆蓋 AC | 目的 | 前置 |
+|------|------|---------|------|------|
+| T01 | `docs/grimo/tasks/2026-05-19-S202-T01.md` | AC-S202-1, AC-S202-3 | 刪除 production app E2E support code/resource，新增 artifact scan gate。 | 無 |
+| T02 | `docs/grimo/tasks/2026-05-19-S202-T02.md` | AC-S202-2, AC-S202-7 | 建 `skillshub:e2e-local` image build 與 `e2e/compose.e2e.yaml`，Playwright 改 production app target。 | T01 |
+| T03 | `docs/grimo/tasks/2026-05-19-S202-T03.md` | AC-S202-3, AC-S202-4, AC-S202-6 | 建 DB guard、manifest、setup fixtures、teardown fixtures。 | T02 |
+| T04 | `docs/grimo/tasks/2026-05-19-S202-T04.md` | AC-S202-4, AC-S202-5 | seed skill 改正式 upload API；browser helpers/tests 改 manifest + production API helper。 | T03 |
+| T05 | `docs/grimo/tasks/2026-05-19-S202-T05.md` | AC-S202-4, AC-S202-5, AC-S202-6 | seed analytics/quality/semantic projection data；處理 semantic GenAI key gate。 | T04 |
+| T06 | `docs/grimo/tasks/2026-05-19-S202-T06.md` | AC-S202-9 | 用 mock OAuth 跑 browser OAuth2 Login，保存 developer/viewer/admin storageState。 | T02, T03 |
+| T07 | `docs/grimo/tasks/2026-05-19-S202-T07.md` | AC-S202-8, AC-S202-7 | 同步 PRD / architecture / standards / QA / test-cases / glossary / ADR / verify-all；跑 final V07 與 full verification。 | T01-T06 |
+
+### AC Coverage
+
+| AC | Task |
+|----|------|
+| AC-S202-1 正式 artifact 不含 E2E support code/resource | T01 |
+| AC-S202-2 E2E Compose 從 `e2e/` 啟 disposable DB + production app | T02 |
+| AC-S202-3 正式 app 不註冊 `/internal/test/*` | T01, T03 |
+| AC-S202-4 Playwright setup project 產生 fixture manifest | T03, T04, T05 |
+| AC-S202-5 Browser tests 不呼叫 `/internal/test/*` | T04, T05 |
+| AC-S202-6 Runner destructive SQL 有 DB guard | T03, T05 |
+| AC-S202-7 V07 happy-path 測 production static app，不測 Vite dev server | T02, T07 |
+| AC-S202-8 文件規則同步取代 ADR-007 Pattern 1 | T07 |
+| AC-S202-9 Browser E2E 以 mock OAuth 跑登入 session | T06 |
+
+### Manual Handoff
+
+下一步從 T01 開始：
+
+```bash
+$implementing-task S202
+```
+
+Manual planning mode stops here. Do not start implementation until explicitly invoked.
+
+---
+
+<!-- Section 7 added after implementation -->
