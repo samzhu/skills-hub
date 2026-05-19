@@ -5,7 +5,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './tests',
+  testDir: '.',
   timeout: 30_000,
   expect: { timeout: 5_000 },
   fullyParallel: false,
@@ -43,7 +43,23 @@ export default defineConfig({
 
   projects: [
     {
+      name: 'fixture unit',
+      testMatch: /fixtures\/.*\.spec\.ts/,
+      teardown: 'teardown fixtures',
+    },
+    {
+      name: 'setup fixtures',
+      testMatch: /fixtures\/setup\.fixtures\.ts/,
+      teardown: 'teardown fixtures',
+    },
+    {
+      name: 'teardown fixtures',
+      testMatch: /fixtures\/teardown\.fixtures\.ts/,
+    },
+    {
       name: 'chromium',
+      testMatch: /tests\/.*\.spec\.ts/,
+      dependencies: ['setup fixtures'],
       use: { ...devices['Desktop Chrome'] },
     },
   ],
@@ -51,7 +67,7 @@ export default defineConfig({
   webServer: {
     // S202-T02: V07 gate starts the production packaged app image via Compose.
     name: 'Compose',
-    command: 'npm run compose:up',
+    command: 'npm run compose:webserver',
     url: 'http://localhost:8080/actuator/health',
     timeout: 240_000,
     reuseExistingServer: !process.env.CI,

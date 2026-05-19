@@ -6,6 +6,7 @@
     "image:build": "bash scripts/build-e2e-image.sh",
     "compose:up": "docker compose -f compose.e2e.yaml up -d --wait --wait-timeout 240",
     "compose:down": "docker compose -f compose.e2e.yaml down -v --remove-orphans",
+    "compose:webserver": "npm run compose:up && node scripts/hold-compose-open.mjs",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
