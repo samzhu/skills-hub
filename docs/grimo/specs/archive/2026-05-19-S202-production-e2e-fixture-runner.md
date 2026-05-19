@@ -1,6 +1,6 @@
 # S202: Production E2E Fixture Runner
 
-> 規格：S202 | 大小：M(14) | 狀態：✅ QA PASS — ready for shipping
+> 規格：S202 | 大小：M(14) | 狀態：✅ shipped v4.86.0
 > 日期：2026-05-19  
 > 對應：PRD Critical Path P1-P6、ADR-007、V07 Playwright gate
 
@@ -998,3 +998,18 @@ Manual planning mode stops here. Do not start implementation until explicitly in
 - Design sync PASS: `docs/grimo/qa-strategy.md` V07/V08a/V08b registry already matches the implemented commands, and S202 §7 now records the local release evidence.
 
 Verdict: PASS. S202 local release gate is complete and the next workflow step is `$shipping-release S202`.
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Technical Risk | 2 | 2 | Docker Compose、Playwright setup projects、Spring Boot image build 都走官方穩定功能；實作中修正 semantic fixture key 與 AOT fake key 後，release gate 全綠。 |
+| Uncertainty | 1 | 1 | 使用者確認方案 D：V07 跑 production packaged app image，不做 test-flavored backend app；實作未改變產品方向。 |
+| Dependencies | 3 | 3 | 仍同時碰 Playwright、Docker Compose、Spring Boot image、PostgreSQL/pgvector、mock OAuth、ADR-007/ADR-008。 |
+| Scope | 3 | 3 | 實際改 backend artifact clean gate、`e2e/` fixture/Compose/browser specs、verify script、PRD/architecture/development standards/QA/test-cases/glossary/ADR/spec/task docs。 |
+| Testing | 3 | 3 | `./scripts/verify-all.sh` 本 tick 跑出 V01/V03/V04/V05/V06/V07/V08a/V08b 全 PASS；V07 會建 image + 啟 Compose + 跑 16 個 browser tests，V08b native image build 也 PASS。 |
+| Reversibility | 2 | 2 | 可用 git revert 回復測試架構，但 S202 已取代 ADR-007 的 in-app test endpoint fixture pattern。 |
+| **Total** | **14 / M** | **14 / M** | 估算維持 M；最大風險仍是多程序 test runner 與 native image gate，而非 production business logic。 |
+
+- Release note：`$shipping-release S202` 已於 2026-05-19 完成；S202 task files 已刪除，spec 已歸檔，`CHANGELOG.md` / `spec-roadmap.md` / `v4.86.0` tag 已同步。
+- Production deploy：not run in this release tick；S202 has local release evidence only。

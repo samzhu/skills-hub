@@ -1,5 +1,28 @@
 # Changelog
 
+## [v4.86.0] — S202 Production E2E Fixture Runner（2026-05-19）
+
+### Changed
+
+- **V07 runs the production packaged app** — `cd e2e && npx playwright test --grep @happy-path` now builds `skillshub:e2e-local`, starts `e2e/compose.e2e.yaml`, and tests the static frontend plus real `/api/v1/*` routes against a disposable pgvector DB and mock OAuth server.
+- **External fixture runner replaces in-app test endpoints** — E2E setup lives under `e2e/fixtures`, writes `e2e/results/fixtures.json`, and uses production upload/API routes for aggregate data; projection-only rows go through a DB guard pointed at `skillshub_e2e`.
+- **Production artifact stays clean** — `backend/build.gradle.kts` keeps `TestDataController`, deterministic E2E config, and `application-e2e.yaml` out of `bootJar` / `bootBuildImage`.
+- **Local semantic fixture key is redacted** — `scripts/verify-all.sh` can load `skillshub.genai.api-key` from `backend/config/application-secrets.properties` into `SKILLSHUB_E2E_GENAI_API_KEY` for V07, but logs only redacted status and never writes the key to tracked files.
+- **AOT uses a fake build-time key** — V08a/V08b and `e2e/scripts/build-e2e-image.sh` set `SKILLSHUB_GENAI_API_KEY` from `SKILLSHUB_AOT_GENAI_API_KEY` or `aot-placeholder-key`, so native compilation does not require a real Gemini key.
+- **E2E docs synced** — PRD, architecture, development standards, QA strategy, test-cases, glossary, ADR-007, and ADR-008 now describe the production-image E2E fixture pattern.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.4%，covered=4770 / total=5455）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- `V07` log：**PASS** — loaded `SKILLSHUB_E2E_GENAI_API_KEY` from `backend/config/application-secrets.properties` with value redacted, then ran 16 `@happy-path` Playwright tests against the production packaged image.
+- Production deploy：not run in this release tick；S202 has local release evidence only。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-19-S202-production-e2e-fixture-runner.md` → `docs/grimo/specs/archive/2026-05-19-S202-production-e2e-fixture-runner.md`
+- `docs/grimo/tasks/2026-05-19-S202-*.md` 已刪除。
+- Final size re-score：M(14) → M(14)，原因是實際改動維持在 production-image E2E runner、fixture workspace、artifact clean gate、verify script 與文件同步；完整 `verify-all.sh`（backend, frontend, Playwright, AOT/native image）全綠。
+
 ## [v4.84.0] — S201 Quality Score 單項狀態顯示（2026-05-19）
 
 ### Changed
