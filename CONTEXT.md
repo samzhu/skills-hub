@@ -12,6 +12,10 @@ _Avoid_: Empty search, blank semantic search
 Finding skills from a non-empty natural-language or keyword-like user input by semantic relevance.
 _Avoid_: Keyword mode, semantic fallback
 
+**Infinite Semantic Results**:
+Continuing a semantic search result list by loading more matching skills as the user keeps browsing the same query.
+_Avoid_: Manual page picker, keyword fallback, replacing the current results
+
 **Search Embedding**:
 Search-only data derived from the latest SKILL.md name and description so semantic search can rank skills by relevance.
 _Avoid_: Skill content, skill metadata
@@ -104,6 +108,7 @@ _Avoid_: Display name, author name
 
 - **Skill Browsing** starts when the search input is blank.
 - **Semantic Search** on `/browse` starts when the search input has any non-blank text after debounce.
+- **Infinite Semantic Results** continue the current **Semantic Search**; they do not switch back to **Skill Browsing** or to a **Keyword Filter**.
 - A **Search Embedding** may be stored beside skill read state, but it is not part of the user-facing **Skill** concept.
 - **Semantic Search** ranks skills by **Search Embedding**; author identity is result display data, not a search criterion.
 - A **Skill Description Snapshot** changes when the latest SKILL.md changes; it is not edited independently.
