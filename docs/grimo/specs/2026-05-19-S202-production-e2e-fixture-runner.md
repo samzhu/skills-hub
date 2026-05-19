@@ -1,6 +1,6 @@
 # S202: Production E2E Fixture Runner
 
-> 規格：S202 | 大小：M(14) | 狀態：⏳ Plan
+> 規格：S202 | 大小：M(14) | 狀態：⏳ Dev
 > 日期：2026-05-19  
 > 對應：PRD Critical Path P1-P6、ADR-007、V07 Playwright gate
 

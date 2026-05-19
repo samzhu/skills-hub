@@ -1,3 +1,5 @@
+import java.util.jar.JarFile
+
 plugins {
 	java
 	id("org.springframework.boot") version "4.0.6"
@@ -196,9 +198,43 @@ tasks.jacocoTestCoverageVerification {
 	}
 }
 
-// JaCoCo plugin 預設不接 check lifecycle，須顯式宣告
+val bootJarTask = tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar")
+val productionArtifactForbiddenMarkers = listOf(
+	"TestDataController",
+	"SeedSkillRequest",
+	"SeedDownloadEventRequest",
+	"E2EEmbeddingConfig",
+	"E2EQualityJudgeConfig",
+	"application-e2e"
+)
+
+val assertProductionArtifactClean = tasks.register("assertProductionArtifactClean") {
+	group = "verification"
+	description = "AC-S202-1: production bootJar does not contain E2E support classes/resources"
+	dependsOn(bootJarTask)
+	inputs.file(bootJarTask.flatMap { it.archiveFile })
+
+	doLast {
+		val bootJarFile = bootJarTask.get().archiveFile.get().asFile
+		val matches = JarFile(bootJarFile).use { jar ->
+			jar.entries().asSequence()
+				.map { it.name }
+				.filter { entry ->
+					productionArtifactForbiddenMarkers.any { marker -> entry.contains(marker) }
+				}
+				.sorted()
+				.toList()
+		}
+		if (matches.isNotEmpty()) {
+			throw GradleException("Production artifact contains E2E support: ${matches.joinToString(", ")}")
+		}
+	}
+}
+
+// JaCoCo 與 S202 artifact gate 預設不接 check lifecycle，須顯式宣告
 tasks.check {
 	dependsOn(tasks.jacocoTestCoverageVerification)
+	dependsOn(assertProductionArtifactClean)
 }
 
 // S148b: GraalVM native-image 反射 metadata fail-fast — gated by -PexactReachability=true
