@@ -1,4 +1,4 @@
-# ADR-007: Browser E2E via Playwright + e2e/ workspace + Pattern 1 fixture seeding
+# ADR-007: Browser E2E via Playwright + e2e/ workspace
 
 > Status: **Accepted** (2026-05-07); fixture seeding Pattern 1 superseded by ADR-008 (2026-05-19)
 > Extends: PRD Decision Log（無對應條目；MVP 階段 Layer 3 用「手動操作 golden path」）
@@ -46,7 +46,7 @@
 
 - 新增 `e2e/` workspace + `node_modules` + `chromium-headless-shell` cache（~92 MiB）— 接受成本換 regression coverage
 - 第一次 cold start 慢（Spring Boot + Testcontainers pgvector pull 90–150 s；cached 後 ~30 s）— `reuseExistingServer: !process.env.CI` 緩解本機 dev 痛點
-- backend `TestDataController` 必須嚴格 `@Profile` 限制，production absolutely never expose — S140 design phase 必須在 SecurityConfig + integration test 雙保險
+- ~~backend `TestDataController` 必須嚴格 `@Profile` 限制，production absolutely never expose~~ — historical S140 Pattern 1 requirement；superseded by ADR-008 / S202 production-image fixture runner.
 - Playwright 版本月更節奏快 — `ensure-latest.sh` 的 `--upgrade` 由 user opt-in（per intent-b decision），不主動升級避免 CI flaky
 - ~~`bootRun -x processAot` workaround per `qa-strategy.md` Known Limitations~~ — 已過時（2026-05-09 確認 `processAot` + `bootRun` 全綠 after S148e + S166a）；Recipe A 改回 bare `./gradlew bootRun`，AOT 全程跑保留 prod-only bug 早期捕捉能力（per S158 教訓）
 

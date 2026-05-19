@@ -5,18 +5,13 @@ import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-/**
- * S135a: Deterministic stub — activated when {@code skillshub.quality.judge.enabled=false} (test env).
- * Returns fixed scores so unit/slice tests don't need a real Gemini API key.
- *
- * <p>Extends {@link QualityJudge} so callers injecting QualityJudge receive this stub seamlessly.
- */
+/** S202: stub judge when quality judging is disabled; keeps score rows deterministic. */
 @Component
 @ConditionalOnProperty(name = "skillshub.quality.judge.enabled", havingValue = "false")
 public class StubQualityJudge extends QualityJudge {
 
     public StubQualityJudge() {
-        super();  // protected no-arg ctor — real ChatClient not used
+        super();
     }
 
     @Override
@@ -41,6 +36,6 @@ public class StubQualityJudge extends QualityJudge {
                 new JudgeResponse.DimensionScore(d3, 2, "stub score"),
                 new JudgeResponse.DimensionScore(d4, 2, "stub score")
         );
-        return new JudgeResponse(dims, "stub verdict — all dims score 2");
+        return new JudgeResponse(dims, "stub verdict - all dims score 2");
     }
 }

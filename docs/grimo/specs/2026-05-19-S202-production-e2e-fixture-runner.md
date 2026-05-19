@@ -970,3 +970,14 @@ Manual planning mode stops here. Do not start implementation until explicitly in
 ---
 
 <!-- Section 7 added after implementation -->
+
+## 7. Implementation Results
+
+### 2026-05-19 — T07 BLOCKED on semantic fixture key
+
+- `e2e/playwright.config.ts` now enables semantic fixture seeding for `npx playwright test --grep @happy-path`, so V07 fails at setup with `semantic E2E requires SKILLSHUB_E2E_GENAI_API_KEY` when the key is missing instead of later returning empty `/browse` results.
+- `cd e2e && npx playwright test --project chromium --grep "AC-4: 從詳情頁下載"` PASS against `skillshub:e2e-local`, confirming the production image, Compose DB, fixture manifest, mock OAuth storageState, and download-count fixture path still work without a semantic key.
+- `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.ai.AiModelConfigTest --tests io.github.samzhu.skillshub.score.QualityScoreListenerTest` PASS after moving the disabled quality judge stub into production source.
+- `rg "Pattern 1|TestDataController|/internal/test|application-e2e" docs/grimo/PRD.md docs/grimo/architecture.md docs/grimo/development-standards.md docs/grimo/qa-strategy.md docs/grimo/test-cases.md docs/grimo/glossary.md docs/grimo/adr` only returns ADR-007 / ADR-008 historical or superseded text.
+
+T07 remains BLOCKED until `SKILLSHUB_E2E_GENAI_API_KEY` is available, then V07 and `./scripts/verify-all.sh` can run to completion.

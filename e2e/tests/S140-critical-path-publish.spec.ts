@@ -1,25 +1,25 @@
 // S140 critical-path E2E — AC-3 (PRD P2 Upload + P3 Risk assessment).
 //
-// E2E profile sets `skillshub.security.oauth.enabled=false` →
-// LabSecurityFilter 注入 `lab-user` with ROLE_admin，PublishPage 的
-// `auth.status === 'authenticated'` 自動成立，無需 storageState 或 OAuth
-// round-trip（spec §5 NOTE：S139 規劃 storageState；e2e LAB 模式更簡單）。
+// S202 後 V07 跑 production app image，OAuth2 Login 真的啟用；publish flow
+// 需使用 setup auth project 產出的 developer storageState。
 //
 // Flow: /publish → submit → /publish/validate?id=X (poll riskLevel) →
 // auto-redirect /publish/review?id=X when scan completes。e2e profile
 // LlmJudge 不建立（無 genai api-key），但 PatternScanner / MetadataValidator
 // 等 rule-based engines 仍跑，produce risk assessment（NONE for SKILL.md-only）。
 
-import { test, expect, profiles } from './_fixtures';
+import { test, expect, authState, profiles } from './_fixtures';
 
 test.describe('S140 — E2E Critical Path Backfill', () => {
+  test.use({ storageState: authState('developer') });
+
   test('AC-3: 上傳合法 SKILL.md 並上架（含風險評估） @S140 @ac-3 @happy-path @profile-empty', async ({
     page,
     request,
   }) => {
     await test.step('Given empty platform state + authenticated lab user', async () => {
       await profiles.empty(request);
-      // LAB mode auth gating: backend `/api/v1/me` returns lab-user immediately, useAuth status='authenticated'
+      // S202 setup auth stores a real mock-OAuth browser session for the developer user.
     });
 
     await test.step('When user opens /publish, fills SKILL.md (text mode, low-risk content), submits', async () => {

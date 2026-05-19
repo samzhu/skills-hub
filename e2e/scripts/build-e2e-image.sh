@@ -41,6 +41,8 @@ cp -a "${ROOT_DIR}/frontend/dist/." "${STATIC_DIR}/"
 
 (
   cd "${ROOT_DIR}/backend"
+  SKILLSHUB_QUALITY_JUDGE_ENABLED=false \
+  SKILLSHUB_SCANNER_ENGINES_LLM_ENABLED=false \
   ./gradlew --no-daemon -x test bootBuildImage \
     --imageName="${IMAGE_NAME}" \
     -Pspring.profiles.active=aot,local

@@ -505,6 +505,7 @@ Scenario: 全部已讀 + 偏好設定
 | D25 | URL schema | `/skills/:id` canonical identity + `/skills/:author/:name` legacy deterministic alias（ADR-003 amended by S176） | S176 允許同一作者多筆同名 skill，ID 才能唯一識別；author/name alias 保留既有 caller 並回 deterministic latest row | 只留 author/name（重名不可唯一定位）、hard redirect（增 round-trip + cli tool 可能不 follow） |
 | D26 | UI 主題 | dark theme（`#08080A` bg + `#EEECEA` ink；per Engineering Handoff §7） | 對齊 v2 prototype 16 mockup；engineer-tier 工具的視覺慣例 | warm-white 維持（既有 v1）、dual-theme switcher（維護 2× cost） |
 | D27 | Risk tier 階數 | 4-tier (NONE/LOW/MEDIUM/HIGH) per ADR-future / S096c | 對齊 Cisco Skill Scanner + CVSS None band；分清「0-finding pure docs」vs「low-severity finding」 | 3-tier（既有，把 0-finding 與 low-finding 混為 LOW，user 看不到差異） |
+| D28 | Critical Path browser E2E target | V07 跑 `skillshub:e2e-local` production packaged image + `e2e/compose.e2e.yaml` disposable DB / mock OAuth / external fixture runner（per ADR-008 / S202） | P1-P6 的 browser E2E 要打正式 static frontend 與正式 `/api/v1/*` 路徑；測試資料由 `e2e/fixtures` 準備，避免把 reset/seed capability 放進 production app artifact | Backend in-app test endpoint、test-flavored backend app、手動 dev server 組合 |
 
 > **Phase 1 PostgreSQL migration（2026-04-27 v1.1.0）**：D3/D8/D9/D14/D22 已重寫；遷移決策軌跡見 [`adr/ADR-001-postgresql-migration.md`](./adr/ADR-001-postgresql-migration.md) + [`specs/archive/2026-04-27-S014-postgresql-migration.md`](./specs/archive/2026-04-27-S014-postgresql-migration.md)。其他 D-entry（D1/D2/D4-D7/D10-D13/D15-D21/D23-D24）不受 Phase 1 影響。
 

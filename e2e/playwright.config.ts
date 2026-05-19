@@ -4,6 +4,11 @@
 
 import { defineConfig, devices } from '@playwright/test';
 
+if (process.env.SKILLSHUB_E2E_SEMANTIC_FIXTURES === undefined
+  && process.argv.join(' ').includes('@happy-path')) {
+  process.env.SKILLSHUB_E2E_SEMANTIC_FIXTURES = 'true';
+}
+
 export default defineConfig({
   testDir: '.',
   timeout: 30_000,

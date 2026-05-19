@@ -310,13 +310,8 @@ io.github.samzhu.skillshub
 │   │   └── events/             (public domain events: SkillGrantedEvent / SkillRevokedEvent)
 │   ├── validation/             ← SKILL.md 驗證
 │   │   └── SkillValidator.java (agentskills.io 規範)
-│   └── testsupport/            ← S140：E2E fixture seeding endpoints（@Profile-gated, non-prod only）
-│       ├── TestDataController.java   (@RestController @Profile({"local","dev","e2e"})；
-│       │                              POST /internal/test/{reset,seed/skill,seed/download-event}）
-│       ├── SeedSkillRequest.java / SeedDownloadEventRequest.java (DTO records)
-│       └── E2EEmbeddingConfig.java   (@Configuration @Profile("e2e")；
-│                                      @Primary deterministic 768-dim stub EmbeddingModel
-│                                      取代 NoOp / Google bean，e2e 跑無 GenAI 依賴)
+│   └── （無 testsupport production package）← S202：E2E seed tooling 移到 `e2e/fixtures`；
+│                                           production artifact gate 會掃掉 test support class/resource
 │
 ├── security/                   ← Event-driven service（無 Aggregate）
 │   ├── RiskLevel.java          (enum: LOW, MEDIUM, HIGH)
@@ -507,19 +502,22 @@ CI（Cloud Build trigger: push to main）— S132
   Script 自帶 npm ci + npm run build + cp 三步前置，後接 bootBuildImage + docker push（SHA + :latest 雙 tag）
 ```
 
-### E2E Workspace（per ADR-007；S140 critical-path backfill ✅）
+### E2E Workspace（per ADR-007 + ADR-008；S202 production-image runner）
 
 `e2e/` 為獨立 Playwright workspace（與 `backend/` / `frontend/` 並列 repo root），不屬任一側。`playwright-expert` skill 統一管理 BOOTSTRAP / DESIGN / VERIFY 三個流程節點，跨 skill 透過 `e2e/results/evidence.json` 契約檔互通。
 
-S140 ship 後 V07（`--grep @happy-path`）入帶 6 支 critical-path spec（PRD P1-P6 + Quality Score），對應 `skill.testsupport` backend 三個 fixture seeding endpoint（per Pattern 1 / fixtures-patterns.md）。`backend/src/main/resources/application-e2e.yaml` 提供 e2e 行為配置：`oauth.enabled=false` LAB mode + `scanner.engines.llm.enabled=false` 關 LlmJudge 避開 Gemini 5-15s scan（per S157 §7.6）+ `semantic-similarity-threshold=0.1` 過濾雜訊但保留 word-overlap signal + `testsupport.E2EEmbeddingConfig` word-overlap biased 768-dim stub `EmbeddingModel` `@Primary`（同 token doc/query → cosine ≈ 0.2；無 overlap → ±0.05 random noise）。`TestDataController /reset` 先 poll `event_publication.completion_date IS NULL` 排空（15s budget）等 AFTER_COMMIT listener 釋 row lock 再 TRUNCATE，避開 deadlock。Cloud Build 不啟用 e2e profile（per S132 §8 baked profile），production binary 完全不含 testsupport bean / e2e yaml。
+S202 後 V07（`cd e2e && npx playwright test --grep @happy-path`）會先用 `npm run image:build` 建出 `skillshub:e2e-local` production packaged image，再由 `e2e/compose.e2e.yaml` 啟 disposable pgvector DB、mock OAuth server、app image。Playwright setup projects 執行 `e2e/fixtures`：aggregate data 走正式 `/api/v1/*` upload/API path，download counters、quality scores、semantic embeddings 這類 read-side projection row 才能經 DB guard 直接寫入 disposable `skillshub_e2e`。Browser auth 由 mock OAuth2 Login 產生 `playwright/.auth/*.json`，測到 `/oauth2/authorization/skillshub`、session cookie、`/api/v1/me` 與 AuthArea 顯示。Production artifact 不含 E2E support class/resource，`backend/build.gradle.kts` 的 `assertProductionArtifactClean` 接在 `check` 內。
 
 ```
 e2e/
 ├── .gitignore                  ← managed marker block by ensure-latest.sh
 ├── package.json                ← @playwright/test ^1.59.1
-├── playwright.config.ts        ← Recipe A: Spring Boot bootRun + Vite webServer
+├── compose.e2e.yaml            ← db + mock-oauth2-server + production app image
+├── playwright.config.ts        ← setup fixtures/auth → chromium → teardown fixture projects
+├── fixtures/                   ← external runner + manifest + guarded projection SQL helpers
 ├── tests/                      ← spec test files（per spec-id；@<spec-id> @ac-N @happy-path tags）
-├── results/                    ← gitignored: report.json + evidence.json（cross-skill contract）
+├── results/                    ← gitignored: fixtures.json + report.json + evidence.json
+├── playwright/.auth/           ← gitignored browser OAuth storage state
 ├── playwright-report/          ← gitignored: HTML report + 內嵌 trace.zip 連結
 └── test-results/               ← gitignored: per-test trace.zip + screenshot + video（only-on-failure）
 ```
@@ -532,7 +530,7 @@ cd e2e && npx playwright test --grep @happy-path    # V07 critical-path gate
 npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer（純 local）
 ```
 
-或 trace.zip 拖到 trace.playwright.dev — 官方靜態 PWA，純前端不上傳資料。詳 ADR-007 + `playwright-expert/references/caller-protocol.md`。
+或 trace.zip 拖到 trace.playwright.dev — 官方靜態 PWA，純前端不上傳資料。工具選型詳 ADR-007；fixture runner 與 production-image target 詳 ADR-008。
 
 ---
 
@@ -613,7 +611,7 @@ npx playwright show-trace e2e/test-results/.../trace.zip   # 本機 trace viewer
 | `vitest` | 4.1.5 | `import { describe, it, expect } from 'vitest'` | yes (npm) |
 | `@testing-library/react` | 16.x | `import { render, screen } from '@testing-library/react'` | yes (npm) |
 
-### E2E（Playwright workspace；per ADR-007）
+### E2E（Playwright workspace；per ADR-007 + ADR-008）
 
 | Package | Version | Primary Import | Verified |
 |---------|---------|---------------|----------|

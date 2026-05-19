@@ -9,7 +9,7 @@
 
 ## 1. Context
 
-`backend/src/main/java/io/github/samzhu/skillshub/skill/testsupport/TestDataController.java` currently ships from the production source set and exposes `/internal/test/reset`, `/internal/test/seed/skill`, and `/internal/test/seed/download-event` when matching profiles are active.
+Before S202, `backend/src/main/java/io/github/samzhu/skillshub/skill/testsupport/TestDataController.java` shipped from the production source set and exposed `/internal/test/reset`, `/internal/test/seed/skill`, and `/internal/test/seed/download-event` when matching profiles were active. S202 deletes that production package and replaces it with the external runner described below.
 
 `e2e/tests/_fixtures.ts` depends on those routes before browser tests run. This made V07 easy to bootstrap, but the production artifact still contains destructive test support code. S202 changes the target: browser E2E should exercise the codebase-built production image, not a test-flavored backend.
 

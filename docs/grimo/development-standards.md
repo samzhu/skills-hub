@@ -108,13 +108,13 @@
 - Backend: JUnit 5 + Spring Boot Test + Testcontainers
 - Frontend: Vitest + React Testing Library
 - Module 邊界測試：Spring Modulith `@ApplicationModuleTest`
-- Browser E2E：Playwright 1.59.1 via `/playwright-expert` skill（per ADR-007）；`e2e/` workspace 獨立於 backend / frontend；spec test 命名 `<spec-id>-<slug>.spec.ts`，tag `@<spec-id> @ac-N @happy-path @profile-<name>`
-- E2E fixture seeding：**Pattern 1**（backend `@Profile({"local","dev","e2e"})` `TestDataController` 位於 `skill.testsupport` 子 package — top-level `testsupport` 跨模組存取 `SkillCommandService` 會破 Modulith verify cycle）— 透過 `SkillCommandService.uploadSkill()` 走 aggregate path 維持 outbox + audit invariant（per ADR-002 + ADR-007）。S140 ship 確立三個標準 endpoint：
-  - `POST /internal/test/reset` — 單句 `TRUNCATE ... RESTART IDENTITY CASCADE` 對 16 張 application data tables（allowlist 寫死於 controller，新表上線必須加入）；PG 內部一致性處理 FK 順序，比逐張安全
-  - `POST /internal/test/seed/skill` — 走 `SkillCommandService.uploadSkill()` 完整 path（aggregate + outbox + audit）；`skillMdContent` 為 null 時 controller 自動合成 minimal SKILL.md
-  - `POST /internal/test/seed/download-event` — 直 INSERT `download_events`（read-side projection table）+ `UPDATE skills.download_count += :count`（對齊 production `SkillRepository.incrementDownloadCount` 行為，防 Top 10 排行少了同步 counter 永遠 0）
-  - **禁止**繞過以上 endpoint 直 INSERT aggregate state；其他 3 patterns（direct DB / per-test API / DB snapshot）詳 `playwright-expert/references/fixtures-patterns.md`
-- E2E profile activation：`SPRING_PROFILES_ACTIVE=local,dev,e2e` 是 Playwright `webServer` env 必填（沒有 → e2e yaml 不載 → stub embedder 不啟用 / threshold 仍 0.3 / oauth gating 仍 fail-secure）。`workers: 1` 是必須（共用後端 state；多 worker 跑 reset/seed 互踩造成 PG `AccessExclusiveLock` deadlock 或 409 DUPLICATE_RESOURCE）
+- Browser E2E：Playwright 1.59.1 via `/playwright-expert` skill（per ADR-007 + ADR-008）；`e2e/` workspace 獨立於 backend / frontend；spec test 命名 `<spec-id>-<slug>.spec.ts`，tag `@<spec-id> @ac-N @happy-path @profile-<name>`。
+- E2E fixture seeding：`e2e/fixtures` owns the runner。V07 先建 `skillshub:e2e-local` production packaged image，再用 `e2e/compose.e2e.yaml` 啟 disposable DB、mock OAuth server、app image。`setup fixtures` 產生 `e2e/results/fixtures.json`，browser specs 讀 manifest，不在 test 內 reset global state。
+  - Aggregate data 必須走正式 `/api/v1/*` path（例如 upload API + mock OAuth Bearer JWT），讓 `SkillCommandService`、aggregate invariant、outbox、audit path 都被測到。
+  - Projection-only data（download counter、quality score、semantic embedding 等沒有 production write API 的 row）可由 `projection-seed.ts` 寫 SQL，但必須先通過 DB guard，且只能碰 disposable `skillshub_e2e`。
+  - Browser login 要走 mock OAuth2 Login session，保存 `playwright/.auth/*.json`；不要手寫 cookie 或直接塞 frontend auth state。
+  - Production app 不得新增 reset/seed HTTP route 或 deterministic E2E Spring profile/resource；`assertProductionArtifactClean` 會在 backend `check` 掃 artifact。
+- E2E runtime activation：Playwright `webServer` 使用 `npm run image:build` + Docker Compose，不啟 Vite dev server，不啟 test-flavored backend app。`workers: 1` 仍是 V07 預設，因 fixture manifest 與 shared baseline 是 per-run 共享狀態。
 
 ### 測試金字塔規範（S025a 起；per spec §3 + qa-strategy.md §Layer 1 細則）
 

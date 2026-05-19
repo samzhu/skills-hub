@@ -15,9 +15,15 @@
 >
 > **Status legend**：📋 planned / 🚧 in-progress / ✅ pass / ❌ fail (link to fix spec)
 >
-> **Last update**: 2026-05-02 (v3.2.5 — tick 39 + S099 META queued; methodology upgraded per user directive)
+> **Last update**: 2026-05-19 (S202 — V07 now runs production packaged app image with external fixture manifest)
 
 ---
+
+## Current V07 Gate — Production Image Browser E2E
+
+`./scripts/verify-all.sh` 的 V07 command 保持 `cd e2e && npx playwright test --grep @happy-path`。S202 後這個 command 會建 `skillshub:e2e-local` production packaged image，使用 `e2e/compose.e2e.yaml` 啟 disposable pgvector DB、mock OAuth server、app image，並由 `e2e/fixtures` 寫出 `e2e/results/fixtures.json`。Browser tests 讀 manifest，aggregate data 走正式 `/api/v1/*`，projection-only rows 才能經 DB guard 寫入 disposable DB。
+
+Round 1-7 仍是 user-flow ledger；planned negative / boundary cases 是未來 backfill 清單，不代表 V07 仍停在手動或 component-only 狀態。
 
 ## Round 1 — Browse skill flow（瀏覽技能流程）
 
@@ -194,6 +200,6 @@ per `.claude/loop.md` EXIT: SATURATED 條件：「Backlog is empty AND ≥3 cons
 
 **Bug ledger entries**：2（Bug A parser infinite loop / Bug B JSX attr literal）— 兩 bugs 都被 negative-case test 抓到，validating 「3-5 反例 / round」methodology。
 
-**Coverage 觀察**：Component / hook layer 已 saturate；E2E flow ledger（Round 1-7）仍有 26/40 planned 待補 — 主要 negative cases (3-5 反例 minimum 不足)。下一輪 Mode B 工作建議 backfill ledger negatives 而非加新 component test。
+**Coverage 觀察**：Component / hook layer 已 saturate；V07 已由 Playwright 跑 production-image happy path；E2E flow ledger（Round 1-7）仍有 planned negative / boundary cases 待補。下一輪 Mode B 工作建議 backfill ledger negatives，而不是再加同一層 component test。
 
-current component test count: 44（cover ~6 ledger ACs + 38 unit-level invariants）。E2E browser-level scenarios（27 planned）需 Playwright / Cypress —— defer until backend stabilizes 或 cloud-scheduled E2E run。
+current component test count: 44（cover ~6 ledger ACs + 38 unit-level invariants）。Browser-level happy path 由 V07 production-image gate 覆蓋；ledger 內未完成項目代表後續要補的反例與邊界案例。

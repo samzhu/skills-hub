@@ -1,10 +1,8 @@
 // S140 critical-path E2E — AC-1 (PRD P1: Browse + keyword search).
 //
-// S186-T08 後：E2EEmbeddingConfig stub 為 token-only sparse vector（同 token →
-// cosine 顯著正，無 overlap → 接近 0）；e2e threshold=0.1。query "docker"
-// 對 3 個 docker-* skill 通過 threshold，其他 7 個被篩掉 →
-// HomePage isSemanticMode = true → 顯示「找到 3 個相關技能」(regex 接受 keyword
-// 與 semantic 兩種計數文字)。
+// S202 後 production image 不再含 E2EEmbeddingConfig；V07 full gate 需
+// SKILLSHUB_E2E_GENAI_API_KEY 讓 fixture runner 寫入 semantic projection rows。
+// 測試只驗 UI contract 與 keyword / semantic 兩種計數文字。
 
 import { test, expect, profiles } from './_fixtures';
 

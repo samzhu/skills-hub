@@ -1,4 +1,4 @@
-import { test, expect, profiles, seedSkill } from './_fixtures';
+import { test, expect, authState, profiles, seedSkill } from './_fixtures';
 import type { Page } from '@playwright/test';
 
 const viewports = [
@@ -57,6 +57,8 @@ async function waitForRouteReady(page: Page, route: string, skillId: string) {
 }
 
 test.describe('S172 — responsive polish guard', () => {
+  test.use({ storageState: authState('developer') });
+
   test('AC-S172-16: audited routes have no body horizontal overflow @S172 @responsive-polish @happy-path', async ({
     page,
     request,

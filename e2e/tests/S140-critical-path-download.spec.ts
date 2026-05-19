@@ -6,7 +6,7 @@
 // assertions。下載 counter 由 backend 收到 GET 後 publish SkillDownloadedEvent →
 // AnalyticsProjection async 累計到 download_events，重新整理頁面後可見。
 
-import { test, expect, profiles } from './_fixtures';
+import { test, expect, fixtureSkill, profiles } from './_fixtures';
 
 test.describe('S140 — E2E Critical Path Backfill', () => {
   // S140-T09: AC-4 跑在 AC-3 publish (大量 SkillVersionPublished async listeners)
@@ -19,10 +19,12 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
     request,
   }) => {
     let skillId = '';
+    let expectedDownloadCount = 0;
 
     await test.step('Given platform seeded with 1 published skill (low-risk, v1.0.0)', async () => {
       const seeded = await profiles.single(request);
       skillId = seeded.skillId;
+      expectedDownloadCount = (await fixtureSkill('docker-compose-helper')).expectedDownloadCount ?? 0;
     });
 
     await test.step('When user opens detail page and clicks 下載 button', async () => {
@@ -59,7 +61,7 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
       await page.reload();
       // UI rework 後 metric stat 結構為 label「下載次數」+ value「1」分開渲染（非合併字串）
       const downloadCard = page.getByText('下載次數', { exact: true }).locator('..');
-      await expect(downloadCard.getByText(/^\s*1\s*$/)).toBeVisible({ timeout: 10_000 });
+      await expect(downloadCard.getByText(new RegExp(`^\\s*${expectedDownloadCount + 1}\\s*$`))).toBeVisible({ timeout: 10_000 });
     });
   });
 });

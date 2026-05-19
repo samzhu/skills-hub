@@ -2,7 +2,7 @@
 //
 // /browse 搜尋列 → useSemanticSearch hook → backend
 // SemanticSearchService → skills.embedding same-row cosine search。S202 後 production
-// image 不再放 E2EEmbeddingConfig；semantic fixture 若啟用，setup runner 用同一把
+// image 不再放 E2EEmbeddingConfig；V07 happy-path gate 會讓 setup runner 用同一把
 // SKILLSHUB_E2E_GENAI_API_KEY 產生 doc embeddings 後寫 skills.embedding*。
 //
 // **AC-5 不驗 semantic 質量** — 只驗：① /browse 觸發 semantic route ② 結果非空
