@@ -4,7 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import { assertE2eDatabase } from './db-guard';
-import { type FixtureManifest, writeManifest } from './manifest';
+import { type FixtureManifest, type FixtureSkill, writeManifest } from './manifest';
+import { uploadSkillFixture, type SkillSeed } from './production-api-seed';
 
 const execFileAsync = promisify(execFile);
 
@@ -45,24 +46,65 @@ setup('@S202 @AC-S202-3 @AC-S202-4: production app omits test reset route and wr
   await waitForEventPublications();
   await resetDatabase();
 
-  const manifest: FixtureManifest = {
-    runId: randomUUID(),
-    baseUrl,
-    createdAt: new Date().toISOString(),
-    profiles: {
-      empty: {
-        skillIds: [],
-      },
-    },
-    skills: {},
-  };
+  const manifest = await buildManifest(request, baseUrl);
   await writeManifest(manifest);
 
   expect(manifest.runId).toBeTruthy();
   expect(manifest.baseUrl).toBe(baseUrl);
-  expect(manifest.profiles.empty).toEqual({ skillIds: [] });
-  console.log('S202 T03 POC PASS');
+  expect(manifest.profiles.empty).toEqual({});
+  expect(manifest.profiles.single?.skill.id).toMatch(/^[0-9a-f-]{36}$/i);
+  expect(manifest.profiles.paged?.byName['docker-compose-helper'].id).toBe(manifest.profiles.single?.skill.id);
+  console.log('S202 T04 POC PASS');
 });
+
+async function buildManifest(request: APIRequestContext, baseUrl: string): Promise<FixtureManifest> {
+  const single = await uploadSkillFixture(request, {
+    asUser: 'developer',
+    name: 'docker-compose-helper',
+    description: 'Helper skill for orchestrating docker-compose dev stacks.',
+    category: 'DevOps',
+    version: '1.0.0',
+  });
+
+  const pagedSeeds: SkillSeed[] = [
+    { name: 'docker-image-builder', description: 'Builds OCI images via Buildkit.', category: 'DevOps' },
+    { name: 'docker-cleaner', description: 'Prunes dangling images and containers.', category: 'DevOps' },
+    { name: 'k8s-deploy-helper', description: 'Deploys workloads to Kubernetes.', category: 'DevOps' },
+    { name: 'junit-test-generator', description: 'Scaffolds JUnit 5 cases from interfaces.', category: 'Testing' },
+    { name: 'pytest-runner', description: 'Runs pytest with coverage in CI.', category: 'Testing' },
+    { name: 'eslint-config-pack', description: 'Shared ESLint preset for TS projects.', category: 'Lint' },
+    { name: 'markdown-linter', description: 'Lints markdown for style and links.', category: 'Lint' },
+    { name: 'docs-publisher', description: 'Publishes mkdocs sites to GH Pages.', category: 'Docs' },
+    { name: 'csv-to-parquet', description: 'Converts CSV datasets to Parquet.', category: 'DataOps' },
+  ];
+  const paged = [single];
+  for (const seed of pagedSeeds) {
+    paged.push(await uploadSkillFixture(request, {
+      asUser: 'developer',
+      version: '1.0.0',
+      ...seed,
+    }));
+  }
+  const byName = Object.fromEntries(paged.map(skill => [skill.name, skill]));
+  const skills = Object.fromEntries(paged.map(skill => [skill.id, skill])) as Record<string, FixtureSkill>;
+
+  return {
+    runId: randomUUID(),
+    baseUrl,
+    createdAt: new Date().toISOString(),
+    profiles: {
+      empty: {},
+      single: {
+        skill: single,
+      },
+      paged: {
+        skills: paged,
+        byName,
+      },
+    },
+    skills,
+  };
+}
 
 async function assertForbiddenResetRouteAbsent(request: APIRequestContext): Promise<void> {
   const response = await request.post('/internal/test/reset');

@@ -5,8 +5,13 @@ import { fileURLToPath } from 'node:url';
 export type FixtureSkill = {
   id: string;
   name: string;
+  description: string;
   version: string;
+  category: string;
   profile: string;
+  detailPath: string;
+  expectedDownloadCount?: number;
+  expectedQualityScore?: number;
 };
 
 export type FixtureManifest = {
@@ -14,8 +19,13 @@ export type FixtureManifest = {
   baseUrl: string;
   createdAt: string;
   profiles: {
-    empty: {
-      skillIds: string[];
+    empty: Record<string, never>;
+    single?: {
+      skill: FixtureSkill;
+    };
+    paged?: {
+      skills: FixtureSkill[];
+      byName: Record<string, FixtureSkill>;
     };
   };
   skills: Record<string, FixtureSkill>;
