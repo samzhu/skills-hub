@@ -4,6 +4,18 @@ import { readManifest as readFixtureManifest, type FixtureManifest, type Fixture
 import { uploadSkillFixture } from '../fixtures/production-api-seed';
 import { seedProjectionDataForDefaultDb } from '../fixtures/projection-seed';
 
+export type AuthRole = 'developer' | 'viewer' | 'admin';
+
+export const AUTH_STATES: Record<AuthRole, string> = {
+  developer: 'playwright/.auth/developer.json',
+  viewer: 'playwright/.auth/viewer.json',
+  admin: 'playwright/.auth/admin.json',
+};
+
+export function authState(role: AuthRole): string {
+  return AUTH_STATES[role];
+}
+
 export type SkillSeed = {
   name: string;
   description: string;

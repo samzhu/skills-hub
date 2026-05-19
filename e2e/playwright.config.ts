@@ -53,13 +53,18 @@ export default defineConfig({
       teardown: 'teardown fixtures',
     },
     {
+      name: 'setup auth',
+      testMatch: /fixtures\/auth\.setup\.ts/,
+      dependencies: ['setup fixtures'],
+    },
+    {
       name: 'teardown fixtures',
       testMatch: /fixtures\/teardown\.fixtures\.ts/,
     },
     {
       name: 'chromium',
       testMatch: /tests\/.*\.spec\.ts/,
-      dependencies: ['setup fixtures'],
+      dependencies: ['setup fixtures', 'setup auth'],
       use: { ...devices['Desktop Chrome'] },
     },
   ],

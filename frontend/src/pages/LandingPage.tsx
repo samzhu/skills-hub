@@ -3,6 +3,7 @@ import { ArrowRight, Upload, ShieldCheck, Boxes, KeySquare } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { BeamFrame } from '@/components/BeamFrame'
 import { SkillCard } from '@/components/SkillCard'
+import { AuthArea } from '@/components/AuthArea'
 import { fetchPublicStats, fetchSkills } from '@/api/skills'
 
 /**
@@ -42,9 +43,12 @@ export function LandingPage() {
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-foreground text-[12px] font-bold text-background">S</div>
           <span className="text-[14px] font-medium">Skills Hub</span>
         </div>
-        <Link to="/browse" className="text-[13px] text-muted-foreground hover:text-foreground">
-          瀏覽 →
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link to="/browse" className="text-[13px] text-muted-foreground hover:text-foreground">
+            瀏覽 →
+          </Link>
+          <AuthArea />
+        </div>
       </nav>
 
       {/* Hero */}

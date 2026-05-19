@@ -1,5 +1,5 @@
 {
-  "interactiveLogin": false,
+  "interactiveLogin": true,
   "httpServer": "NettyWrapper",
   "tokenCallbacks": [
     {
@@ -11,6 +11,9 @@
           "match": "admin-client",
           "claims": {
             "sub": "admin-001",
+            "email": "admin@example.test",
+            "name": "Admin User",
+            "picture": "https://example.test/avatar/admin.png",
             "roles": ["admin"],
             "groups": ["platform-admins", "skills-curators"],
             "company_id": "skills-hub-corp",
@@ -24,6 +27,9 @@
           "match": "developer-client",
           "claims": {
             "sub": "dev-042",
+            "email": "developer@example.test",
+            "name": "Dev-042",
+            "picture": "https://example.test/avatar/developer.png",
             "roles": ["developer"],
             "groups": ["skill-authors"],
             "company_id": "skills-hub-corp",
@@ -37,6 +43,9 @@
           "match": "viewer-client",
           "claims": {
             "sub": "viewer-007",
+            "email": "viewer@example.test",
+            "name": "Viewer User",
+            "picture": "https://example.test/avatar/viewer.png",
             "roles": ["viewer"],
             "groups": ["readers"],
             "company_id": "skills-hub-corp",
