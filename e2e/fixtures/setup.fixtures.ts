@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import { assertE2eDatabase } from './db-guard';
 import { type FixtureManifest, type FixtureSkill, writeManifest } from './manifest';
 import { uploadSkillFixture, type SkillSeed } from './production-api-seed';
+import { seedProjectionDataForDefaultDb } from './projection-seed';
 
 const execFileAsync = promisify(execFile);
 
@@ -47,14 +48,18 @@ setup('@S202 @AC-S202-3 @AC-S202-4: production app omits test reset route and wr
   await resetDatabase();
 
   const manifest = await buildManifest(request, baseUrl);
+  await seedReadSideFixtures(manifest);
   await writeManifest(manifest);
 
   expect(manifest.runId).toBeTruthy();
   expect(manifest.baseUrl).toBe(baseUrl);
   expect(manifest.profiles.empty).toEqual({});
   expect(manifest.profiles.single?.skill.id).toMatch(/^[0-9a-f-]{36}$/i);
+  expect(manifest.profiles.single?.skill.expectedDownloadCount).toBe(5);
+  expect(manifest.profiles.single?.skill.expectedQualityScore).toBe(92);
   expect(manifest.profiles.paged?.byName['docker-compose-helper'].id).toBe(manifest.profiles.single?.skill.id);
   console.log('S202 T04 POC PASS');
+  console.log('S202 T05 POC PASS');
 });
 
 async function buildManifest(request: APIRequestContext, baseUrl: string): Promise<FixtureManifest> {
@@ -104,6 +109,35 @@ async function buildManifest(request: APIRequestContext, baseUrl: string): Promi
     },
     skills,
   };
+}
+
+async function seedReadSideFixtures(manifest: FixtureManifest): Promise<void> {
+  const single = manifest.profiles.single?.skill;
+  if (!single) {
+    throw new Error('Cannot seed S202 projection data without profiles.single.skill');
+  }
+
+  await seedProjectionDataForDefaultDb({
+    skillId: single.id,
+    downloadCount: 5,
+    qualityScore: 92,
+  });
+  single.expectedDownloadCount = 5;
+  single.expectedQualityScore = 92;
+  manifest.skills[single.id] = single;
+  manifest.profiles.paged!.byName[single.name] = single;
+
+  if (process.env.SKILLSHUB_E2E_SEMANTIC_FIXTURES === 'true') {
+    const skills = manifest.profiles.paged?.skills ?? [];
+    for (const skill of skills) {
+      await seedProjectionDataForDefaultDb({
+        skillId: skill.id,
+        semantic: {
+          content: `title: ${skill.name} | text: ${skill.description}`,
+        },
+      });
+    }
+  }
 }
 
 async function assertForbiddenResetRouteAbsent(request: APIRequestContext): Promise<void> {

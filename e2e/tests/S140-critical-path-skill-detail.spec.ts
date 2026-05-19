@@ -1,11 +1,9 @@
 // S140 critical-path E2E — AC-2 (PRD P1 detail + S135b Quality Score).
 //
 // `profiles.single` seeds 1 skill via SkillCommandService.uploadSkill →
-// 完整 aggregate path 含 v1.0.0 publish。Quality Score 由 LLM judge async
-// 計算，e2e profile 無 genai api-key → LlmJudge bean 不建立 → 8-dim score
-// 不會自動寫入。本 AC 因此只驗 QualitySection 容器渲染（resilient 對 0
-// scores 情境），不對具體分數做 assertion；spec §3 AC-2 對應 §6 task plan
-// 的 Quality Score 進度條檢查交由 T09 全 happy-path run 真環境 surface。
+// 完整 aggregate path 含 v1.0.0 publish。Quality Score 是 async judge 的 read-side
+// 結果；S202 fixture runner 以 guarded projection seed 寫固定 score row，讓
+// browser E2E 看 production API/UI 呈現，不把 test judge bean 放進 production app。
 
 import { test, expect, profiles } from './_fixtures';
 
@@ -27,10 +25,10 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
     });
 
     await test.step('Then 詳情頁渲染：name H1 + author + 版本 v1.0.0 + 風險 badge + 下載次數 + Quality 區塊', async () => {
-      // Hero: H1 skill name + 作者：Alice + version pill
+      // Hero: H1 skill name + production OAuth author label + version pill
       // S192 後一般 UI 必須顯示人類可讀名稱，不能把 raw author id 當 label。
       await expect(page.getByRole('heading', { level: 1, name: 'docker-compose-helper' })).toBeVisible();
-      await expect(page.getByText('作者：Alice')).toBeVisible();
+      await expect(page.getByText('作者：Dev-042')).toBeVisible();
       await expect(page.getByText('v1.0.0', { exact: true })).toBeVisible();
 
       // 4 MetricCard labels — 下載次數 / 評分 / 版本數 / (其他) per PageHeader.tsx S140 後 UI rework
@@ -44,8 +42,7 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
         page.getByTestId('page-header').getByText('Helper skill for orchestrating docker-compose dev stacks.'),
       ).toBeVisible();
 
-      // QualitySection 區塊存在（hero 下方；resilient 對 0 scores — 無 LLM judge 環境）
-      // 品質 tab 出現於 TabsList — 確認 S135b QualityTab 結構已 wire
+      await expect(page.getByRole('button', { name: /品質分析/ }).getByText('92%')).toBeVisible();
       await expect(page.getByRole('tab', { name: '品質' })).toBeVisible();
 
       // 版本 tab — UI rework 後 tab name 從「版本歷史」→「版本」；click 後顯示 v1.0.0 version row

@@ -2,6 +2,7 @@ import { test as base, expect, type APIRequestContext } from '@playwright/test';
 
 import { readManifest as readFixtureManifest, type FixtureManifest, type FixtureSkill } from '../fixtures/manifest';
 import { uploadSkillFixture } from '../fixtures/production-api-seed';
+import { seedProjectionDataForDefaultDb } from '../fixtures/projection-seed';
 
 export type SkillSeed = {
   name: string;
@@ -34,9 +35,11 @@ export async function seedDownloadEvents(
   _req: APIRequestContext,
   data: DownloadEventSeed,
 ): Promise<number> {
-  throw new Error(
-    `S202-T05 pending: projection seed helper is not implemented for ${data.skillId} (${data.count} events).`,
-  );
+  const result = await seedProjectionDataForDefaultDb({
+    skillId: data.skillId,
+    downloadCount: data.count,
+  });
+  return result.downloadEventsInserted ?? 0;
 }
 
 // Canonical fixture profiles — tag tests with `@profile-<name>` per

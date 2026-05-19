@@ -7,7 +7,6 @@ test.describe('S193 — Semantic Search Score Transparency', () => {
   }) => {
     await test.step('Given platform seeded with semantic-searchable public skills', async () => {
       await profiles.paged(request);
-      await page.waitForTimeout(2000);
     });
 
     const semanticRequests: string[] = [];

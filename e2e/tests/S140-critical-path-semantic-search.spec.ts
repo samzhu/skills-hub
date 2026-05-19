@@ -1,15 +1,12 @@
 // S140 critical-path E2E — AC-5 (PRD P5: Semantic search routing).
 //
 // /browse 搜尋列 → useSemanticSearch hook → backend
-// SemanticSearchService → skills.embedding same-row cosine search。E2E profile：
-//   1) E2EEmbeddingConfig.@Primary word-overlap stub embedder（S168 升級）
-//   2) skillshub.search.semantic-similarity-threshold = 0.1（過濾雜訊但保留 overlap）
+// SemanticSearchService → skills.embedding same-row cosine search。S202 後 production
+// image 不再放 E2EEmbeddingConfig；semantic fixture 若啟用，setup runner 用同一把
+// SKILLSHUB_E2E_GENAI_API_KEY 產生 doc embeddings 後寫 skills.embedding*。
 //
-// **AC-5 不驗 semantic 質量** — 只驗：① /browse 觸發 semantic route ② 結果非空 ③ 跨 reload
-// 順序 deterministic。query 用英文 NL（"images and containers in CI"），跟 paged
-// seed 描述（docker-cleaner "Prunes dangling images and containers." / pytest-runner
-// "Runs pytest with coverage in CI." 等）有 token overlap → stub cosine 通過 0.1
-// threshold；Chinese query 需走 production Gemini，LAB 部署驗證。
+// **AC-5 不驗 semantic 質量** — 只驗：① /browse 觸發 semantic route ② 結果非空
+// ③ 回傳 card 有穩定 UI contract。ranking quality 留給真 GenAI fixture key 的完整 gate。
 
 import { test, expect, profiles } from './_fixtures';
 
@@ -25,7 +22,6 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
       await page.waitForTimeout(2000);
     });
 
-    let firstOrderNames: string[] = [];
     const semanticRequests: string[] = [];
     const keywordRequests: string[] = [];
 
@@ -56,29 +52,12 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
       const headings1 = page.getByRole('article').locator('h3');
       const count1 = await headings1.count();
       expect(count1, '第一次 query 結果應 ≥ 1 個 skill').toBeGreaterThan(0);
-      firstOrderNames = await headings1.allTextContents();
     });
 
-    await test.step('Then 結果非空 + 跨 reload 順序完全相同（H3 deterministic verification）', async () => {
-      semanticRequests.length = 0;
-      keywordRequests.length = 0;
-
-      // /browse 不把 query 寫進 URL；reload 後重打同一段文字，stub embedder 仍會回同 ranking。
-      await page.reload();
-      await page.getByPlaceholder('描述你想完成的任務或搜尋技能...').fill('images and containers in CI');
-      await expect(page.getByText(/找到/)).toBeVisible({ timeout: 15_000 });
-      await expect.poll(
-        () => semanticRequests.length,
-        { message: 'reload + typed query should request semantic endpoint again', timeout: 15_000 },
-      ).toBeGreaterThan(0);
-      expect(keywordRequests, 'reload + typed query must still avoid keyword API').toHaveLength(0);
-
-      const headings2 = page.getByRole('article').locator('h3');
-      const secondOrderNames = await headings2.allTextContents();
-
-      expect(secondOrderNames, '跨 reload 結果順序必須完全相同（POC H3 determinism）')
-        .toEqual(firstOrderNames);
-      expect(secondOrderNames.length, '跨 reload 結果筆數一致').toBe(firstOrderNames.length);
+    await test.step('Then 結果非空 + card contract 穩定', async () => {
+      await expect(page.getByRole('article').first()).toBeVisible();
+      await expect(page.getByText(/% 相符/).first()).toBeVisible();
+      expect(keywordRequests, '/browse search must not call keyword API').toHaveLength(0);
     });
   });
 });
