@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.RowMapper;
@@ -46,7 +47,7 @@ class SemanticSearchServiceVisibilityTest {
         });
 
         var service = new SemanticSearchService(jdbc, embeddingModel, principals, userDisplayService, 0.0);
-        service.search("hello", 10);
+        service.search("hello", PageRequest.of(0, 10));
 
         verify(ps).setString(2, "{}");
     }

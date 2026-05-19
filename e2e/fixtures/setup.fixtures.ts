@@ -81,6 +81,9 @@ async function buildManifest(request: APIRequestContext, baseUrl: string): Promi
     { name: 'markdown-linter', description: 'Lints markdown for style and links.', category: 'Lint' },
     { name: 'docs-publisher', description: 'Publishes mkdocs sites to GH Pages.', category: 'Docs' },
     { name: 'csv-to-parquet', description: 'Converts CSV datasets to Parquet.', category: 'DataOps' },
+    { name: 'qa-test-planner', description: 'Plans quality assurance tasks for docker release checks.', category: 'Testing' },
+    { name: 'container-log-reader', description: 'Reads container logs and summarizes docker runtime failures.', category: 'DevOps' },
+    { name: 'pipeline-qa-reporter', description: 'Reports CI quality gates for container delivery pipelines.', category: 'Testing' },
   ];
   const paged = [single];
   for (const seed of pagedSeeds) {

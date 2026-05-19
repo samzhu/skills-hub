@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-19（S203 in design）
+> 最後更新：2026-05-20（S203 shipped v4.87.0）
 
 ## 使用說明
 
@@ -42,7 +42,6 @@
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⛔ superseded 2026-05-16 — 取代為 S189（舊 spec 已有 T01-T05/QA 歷史，但未 ship；關閉以免干擾 S186→S187 主線） |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
-| S203 | Semantic Search Masonry Pagination（`/browse` semantic results 改 masonry 瀑布流；捲到底自動載入下一頁；`/api/v1/search/semantic` 改 `page/size` + Slice） | S(11) | S189 ✅, S193 ✅, S202 ✅ | 📐 in-design — Slice POC required |
 ---
 
 ## 🏁 Milestones
@@ -100,7 +99,7 @@
 | v4.83.0 | S200 (Request requester display identity) | ✅ shipped 2026-05-19 — request detail header 顯示 requesterDisplayName/requesterHandle，不再顯示 `u_<id>`；`verify-all.sh` 全綠 |
 | v4.84.0 | S201 (Quality Score 單項狀態顯示) | ✅ shipped 2026-05-19 — Quality tab 小項顯示 12px 綠/黃/紅圓圈 + `通過 100/100` / `滿分 3/3` 等文字；warnings 顯示 `提醒 1`；`verify-all.sh` 全綠 |
 | v4.86.0 | S202 (Production E2E Fixture Runner) | ✅ shipped 2026-05-19 — V07 跑 production packaged image + Compose disposable DB/mock OAuth/external fixtures；`/internal/test/*` 不進 production artifact；`verify-all.sh` 全綠 |
-| v4.87.0 | S203 (Semantic Search Masonry Pagination) | 📐 in-design — `/api/v1/search/semantic` page/size Slice + `/browse` masonry infinite results；POC first |
+| v4.87.0 | S203 (Semantic Search Masonry Pagination) | ✅ shipped 2026-05-20 — semantic search `page/size` Slice + `/browse` masonry infinite results；`verify-all.sh` 全綠 |
 
 ---
 
@@ -284,7 +283,7 @@
 | S200 | Request requester display identity | XS(8) | v4.83.0 |
 | S201 | Quality Score 單項狀態顯示 | XS(8) | v4.84.0 |
 | S202 | Production E2E Fixture Runner | M(14) | v4.86.0 |
-| S203 | Semantic Search Masonry Pagination | S(11) | v4.87.0 |
+| S203 | Semantic Search Masonry Pagination | M(14) | v4.87.0 |
 | S025a | Mock Lift + Scenario Migration | M(13) | v2.1.0 |
 | S025b | Slice 重組 + Workaround 移除 | M(12-13) | v2.2.0 |
 | S026 | Public-Read Default ACL | XS(5) | v2.3.0 |

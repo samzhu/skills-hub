@@ -15,7 +15,7 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
     page,
     request,
   }) => {
-    await test.step('Given platform seeded with 10 skills (paged profile, mixed categories)', async () => {
+    await test.step('Given platform seeded with paged skills (mixed categories)', async () => {
       await profiles.paged(request);
       // SearchProjection async listener 處理 SkillCreatedEvent → skills.embedding_* update
       // 加 buffer 等 Modulith outbox AFTER_COMMIT listener catch up（10 skill seed × 平均 200ms async listener）
@@ -38,15 +38,16 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
     await test.step('When user opens /browse and types natural-language query "images and containers in CI"', async () => {
       await page.goto('/browse');
       const semanticResponse = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/search/semantic?q=images%20and%20containers%20in%20CI')
+        response.url().includes('/api/v1/search/semantic')
+        && new URL(response.url()).searchParams.get('q') === 'images and containers in CI'
         && response.status() === 200,
       );
       await page.getByPlaceholder('描述你想完成的任務或搜尋技能...').fill('images and containers in CI');
-      const body = await (await semanticResponse).json() as unknown[];
-      expect(body.length, 'semantic API should return at least one result').toBeGreaterThan(0);
+      const body = await (await semanticResponse).json() as { content?: unknown[] };
+      expect(body.content?.length ?? 0, 'semantic API should return at least one result').toBeGreaterThan(0);
 
       // 等 semantic search 結果出現（resultsLoading 結束）；non-empty list
-      await expect(page.getByText(/找到\s+[1-9]\d*\s+個相關技能/)).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText(/已載入\s+[1-9]\d*\s+個相關技能/)).toBeVisible({ timeout: 15_000 });
       await expect.poll(
         () => semanticRequests.length,
         { message: '/browse search should request semantic endpoint', timeout: 15_000 },

@@ -33,4 +33,14 @@ describe('SemanticSearchPage — S189 browse search routing docs', () => {
     expect(cta).toHaveAttribute('href', '/browse')
     expect(screen.queryByRole('link', { name: '試試語意搜尋 →' })).not.toBeInTheDocument()
   })
+
+  it('AC-S203-7: semantic docs describe paged results not top-k limit', () => {
+    renderPage()
+
+    expect(screen.getByText(/第 1 頁回 page=0/)).toBeInTheDocument()
+    expect(screen.getByText(/下一頁回 page=1/)).toBeInTheDocument()
+    expect(screen.getByText(/每批預設 size=10/)).toBeInTheDocument()
+    expect(screen.queryByText(/top-k/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/default k=20/)).not.toBeInTheDocument()
+  })
 })

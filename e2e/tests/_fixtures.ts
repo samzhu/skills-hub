@@ -70,7 +70,7 @@ export const profiles = {
     return { skillId: manifest.profiles.single!.skill.id };
   },
 
-  /** 10 mixed skills across DevOps / Testing / Docs / DataOps — paged list, search, semantic ranking. */
+  /** 13 mixed skills across DevOps / Testing / Docs / DataOps — paged list, search, semantic ranking. */
   async paged(_req: APIRequestContext): Promise<{ skillIds: string[] }> {
     const manifest = await readManifest();
     const skills = manifest.profiles.paged?.skills ?? [];

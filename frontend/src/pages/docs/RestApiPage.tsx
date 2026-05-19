@@ -64,7 +64,7 @@ export function RestApiPage() {
       <H2>搜尋（SearchController）</H2>
       <EndpointGroup
         rows={[
-          { method: 'GET', path: '/api/v1/search/semantic', note: '語意搜尋；query: q / k (default 20)' },
+          { method: 'GET', path: '/api/v1/search/semantic', note: '語意搜尋；query: q / page / size；response: Spring Slice content' },
         ]}
       />
 

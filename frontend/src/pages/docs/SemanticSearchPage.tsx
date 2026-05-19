@@ -31,7 +31,8 @@ export function SemanticSearchPage() {
         <li>User 在搜尋列輸入自然語言（如「我要轉換 ISO 日期到 epoch」）</li>
         <li>後端 <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">SemanticSearchService</code> 將 query embed 成 768 維向量</li>
         <li>pgvector <code className="rounded bg-[#171719] px-1 py-0.5 font-mono text-[16px] text-[#EEECEA]">{`<#>`}</code> operator 計算 cosine similarity（轉 0–1 score）</li>
-        <li>取 top-k（default k=20）回傳 + 相符度 % 顯示在 SkillCard</li>
+        <li>第 1 頁回 page=0，每批預設 size=10；response 是 Spring Slice，cards 取 content[] 顯示相符度 %</li>
+        <li>使用者往下捲到底部時，下一頁回 page=1；前端 append content，不清掉前面結果</li>
       </ol>
 
       <H2>搜尋狀態</H2>

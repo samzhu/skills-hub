@@ -94,9 +94,9 @@ test.describe('S172 — responsive polish guard', () => {
       response.url().includes('/api/v1/search/semantic?q=s172-no-result-query') && response.status() === 200,
     );
     await page.getByRole('searchbox').fill('s172-no-result-query');
-    const body = await (await semanticResponse).json() as unknown[];
-    expect(body.length, 'semantic search should return production fixture results').toBeGreaterThan(0);
-    await expect(page.getByText(/找到\s+[1-9]\d*\s+個相關技能/)).toBeVisible();
+    const body = await (await semanticResponse).json() as { content?: unknown[] };
+    expect(body.content?.length ?? 0, 'semantic search should return production fixture results').toBeGreaterThan(0);
+    await expect(page.getByText(/已載入\s+[1-9]\d*\s+個相關技能/)).toBeVisible();
     await expect(page.getByText('切換到語意搜尋模式')).toHaveCount(0);
     await expectNoBodyOverflow(page, '/browse semantic @ 390x844');
 

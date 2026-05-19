@@ -11,7 +11,7 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
     page,
     request,
   }) => {
-    await test.step('Given platform seeded with 10 skills (3 含 docker)', async () => {
+    await test.step('Given platform seeded with paged skills (3+ 含 docker)', async () => {
       await profiles.paged(request);
     });
 
@@ -37,18 +37,18 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
       await expect(
         page.getByRole('heading', { level: 3, name: 'docker-compose-helper' }),
       ).toBeVisible({ timeout: 15_000 });
-      // 再確認總數 10（filter inactive 走「共 N 個技能」分支）
-      await expect(page.getByText(/共\s*10\s*個技能/)).toBeVisible();
+      // 再確認總數進入兩位數（filter inactive 走「共 N 個技能」分支）
+      await expect(page.getByText(/共\s*1[0-9]\s*個技能/)).toBeVisible();
       const semanticResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/search/semantic?q=docker') && response.status() === 200,
       );
       await page.getByRole('searchbox').fill('docker');
-      const body = await (await semanticResponse).json() as unknown[];
-      expect(body.length, 'semantic docker query should return at least one result').toBeGreaterThan(0);
+      const body = await (await semanticResponse).json() as { content?: unknown[] };
+      expect(body.content?.length ?? 0, 'semantic docker query should return at least one result').toBeGreaterThan(0);
     });
 
     await test.step('Then semantic 結果列表顯示，且不呼叫 keyword API', async () => {
-      await expect(page.getByText(/找到\s+[1-9]\d*\s+個相關技能/)).toBeVisible();
+      await expect(page.getByText(/已載入\s+[1-9]\d*\s+個相關技能/)).toBeVisible();
       await expect.poll(
         () => semanticRequests.length,
         { message: '/browse search should request semantic endpoint', timeout: 15_000 },

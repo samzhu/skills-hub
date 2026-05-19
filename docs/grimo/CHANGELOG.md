@@ -1,5 +1,27 @@
 # Changelog
 
+## [v4.87.0] — S203 Semantic Search Masonry Pagination（2026-05-20）
+
+### Changed
+
+- **Semantic search API is paged** — `GET /api/v1/search/semantic` now uses `q/page/size` and returns Spring Data `Slice<SemanticSearchResult>` with `content`, `number`, `size`, `first`, and `last`; legacy `limit` is rejected by the shared unknown-param guard.
+- **Browse semantic results load more rows** — `/browse` semantic mode now appends the next Slice page when the bottom sentinel appears, keeps semantic zero/error from falling back to keyword search, and shows loaded/all-loaded Traditional Chinese copy.
+- **Semantic cards use masonry layout** — semantic results render in `SemanticMasonryGrid` with responsive columns and `% 相符` score badges.
+- **Docs and tests use the new contract** — REST/docs pages describe `q/page/size`, S140/S172/S193/S203 E2E reads `Slice.content`, and S203 verifies no `/api/v1/skills?keyword=` or `limit=` request is sent in semantic mode.
+- **V07 startup budget covers image build** — Playwright `webServer.timeout` is now `600_000` for `compose:webserver`, which includes production image build plus Compose health checks.
+
+### Verification
+
+- `./scripts/verify-all.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.5%，covered=4777 / total=5459）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V08a=PASS、V08b=PASS；`Verdict: ✅ all CRITICAL passed; exit=0`。
+- `cd backend && ./gradlew test --tests '*SemanticSearch*' --tests '*SearchController*'`：**PASS** — `BUILD SUCCESSFUL in 2m 22s`；JUnit XML 顯示 19 search/controller tests / 0 failures / 0 errors。
+- Production deploy：not run in this release tick；S203 has local release evidence only。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-19-S203-semantic-search-masonry-pagination.md` → `docs/grimo/specs/archive/2026-05-19-S203-semantic-search-masonry-pagination.md`
+- `docs/grimo/tasks/2026-05-19-S203-*.md` 與 `docs/grimo/tasks/2026-05-20-S203-T05-*.md` 已刪除。
+- Final size re-score：S(11) → M(14)，原因是實際改動橫跨 backend Slice API、frontend infinite query/masonry、docs、production-image E2E fixture/config 與完整 `verify-all.sh`。
+
 ## [v4.86.0] — S202 Production E2E Fixture Runner（2026-05-19）
 
 ### Changed

@@ -3,10 +3,26 @@
 // a template. Re-run BOOTSTRAP --upgrade to regenerate.
 
 import { defineConfig, devices } from '@playwright/test';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 if (process.env.SKILLSHUB_E2E_SEMANTIC_FIXTURES === undefined
-  && process.argv.join(' ').includes('@happy-path')) {
+  && (process.argv.join(' ').includes('@happy-path') || process.argv.join(' ').includes('@S203'))) {
   process.env.SKILLSHUB_E2E_SEMANTIC_FIXTURES = 'true';
+}
+
+if (process.env.SKILLSHUB_E2E_SEMANTIC_FIXTURES === 'true'
+  && (process.env.SKILLSHUB_E2E_GENAI_API_KEY === undefined || process.env.SKILLSHUB_E2E_GENAI_API_KEY === '')) {
+  const secretsPath = fileURLToPath(new URL('../backend/config/application-secrets.properties', import.meta.url));
+  if (existsSync(secretsPath)) {
+    const secretLine = readFileSync(secretsPath, 'utf8')
+      .split(/\r?\n/)
+      .find(line => line.trim().startsWith('skillshub.genai.api-key='));
+    const apiKey = secretLine?.split('=').slice(1).join('=').trim();
+    if (apiKey) {
+      process.env.SKILLSHUB_E2E_GENAI_API_KEY = apiKey;
+    }
+  }
 }
 
 export default defineConfig({
@@ -79,7 +95,8 @@ export default defineConfig({
     name: 'Compose',
     command: 'npm run compose:webserver',
     url: 'http://localhost:8080/actuator/health',
-    timeout: 240_000,
+    // S203-T05: compose:webserver includes image:build + compose:up.
+    timeout: 600_000,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
     stderr: 'pipe',

@@ -1,6 +1,6 @@
 # S203: Semantic Search Masonry Pagination
 
-> 規格：S203 | 大小：S(11) | 狀態：📐 in-design
+> 規格：S203 | 大小：S(11) | 狀態：✅ QA PASS（ready for `$shipping-release S203`）
 > 日期：2026-05-19
 > 對應：PRD P1 / P5；S090 semantic limit；S189 Browse search entry point；S193 score transparency；CONTEXT.md Infinite Semantic Results
 
@@ -66,17 +66,17 @@ S203 後 `GET /api/v1/search/semantic` 固定回分頁型結果，不再回 arra
 GET /api/v1/search/semantic?q=qa&page=0&size=10
 ```
 
-回應採 Spring Data `Slice<SemanticSearchResult>`。實際 JSON shape 由 POC 驗證後填入 §7；設計預期前端只依這些欄位：
+回應採 Spring Data `Slice<SemanticSearchResult>`。Phase 1 POC 已用 Spring MVC slice test 驗出實際 JSON shape；前端只依這些欄位：
 
 ```json
 {
   "content": [
     { "id": "skill-1", "name": "verifying-quality", "score": 0.64 }
   ],
+  "first": true,
+  "last": false,
   "number": 0,
   "size": 10,
-  "last": false,
-  "first": true,
   "numberOfElements": 10
 }
 ```
@@ -87,11 +87,11 @@ GET /api/v1/search/semantic?q=qa&page=0&size=10
 const nextPage = lastPage.last ? undefined : lastPage.number + 1
 ```
 
-POC 必須先回答：
+POC 已回答：
 
-- Spring Boot 4 / Jackson 3 實際 serializes `SliceImpl<SemanticSearchResult>` 的 JSON 欄位是什麼。
-- `SliceImpl` 是否適合作為 controller response，不需要自訂 DTO。
-- React Query `useInfiniteQuery` 能否穩定從這個 shape 算出下一頁。
+- Spring Boot 4 / Jackson 3 將 `SliceImpl<SemanticSearchResult>` serializes 成 top-level `content` / `first` / `last` / `number` / `numberOfElements` / `pageable` / `size` / `sort`。
+- response 沒有 `totalElements` / `totalPages`，符合「UI 不顯示總數」。
+- 前端可用 `lastPage.last ? undefined : lastPage.number + 1` 計算下一頁；不需要自訂 DTO 才能判斷下一頁。
 
 #### Backend paging behavior
 
@@ -373,7 +373,7 @@ export interface SpringSlice<T> {
 }
 ```
 
-若 POC 證明 Spring Boot 實際 JSON shape 包在 `page` 欄位（像目前 `SpringPage`），則以 POC 實際 shape 更新此 interface。
+POC 實際結果是 Slice metadata 在 top-level，不包 `page`：
 
 `frontend/src/api/search.ts`：
 
@@ -470,8 +470,190 @@ POC/T03 必須驗證：卡片不被切開、desktop 欄數正確、keyboard/DOM 
 
 ## 6. Task 規劃
 
-POC：required — 先證明 Spring Data `Slice<SemanticSearchResult>` 的 JSON shape 能被 frontend `useInfiniteQuery` 穩定使用，再正式改 `/api/v1/search/semantic` contract。
+POC: required — PASS（2026-05-19）
+
+### POC Findings
+
+執行：
+
+```bash
+cd backend && ./gradlew test --tests 'io.github.samzhu.skillshub.search.S203SliceSerializationPocTest' -x processTestAot -x compileAotTestJava -x processAotTestResources
+```
+
+結果：
+
+```text
+BUILD SUCCESSFUL in 6s
+```
+
+POC 暫時 test controller 回 `SliceImpl<SemanticSearchResult>`，Spring MVC 實際 response body：
+
+```json
+{
+  "content": [
+    {
+      "id": "skill-a",
+      "name": "verifying-quality",
+      "description": "Independent QA review",
+      "author": "u_s203",
+      "authorDisplayName": "Sam Zhu",
+      "authorHandle": null,
+      "category": "dev",
+      "categoryDisplay": "DEV",
+      "latestVersion": "v1",
+      "riskLevel": "MEDIUM",
+      "downloadCount": 0,
+      "score": 0.64
+    }
+  ],
+  "empty": false,
+  "first": true,
+  "last": false,
+  "number": 0,
+  "numberOfElements": 1,
+  "pageable": {
+    "offset": 0,
+    "pageNumber": 0,
+    "pageSize": 2,
+    "paged": true,
+    "sort": { "empty": true, "sorted": false, "unsorted": true },
+    "unpaged": false
+  },
+  "size": 2,
+  "sort": { "empty": true, "sorted": false, "unsorted": true }
+}
+```
+
+結論：
+
+- `SliceImpl` 可直接作為 controller response；不需要為了前端判斷下一頁先自訂 response DTO。
+- 前端 type 要新增 `SpringSlice<T>`，metadata 使用 top-level `number` / `size` / `numberOfElements` / `first` / `last`。
+- response 不含 `totalElements` / `totalPages`；這點符合 S203 不顯示總數的 UI 決策。
+- Temporary POC test 已刪除；正式實作時要用 `SearchController` / `SemanticSearchService` production path 補永久測試。
+
+### Task Plan
+
+| 順序 | Task file | 覆蓋 AC | 狀態 | 驗證 |
+|---|---|---|---|---|
+| 1 | `docs/grimo/tasks/2026-05-19-S203-T01-backend-slice-api.md` | AC-S203-1, AC-S203-2, AC-S203-3 | PASS | `cd backend && ./gradlew test --tests '*SemanticSearch*' --tests '*SearchController*'` |
+| 2 | `docs/grimo/tasks/2026-05-19-S203-T02-frontend-infinite-semantic-query.md` | AC-S203-4, AC-S203-6 | PASS | `cd frontend && npm test -- useSemanticSearch HomePage`; `cd frontend && npm run typecheck` |
+| 3 | `docs/grimo/tasks/2026-05-19-S203-T03-masonry-results-and-docs.md` | AC-S203-5, AC-S203-7 | PASS | `cd frontend && npm test -- HomePage SemanticSearchPage RestApiPage`; `cd frontend && npm run typecheck` |
+| 4 | `docs/grimo/tasks/2026-05-19-S203-T04-e2e-pagination-gate.md` | AC-S203-4, AC-S203-6, AC-S203-8 | PASS | `cd e2e && npx playwright test --grep @S203`；`./scripts/verify-all.sh` |
+| 5 | `docs/grimo/tasks/2026-05-20-S203-T05-release-preflight-webserver-timeout.md` | AC-S203-8 | PASS | `cd e2e && npm run compose:down && npx playwright test --grep @happy-path` |
+
+執行順序：
+
+1. T01 先改 backend contract；沒有 `Slice` response，前端沒有穩定資料 shape 可接。
+2. T02 接上 `useInfiniteQuery` 與 `/browse` append 行為，但先不把 layout 風險混進 API/hook task。
+3. T03 做 masonry 瀑布流與文件同步；這一層不改 semantic API 行為。
+4. T04 補 browser request evidence，並修既有 S140/S193 E2E 從 array response 改讀 `content`。
 
 ## 7. 實作結果
 
-待 `/planning-tasks S203` 補。
+### 2026-05-20 — S203-T01 Backend Semantic Search Slice API
+
+- `GET /api/v1/search/semantic?q=qa&page=0&size=10` 現在回 Spring Data `Slice<SemanticSearchResult>`，response 有 `content` / `number` / `size` / `numberOfElements` / `first` / `last`，沒有 `totalElements` / `totalPages`。
+- `SemanticSearchService.search(query, Pageable)` 用 `OFFSET` + `LIMIT pageSize + 1` 查同一條 score 排序序列；第 `pageSize + 1` 筆只用來算 `hasNext`，`UserDisplayService.resolveAll(...)` 只吃實際回傳的 `content`。
+- `/api/v1/search/**` 套上既有 unknown-param / pageable validation；`limit=50` 會回 400，`sort=name,asc` 也會回 400，semantic 排序固定由 SQL `ORDER BY distance` 決定。
+- 驗證：`cd backend && ./gradlew test --tests '*SemanticSearch*' --tests '*SearchController*'` PASS（`BUILD SUCCESSFUL in 2m 19s`）。
+
+### 2026-05-20 — S203-T02 Frontend Infinite Semantic Query
+
+- `frontend/src/types/skill.ts` 新增 `SpringSlice<T>`；`SemanticSearchResult` 現在是 `/api/v1/search/semantic?q=...&page=...&size=...` 的 `content[]` item。
+- `frontend/src/api/search.ts` 改成 `fetchSemanticSearch({ q, page, size })`，URL 只組 `q/page/size`，不再組 `limit=`。
+- `frontend/src/hooks/useSemanticSearch.ts` 新增 `useInfiniteSemanticSearch(query, size = 10)`，用 TanStack Query v5 `data.pages`、`fetchNextPage`、`hasNextPage`、`isFetchingNextPage` 接 Spring Slice。
+- `frontend/src/pages/HomePage.tsx` 在 semantic mode 用 `data.pages.flatMap((p) => p.content)` render cards；底部 sentinel 進 viewport 時載入下一頁，第二頁 append 到第一頁後面。
+- S189 行為保留：有搜尋字時不送 `/api/v1/skills?keyword=...`；semantic zero/error 不 fallback 到 catalog keyword。
+- 驗證：`cd frontend && npm test -- useSemanticSearch HomePage` PASS（2 files / 19 tests）；`cd frontend && npm run typecheck` PASS。
+
+### 2026-05-20 — S203-T03 Masonry Results And Docs
+
+- `frontend/src/components/SemanticMasonryGrid.tsx` 新增 semantic-only masonry component；`/browse` semantic results 使用 `columns-1 sm:columns-2 xl:columns-3`，item 使用 `break-inside-avoid`，card 仍顯示 API `score` 轉出的 `% 相符`。
+- `frontend/src/pages/HomePage.tsx` semantic branch 改用 `SemanticMasonryGrid`；T02 的 Slice append / sentinel 文案保持不變。
+- `frontend/src/pages/docs/RestApiPage.tsx` 與 `frontend/src/pages/docs/SemanticSearchPage.tsx` 同步新 contract：`q/page/size` + `Spring Slice content`，移除舊 `k/top-k/default k=20` 說法。
+- 驗證：`cd frontend && npm test -- HomePage SemanticSearchPage RestApiPage` PASS（3 files / 19 tests）；`cd frontend && npm run typecheck` PASS。
+- T04 已接續完成：E2E request log 看到 `page=0&size=10` 與下一頁 request；repo gate `./scripts/verify-all.sh` PASS。
+
+### 2026-05-20 — S203-T04 E2E Pagination Gate
+
+- `e2e/tests/S203-semantic-masonry-pagination.spec.ts` 新增 `@S203 @ac-4 @ac-6 @happy-path` browser flow：`/browse` 搜尋 `docker` 後，request log 看到 `/api/v1/search/semantic?q=docker&page=0&size=10`，捲到底部 sentinel 後看到 `page=1&size=10`，畫面顯示更多 card、`% 相符`、`已顯示全部相關技能`，且沒有 `/api/v1/skills?keyword=` 或 `limit=`。
+- `e2e/fixtures/setup.fixtures.ts` paged profile 擴到 13 筆，讓 production-image E2E 可以產生第二頁 Slice；fixture 仍由 production upload API 建 aggregate data，semantic embedding 只透過 guarded projection seed 寫 disposable DB。
+- `e2e/package.json` 的 `compose:webserver` 現在先建 `skillshub:e2e-local` 再啟 Compose，避免 Playwright 測到 stale image；這讓 S203 的 frontend static build 與 backend Slice API 都會進 production packaged image。
+- S140 / S172 / S193 E2E 已改讀 `Slice.content`，並同步 `/browse` 文案為 `已載入 N 個相關技能`。
+- 驗證：`cd e2e && npx playwright test --grep @S203` PASS（7 tests）；`cd e2e && npx playwright test --grep @happy-path` PASS（17 tests）；`./scripts/verify-all.sh` PASS（V01 PASS、V02 87.5%、V03 PASS、V04 PASS、V05 PASS、V06 PASS、V07 PASS、V08a PASS、V08b PASS；exit=0）。
+- 下一步（已被後續 release preflight 覆寫）：所有 S203 task 與獨立 QA 已 PASS；ship 前仍須看本節後面的 release preflight 記錄。
+
+### 2026-05-20 — Independent QA Review
+
+Verdict: PASS — S203 的獨立 QA 層通過；ship 前仍須通過本 tick 的 release preflight。
+
+| Layer | Result | Detail |
+|-------|--------|--------|
+| Automated tests | PASS | `./scripts/verify-all.sh`：V01=PASS、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V08a=PASS、V08b=PASS。 |
+| Coverage / integration | PASS | V02 line coverage 87.5%（covered=4775 / total=5459）；V07 production packaged image browser path PASS。 |
+| Manual verification | N/A | AC-S203-1..8 都有 automated command / test / docs assertion；不需要人工操作才能驗證。 |
+| Testability gate | CLEAR | 每個 AC 都可從現有 backend/frontend/docs/E2E/verify-all evidence 對回。 |
+
+AC coverage:
+
+- AC-S203-1 / AC-S203-2：`backend/src/test/java/io/github/samzhu/skillshub/search/SearchControllerTest.java` 驗 `Slice` JSON shape、page 1、legacy `limit` 400。
+- AC-S203-3：`backend/src/test/java/io/github/samzhu/skillshub/search/SemanticSearchFromSkillsTest.java` 驗 ACL 先在 SQL filter 後分頁，以及跨頁 score desc。
+- AC-S203-4 / AC-S203-6：`frontend/src/pages/HomePage.test.tsx` 與 `e2e/tests/S203-semantic-masonry-pagination.spec.ts` 驗 page 0/page 1 append、沒有 `/api/v1/skills?keyword=`、沒有 `limit=`。
+- AC-S203-5：`frontend/src/pages/HomePage.test.tsx` 驗 `semantic-masonry-grid` / `semantic-masonry-item` 與 `% 相符`。
+- AC-S203-7：`frontend/src/pages/docs/RestApiPage.test.tsx` 與 `frontend/src/pages/docs/SemanticSearchPage.test.tsx` 驗 semantic docs 顯示 `q / page / size`，不再教 `q / k`、`top-k`、`default k=20`。
+- AC-S203-8：`./scripts/verify-all.sh` 本輪重跑 PASS；V01/V03/V04/V05/V06/V07/V08a/V08b 都過，exit=0。
+
+QA code/document checks:
+
+- `backend/config/application-secrets.properties` 由 `.gitignore` 排除；V07 log 只印 `value redacted`，沒有把 Gemini key 寫入 tracked file。
+- S203 production code 沒新增 dependency；`e2e/package.json` 只改 `compose:webserver` 先 build `skillshub:e2e-local`，讓 browser tests 不會測 stale image。
+- Release ledger 還沒收：spec 仍在 `docs/grimo/specs/`、`docs/grimo/tasks/2026-05-19-S203-*.md` 仍存在、CHANGELOG 尚無 v4.87.0、git tag `v4.87.0` 尚未建立。
+
+### 2026-05-20 — Release Pre-flight Attempt
+
+Verdict: FAIL — S203 還不能收 release ledger。
+
+- `cd backend && ./gradlew test --tests '*SemanticSearch*' --tests '*SearchController*'` PASS（`BUILD SUCCESSFUL in 2m 24s`）。
+- `./scripts/verify-all.sh` FAIL：V07 `cd e2e && npx playwright test --grep @happy-path` 在測試開始前等 `webServer` 逾時，錯誤是 `Error: Timed out waiting 240000ms from config.webServer.`。
+- `e2e/results/report.json` 顯示 `expected=0`、`failedTests=[]`，代表沒有任何 browser assertion 實際跑到。
+- `verify-all.log` 顯示 `npm run image:build` 先建出 `skillshub:e2e-local`，Gradle `bootBuildImage` 花 `3m 29s`；接著 `docker compose -f compose.e2e.yaml up -d --wait --wait-timeout 240` 才開始等 DB / mock OAuth / app health。Playwright `webServer.timeout` 仍是 `240_000`，時間不夠涵蓋 image build 加 Compose health check。
+
+下一步：回 `$planning-tasks S203` 補一個 release-preflight 修復 task，讓 V07 啟動預算覆蓋 `image:build + compose:up`，修完後再跑 `$verifying-quality S203`。
+
+### 2026-05-20 — S203-T05 Release Preflight WebServer Timeout
+
+- `e2e/playwright.config.ts` 的 `webServer.timeout` 從 `240_000` 改成 `600_000`，並標註 S203-T05：`compose:webserver` 的等待時間包含 `image:build + compose:up`，不是只等 app boot。
+- `compose:up --wait-timeout 240` 保持不變；上一輪失敗是 Playwright 包住整段 command 的 240 秒先到，Compose 的 health check timeout 還沒機會完整跑完。
+- 驗證：`rg -n "timeout: 600_000|S203-T05" e2e/playwright.config.ts docs/grimo/tasks/2026-05-20-S203-T05-release-preflight-webserver-timeout.md` PASS。
+- 驗證：`cd e2e && npm run compose:down && npx playwright test --grep @happy-path` PASS（17 tests）。這次輸出顯示 `bootBuildImage` 花 `3m 24s`，接著 Compose app/db/mock OAuth 皆 Healthy，browser tests 才開始執行並全部通過。
+
+下一步：S203 release-preflight 修復已 PASS，但這是 implementation fix；依 dev loop 規則下一輪必須跑 `$verifying-quality S203`，不能直接 ship。
+
+### 2026-05-20 — Independent QA Re-Review After S203-T05
+
+Verdict: PASS — S203-T05 後重新跑完整 repo gate，全數通過；S203 可交給 `$shipping-release S203` 收 release ledger。
+
+| Layer | Result | Detail |
+|-------|--------|--------|
+| Automated tests | PASS | `./scripts/verify-all.sh` exit=0；V01=PASS、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V08a=PASS、V08b=PASS。 |
+| Coverage / integration | PASS | V02 line coverage 87.5%（covered=4775 / total=5459）；V07 `cd e2e && npx playwright test --grep @happy-path` PASS，確認 production packaged image browser path 在 `webServer.timeout=600_000` 後不再於測試開始前逾時。 |
+| Manual verification | N/A | AC-S203-1..8 都有 backend/frontend/docs/E2E/verify-all evidence；不需要人工操作才能驗證。 |
+| Testability gate | CLEAR | S203 每個 AC 都可對回既有 test 或 docs assertion；T05 只改 Playwright `webServer.timeout`，AC-S203-8 已由 V07 與完整 `verify-all` 覆蓋。 |
+
+QA evidence:
+
+- `./scripts/verify-all.sh` summary：`Results: V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V08a=PASS V08b=PASS`；`Counts: PASS=8, FAIL=0, SKIP=0`；`Verdict: all CRITICAL passed; exit=0`。
+- V07 log 仍只印 `loaded SKILLSHUB_E2E_GENAI_API_KEY ... (value redacted)`；沒有把 Gemini key 寫進 tracked file 或測試輸出。
+- Release ledger 尚未收：spec 仍在 `docs/grimo/specs/`、`docs/grimo/tasks/2026-05-19-S203-*.md` 與 `docs/grimo/tasks/2026-05-20-S203-T05-*.md` 仍存在、CHANGELOG 尚無 v4.87.0、git tag `v4.87.0` 尚未建立。下一步必須是 `$shipping-release S203`。
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 2 | 2 | Spring `Slice` JSON shape 先用 POC 驗過；實作沒有新增 production dependency。 |
+| Uncertainty | 2 | 2 | S203 主要不確定點是 Slice shape 與 production-image E2E 啟動時間；T05 已用完整 V07/verify-all 驗證。 |
+| Dependencies | 2 | 2 | 依賴既有 Spring Data、TanStack Query、Playwright、Compose；沒有引入新第三方套件。 |
+| Scope | 2 | 3 | 實際改到 backend API/service/tests、frontend hook/page/docs、E2E fixtures/specs/config，超過原 S 級單層改動。 |
+| Testing | 2 | 3 | 同時覆蓋 backend slice/integration、frontend Vitest/typecheck、production packaged app V07、AOT/native V08。 |
+| Reversibility | 1 | 2 | API contract 從 array/limit 改成 Slice/page/size，回復時需同步 frontend、docs、E2E fixture 與既有 request assumptions。 |
+| **Total** | **11 / S** | **14 / M** | Bucket shift S→M；主因是 production-image E2E 與 release preflight timeout 修補納入同一 spec。 |

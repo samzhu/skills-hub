@@ -1,15 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { AppShell } from '@/components/AppShell'
 import { SearchBar } from '@/components/SearchBar'
 import { CategorySidebar } from '@/components/CategorySidebar'
 import { RiskFilterSidebar } from '@/components/RiskFilterSidebar'
-import { SkillCard } from '@/components/SkillCard'
 import { SkillCardGrid } from '@/components/SkillCardGrid'
+import { SemanticMasonryGrid } from '@/components/SemanticMasonryGrid'
 import { EmptyState } from '@/components/EmptyState'
 import { useSkillList } from '@/hooks/useSkillList'
 import { useCategories } from '@/hooks/useCategories'
-import { useSemanticSearch } from '@/hooks/useSemanticSearch'
+import { useInfiniteSemanticSearch } from '@/hooks/useSemanticSearch'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import type { RiskLevel, Skill } from '@/types/skill'
 
@@ -57,13 +57,17 @@ export function HomePage() {
   const isSemanticMode = hasSearchInput
   const isCatalogMode = !hasSearchInput
   const isDebouncingSearch = hasSearchInput && debouncedQuery !== trimmedQuery
+  const semanticLoadMoreRef = useRef<HTMLDivElement | null>(null)
 
   // S189: semantic mode waits for the debounced query; catalog mode passes blank to keep the hook disabled.
   const {
-    data: semanticResults,
+    data: semanticData,
     isLoading: semanticLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
     error: semanticError,
-  } = useSemanticSearch(isSemanticMode ? debouncedQuery : '')
+  } = useInfiniteSemanticSearch(isSemanticMode ? debouncedQuery : '', 10)
 
   // S189: catalog mode never sends keyword fallback while the search box has text.
   // S100b: sort param 改 server-side 派遣 — backend Spring Pageable 接收 sort=field,direction
@@ -105,6 +109,25 @@ export function HomePage() {
 
   const isLoading = isSemanticMode ? (isDebouncingSearch || semanticLoading) : listLoading
   const error = isSemanticMode ? semanticError : listError
+  const semanticResults = useMemo(
+    () => semanticData?.pages.flatMap((pageData) => pageData.content) ?? [],
+    [semanticData],
+  )
+
+  useEffect(() => {
+    if (!isSemanticMode || !hasNextPage || isFetchingNextPage) return
+    const node = semanticLoadMoreRef.current
+    if (!node) return
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        void fetchNextPage()
+      }
+    }, { rootMargin: '240px 0px' })
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isSemanticMode])
 
   // S100b: sort 改 server-side（query param sort=field,direction）— 跨頁全域 sort
   // 保留 client-side risk-filter — 因 backend 沒有 multi-tier filter 支援（不在本 spec scope）
@@ -175,23 +198,13 @@ export function HomePage() {
               {isSemanticMode ? '搜尋失敗，請調整描述或清除搜尋後瀏覽全部技能' : '載入技能失敗，請重新整理頁面'}
             </div>
           ) : isSemanticMode ? (
-            // 語意搜尋結果：顯示每張卡片的相符度 badge，無分頁
+            // S203: semantic Slice pages append in-place; masonry layout is handled by T03.
             <>
               <div className="mb-4 text-sm text-muted-foreground">
-                找到 {semanticResults?.length ?? 0} 個相關技能
+                已載入 {semanticResults.length} 個相關技能
               </div>
-              {semanticResults && semanticResults.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {semanticResults.map((result) => (
-                    <SkillCard
-                      key={result.id}
-                      // SemanticSearchResult 欄位與 Skill 高度重疊；
-                      // 以型別斷言橋接（status / createdAt / updatedAt 為語意結果不含的欄位）
-                      skill={result as unknown as Parameters<typeof SkillCard>[0]['skill']}
-                      score={result.score}
-                    />
-                  ))}
-                </div>
+              {semanticResults.length > 0 ? (
+                <SemanticMasonryGrid results={semanticResults} />
               ) : (
                 // S094c: replace inline 0-results with EmptyState redirect tone — query echo + suggestions
                 <EmptyState
@@ -204,6 +217,19 @@ export function HomePage() {
                     { text: '發布這個技能', hint: '你可能是第一個遇到此需求的人', href: '/publish' },
                   ]}
                 />
+              )}
+              {semanticResults.length > 0 && (
+                <div
+                  ref={semanticLoadMoreRef}
+                  data-testid="semantic-load-more-sentinel"
+                  className="mt-6 flex min-h-10 items-center justify-center text-sm text-muted-foreground"
+                >
+                  {isFetchingNextPage
+                    ? '載入更多相關技能...'
+                    : hasNextPage
+                      ? '載入更多相關技能...'
+                      : '已顯示全部相關技能'}
+                </div>
               )}
             </>
           ) : (

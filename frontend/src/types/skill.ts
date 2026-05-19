@@ -116,6 +116,24 @@ export interface SpringPage<T> {
 }
 
 /**
+ * Spring Data Slice 回應的通用包裝型別。
+ * S203: semantic search 只需要下一頁資訊，不需要 totalElements / totalPages。
+ */
+export interface SpringSlice<T> {
+  content: T[]
+  /** 目前頁碼（0-indexed） */
+  number: number
+  /** 每頁筆數 */
+  size: number
+  /** 當頁實際筆數 */
+  numberOfElements: number
+  /** 是否為第一頁 */
+  first: boolean
+  /** 是否為最後一頁 */
+  last: boolean
+}
+
+/**
  * 技能分類及其技能數量，用於側邊欄篩選。
  * 後端保證每個技能只屬於一個分類，因此 count 加總等於技能總數。
  */
@@ -129,7 +147,8 @@ export interface CategoryCount {
 /**
  * 語意搜尋結果 DTO，對應後端 SemanticSearchResult 的 JSON 序列化結果。
  *
- * 由 GET /api/v1/search/semantic?q=... 回傳，每筆記錄包含技能摘要與語意相似度分數。
+ * 由 GET /api/v1/search/semantic?q=...&page=...&size=... 的 SpringSlice.content 回傳，
+ * 每筆記錄包含技能摘要與語意相似度分數。
  * score 為 cosine similarity（0.0–1.0），越高表示與查詢語意越相近。
  */
 export interface SemanticSearchResult {

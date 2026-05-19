@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.StatementCreatorUtils;
 import org.springframework.jdbc.core.SqlTypeValue;
@@ -79,9 +80,10 @@ class SemanticSearchFromSkillsTest {
 
         mvc.perform(get("/api/v1/search/semantic")
                         .param("q", QUERY)
-                        .param("limit", "10"))
+                        .param("page", "0")
+                        .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == 'skill-docker')]").exists());
+                .andExpect(jsonPath("$.content[?(@.id == 'skill-docker')]").exists());
     }
 
     @Test
@@ -92,9 +94,10 @@ class SemanticSearchFromSkillsTest {
 
         mvc.perform(get("/api/v1/search/semantic")
                         .param("q", QUERY)
-                        .param("limit", "10"))
+                        .param("page", "0")
+                        .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == 'skill-private')]").doesNotExist());
+                .andExpect(jsonPath("$.content[?(@.id == 'skill-private')]").doesNotExist());
     }
 
     @Test
@@ -105,13 +108,14 @@ class SemanticSearchFromSkillsTest {
 
         mvc.perform(get("/api/v1/search/semantic")
                         .param("q", QUERY)
-                        .param("limit", "10")
+                        .param("page", "0")
+                        .param("size", "10")
                         .with(jwt().jwt(j -> j.subject("alice")
                                         .claim("roles", List.of("user"))
                                         .claim("groups", List.of()))
                                 .authorities(new SimpleGrantedAuthority("ROLE_user"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == 'skill-private')]").exists());
+                .andExpect(jsonPath("$.content[?(@.id == 'skill-private')]").exists());
     }
 
     @Test
@@ -122,9 +126,10 @@ class SemanticSearchFromSkillsTest {
 
         mvc.perform(get("/api/v1/search/semantic")
                         .param("q", QUERY)
-                        .param("limit", "10"))
+                        .param("page", "0")
+                        .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == 'skill-card' && @.name == 'docker-compose-helper' "
+                .andExpect(jsonPath("$.content[?(@.id == 'skill-card' && @.name == 'docker-compose-helper' "
                         + "&& @.author == 'u_current' && @.category == 'devops' "
                         + "&& @.categoryDisplay == 'DevOps' && @.downloadCount == 7)]").exists());
     }
@@ -139,9 +144,10 @@ class SemanticSearchFromSkillsTest {
 
         mvc.perform(get("/api/v1/search/semantic")
                         .param("q", QUERY)
-                        .param("limit", "10"))
+                        .param("page", "0")
+                        .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == 'skill-subtitle' "
+                .andExpect(jsonPath("$.content[?(@.id == 'skill-subtitle' "
                         + "&& @.author == 'u_f7eb3a' "
                         + "&& @.authorDisplayName == 'Sam Zhu' "
                         + "&& @.authorHandle == 'samzhu')]").exists());
@@ -239,6 +245,57 @@ class SemanticSearchFromSkillsTest {
         assertThat(scores).isSortedAccordingTo((left, right) -> Double.compare(right, left));
     }
 
+    @Test
+    @DisplayName("AC-S203-3: semantic paging filters ACL in SQL before pagination")
+    @Tag("AC-S203-3")
+    void semanticPagingFiltersAclBeforePagination() {
+        var queryVector = vectorAt(0);
+        when(embeddingModel.embed("qa acl")).thenReturn(queryVector);
+        seedSkill("skill-private", "private-qa", "u_current", "testing", "Testing",
+                false, List.of("user:" + TestUserSeed.ALICE_ID + ":read"), 0L, queryVector);
+        seedSkill("skill-a", "qa-helper-a", "u_current", "testing", "Testing",
+                true, List.of("public:*:read"), 0L, vectorWithNoise(1.0f));
+        seedSkill("skill-b", "qa-helper-b", "u_current", "testing", "Testing",
+                true, List.of("public:*:read"), 0L, vectorWithNoise(2.0f));
+        seedSkill("skill-c", "qa-helper-c", "u_current", "testing", "Testing",
+                true, List.of("public:*:read"), 0L, vectorWithNoise(3.0f));
+
+        var firstPage = semanticSearchService.search("qa acl", PageRequest.of(0, 2));
+
+        assertThat(firstPage.getContent())
+                .extracting(SemanticSearchResult::id)
+                .containsExactly("skill-a", "skill-b");
+        assertThat(firstPage.hasNext()).isTrue();
+    }
+
+    @Test
+    @DisplayName("AC-S203-3: semantic paging keeps score descending across pages")
+    @Tag("AC-S203-3")
+    void semanticPagingKeepsScoreDescendingAcrossPages() {
+        var queryVector = vectorAt(0);
+        when(embeddingModel.embed("qa page")).thenReturn(queryVector);
+        seedSkill("skill-a", "qa-helper-a", "u_current", "testing", "Testing",
+                true, List.of("public:*:read"), 0L, queryVector);
+        seedSkill("skill-b", "qa-helper-b", "u_current", "testing", "Testing",
+                true, List.of("public:*:read"), 0L, vectorWithNoise(1.0f));
+        seedSkill("skill-c", "qa-helper-c", "u_current", "testing", "Testing",
+                true, List.of("public:*:read"), 0L, vectorWithNoise(2.0f));
+
+        var firstPage = semanticSearchService.search("qa page", PageRequest.of(0, 2));
+        var secondPage = semanticSearchService.search("qa page", PageRequest.of(1, 2));
+        var results = new java.util.ArrayList<SemanticSearchResult>();
+        results.addAll(firstPage.getContent());
+        results.addAll(secondPage.getContent());
+
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(secondPage.hasNext()).isFalse();
+        assertThat(results)
+                .extracting(SemanticSearchResult::id)
+                .containsExactly("skill-a", "skill-b", "skill-c");
+        assertThat(results.stream().map(SemanticSearchResult::score).toList())
+                .isSortedAccordingTo((left, right) -> Double.compare(right, left));
+    }
+
     private void seedUser(String id, String sub, String email, String name, String handle) {
         jdbc.update("""
                 INSERT INTO users (id, oauth_provider, sub, email, name, handle, created_at, last_seen_at)
@@ -277,6 +334,12 @@ class SemanticSearchFromSkillsTest {
     private static float[] vectorAt(int index) {
         var vector = new float[EMBEDDING_DIMENSIONS];
         vector[index] = 1.0f;
+        return vector;
+    }
+
+    private static float[] vectorWithNoise(float noise) {
+        var vector = vectorAt(0);
+        vector[1] = noise;
         return vector;
     }
 

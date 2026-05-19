@@ -74,9 +74,10 @@ class SemanticSearchVisibilityLagTest {
 
         mvc.perform(get("/api/v1/search/semantic")
                         .param("q", QUERY)
-                        .param("limit", "10"))
+                        .param("page", "0")
+                        .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == 'skill-public-after-toggle')]").exists());
+                .andExpect(jsonPath("$.content[?(@.id == 'skill-public-after-toggle')]").exists());
     }
 
     @Test
@@ -89,13 +90,14 @@ class SemanticSearchVisibilityLagTest {
 
         mvc.perform(get("/api/v1/search/semantic")
                         .param("q", QUERY)
-                        .param("limit", "10")
+                        .param("page", "0")
+                        .param("size", "10")
                         .with(jwt().jwt(j -> j.subject("bob")
                                         .claim("roles", List.of("user"))
                                         .claim("groups", List.of()))
                                 .authorities(new SimpleGrantedAuthority("ROLE_user"))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == 'skill-granted-private')]").exists());
+                .andExpect(jsonPath("$.content[?(@.id == 'skill-granted-private')]").exists());
     }
 
     private void seedSkill(String id, boolean isPublic, List<String> aclEntries, float[] embedding) {

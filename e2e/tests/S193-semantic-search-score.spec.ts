@@ -31,16 +31,17 @@ test.describe('S193 — Semantic Search Score Transparency', () => {
       await page.getByPlaceholder('描述你想完成的任務或搜尋技能...').fill('images and containers in CI');
 
       const response = await semanticResponse;
-      const body = await response.json() as Array<{ score?: number }>;
-      expect(body.length, 'semantic API should return at least one scored result').toBeGreaterThan(0);
-      expect(typeof body[0].score, 'semantic API first result should include score').toBe('number');
+      const body = await response.json() as { content?: Array<{ score?: number }> };
+      const firstResult = body.content?.[0];
+      expect(body.content?.length ?? 0, 'semantic API should return at least one scored result').toBeGreaterThan(0);
+      expect(typeof firstResult?.score, 'semantic API first result should include score').toBe('number');
 
-      const expectedMatchText = `${Math.round((body[0].score ?? 0) * 100)}% 相符`;
+      const expectedMatchText = `${Math.round((firstResult?.score ?? 0) * 100)}% 相符`;
       await expect(page.getByText(expectedMatchText).first()).toBeVisible({ timeout: 15_000 });
     });
 
     await test.step('Then /browse used semantic API only and rendered a match badge', async () => {
-      await expect(page.getByText(/找到/)).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText(/已載入/)).toBeVisible({ timeout: 15_000 });
       await expect(page.getByText(/% 相符/).first()).toBeVisible();
       expect(semanticRequests.length, '/browse search should request semantic endpoint').toBeGreaterThan(0);
       expect(keywordRequests, '/browse search must not call keyword API').toHaveLength(0);

@@ -9,6 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.SqlTypeValue;
 import org.springframework.jdbc.core.StatementCreatorUtils;
@@ -43,10 +47,10 @@ class SemanticSearchService {
                AND (is_public = TRUE OR acl_entries ??| ?::text[])
                AND embedding <=> ? < ?
              ORDER BY distance
+             OFFSET ?
              LIMIT ?
             """;
     private static final int LOGGED_TOP_HITS = 3;
-    private static final int OVERSAMPLE_FACTOR = 5;
 
     /**
      * Cosine similarity 最低門檻值（cosine 範圍 [-1, 1]）。
@@ -86,10 +90,25 @@ class SemanticSearchService {
      * @return 語意相關的技能清單，若無符合結果則回傳空清單（不拋出例外）
      */
     List<SemanticSearchResult> search(String query, int topK) {
+        return search(query, PageRequest.of(0, topK)).getContent();
+    }
+
+    /**
+     * 執行分頁語意搜尋，回傳可判斷下一頁是否存在的 Slice。
+     *
+     * <p>S203-T01: Spring Data Slice 用 {@code pageSize + 1} 判斷 {@code hasNext}，
+     * 不跑總數查詢；ACL 與 visibility 必須留在 SQL WHERE，先過濾再 offset/limit。
+     *
+     * @param query 使用者輸入的自然語言查詢
+     * @param pageable page/size 分頁參數；排序由 SQL distance 固定處理
+     * @return 語意相關的技能切片，若無符合結果則回傳空切片（不拋出例外）
+     */
+    Slice<SemanticSearchResult> search(String query, Pageable pageable) {
         // S186-T02：ACL filter 與 result card 都直接讀 skills row，避免舊索引 metadata stale。
         var principalKeys = principalContextService.currentPrincipalKeys();
         var aclPatterns = readPatterns(principalKeys);
         var queryEmbedding = new PGvector(embeddingModel.embed(query));
+        var requestedSize = pageable.getPageSize();
 
         var hits = jdbcTemplate.query(connection -> {
             var ps = connection.prepareStatement(SEMANTIC_SEARCH_SQL_FROM_SKILLS);
@@ -97,7 +116,8 @@ class SemanticSearchService {
             bind(ps, 2, pgArrayLiteral(aclPatterns));
             bind(ps, 3, queryEmbedding);
             bind(ps, 4, 1.0d - similarityThreshold);
-            bind(ps, 5, topK * OVERSAMPLE_FACTOR);
+            bind(ps, 5, pageable.getOffset());
+            bind(ps, 6, requestedSize + 1);
             return ps;
         }, (rs, rowNum) -> new SkillSemanticHit(
                 rs.getString("id"),
@@ -111,12 +131,13 @@ class SemanticSearchService {
                 rs.getLong("download_count"),
                 rs.getDouble("distance")));
 
-        var topHits = hits.stream().limit(topK).toList();
-        var authorDisplays = userDisplayService.resolveAll(topHits.stream()
+        var contentHits = hits.stream().limit(requestedSize).toList();
+        var hasNext = hits.size() > requestedSize;
+        var authorDisplays = userDisplayService.resolveAll(contentHits.stream()
                 .map(SkillSemanticHit::author)
                 .toList(), false);
 
-        var results = topHits.stream()
+        var results = contentHits.stream()
                 .map(hit -> hit.toResult(authorDisplays.get(hit.author())))
                 .toList();
         var loggedResults = results.stream().limit(LOGGED_TOP_HITS).toList();
@@ -130,7 +151,7 @@ class SemanticSearchService {
                 .addKeyValue("topHitNames", loggedResults.stream().map(SemanticSearchResult::name).toList())
                 .addKeyValue("topHitScores", loggedResults.stream().map(SemanticSearchResult::score).toList())
                 .log("ACL-aware semantic search 完成");
-        return results;
+        return new SliceImpl<>(results, pageable, hasNext);
     }
 
     private static List<String> readPatterns(Set<String> principalKeys) {

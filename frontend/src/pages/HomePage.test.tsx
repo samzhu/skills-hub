@@ -22,7 +22,16 @@ const mockSkillsPage = {
 const mockSemanticResults = [
   { id: 'semantic-1', name: 'semantic-dd', author: 'u_f7eb3a', authorDisplayName: 'Sam Zhu', authorHandle: null, description: 'semantic result', category: 'Testing', riskLevel: 'LOW', latestVersion: '1.0.0', downloadCount: 4, score: 0.91 },
 ]
+const semanticSlice = (content: typeof mockSemanticResults, number: number, last: boolean) => ({
+  content,
+  first: number === 0,
+  last,
+  number,
+  size: 10,
+  numberOfElements: content.length,
+})
 const searchPlaceholder = '描述你想完成的任務或搜尋技能...'
+let intersectionCallback: IntersectionObserverCallback | null = null
 
 const renderPage = (initialPath = '/browse') => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -41,6 +50,23 @@ const renderPage = (initialPath = '/browse') => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  intersectionCallback = null
+  class MockIntersectionObserver implements IntersectionObserver {
+    readonly root = null
+    readonly rootMargin = ''
+    readonly scrollMargin = ''
+    readonly thresholds: ReadonlyArray<number> = []
+
+    constructor(cb: IntersectionObserverCallback) {
+      intersectionCallback = cb
+    }
+
+    disconnect = vi.fn()
+    observe = vi.fn()
+    takeRecords = vi.fn((): IntersectionObserverEntry[] => [])
+    unobserve = vi.fn()
+  }
+  vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
   // 同 codebase pattern：直接 stub globalThis.fetch (與既有 SkillDetailPage.test.tsx 一致)
   ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
     if (url.includes('/api/v1/skills')) {
@@ -50,7 +76,7 @@ beforeEach(() => {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
     }
     if (url.includes('/api/v1/search/semantic')) {
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(mockSemanticResults) } as Response)
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(semanticSlice(mockSemanticResults, 0, true)) } as Response)
     }
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
   })
@@ -58,6 +84,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers()
+  vi.unstubAllGlobals()
 })
 
 const fetchUrls = () => {
@@ -222,6 +249,8 @@ describe('HomePage — S189 browse search request routing', () => {
     await waitFor(() => expect(screen.getByText('semantic-dd')).toBeInTheDocument())
     const urls = fetchUrls()
     expect(urls.filter((u) => u.includes('/api/v1/search/semantic?q=dd'))).toHaveLength(1)
+    expect(urls.some((u) => u.includes('/api/v1/search/semantic?q=dd') && u.includes('page=0') && u.includes('size=10'))).toBe(true)
+    expect(urls.some((u) => u.includes('/api/v1/search/semantic') && u.includes('limit='))).toBe(false)
     expect(urls.some((u) => u.includes('/api/v1/search/semantic?q=d&'))).toBe(false)
     expect(urls.some((u) => u.includes('/api/v1/skills?') && u.includes('keyword=dd'))).toBe(false)
     expect(screen.queryByRole('button', { name: /無風險/ })).not.toBeInTheDocument()
@@ -263,7 +292,7 @@ describe('HomePage — S189 browse search request routing', () => {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
       }
       if (url.includes('/api/v1/search/semantic')) {
-        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(semanticSlice([], 0, true)) } as Response)
       }
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
     })
@@ -334,5 +363,91 @@ describe('HomePage — S189 browse search request routing', () => {
     expect(lastSkillsUrl).not.toContain('keyword=')
     expect(lastSkillsUrl).not.toContain('category=')
     expect(screen.getByText(/共 103 個技能/)).toBeInTheDocument()
+  })
+
+  it('AC-S203-4: semantic sentinel loads page 1 and appends cards without keyword fallback', async () => {
+    const page0 = Array.from({ length: 10 }, (_, i) => ({
+      id: `semantic-page-0-${i}`,
+      name: `semantic page 0 skill ${i}`,
+      author: 'u_f7eb3a',
+      authorDisplayName: 'Sam Zhu',
+      authorHandle: null,
+      description: `page 0 result ${i}`,
+      category: 'Testing',
+      riskLevel: 'LOW',
+      latestVersion: '1.0.0',
+      downloadCount: i,
+      score: 0.9 - i * 0.01,
+    }))
+    const page1 = Array.from({ length: 5 }, (_, i) => ({
+      id: `semantic-page-1-${i}`,
+      name: `semantic page 1 skill ${i}`,
+      author: 'u_f7eb3a',
+      authorDisplayName: 'Sam Zhu',
+      authorHandle: null,
+      description: `page 1 result ${i}`,
+      category: 'Testing',
+      riskLevel: 'LOW',
+      latestVersion: '1.0.0',
+      downloadCount: i,
+      score: 0.75 - i * 0.01,
+    }))
+    ;(globalThis as any).fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/v1/skills')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(mockSkillsPage) } as Response)
+      }
+      if (url.includes('/api/v1/categories')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
+      }
+      if (url.includes('/api/v1/search/semantic') && url.includes('page=1')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(semanticSlice(page1, 1, true)) } as Response)
+      }
+      if (url.includes('/api/v1/search/semantic')) {
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(semanticSlice(page0, 0, false)) } as Response)
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve([]) } as Response)
+    })
+
+    renderPage('/browse')
+    await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
+    ;((globalThis as any).fetch as ReturnType<typeof vi.fn>).mockClear()
+
+    fireEvent.change(screen.getByPlaceholderText(searchPlaceholder), { target: { value: 'qa' } })
+    await waitFor(() => expect(screen.getByText('semantic page 0 skill 0')).toBeInTheDocument())
+
+    intersectionCallback?.(
+      [{ isIntersecting: true, target: document.createElement('div') } as unknown as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+
+    await waitFor(() => expect(screen.getByText('semantic page 1 skill 4')).toBeInTheDocument())
+    expect(screen.getByText('semantic page 0 skill 0')).toBeInTheDocument()
+    expect(screen.getByText(/已載入 15 個相關技能/)).toBeInTheDocument()
+    expect(screen.getByText('已顯示全部相關技能')).toBeInTheDocument()
+
+    const urls = fetchUrls()
+    expect(urls.some((u) => u.includes('/api/v1/search/semantic?q=qa') && u.includes('page=0') && u.includes('size=10'))).toBe(true)
+    expect(urls.some((u) => u.includes('/api/v1/search/semantic?q=qa') && u.includes('page=1') && u.includes('size=10'))).toBe(true)
+    expect(urls.some((u) => u.includes('/api/v1/search/semantic') && u.includes('limit='))).toBe(false)
+    expect(urls.some((u) => u.includes('/api/v1/skills?') && u.includes('keyword=qa'))).toBe(false)
+  })
+
+  it('AC-S203-5: semantic results render in masonry container with score badges', async () => {
+    renderPage('/browse')
+    await waitFor(() => expect(screen.getByText('sk1')).toBeInTheDocument())
+    ;((globalThis as any).fetch as ReturnType<typeof vi.fn>).mockClear()
+
+    fireEvent.change(screen.getByPlaceholderText(searchPlaceholder), { target: { value: 'dd' } })
+
+    await waitFor(() => expect(screen.getByText('semantic-dd')).toBeInTheDocument())
+    const masonry = screen.getByTestId('semantic-masonry-grid')
+    expect(masonry.className).toContain('columns-1')
+    expect(masonry.className).toContain('sm:columns-2')
+    expect(masonry.className).toContain('xl:columns-3')
+
+    const items = screen.getAllByTestId('semantic-masonry-item')
+    expect(items.length).toBeGreaterThan(0)
+    expect(items[0].className).toContain('break-inside-avoid')
+    expect(screen.getByText('91% 相符')).toBeInTheDocument()
   })
 })
