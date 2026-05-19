@@ -82,20 +82,23 @@ test.describe('S172 — responsive polish guard', () => {
     }
   });
 
-  test('AC-S172-16: browse empty suggestions and collection dialog expose real controls @S172 @responsive-polish @happy-path', async ({
+  test('AC-S172-16: browse semantic results and collection dialog expose real controls @S172 @responsive-polish @happy-path', async ({
     page,
     request,
   }) => {
-    await profiles.empty(request);
+    await profiles.paged(request);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/browse');
+    const semanticResponse = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/search/semantic?q=s172-no-result-query') && response.status() === 200,
+    );
     await page.getByRole('searchbox').fill('s172-no-result-query');
-    await expect(page.getByRole('heading', { name: '這個描述還沒有匹配的技能。' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /清除描述並瀏覽全部技能/ })).toBeVisible();
-    await expect(page.getByRole('link', { name: /發布這個技能/ })).toHaveAttribute('href', '/publish');
+    const body = await (await semanticResponse).json() as unknown[];
+    expect(body.length, 'semantic search should return production fixture results').toBeGreaterThan(0);
+    await expect(page.getByText(/找到\s+[1-9]\d*\s+個相關技能/)).toBeVisible();
     await expect(page.getByText('切換到語意搜尋模式')).toHaveCount(0);
-    await expectNoBodyOverflow(page, '/browse empty @ 390x844');
+    await expectNoBodyOverflow(page, '/browse semantic @ 390x844');
 
     const skillId = await seedSkill(request, {
       name: 'collection-picker-helper',

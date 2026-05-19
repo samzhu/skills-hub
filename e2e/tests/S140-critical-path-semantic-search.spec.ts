@@ -37,11 +37,16 @@ test.describe('S140 — E2E Critical Path Backfill', () => {
 
     await test.step('When user opens /browse and types natural-language query "images and containers in CI"', async () => {
       await page.goto('/browse');
+      const semanticResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/semantic?q=images%20and%20containers%20in%20CI')
+        && response.status() === 200,
+      );
       await page.getByPlaceholder('描述你想完成的任務或搜尋技能...').fill('images and containers in CI');
+      const body = await (await semanticResponse).json() as unknown[];
+      expect(body.length, 'semantic API should return at least one result').toBeGreaterThan(0);
 
       // 等 semantic search 結果出現（resultsLoading 結束）；non-empty list
-      await expect(page.getByText(/找到/)).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByText(/0 個相關技能/)).not.toBeVisible();  // 防 0 results 路徑
+      await expect(page.getByText(/找到\s+[1-9]\d*\s+個相關技能/)).toBeVisible({ timeout: 15_000 });
       await expect.poll(
         () => semanticRequests.length,
         { message: '/browse search should request semantic endpoint', timeout: 15_000 },
