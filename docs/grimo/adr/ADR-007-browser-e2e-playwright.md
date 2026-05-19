@@ -1,6 +1,6 @@
 # ADR-007: Browser E2E via Playwright + e2e/ workspace + Pattern 1 fixture seeding
 
-> Status: **Accepted** (2026-05-07)
+> Status: **Accepted** (2026-05-07); fixture seeding Pattern 1 superseded by ADR-008 (2026-05-19)
 > Extends: PRD Decision Log（無對應條目；MVP 階段 Layer 3 用「手動操作 golden path」）
 > Triggered by: 加入第一個 browser E2E 自動化，填補 `qa-strategy.md` Layer 3 + `verifying-quality` Step 4 Testability gate 的「應該驗證但無自動化」空洞
 > Implementation: `feat(e2e)` commit 31727db（`playwright-expert` skill + `e2e/` bootstrap）+ S140 critical path backfill spec
@@ -20,13 +20,13 @@
 
 ## 2. Decision
 
-採 Playwright（latest 1.59.1+）作為 browser E2E 工具，獨立 `e2e/` workspace，fixture 走 **Pattern 1（backend test API endpoint）** seeding，由 `playwright-expert` skill 統一管理 BOOTSTRAP / DESIGN / VERIFY 三個流程節點。
+採 Playwright（latest 1.59.1+）作為 browser E2E 工具，獨立 `e2e/` workspace。原 fixture 走 **Pattern 1（backend test API endpoint）** seeding；此 seeding pattern 已由 ADR-008 取代為 production image + external fixture runner。`playwright-expert` skill 繼續統一管理 BOOTSTRAP / DESIGN / VERIFY 三個流程節點。
 
 | 決策面 | 選擇 | Rationale |
 |---|---|---|
 | **Tool** | Playwright 1.59.1 | 跨瀏覽器原生、免費 sharding、官方 MCP、官方免費 trace viewer（trace.playwright.dev，純前端不上傳）；vs Cypress 需付費平行、vs Selenium 維護降溫 |
 | **Workspace 位置** | `e2e/`（repo root）| E2E 同時依賴前後端，不屬任一側；CI 可獨立 shard；e2e/.gitignore managed block 蓋 artefacts |
-| **Fixture pattern** | **Pattern 1**：backend `@Profile({"local","dev","e2e"})` `TestDataController`，**走 `SkillCommandService.create()`**，**禁止**直接 INSERT | 對齊 ADR-002 充血聚合 + Modulith Outbox：直接 INSERT 會繞過 `@DomainEvents` interceptor → outbox 不發 event → audit log 漏行 → read-side projection 失同步 |
+| **Fixture pattern** | **Superseded by ADR-008**。原 Pattern 1：backend `@Profile({"local","dev","e2e"})` `TestDataController`，**走 `SkillCommandService.create()`**，**禁止**直接 INSERT | 2026-05-19 S202 改為 production image + external fixture runner；aggregate data 改走正式 `/api/v1/*`，projection data 才能 guarded SQL。 |
 | **Cloud platform** | **不採用** | Microsoft Playwright Testing 付費 pay-as-you-go + 將於 2026-03-08 retire；trace.playwright.dev 免費已滿足查看需求；3 個 happy-path scope 不需雲端平行 |
 | **Browser binary** | `chromium-headless-shell`（`--only-shell`）only | 比完整 Chromium 小 4×（92 MiB vs 350+ MiB）；Playwright 1.49+ `chromium` project default 已走 headless shell |
 | **Trace policy** | `on-first-retry`（CI default per playwright.dev/docs/ci-intro）| 通過時 artefact 微小，retry 才有完整 trace；100+ MB cap 觀察 |
