@@ -28,6 +28,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -161,7 +162,8 @@ class SecurityConfig {
             HttpSecurity http,
             CorsConfigurationSource corsConfigurationSource,
             ObjectProvider<OAuth2AuthorizationRequestResolver> authResolverProvider,
-            ObjectProvider<AuthenticationSuccessHandler> oauthSuccessHandlerProvider) throws Exception {
+            ObjectProvider<AuthenticationSuccessHandler> oauthSuccessHandlerProvider,
+            ObjectProvider<AuthenticationFailureHandler> oauthFailureHandlerProvider) throws Exception {
         // S128：啟用 CORS（per Mode B Round 40 Bug AZ fix）— allowlist 由 SkillshubProperties.Cors 管理
         http.cors(cors -> cors.configurationSource(corsConfigurationSource));
 
@@ -217,10 +219,14 @@ class SecurityConfig {
             if (props.security().oauth().login().enabled()) {
                 var authResolver = authResolverProvider.getIfAvailable();
                 var successHandler = oauthSuccessHandlerProvider.getIfAvailable();
+                var failureHandler = oauthFailureHandlerProvider.getIfAvailable();
                 http.oauth2Login(login -> {
                     if (authResolver != null) {
                         login.authorizationEndpoint(endpoint ->
                                 endpoint.authorizationRequestResolver(authResolver));
+                    }
+                    if (failureHandler != null) {
+                        login.failureHandler(failureHandler);
                     }
                     if (successHandler != null) {
                         login.successHandler(successHandler);

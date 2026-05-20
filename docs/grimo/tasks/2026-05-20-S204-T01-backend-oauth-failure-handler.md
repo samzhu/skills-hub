@@ -62,5 +62,17 @@ And（而且）`returnToPath` 只保留 path，例如 `/publish?draftToken=abc` 
 ## 前置條件
 - 無
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-20
+Test: `AuthRedirectTest` (`backend/src/test/java/io/github/samzhu/skillshub/shared/security/AuthRedirectTest.java`)
+Files changed:
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/security/AuthRedirectConfig.java` (modified)
+- `backend/src/main/java/io/github/samzhu/skillshub/shared/security/SecurityConfig.java` (modified)
+- `backend/src/test/java/io/github/samzhu/skillshub/shared/security/AuthRedirectTest.java` (modified)
+Notes:
+- RED: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.security.AuthRedirectTest` failed at `compileTestJava` because `AuthRedirectConfig.oauthFailureHandler()` did not exist.
+- GREEN: same command passed with `BUILD SUCCESSFUL in 1m 56s`; JUnit XML reports `tests="18" skipped="0" failures="0" errors="0"`.
+- Official docs checked: Spring Security `OAuth2LoginConfigurer` 7.0.5 inherits `failureHandler(...)`; `AuthenticationFailureHandler` owns the failed-authentication response.

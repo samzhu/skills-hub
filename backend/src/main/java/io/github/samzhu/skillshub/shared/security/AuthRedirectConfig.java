@@ -1,15 +1,19 @@
 package io.github.samzhu.skillshub.shared.security;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 /**
@@ -140,5 +144,74 @@ class AuthRedirectConfig {
                     .log("OAuth login success — redirecting");
             response.sendRedirect(target);
         };
+    }
+
+    /**
+     * S204 — OAuth2 Login 失敗時導回 Skills Hub React error page，避免 Spring default `/login?error`。
+     */
+    @Bean
+    AuthenticationFailureHandler oauthFailureHandler() {
+        return (request, response, exception) -> {
+            var session = request.getSession(false);
+            String stored = (session != null)
+                    ? (String) session.getAttribute(SESSION_RETURN_TO)
+                    : null;
+            if (session != null) {
+                session.removeAttribute(SESSION_RETURN_TO);
+            }
+            String reason = oauthFailureReason(exception);
+            log.atWarn()
+                    .addKeyValue("oauthErrorCode", reason)
+                    .addKeyValue("exceptionClass", exception.getClass().getSimpleName())
+                    .addKeyValue("path", request.getRequestURI())
+                    .addKeyValue("method", request.getMethod())
+                    .addKeyValue("returnToPath", safeReturnToPath(stored))
+                    .log("OAuth login failed");
+            response.sendRedirect(request.getContextPath() + "/auth/error?reason=" + reason);
+        };
+    }
+
+    private static String oauthFailureReason(AuthenticationException exception) {
+        if (exception instanceof OAuth2AuthenticationException oauthException) {
+            String code = oauthException.getError().getErrorCode();
+            if ("access_denied".equals(code)) {
+                return "access_denied";
+            }
+            if (code != null) {
+                String normalized = code.toLowerCase(Locale.ROOT);
+                if (normalized.contains("state") || normalized.contains("authorization_request")) {
+                    return "session_expired";
+                }
+                if (normalized.contains("token")
+                        || normalized.contains("grant")
+                        || normalized.contains("client")
+                        || normalized.contains("server_error")
+                        || normalized.contains("temporarily_unavailable")) {
+                    return "token_exchange_failed";
+                }
+            }
+        }
+        String className = exception.getClass().getName().toLowerCase(Locale.ROOT);
+        if (className.contains("state") || className.contains("session")) {
+            return "session_expired";
+        }
+        if (className.contains("oauth") || className.contains("client") || className.contains("token")) {
+            return "token_exchange_failed";
+        }
+        return "oauth_failed";
+    }
+
+    private static String safeReturnToPath(String stored) {
+        String safe = safeReturnTo(stored);
+        int queryStart = safe.indexOf('?');
+        int fragmentStart = safe.indexOf('#');
+        int end = safe.length();
+        if (queryStart >= 0) {
+            end = Math.min(end, queryStart);
+        }
+        if (fragmentStart >= 0) {
+            end = Math.min(end, fragmentStart);
+        }
+        return safe.substring(0, end);
     }
 }

@@ -1,6 +1,6 @@
 # S204 — OAuth Login Error Page
 
-Status: 📋 planned
+Status: ⏳ in-progress
 Date: 2026-05-20
 Owner: Codex planning
 Size: S(5) initial
@@ -423,7 +423,7 @@ POC: not required — S204 沒有新增 dependency，也沒有包未知 SDK。Pr
 
 | Task | File | AC | Status | Notes |
 |---|---|---|---|---|
-| T01 | `docs/grimo/tasks/2026-05-20-S204-T01-backend-oauth-failure-handler.md` | AC-S204-1, AC-S204-6, AC-S204-7 | pending | 後端 failure handler、安全 reason mapping、安全 log、成功路徑不變。 |
+| T01 | `docs/grimo/tasks/2026-05-20-S204-T01-backend-oauth-failure-handler.md` | AC-S204-1, AC-S204-6, AC-S204-7 | PASS | `AuthRedirectConfig.oauthFailureHandler()` 會 redirect `/auth/error?reason=...`、清 session returnTo、記 safe structured log；`SecurityConfig` 已接 `login.failureHandler(...)`。 |
 | T02 | `docs/grimo/tasks/2026-05-20-S204-T02-frontend-auth-error-page.md` | AC-S204-2, AC-S204-3, AC-S204-4, AC-S204-5 | pending | `/auth/error` React page、繁中 copy、唯一 CTA「返回瀏覽」、不顯示 login button。 |
 | T03 | `docs/grimo/tasks/2026-05-20-S204-T03-route-fallback-and-doc-sync.md` | AC-S204-8, AC-S204-9 | pending | `App.tsx` explicit route、SPA fallback tests、DESIGN/debugging docs sync。 |
 
