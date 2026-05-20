@@ -1,6 +1,6 @@
 # S205: Download Filename UTF-8 Content-Disposition
 
-> 規格：S205 | 大小：XS(8) | 狀態：✅ QA PASS / ready-to-ship（local release gate PASS；AC-S205-5 post-release evidence pending）
+> 規格：S205 | 大小：XS(8) | 狀態：✅ shipped v4.89.0（local release gate PASS；AC-S205-5 post-release evidence pending）
 > 日期：2026-05-20
 > 對應：PRD P4 一鍵安裝（Web 下載） / S061 / S176 / S188
 
@@ -51,8 +51,8 @@ Content-Disposition: attachment; filename*=UTF-8''OAuth%20%E5%B0%88%E5%AE%B6-1.z
 | [Spring Framework `ContentDisposition`](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/http/ContentDisposition.html) | `toString()` 回傳 RFC 6266 header value；`getFilename()` 可從 `filename*` 依 RFC 5987 decode。 | Controller 可以把 `ContentDisposition.toString()` 直接放進 `Content-Disposition` header。 |
 | [Tomcat `MessageBytes.toBytes()` source](https://nightlies.apache.org/tomcat/tomcat-10.1.x/coverage/org.apache.tomcat.util.buf/MessageBytes.java.html) | Tomcat 會把 header string 轉成 bytes；預設 fast path 遇到 code point > 255 會丟 `IllegalArgumentException`。 | `filename=OAuth 專家-1.zip` 會在 servlet container 層失敗；header value 必須保持 ASCII-safe。 |
 | [Tomcat Character Encoding docs](https://cwiki.apache.org/confluence/display/TOMCAT/Character%2BEncoding) | HTTP headers 一律是 US-ASCII；超出範圍的字元需要 encode。 | 修正方向是 encode header parameter，不是改 response body charset。 |
-| [S061 archived spec](archive/2026-05-01-S061-download-filename-includes-skill-name.md) | §2.4 說只有空白 / UTF-8 等特殊字元才需要 `filename*`，並依 S041 假設 `skill.getName()` 是 `[a-z0-9-]`。 | S205 明確取代這個前提：`skills.name` 已不是 ASCII-only。 |
-| [S176 archived spec](archive/2026-05-15-S176-explicit-publish-skill-name.md) | §1/§2.4 定義 `skills.name` 是平台顯示名稱，允許空白、大小寫、中文與一般標點。 | download filename 必須接受人類顯示名稱。 |
+| [S061 archived spec](2026-05-01-S061-download-filename-includes-skill-name.md) | §2.4 說只有空白 / UTF-8 等特殊字元才需要 `filename*`，並依 S041 假設 `skill.getName()` 是 `[a-z0-9-]`。 | S205 明確取代這個前提：`skills.name` 已不是 ASCII-only。 |
+| [S176 archived spec](2026-05-15-S176-explicit-publish-skill-name.md) | §1/§2.4 定義 `skills.name` 是平台顯示名稱，允許空白、大小寫、中文與一般標點。 | download filename 必須接受人類顯示名稱。 |
 
 ### 2.2 現況
 
@@ -331,3 +331,23 @@ Verdict: PASS — S205 is ready for `$shipping-release S205`.
 ### 7.6 QA Routing
 
 Local implementation is complete for AC-S205-1~4. AC-S205-5 is explicitly post-release evidence because this development loop does not deploy or inspect the production site. Local release gate is green. Next workflow step: `$shipping-release S205`.
+
+### 7.7 Shipping Release (2026-05-21)
+
+| Check | Result | Evidence |
+|---|---|---|
+| Release gate | PASS | `./scripts/verify-release.sh` returned `exit=0` at 2026-05-20 19:55:10 UTC. Summary: V01=PASS, V02=INFO (LINE coverage 87.7%, covered=4834 / total=5514), V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V07b=PASS, V07c=PASS, V07d=SKIP, V08a=PASS, V08b=PASS, V09=PASS; PASS=11, FAIL=0, SKIP=1, INFO=1. |
+| Targeted backend API contract | PASS | `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest` returned `BUILD SUCCESSFUL in 2m 13s`; JUnit XML shows 11 tests, 0 failures, 0 errors, including AC-S205-1~4. |
+| Production evidence | DEFERRED (post-release) | §7.4 keeps the exact curl/log command to run after deploy. This shipping tick does not deploy or inspect production. |
+
+### 7.8 Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 2 | 1 | Spring `ContentDisposition` API matched the need; no custom encoder or framework workaround was needed. |
+| Uncertainty | 1 | 1 | Existing tests and implementation matched the spec without redesign. |
+| Dependencies | 1 | 1 | No new dependency or external service was added. |
+| Scope | 2 | 2 | Production/test surface stayed within `SkillQueryController` and `SkillQueryControllerApiContractTest`, plus spec/task/release docs. |
+| Testing | 1 | 2 | Backend slice tests covered AC-S205-1~4, and release required full `verify-release.sh`; AC-S205-5 remains post-release evidence. |
+| Reversibility | 1 | 1 | Revert is limited to header construction and docs. |
+| **Total** | **8 / XS** | **8 / XS** | Bucket unchanged. |

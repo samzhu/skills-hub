@@ -1,5 +1,26 @@
 # Changelog
 
+## [v4.89.0] — S205 Download Filename UTF-8 Content-Disposition（2026-05-21）
+
+### Changed
+
+- **Download response names the zip file** — `GET /api/v1/skills/{id}/download` and `GET /api/v1/skills/{id}/versions/{version}/download` now return `Content-Disposition` built by Spring `ContentDisposition`.
+- **Chinese display names are header-safe** — `OAuth 專家-1.zip` is emitted as `filename*=UTF-8''OAuth%20%E5%B0%88%E5%AE%B6-1.zip`, so Tomcat does not receive bare Chinese characters in the header.
+- **Filename path separators are neutralized** — display names like `Team/OAuth\Expert` become a suggested file name using `Team-OAuth-Expert-1.zip`.
+- **Post-release evidence remains explicit** — production curl/log verification is deferred until a new Cloud Run revision exists; the archived spec keeps the exact command and expected header.
+
+### Verification
+
+- `./scripts/verify-release.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.7%，covered=4834 / total=5514）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V07b=PASS、V07c=PASS、V07d=SKIP、V08a=PASS、V08b=PASS、V09=PASS；`Verdict: PASS - all CRITICAL passed; exit=0`。
+- `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest`：**PASS** — `BUILD SUCCESSFUL in 2m 13s`；JUnit XML shows 11 tests / 0 failures / 0 errors, including AC-S205-1~4。
+- Production deploy：not run in this release tick；AC-S205-5 is post-release evidence.
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-20-S205-download-filename-utf8-content-disposition.md` → `docs/grimo/specs/archive/2026-05-20-S205-download-filename-utf8-content-disposition.md`
+- `docs/grimo/tasks/2026-05-20-S205-*.md` 已刪除。
+- Final size re-score：XS(8) → XS(8)，原因是實際改動維持在 backend download header contract、slice tests、release docs；完整 `verify-release.sh` 全綠，production curl/log evidence deferred until deploy.
+
 ## [v4.88.0] — S204 OAuth Login Error Page（2026-05-21）
 
 ### Changed
