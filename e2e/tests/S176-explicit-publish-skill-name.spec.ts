@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, profiles } from './_fixtures';
+import { test, expect, authState, profiles } from './_fixtures';
 
 type SkillsPage = {
   content: Array<{ id: string; name: string }>;
@@ -31,11 +31,13 @@ Use this skill for S176 duplicate platform-name browser verification.
   expect(id, `publish redirect missing id: ${page.url()}`).toBeTruthy();
 
   await page.waitForURL(/\/publish\/review\?id=/, { timeout: 30_000 });
-  await expect(page.getByText(/上[傳架]成功|已上架|上架/).first()).toBeVisible();
+  await expect(page.getByText(/已成功發佈|上[傳架]成功|已上架|上架/).first()).toBeVisible();
   return id!;
 }
 
 test.describe('S176 — Explicit Publish Skill Name', () => {
+  test.use({ storageState: authState('developer') });
+
   test('AC-S176-1/2/3: publish duplicate platform skill names through browser @S176 @ac-1 @ac-2 @ac-3', async ({
     page,
     request,

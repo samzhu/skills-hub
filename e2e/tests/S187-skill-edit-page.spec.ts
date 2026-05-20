@@ -1,4 +1,4 @@
-import { test, expect, seedSkill } from './_fixtures';
+import { test, expect, authState, seedSkill } from './_fixtures';
 
 const UPDATED_SKILL_MD = `---
 name: s187-edit-flow
@@ -11,6 +11,8 @@ Use when verifying the edit page version publish path.
 `;
 
 test.describe('S187 skill edit page', () => {
+  test.use({ storageState: authState('developer') });
+
   test('AC-S187-8/10: mobile edit controls and version validation redirect @S187 @ac-S187-8 @ac-S187-10 @profile-single', async ({ page, request }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 390, height: 844 });
@@ -55,7 +57,6 @@ description: Initial description for S187 edit flow.
 
     await page.waitForURL(new RegExp(`/publish/validate\\?id=${skillId}&mode=version`), { timeout: 30_000 });
     await expect(page.getByRole('heading', { name: '新版本驗證中' })).toBeVisible();
-    await expect(page.getByText(/風險掃描進行中/)).toBeVisible();
 
     await page.waitForURL(new RegExp(`/skills/${skillId}$`), { timeout: 45_000 });
     await expect(page.getByText('s187-edit-flow').first()).toBeVisible();

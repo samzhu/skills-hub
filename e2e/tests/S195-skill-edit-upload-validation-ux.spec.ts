@@ -1,6 +1,8 @@
-import { test, expect, seedSkill } from './_fixtures';
+import { test, expect, authState, seedSkill } from './_fixtures';
 
 test.describe('S195 skill edit upload validation UX', () => {
+  test.use({ storageState: authState('developer') });
+
   test('AC-S195-6: mobile edit upload dropzone stays visible @S195 @ac-S195-6 @profile-single', async ({ page, request }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 390, height: 844 });

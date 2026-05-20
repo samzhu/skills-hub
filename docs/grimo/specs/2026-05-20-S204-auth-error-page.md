@@ -1,6 +1,6 @@
 # S204 — OAuth Login Error Page
 
-Status: ⏳ QA blocked — V07b release gate failing
+Status: ⏳ QA recheck pending — V07b targeted fix PASS
 Date: 2026-05-20
 Owner: Codex planning
 Size: S(5) initial
@@ -464,3 +464,20 @@ Verdict: REJECT-FIX — S204 is still not ready for `$shipping-release`.
 | Testability gate | CLEAR | S204 ACs have direct backend/frontend tests, and the repository can run the required QA gates. The release blocker is a failing required browser gate, not missing verification tooling. |
 
 Next workflow step remains `$verifying-quality S204` after the V07b failures are fixed or proven flaky with repeatable evidence. Do not route to `$shipping-release S204` until `./scripts/verify-release.sh` returns exit 0.
+
+### 7.4 QA Fix — V07b Authenticated Browser Specs
+
+Verdict: PARTIAL PASS — the known V07b failures are fixed; S204 still needs a full `./scripts/verify-release.sh` pass before shipping.
+
+Root cause:
+
+- `e2e/tests/S176-explicit-publish-skill-name.spec.ts`, `e2e/tests/S187-skill-edit-page.spec.ts`, and `e2e/tests/S195-skill-edit-upload-validation-ux.spec.ts` were running anonymous browser contexts even though the production-image app now enables real OAuth.
+- Anonymous `/publish` redirects into login instead of uploading, so S176 timed out before `/publish/validate`.
+- Anonymous skill detail pages do not expose owner-only `edit-skill-btn`, so S187/S195 timed out waiting for the edit button.
+- After adding `test.use({ storageState: authState('developer') })`, S176/S187 advanced to stable page-state assertions; S176 was updated to match the current review-page copy `已成功發佈`, and S187 no longer asserts a transient scan text that can disappear before Playwright observes it.
+
+Evidence:
+
+- `cd e2e && SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --project=chromium --grep "@S176|@S187|@S195"` passed: 9 tests / 0 failed. The run built `skillshub:e2e-local`, started Compose, saved developer/viewer/admin auth states, and passed S176/S187/S195 plus fixture setup/teardown.
+
+Next workflow step remains `$verifying-quality S204`: rerun `./scripts/verify-release.sh`; if it returns exit 0, update this spec to QA PASS and route the following tick to `$shipping-release S204`.
