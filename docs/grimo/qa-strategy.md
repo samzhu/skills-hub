@@ -75,6 +75,8 @@ Spring Modulith 的 `ApplicationModules.verify()` 確保：
 
 `scripts/verify-all.sh` 是 registry 的可執行版本；改下列任何規則時，必須同時改本表與 script。
 
+Log 保留規則：`verify-all.log` 位於 repo root，script 啟動時先清空，只保留最新一輪完整輸出；同一輪內各 V0N section 才用 append。QA / release 文件只記 command、log path、Summary counts、Verdict line；失敗時只貼相關錯誤片段，不把整份 log 貼進 spec。
+
 | Gate | Rule | Expected evidence |
 |------|------|-------------------|
 | V07 semantic fixture key | 若 shell 沒有 `SKILLSHUB_E2E_GENAI_API_KEY`，script 可從 `backend/config/application-secrets.properties` 讀 `skillshub.genai.api-key` 到 process env；不得把 key 寫進 tracked file 或 log。 | `verify-all.log` 只出現 `loaded SKILLSHUB_E2E_GENAI_API_KEY ... (value redacted)`，不能出現實際 key 值。 |

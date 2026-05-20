@@ -4,7 +4,7 @@
 # /verifying-quality Step 0.5 protocol：
 #   - CRITICAL fail → exit !=0
 #   - SKIP-if-unavailable → which-detect / dir-detect graceful skip
-#   - timestamped log → backend/build/verify-all.log
+#   - timestamped log → verify-all.log (repo root, latest run only)
 #
 # Usage:
 #   ./scripts/verify-all.sh            # 跑全部 V01-V08b（含 native image build）
@@ -17,11 +17,14 @@
 # -----------------------------------------------------------------------------
 set -uo pipefail   # 注：不用 -e，逐 V0N 收結果不中斷
 
+[[ "${1:-}" == "--help" || "${1:-}" == "-h" ]] && { sed -n '3,17p' "$0"; exit 0; }
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # S020 Round 2 (2026-04-28): log 搬離 backend/build/，因 V01 './gradlew clean'
 # 會 rm -rf backend/build/，連同 log + V01 stdout 一起摧毀（QA REJECT-IMPORTANT
 # bug fix — spec §2.1 #5 revised；§7.7/7.8 design drift + tech debt 登記）。
 # 改寫 repo root；用 .gitignore 排除避免污染 worktree。
+# verify-all.log 只保留最新一輪；各 V0N section 在同一輪執行中才 append。
 LOG="${REPO_ROOT}/verify-all.log"
 : > "${LOG}"
 
@@ -95,8 +98,6 @@ run_skip_if() {   # $1=ID  $2=desc  $3=skip-test  $4=cmd
     rc=$?; log "▸ $1: FAILED (exit=${rc})"; RESULTS+=("$1=FAIL"); CRIT_FAIL=$((CRIT_FAIL + 1))
   fi
 }
-
-[[ "${1:-}" == "--help" || "${1:-}" == "-h" ]] && { sed -n '3,17p' "$0"; exit 0; }
 
 # V01: gradle test + jacoco report (xml/html/csv)
 run_critical "V01" "./gradlew clean test jacocoTestReport" \
