@@ -85,4 +85,19 @@ class SpaFallbackControllerTest extends WebMvcSliceTestBase {
                 .andExpect(status().isOk())
                 .andExpect(forwardedUrl("/index.html"));
     }
+
+    @Test
+    @DisplayName("AC-S204-9: /auth/error direct hit forwards to /index.html")
+    void authErrorDirectHitForwards() throws Exception {
+        mvc.perform(get("/auth/error").queryParam("reason", "oauth_failed"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/index.html"));
+    }
+
+    @Test
+    @DisplayName("AC-S204-9: /api/auth/error returns 404 and does not forward")
+    void apiAuthErrorReturns404NotForwarded() throws Exception {
+        mvc.perform(get("/api/auth/error"))
+                .andExpect(status().isNotFound());
+    }
 }

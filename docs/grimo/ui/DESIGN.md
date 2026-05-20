@@ -495,6 +495,14 @@ pages:
     note: "Dev-only — shows OAuth token info; only meaningful with real-oauth backend profile"
     beam: []
 
+  - component: "AuthErrorPage"
+    route: "/auth/error"
+    auth: false
+    prototype: "derived from docs/grimo/ui/prototype/Skills Hub Empty States.html and EmptyState redirect pattern"
+    status: "implemented"
+    note: "S204: OAuth login failure page; AppShell minimalHeader shows brand-only chrome and no login CTA."
+    beam: ["Back to browse CTA"]
+
   - component: "Security risk UI prototypes"
     routes: ["inline in publish/review/security/report contexts"]
     auth: true

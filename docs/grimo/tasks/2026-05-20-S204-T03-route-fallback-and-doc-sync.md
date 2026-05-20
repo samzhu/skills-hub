@@ -56,5 +56,20 @@ And（而且）`/api/auth/error` 回 404，不 forward 到 SPA shell
 ## 前置條件
 - S204-T02 PASS
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-20
+Test: `SpaFallbackControllerTest`, `App.test.tsx`
+Files changed:
+- `backend/src/test/java/io/github/samzhu/skillshub/shared/api/SpaFallbackControllerTest.java` (modified)
+- `docs/grimo/ui/DESIGN.md` (modified)
+- `docs/grimo/debugging-playbook.md` (modified)
+- `docs/grimo/tasks/2026-05-20-S204-T03-route-fallback-and-doc-sync.md` (modified)
+- `docs/grimo/specs/2026-05-20-S204-auth-error-page.md` (modified)
+- `docs/grimo/specs/spec-roadmap.md` (modified)
+Notes:
+- RED: `rg -n "AC-S204-9|AuthErrorPage|/auth/error|token_exchange_failed" backend/src/test/java/io/github/samzhu/skillshub/shared/api/SpaFallbackControllerTest.java docs/grimo/ui/DESIGN.md docs/grimo/debugging-playbook.md` returned no matches before this task, so AC-S204-9 tests and route inventory/debug note were absent.
+- GREEN: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.api.SpaFallbackControllerTest && cd ../frontend && npm test -- App.test.tsx` passed. Backend JUnit XML reports `tests="10"` with `failures="0"` and `errors="0"`; frontend Vitest reports `1 passed (1)` test file and `6 passed (6)` tests.
+- Implementation: `/auth/error?reason=oauth_failed` direct hit now has an explicit backend fallback test that forwards to `/index.html`; `/api/auth/error` stays 404; `docs/grimo/ui/DESIGN.md` lists `AuthErrorPage`; `docs/grimo/debugging-playbook.md` records what `token_exchange_failed` means in production logs.

@@ -20,6 +20,7 @@
 | `UnsupportedFeatureError: Record components not available` | Record reflection 缺 hint | [§F2](#f2-record-reflection-metadata-缺-hint) |
 | `IllegalArgumentException: Can not set boolean field ... to java.lang.Integer`（SELECT 才爆，INSERT 不爆） | Boolean primitive corrupt | [§F3](#f3-graalvm-methodhandle-把-boolean-換成-integer) |
 | AOT processAot 階段 `OAuth2ClientProperties.validate` / 類似 framework `@ConfigurationProperties` validate fail | Framework @CP validate 在 AOT 強制非空 | [§F4](#f4-framework-configurationproperties-validate-在-aot-強制非空) |
+| `/auth/error?reason=token_exchange_failed` | OAuth callback 到達 backend，但 token exchange / authentication 失敗 | [§F4a](#f4a-oauth-callback-token-exchange-失敗) |
 | 改了 `application-aot.yaml` 某設定為 false / disabled，runtime 也跟著 false（即使 env var 設了 true） | AOT profile leak 到 runtime | [§F5](#f5-aot-profile-leak-到-runtime) |
 | native build fail 訊息提到 `ArchUnit` / `ClassFileImporter` / `ModuleImportPlugin` | Modulith autoconfig 在 native 炸 ArchUnit | [§F6](#f6-modulith-autoconfig-在-native-炸-archunit) |
 | `./gradlew clean test` 在 `processTestAot` 階段噴 `NoSuchBeanDefinitionException`，但 `-x processTestAot` 跑得過 | AOT 看不到 @MockitoBean / 缺 stub bean | [§F7](#f7-processtestaot-context-load-fail) |
@@ -294,6 +295,31 @@ spring:
 注意：
 1. 此 stub 只解 framework validate 強制非空；**runtime 仍須 env var 注真值**（service.yaml / cloudbuild env）
 2. 若你自己寫的 `@ConfigurationProperties` 有 `validate()` 同樣行為，建議改成「validate 不強制非空，consumer 端 fail-fast」— 把問題延後到實際使用而非 binding 時
+
+---
+
+## §F4a OAuth callback token exchange 失敗
+
+**症狀**
+
+- 瀏覽器最後停在 `/auth/error?reason=token_exchange_failed`
+- Cloud Run log 有 `OAuth login failed`，`path=/login/oauth2/code/skillshub`
+- 使用者不再看到 Spring default `/login?error` 或英文 `Invalid credentials`
+
+**Root cause mechanism**
+
+Google callback 已經打到 Spring Security 的 `/login/oauth2/code/skillshub`，但 `OAuth2LoginAuthenticationFilter` 在換 token 或建立 authentication 時丟出 `AuthenticationException`。S204 的 `AuthRedirectConfig.oauthFailureHandler()` 會把這類失敗轉成 safe reason `token_exchange_failed`，再 redirect 到 React `/auth/error`。
+
+**2 分鐘 verify**
+
+```bash
+gcloud logging read 'resource.type=cloud_run_revision
+  AND textPayload:"OAuth login failed"
+  AND textPayload:"oauthErrorCode=token_exchange_failed"' \
+  --limit=20 --freshness=2h
+```
+
+看到這個 reason 時，先查 OAuth client secret / redirect URI / Cloud Run revision env 是否真的更新；不要從前端頁面推論是 React route 壞掉。
 
 ---
 

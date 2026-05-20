@@ -425,7 +425,7 @@ POC: not required — S204 沒有新增 dependency，也沒有包未知 SDK。Pr
 |---|---|---|---|---|
 | T01 | `docs/grimo/tasks/2026-05-20-S204-T01-backend-oauth-failure-handler.md` | AC-S204-1, AC-S204-6, AC-S204-7 | PASS | `AuthRedirectConfig.oauthFailureHandler()` 會 redirect `/auth/error?reason=...`、清 session returnTo、記 safe structured log；`SecurityConfig` 已接 `login.failureHandler(...)`。 |
 | T02 | `docs/grimo/tasks/2026-05-20-S204-T02-frontend-auth-error-page.md` | AC-S204-2, AC-S204-3, AC-S204-4, AC-S204-5 | PASS | `AuthErrorPage` 已接 `/auth/error`，只顯示 safe enum reason、繁中 recovery copy、`返回瀏覽` CTA；`AppShell minimalHeader` 隱藏 nav/bell/auth area。 |
-| T03 | `docs/grimo/tasks/2026-05-20-S204-T03-route-fallback-and-doc-sync.md` | AC-S204-8, AC-S204-9 | pending | `SpaFallbackController` direct-hit tests、DESIGN/debugging docs sync。 |
+| T03 | `docs/grimo/tasks/2026-05-20-S204-T03-route-fallback-and-doc-sync.md` | AC-S204-8, AC-S204-9 | PASS | `SpaFallbackControllerTest` 已鎖 `/auth/error?reason=oauth_failed` forward 到 `/index.html`，`/api/auth/error` 維持 404；DESIGN/debugging docs 已同步。 |
 
 ### 6.3 Execution Order
 
@@ -438,3 +438,15 @@ POC: not required — S204 沒有新增 dependency，也沒有包未知 SDK。Pr
 - T01: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.security.AuthRedirectTest`
 - T02: `cd frontend && npm test -- AuthErrorPage.test.tsx AppShell.test.tsx App.test.tsx`
 - T03: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.api.SpaFallbackControllerTest && cd ../frontend && npm test -- App.test.tsx`
+
+## 7. Implementation Results
+
+### 7.1 S204 Task Status
+
+All implementation tasks are PASS. Next workflow step is `$verifying-quality S204`; this spec is not ready for `$shipping-release` until independent QA records PASS evidence.
+
+### 7.2 T03 Route Fallback and Docs Sync
+
+- RED: `rg -n "AC-S204-9|AuthErrorPage|/auth/error|token_exchange_failed" backend/src/test/java/io/github/samzhu/skillshub/shared/api/SpaFallbackControllerTest.java docs/grimo/ui/DESIGN.md docs/grimo/debugging-playbook.md` returned no matches before T03, so the AC-S204-9 backend assertions and docs markers were absent.
+- GREEN: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.api.SpaFallbackControllerTest && cd ../frontend && npm test -- App.test.tsx` passed; backend JUnit XML reports `tests="10"` with `failures="0"` and `errors="0"`; frontend Vitest reports `1 passed (1)` test file and `6 passed (6)` tests.
+- Runtime behavior now recorded in tests/docs: `/auth/error?reason=oauth_failed` forwards to `/index.html`, `/api/auth/error` returns 404, Page Inventory lists `AuthErrorPage`, and the debugging playbook explains `token_exchange_failed`.
