@@ -1,6 +1,6 @@
 # S204 — OAuth Login Error Page
 
-Status: ⏳ QA recheck pending — V07b S203 last-page fix targeted PASS
+Status: ✅ QA PASS — verify-release PASS; next $shipping-release S204
 Date: 2026-05-20
 Owner: Codex planning
 Size: S(5) initial
@@ -443,7 +443,7 @@ POC: not required — S204 沒有新增 dependency，也沒有包未知 SDK。Pr
 
 ### 7.1 S204 Task Status
 
-All implementation tasks are PASS. Next workflow step is `$verifying-quality S204`; this spec is not ready for `$shipping-release` until independent QA records PASS evidence.
+All implementation tasks are PASS. Independent QA now records PASS evidence in §7.7, so the next workflow step is `$shipping-release S204`.
 
 ### 7.2 T03 Route Fallback and Docs Sync
 
@@ -535,3 +535,26 @@ Targeted evidence after the fix:
 - `cd e2e && SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --project=chromium --grep @S203` passed: 7 tests / 0 failed. The run built `skillshub:e2e-local`, started Compose, created fixture/auth state, passed the S203 browser spec, and tore down the fixture stack.
 
 Next workflow step remains `$verifying-quality S204`: rerun the full `./scripts/verify-release.sh`; if it returns exit 0, update this spec to QA PASS and route the following tick to `$shipping-release S204`.
+
+### 7.7 QA PASS — 2026-05-21 full release gate
+
+Verdict: PASS — S204 is ready for `$shipping-release S204`.
+
+Full release gate evidence:
+
+- `./scripts/verify-release.sh` wrote `verify-release.log`.
+- Summary: `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V07b=PASS V07c=PASS V07d=SKIP V08a=PASS V08b=PASS V09=PASS`.
+- Verdict line: `PASS - all CRITICAL passed; exit=0`.
+- V02 reported backend LINE coverage `87.7% (covered=4834 / total=5514)`.
+- V07b full app browser specs passed after `e2e/tests/S203-semantic-masonry-pagination.spec.ts` followed Slice `last=true` instead of assuming page 1 is the final page.
+
+Four-layer QA result:
+
+| Layer | Result | Evidence |
+|---|---|---|
+| Automated tests | PASS | `./scripts/verify-release.sh` V01, V03, V04, V05, V06 all passed. |
+| Coverage / integration | PASS | V02 backend line coverage 87.7%; V07/V07b/V07c browser and fixture gates passed; V08a/V08b AOT/native checks passed. |
+| Manual verification | N/A | S204 local ACs are covered by backend/frontend tests and release browser gates; production OAuth secret/revision evidence is outside this local release tick. |
+| Testability gate | CLEAR | AC-S204-1~9 have direct backend/frontend tests, and the required release gate passed. |
+
+Next workflow step is `$shipping-release S204`: archive the spec, delete S204 task files, update changelog/roadmap release state, and tag v4.88.0.
