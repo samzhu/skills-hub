@@ -19,6 +19,7 @@ test.describe('S203 — Semantic Search Masonry Pagination', () => {
 
     const semanticRequests: string[] = [];
     const keywordRequests: string[] = [];
+    let loadedSemanticCards = 0;
 
     page.on('request', (routeRequest) => {
       const url = routeRequest.url();
@@ -58,10 +59,11 @@ test.describe('S203 — Semantic Search Masonry Pagination', () => {
 
       expect(secondPage.number).toBe(1);
       expect(secondPage.content.length, 'second semantic Slice should append cards').toBeGreaterThan(0);
+      loadedSemanticCards = firstPage.content.length + secondPage.content.length;
     });
 
     await test.step('Then cards, match scores, and all-loaded copy are visible without keyword fallback', async () => {
-      await expect(page.getByText(/已載入\s+1[1-9]\s+個相關技能/)).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText(new RegExp(`已載入\\s+${loadedSemanticCards}\\s+個相關技能`))).toBeVisible({ timeout: 15_000 });
       await expect(page.getByText(/% 相符/).first()).toBeVisible();
       await expect(page.getByText('已顯示全部相關技能')).toBeVisible({ timeout: 15_000 });
 

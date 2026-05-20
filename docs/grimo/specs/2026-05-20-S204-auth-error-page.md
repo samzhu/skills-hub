@@ -1,6 +1,6 @@
 # S204 — OAuth Login Error Page
 
-Status: ⏳ QA recheck pending — V07b targeted fix PASS
+Status: ⏳ QA recheck pending — V07b S203 count fix targeted PASS
 Date: 2026-05-20
 Owner: Codex planning
 Size: S(5) initial
@@ -481,3 +481,30 @@ Evidence:
 - `cd e2e && SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --project=chromium --grep "@S176|@S187|@S195"` passed: 9 tests / 0 failed. The run built `skillshub:e2e-local`, started Compose, saved developer/viewer/admin auth states, and passed S176/S187/S195 plus fixture setup/teardown.
 
 Next workflow step remains `$verifying-quality S204`: rerun `./scripts/verify-release.sh`; if it returns exit 0, update this spec to QA PASS and route the following tick to `$shipping-release S204`.
+
+### 7.5 QA Recheck — 2026-05-21
+
+Verdict: REJECT-FIX — S204 is still not ready for `$shipping-release`.
+
+Full release gate evidence:
+
+- `./scripts/verify-release.sh` wrote `verify-release.log`.
+- Summary: `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V07b=FAIL V07c=PASS V07d=SKIP V08a=PASS V08b=PASS V09=PASS`.
+- Verdict line: `FAIL - 1 CRITICAL failure(s); exit=1`.
+- V02 reported backend LINE coverage `87.7% (covered=4834 / total=5514)`.
+
+V07b failure:
+
+- `e2e/tests/S203-semantic-masonry-pagination.spec.ts` failed at line 64 while waiting for `已載入 11-19 個相關技能`.
+- The same test had already verified page 0 returned 10 cards and page 1 returned more than 0 cards. When page 1 returns 10 cards, the actual UI copy is `已載入 20 個相關技能`, so the old `1[1-9]` assertion was too narrow for valid fixture data.
+- This failure is not an S204 product behavior failure: S204 backend/frontend AC tests and the release gate's V01-V07/V07c-V09 checks passed. It is still a release blocker because V07b is a required browser gate.
+
+Fix applied in this QA tick:
+
+- `e2e/tests/S203-semantic-masonry-pagination.spec.ts` now stores `firstPage.content.length + secondPage.content.length` and waits for that exact loaded-card count in the UI copy.
+
+Targeted evidence after the fix:
+
+- `cd e2e && SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --project=chromium --grep @S203` passed: 7 tests / 0 failed. The run built `skillshub:e2e-local`, started Compose, created fixture/auth state, passed the S203 browser spec, and tore down the fixture stack.
+
+Next workflow step remains `$verifying-quality S204`: rerun the full `./scripts/verify-release.sh`; if it returns exit 0, update this spec to QA PASS and route the following tick to `$shipping-release S204`.
