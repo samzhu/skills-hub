@@ -1,6 +1,6 @@
 # S204 — OAuth Login Error Page
 
-Status: ✅ QA PASS — verify-release PASS; next $shipping-release S204
+Status: ✅ shipped v4.88.0 — OAuth failure redirects to `/auth/error`; verify-release PASS
 Date: 2026-05-20
 Owner: Codex planning
 Size: S(5) initial
@@ -558,3 +558,32 @@ Four-layer QA result:
 | Testability gate | CLEAR | AC-S204-1~9 have direct backend/frontend tests, and the required release gate passed. |
 
 Next workflow step is `$shipping-release S204`: archive the spec, delete S204 task files, update changelog/roadmap release state, and tag v4.88.0.
+
+### 7.8 Shipping Release — 2026-05-21
+
+Current tick release gate evidence:
+
+- `./scripts/verify-release.sh` wrote `verify-release.log`.
+- Summary: `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V07b=PASS V07c=PASS V07d=SKIP V08a=PASS V08b=PASS V09=PASS`.
+- Verdict line: `PASS - all CRITICAL passed; exit=0`.
+- V02 reported backend LINE coverage `87.7% (covered=4834 / total=5514)`.
+
+Release artifacts:
+
+- `docs/grimo/specs/2026-05-20-S204-auth-error-page.md` archived to `docs/grimo/specs/archive/`.
+- `docs/grimo/tasks/2026-05-20-S204-*.md` deleted; task details are preserved in §6 and §7.
+- `docs/grimo/CHANGELOG.md` records v4.88.0.
+- `docs/grimo/specs/spec-roadmap.md` marks S204 shipped and moves it to the shipped table.
+- Git tag: `v4.88.0`.
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 2 | OAuth failure handler used existing Spring Security hooks, but release verification exposed production-image browser path issues that had to be fixed before ship. |
+| Uncertainty | 1 | 2 | The main S204 route/page behavior was clear; V07b fixture pagination assumptions required two QA rechecks before full release PASS. |
+| Dependencies | 1 | 1 | No new backend/frontend dependency was added. |
+| Scope | 1 | 3 | Actual work touched backend auth config/tests, frontend route/page/header/tests, docs, frontend coverage include, and E2E browser specs used by the release gate. |
+| Testing | 1 | 3 | Shipping required backend tests, frontend tests/coverage, production-image browser smoke/full/fixture runs, AOT, native image build, and secret scan. |
+| Reversibility | 1 | 2 | Reverting is straightforward but crosses auth redirect, React route/header behavior, docs, and release-gate test updates. |
+| **Total** | **S(5)** | **M(13)** | Bucket shift S→M; root cause is the release-gate work needed to make the real packaged browser app pass, not the OAuth error page code alone. |

@@ -1,5 +1,29 @@
 # Changelog
 
+## [v4.88.0] — S204 OAuth Login Error Page（2026-05-21）
+
+### Changed
+
+- **OAuth failure goes to Skills Hub UI** — OAuth2 Login 失敗時，後端不再導到 Spring default `/login?error`，而是 302 到 `/auth/error?reason=<safe-code>`。
+- **Safe failure reasons only** — `/auth/error` 只顯示 `session_expired`、`access_denied`、`token_exchange_failed`、`oauth_failed` 這四種 safe enum，不顯示 OAuth `code`、token、client secret、raw exception message 或未知 query value。
+- **繁中 recovery page** — React 新增 `AuthErrorPage`，顯示「登入沒有完成」、對應原因說明、唯一主要操作「返回瀏覽」，並用 `AppShell minimalHeader` 隱藏 nav、通知鈴鐺與登入 CTA。
+- **Direct route fallback is locked** — `/auth/error?reason=oauth_failed` direct hit 會 forward 到 `/index.html`，但 `/api/auth/error` 維持 404。
+- **Debug docs know token exchange failures** — debugging playbook 記錄 `/auth/error?reason=token_exchange_failed` 代表 Google callback 已到 backend，但 token exchange / authentication 失敗。
+
+### Verification
+
+- `./scripts/verify-release.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.7%，covered=4834 / total=5514）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V07b=PASS、V07c=PASS、V07d=SKIP、V08a=PASS、V08b=PASS、V09=PASS；`Verdict: PASS - all CRITICAL passed; exit=0`。
+- `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.security.AuthRedirectTest`：**PASS** — JUnit XML reports 18 tests / 0 failures / 0 errors。
+- `cd frontend && npm test -- AuthErrorPage.test.tsx AppShell.test.tsx App.test.tsx`：**PASS** — 3 test files / 24 tests。
+- `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.api.SpaFallbackControllerTest && cd ../frontend && npm test -- App.test.tsx`：**PASS** — backend 10 tests / 0 failures / 0 errors；frontend 1 file / 6 tests。
+- Production deploy：not run in this release tick；S204 has local release evidence only。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-20-S204-auth-error-page.md` → `docs/grimo/specs/archive/2026-05-20-S204-auth-error-page.md`
+- `docs/grimo/tasks/2026-05-20-S204-*.md` 已刪除。
+- Final size re-score：S(5) → M(13)，原因是實際 release work 橫跨 backend auth failure handler、frontend error route/header、SPA fallback/docs、coverage include、production-image browser full run 修正與完整 `verify-release.sh`。
+
 ## [v4.87.0] — S203 Semantic Search Masonry Pagination（2026-05-20）
 
 ### Changed
