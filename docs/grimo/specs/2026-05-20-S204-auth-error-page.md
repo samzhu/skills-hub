@@ -1,6 +1,6 @@
 # S204 — OAuth Login Error Page
 
-Status: 📐 in-design
+Status: 📋 planned
 Date: 2026-05-20
 Owner: Codex planning
 Size: S(5) initial
@@ -407,3 +407,34 @@ Test files:
 ### 5.4 Open Questions
 
 1. 是否要在 `/login?error` 也加 SPA fallback？Recommended: 不做。正確做法是後端 failure handler 不再導向 `/login?error`。
+
+## 6. Task Plan
+
+POC: not required — S204 沒有新增 dependency，也沒有包未知 SDK。Pre-flight 已核對本專案現有 `AuthRedirectConfig` / `SecurityConfig` / `SpaFallbackController` / `AppShell` 架構；官方 Spring Security `OAuth2LoginConfigurer` 文件確認 `oauth2Login()` 可掛 `failureHandler`，既有 `SpaFallbackController` 已能 forward extensionless React route。
+
+### 6.1 Pre-Flight Findings
+
+- PRD 對齊：本 spec 改善 OAuth login failure 的可理解性，不新增認證/授權限制；符合 MVP 階段 feature-first 原則。
+- 現有 code 對齊：`AuthRedirectConfig` 已管理 `returnTo` session 與 success handler；failure handler 放同一個 config 內，讓成功/失敗都能清理同一個 session attribute。
+- UI source of truth 對齊：`docs/grimo/ui/DESIGN.md` 要新增 `/auth/error` Page Inventory；頁面重用 `EmptyState tone="redirect"`，不新增錯誤頁設計系統。
+- E2E 評估：S204 是 OAuth provider callback failure 的 browser route；unit/component tests 可覆蓋 safe redirect、copy、SPA fallback。若後續 QA 要驗真組裝，可在 V07 mock OAuth server 補 failure path，但本輪 task 不先新增 Playwright spec。
+
+### 6.2 Task Index
+
+| Task | File | AC | Status | Notes |
+|---|---|---|---|---|
+| T01 | `docs/grimo/tasks/2026-05-20-S204-T01-backend-oauth-failure-handler.md` | AC-S204-1, AC-S204-6, AC-S204-7 | pending | 後端 failure handler、安全 reason mapping、安全 log、成功路徑不變。 |
+| T02 | `docs/grimo/tasks/2026-05-20-S204-T02-frontend-auth-error-page.md` | AC-S204-2, AC-S204-3, AC-S204-4, AC-S204-5 | pending | `/auth/error` React page、繁中 copy、唯一 CTA「返回瀏覽」、不顯示 login button。 |
+| T03 | `docs/grimo/tasks/2026-05-20-S204-T03-route-fallback-and-doc-sync.md` | AC-S204-8, AC-S204-9 | pending | `App.tsx` explicit route、SPA fallback tests、DESIGN/debugging docs sync。 |
+
+### 6.3 Execution Order
+
+1. T01 backend failure handler 先做，因為它把實際 `/login?error` runtime path 改成 `/auth/error?reason=...`。
+2. T02 frontend page 接住 T01 的 safe reason enum，讓使用者看見繁中頁面與「返回瀏覽」。
+3. T03 補 route/fallback/docs，避免後續 Page Inventory 與 route 行為漂移。
+
+### 6.4 Verification Commands
+
+- T01: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.security.AuthRedirectTest`
+- T02: `cd frontend && npm test -- AuthErrorPage.test.tsx AppShell.test.tsx App.test.tsx`
+- T03: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.api.SpaFallbackControllerTest && cd ../frontend && npm test -- App.test.tsx`

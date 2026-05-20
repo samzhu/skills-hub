@@ -1,6 +1,6 @@
 # S205: Download Filename UTF-8 Content-Disposition
 
-> 規格：S205 | 大小：XS(8) | 狀態：📐 in-design
+> 規格：S205 | 大小：XS(8) | 狀態：📋 planned
 > 日期：2026-05-20
 > 對應：PRD P4 一鍵安裝（Web 下載） / S061 / S176 / S188
 
@@ -30,7 +30,7 @@ Content-Disposition: attachment; filename*=UTF-8''OAuth%20%E5%B0%88%E5%AE%B6-1.z
 | S061 Download Filename Includes Skill Name | ✅ shipped | 當時把 header 改成 `{skillName}-{version}.zip`，但假設 `skills.name` 一定是 ASCII 安全字元。 |
 | S176 Explicit Publish Skill Name | ✅ shipped | 把 `skills.name` 改成人類顯示名稱，允許空白、中文與重名；S061 的 ASCII 前提失效。 |
 | S188 Version Label Auto Sequence | ✅ shipped | version 可能是 `1`、`2026.05` 或其他自訂標籤；S205 必須沿用目前 version label。 |
-| S204 OAuth Login Error Page | 📐 in-design | 只改 OAuth login failure UI，不碰 download endpoint；ordering-only，不阻擋本 spec。 |
+| S204 OAuth Login Error Page | 📋 planned | 只改 OAuth login failure UI，不碰 download endpoint；ordering-only，不阻擋本 spec。 |
 
 非目標：
 
@@ -240,4 +240,32 @@ sequenceDiagram
 
 ---
 
-<!-- Sections 6-7 added by /planning-tasks after implementation -->
+## 6. Task Plan
+
+POC: not required — S205 不新增 dependency；官方 Spring Framework `ContentDisposition.Builder.filename(String, Charset)` 已確認會依 RFC 5987 encode `filename*`，本專案目前 HEAD 也已經有 `SkillQueryController.contentDisposition(...)` 與 `SkillQueryControllerApiContractTest` 的 AC-S205-1~4 測試。此 task plan 的作用是補齊 spec/task 追蹤，讓後續 consolidation/QA/ship 有完整證據鏈。
+
+### 6.1 Pre-Flight Findings
+
+- PRD 對齊：本 spec 修 P4 一鍵下載的檔名可用性，不改 zip bytes、權限、analytics 或 storage path。
+- 現有 code 狀態：`SkillQueryController` 已用 `ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8)` 產 header，並用 `safeFilenamePart(...)` 把 `/` 與 `\` 改為 `-`。
+- 現有 test 狀態：`SkillQueryControllerApiContractTest` 已有 `@Tag("AC-S205-1")` ~ `@Tag("AC-S205-4")`，覆蓋中文最新版、中文指定版本、ASCII name、路徑分隔符。
+- E2E 評估：AC-S205-1~4 是 HTTP header contract，可由 backend slice test 覆蓋；AC-S205-5 是正式站 deploy 後 evidence，不需要 Playwright browser test。
+
+### 6.2 Task Index
+
+| Task | File | AC | Status | Notes |
+|---|---|---|---|---|
+| T01 | `docs/grimo/tasks/2026-05-20-S205-T01-download-content-disposition.md` | AC-S205-1, AC-S205-2, AC-S205-3, AC-S205-4 | PASS | HEAD 已有 implementation/tests；`./gradlew clean test --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest` PASS。 |
+| T02 | `docs/grimo/tasks/2026-05-20-S205-T02-production-download-evidence.md` | AC-S205-5 | pending | ship/deploy 後用正式站 curl 和 Cloud Run log 補 evidence。 |
+
+### 6.3 Execution Order
+
+1. T01 先確認 local API header contract。若測試已綠，不重寫既有 implementation。
+2. T02 在新 revision 部署後補正式站 evidence；若尚未 deploy，先在 spec §7 Pending verification 記錄待補命令。
+
+### 6.4 Verification Commands
+
+- T01: `cd backend && ./gradlew clean test --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest`
+- T02: `curl -sS -D - -o /tmp/oauth-expert.zip https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/c80ca4cc-9ceb-4586-85bc-c0187d49fab3/download`
+
+<!-- Section 7 added after implementation / verification -->
