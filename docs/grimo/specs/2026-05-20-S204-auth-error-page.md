@@ -1,6 +1,6 @@
 # S204 — OAuth Login Error Page
 
-Status: ⏳ in-progress
+Status: ⏳ QA blocked — V07b release gate failing
 Date: 2026-05-20
 Owner: Codex planning
 Size: S(5) initial
@@ -450,3 +450,17 @@ All implementation tasks are PASS. Next workflow step is `$verifying-quality S20
 - RED: `rg -n "AC-S204-9|AuthErrorPage|/auth/error|token_exchange_failed" backend/src/test/java/io/github/samzhu/skillshub/shared/api/SpaFallbackControllerTest.java docs/grimo/ui/DESIGN.md docs/grimo/debugging-playbook.md` returned no matches before T03, so the AC-S204-9 backend assertions and docs markers were absent.
 - GREEN: `cd backend && ./gradlew test --tests io.github.samzhu.skillshub.shared.api.SpaFallbackControllerTest && cd ../frontend && npm test -- App.test.tsx` passed; backend JUnit XML reports `tests="10"` with `failures="0"` and `errors="0"`; frontend Vitest reports `1 passed (1)` test file and `6 passed (6)` tests.
 - Runtime behavior now recorded in tests/docs: `/auth/error?reason=oauth_failed` forwards to `/index.html`, `/api/auth/error` returns 404, Page Inventory lists `AuthErrorPage`, and the debugging playbook explains `token_exchange_failed`.
+
+### 7.3 QA Review Attempt — 2026-05-20
+
+Verdict: REJECT-FIX — S204 is still not ready for `$shipping-release`.
+
+| Layer | Result | Evidence |
+|---|---|---|
+| S204 coverage include | FIXED | `frontend/vite.config.ts` now includes `src/components/AppShell.tsx` and `src/pages/AuthErrorPage.tsx`, so S204 frontend files are measured by the existing 80% frontend coverage gate. |
+| Frontend coverage gate | PASS | `cd frontend && npm test -- --coverage` passed: 84 test files / 530 tests; aggregate line coverage 94.87%. `coverage-summary.json` reported `src/pages/AuthErrorPage.tsx` at 100% lines and `src/components/AppShell.tsx` at 91.3% lines. |
+| Release verification | FAIL | `./scripts/verify-release.sh` wrote `verify-release.log`; summary: `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V07b=FAIL V07c=PASS V07d=SKIP V08a=PASS V08b=PASS V09=PASS`; verdict: `FAIL - 1 CRITICAL failure(s); exit=1`. |
+| Failing browser checks | FAIL | V07b failed 3 Playwright specs unrelated to `/auth/error`: `S176-explicit-publish-skill-name.spec.ts` timed out waiting for `/publish/(validate|review)?id=...`; `S187-skill-edit-page.spec.ts` and `S195-skill-edit-upload-validation-ux.spec.ts` timed out waiting for `edit-skill-btn`. |
+| Testability gate | CLEAR | S204 ACs have direct backend/frontend tests, and the repository can run the required QA gates. The release blocker is a failing required browser gate, not missing verification tooling. |
+
+Next workflow step remains `$verifying-quality S204` after the V07b failures are fixed or proven flaky with repeatable evidence. Do not route to `$shipping-release S204` until `./scripts/verify-release.sh` returns exit 0.

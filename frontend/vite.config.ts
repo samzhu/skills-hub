@@ -49,8 +49,10 @@ export default defineConfig({
       // 採「漸進加入 gate」模式：後續 frontend spec 加 test 時 append 到本 list；
       // threshold 對 tested files 維持 80% aggregate；untested files 不算入分母。
       include: [
+        'src/components/AppShell.tsx',
         'src/components/SkillCard.tsx',
         'src/hooks/useSemanticSearch.ts',
+        'src/pages/AuthErrorPage.tsx',
       ],
       thresholds: {
         lines: 80,
