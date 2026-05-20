@@ -100,6 +100,7 @@
 | v4.84.0 | S201 (Quality Score 單項狀態顯示) | ✅ shipped 2026-05-19 — Quality tab 小項顯示 12px 綠/黃/紅圓圈 + `通過 100/100` / `滿分 3/3` 等文字；warnings 顯示 `提醒 1`；`verify-all.sh` 全綠 |
 | v4.86.0 | S202 (Production E2E Fixture Runner) | ✅ shipped 2026-05-19 — V07 跑 production packaged image + Compose disposable DB/mock OAuth/external fixtures；`/internal/test/*` 不進 production artifact；`verify-all.sh` 全綠 |
 | v4.87.0 | S203 (Semantic Search Masonry Pagination) | ✅ shipped 2026-05-20 — semantic search `page/size` Slice + `/browse` masonry infinite results；`verify-all.sh` 全綠 |
+| v4.88.0 | S204 (OAuth Login Error Page) | 📐 in-design — `/login?error` 改導 Skills Hub `/auth/error`；後端 safe failure handler + 前端繁中可操作錯誤頁 |
 
 ---
 
