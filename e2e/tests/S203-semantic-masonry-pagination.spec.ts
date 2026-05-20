@@ -47,19 +47,28 @@ test.describe('S203 — Semantic Search Masonry Pagination', () => {
       expect(firstPage.content.length, 'first semantic Slice should contain 10 cards').toBe(10);
       expect(firstPage.last, 'first semantic Slice should expose another page').toBe(false);
 
-      const secondPageResponse = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/search/semantic?q=docker')
-        && response.url().includes('page=1')
-        && response.url().includes('size=10')
-        && response.status() === 200,
-      );
+      let currentPage = firstPage;
+      let nextPageNumber = 1;
+      loadedSemanticCards = firstPage.content.length;
 
-      await page.getByTestId('semantic-load-more-sentinel').scrollIntoViewIfNeeded();
-      const secondPage = await (await secondPageResponse).json() as SemanticSlice;
+      while (!currentPage.last) {
+        expect(nextPageNumber, 'semantic pagination should finish within the fixture page budget').toBeLessThanOrEqual(10);
 
-      expect(secondPage.number).toBe(1);
-      expect(secondPage.content.length, 'second semantic Slice should append cards').toBeGreaterThan(0);
-      loadedSemanticCards = firstPage.content.length + secondPage.content.length;
+        const nextPageResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/search/semantic?q=docker')
+          && response.url().includes(`page=${nextPageNumber}`)
+          && response.url().includes('size=10')
+          && response.status() === 200,
+        );
+
+        await page.getByTestId('semantic-load-more-sentinel').scrollIntoViewIfNeeded();
+        currentPage = await (await nextPageResponse).json() as SemanticSlice;
+
+        expect(currentPage.number).toBe(nextPageNumber);
+        expect(currentPage.content.length, `semantic Slice page ${nextPageNumber} should append cards`).toBeGreaterThan(0);
+        loadedSemanticCards += currentPage.content.length;
+        nextPageNumber += 1;
+      }
     });
 
     await test.step('Then cards, match scores, and all-loaded copy are visible without keyword fallback', async () => {

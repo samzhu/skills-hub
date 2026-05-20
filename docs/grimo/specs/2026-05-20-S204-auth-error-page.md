@@ -1,6 +1,6 @@
 # S204 — OAuth Login Error Page
 
-Status: ⏳ QA recheck pending — V07b S203 count fix targeted PASS
+Status: ⏳ QA recheck pending — V07b S203 last-page fix targeted PASS
 Date: 2026-05-20
 Owner: Codex planning
 Size: S(5) initial
@@ -502,6 +502,33 @@ V07b failure:
 Fix applied in this QA tick:
 
 - `e2e/tests/S203-semantic-masonry-pagination.spec.ts` now stores `firstPage.content.length + secondPage.content.length` and waits for that exact loaded-card count in the UI copy.
+
+Targeted evidence after the fix:
+
+- `cd e2e && SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --project=chromium --grep @S203` passed: 7 tests / 0 failed. The run built `skillshub:e2e-local`, started Compose, created fixture/auth state, passed the S203 browser spec, and tore down the fixture stack.
+
+Next workflow step remains `$verifying-quality S204`: rerun the full `./scripts/verify-release.sh`; if it returns exit 0, update this spec to QA PASS and route the following tick to `$shipping-release S204`.
+
+### 7.6 QA Recheck — 2026-05-21 second run
+
+Verdict: REJECT-FIX — S204 is still not ready for `$shipping-release`.
+
+Full release gate evidence:
+
+- `./scripts/verify-release.sh` wrote `verify-release.log`.
+- Summary: `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V07b=FAIL V07c=PASS V07d=SKIP V08a=PASS V08b=PASS V09=PASS`.
+- Verdict line: `FAIL - 1 CRITICAL failure(s); exit=1`.
+- V02 reported backend LINE coverage `87.7% (covered=4836 / total=5514)`.
+
+V07b failure:
+
+- `e2e/tests/S203-semantic-masonry-pagination.spec.ts` failed at line 68 while waiting for `已顯示全部相關技能`.
+- The test had loaded the first semantic page and at least one next page, but the fixture can still have another page after page 1. In that case the UI correctly keeps the load-more sentinel and should not show the all-loaded copy yet.
+- This is not an S204 product behavior failure: S204 backend/frontend AC tests and release gate V01-V07/V07c-V09 passed. It is still a release blocker because V07b is a required browser gate.
+
+Fix applied in this QA tick:
+
+- `e2e/tests/S203-semantic-masonry-pagination.spec.ts` now follows the semantic API response: it keeps scrolling the sentinel until the returned Slice has `last=true`, then checks the final loaded count and all-loaded copy.
 
 Targeted evidence after the fix:
 
