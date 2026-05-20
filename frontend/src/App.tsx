@@ -29,6 +29,7 @@ import { PublishValidatePage } from './pages/PublishValidatePage'
 import { VersionDiffPage } from './pages/VersionDiffPage'
 import { FlagsQueuePage } from './pages/FlagsQueuePage'
 import { AuthDebugPage } from './pages/AuthDebugPage'
+import { AuthErrorPage } from './pages/AuthErrorPage'
 import { GroupsPage } from './pages/GroupsPage'
 import { SkillEditPage } from './pages/SkillEditPage'
 
@@ -91,6 +92,8 @@ function App() {
       <Route path="/docs/event-payload" element={<EventPayloadPage />} />
       {/* S134: dev-only「我的認證」頁 — 後端 real-oauth profile 啟用時才有真資料；否則顯示提示 */}
       <Route path="/auth-debug" element={<AuthDebugPage />} />
+      {/* S204: OAuth callback failure recovery page — must sit before wildcard route */}
+      <Route path="/auth/error" element={<AuthErrorPage />} />
       {/* unmatched URL 之前 render 空白 root，user 看不到 navbar 也沒 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

@@ -34,7 +34,7 @@ const navLinks = [
  *
  * @param children 頁面內容
  */
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, minimalHeader = false }: { children: ReactNode; minimalHeader?: boolean }) {
   const location = useLocation()
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   // S139: bell + unread poll 改 conditional on authenticated — anonymous user 不
@@ -47,7 +47,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     queryFn: fetchUnreadCount,
     refetchInterval: 30 * 1000,
     staleTime: 25 * 1000,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !minimalHeader,
   })
   const unreadCount = unread?.count ?? 0
   const mobileNavId = 'app-shell-mobile-nav'
@@ -77,35 +77,40 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link to="/" className="flex min-w-0 items-center gap-2 font-semibold">
             <span className="text-lg">Skills Hub</span>
           </Link>
-          <nav
-            aria-label="主要導覽"
-            data-testid="app-shell-desktop-nav"
-            className="hidden flex-1 items-center gap-4 lg:flex"
-          >
-            {navLinks.map(({ path, label }) => (
-              <Link
-                key={path}
-                to={path}
-                className={navLinkClass(path)}
+          {!minimalHeader && (
+            <>
+              <nav
+                aria-label="主要導覽"
+                data-testid="app-shell-desktop-nav"
+                className="hidden flex-1 items-center gap-4 lg:flex"
               >
-                {label}
-              </Link>
-            ))}
-          </nav>
-          <div className="flex flex-1 justify-end lg:hidden">
-            <button
-              type="button"
-              aria-label={mobileNavOpen ? '關閉導覽選單' : '開啟導覽選單'}
-              aria-expanded={mobileNavOpen}
-              aria-controls={mobileNavId}
-              onClick={() => setMobileNavOpen((open) => !open)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            >
-              {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </button>
-          </div>
+                {navLinks.map(({ path, label }) => (
+                  <Link
+                    key={path}
+                    to={path}
+                    className={navLinkClass(path)}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </nav>
+              <div className="flex flex-1 justify-end lg:hidden">
+                <button
+                  type="button"
+                  aria-label={mobileNavOpen ? '關閉導覽選單' : '開啟導覽選單'}
+                  aria-expanded={mobileNavOpen}
+                  aria-controls={mobileNavId}
+                  onClick={() => setMobileNavOpen((open) => !open)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  {mobileNavOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                </button>
+              </div>
+            </>
+          )}
+          {minimalHeader && <div className="flex-1" />}
           {/* S096h1 + S139: bell 只在登入後渲染 — anonymous 看不到 unread badge / 鈴鐺 */}
-          {isAuthenticated && (
+          {isAuthenticated && !minimalHeader && (
             <Link
               to="/notifications"
               aria-label="通知"
@@ -123,11 +128,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           )}
           {/* S139: AuthArea — 未登入：登入按鈕；登入：avatar dropdown */}
-          <div className="shrink-0">
-            <AuthArea />
-          </div>
+          {!minimalHeader && (
+            <div className="shrink-0">
+              <AuthArea />
+            </div>
+          )}
         </div>
-        {mobileNavOpen && (
+        {mobileNavOpen && !minimalHeader && (
           <nav
             id={mobileNavId}
             aria-label="行動導覽"

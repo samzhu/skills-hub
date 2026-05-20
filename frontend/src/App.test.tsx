@@ -95,3 +95,12 @@ describe('S189 AC-6: /search route removed', () => {
     expect(screen.queryByText(/語意分析中/)).not.toBeInTheDocument()
   })
 })
+
+describe('S204 auth error route', () => {
+  it('AC-S204-8: /auth/error route renders before wildcard NotFound route', () => {
+    renderAppAt('/auth/error?reason=token_exchange_failed')
+
+    expect(screen.getByRole('heading', { level: 2, name: '登入沒有完成' })).toBeInTheDocument()
+    expect(screen.queryByText('404')).not.toBeInTheDocument()
+  })
+})

@@ -200,3 +200,27 @@ describe('AppShell — S172 compact navigation', () => {
     expect(docsLink.className).toContain('font-medium')
   })
 })
+
+describe('AppShell — S204 minimal OAuth error header', () => {
+  it('AC-S204-2: minimal auth error header hides nav, bell, and auth area', () => {
+    setupFetch(12, true)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/auth/error']}>
+          <AppShell minimalHeader>
+            <div>auth error content</div>
+          </AppShell>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Skills Hub' })).toHaveAttribute('href', '/')
+    expect(screen.queryByTestId('app-shell-desktop-nav')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '開啟導覽選單' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('通知')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '登入' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /開啟使用者選單/i })).not.toBeInTheDocument()
+    expect(screen.getByText('auth error content')).toBeInTheDocument()
+  })
+})

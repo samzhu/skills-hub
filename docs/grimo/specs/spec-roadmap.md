@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-20（S204 T01 PASS）
+> 最後更新：2026-05-20（S204 T02 PASS）
 
 ## 使用說明
 
@@ -42,7 +42,7 @@
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⛔ superseded 2026-05-16 — 取代為 S189（舊 spec 已有 T01-T05/QA 歷史，但未 ship；關閉以免干擾 S186→S187 主線） |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
-| S204 | OAuth Login Error Page（OAuth callback 失敗導到 `/auth/error`，不再顯示 Spring default `/login?error`） | S(5) | S139 ✅, S152 ✅ | ⏳ in-progress — T01 backend failure handler PASS；T02 frontend page next |
+| S204 | OAuth Login Error Page（OAuth callback 失敗導到 `/auth/error`，不再顯示 Spring default `/login?error`） | S(5) | S139 ✅, S152 ✅ | ⏳ in-progress — T01/T02 PASS；T03 route fallback + docs next |
 | S205 | Download filename UTF-8 Content-Disposition（中文顯示名稱下載檔名不再落成 `download`） | XS(8) | S061 ✅, S176 ✅, S188 ✅ | 📋 planned — T01 local header contract PASS / T02 production evidence pending；AC-S205-1~4 implementation/tests already present in HEAD |
 ---
 
@@ -102,7 +102,7 @@
 | v4.84.0 | S201 (Quality Score 單項狀態顯示) | ✅ shipped 2026-05-19 — Quality tab 小項顯示 12px 綠/黃/紅圓圈 + `通過 100/100` / `滿分 3/3` 等文字；warnings 顯示 `提醒 1`；`verify-all.sh` 全綠 |
 | v4.86.0 | S202 (Production E2E Fixture Runner) | ✅ shipped 2026-05-19 — V07 跑 production packaged image + Compose disposable DB/mock OAuth/external fixtures；`/internal/test/*` 不進 production artifact；`verify-all.sh` 全綠 |
 | v4.87.0 | S203 (Semantic Search Masonry Pagination) | ✅ shipped 2026-05-20 — semantic search `page/size` Slice + `/browse` masonry infinite results；`verify-all.sh` 全綠 |
-| v4.88.0 | S204 (OAuth Login Error Page) | ⏳ in-progress — T01 後端 failure handler PASS；T02 前端 `/auth/error` page next |
+| v4.88.0 | S204 (OAuth Login Error Page) | ⏳ in-progress — T01/T02 PASS；T03 route fallback + docs next |
 | v4.89.0 | S205 (Download Filename UTF-8 Content-Disposition) | 📋 planned — `/api/v1/skills/{id}/download` 中文顯示名稱用 `filename*` UTF-8 encoding；修 `OAuth 專家` 下載檔名 fallback |
 
 ---

@@ -70,5 +70,20 @@ And（而且）頁面只顯示 safe enum error code，不顯示 `Invalid credent
 ## 前置條件
 - S204-T01 PASS
 
-## 狀態
-pending（待做）
+## Status
+PASS
+
+## Result
+Date: 2026-05-20
+Test: `AuthErrorPage.test.tsx`, `AppShell.test.tsx`, `App.test.tsx`
+Files changed:
+- `frontend/src/pages/AuthErrorPage.tsx` (added)
+- `frontend/src/pages/AuthErrorPage.test.tsx` (added)
+- `frontend/src/App.tsx` (modified)
+- `frontend/src/App.test.tsx` (modified)
+- `frontend/src/components/AppShell.tsx` (modified)
+- `frontend/src/components/AppShell.test.tsx` (modified)
+Notes:
+- RED: `cd frontend && npm test -- AuthErrorPage.test.tsx AppShell.test.tsx App.test.tsx` failed because `AuthErrorPage.tsx` did not exist, `/auth/error` rendered `404`, and `AppShell minimalHeader` did not hide desktop nav.
+- GREEN: same command passed with `3 passed (3)` test files and `24 passed (24)` tests.
+- Implementation: `/auth/error` normalizes unknown `reason` query values to `oauth_failed`, shows only safe enum code text, uses `EmptyState tone="redirect"`, and renders `AppShell minimalHeader` so the page has brand-only chrome plus one `返回瀏覽` CTA.
