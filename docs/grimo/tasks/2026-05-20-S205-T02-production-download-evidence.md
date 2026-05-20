@@ -57,4 +57,16 @@ curl -sS -D - -o /tmp/oauth-expert.zip \
 - 新 revision 已部署到 Cloud Run
 
 ## 狀態
-pending（待做）
+DEFERRED（post-release：待 S205 新 revision 部署到 Cloud Run 後補 evidence；本 dev loop 不部署、不測正式站）
+
+## Result（2026-05-21）
+
+本 tick 未執行正式站 curl，也未查 Cloud Run log，原因是 `.codex/loop.dev.md` 和 automation prompt 明確禁止 production deploy / production site inspection。
+
+已改由 `docs/grimo/specs/2026-05-20-S205-download-filename-utf8-content-disposition.md` §7.4 記錄 post-release verification 命令、預期 header、以及要排除的 log error：
+
+- `curl -sS -D - -o /tmp/oauth-expert.zip https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/c80ca4cc-9ceb-4586-85bc-c0187d49fab3/download`
+- response header 要包含 `filename*=UTF-8''OAuth%20%E5%B0%88%E5%AE%B6-1.zip`
+- 同 revision Cloud Run log 不可出現 `UnmappableCharacterException` 或 `MessageBytes.toBytes`
+
+AC-S205-5 不標 PASS；它是 deploy 後補證據。AC-S205-1~4 的 local header contract 已由 T01 和 spec §7.1 驗證。

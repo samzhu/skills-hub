@@ -1,6 +1,6 @@
 # S205: Download Filename UTF-8 Content-Disposition
 
-> 規格：S205 | 大小：XS(8) | 狀態：📋 planned
+> 規格：S205 | 大小：XS(8) | 狀態：⏳ QA pending（local header contract PASS；AC-S205-5 post-release evidence pending）
 > 日期：2026-05-20
 > 對應：PRD P4 一鍵安裝（Web 下載） / S061 / S176 / S188
 
@@ -30,7 +30,7 @@ Content-Disposition: attachment; filename*=UTF-8''OAuth%20%E5%B0%88%E5%AE%B6-1.z
 | S061 Download Filename Includes Skill Name | ✅ shipped | 當時把 header 改成 `{skillName}-{version}.zip`，但假設 `skills.name` 一定是 ASCII 安全字元。 |
 | S176 Explicit Publish Skill Name | ✅ shipped | 把 `skills.name` 改成人類顯示名稱，允許空白、中文與重名；S061 的 ASCII 前提失效。 |
 | S188 Version Label Auto Sequence | ✅ shipped | version 可能是 `1`、`2026.05` 或其他自訂標籤；S205 必須沿用目前 version label。 |
-| S204 OAuth Login Error Page | 📋 planned | 只改 OAuth login failure UI，不碰 download endpoint；ordering-only，不阻擋本 spec。 |
+| S204 OAuth Login Error Page | ✅ shipped v4.88.0 | 只改 OAuth login failure UI，不碰 download endpoint；ordering-only，不阻擋本 spec。 |
 
 非目標：
 
@@ -256,7 +256,7 @@ POC: not required — S205 不新增 dependency；官方 Spring Framework `Conte
 | Task | File | AC | Status | Notes |
 |---|---|---|---|---|
 | T01 | `docs/grimo/tasks/2026-05-20-S205-T01-download-content-disposition.md` | AC-S205-1, AC-S205-2, AC-S205-3, AC-S205-4 | PASS | HEAD 已有 implementation/tests；`./gradlew clean test --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest` PASS。 |
-| T02 | `docs/grimo/tasks/2026-05-20-S205-T02-production-download-evidence.md` | AC-S205-5 | pending | ship/deploy 後用正式站 curl 和 Cloud Run log 補 evidence。 |
+| T02 | `docs/grimo/tasks/2026-05-20-S205-T02-production-download-evidence.md` | AC-S205-5 | DEFERRED (post-release) | 本 dev loop 不部署、不測正式站；deploy 後用正式站 curl 和 Cloud Run log 補 evidence。 |
 
 ### 6.3 Execution Order
 
@@ -269,3 +269,53 @@ POC: not required — S205 不新增 dependency；官方 Spring Framework `Conte
 - T02: `curl -sS -D - -o /tmp/oauth-expert.zip https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/c80ca4cc-9ceb-4586-85bc-c0187d49fab3/download`
 
 <!-- Section 7 added after implementation / verification -->
+
+---
+
+## 7. Implementation Results
+
+### 7.1 Local Verification
+
+| Command | Result | Evidence |
+|---|---|---|
+| `cd backend && ./gradlew clean test --tests io.github.samzhu.skillshub.skill.query.SkillQueryControllerApiContractTest` | PASS | 2026-05-21 02:52 Asia/Taipei：`BUILD SUCCESSFUL in 2m 22s`，12 Gradle tasks executed。 |
+
+### 7.2 AC Results
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC-S205-1 | PASS | `SkillQueryControllerApiContractTest` 有 `@Tag("AC-S205-1")`，最新版中文顯示名稱 header 含 `filename*=UTF-8''OAuth%20%E5%B0%88%E5%AE%B6-1.zip`，且不含裸 `OAuth 專家`。 |
+| AC-S205-2 | PASS | `SkillQueryControllerApiContractTest` 有 `@Tag("AC-S205-2")`，指定版本 `2026.05` header 含 `filename*=UTF-8''OAuth%20%E5%B0%88%E5%AE%B6-2026.05.zip`，且不含裸 `OAuth 專家`。 |
+| AC-S205-3 | PASS | `SkillQueryControllerApiContractTest` 有 `@Tag("AC-S205-3")`，ASCII 顯示名稱仍回 `docker-helper-1.0.0.zip`。 |
+| AC-S205-4 | PASS | `SkillQueryControllerApiContractTest` 有 `@Tag("AC-S205-4")`，`Team/OAuth\Expert` 會變成 `Team-OAuth-Expert-1.zip`，不保留 `/` 或 `\`。 |
+| AC-S205-5 | DEFERRED (post-release) | 本 dev loop 明確禁止 production deploy / production site inspection；新 revision 部署後再跑 §7.4 的 curl/log 命令補 evidence。 |
+
+### 7.3 Key Findings
+
+- `SkillQueryController.contentDisposition(...)` 已用 `ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString()` 產生 ASCII-safe header；Tomcat 不會再收到裸中文 header value。
+- `safeFilenamePart(...)` 只把 `/` 和 `\` 改成 `-`，保留中文、空白與一般顯示名稱給 Spring 依 RFC 5987 encode。
+- AC-S205-5 是 deploy 後觀察：它驗的是正式站目前 revision 的 response header 和 Cloud Run log，不是 local code path；本機 release 前不可把它標成 PASS。
+
+### 7.4 Pending Post-Release Verification
+
+新 revision 部署到 Cloud Run 後執行：
+
+```bash
+curl -sS -D - -o /tmp/oauth-expert.zip \
+  https://skillshub-644359853825.asia-east1.run.app/api/v1/skills/c80ca4cc-9ceb-4586-85bc-c0187d49fab3/download
+```
+
+Expected response header contains:
+
+```http
+content-disposition: attachment; filename*=UTF-8''OAuth%20%E5%B0%88%E5%AE%B6-1.zip
+```
+
+再查同 revision Cloud Run log，應該沒有：
+
+- `UnmappableCharacterException`
+- `MessageBytes.toBytes`
+
+### 7.5 QA Routing
+
+Local implementation is complete for AC-S205-1~4. AC-S205-5 is explicitly post-release evidence because this development loop does not deploy or inspect the production site. Next workflow step: `$verifying-quality S205`.
