@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -244,6 +245,73 @@ class SkillQueryControllerApiContractTest extends WebMvcSliceTestBase {
                 ArgumentMatchers.isNull(), captor.capture(),
                 ArgumentMatchers.isNull(), ArgumentMatchers.any());
         org.assertj.core.api.Assertions.assertThat(captor.getValue()).isEqualTo("devops");
+    }
+
+    @Test
+    @DisplayName("AC-S205-1: 最新版中文顯示名稱 download header 用 UTF-8 filename*")
+    @Tag("AC-S205-1")
+    void downloadLatest_usesEncodedContentDispositionForDisplayName() throws Exception {
+        var skillId = UUID.randomUUID();
+        var fixture = Skill.fromRow(skillId.toString(), "OAuth 專家", "fixture", "alice", "testing",
+                "1", "LOW", "PUBLISHED", 0L, Instant.now(), Instant.now(), List.of(), null);
+        Mockito.when(skillQueryService.findById(skillId.toString())).thenReturn(fixture);
+        Mockito.when(skillQueryService.downloadLatest(skillId.toString())).thenReturn(new byte[] {1, 2, 3});
+
+        mockMvc.perform(get("/api/v1/skills/{id}/download", skillId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        containsString("filename*=UTF-8''OAuth%20%E5%B0%88%E5%AE%B6-1.zip")))
+                .andExpect(header().string("Content-Disposition", not(containsString("OAuth 專家"))));
+    }
+
+    @Test
+    @DisplayName("AC-S205-2: 指定版本中文顯示名稱 download header 用 UTF-8 filename*")
+    @Tag("AC-S205-2")
+    void downloadVersion_usesEncodedContentDispositionForDisplayName() throws Exception {
+        var skillId = UUID.randomUUID();
+        var fixture = Skill.fromRow(skillId.toString(), "OAuth 專家", "fixture", "alice", "testing",
+                "1", "LOW", "PUBLISHED", 0L, Instant.now(), Instant.now(), List.of(), null);
+        Mockito.when(skillQueryService.findById(skillId.toString())).thenReturn(fixture);
+        Mockito.when(skillQueryService.downloadVersion(skillId.toString(), "2026.05"))
+                .thenReturn(new byte[] {1, 2, 3});
+
+        mockMvc.perform(get("/api/v1/skills/{id}/versions/{version}/download", skillId, "2026.05"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        containsString("filename*=UTF-8''OAuth%20%E5%B0%88%E5%AE%B6-2026.05.zip")))
+                .andExpect(header().string("Content-Disposition", not(containsString("OAuth 專家"))));
+    }
+
+    @Test
+    @DisplayName("AC-S205-3: ASCII 顯示名稱 download header 仍保留可讀檔名")
+    @Tag("AC-S205-3")
+    void downloadLatest_keepsReadableAsciiFilename() throws Exception {
+        var skillId = UUID.randomUUID();
+        var fixture = Skill.fromRow(skillId.toString(), "docker-helper", "fixture", "alice", "testing",
+                "1.0.0", "LOW", "PUBLISHED", 0L, Instant.now(), Instant.now(), List.of(), null);
+        Mockito.when(skillQueryService.findById(skillId.toString())).thenReturn(fixture);
+        Mockito.when(skillQueryService.downloadLatest(skillId.toString())).thenReturn(new byte[] {1, 2, 3});
+
+        mockMvc.perform(get("/api/v1/skills/{id}/download", skillId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", containsString("docker-helper-1.0.0.zip")));
+    }
+
+    @Test
+    @DisplayName("AC-S205-4: 顯示名稱路徑分隔符會改成連字號")
+    @Tag("AC-S205-4")
+    void downloadLatest_replacesPathSeparatorsInFilename() throws Exception {
+        var skillId = UUID.randomUUID();
+        var fixture = Skill.fromRow(skillId.toString(), "Team/OAuth\\Expert", "fixture", "alice", "testing",
+                "1", "LOW", "PUBLISHED", 0L, Instant.now(), Instant.now(), List.of(), null);
+        Mockito.when(skillQueryService.findById(skillId.toString())).thenReturn(fixture);
+        Mockito.when(skillQueryService.downloadLatest(skillId.toString())).thenReturn(new byte[] {1, 2, 3});
+
+        mockMvc.perform(get("/api/v1/skills/{id}/download", skillId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        containsString("filename*=UTF-8''Team-OAuth-Expert-1.zip")))
+                .andExpect(header().string("Content-Disposition", not(containsString("Team/OAuth\\Expert"))));
     }
 
     private static String uniqueSuffix() {

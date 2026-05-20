@@ -1,11 +1,13 @@
 package io.github.samzhu.skillshub.skill.query;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -176,14 +178,12 @@ public class SkillQueryController {
 	@GetMapping("/skills/{id}/download")
 	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
 	ResponseEntity<byte[]> downloadLatest(@PathVariable UUID id) {
-		// S061: filename 含 skill name + version 區分 — name 已限 [a-z0-9-]{1,64}（S041）filename 安全
 		var idStr = id.toString();
 		var skill = queryService.findById(idStr);
 		var bytes = queryService.downloadLatest(idStr);
 		return ResponseEntity.ok()
 				.contentType(MediaType.APPLICATION_OCTET_STREAM)
-				.header(HttpHeaders.CONTENT_DISPOSITION,
-						"attachment; filename=" + skill.getName() + "-" + skill.getLatestVersion() + ".zip")
+				.header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(skill, skill.getLatestVersion()))
 				.body(bytes);
 	}
 
@@ -195,15 +195,28 @@ public class SkillQueryController {
 	@GetMapping("/skills/{id}/versions/{version}/download")
 	@PreAuthorize("hasPermission(#id, 'Skill', 'read')")
 	ResponseEntity<byte[]> downloadVersion(@PathVariable UUID id, @PathVariable String version) {
-		// S061: filename 含 skill name + 指定 version
 		var idStr = id.toString();
 		var skill = queryService.findById(idStr);
 		var bytes = queryService.downloadVersion(idStr, version);
 		return ResponseEntity.ok()
 				.contentType(MediaType.APPLICATION_OCTET_STREAM)
-				.header(HttpHeaders.CONTENT_DISPOSITION,
-						"attachment; filename=" + skill.getName() + "-" + version + ".zip")
+				.header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(skill, version))
 				.body(bytes);
+	}
+
+	private static String contentDisposition(Skill skill, String version) {
+		// S205: skills.name 是人類顯示名稱；用 RFC 5987 UTF-8 編碼避免 Tomcat 丟掉中文 header。
+		var filename = safeFilenamePart(skill.getName()) + "-" + safeFilenamePart(version) + ".zip";
+		return ContentDisposition.attachment()
+				.filename(filename, StandardCharsets.UTF_8)
+				.build()
+				.toString();
+	}
+
+	private static String safeFilenamePart(String value) {
+		var trimmed = value == null ? "" : value.trim();
+		var withoutPathSeparators = trimmed.replace('/', '-').replace('\\', '-');
+		return withoutPathSeparators.isBlank() ? "skill" : withoutPathSeparators;
 	}
 
 	/** 取得所有分類及其技能數量，按數量降序排列。 */
