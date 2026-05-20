@@ -1,295 +1,426 @@
 # Skills Hub — QA Strategy
 
-## Verification Pipeline
+本文件定義 Skills Hub 的產品 QA 策略。它不是只列 command，而是回答三件事：
 
-### PR Gate
+1. 每個需求在寫 code 前如何變成可驗證例子。
+2. Backend / Frontend / E2E / Artifact 各自應該抓哪種錯。
+3. Release 前哪些 evidence 必須存在，哪些目前還只是待補 tooling。
 
-```bash
-# Backend
-./gradlew test                    # JUnit 5 + Testcontainers
-./gradlew modulithTest            # Spring Modulith module boundary verification
+## Current Status
 
-# Frontend
-cd frontend && npm test           # Vitest
-```
-
-### Coverage
+目前 repo 內可執行的 canonical release gate 是：
 
 ```bash
-# Backend (JaCoCo)
-./gradlew jacocoTestCoverageVerification
-# Threshold: 80% line coverage on new code
-
-# Frontend (Vitest coverage)
-cd frontend && npm test -- --coverage
-# Threshold: 80% line coverage on new code（漸進加入 gate — `coverage.include` 鎖定有對應 test 的 source 檔；S022 落地）
+./scripts/verify-release.sh
 ```
 
-> Backend 由 V03（`./gradlew jacocoTestCoverageVerification`，S019 ship）執行 80% line coverage gate；Frontend 由 V06（`npm test -- --coverage`，S022 ship）執行同 80% line coverage gate。Cross-stack 相同 LINE coverage 標準（80%）；不同實作（JaCoCo BUNDLE / vitest project-wide aggregate over include whitelist）。
+`verify-release.sh` 會把 log 寫到 `verify-release.log`，是 `$verifying-quality` 與 `$shipping-release` 應呼叫的唯一正式 release gate。日常 spec/task 快速驗證用 `scripts/verify-pr.sh`。
 
-### Architecture / Boundary
+現況重點：
 
-```bash
-# Spring Modulith 自動驗證 module 依賴邊界
-./gradlew test --tests "*ModularityTests*"
+| Area | Current reality |
+|------|-----------------|
+| Backend tests | `backend/src/test/java` 已有 unit、slice、`@SpringBootTest + Testcontainers`、Spring Modulith Scenario tests。 |
+| Backend coverage | `backend/build.gradle.kts` 使用 JaCoCo，`jacocoTestCoverageVerification` gate 為 LINE coverage 80%。 |
+| Frontend tests | `frontend/src/**/*.test.*` 使用 Vitest + React Testing Library。 |
+| Frontend coverage | `frontend/vite.config.ts` 目前是 include whitelist；不是全 `src/**` coverage。 |
+| Browser E2E | `e2e/` 使用 Playwright，打 `skillshub:e2e-local` production packaged image + `compose.e2e.yaml`。 |
+| OpenAPI | 目前不列 release gate。`backend/build.gradle.kts` 沒有 SpringDoc dependency；文件與歷史 spec 曾提過 `/v3/api-docs`，但現階段不把它當 QA blocker。 |
+| CI build | `cloudbuild.yaml` 目前 build image 時使用 `-x test`；它是 build-push pipeline，不是完整 QA gate。 |
+| Logs | `verify-pr.log`、`verify-release.log` 寫在 repo root 且由 `.gitignore` 排除。 |
+
+## QA Gate Model
+
+每個 spec 從設計到 release 應通過下列 gate。若某 gate 不適用，spec §7 必須寫明實際理由與替代 evidence。
+
+| Gate | Name | Required evidence | Blocks release |
+|------|------|-------------------|----------------|
+| G0 | Spec Examples | 每個 AC 都有 Given / When / Then，且 §6 task plan 對應測試層級。 | Yes |
+| G1 | Backend Runtime | Backend AC 以 `@SpringBootTest + Testcontainers` 或等價 slice / unit test 驗證。 | Yes |
+| G2 | Backend Coverage | `./gradlew jacocoTestCoverageVerification` PASS，LINE coverage >= 80%。 | Yes |
+| G3 | Frontend Behavior | `npm test` + React Testing Library / hook / API client tests PASS。 | Yes |
+| G4 | Frontend Static Quality | `npm run verify` PASS；`npm test -- --coverage` PASS。 | Yes |
+| G5 | Production Browser E2E | Playwright 打 production image，不打 Vite dev server。Smoke + Full + Fixture gates PASS。 | Yes |
+| G6 | Risk / Negative Flows | 涉及權限、惡意輸入、狀態衝突、邊界資料的 spec 有對應 risk tests 或 backend integration tests。 | Yes when applicable |
+| G7 | Native / AOT Package | `processAot` + native `bootBuildImage` PASS。 | Yes |
+| G8 | Secret / Artifact Cleanliness | log 不洩漏 key；production bootJar 不含 E2E support classes/resources。 | Yes |
+| G9 | Release Ledger | spec archive、task cleanup、CHANGELOG、roadmap、tag 由 `$shipping-release` 完成。 | Yes |
+
+### QA Flow
+
+```mermaid
+flowchart TD
+  A["Spec implementation finished"] --> B["$verifying-quality reads spec section 7<br/>確認每個 AC 有測試分類"]
+
+  B --> C["Run ./scripts/verify-pr.sh<br/>V01-V06"]
+  C --> C1["Backend tests<br/>JaCoCo 80%"]
+  C --> C2["Frontend tests<br/>lint / typecheck / coverage"]
+
+  C1 --> D["Run ./scripts/verify-release.sh"]
+  C2 --> D
+
+  D --> D1["E2E Smoke<br/>@happy-path"]
+  D --> D2["E2E Full<br/>all browser app specs"]
+  D --> D3["E2E Fixture<br/>fixture unit project"]
+  D --> D4["E2E Risk<br/>@negative / @edge / @permission / @security<br/>有 tag 才跑"]
+  D --> D5["AOT / Native<br/>processAot + bootBuildImage"]
+  D --> D6["Secret scan<br/>verify log + docs"]
+
+  D1 --> E{"All required gates PASS?"}
+  D2 --> E
+  D3 --> E
+  D4 --> E
+  D5 --> E
+  D6 --> E
+
+  E -- "No" --> F["QA REJECT<br/>回到 implementation / planning-tasks 修"]
+  E -- "Yes" --> G["Write QA evidence to spec section 7<br/>command + log path + counts + verdict"]
+
+  G --> H["$shipping-release"]
+  H --> H1["Archive spec"]
+  H --> H2["Delete task files"]
+  H --> H3["Update CHANGELOG"]
+  H --> H4["Update roadmap"]
+  H --> H5["Commit / tag"]
+
+  H5 --> I["Local release complete"]
 ```
 
-Spring Modulith 的 `ApplicationModules.verify()` 確保：
-- Module 之間沒有非法的直接依賴
-- 跨 module 通訊只透過 public API 或事件
-- 沒有循環依賴
+## Script Strategy
 
-### API Contract
+### Current executable scripts
 
-```bash
-# SpringDoc OpenAPI 產生 + 驗證
-# API spec 自動從 code 產生，endpoint: /v3/api-docs
-```
+目前 QA / release 流程使用兩條 script：
 
-### SBOM
+| Script | When | Contents | Log |
+|--------|------|----------|-----|
+| `scripts/verify-pr.sh` | 每個 spec / task 的快速本機驗證 | Backend test + JaCoCo、frontend test、lint、typecheck、frontend coverage。 | `verify-pr.log` |
+| `scripts/verify-release.sh` | `$verifying-quality` PASS 前與 `$shipping-release` 前 | PR gate + E2E Smoke + E2E Full + E2E Fixture + E2E Risk when tags exist + AOT/native + secret leak check。 | `verify-release.log` |
 
-```bash
-# CycloneDX 自動產生 Software Bill of Materials
-./gradlew cyclonedxBom
-```
-
----
+QA / release 文件記錄實際執行的 script、log path、Summary counts 和 Verdict line。
 
 ## Verification Command Registry
 
-`/verifying-quality` Step 0.5 protocol 期望此 table 為 verify command 的唯一 source of truth。**新增** verify task 須同步更新 `scripts/verify-all.sh`；**移除** 須兩處同刪。
+`$verifying-quality` Step 0.5 以此 table 和 `scripts/verify-release.sh` 對齊。新增或刪除 command 時，script 和本文必須同步。
 
 | ID | Command | Severity | Skip-if | Notes |
 |----|---------|----------|---------|-------|
-| V01 | `./gradlew clean test jacocoTestReport` | CRITICAL | — | 含 ModularityTests 與 compileTestJava；產 jacoco XML/HTML/CSV 三 report |
-| V02 | parse `backend/build/reports/jacoco/test/jacocoTestReport.csv` (awk LINE_MISSED + LINE_COVERED) | INFO（顯示用） | CSV 不存在 | 顯示 LINE coverage %；非 gate（gate 由 V03 負責）|
-| V03 | `./gradlew jacocoTestCoverageVerification` | CRITICAL | task 未註冊（S019 未 ship 之歷史環境） | Threshold 在 `build.gradle.kts` 為 single source；`./gradlew check` 同 gate |
-| V04 | `cd frontend && npm test` | CRITICAL | `frontend/node_modules` 不存在 | Vitest run；frontend test gate |
-| V05 | `cd frontend && npm run verify` | CRITICAL | `frontend/node_modules` 不存在 | ESLint `--max-warnings 0` + `tsc -b`；frontend lint + typecheck gate（debt cleanup 9536680 + cloudbuild.yaml frontend-build step 同步執行）|
-| V06 | `cd frontend && npm test -- --coverage` | CRITICAL | `frontend/node_modules` 不存在 | vitest `coverage.thresholds.lines: 80` gate；text reporter inline 印 coverage table 到 stdout；`coverage.include` whitelist 鎖定有對應 test 的 source 檔（漸進加入 gate）；S022 落地 |
-| V07 | `cd e2e && npx playwright test --grep @happy-path` | CRITICAL | `e2e/node_modules` 不存在 / `e2e/playwright.config.ts` 不存在 | Playwright happy-path E2E gate；`e2e/playwright.config.ts` 會建 production packaged image、用 Compose 啟 disposable DB + mock OAuth + app image、跑 setup fixtures/auth，再開 browser 測正式 static app 與 `/api/v1/*`；artefacts → `e2e/results/fixtures.json`、`e2e/test-results/`、`e2e/playwright-report/`；trace `on-first-retry`；本機看 `npx playwright show-trace <trace.zip>` 或拖到 trace.playwright.dev |
-| V08a | `./gradlew processAot` | CRITICAL | — | AOT-bake-time smoke（~30s）；抓 S158 類 prod-only bug（Jackson default-view-inclusion）；不依 Docker / GraalVM；V07 已跑 processAot 故 cache hit |
-| V08b | `./gradlew --no-daemon -x test bootBuildImage --imageName=skillshub-verify:local -Pspring.profiles.active=aot,local` | CRITICAL | `SKIP_NATIVE=1` env / Docker daemon 不可用 | Paketo native-image buildpack；抓 GraalVM native-image static analysis / reflection metadata / container layer failure；~10min cold；本機 dev `SKIP_NATIVE=1` opt-out（明示風險）。**profile=aot,local**（非 cloudbuild 的 gcp,aot,lab）：gcp profile 觸發 SM ConfigData 需 ADC + 計費，`application-aot.yaml` 設計為 aot 本地 disable SM；gcp-profile-only AOT bug 由 cloudbuild.yaml step 3 在 CI push 時擔當 canonical gate（90/10 split） |
+| V01 | `cd backend && ./gradlew clean test jacocoTestReport` | CRITICAL | — | 跑 backend 全部 JUnit tests，包含 pure unit、slice、`@SpringBootTest + Testcontainers`、Modulith boundary tests；產 JaCoCo XML/HTML/CSV。 |
+| V02 | parse `backend/build/reports/jacoco/test/jacocoTestReport.csv` | INFO | CSV 不存在 | 顯示 LINE coverage；不是 gate。 |
+| V03 | `cd backend && ./gradlew jacocoTestCoverageVerification` | CRITICAL | task 未註冊 | Backend LINE coverage 80% gate；threshold 由 `backend/build.gradle.kts` 管。 |
+| V04 | `cd frontend && npm test` | CRITICAL | `frontend/node_modules` 不存在 | Vitest + React Testing Library / hook / API client tests。 |
+| V05 | `cd frontend && npm run verify` | CRITICAL | `frontend/node_modules` 不存在 | ESLint `--max-warnings 0` + TypeScript `tsc -b`。 |
+| V06 | `cd frontend && npm test -- --coverage` | CRITICAL | `frontend/node_modules` 不存在 | Frontend coverage gate；目前為 include whitelist，不代表全站 coverage。 |
+| V07 | `cd e2e && npx playwright test --grep @happy-path` | CRITICAL | `e2e/node_modules` 不存在 / config 不存在 / 無 `@happy-path` | E2E Smoke：production image + Compose + mock OAuth + fixture manifest + core user journeys。 |
+| V07b | `cd e2e && SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --project=chromium --grep-invert @bootstrap` | CRITICAL | E2E prerequisites 不存在 | E2E Full：所有 app browser specs，包含非 `@happy-path` 檔案；排除 bootstrap-only smoke。 |
+| V07c | `cd e2e && npx playwright test --project="fixture unit"` | CRITICAL | E2E prerequisites 不存在 / fixture spec 不存在 | E2E Fixture：測 DB guard、production API seed helper、projection seed helper。 |
+| V07d | four risk tag runs: `@negative`, `@edge`, `@permission`, `@security` | CRITICAL | E2E prerequisites 不存在 / 無 risk tags | E2E Risk：等 tag backfill 後自動納入；目前無 tag 時 SKIP。 |
+| V08a | `cd backend && ./gradlew processAot` | CRITICAL | — | AOT bake-time smoke；不得要求真 DB、GCP credential、Secret Manager 或真 Gemini key。 |
+| V08b | `cd backend && ./gradlew --no-daemon -x test bootBuildImage --imageName=skillshub-verify:local -Pspring.profiles.active=aot,local` | CRITICAL | `SKIP_NATIVE=1` / Docker unavailable | Full native image build；dev 可明示 opt-out，release 不應跳過。 |
+| V09 | `rg` secret-like pattern against current verify log + `docs/grimo` | CRITICAL | `rg` 不存在 | 確認 log/docs 不含真 API key；pattern 要求 Google key prefix 後至少 20 個 token chars，避免 `AIzaSy...` placeholder 誤判。 |
 
-### V07 / V08 操作規則（S202 後）
+### Future enhancement: deploy smoke
 
-`scripts/verify-all.sh` 是 registry 的可執行版本；改下列任何規則時，必須同時改本表與 script。
+目前 `$shipping-release` 不負責部署，所以本 QA 流程沒有 post-deploy smoke script，流程圖也不把部署環境檢查列為 release 前置條件。
 
-Log 保留規則：`verify-all.log` 位於 repo root，script 啟動時先清空，只保留最新一輪完整輸出；同一輪內各 V0N section 才用 append。QA / release 文件只記 command、log path、Summary counts、Verdict line；失敗時只貼相關錯誤片段，不把整份 log 貼進 spec。
+未來若建立 deploy pipeline 或 site-audit automation，可以在那條流程新增 post-deploy smoke：對 staging/prod URL 打 `/actuator/health`、`/`、`/api/v1/skills?page=0&size=1`、`/api/v1/me`，必要時再驗下載 endpoint。這個 evidence 用來證明部署後環境可用，不取代本機 `verify-release.sh`。
 
-| Gate | Rule | Expected evidence |
-|------|------|-------------------|
-| V07 semantic fixture key | 若 shell 沒有 `SKILLSHUB_E2E_GENAI_API_KEY`，script 可從 `backend/config/application-secrets.properties` 讀 `skillshub.genai.api-key` 到 process env；不得把 key 寫進 tracked file 或 log。 | `verify-all.log` 只出現 `loaded SKILLSHUB_E2E_GENAI_API_KEY ... (value redacted)`，不能出現實際 key 值。 |
-| V07 production target | Playwright 必須測 `skillshub:e2e-local` production packaged image + `e2e/compose.e2e.yaml`，不啟 Vite dev server、不啟 backend test-flavored app。 | `e2e/results/fixtures.json` 存在；Playwright report/test-results 可追到 setup fixtures/auth、chromium tests、teardown。 |
-| V07 fixture writes | Aggregate data 走正式 `/api/v1/*`；projection-only data 才能由 `e2e/fixtures/projection-seed.ts` 寫 SQL，且 DB guard 只允許 disposable `skillshub_e2e`。 | Fixture unit/setup tests 應覆蓋 DB guard 正/反例；browser tests 讀 manifest，不在 test body 直接 reset global state。 |
-| V08a/V08b AOT key | AOT build-time 只帶 `SKILLSHUB_AOT_GENAI_API_KEY` 或預設 `aot-placeholder-key` 到 `SKILLSHUB_GENAI_API_KEY`；不得要求真 Gemini key 才能 `processAot` 或 `bootBuildImage`。 | `./scripts/verify-all.sh` V08a/V08b PASS；本機缺真 key 時仍能完成 AOT/native image build。 |
-| Secret leak check | QA / release 記錄可寫「從 config 載入且 redacted」，不可貼 key。 | `rg "AIza|SKILLSHUB_E2E_GENAI_API_KEY=.*[A-Za-z0-9_-]{20,}|skillshub\\.genai\\.api-key=.*[A-Za-z0-9_-]{20,}" verify-all.log docs/grimo` 應無命中。 |
+OpenAPI contract command 目前不在 planned registry；等產品決定重新啟用 SpringDoc 或改用另一種 contract tooling，再另開 spec。
 
-### Known Limitations
+## Backend QA Rules
 
-| Item | Workaround | Why not enroll |
-|------|-----------|----------------|
-| _（無）— S148e + S166a 後 `processAot` / `processTestAot` 全綠；V08a 落地後 AOT smoke 進入 verify-all 主流程，V08b 補上完整 native-image build 對齊 cloudbuild.yaml prod path。歷史「`bootRun -x processAot`」工作流已過時，**不要再用 `-x processAot`**。_ | — | — |
+Backend 的主要風險在 Spring wiring、PostgreSQL/pgvector、Flyway schema、transaction、Modulith outbox、async projection、security filter chain。只要 AC 碰到這些 runtime 邊界，就不能只靠 pure unit test。
 
-### 不 enroll 的命令
+### Required test level by change type
 
-| 命令 | 為何不入 registry |
-|------|------------------|
-| `./gradlew test --tests "*ModularityTests*"` | V01 `./gradlew test` 已含 modularity tests；單跑 redundant |
-| `./gradlew compileTestJava` | V01 已含 compile（`test` task 自動 depends）|
-| `./gradlew cyclonedxBom` | SBOM 為 ship artifact，非 quality gate |
-| ~~`./gradlew bootBuildImage`~~ | 已 enroll 為 V08b（CRITICAL，default ON，`SKIP_NATIVE=1` opt-out）|
-| `cd frontend && npm run coverage` | `package.json` 無此 script + `@vitest/coverage-v8` 未裝；待獨立 frontend coverage spec（即 §Verification Pipeline §Coverage L23-25 宣告但尚未實作部分）|
+| Change touches | Required test |
+|----------------|---------------|
+| Domain invariant / parser / mapper / version policy / scanner rule | Pure JUnit test is enough when no Spring or DB behavior is involved. |
+| REST endpoint status/body/security branch | `@WebMvcTest` via `WebMvcSliceTestBase`, or `@SpringBootTest + MockMvc` when full security wiring matters. |
+| Repository / SQL / migration / projection row | `@DataJdbcTest` via `RepositorySliceTestBase`, or `@SpringBootTest + Testcontainers` when service orchestration matters. |
+| Command service that saves aggregates or publishes domain events | `@SpringBootTest + Testcontainers`. |
+| `@ApplicationModuleListener` / async projection / outbox | `@SpringBootTest + Testcontainers + @EnableScenarios`; use Modulith `Scenario` instead of long Awaitility waits. |
+| Cloud/GCS/storage integration | Testcontainers or emulator-backed integration test; if no test infra exists, `$verifying-quality` returns `REJECT-BLOCKED`. |
+| AOT/native-sensitive code | Unit/integration test plus V08a/V08b evidence. |
 
----
+### Current backend test bases
 
-## Release Defense Model
+現有 repo 已經有兩個共用 test base，新增 backend 測試時優先使用它們，讓測試跑相同的 Spring/Testcontainers 設定：
 
-`./scripts/verify-all.sh` 是 release 前必跑的總入口；它把下列防線串起來。若某 spec 不跑其中一層，spec §7 必須寫明「為什麼不適用」與替代 evidence。
+| Base class | Use when | What it proves |
+|------------|----------|----------------|
+| `RepositorySliceTestBase` | Repository、SQL、Flyway migration、同步 service + DB 行為；不驗 HTTP，不驗 async listener。 | PostgreSQL/pgvector Testcontainers 跑得起、schema 真的套用、row 寫入/查詢結果正確。 |
+| `WebMvcSliceTestBase` | Controller status/body/header/security branch；service/repo 用 mock。 | HTTP route、request mapping、JSON shape、Spring Security filter path 正確。 |
 
-| Defense | Registry IDs | What must be true |
-|---------|--------------|-------------------|
-| Backend correctness | V01, V03 | `./gradlew clean test jacocoTestReport` 與 coverage gate PASS；JUnit XML 不是 0 tests；Modulith boundary tests 在 V01 內跑過。 |
-| Frontend correctness | V04, V05, V06 | Vitest、ESLint、TypeScript、frontend coverage gate PASS；user-visible copy / layout behavior 不只靠人工看畫面。 |
-| Production browser assembly | V07 | Playwright 跑 production packaged image + Compose disposable DB + mock OAuth + external fixture manifest；不是 Vite dev server，也不是 backend test-flavored app。 |
-| AOT / native package | V08a, V08b | `processAot` 與 `bootBuildImage` PASS；AOT build-time 不需要真 DB、GCP credential、Secret Manager、或真 Gemini key。 |
-| Release ledger | `$shipping-release` | spec 已歸檔、task files 已刪、CHANGELOG 有版本、roadmap 有 shipped row、tag 指到 release commit。 |
+OAuth2 Resource Server path 的 controller tests 用 Spring Security test 的 `.with(jwt())` 建 request，不用 `@WithMockUser`。`@WithMockUser` 會走 `UsernamePasswordAuthenticationToken`，不是目前 controller 在 production 會收到的 JWT path。
 
-這個模型的目的不是多跑 command，而是讓不同類型的錯在對應位置失敗：unit/slice 測 business rule，V07 測真組裝，V08 測 native image，release ledger 防 automation 下一輪誤判狀態。
+### Async listener tests
 
-## Three-Layer Verification
-
-### Layer 1: Automated Tests
-
-| 類型 | 工具 | 說明 |
-|------|------|------|
-| Unit Test | JUnit 5 / Vitest | 單一 class/function 的邏輯驗證 |
-| Integration Test | Spring Boot Test + Testcontainers | 跨元件整合（DB, GCS） |
-| Module Test | Spring Modulith `@ApplicationModuleTest` | 單一 module 的完整測試（含 DB） |
-| Async Listener Test | Spring Modulith `Scenario` API | async event listener 行為驗證（取代 Awaitility 30s） |
-| API Test | MockMvc / WebTestClient | REST API 請求/回應驗證 |
-| Frontend Component Test | Vitest + React Testing Library | React 元件渲染 + 互動 |
-
-#### Async Listener 驗證標準 pattern（S025a 起）
-
-`@ApplicationModuleListener` async listener 驗證**首選 Spring Modulith `Scenario` API**，**禁用 30s Awaitility band-aid**。
-
-**標準 pattern**：
+`@ApplicationModuleListener`、outbox、projection listener 的測試首選 Spring Modulith `Scenario`：
 
 ```java
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
-@EnableScenarios   // @SpringBootTest 不自動 include；@ApplicationModuleTest 已內建
+@EnableScenarios
 class FooListenerTest {
 
     @Test
     void publishEvent_triggersListener_writesRow(Scenario scenario) {
         scenario.publish(new SkillCreatedEvent(...))
                 .andWaitForStateChange(() -> repo.findById(id).orElse(null))
-                .andVerify(row -> assertThat(row.getX()).isEqualTo(...));
+                .andVerify(row -> assertThat(row.getName()).isEqualTo("demo"));
     }
 }
 ```
 
-**全域 timeout default 5s**（per `TestcontainersConfiguration.scenarioTimeout()` `@Bean ScenarioCustomizer`）；個別 listener 需更長（如 ScanOrchestrator 完整 SARIF pipeline）顯式 `.andWaitAtMost(Duration.ofSeconds(N))` override。
+`TestcontainersConfiguration` 目前有 `ScenarioCustomizer` default timeout 5s。只有 connection counter、outbox status polling 這類 infra 計數測試才改用 Awaitility；不要把 30s Awaitility 當 async listener 測試的預設解法。
 
-**何時改用 Awaitility**：infra 計數類測試（`HikariPoolUnderLoadTest` 等待 connection counter 達標、outbox row status 變化）— Scenario 不直接適用。timeout 上限 **5s**（同步於 Scenario default）。
+### Backend coverage
 
-**Anti-pattern**：
-- `Awaitility.await().atMost(Duration.ofSeconds(30))` — S023-T07 cache key 爆炸時的 timing race band-aid，per S025a-T01 POC validated（async listener p95 < 1s）已不需要
-- 個別 file 散佈 `@MockitoBean EmbeddingModel` / `@MockitoBean CurrentUserProvider` — Spring TestContext customizer 變異 → cache key 爆炸；改 lift 至 `TestcontainersConfiguration.@Bean @Primary` 或 `@WithMockUser`
+Backend coverage is enforced by JaCoCo:
 
-**測試金字塔目標**（per S025a + S025b roadmap）：
-- 純 unit（JUnit 5 / Vitest，無 Spring context）：≥ 50%
-- Slice（`@DataJdbcTest` / `@WebMvcTest` / `@ApplicationModuleTest`）：~30%
-- E2E `@SpringBootTest(WebEnvironment=RANDOM_PORT)`：≤ 3（S025b 落地）
-- Cache key 上限：baseline ~42 → S025b ship 後 ~18（pgvector container 啟動 18 次/run）；目標 ≤ 10 留 S025c
-- JVM heap：S023-T07 quick-win 設 3g；S025b T01 移除 cache.maxSize=8；T05 降至 2g（仍需 — 18 個 CONFIG bucket `@SpringBootTest` 各自獨立 customizer set）；default 還原留 S025c
-
-#### REPO slice via `RepositorySliceTestBase`（S025b 起）
-
-純 repo / service 整合測試（無 HTTP、無 async listener 斷言）首選 `@DataJdbcTest` slice + 共用 base class 收斂 cache key：
-
-```java
-@Import(MyService.class)   // service 依賴 — slice 不掃 @Service
-class MyServiceTest extends RepositorySliceTestBase {
-    @Autowired private MyService service;
-    @Autowired private MyRepository repo;
-    // 驗 sync TX state；async audit log 屬 module test / e2e 範圍
-}
+```bash
+cd backend && ./gradlew jacocoTestCoverageVerification
 ```
 
-`RepositorySliceTestBase` 已綁 `@DataJdbcTest + @Import(TestcontainersConfiguration) + @TestPropertySource("management.tracing.enabled=false") + @ImportAutoConfiguration`（解 Spring Modulith AOT blocker；詳 base class Javadoc）+ `@Transactional(propagation=NOT_SUPPORTED)`。14 個 REPO slice 共用同一 cache entry。
+Gate:
 
-#### WEB slice via `WebMvcSliceTestBase`（S025b 起）
+- LINE coverage must be >= 80%.
+- Coverage is not enough by itself; AC evidence must still show the behavior was tested at the correct level.
+- New production classes with 0% coverage are an IMPORTANT finding even if aggregate coverage still passes.
 
-純 controller HTTP / auth gate 測試（無 DB seed、無 async event 斷言）首選 `@WebMvcTest` slice + 共用 base class：
+### Backend BDD traceability
 
-```java
-@WebMvcTest(MyController.class)
-class MyControllerTest extends WebMvcSliceTestBase {
-    @Autowired MockMvc mockMvc;
-    @MockitoBean MyService service;   // controller-specific dep
+Every backend behavior test should include either:
 
-    @Test
-    void getEndpoint_returns200() throws Exception {
-        mockMvc.perform(get("/api/v1/foo")
-                .with(jwt().jwt(j -> j.subject("alice"))
-                        .authorities(new SimpleGrantedAuthority("ROLE_user"))))
-            .andExpect(status().isOk());
-    }
-}
+- `@DisplayName("AC-N: ...")`
+- `@Tag("AC-N")`
+- or a spec id tag like `@Tag("AC-S203-4")`
+
+Evidence in spec §7 should say what command was run and what user-visible/API/DB result changed.
+
+## Frontend QA Rules
+
+Frontend QA follows a user-behavior rule: test what the user can see, click, type, or receive as an error message. Avoid testing component internals, private state, or CSS class implementation details unless the class itself is the contract being shipped.
+
+### Required test level by change type
+
+| Change touches | Required test |
+|----------------|---------------|
+| `src/lib` pure functions | Vitest unit test with concrete inputs/outputs. |
+| `src/api` client / response mapper | Vitest API client test; assert URL, method, request body, response shape, and error shape. |
+| `src/hooks` | Vitest hook test; assert returned state and network calls from the user's scenario. |
+| `src/components` | React Testing Library test using role/label/text and `user-event` where interaction matters. |
+| `src/pages` | Page-level Vitest test with mocked API responses; assert visible copy, buttons, links, navigation, empty/error states. |
+| Layout / mobile / overflow / production-only visual behavior | Playwright browser test if jsdom cannot faithfully verify it. |
+
+### Frontend coverage
+
+Current state: `frontend/vite.config.ts` uses `coverage.include` whitelist. This is allowed as a migration strategy, but it is not full frontend coverage.
+
+Policy from now on:
+
+1. If a spec modifies a frontend production file under `src/pages`, `src/components`, `src/hooks`, `src/api`, or `src/lib`, that file must either already be in coverage include or be added in the same spec.
+2. The spec must add or update a behavior test for that file.
+3. Do not immediately switch to all `src/**`; expand coverage by touched files first, then by area.
+4. A future QA infrastructure spec should migrate coverage include by groups: API/lib first, hooks second, reusable components third, pages last.
+
+Gate:
+
+```bash
+cd frontend && npm test -- --coverage
 ```
 
-`WebMvcSliceTestBase` 已綁 `@Import(SecurityConfig) + @EnableConfigurationProperties(SkillshubProperties) + @MockitoBean JwtDecoder + @MockitoBean PermissionEvaluator + @ImportAutoConfiguration + @TestPropertySource("management.tracing.enabled=false")`。OAuth2 RS 用 `.with(jwt())` post-processor，**不**用 `@WithMockUser`（後者注入 `UsernamePasswordAuthenticationToken` 走錯 path）。
+The gate must remain 80% for files included in the coverage set.
 
-### Layer 2: Integration Verification
+## Browser E2E Rules
 
-| 驗證項目 | 方式 |
-|----------|------|
-| PostgreSQL + pgvector | Testcontainers `pgvector/pgvector:pg16`（開發 + CI 一致；本機 Docker Compose 用同 image） |
-| GCS 整合 | Testcontainers + GCS emulator |
-| Spring Modulith 邊界 | `ApplicationModules.verify()` |
-| API 文件一致性 | SpringDoc 自動產生，人工抽驗 |
+`e2e/` owns browser tests. Browser E2E must run against the production packaged app image, not Vite dev server and not a test-flavored backend app.
 
-### Layer 3: Manual / E2E
+Current production-image path:
 
-| 驗證項目 | 方式 |
-|----------|------|
-| UI 功能驗證 | Playwright via `/playwright-expert`（VERIFY mode）；V07 跑 production packaged app image + disposable DB + mock OAuth + `e2e/fixtures` manifest；evidence 寫至 `e2e/results/evidence.json`；本機 trace `npx playwright show-trace` 或 trace.playwright.dev（皆免費 + offline） |
-| 跨瀏覽器 | Playwright 預設 chromium（headless shell）；新增 Firefox / WebKit project 待規模需要時加 |
-| 上傳/下載流程 | 由 happy-path spec 涵蓋；大檔案 / 異常格式邊界由 backend integration test（Testcontainers）涵蓋，不重複放 E2E |
-| 風險評估準確度 | 準備已知危險/安全的 skill 樣本驗證（仍含人工抽驗，非全自動） |
+1. `e2e/scripts/build-e2e-image.sh` builds `skillshub:e2e-local`.
+2. `e2e/compose.e2e.yaml` starts disposable PostgreSQL/pgvector, mock OAuth server, and app image.
+3. Playwright setup projects create fixture manifest and browser auth state.
+4. Browser tests read `e2e/results/fixtures.json`.
+5. Aggregate data uses production `/api/v1/*`; projection-only rows may use guarded SQL against disposable `skillshub_e2e`.
 
-#### Browser E2E evidence checklist
+### E2E gate taxonomy
 
-跑 `cd e2e && npx playwright test --grep @happy-path` 或 V07 時，QA 記錄至少要能回答：
+| Gate | Tag / project | Command shape | Purpose |
+|------|---------------|---------------|---------|
+| E2E Smoke | `@happy-path` | `npx playwright test --grep @happy-path` | Core user journeys every release. |
+| E2E Full | app specs | `npx playwright test --project=chromium --grep-invert @bootstrap` | All app browser specs, including non-happy-path files already written. |
+| E2E Fixture | `fixture unit` project | `npx playwright test --project="fixture unit"` | Proves the fixture runner and DB guard are trustworthy. |
+| E2E Risk | `@negative`, `@edge`, `@permission`, `@security` | see command block below | User mistakes, bad data, auth/permission, malicious input. |
 
-| Check | Evidence |
-|-------|----------|
-| app 來源 | log 顯示 `npm run image:build` / `skillshub:e2e-local`，不是 Vite dev server。 |
-| fixture 來源 | `e2e/results/fixtures.json` 有本輪 manifest；browser spec 透過 manifest 取 skill/request/user id。 |
-| auth 來源 | `playwright/.auth/*.json` 由 mock OAuth2 Login setup project 產生；測 `/api/v1/me` 或 AuthArea 顯示。 |
-| route purity | browser/helper source 不呼叫 `/internal/test/*`；production artifact clean gate 已在 V01 `check` 內跑。 |
-| failure artefact | 失敗時 `e2e/test-results/` 有 trace/screenshot/video；本機用 `npx playwright show-trace <trace.zip>` 打開。 |
+### E2E tag rules
 
----
+Use these tags in browser tests:
 
-## AC-to-Test Contract
+| Tag | Meaning |
+|-----|---------|
+| `@happy-path` | Core product journey; included in Smoke. |
+| `@negative` | Empty input, duplicate data, malformed data, failed validation. |
+| `@edge` | Boundary values, long lists, pagination, mobile/viewport edge, race-prone UI. |
+| `@permission` | Login, role, authz denied, cross-user / cross-scope behavior. |
+| `@security` | XSS, path traversal, sensitive data exposure, forbidden test route exposure. |
+| `@fixture` | Test fixture tooling only; not a product flow. |
+| `@profile-empty` / `@profile-single` / `@profile-paged` | Fixture state shape required by the scenario. |
 
-每個 spec 的 acceptance criteria（AC）必須對應測試：
+### Current E2E selection
+
+Current `@happy-path` Smoke includes S140, S172, S193, S203 browser flows. Full browser run should additionally include existing non-Smoke app specs such as S176, S187, and S195.
+
+`e2e/tests/smoke.spec.ts` is bootstrap-only and should not be part of release Full gate.
+
+Risk gate can be run as four explicit Playwright invocations until a helper script exists:
+
+```bash
+cd e2e
+SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --grep @negative
+SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --grep @edge
+SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --grep @permission
+SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --grep @security
+```
+
+## Risk / Negative Coverage
+
+Every user-facing workflow should eventually have at least one executable scenario for each relevant risk category:
+
+| Category | Examples |
+|----------|----------|
+| Empty / null | Blank search, empty upload, empty collection selection. |
+| Boundary | Long query, large package, page boundary, mobile width, many results. |
+| Format mismatch | Malformed UUID, invalid version, non-zip upload, invalid enum. |
+| State conflict | Duplicate skill name, suspended skill download/edit, stale version update. |
+| Permission denied | Anonymous write, viewer admin action, non-owner edit/share. |
+| Malicious input | XSS text, SQL-like query, path traversal filename, secret-looking payload. |
+| Concurrent / race | Rapid search changes, duplicate publish attempts, async projection lag. |
+
+Backend integration tests may cover a category when browser E2E would be slower and not more informative. Browser E2E is required when the behavior depends on real page routing, real auth session, production static assets, or user-visible DOM state.
+
+## OpenAPI / API Contract
+
+OpenAPI is not a release gate right now.
+
+Reason:
+
+- `backend/build.gradle.kts` currently does not include SpringDoc.
+- `/v3/api-docs` and `/swagger-ui` appear in historical docs and frontend dev proxy comments, but they are not backed by current backend dependency configuration.
+
+Current API contract evidence comes from:
+
+- Backend controller tests (`@WebMvcTest` / MockMvc).
+- Backend integration tests for request/response behavior.
+- Frontend API client tests asserting URL, method, payload, response shape, and error mapping.
+- Browser E2E hitting production `/api/v1/*`.
+
+If the product wants OpenAPI again, create a dedicated QA infrastructure spec that:
+
+1. Adds the chosen OpenAPI tooling.
+2. Defines exposure by profile.
+3. Adds contract tests.
+4. Adds a registry command.
+5. Updates this section from "not a gate" to "release gate".
+
+## Secret And Artifact Rules
+
+### Log and secret handling
+
+V07 may load `SKILLSHUB_E2E_GENAI_API_KEY` from `backend/config/application-secrets.properties`, but logs must only show redacted status.
+
+Release evidence must include:
+
+```bash
+rg "AIza[0-9A-Za-z_-]{20,}|SKILLSHUB_E2E_GENAI_API_KEY=[A-Za-z0-9_-]{20,}|skillshub\\.genai\\.api-key=[A-Za-z0-9_-]{20,}" verify-release.log docs/grimo
+```
+
+Expected: no match.
+
+### Production artifact cleanliness
+
+`backend/build.gradle.kts` defines `assertProductionArtifactClean`. It must remain attached to `check` and must fail if production bootJar contains E2E support classes/resources such as test reset controllers or `application-e2e`.
+
+## AC-To-Test Contract
+
+Every spec AC must be classified before implementation:
+
+| Classification | Meaning |
+|----------------|---------|
+| Backend runtime | Verified by JUnit / Spring / Testcontainers. |
+| Frontend behavior | Verified by Vitest / React Testing Library. |
+| Browser E2E | Verified by Playwright production image. |
+| Evidence-only | File/config/docs-only change; verified by command output or grep. |
+| Manual-ready | Human can verify in under 5 minutes from written instructions. |
+| Untestable | Should be executable but lacks infrastructure; blocks shipping. |
+
+Test names should include AC IDs:
 
 ```java
-// Backend example
 @Test
-@DisplayName("AC-1: 用關鍵字搜尋技能 - 回傳 name 或 description 含關鍵字的 skills")
+@DisplayName("AC-1: upload valid SKILL.md publishes a skill")
 @Tag("AC-1")
-void searchByKeyword_returnsMatchingSkills() {
+void uploadValidSkill_publishesSkill() {
     // ...
 }
 ```
 
 ```typescript
-// Frontend example
-describe('AC-1: 用關鍵字搜尋技能', () => {
-  it('should return skills matching keyword in name or description', () => {
-    // ...
-  });
-});
+it('AC-1: upload valid SKILL.md publishes a skill', async () => {
+  // ...
+})
 ```
 
-一個 spec 被視為 "covered" 的條件：每個 AC id 至少有一個對應的測試。
+Evidence-only ACs are allowed only when there is no production behavior change, for example build config, documentation, or script registry updates. A production code change must have executable behavior evidence.
 
-### Build / Config Spec — Evidence-Only AC 例外（S019 + S020 + S022 共識）
+## Verifying-Quality Protocol
 
-純 build / config / docs spec（無 production code 變動）可採 **evidence-only AC** 不需 `@DisplayName` / `describe` 對應 test 方法，AC 由以下 evidence 證明：
+`$verifying-quality` applies this checklist:
 
-- `grep` / `cat` / `ls` 等檔案存在性與內容檢查
-- `./gradlew tasks --all` / `npm test -- --version` 等 task / binary 註冊檢查
-- `./scripts/verify-all.sh` exit code + Summary 輸出
-- live build / live run 產出的 stdout 證據（`BUILD SUCCESSFUL` / `Tests N passed` 等）
-- 人工 review（檔案內容對齊 ground truth）
+1. Read spec, PRD, architecture, development standards, QA strategy, and relevant code.
+2. Confirm every AC has a verification classification.
+3. Reconcile this command registry with actual build/package scripts.
+4. Run the applicable executable gate.
+5. Inspect coverage output and test evidence.
+6. Confirm browser E2E used production image when UI/runtime assembly is affected.
+7. Confirm no OpenAPI gate is claimed unless OpenAPI tooling exists.
+8. Record command, log path, summary counts, and verdict in spec §7.
+9. Return `REJECT-BLOCKED` if a required verification capability does not exist.
 
-範例 spec：S019（JaCoCo gate；6 AC 全 build-evidence）/ S020（verify-all.sh；7 AC 全 evidence）/ S021（PostgreSQL doc-sync；7 AC 全 grep + human review）。
-
-此例外僅適用「無 production code 變動」spec；任何加新 service / listener / projection / component / hook 的 spec 必須回到本 §AC-to-Test Contract 主規則（每個 AC 至少對應 1 個 test）。
-
----
-
-## Development Environment
-
-### Local Dev
+## Local Development Commands
 
 ```bash
-# 啟動後端 + 依賴服務（Grafana LGTM via Docker Compose）
-./gradlew bootTestRun    # 使用 TestcontainersConfiguration
+# Backend local app; Spring Boot starts Docker Compose dependencies as configured.
+cd backend && ./gradlew bootRun
 
-# 啟動前端 dev server（hot reload）
+# Backend tests and coverage.
+cd backend && ./gradlew clean test jacocoTestReport
+cd backend && ./gradlew jacocoTestCoverageVerification
+
+# Frontend dev server and checks.
 cd frontend && npm run dev
+cd frontend && npm test
+cd frontend && npm run verify
+cd frontend && npm test -- --coverage
+
+# Browser E2E; Playwright starts production-image Compose target through webServer.
+cd e2e && SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --grep @happy-path
+cd e2e && SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --project=chromium --grep-invert @bootstrap
+cd e2e && npx playwright test --project="fixture unit"
+
+# Fast local gate for spec/task work.
+./scripts/verify-pr.sh
+
+# Full local release gate.
+./scripts/verify-release.sh
+
 ```
 
-### Testing with PostgreSQL
+## Maintenance Rules
 
-- 開發階段：使用 Testcontainers + `pgvector/pgvector:pg16` image（與 `backend/compose.yaml` 同 image；dev/test 行為一致）
-- CI 階段：同 Testcontainers image（無 emulator 替代品；OS-portable、無 macOS/CI flakiness）
-- Staging / GCP Production：Cloud SQL（PostgreSQL 18 + `cloudsql.enable_pgvector` instance flag）+ Cloud SQL Auth Proxy sidecar；JDBC URL 與本機相同（dev/prod parity）— 詳 [`architecture.md` §PostgreSQL Configuration](./architecture.md#postgresql-configuration)
+- Changing registry commands requires updating this file and the relevant `scripts/verify-*.sh` file in the same change.
+- Changing E2E runtime, fixture profiles, or Playwright project graph requires updating `docs/grimo/architecture.md`, `docs/grimo/development-standards.md`, and `docs/grimo/test-cases.md` when their claims change.
+- Adding frontend production files should update `frontend/vite.config.ts` coverage include according to the touched-file policy.
+- Adding backend dependencies must respect BOM-managed versions and update `docs/grimo/architecture.md` dependency table when the dependency is product-relevant.
+- OpenAPI must not be described as available or verified until the backend dependency and tests exist again.

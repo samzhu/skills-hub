@@ -160,7 +160,7 @@ S202 後，browser E2E 的 ground truth 分散在多個 `docs/grimo/*.md` 檔案
 | `docs/grimo/PRD.md` | 產品層決策；D28 定義 Critical Path browser E2E 打 production packaged image，不打 test-flavored app。 | 改變 V07 測什麼產品能力、或改變「正式 app image vs dev server」取捨時。 |
 | `docs/grimo/architecture.md` | `e2e/` workspace、Compose topology、fixture manifest、mock OAuth、artifact clean gate 的 runtime 設計。 | 改 `e2e/compose.e2e.yaml`、Playwright project graph、fixture output shape、或 image build path 時。 |
 | `docs/grimo/development-standards.md` | 新 spec / task 必須遵守的開發規則，例如不新增 `/internal/test/*` route、fixture data 要走 production API、projection SQL 必須 DB guard。 | 新增或移除 E2E fixture 寫法、test naming/tagging rule、或 production artifact 禁止項時。 |
-| `docs/grimo/qa-strategy.md` | Verification Command Registry；`scripts/verify-all.sh` 的 V01-V08 行為、skip 條件、evidence 要求。 | 新增/刪除 verify command、改 V07/V08 command、改 coverage/native/image gate 時。 |
+| `docs/grimo/qa-strategy.md` | Verification Command Registry；`scripts/verify-release.sh` 的 V01-V09 行為、skip 條件、evidence 要求。 | 新增/刪除 verify command、改 V07/V08/V09 command、改 coverage/native/image gate 時。 |
 | `docs/grimo/test-cases.md` | Mode B user-flow ledger；哪些正例/反例/邊界還只是 planned，哪些已由 V07 production image gate 覆蓋。 | 新增 browser E2E scenario、把 ledger case 轉成實際 Playwright spec、或調整未補的反例/邊界清單時。 |
 | `docs/grimo/glossary.md` | 跨文件共用術語，例如 Fixture Manifest、Test Data Seed、E2E Test。 | 新增 runner/fixture/test profile 名詞，或重新命名既有術語時。 |
 
@@ -332,7 +332,7 @@ Skills Hub 的 shipped artifact 是單一 Spring Boot container image。React so
 |---------|---------|---------------|
 | Local backend dev | `cd backend && ./gradlew bootRun` | 啟 Spring Boot；本機開發用，不代表 production package。 |
 | Local frontend dev | `cd frontend && npm run dev` | 啟 Vite hot reload；只給開發者操作 UI，不進 release evidence。 |
-| Full local verification | `./scripts/verify-all.sh` | V01-V08 都 PASS 才能 ship；V07 會建 production packaged image，V08b 會跑 native image build。 |
+| Full local verification | `./scripts/verify-release.sh` | V01-V09 都 PASS 才能 ship；V07/V07b/V07c/V07d 會測 production packaged image，V08b 會跑 native image build，V09 會掃 secret-like value。 |
 | E2E package target | `cd e2e && npm run image:build` | 建 `skillshub:e2e-local`；用 production packaged app + static frontend，不用 Vite dev server。 |
 | CI / production image | Cloud Build：`npm ci && npm run build` → copy `frontend/dist` → `./gradlew bootBuildImage --imageName=<AR>:$SHORT_SHA` | Artifact Registry 取得 image；GCP profile 的 AOT/Secret Manager parity 由 Cloud Build step 擔任 canonical gate。 |
 | Manual deploy path | `scripts/gcp/03-build-push.sh` | Script 自帶 frontend build/copy + backend image build/push；只有 user 明確要求 deploy 時使用。 |
@@ -354,7 +354,7 @@ Skills Hub 的 shipped artifact 是單一 Spring Boot container image。React so
 2. `docs/grimo/tasks/` 是否還有已 QA PASS spec 的 task file？有的話下一步是 `$shipping-release`，不是開新 spec。
 3. Browser E2E 是否真的跑 production image？log 要看得到 `skillshub:e2e-local` / Compose / fixture manifest，不是 Vite dev server。
 4. AOT/native image 是否用 fake build-time key？`processAot` / `bootBuildImage` 不該需要真 Gemini key。
-5. Secret 是否只出現在 ignored config 或 process env？`verify-all.log` / docs / diff 不得出現實際 key。
+5. Secret 是否只出現在 ignored config 或 process env？`verify-release.log` / docs / diff 不得出現實際 key。
 6. 新增 Spring async listener 時，是否用 `@ApplicationModuleListener`、Scenario test、idempotent write？不要回到 30s Awaitility。
 7. 新增 JSON/Jackson contract 時，是否走 Spring auto-configured `JsonMapper` / MockMvc？不要用 `new ObjectMapper()` 做 false-positive test。
 8. 新增 production package behavior 時，是否同步 `PRD.md`、`architecture.md`、`development-standards.md`、`qa-strategy.md`、`test-cases.md`、`glossary.md` 的 owner 段落？

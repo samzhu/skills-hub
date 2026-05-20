@@ -106,7 +106,7 @@ flowchart TD
     W --> X{"QA verdict"}
     X -- "REJECT" --> O
     X -- "PASS" --> Y["$shipping-release SNNN"]
-    Y --> Z["verify-all.sh<br/>CHANGELOG<br/>roadmap shipped row<br/>archive spec<br/>clean tasks<br/>commit/tag"]
+    Y --> Z["verify-release.sh<br/>CHANGELOG<br/>roadmap shipped row<br/>archive spec<br/>clean tasks<br/>commit/tag"]
     Z --> AA["Shipped"]
 ```
 
@@ -519,7 +519,7 @@ POC 要先測現有 stack 能不能解決問題，再測新 dependency。
 它會：
 
 1. 確認 spec §7 有 PASS evidence。
-2. 跑 `./scripts/verify-all.sh`，確認 critical checks 都過。
+2. 跑 `./scripts/verify-release.sh`，確認 critical checks 都過。
 3. 更新產品或架構文件，只更新真的有變的地方。
 4. 把 spec 移到 `docs/grimo/specs/archive/`。
 5. 刪掉 `docs/grimo/tasks/` 裡對應的 task files。
@@ -529,7 +529,7 @@ POC 要先測現有 stack 能不能解決問題，再測新 dependency。
 9. commit。
 10. 需要時 tag。
 
-如果 `verify-all.sh` 失敗，不能 ship。
+如果 `verify-release.sh` 失敗，不能 ship。
 
 ## E2E / audit loop 怎麼工作
 

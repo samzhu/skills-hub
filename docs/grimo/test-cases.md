@@ -19,9 +19,9 @@
 
 ---
 
-## Current V07 Gate — Production Image Browser E2E
+## Current Release Browser Gates — Production Image Browser E2E
 
-`./scripts/verify-all.sh` 的 V07 command 保持 `cd e2e && npx playwright test --grep @happy-path`。S202 後這個 command 會建 `skillshub:e2e-local` production packaged image，使用 `e2e/compose.e2e.yaml` 啟 disposable pgvector DB、mock OAuth server、app image，並由 `e2e/fixtures` 寫出 `e2e/results/fixtures.json`。Browser tests 讀 manifest，aggregate data 走正式 `/api/v1/*`，projection-only rows 才能經 DB guard 寫入 disposable DB。
+`./scripts/verify-release.sh` 是目前 canonical release gate。V07 command 是 `cd e2e && npx playwright test --grep @happy-path`；V07b 會跑 `cd e2e && SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --project=chromium --grep-invert @bootstrap`；V07c 會跑 fixture unit project；V07d 會在有 `@negative` / `@edge` / `@permission` / `@security` tag 時跑 risk cases。這些 browser gates 會建 `skillshub:e2e-local` production packaged image，使用 `e2e/compose.e2e.yaml` 啟 disposable pgvector DB、mock OAuth server、app image，並由 `e2e/fixtures` 寫出 `e2e/results/fixtures.json`。Browser tests 讀 manifest，aggregate data 走正式 `/api/v1/*`，projection-only rows 才能經 DB guard 寫入 disposable DB。
 
 Round 1-7 仍是 user-flow ledger；planned negative / boundary cases 是未來 backfill 清單，不代表 V07 仍停在手動或 component-only 狀態。
 
