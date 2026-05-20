@@ -1,6 +1,6 @@
 # S205: Download Filename UTF-8 Content-Disposition
 
-> 規格：S205 | 大小：XS(8) | 狀態：⏳ QA pending（local header contract PASS；AC-S205-5 post-release evidence pending）
+> 規格：S205 | 大小：XS(8) | 狀態：✅ QA PASS / ready-to-ship（local release gate PASS；AC-S205-5 post-release evidence pending）
 > 日期：2026-05-20
 > 對應：PRD P4 一鍵安裝（Web 下載） / S061 / S176 / S188
 
@@ -316,6 +316,18 @@ content-disposition: attachment; filename*=UTF-8''OAuth%20%E5%B0%88%E5%AE%B6-1.z
 - `UnmappableCharacterException`
 - `MessageBytes.toBytes`
 
-### 7.5 QA Routing
+### 7.5 Independent QA Review (2026-05-21)
 
-Local implementation is complete for AC-S205-1~4. AC-S205-5 is explicitly post-release evidence because this development loop does not deploy or inspect the production site. Next workflow step: `$verifying-quality S205`.
+| Layer | Result | Evidence |
+|---|---|---|
+| Automated release gate | PASS | `./scripts/verify-release.sh` wrote `verify-release.log` and returned `exit=0` at 2026-05-20 19:26:40 UTC. Summary: V01=PASS, V02=INFO, V03=PASS, V04=PASS, V05=PASS, V06=PASS, V07=PASS, V07b=PASS, V07c=PASS, V07d=SKIP, V08a=PASS, V08b=PASS, V09=PASS; PASS=11, FAIL=0, SKIP=1, INFO=1. |
+| AC coverage | PASS | AC-S205-1~4 are covered by `SkillQueryControllerApiContractTest` tags. AC-S205-5 has executable post-release curl/log instructions in §7.4 because this dev loop does not deploy or inspect production. |
+| Code review | PASS | `SkillQueryController.contentDisposition(...)` uses Spring `ContentDisposition` with UTF-8 and `safeFilenamePart(...)` strips `/` and `\` from suggested filenames. No production code changed in this QA tick. |
+| Manual / post-release evidence | READY | §7.4 has the exact production `curl` command, expected `content-disposition` header, and Cloud Run log strings that must be absent after deployment. |
+| Testability gate | CLEAR | All local ACs have automated evidence; the production-only AC is manual-ready with concrete commands and expected output, not untestable. |
+
+Verdict: PASS — S205 is ready for `$shipping-release S205`.
+
+### 7.6 QA Routing
+
+Local implementation is complete for AC-S205-1~4. AC-S205-5 is explicitly post-release evidence because this development loop does not deploy or inspect the production site. Local release gate is green. Next workflow step: `$shipping-release S205`.
