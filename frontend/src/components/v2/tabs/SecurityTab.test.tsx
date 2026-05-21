@@ -282,14 +282,14 @@ describe('SecurityTab', () => {
     expect(screen.getByText('W008')).toBeTruthy()
     expect(screen.getByText('scripts/use-openai.sh:3')).toBeTruthy()
     expect(screen.getByText('修法：請移除寫死在 package 文字裡的 secret')).toBeTruthy()
-    expect(screen.getByText('先查看掃描發現')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '先查看掃描發現' })).toBeNull()
   })
 
-  it('AC-S190-8: LOW actions show download/view/report and download is enabled', () => {
+  it('AC-S190-8: Security tab does not duplicate download/files/report actions', () => {
     render(<SecurityTab riskLevel="LOW" report={lowToolsOnlyReport} />)
 
-    expect(screen.getByRole('button', { name: '下載技能' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: '查看檔案' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '回報疑慮' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '下載技能' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '查看檔案' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '回報疑慮' })).toBeNull()
   })
 })

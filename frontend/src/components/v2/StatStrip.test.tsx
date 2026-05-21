@@ -22,7 +22,7 @@ describe('StatStrip', () => {
     expect(screen.getByText('下載次數')).toBeTruthy()
     expect(screen.getByText('評分')).toBeTruthy()
     expect(screen.getByText('版本數')).toBeTruthy()
-    expect(screen.getByText('待處理旗標')).toBeTruthy()
+    expect(screen.getByText('待處理回報')).toBeTruthy()
   })
 
   it('AC-S142a-10: downloads delta ↑ with green color', () => {

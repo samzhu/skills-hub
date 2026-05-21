@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
-import { Download, FileText, Flag, Search } from 'lucide-react'
 import type { SecurityFindingSummary, SecurityReport, SecurityRiskReason } from '@/api/security'
 import type { RiskLevel } from '@/types/skill'
 
@@ -121,7 +119,7 @@ function reasonHeading(reason: SecurityRiskReason): string {
 }
 
 function actionTone(reason: SecurityRiskReason): string {
-  if (reason.action === 'FIX_REQUIRED') return '先查看掃描發現'
+  if (reason.action === 'FIX_REQUIRED') return '請看下方掃描發現'
   if (reason.action === 'REVIEW_FIRST') return '使用前先確認'
   return '可以下載使用'
 }
@@ -180,43 +178,6 @@ function RiskReasonSection({ reasons, riskLevel }: { reasons: SecurityRiskReason
           </article>
         ))}
       </div>
-    </section>
-  )
-}
-
-function ActionButton({ children, primary, icon }: { children: string; primary?: boolean; icon: ReactNode }) {
-  return (
-    <button
-      type="button"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '7px 10px',
-        borderRadius: 8,
-        border: primary ? '0.5px solid rgba(127,119,221,.45)' : '0.5px solid var(--line, rgba(255,255,255,0.08))',
-        background: primary ? 'rgba(127,119,221,.16)' : 'rgba(255,255,255,0.03)',
-        color: 'var(--ink-1, #EEECEA)',
-        fontSize: 12,
-        cursor: 'pointer',
-      }}
-    >
-      {icon}
-      {children}
-    </button>
-  )
-}
-
-function ActionStrip({ hasFindings }: { hasFindings: boolean }) {
-  return (
-    <section style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-      {hasFindings ? (
-        <ActionButton primary icon={<Search size={14} aria-hidden="true" />}>先查看掃描發現</ActionButton>
-      ) : (
-        <ActionButton primary icon={<Download size={14} aria-hidden="true" />}>下載技能</ActionButton>
-      )}
-      <ActionButton icon={<FileText size={14} aria-hidden="true" />}>查看檔案</ActionButton>
-      <ActionButton icon={<Flag size={14} aria-hidden="true" />}>回報疑慮</ActionButton>
     </section>
   )
 }
@@ -365,8 +326,6 @@ export function SecurityTab({ report, riskLevel }: Props) {
       </section>
 
       <RiskReasonSection reasons={riskReasons} riskLevel={riskLevel} />
-
-      <ActionStrip hasFindings={counts.total > 0} />
 
       <section>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>

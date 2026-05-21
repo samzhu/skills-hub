@@ -167,7 +167,7 @@ export function SkillDetailPage() {
                 <TabsTrigger value="versions">版本</TabsTrigger>
                 <TabsTrigger value="reviews">評論</TabsTrigger>
                 <TabsTrigger value="security">安全性</TabsTrigger>
-                <TabsTrigger value="flags">旗標</TabsTrigger>
+                <TabsTrigger value="flags">問題回報</TabsTrigger>
                 <TabsTrigger value="files">檔案 {fileCount > 0 ? `(${fileCount})` : ''}</TabsTrigger>
               </TabsList>
             </div>

@@ -68,9 +68,9 @@ export function StatStrip({ skill, stats }: Props) {
         </div>
       </div>
 
-      {/* Open flags */}
+      {/* Open issue reports */}
       <div style={{ ...cellStyle(true), borderRight: 'none' }}>
-        <div style={labelStyle}>待處理旗標</div>
+        <div style={labelStyle}>待處理回報</div>
         <div
           data-testid="open-flags"
           style={{
