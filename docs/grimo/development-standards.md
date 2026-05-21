@@ -337,6 +337,12 @@ Skills Hub 的 shipped artifact 是單一 Spring Boot container image。React so
 | CI / production image | Cloud Build：`npm ci && npm run build` → copy `frontend/dist` → `./gradlew bootBuildImage --imageName=<AR>:$SHORT_SHA` | Artifact Registry 取得 image；GCP profile 的 AOT/Secret Manager parity 由 Cloud Build step 擔任 canonical gate。 |
 | Manual deploy path | `scripts/gcp/03-build-push.sh` | Script 自帶 frontend build/copy + backend image build/push；只有 user 明確要求 deploy 時使用。 |
 
+### Cloud Build source upload
+
+`gcloud builds submit` 從 repo root 送 Cloud Build 時，source tarball 由 repo root `.gcloudignore` 控制。這個檔案是 Cloud Build source upload allowlist：新增 Cloud Build build input 時，必須同步打開對應檔案或目錄；local build output、cache、local storage、agent runtime dirs、docs-only dirs、未 commit secret config 不得進 source tarball。
+
+Google Cloud SDK 的 `.gcloudignore` 規則只讀 top-level upload directory；nested `.gitignore` 不會被 gcloud 遞迴 include。不要只靠 `backend/.gitignore` 或 `frontend/.gitignore` 擋 `backend/build/`、`backend/.gradle/`、`frontend/node_modules/`、本機 config secret。
+
 ### 包版重點
 
 - `bootBuildImage` 是 package gate，不是普通 unit test。它會抓到 GraalVM native-image static analysis、reflection metadata、container layer 失敗。
@@ -355,9 +361,10 @@ Skills Hub 的 shipped artifact 是單一 Spring Boot container image。React so
 3. Browser E2E 是否真的跑 production image？log 要看得到 `skillshub:e2e-local` / Compose / fixture manifest，不是 Vite dev server。
 4. AOT/native image 是否用 fake build-time key？`processAot` / `bootBuildImage` 不該需要真 Gemini key。
 5. Secret 是否只出現在 ignored config 或 process env？`verify-release.log` / docs / diff 不得出現實際 key。
-6. 新增 Spring async listener 時，是否用 `@ApplicationModuleListener`、Scenario test、idempotent write？不要回到 30s Awaitility。
-7. 新增 JSON/Jackson contract 時，是否走 Spring auto-configured `JsonMapper` / MockMvc？不要用 `new ObjectMapper()` 做 false-positive test。
-8. 新增 production package behavior 時，是否同步 `PRD.md`、`architecture.md`、`development-standards.md`、`qa-strategy.md`、`test-cases.md`、`glossary.md` 的 owner 段落？
+6. Cloud Build source upload 是否仍只包含 build input？新增 build input 時要同步 `.gcloudignore`，並可用 `gcloud meta list-files-for-upload .` 檢查。
+7. 新增 Spring async listener 時，是否用 `@ApplicationModuleListener`、Scenario test、idempotent write？不要回到 30s Awaitility。
+8. 新增 JSON/Jackson contract 時，是否走 Spring auto-configured `JsonMapper` / MockMvc？不要用 `new ObjectMapper()` 做 false-positive test。
+9. 新增 production package behavior 時，是否同步 `PRD.md`、`architecture.md`、`development-standards.md`、`qa-strategy.md`、`test-cases.md`、`glossary.md` 的 owner 段落？
 
 ## Upstream Issue Tracking
 

@@ -119,6 +119,16 @@ QA / release 文件記錄實際執行的 script、log path、Summary counts 和 
 | V08b | `cd backend && ./gradlew --no-daemon -x test bootBuildImage --imageName=skillshub-verify:local -Pspring.profiles.active=aot,local` | CRITICAL | `SKIP_NATIVE=1` / Docker unavailable | Full native image build；dev 可明示 opt-out，release 不應跳過。 |
 | V09 | `rg` secret-like pattern against current verify log + `docs/grimo` | CRITICAL | `rg` 不存在 | 確認 log/docs 不含真 API key；pattern 要求 Google key prefix 後至少 20 個 token chars，避免 `AIzaSy...` placeholder 誤判。 |
 
+### Supplemental inspection: Cloud Build source upload
+
+`gcloud meta list-files-for-upload .` 可以在 repo root 列出下一次 `gcloud builds submit` 會打進 source tarball 的檔案。這是 Cloud Build source upload 的檢查項，不是 `scripts/verify-release.sh` 的固定 command；普通本機 PR gate 不因缺 gcloud CLI 失敗。需要驗證 Cloud Build upload scope 的 spec，必須在有 gcloud CLI 的環境記錄這個 command 的 count、forbidden-path grep、secret-path grep。
+
+檢查重點：
+
+- root `.gcloudignore` 是 source upload allowlist；新增 Cloud Build build input 時要同步更新。
+- nested `.gitignore` 不會被 gcloud 遞迴 include，不能只靠 `backend/.gitignore` 或 `frontend/.gitignore` 排除本機 output。
+- `backend/build/`、`backend/.gradle/`、`backend/storage-local/`、`frontend/node_modules/`、`frontend/dist/`、docs-only dirs、agent runtime dirs、未 commit secret config 不應出現在 upload list。
+
 ### Future enhancement: deploy smoke
 
 目前 `$shipping-release` 不負責部署，所以本 QA 流程沒有 post-deploy smoke script，流程圖也不把部署環境檢查列為 release 前置條件。
