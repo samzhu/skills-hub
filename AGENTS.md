@@ -83,13 +83,7 @@ Codex skill 觸發使用 `$skill-name`（例如 `$planning-tasks S169`）。Clau
 | `docs/grimo/tasks/` | **Temporary** BDD task files; only exist between `/planning-tasks` and Phase 3; deleted on ship |
 | `docs/grimo/CHANGELOG.md` | What shipped + when (appended by `/shipping-release`) |
 | `docs/grimo/adr/ADR-NNN-<slug>.md` | In-development decisions that extend or contradict PRD |
-| `docs/grimo/debugging-playbook.md` | Symptom-indexed root-cause catalog — 跨 spec native/AOT pitfall family；新 family 在 `/shipping-release` 時 append（規則見檔尾「維護規則」段）|
-| `.codex/loop.dev.md` | Codex 功能開發 automation 狀態機：NEXT_SKILL、worktree policy、exit label |
-| `.codex/loop.site-audit.md` | Codex 正式站巡檢 automation 狀態機：production flow、finding format、docs-only write scope |
-| `.codex/prompts/dev-loop.md` | 可貼到 Codex App 的功能開發 automation prompt |
-| `.codex/prompts/site-audit-loop.md` | 可貼到 Codex App 的正式站巡檢 automation prompt |
-| `.codex/loop.md` | Legacy / general Codex loop 狀態機；新 automation 優先使用專用 loop |
-| `docs/grimo/codex-loop-automation.md` | Claude `/loop` → Codex Automations 的移植說明與可貼上的 prompt |
+
 
 
 ## Where things live
