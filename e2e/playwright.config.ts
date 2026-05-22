@@ -71,6 +71,8 @@ export default defineConfig({
     {
       name: 'setup fixtures',
       testMatch: /fixtures\/setup\.fixtures\.ts/,
+      // S206-T05: semantic fixture seeding may call external embeddings for 13 skills.
+      timeout: 120_000,
       teardown: 'teardown fixtures',
     },
     {

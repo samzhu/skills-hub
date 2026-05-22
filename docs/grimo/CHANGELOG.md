@@ -1,5 +1,28 @@
 # Changelog
 
+## [v4.90.0] — S206 Cloud Build Source Upload Pruning（2026-05-22）
+
+### Changed
+
+- **Cloud Build source upload is allowlisted** — repo root `.gcloudignore` now uploads only Cloud Build inputs instead of local build/cache/storage directories.
+- **Local generated files stay local** — post-release outputs such as `frontend/coverage/**`, root `node_modules/**`, `.vscode/**`, and `backend/HELP.md` do not enter the Cloud Build source tarball.
+- **Local secret config stays local** — `backend/config/application-secrets.properties` and `backend/config/application-real-oauth.yaml` are excluded while committed backend config templates and `oauth-mock-config.json` remain uploadable.
+- **Old Cloud Build source archives were cleared** — `gs://cfh-vibe-lab_cloudbuild/source/` live object count is `0`.
+- **E2E fixture setup has enough budget** — Playwright `setup fixtures` uses a project-level `120_000ms` timeout so semantic fixture seeding can finish before V07/V07b app specs run.
+
+### Verification
+
+- `./scripts/verify-release.sh`：**PASS** — V01=PASS、V02=INFO（line coverage 87.7%，covered=4836 / total=5514）、V03=PASS、V04=PASS、V05=PASS、V06=PASS、V07=PASS、V07b=PASS、V07c=PASS、V07d=SKIP、V08a=PASS、V08b=PASS、V09=PASS；`Verdict: PASS - all CRITICAL passed; exit=0`。
+- `gcloud meta list-files-for-upload .`：**PASS** — `834` files；local/generated grep 無輸出；secret grep 無輸出；untracked-in-upload comparison 無輸出。
+- GCS source bucket：**PASS** — `gs://cfh-vibe-lab_cloudbuild/source/` live object count `0`。
+- Cloud Build / Cloud Run deploy evidence：**PASS** — build `e67cb1d6-d561-44c8-a9dd-d1a7a33d13b5` SUCCESS；Cloud Run revision `skillshub-00049-s4w` served `100%` traffic；`/actuator/health` returned HTTP `200` with `status=UP`；new revision error log count `0`。
+
+### Spec lifecycle
+
+- `docs/grimo/specs/2026-05-21-S206-cloud-build-source-upload-pruning.md` → `docs/grimo/specs/archive/2026-05-21-S206-cloud-build-source-upload-pruning.md`
+- `docs/grimo/tasks/2026-05-21-S206-*.md` 已刪除。
+- Final size re-score：XS(8) → M(13)，原因是實際 release work 需要 Cloud SDK/GCS/Cloud Build/Cloud Run/Docker/native image/Playwright 多層驗證，且 QA re-entry 新增 T04/T05。
+
 ## [v4.89.0] — S205 Download Filename UTF-8 Content-Disposition（2026-05-21）
 
 ### Changed

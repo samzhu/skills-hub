@@ -1,6 +1,6 @@
 # Skills Hub — Spec Roadmap
 
-> 最後更新：2026-05-21（S206 planned；Cloud Build source upload pruning）
+> 最後更新：2026-05-22（S206 shipped v4.90.0）
 
 ## 使用說明
 
@@ -42,7 +42,6 @@
 | S178 | Browse Search Entry Point Cleanup（`/browse` 是唯一搜尋入口；刪 `/search` + intent summary；搜尋框有字只打 semantic） | S(9) | S177（ordering-only release safety） | ⛔ superseded 2026-05-16 — 取代為 S189（舊 spec 已有 T01-T05/QA 歷史，但未 ship；關閉以免干擾 S186→S187 主線） |
 | S185 | Skill list/detail projection consistency（list visibility/version fields 對齊 detail） | XS(8) | S175 ✅, S177 ✅, S184 ✅ | ✅ v4.67.0 — deployed `skillshub-00036-wkz`；Bug Z list/detail API parity PASS；latest revision `severity>=ERROR` 0 rows |
 | S188 | 版本標籤可自訂與自動流水號（version 可留空；未填時首版 `1`、後續 max numeric + 1；保留自訂標籤） | M(14) | S003 ✅, S004 ✅, S024 ✅, S056 ✅, S176 ✅, S187 ordering-only | ✅ v4.68.0 — optional version API + frontend blank FormData + docs/display/E2E semver cleanup；`verify-all.sh` 全綠；deployed `skillshub-00038-252` |
-| S206 | Cloud Build source upload pruning（root `.gcloudignore` allowlist；排除 build/cache/local storage/secrets） | XS(8) | S132 ✅ | ⏳ Plan |
 ---
 
 ## 🏁 Milestones
@@ -103,6 +102,7 @@
 | v4.87.0 | S203 (Semantic Search Masonry Pagination) | ✅ shipped 2026-05-20 — semantic search `page/size` Slice + `/browse` masonry infinite results；`verify-all.sh` 全綠 |
 | v4.88.0 | S204 (OAuth Login Error Page) | ✅ shipped 2026-05-21 — OAuth failure 302 到 `/auth/error?reason=<safe-code>`；`verify-release.sh` 全綠 |
 | v4.89.0 | S205 (Download Filename UTF-8 Content-Disposition) | ✅ shipped 2026-05-21 — UTF-8 `filename*` download header；`verify-release.sh` 全綠；production curl/log evidence post-release |
+| v4.90.0 | S206 (Cloud Build source upload pruning) | ✅ shipped 2026-05-22 — root `.gcloudignore` allowlist；Cloud Build source count `834`；GCS source bucket `0`；`verify-release.sh` 全綠 |
 
 ---
 
@@ -448,3 +448,4 @@
 | S139 | Login UI + Lazy Auth Gate + LAB Google OAuth E2E | S(10) | v4.18.0 |
 | S140 | E2E Critical Path Backfill (P1-P6 + Quality, 6 happy-path specs) | S(11) | v4.19.0 |
 | S205 | Download Filename UTF-8 Header | XS(8) | v4.89.0 |
+| S206 | Cloud Build Source Upload Pruning | M(13) | v4.90.0 |

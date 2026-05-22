@@ -1,6 +1,6 @@
 # S206: Cloud Build Source Upload Pruning
 
-> 規格：S206 | 大小：XS(8) | 狀態：⏳ Plan
+> 規格：S206 | 大小：M(13) | 狀態：✅ shipped v4.90.0
 > 日期：2026-05-21
 > 對應：S132 Cloud Build pipeline / `cloudbuild.yaml` / `docs/grimo/development-standards.md` Build & Deploy
 
@@ -174,6 +174,8 @@ frontend/node_modules/**
 | T04 | GCS source object cleanup evidence | Cloud Build source bucket | `source/` object count 從目前 118 變成 0 | 只刪 `gs://cfh-vibe-lab_cloudbuild/source/**` live objects，不刪 build logs bucket 或 Artifact Registry image | not required |
 | T05 | Manual Cloud Build submit + Cloud Run deploy evidence | Cloud Build + Cloud Run | `.gcloudignore` 生效後重新 submit 一次，Cloud Build build 成功，接著 Cloud Run service replace 成功，latest ready revision 是新 image，`/actuator/health` 回 200，新 revision 部署後 `severity>=ERROR` log 0 rows | spec 只記錄 build id、image tag、deploy revision/result、health result、ERROR log count、file-count evidence，不記錄本機 export 指令或完整 submit / replace command | not required |
 
+Planning note: 這張表是設計階段的候選切分；實作時 GCS cleanup 和 Cloud Build / Cloud Run evidence 合併為 §6 的 T03。QA re-entry 之後新增的 T04/T05 以 §6 任務表為準。
+
 ## 3. 驗收條件（SBE）
 
 驗證命令：
@@ -343,9 +345,20 @@ POC：not required — S206 不導入新 dependency / SDK，也不包裝 framewo
 |---|------|----|--------|
 | T01 | `docs/grimo/tasks/2026-05-21-S206-T01-gcloudignore-source-allowlist.md` — root `.gcloudignore` source allowlist | AC-S206-1, AC-S206-2, AC-S206-3, AC-S206-4 | PASS |
 | T02 | `docs/grimo/tasks/2026-05-21-S206-T02-docs-source-upload-rule.md` — Build & Deploy / QA 文件同步 | AC-S206-7 | PASS |
-| T03 | `docs/grimo/tasks/2026-05-21-S206-T03-gcs-cleanup-cloud-run-evidence.md` — GCS cleanup + Cloud Build / Cloud Run evidence | AC-S206-5, AC-S206-6 | pending（待做） |
+| T03 | `docs/grimo/tasks/2026-05-21-S206-T03-gcs-cleanup-cloud-run-evidence.md` — GCS cleanup + Cloud Build / Cloud Run evidence | AC-S206-5, AC-S206-6 | PASS |
+| T04 | `docs/grimo/tasks/2026-05-21-S206-T04-post-verify-upload-allowlist-hardening.md` — release-output 後的 source upload allowlist 補強 | AC-S206-1, AC-S206-2, AC-S206-3, AC-S206-4 | PASS |
+| T05 | `docs/grimo/tasks/2026-05-21-S206-T05-v07-v07b-fixture-timeout-recovery.md` — V07/V07b fixture setup timeout 修復與 release gate 重跑 | AC-S206-6 | PASS |
 
-執行順序：T01 → T02 → T03。
+執行順序：T01 → T02 → T03 → T04 → T05。
+
+### QA Re-entry: 2026-05-21
+
+`./scripts/verify-release.sh` 在 S206 QA gate 產生兩個需要回到 task loop 的問題：
+
+1. `gcloud meta list-files-for-upload .` 在 release verification 產生本機輸出後，仍列出 `frontend/coverage/**`、root `node_modules/.vite/**`、`.vscode/settings.json`、`backend/HELP.md` 等 non-build-input local files。檔案數仍是 853、沒有 secret，但 AC-S206-2 要求 generated/local content 不可進 source tarball，所以新增 T04。
+2. `./scripts/verify-release.sh` 的 V07 和 V07b 都在 `e2e/fixtures/setup.fixtures.ts:37` 超過 30 秒，browser app specs 沒有真正跑到；S206 的 deploy evidence 已通過，但 release gate 還不能算 PASS，所以新增 T05。
+
+POC：not required — T04 可直接用 `gcloud meta list-files-for-upload .` 和 `git ls-files` 比對真實 upload list；T05 要用 root-cause-debugging 流程先補足 fixture / app logs，再以 `./scripts/verify-release.sh` 的 V07/V07b 結果作為 GREEN evidence。
 
 ### POC Findings
 
@@ -387,3 +400,198 @@ Evidence:
 - GREEN inspection: same command returned exit code `0`.
 - `docs/grimo/development-standards.md` now documents that root `.gcloudignore` is the Cloud Build source upload allowlist and nested `.gitignore` is not recursively included by gcloud.
 - `docs/grimo/qa-strategy.md` now documents `gcloud meta list-files-for-upload .` as a supplemental source upload inspection, not a fixed `verify-release.sh` command.
+
+### T03: GCS cleanup and Cloud Run deploy evidence
+
+Date: 2026-05-21
+
+Files changed:
+- `docs/grimo/specs/2026-05-21-S206-cloud-build-source-upload-pruning.md`
+
+Evidence:
+- `sourceObjectCountBefore`: `118`
+- `sourceObjectCountAfterInitialCleanup`: `0`
+- `sourceObjectCountFinalAfterDeploy`: `0`
+- `sourceUploadFileCount`: `837`
+- `sourceUploadArchiveSize`: `3.5 MiB`
+- `buildId`: `e67cb1d6-d561-44c8-a9dd-d1a7a33d13b5`
+- `imageTag`: `20260521-060057`
+- `image`: `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260521-060057`
+- `cloudBuildResult`: `SUCCESS`
+- `cloudBuildDuration`: `7M3S`
+- `latestReadyRevision`: `skillshub-00049-s4w`
+- `latestReadyRevisionCreatedAt`: `2026-05-21T06:09:31.906505Z`
+- `cloudRunTraffic`: `skillshub-00049-s4w` at `100%`
+- `healthStatus`: HTTP `200`, body `status=UP`
+- `errorLogCount`: `0` for the new revision from `2026-05-21T06:09:31.906505Z`
+
+Notes:
+- The old Cloud Build source tarballs were deleted before the new build.
+- The successful build created one new trimmed source tarball; after Cloud Run deploy and health/log verification, that tarball was also removed so the source bucket ended at `0` live objects.
+- Spec evidence intentionally records build/deploy identifiers and results only; it does not record local environment exports or the full submit/deploy command lines.
+
+### T04: post-verify source upload allowlist hardening
+
+Date: 2026-05-21
+
+Files changed:
+- `.gcloudignore`
+- `docs/grimo/specs/2026-05-21-S206-cloud-build-source-upload-pruning.md`
+
+Evidence:
+- RED upload-list count: `853`
+- RED local/generated matches: `frontend/coverage/**`, `node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json`, `backend/HELP.md`, `.vscode/settings.json`
+- RED secret matches: no output
+- RED untracked-in-upload comparison: 19 local/generated files
+- GREEN upload-list count: `834`
+- GREEN local/generated matches: no output
+- GREEN secret matches: no output
+- GREEN untracked-in-upload comparison: no output
+- GREEN required build inputs: all matched exactly
+
+Root cause checkpoint:
+- T01 allowed directory traversal with `!*/`, then reopened exact build inputs. That worked before release verification, but release verification later created root `node_modules/.vite/**`, `frontend/coverage/**`, `.vscode/settings.json`, and `backend/HELP.md`; those paths were not explicitly closed.
+- `.gcloudignore` now closes those post-verify local/generated paths before the final build-input allowlist.
+- Official docs checked: `gcloud topic gcloudignore` says `.gcloudignore` in the top-level upload directory controls ignored files, last matching pattern wins, and `gcloud meta list-files-for-upload` displays uploaded files. Cloud Build submit docs say local submit compresses the current directory as source input.
+
+### T05: V07/V07b fixture setup timeout recovery
+
+Date: 2026-05-21
+
+Files changed:
+- `e2e/playwright.config.ts`
+- `docs/grimo/specs/2026-05-21-S206-cloud-build-source-upload-pruning.md`
+
+Evidence:
+- RED: `verify-release.log` showed V07 and V07b both failing at `e2e/fixtures/setup.fixtures.ts:37` with `Test timeout of 30000ms exceeded`; V07 did not run 15 app specs, V07b did not run 18 app specs.
+- Diagnostic command: `cd e2e && npx playwright test --project='setup fixtures' --timeout=120000` passed; non-semantic setup body took `2.1s`.
+- Diagnostic command: `cd e2e && SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --project='setup fixtures' --timeout=120000` passed; semantic setup body took `10.5s`.
+- GREEN targeted command: `cd e2e && SKILLSHUB_E2E_SEMANTIC_FIXTURES=true npx playwright test --project='setup fixtures'` passed without CLI timeout override; semantic setup body took `10.3s`.
+- GREEN release command: `./scripts/verify-release.sh` exit code `0`.
+- Release summary: `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V07b=PASS V07c=PASS V07d=SKIP V08a=PASS V08b=PASS V09=PASS`
+- Release stats: `PASS=11, FAIL=0, SKIP=1, INFO=1`
+- Post-release upload-list check: `gcloud meta list-files-for-upload .` count `834`; local/generated grep no output; secret grep no output; untracked-in-upload comparison no output.
+
+Root cause checkpoint:
+- `setup fixtures` seeds the production-image browser baseline. With semantic fixtures enabled, it uploads 13 skills through production API and writes embedding projection data for those skills, so the setup project has a heavier workload than ordinary browser specs.
+- Playwright's global `timeout: 30_000` applied to `setup fixtures`; under full release load, that 30s budget was too tight and stopped the setup project before browser app specs could start.
+- The fix sets only the `setup fixtures` project timeout to `120_000`, leaving app browser specs on the existing global `30_000` timeout.
+- Official docs checked: Playwright Test timeout docs say test timeout covers the test function, fixtures, and hooks; Playwright `TestProject.timeout` docs define project-level timeout override.
+
+### Shipping verification: 2026-05-22
+
+Evidence:
+- `./scripts/verify-release.sh` exit code `0`
+- Log path: `verify-release.log`
+- Release summary: `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V07b=PASS V07c=PASS V07d=SKIP V08a=PASS V08b=PASS V09=PASS`
+- Release stats: `PASS=11, FAIL=0, SKIP=1, INFO=1`
+- Verdict: `PASS - all CRITICAL passed; exit=0`
+- Backend LINE coverage: `87.7%` (`covered=4836 / total=5514`)
+- Post-release upload-list check: `gcloud meta list-files-for-upload .` count `834`; local/generated grep no output; secret grep no output; untracked-in-upload comparison no output.
+- GCS source bucket live object count: `0`
+
+### Final Size Re-score (per estimation-scale.md)
+
+| Dimension | Initial | Actual | Rationale |
+|---|---:|---:|---|
+| Tech risk | 1 | 2 | `.gcloudignore` is documented, but final behavior depended on top-level ignore ordering plus real `gcloud meta list-files-for-upload` evidence. |
+| Uncertainty | 1 | 2 | Scope looked clear at design time, then QA found post-release local output leakage and V07/V07b fixture timeout. |
+| Dependencies | 2 | 3 | Actual release depended on Cloud SDK, GCS, Cloud Build, Cloud Run, Docker/native image, Playwright, and shipped S132/S202 behavior. |
+| Scope | 1 | 2 | Final work touched source upload rules, docs/spec/tasks, release evidence, and E2E config; still no production API/UI code. |
+| Testing | 2 | 3 | Required real Cloud Build + Cloud Run deploy evidence, GCS cleanup, full `verify-release.sh`, production-image browser checks, and native image build. |
+| Reversibility | 1 | 1 | The repo changes are reversible in one commit; GCS cleanup removed old source archives only and did not alter app data or public API. |
+| **Total** | **8 / XS** | **13 / M** | Bucket shift XS→M; root cause is release/infra verification complexity plus QA re-entry tasks T04/T05. |
+
+## 8. QA Review
+
+Date: 2026-05-21
+
+Verdict: `REJECT-FIX`
+
+### QA Gate Result
+
+| Layer | Result | Detail |
+|-------|--------|--------|
+| Automated tests | FAIL | `./scripts/verify-release.sh` wrote `verify-release.log`; summary: `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=FAIL V07b=FAIL V07c=PASS V07d=SKIP V08a=PASS V08b=PASS V09=PASS`; verdict line: `FAIL - 2 CRITICAL failure(s)` |
+| Coverage / Integration | FAIL | Backend LINE coverage `87.7%`; native image `V08b` PASS; production-image browser gates `V07` and `V07b` fail in setup fixture before app specs run. |
+| Manual verification | N/A | S206 has no human UI step; GCS, Cloud Build, Cloud Run, health, and log checks are executable commands. |
+| Testability gate | CLEAR | Every AC has a runnable check, but not every check passed. |
+
+### Independent Evidence
+
+S206-specific checks re-run after `verify-release.sh`:
+
+- `gcloud meta list-files-for-upload .` count: `853`
+- Forbidden path grep for the explicit S206 list (`docs/`, `.codex/`, `.claude/`, `e2e/`, `backend/build/`, `backend/bin/`, `backend/.gradle/`, `backend/storage-local/`, `frontend/node_modules/`, `frontend/dist/`): no matches
+- Secret config grep for `backend/config/application-secrets.properties` and `backend/config/application-real-oauth.yaml`: no matches
+- GCS source bucket live object count: `0`
+- Cloud Build `e67cb1d6-d561-44c8-a9dd-d1a7a33d13b5`: `SUCCESS`, image `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260521-060057`
+- Cloud Run latest ready revision: `skillshub-00049-s4w`, image `asia-east1-docker.pkg.dev/cfh-vibe-lab/skillshub/skillshub:20260521-060057`, traffic `100%`
+- `/actuator/health`: HTTP `200`, body includes `status=UP`
+- Cloud Run `severity>=ERROR` logs for revision `skillshub-00049-s4w` since `2026-05-21T06:09:31.906505Z`: `0`
+
+### Findings
+
+1. CRITICAL — `./scripts/verify-release.sh` fails V07 and V07b.
+   Evidence: both gates fail at `e2e/fixtures/setup.fixtures.ts:37` with `Test timeout of 30000ms exceeded`; V07 reports `1 failed`, `15 did not run`, `1 passed`; V07b reports `1 failed`, `18 did not run`, `1 passed`. Because browser app specs never run, production-image browser behavior is not release-verified.
+
+2. CRITICAL — the source upload allowlist still admits local/generated files after release verification creates them.
+   Evidence: `gcloud meta list-files-for-upload .` currently includes untracked local outputs such as `frontend/coverage/coverage-summary.json`, `frontend/coverage/index.html`, `frontend/coverage/components/SkillCard.tsx.html`, `node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json`, `.vscode/settings.json`, and `backend/HELP.md`. Count is still under `1000`, but AC-S206-2 says generated/local content must not enter the source tarball; this needs another `.gcloudignore` refinement and re-verification.
+
+### Required Fix Before Shipping
+
+- Add a follow-up implementation task to tighten `.gcloudignore` against `frontend/coverage/**`, root `node_modules/**`, `.vscode/**`, `backend/HELP.md`, and any other non-build-input local files discovered by comparing `gcloud meta list-files-for-upload .` against `git ls-files`.
+- Re-run the S206 upload-list checks after `verify-release.sh`, not only before it, because release verification creates local output directories.
+- Investigate the V07/V07b fixture setup timeout and rerun `./scripts/verify-release.sh` until V07 and V07b pass.
+
+## 9. QA Re-Review
+
+Date: 2026-05-21
+
+Verdict: `PASS`
+
+### QA Gate Result
+
+| Layer | Result | Detail |
+|-------|--------|--------|
+| Automated tests | PASS | `./scripts/verify-release.sh` exit `0`; summary: `V01=PASS V02=INFO V03=PASS V04=PASS V05=PASS V06=PASS V07=PASS V07b=PASS V07c=PASS V07d=SKIP V08a=PASS V08b=PASS V09=PASS`; stats: `PASS=11, FAIL=0, SKIP=1, INFO=1`. |
+| Coverage / Integration | PASS | Backend LINE coverage `87.7%`; production-image browser gates `V07`, `V07b`, and `V07c` PASS; native image gates `V08a` and `V08b` PASS. |
+| Manual verification | N/A | S206 has no human UI step; upload list, GCS cleanup, Cloud Build, Cloud Run, health, and log checks are executable command evidence. |
+| Testability gate | CLEAR | AC-S206-1 through AC-S206-7 all have executable evidence; previous §8 blocking findings are resolved by T04/T05. |
+
+### Independent Evidence
+
+S206-specific checks re-run after the passing release verification:
+
+- `gcloud meta list-files-for-upload .` count: `834`
+- Local/generated grep for `frontend/coverage/**`, root `node_modules/**`, `.vscode/**`, and `backend/HELP.md`: no matches
+- Secret config grep for `backend/config/application-secrets.properties` and `backend/config/application-real-oauth.yaml`: no matches
+- Untracked-in-upload comparison against `git ls-files`: no output
+- Required build inputs check: all matched, including `cloudbuild.yaml`, backend Gradle files, `backend/src/main/resources/application*.yaml`, tracked `backend/config/*` templates/configs, backend source, and frontend package/config/source files
+- GCS source bucket live object count: `0`
+- T03 deployment evidence remains valid: Cloud Build `e67cb1d6-d561-44c8-a9dd-d1a7a33d13b5` SUCCESS; Cloud Run revision `skillshub-00049-s4w` serves `100%` traffic; `/actuator/health` returned HTTP `200` with `status=UP`; error log count for that revision was `0`
+
+### AC Evidence Matrix
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-S206-1 | PASS | Upload list count is `834`, under the `1000` file limit; T03 Cloud Build submit used `837` source files and `3.5 MiB` archive. |
+| AC-S206-2 | PASS | Post-release grep found no `frontend/coverage/**`, root `node_modules/**`, `.vscode/**`, or `backend/HELP.md`; untracked-in-upload comparison returned no output. |
+| AC-S206-3 | PASS | Secret grep found no `backend/config/application-secrets.properties` or `backend/config/application-real-oauth.yaml`. |
+| AC-S206-4 | PASS | Required build inputs are present in the upload list, including tracked `backend/config/application-dev.yaml`, `application-lab.yaml`, `application-prod.yaml`, `.example` templates, and `oauth-mock-config.json`. |
+| AC-S206-5 | PASS | GCS source bucket live object count is `0`. |
+| AC-S206-6 | PASS | T03 Cloud Build + Cloud Run deploy evidence succeeded; re-review release gate also passed V07/V07b production-image browser checks and V08 native image checks. |
+| AC-S206-7 | PASS | `development-standards.md` and `qa-strategy.md` document the root `.gcloudignore` source-upload allowlist and inspection command. |
+
+### Findings
+
+No blocking findings.
+
+Previous §8 findings are resolved:
+
+1. V07/V07b fixture timeout is resolved by T05; both gates now PASS in `./scripts/verify-release.sh`.
+2. Post-release local/generated files are excluded by T04; the upload list is still `834` and contains no untracked local output.
+
+### Handoff
+
+S206 is ready for `$shipping-release S206`.

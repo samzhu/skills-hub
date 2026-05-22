@@ -8,16 +8,20 @@
 .claude/**
 .codex/**
 .git/**
+.vscode/**
 .worktrees/**
 docs/**
 e2e/**
+node_modules/**
 temp/**
 backend/.gradle/**
 backend/bin/**
 backend/build/**
+backend/HELP.md
 backend/storage-local/**
 backend/config/application-secrets.properties
 backend/config/application-real-oauth.yaml
+frontend/coverage/**
 frontend/dist/**
 frontend/node_modules/**
 
