@@ -20,7 +20,7 @@ allowed-tools:
   - WebSearch
 metadata:
   author: samzhu
-  version: 6.1.0
+  version: 6.1.1
   category: workflow-automation
   pattern: domain-specific-intelligence
 ---
@@ -401,8 +401,8 @@ Compare the spec's design sections against actual implementation:
 | Verdict | Condition | Next action |
 |---------|-----------|-------------|
 | `PASS` | All layers pass, all ACs have evidence or are MANUAL-READY | Ship |
-| `REJECT-FIX` | Tests fail, quality issues, or missing instructions | Fix, re-verify |
-| `REJECT-BLOCKED` | UNTESTABLE ACs — verification infrastructure gap | Build test capability first |
+| `REJECT-FIX` | Tests fail, quality issues, or missing instructions | Read `references/qa-failure-reentry.md`; re-plan, fix, re-verify |
+| `REJECT-BLOCKED` | UNTESTABLE ACs — verification infrastructure gap | Read `references/qa-failure-reentry.md`; build test capability first |
 
 **Severity levels for individual findings:**
 
@@ -427,13 +427,14 @@ The spec file preserves the proof; the test directory is ephemeral.
 
 - **PASS** → Spec is ready to ship.
 
-- **REJECT-FIX** → Return findings. Fix issues, then re-verify.
+- **REJECT-FIX** → Follow `references/qa-failure-reentry.md`, then re-verify.
 
 - **REJECT-BLOCKED** → Testability gate activated.
   1. Document which ACs are blocked and what verification capability
      is missing
   2. Propose a testing spec — title, scope, suggested approach
-  3. The blocked spec does NOT ship until the testing capability
+  3. Follow `references/qa-failure-reentry.md`
+  4. The blocked spec does NOT ship until the testing capability
      exists and re-verification passes
 
 ### 9.5 Self-healing loop — coverage gap remediation
