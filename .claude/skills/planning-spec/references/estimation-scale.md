@@ -67,9 +67,7 @@ Move **down one Fibonacci step** when final implementation proves smaller:
 - A planned backend/frontend half was cancelled or split into another spec.
 
 Do not move more than one step without splitting or writing a short ADR.
-Never use fractional story points. If a range appears in historical
-records, such as `S(9-10)`, use the midpoint only for historical
-accounting and replace it with one deck value when recording final
+Never use fractional story points. Always record one final deck value in
 `story_points`.
 
 ## Usage Notes
@@ -92,37 +90,6 @@ accounting and replace it with one deck value when recording final
   means more design rigor, which is cheap.
 - **20 = mandatory split.** If the spec reaches 20 points, decompose it into
   2+ specs before proceeding. Do not ship a normal spec as 20 points.
-
----
-
-## Legacy Outcome Accounting
-
-`spec-roadmap.md` contains two point styles:
-
-1. **Current story points** — new specs use the Fibonacci deck above:
-   `1`, `2`, `3`, `5`, `8`, `13`, or parent-only `20`.
-2. **Legacy labeled points** — early shipped specs may use labels like
-   `XS(1)`, `S(5)`, `M(8)`, `L(20)`, or ranges like `S(9-10)`.
-
-For historical outcome summaries, do not reinterpret old labels through
-Appendix A. Use the numeric value inside parentheses:
-
-- `XS(7)` counts as 7 story points.
-- `S(9-10)` counts as 9.5 story points for historical accounting only.
-- `S(9) -> M(11)` counts as the final confirmed value, 11 story points.
-- `META`, cancelled, superseded, deferred, and unshipped specs count as 0.
-- Count each `SpecID` once even if it appears in multiple roadmap sections.
-- If a milestone says a spec shipped but the roadmap has no point row, read
-  the archived spec and use its final `story_points`.
-
-In old rows, values below 6 are still valid story points. They are not
-six-factor diagnostic scores, because the six-factor diagnostic minimum is
-6.
-
-Legacy size labels are for interpreting old roadmap rows only. Do not use
-`XS`, `S`, `M`, `L`, or `XL` as fields, labels, or shorthand in new estimates.
-
----
 
 ## Appendix A — Six-Factor Diagnostic
 

@@ -30,20 +30,19 @@ spec，算到 `v4.86.0 / S202`。
 1, 2, 3, 5, 8, 13, 20
 ```
 
-`20` 只保留給歷史上的 parent / rollup 工作包，例如 `S014`、
+`20` 只保留給 parent / rollup 工作包，例如 `S014`、
 `S147`、`S160`、`S161`、`S163`、`S164`。一般單一 spec 即使很大，
 上限也落在 `13`，代表它應該被拆分前不再繼續膨脹。
 
-這份結算不是把舊制括號數字直接相加。Python 腳本會完整讀取
-`docs/grimo/specs/spec-roadmap.md` 與 `docs/grimo/specs/archive/`，
-每個 SpecID 只算一次，並用以下資料判斷 story points：
+Python 腳本會完整讀取 `docs/grimo/specs/spec-roadmap.md` 與
+`docs/grimo/specs/archive/`，每個 SpecID 只算一次，並用以下資料判斷
+story points：
 
-- roadmap 的正式 story point 值；舊 rows 的 `XS/S/M/L/XL` 只當 legacy
-  標籤讀取，不輸出成 story point 欄位。
+- roadmap 的正式 story point 值。
 - archive spec 的實作證據，例如前端/後端/資料庫、E2E、production、
   Cloud Run、Docker、native image、schema migration、pivot/debug。
 - `META`、取消、取代、延後、尚未完成的 spec 不計入。
-- 歷史拆段子 spec 仍列在 story point records，但點數歸入 parent 工作包，避免重複計算。
+- 拆段子 spec 仍列在 story point records，但點數歸入 parent 工作包，避免重複計算。
 
 結算資料：
 

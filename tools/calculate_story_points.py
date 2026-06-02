@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Calculate shipped Grimo specs on the Fibonacci story-point deck.
 
-The script uses spec and roadmap evidence instead of converting old labels
-such as ``XS(7)`` directly. Old numeric values are kept only as legacy
-metadata for comparison.
+The script uses spec and roadmap evidence, then emits final `story_points`
+records for outcome accounting.
 """
 
 from __future__ import annotations
@@ -28,13 +27,12 @@ MARKETING_CUTOFF_DATE = date(2026, 5, 19)
 
 SPEC_ID_RE = re.compile(r"\bS\d{3}(?:[a-z])?(?:-\d+)?(?:'{1,3})?\b")
 VERSION_RE = re.compile(r"v(\d+)\.(\d+)\.(\d+)")
-LEGACY_POINT_RE = re.compile(r"(?:XS|S-M|S|M-L|M|L|XL)\((\d+(?:\.\d+)?)(?:-(\d+(?:\.\d+)?))?\)")
-LEGACY_LABEL_RE = re.compile(r"\b(XS|S-M|M-L|XL|S|M|L)\(")
+POINT_LABEL_RE = re.compile(r"\b(XS|S-M|M-L|XL|S|M|L)\(")
 PATH_RE = re.compile(r"(?:backend|frontend|e2e|docs|scripts|tools)/[A-Za-z0-9_./'{}:@+-]+")
 
 FIBONACCI = (1, 2, 3, 5, 8, 13, 20)
 
-# These rows were historical split children under a parent shipped package.
+# These rows are split children under a parent shipped package.
 # They are listed for visibility but not counted in outcome totals.
 ROLLED_UP_CHILDREN = {
     "S160b",
@@ -84,8 +82,6 @@ class StoryPointRecord:
     archive_bytes_read: int
     archive_sha256s: dict[str, str]
     roadmap_section: str | None
-    legacy_points_raw: str | None
-    legacy_numeric_points: float | None
     version: str | None
     archive_date: str | None
     terminal_status: str
@@ -112,24 +108,11 @@ def version_text(version: tuple[int, int, int] | None) -> str | None:
     return f"v{version[0]}.{version[1]}.{version[2]}"
 
 
-def legacy_numeric(points_raw: str | None) -> float | None:
-    if not points_raw or "META" in points_raw or points_raw.strip() in {"—", "-", "TBD"}:
-        return None
-    arrow_part = points_raw.split("->")[-1].split("→")[-1]
-    match = LEGACY_POINT_RE.search(arrow_part)
-    if match:
-        start = float(match.group(1))
-        end = float(match.group(2)) if match.group(2) else start
-        return (start + end) / 2
-    plain = re.search(r"\b(\d+(?:\.\d+)?)\b", arrow_part)
-    return float(plain.group(1)) if plain else None
-
-
-def legacy_label(points_raw: str | None) -> str | None:
+def point_label(points_raw: str | None) -> str | None:
     if not points_raw:
         return None
     arrow_part = points_raw.split("->")[-1].split("→")[-1]
-    match = LEGACY_LABEL_RE.search(arrow_part)
+    match = POINT_LABEL_RE.search(arrow_part)
     return match.group(1) if match else None
 
 
@@ -402,7 +385,7 @@ def estimate_points(spec_id: str, title: str, row: RoadmapRow | None, doc: Archi
         "reversibility": reversibility,
     }
     diagnostic = sum(dimensions.values())
-    label = legacy_label(row.points_raw if row else None)
+    label = point_label(row.points_raw if row else None)
     label_points = {
         "XS": 2,
         "S": 3,
@@ -412,8 +395,6 @@ def estimate_points(spec_id: str, title: str, row: RoadmapRow | None, doc: Archi
         "L": 13,
         "XL": 20,
     }.get(label or "")
-    if label:
-        flags.append(f"legacy-roadmap-label:{label}")
     points = label_points or diagnostic_score_to_points(diagnostic, parent_or_rollup)
 
     upward_reasons = 0
@@ -497,7 +478,6 @@ def build_story_point_records() -> list[StoryPointRecord]:
         title = row.title if row else (doc.title if doc else spec_id)
         status = terminal_status(row, doc)
         points_raw = row.points_raw if row else None
-        legacy = legacy_numeric(points_raw)
         points, diagnostic, dimensions, evidence, rationale = estimate_points(spec_id, title, row, doc)
 
         exclusion_reason = None
@@ -521,8 +501,6 @@ def build_story_point_records() -> list[StoryPointRecord]:
                 archive_bytes_read=doc.bytes_read if doc else 0,
                 archive_sha256s={str(item["path"]): str(item["sha256"]) for item in doc.archive_file_records} if doc else {},
                 roadmap_section=row.section if row else None,
-                legacy_points_raw=points_raw,
-                legacy_numeric_points=legacy,
                 version=version_text(row.version if row else None),
                 archive_date=doc.archive_date if doc else None,
                 terminal_status=status,
@@ -575,7 +553,7 @@ def summarize(records: list[StoryPointRecord]) -> dict[str, object]:
         "exclusion_notes": {
             "META": "Grouping/research management rows are not delivery points.",
             "cancelled/superseded/deferred": "Terminal non-delivery states count as 0.",
-            "rolled_up_children": "Historical split children are listed but counted inside their shipped parent package.",
+            "rolled_up_children": "Split children are listed but counted inside their shipped parent package.",
         },
     }
 
