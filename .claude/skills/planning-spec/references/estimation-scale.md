@@ -186,6 +186,61 @@ monsters" [11], and IFPUG FPA's **GSC14 (Facilitate Change)** [2].
 
 ---
 
+## Legacy Outcome Accounting
+
+`spec-roadmap.md` contains two point systems:
+
+1. **Legacy roadmap points** — early shipped specs may use labels like
+   `XS(1)`, `S(5)`, `M(8)`, or `L(20)`. These do not map cleanly to the
+   current six-dimension bucket table above.
+2. **Current six-dimension score** — new specs should use the bucket table
+   in this file: `XS=6-8`, `S=9-11`, `M=12-14`, `L=15-16`, `XL=17-18`.
+
+For historical outcome summaries, do not reinterpret old labels through
+the current bucket table. Use the numeric value inside parentheses:
+
+- `XS(7)` counts as 7 points.
+- `S(9-10)` counts as 9.5 points.
+- `S(9) -> M(11)` counts as the final confirmed value, 11 points.
+- `META`, cancelled, superseded, deferred, and unshipped specs count as 0.
+- Count each `SpecID` once even if it appears in multiple roadmap sections.
+- If a milestone says a spec shipped but the roadmap has no point row, read
+  the archived spec and use its final re-score.
+
+### Skills Hub Marketing Outcome Checkpoint
+
+Python recalculation on 2026-06-02 for
+`docs/grimo/marketing-outcome.md`, using `ccusage@20.0.6`:
+
+| Field | Correct value | Notes |
+|---|---:|---|
+| Date range | 2026-04-24 to 2026-05-19 | Asia/Taipei, inclusive 26 days |
+| Command | `npx ccusage@latest --json --since 2026-04-24 --until 2026-05-19 --timezone Asia/Taipei` | ccusage detected Claude, Codex, and Gemini CLI data |
+| Input tokens | 118,597,405 | uncached input |
+| Output tokens | 25,008,702 | model output |
+| Cache create tokens | 70,170,003 | cache write |
+| Cache read tokens | 7,553,218,927 | cache hit |
+| Total tokens | 7,766,996,172 | 77.67 億 tokens |
+| Token cost | $5,207.22 | `ccusage` computed USD cost |
+| Outcome points | 1,731 | Done specs through `v4.86.0 / S202`, including early MVP rows with `—` version, milestone-only S170/S192, and split-parent specs S160/S161/S163/S164 |
+| Weekly delivery | 465.9 points/week | `1731 / 26 * 7` |
+| Cost per point | $3.01 | `$5207.21555895 / 1731` |
+
+Roadmap cross-check:
+
+| Roadmap denominator | Points | Weekly delivery | Cost per point | Use when |
+|---|---:|---:|---:|---|
+| Through `v4.84.0 / S201` | 1,717 | 462.3 | $3.03 | Stop before S202, even though S202 also shipped on 2026-05-19 |
+| Through `v4.86.0 / S202` | 1,731 | 465.9 | $3.01 | Marketing outcome date range: 2026-04-24 to 2026-05-19 |
+| Through `v4.87.0 / S203` | 1,745 | 469.8 | N/A | S203 archive work date is 2026-05-19, but roadmap milestone says shipped 2026-05-20 |
+| Current roadmap through `v4.90.0 / S206` | 1,779 | N/A | N/A | Includes work after the `ccusage` date range, so do not pair with this cost total |
+
+Do not use the old `10,375,768,169 tokens` / `$5,757.85` / `1663 points`
+figures for the marketing outcome. The local `ccusage` run plus the Python
+roadmap audit above is the current accounting source of truth.
+
+---
+
 ## References
 
 [1] Boehm, B.W. et al. *Software Cost Estimation with COCOMO II*.
@@ -241,3 +296,6 @@ monsters" [11], and IFPUG FPA's **GSC14 (Facilitate Change)** [2].
 [13] NASA. "Software Test Estimation and Testing Levels." *SWEHB*,
      Section 7.6.
      https://swehb.nasa.gov/display/SWEHBVD/7.6+-+Software+Test+Estimation+and+Testing+Levels
+
+[14] Anthropic. "Pricing." Claude API Docs. Accessed 2026-06-02.
+     https://platform.claude.com/docs/en/about-claude/pricing
