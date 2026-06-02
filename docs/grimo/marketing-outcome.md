@@ -66,12 +66,14 @@ Token 與 cost 由本機 `npx ccusage@latest` 重新查詢，版本是
 `ccusage 20.0.6`。因為期間內有 Claude 其他專案資料，最終採用：
 
 ```text
-all agents - all Claude + Claude skills-hub project
+all agents daily - all Claude daily + Claude skills-hub project daily
 ```
 
 這個公式是逐日套用後再加總，不是把三份總表直接相減。
 `ccusage daily --json` 的日期欄位是 `period`，`ccusage claude daily --json`
 的日期欄位是 `date`，Python 計算時兩者都會讀取。
+`Total tokens` 使用 daily `totalTokens` 欄位逐日加總，不用四個 token
+分類欄位回推。
 
 使用的命令：
 

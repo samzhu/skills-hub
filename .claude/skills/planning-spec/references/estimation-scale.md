@@ -304,13 +304,13 @@ filtered to the `skills-hub` project. The token/cost formula is applied per
 calendar date, then summed:
 
 ```text
-all agents - all Claude + Claude skills-hub project
+all agents daily - all Claude daily + Claude skills-hub project daily
 ```
 
 | Field | Correct value | Notes |
 |---|---:|---|
 | Date range | 2026-04-24 to 2026-05-19 | Asia/Taipei, inclusive 26 days |
-| Commands | `npx ccusage@latest --json --since 2026-04-24 --until 2026-05-19 --timezone Asia/Taipei`; `npx ccusage@latest claude daily --json --since 20260424 --until 20260519 --timezone Asia/Taipei`; `npx ccusage@latest claude daily --json --since 20260424 --until 20260519 --timezone Asia/Taipei --project=-Users-samzhu-workspace-github-samzhu-skills-hub` | Combined with Python arithmetic per date; unified `daily` rows use `period`, Claude rows use `date` |
+| Commands | `npx ccusage@latest --json --since 2026-04-24 --until 2026-05-19 --timezone Asia/Taipei`; `npx ccusage@latest claude daily --json --since 20260424 --until 20260519 --timezone Asia/Taipei`; `npx ccusage@latest claude daily --json --since 20260424 --until 20260519 --timezone Asia/Taipei --project=-Users-samzhu-workspace-github-samzhu-skills-hub` | Combined with Python arithmetic per date; unified `daily` rows use `period`, Claude rows use `date`; `Total tokens` uses daily `totalTokens`, not a recomputed sum of token categories |
 | Input tokens | 118,415,608 | uncached input |
 | Output tokens | 15,712,934 | model output |
 | Cache create tokens | 35,399,159 | cache write |
