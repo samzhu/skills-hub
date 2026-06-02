@@ -9,6 +9,7 @@ metadata for audit comparison.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass
@@ -65,6 +66,9 @@ class RoadmapRow:
 class ArchiveDoc:
     spec_id: str
     path: str
+    source_paths: list[str]
+    full_read_audit: list[dict[str, object]]
+    bytes_read: int
     archive_date: str | None
     title: str
     header_status: str
@@ -76,6 +80,10 @@ class Reestimate:
     spec_id: str
     title: str
     source_path: str | None
+    archive_source_paths: list[str]
+    archive_full_read_count: int
+    archive_bytes_read: int
+    archive_sha256s: dict[str, str]
     roadmap_section: str | None
     legacy_points_raw: str | None
     legacy_numeric_points: float | None
@@ -165,21 +173,45 @@ def parse_archives() -> dict[str, ArchiveDoc]:
         if not match:
             continue
         archive_date, spec_id = match.groups()
-        text = path.read_text(encoding="utf-8")
+        raw = path.read_bytes()
+        text = raw.decode("utf-8")
+        relative_path = str(path.relative_to(ROOT))
+        read_audit = {
+            "path": relative_path,
+            "bytes": len(raw),
+            "lines": text.count("\n") + 1,
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
         title_match = re.search(r"^#\s+(.+)$", text, flags=re.MULTILINE)
         title = title_match.group(1).strip() if title_match else spec_id
         header = "\n".join(text.splitlines()[:12])
         doc = ArchiveDoc(
             spec_id=spec_id,
-            path=str(path.relative_to(ROOT)),
+            path=relative_path,
+            source_paths=[relative_path],
+            full_read_audit=[read_audit],
+            bytes_read=len(raw),
             archive_date=archive_date,
             title=title,
             header_status=header,
             text=text,
         )
-        # Keep the larger source when duplicate archive files share a SpecID.
-        if spec_id not in docs or len(text) > len(docs[spec_id].text):
+        if spec_id not in docs:
             docs[spec_id] = doc
+            continue
+
+        existing = docs[spec_id]
+        existing.source_paths.append(relative_path)
+        existing.full_read_audit.append(read_audit)
+        existing.bytes_read += len(raw)
+        existing.text += f"\n\n--- Archive source: {relative_path} ---\n\n{text}"
+        # Keep the largest file as the display title/header source, but retain
+        # every duplicate archive body in `text` and `full_read_audit`.
+        if len(raw) > max(item["bytes"] for item in existing.full_read_audit if item["path"] != relative_path):
+            existing.path = relative_path
+            existing.archive_date = archive_date
+            existing.title = title
+            existing.header_status = header
     return docs
 
 
@@ -204,36 +236,6 @@ def ac_count(text: str) -> int:
 
 def task_count(text: str) -> int:
     return len(set(re.findall(r"\bT\d{2}\b", text)))
-
-
-def focused_archive_text(text: str) -> str:
-    """Keep high-signal implementation evidence from long spec files.
-
-    Full spec bodies contain historical alternatives and references to many
-    other specs. Using the whole file makes a small copy fix look like a
-    multi-module platform change. The first lines, final result sections, and
-    final re-score sections are enough for outcome re-estimation.
-    """
-    lines = text.splitlines()
-    selected: list[str] = []
-    selected.extend(lines[:90])
-    for index, line in enumerate(lines):
-        lowered = line.lower()
-        if any(
-            marker in lowered
-            for marker in (
-                "final size re-score",
-                "final re-score",
-                "ship summary",
-                "change summary",
-                "verification",
-                "release artifacts",
-                "files changed",
-            )
-        ):
-            selected.extend(lines[index : index + 36])
-    selected.extend(lines[-80:])
-    return "\n".join(selected)
 
 
 def terminal_status(row: RoadmapRow | None, doc: ArchiveDoc | None) -> str:
@@ -284,7 +286,7 @@ def step(points: int, delta: int) -> int:
 
 def estimate_points(spec_id: str, title: str, row: RoadmapRow | None, doc: ArchiveDoc | None) -> tuple[int, int, dict[str, int], list[str], str]:
     label_text = " ".join(part for part in [title, row.status_raw if row else "", row.points_raw if row else ""] if part)
-    doc_text = focused_archive_text(doc.text) if doc else ""
+    doc_text = doc.text if doc else ""
     text = " ".join(part for part in [label_text, doc_text] if part)
     lower = text.lower()
     label_lower = label_text.lower()
@@ -516,6 +518,10 @@ def build_reestimates() -> list[Reestimate]:
                 spec_id=spec_id,
                 title=title,
                 source_path=doc.path if doc else None,
+                archive_source_paths=doc.source_paths if doc else [],
+                archive_full_read_count=len(doc.full_read_audit) if doc else 0,
+                archive_bytes_read=doc.bytes_read if doc else 0,
+                archive_sha256s={str(item["path"]): str(item["sha256"]) for item in doc.full_read_audit} if doc else {},
                 roadmap_section=row.section if row else None,
                 legacy_points_raw=points_raw,
                 legacy_numeric_points=legacy,
@@ -548,9 +554,12 @@ def summarize(records: list[Reestimate]) -> dict[str, object]:
     by_points: dict[str, int] = {}
     for record in counted:
         by_points[str(record.story_points)] = by_points.get(str(record.story_points), 0) + 1
+    archive_files_read = sum(record.archive_full_read_count for record in records)
+    archive_bytes_read = sum(record.archive_bytes_read for record in records)
     return {
         "generated_by": "tools/reestimate_story_points.py",
         "model": "Fibonacci story points with optional six-factor diagnostic",
+        "read_policy": "Every archive spec file is read in full via read_bytes(); duplicate archive files for the same SpecID are merged into that SpecID audit record.",
         "deck": list(FIBONACCI),
         "marketing_cutoff": {
             "version": "v4.86.0",
@@ -562,6 +571,8 @@ def summarize(records: list[Reestimate]) -> dict[str, object]:
             "marketing_counted_specs": len(marketing),
             "marketing_story_points": sum(record.story_points for record in marketing),
             "excluded_specs": len(excluded),
+            "archive_files_read": archive_files_read,
+            "archive_bytes_read": archive_bytes_read,
         },
         "distribution": by_points,
         "exclusion_notes": {

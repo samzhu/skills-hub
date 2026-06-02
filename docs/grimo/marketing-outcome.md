@@ -2,7 +2,7 @@
 
 我們用 26 天、約 47.40 億 tokens 的 AI 開發投入，等價成本
 $3,362.38，把企業級 AI Agent Skills Registry 從產品概念推進到
-1276 點可驗收成果，平均每週交付 343.5 點。
+1305 點可驗收成果，平均每週交付 351.3 點。
 
 換句話說：約 3,400 美元，交付一套能發佈、搜尋、審核、下載、
 管理權限、跑 E2E 驗證，並持續部署修正的 AI Agent Skills Registry。
@@ -15,13 +15,13 @@ $3,362.38，把企業級 AI Agent Skills Registry 從產品概念推進到
 | 總天數 | 26 天 |
 | Token 投入 | 4,740,430,679 tokens（約 47.40 億） |
 | Token 等價成本 | $3,362.38 |
-| 可驗收成果 | 1276 story points |
-| 每週交付 | 343.5 story points |
-| 每點成本 | $2.64 |
+| 可驗收成果 | 1305 story points |
+| 每週交付 | 351.3 story points |
+| 每點成本 | $2.58 |
 
-## 1276 點怎麼算
+## 1305 點怎麼算
 
-1276 點是把 2026-05-19 前已完成的 spec 重新估到目前的
+1305 點是把 2026-05-19 前已完成的 spec 重新估到目前的
 Fibonacci story point deck 後加總，算到 `v4.86.0 / S202`。
 
 目前正式點數只使用：
@@ -34,7 +34,7 @@ Fibonacci story point deck 後加總，算到 `v4.86.0 / S202`。
 `S147`、`S160`、`S161`、`S163`、`S164`。一般單一 spec 即使很大，
 上限也落在 `13`，代表它應該被拆分前不再繼續膨脹。
 
-這次重估不是把舊制括號數字直接相加。Python 腳本會讀
+這次重估不是把舊制括號數字直接相加。Python 腳本會完整讀取
 `docs/grimo/specs/spec-roadmap.md` 與 `docs/grimo/specs/archive/`，
 每個 SpecID 只算一次，並用以下資料判斷新制點數：
 
@@ -48,8 +48,9 @@ Fibonacci story point deck 後加總，算到 `v4.86.0 / S202`。
 
 - 腳本：`tools/reestimate_story_points.py`
 - 每個 spec 的結果：`docs/grimo/specs/story-point-reestimate-2026-06-02.json`
-- marketing 區間：235 個 counted spec，1276 story points。
-- 目前全 repo shipped 區間：239 個 counted spec，1318 story points。
+- archive full-read audit：252 個 archive 檔、4,482,923 bytes。
+- marketing 區間：235 個 counted spec，1305 story points。
+- 目前全 repo shipped 區間：239 個 counted spec，1347 story points。
 
 實際例子：
 
@@ -67,6 +68,10 @@ Token 與 cost 由本機 `npx ccusage@latest` 重新查詢，版本是
 ```text
 all agents - all Claude + Claude skills-hub project
 ```
+
+這個公式是逐日套用後再加總，不是把三份總表直接相減。
+`ccusage daily --json` 的日期欄位是 `period`，`ccusage claude daily --json`
+的日期欄位是 `date`，Python 計算時兩者都會讀取。
 
 使用的命令：
 
@@ -89,5 +94,5 @@ Python 計算後：
 
 ## 一句話版本
 
-26 天，47.40 億 tokens，$3.36K，1276 story points 交付。從產品概念到
+26 天，47.40 億 tokens，$3.36K，1305 story points 交付。從產品概念到
 企業級 AI Agent Skills Registry。
