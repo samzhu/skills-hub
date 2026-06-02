@@ -121,7 +121,7 @@ Phase 1 — Context (no user interaction)
 - [ ] Scan existing research — check for prior research notes, competitive analysis, or prior spec findings related to this spec's topic. Re-research is the most expensive form of waste.
 - [ ] Re-sync PRD — scan the PRD for product-level decisions that constrain this spec. Verify the spec's goal aligns with the product's positioning (e.g., "manage X" vs "replace X" vs "bridge X and Y").
 - [ ] Inspect current state — list the project directory; diff against what the last planning step recorded.
-- [ ] Estimate (initial) — score the six dimensions from the roadmap entry to determine size bucket.
+- [ ] Estimate (initial) — choose initial `story_points` from the roadmap scope. Use `references/estimation-scale.md` Appendix A only as an optional diagnostic when planning depth is unclear.
 
 Phase 2 — Research (BLOCKING GATE — must complete before Phase 3)
 - [ ] Step -1 — Scan existing research (prior notes, shipped spec findings,
@@ -309,16 +309,18 @@ all task planning effort.
 
 ### Design depth scales with estimation
 
-Read `references/estimation-scale.md` for the full six-dimension rubric (tech risk, uncertainty, dependencies, scope, testing, reversibility), scoring criteria (1–3 per dimension), worked examples, and literature citations. The rubric determines the size bucket:
+Read `references/estimation-scale.md` for the official story point model, adjustment rules, legacy roadmap accounting, and reference appendix. `story_points` is the value stored in `spec-roadmap.md`.
 
-| Size | Depth | User interaction |
-|------|-------|------------------|
-| XS (6–8) | Skip approach comparison. Recommend directly. | 3-question intake plus up to 1 spec-specific grill question. If prior context already answers a question, state the answer in §2 Approach and skip asking. |
-| S (9–11) | Brief comparison. | 3-4 questions, confirm approach |
-| M (12–14) | Full comparison + interface definition. | Confirm approach + key interfaces |
-| L+ (15–16) | Deep design + PoC spike may be needed. | Confirm at each phase boundary |
+| Story points | Size | Depth | User interaction |
+|---:|------|-------|------------------|
+| 1 | Micro | Direct recommendation; no approach comparison | Clarify only if requirement is ambiguous |
+| 2 | XS | Skip approach comparison. Recommend directly. | 3-question intake plus up to 1 spec-specific grill question. If prior context already answers a question, state the answer in §2 Approach and skip asking. |
+| 3 | S | Brief comparison | 3-4 questions, confirm approach |
+| 5 | S-M | Focused comparison + API/test outline | Confirm approach + one key interface |
+| 8 | M | Full comparison + interface definition | Confirm approach + key interfaces |
+| 13 | L | Deep design + PoC spike may be needed | Confirm at each phase boundary |
 
-**XL (17–18) = mandatory split.** Decompose into 2+ specs before proceeding. Tech risk = 3 triggers parallel research sub-agents (see Research section above).
+**20 points = XL parent only.** Decompose into 2+ specs before proceeding. High technical risk triggers parallel research sub-agents (see Research section above).
 
 ### Spec File Structure
 

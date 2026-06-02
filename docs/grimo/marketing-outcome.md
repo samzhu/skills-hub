@@ -1,8 +1,11 @@
 # Skills Hub 成效摘要
 
-我們用 26 天、約 77.67 億 tokens 的 AI 開發投入，等價成本 $5,207.22，把一個企業級 AI Agent Skills Registry 從產品概念推進到 1731 點可驗收成果，平均每週交付 465.9 點。
+我們用 26 天、約 47.40 億 tokens 的 AI 開發投入，等價成本
+$3,362.38，把企業級 AI Agent Skills Registry 從產品概念推進到
+1276 點可驗收成果，平均每週交付 343.5 點。
 
-換句話說：約 5,200 美元，交付一套能發佈、搜尋、審核、下載、管理權限、跑 E2E 驗證，並持續部署修正的 AI Agent Skills Registry。
+換句話說：約 3,400 美元，交付一套能發佈、搜尋、審核、下載、
+管理權限、跑 E2E 驗證，並持續部署修正的 AI Agent Skills Registry。
 
 ## 核心數字
 
@@ -10,45 +13,81 @@
 | --- | ---: |
 | 開發期間 | 2026-04-24 至 2026-05-19 |
 | 總天數 | 26 天 |
-| Token 投入 | 7,766,996,172 tokens（約 77.67 億） |
-| Token 等價成本 | $5,207.22 |
-| 可驗收成果 | 1731 點 |
-| 每週交付 | 465.9 點 |
-| 每點成本 | $3.01 |
+| Token 投入 | 4,740,430,679 tokens（約 47.40 億） |
+| Token 等價成本 | $3,362.38 |
+| 可驗收成果 | 1276 story points |
+| 每週交付 | 343.5 story points |
+| 每點成本 | $2.64 |
 
-## 1731 點怎麼算
+## 1276 點怎麼算
 
-1731 點是把 2026-05-19 前已完成的 spec 點數加總，算到 `v4.86.0 / S202`。這裡的「點」不是 commit 數，也不是寫了幾行程式，而是用來表示一段產品工作有多複雜。
+1276 點是把 2026-05-19 前已完成的 spec 重新估到目前的
+Fibonacci story point deck 後加總，算到 `v4.86.0 / S202`。
 
-可以把它想成「一件可驗收工作的大小」：
+目前正式點數只使用：
 
-- 1-3 點：很小的修正，例如改錯誤訊息、補一個欄位、修一個設定。
-- 4-7 點：小功能，例如新增一個按鈕行為、一個簡單 API、一個頁面小區塊。
-- 8-11 點：完整功能，例如一個頁面流程、一組前後端 API 對接、一段可驗收的搜尋或下載能力。
-- 12-15 點：跨前端、後端、資料庫、測試的完整產品能力，例如權限模型、版本管理、語意搜尋修復。
-- 17-20 點：大型架構工作，例如資料層遷移、核心掃描架構、事件 outbox、聚合模型重構。
+```text
+1, 2, 3, 5, 8, 13, 20
+```
+
+`20` 只保留給歷史上的 parent / rollup 工作包，例如 `S014`、
+`S147`、`S160`、`S161`、`S163`、`S164`。一般單一 spec 即使很大，
+上限也落在 `13`，代表它應該被拆分前不再繼續膨脹。
+
+這次重估不是把舊制括號數字直接相加。Python 腳本會讀
+`docs/grimo/specs/spec-roadmap.md` 與 `docs/grimo/specs/archive/`，
+每個 SpecID 只算一次，並用以下資料判斷新制點數：
+
+- roadmap 的質性尺寸標籤，例如 `XS`、`S`、`M`、`L`。
+- archive spec 的實作證據，例如前端/後端/資料庫、E2E、production、
+  Cloud Run、Docker、native image、schema migration、pivot/debug。
+- `META`、取消、取代、延後、尚未完成的 spec 不計入。
+- 歷史拆段子 spec 仍列在重估檔，但點數歸入 parent 工作包，避免重複計算。
+
+重估輸出：
+
+- 腳本：`tools/reestimate_story_points.py`
+- 每個 spec 的結果：`docs/grimo/specs/story-point-reestimate-2026-06-02.json`
+- marketing 區間：235 個 counted spec，1276 story points。
+- 目前全 repo shipped 區間：239 個 counted spec，1318 story points。
 
 實際例子：
 
-- `S079` 是 1 點：把暫停技能時的錯誤訊息修得更清楚。
-- `S074` 是 5 點：新增 Skill 檔案瀏覽 API，讓前端能看到 package 裡有哪些檔案。
-- `S189` 是 11 點：確認 `/browse` 搜尋入口的行為，包含空白搜尋、有字搜尋、API request contract 與 E2E 驗證。
-- `S188` 是 14 點：版本標籤可留空、自動流水號、保留自訂版本，前後端與測試一起完成。
-- `S014` 是 20 點：把資料層遷移到 PostgreSQL，包含資料庫、pgvector、後端整合與文件同步。
+- `S079` 是 1 點：只修暫停技能時的錯誤訊息。
+- `S074` 是 5 點：新增 Skill 檔案瀏覽 API。
+- `S189` 是 8 點：驗證 `/browse` 搜尋入口與 Playwright request contract。
+- `S188` 是 13 點：版本標籤可留空、自動流水號、前後端與驗證一起完成。
+- `S014` 是 20 點：PostgreSQL 資料層遷移，且吸收了 `S015` 範圍。
 
-加總規則：
+## Token / Cost 口徑
 
-- `XS(7)` 就算 7 點，`S(9)` 就算 9 點，`M(14)` 就算 14 點。
-- `S(9-10)` 這種範圍估算，取中間值 9.5 點。
-- `S(9) -> M(11)` 這種後來調整過的估算，用最後確認的 11 點。
-- `META`、取消、延後、尚未完成的 spec 不計入。
-- 同一個 SpecID 重複出現在 roadmap，不重複計算。
-- `✅ Shipped` 區塊裡版本欄為 `—` 的早期 MVP spec 仍計入，因為它們已有 archive spec 與完成紀錄。
-- `S160 / S161 / S163 / S164` 這種拆成多段 ship 的父 spec，以父 spec 最終點數計入；子 spec 已在同一工作包內，不重複膨脹。
-- `S170 / S192` 只出現在 milestone 時，從 archive spec 讀回最終點數：`S170 = 16`、`S192 = 14`。
+Token 與 cost 由本機 `npx ccusage@latest` 重新查詢，版本是
+`ccusage 20.0.6`。因為期間內有 Claude 其他專案資料，最終採用：
 
-所以 1731 點的意思是：這 26 天不是只改幾支程式，而是完成了許多從小修正到大型架構改造的可驗收工作，全部加總後是 1731 點。
+```text
+all agents - all Claude + Claude skills-hub project
+```
+
+使用的命令：
+
+```bash
+npx ccusage@latest --json --since 2026-04-24 --until 2026-05-19 --timezone Asia/Taipei
+npx ccusage@latest claude daily --json --since 20260424 --until 20260519 --timezone Asia/Taipei
+npx ccusage@latest claude daily --json --since 20260424 --until 20260519 --timezone Asia/Taipei --project=-Users-samzhu-workspace-github-samzhu-skills-hub
+```
+
+Python 計算後：
+
+| 欄位 | 數值 |
+| --- | ---: |
+| Input tokens | 118,415,608 |
+| Output tokens | 15,712,934 |
+| Cache create tokens | 35,399,159 |
+| Cache read tokens | 4,570,901,843 |
+| Total tokens | 4,740,430,679 |
+| Total cost | $3,362.38 |
 
 ## 一句話版本
 
-26 天，77.67 億 tokens，$5.2K，1731 點交付。從產品概念到企業級 AI Agent Skills Registry。
+26 天，47.40 億 tokens，$3.36K，1276 story points 交付。從產品概念到
+企業級 AI Agent Skills Registry。

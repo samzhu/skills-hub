@@ -1,25 +1,158 @@
 # Spec Estimation Scale Reference
 
-Six-dimension scoring system for spec size estimation.
-Each dimension scores 1–3; total determines size bucket.
+Skills Hub uses **story points** as the official estimation system for
+roadmap rows, shipped outcome accounting, velocity summaries, and marketing
+outcome reports.
 
-## Formula
+Appendix A keeps the six-factor diagnostic as background reference for why
+some point values need more planning depth. It is not a required spec field
+and is never stored in `spec-roadmap.md`.
+
+## Official Story Point Model
+
+Use one Fibonacci deck value as the spec estimate:
 
 ```
-Total = tech_risk + uncertainty + dependencies + scope + testing + reversibility
+1, 2, 3, 5, 8, 13, 20
 ```
 
-| Total | Size | Design depth | User interaction |
-|-------|------|--------------|------------------|
-| 6–8   | XS   | Skip approach comparison; recommend directly | 3-question intake + up to 1 grill question |
-| 9–11  | S    | Brief comparison | 3-4 questions, confirm approach |
-| 12–14 | M    | Full comparison + interface definition | Confirm approach + key interfaces |
-| 15–16 | L    | Deep design + PoC spike may be needed | Confirm at each phase boundary |
-| 17–18 | XL   | Must be decomposed — do not ship as XL | N/A |
+`20` is a parent-spec planning signal, not a normal implementation target.
+Split it into smaller specs before `/planning-tasks`.
+
+| Story points | Planning size | Design depth | User interaction |
+|---:|---|---|---|
+| 1 | Micro | Direct recommendation; no approach comparison | Clarify only if requirement is ambiguous |
+| 2 | XS | Skip approach comparison; state chosen path | 3-question intake + up to 1 grill question |
+| 3 | S | Brief comparison | 3-4 questions, confirm approach |
+| 5 | S-M | Focused comparison + API/test outline | Confirm approach + one key interface |
+| 8 | M | Full comparison + interface definition | Confirm approach + key interfaces |
+| 13 | L | Deep design + PoC spike may be needed | Confirm at each phase boundary |
+| 20 | XL parent only | Must be decomposed | N/A |
+
+## Recording Rules
+
+- `story_points`: the official Fibonacci delivery estimate stored in
+  `docs/grimo/specs/spec-roadmap.md`.
+- `planning_size`: Micro / XS / S / S-M / M / L / XL.
+
+New roadmap rows should put the story point value in the `點數` column.
+Prefer a plain deck value such as `8`. If a human-readable label is helpful,
+use `M(8)`, where `8` is still the official story point value.
+
+Examples:
+
+- `story_points = 1`, `planning_size = Micro`.
+- `story_points = 2`, `planning_size = XS`.
+- `story_points = 8`, `planning_size = M`.
+
+Do not store the Appendix A diagnostic score as the roadmap point value. A
+diagnostic score of 6 maps to `story_points = 1`.
+
+### Adjustment Rules
+
+Move **up one Fibonacci step** at final re-score when the implementation
+adds material work that was not visible during design:
+
+- New persistent schema or data migration was added.
+- Frontend + backend + database all changed in one spec.
+- Real browser E2E, native image, production deploy, Docker, Cloud Run,
+  or another external environment became part of the acceptance evidence.
+- A Round-N pivot changed the implementation approach.
+- The spec touched 3+ Spring Modulith modules or 9+ production files.
+
+Move **down one Fibonacci step** when final implementation proves smaller:
+
+- The spec is docs-only, config-only, or test-only.
+- Existing code already satisfied part of the acceptance criteria.
+- The shipped change touched only one narrow surface and no persisted state.
+- A planned backend/frontend half was cancelled or split into another spec.
+
+Do not move more than one step without splitting or writing a short ADR.
+Never use fractional story points. If a range appears in historical
+records, such as `S(9-10)`, use the midpoint only for historical
+accounting and replace it with one deck value during re-score.
+
+## Usage Notes
+
+- **Three scoring moments**:
+  1. **Initial estimate** — choose `story_points` from roadmap scope before
+     grill.
+  2. **Re-score after grill** — `/planning-spec` may shift `story_points`
+     after questions reveal hidden complexity or simplify scope.
+  3. **Final re-score at ship** — `/shipping-release` re-scores
+     `story_points` against actual implementation evidence. Final
+     `story_points` lands on `spec-roadmap.md`; the initial score stays in
+     the spec as historical record.
+- **Why re-score at ship matters:** The roadmap is the project's delivery
+  point history. Stale estimates hide systematic underestimation patterns.
+  Future planners use this data to calibrate new specs. Recurring shifts such
+  as `8 points` shipping as `13 points` surface as useful signal.
+- **When in doubt, score higher.** Per McConnell [5], underestimation
+  is the most common estimation failure mode. Overestimation just
+  means more design rigor, which is cheap.
+- **20 = mandatory split.** If the spec reaches 20 points, decompose it into
+  2+ specs before proceeding. Do not ship a normal spec as 20 points.
 
 ---
 
-## Dimension Definitions and Rubrics
+## Legacy Outcome Accounting
+
+`spec-roadmap.md` contains two point styles:
+
+1. **Current story points** — new specs use the Fibonacci deck above:
+   `1`, `2`, `3`, `5`, `8`, `13`, or parent-only `20`.
+2. **Legacy labeled points** — early shipped specs may use labels like
+   `XS(1)`, `S(5)`, `M(8)`, `L(20)`, or ranges like `S(9-10)`.
+
+For historical outcome summaries, do not reinterpret old labels through
+Appendix A. Use the numeric value inside parentheses:
+
+- `XS(7)` counts as 7 story points.
+- `S(9-10)` counts as 9.5 story points for historical accounting only.
+- `S(9) -> M(11)` counts as the final confirmed value, 11 story points.
+- `META`, cancelled, superseded, deferred, and unshipped specs count as 0.
+- Count each `SpecID` once even if it appears in multiple roadmap sections.
+- If a milestone says a spec shipped but the roadmap has no point row, read
+  the archived spec and use its final re-score.
+
+In old rows, values below 6 are still valid story points. They are not
+six-factor diagnostic scores, because the six-factor diagnostic minimum is
+6.
+
+---
+
+## Appendix A — Six-Factor Diagnostic
+
+This appendix is a reference table only. Use it to understand why a selected
+story point value may need more or less planning depth.
+
+```
+six_factor_score =
+  tech_risk
+  + uncertainty
+  + dependencies
+  + scope
+  + testing
+  + reversibility
+```
+
+Default diagnostic mapping:
+
+| Six-factor score | Default story points | Planning size |
+|---:|---:|---|
+| 6 | 1 | Micro |
+| 7-8 | 2 | XS |
+| 9-10 | 3 | S |
+| 11-12 | 5 | S-M |
+| 13-14 | 8 | M |
+| 15-16 | 13 | L |
+| 17-18 | 20 parent only | XL |
+
+The mapping is a starting point, not a second point system. If actual scope
+evidence contradicts the diagnostic score, keep `story_points` as the
+official value and record the reason.
+
+### Dimension Definitions and Rubrics
 
 ### 1. Technical Risk (技術風險)
 
@@ -117,9 +250,9 @@ monsters" [11], and IFPUG FPA's **GSC14 (Facilitate Change)** [2].
 
 ---
 
-## Worked Examples
+### Worked Examples
 
-### S001 — Core Domain Primitives → 7 / XS
+#### S001 — Core Domain Primitives → score 7 / XS / 2 points
 
 | Dimension | Score | Rationale |
 |-----------|-------|-----------|
@@ -130,7 +263,9 @@ monsters" [11], and IFPUG FPA's **GSC14 (Facilitate Change)** [2].
 | Testing | 1 | Pure JUnit |
 | Reversibility | 1 | No consumers yet |
 
-### S002 — Module Skeleton + Modulith Verify → 9 / S
+Default mapping: six-factor score 7 -> XS -> 2 story points.
+
+#### S002 — Module Skeleton + Modulith Verify → score 9 / S / 3 points
 
 | Dimension | Score | Rationale |
 |-----------|-------|-----------|
@@ -141,7 +276,9 @@ monsters" [11], and IFPUG FPA's **GSC14 (Facilitate Change)** [2].
 | Testing | 2 | `@ApplicationModuleTest` slice |
 | Reversibility | 1 | Empty modules, easily changed |
 
-### S003 — Sandbox SPI + Bind-Mount Adapter → 13 / M
+Default mapping: six-factor score 9 -> S -> 3 story points.
+
+#### S003 — Sandbox SPI + Bind-Mount Adapter → score 13 / M / 8 points
 
 | Dimension | Score | Rationale |
 |-----------|-------|-----------|
@@ -152,92 +289,50 @@ monsters" [11], and IFPUG FPA's **GSC14 (Facilitate Change)** [2].
 | Testing | 3 | Testcontainers + Docker Daemon; `@DisabledInNativeImage` |
 | Reversibility | 1 | No downstream consumers yet |
 
----
-
-## Usage Notes
-
-- **Three scoring moments**:
-  1. **Initial estimate** — from roadmap, before grill (rough)
-  2. **Re-score after grill** — `/planning-spec` may shift score after
-     grill reveals hidden complexity or simplifies scope
-  3. **Final re-score at ship** — `/shipping-release` re-scores against
-     actual implementation evidence (Round-N pivots, scope creep / shrink,
-     test complexity actually needed). Final score lands on
-     `spec-roadmap.md` 點數 column; initial estimate stays in spec §2 as
-     historical record. See `shipping-release/SKILL.md` § Re-score size.
-- **Why re-score at ship matters:** The roadmap is the project's ground
-  truth on spec size distribution. Stale initial estimates hide systematic
-  underestimation patterns. Future planners use this data to calibrate
-  scoring on new specs — recurring bucket shifts (e.g., M-shipping-as-L
-  due to GraalVM AOT pitfalls per `debugging-playbook.md`) surface as
-  signal not noise.
-- **When in doubt, score higher.** Per McConnell [5], underestimation
-  is the most common estimation failure mode. Overestimation just
-  means more design rigor, which is cheap.
-- **XL = mandatory split.** If total reaches 17+, decompose into 2+
-  specs before proceeding.
-- **Tech risk 3 triggers research.** Any spec with tech_risk = 3 must
-  dispatch parallel sub-agents to verify load-bearing APIs before the
-  first grill question (see SKILL.md Research section).
-- **Reversibility 1 is common early.** MVP specs naturally score low
-  on reversibility because no downstream consumers exist yet. This
-  is expected and correct — the score should reflect the *current*
-  state, not hypothetical future consumers.
+Default mapping: six-factor score 13 -> M -> 8 story points.
 
 ---
 
-## Legacy Outcome Accounting
-
-`spec-roadmap.md` contains two point systems:
-
-1. **Legacy roadmap points** — early shipped specs may use labels like
-   `XS(1)`, `S(5)`, `M(8)`, or `L(20)`. These do not map cleanly to the
-   current six-dimension bucket table above.
-2. **Current six-dimension score** — new specs should use the bucket table
-   in this file: `XS=6-8`, `S=9-11`, `M=12-14`, `L=15-16`, `XL=17-18`.
-
-For historical outcome summaries, do not reinterpret old labels through
-the current bucket table. Use the numeric value inside parentheses:
-
-- `XS(7)` counts as 7 points.
-- `S(9-10)` counts as 9.5 points.
-- `S(9) -> M(11)` counts as the final confirmed value, 11 points.
-- `META`, cancelled, superseded, deferred, and unshipped specs count as 0.
-- Count each `SpecID` once even if it appears in multiple roadmap sections.
-- If a milestone says a spec shipped but the roadmap has no point row, read
-  the archived spec and use its final re-score.
-
-### Skills Hub Marketing Outcome Checkpoint
+## Skills Hub Marketing Outcome Checkpoint
 
 Python recalculation on 2026-06-02 for
-`docs/grimo/marketing-outcome.md`, using `ccusage@20.0.6`:
+`docs/grimo/marketing-outcome.md`, using `ccusage 20.0.6` and
+`tools/reestimate_story_points.py`.
+
+The period's Codex and Gemini activity belonged to `skills-hub`; Claude was
+filtered to the `skills-hub` project. The token/cost formula is:
+
+```text
+all agents - all Claude + Claude skills-hub project
+```
 
 | Field | Correct value | Notes |
 |---|---:|---|
 | Date range | 2026-04-24 to 2026-05-19 | Asia/Taipei, inclusive 26 days |
-| Command | `npx ccusage@latest --json --since 2026-04-24 --until 2026-05-19 --timezone Asia/Taipei` | ccusage detected Claude, Codex, and Gemini CLI data |
-| Input tokens | 118,597,405 | uncached input |
-| Output tokens | 25,008,702 | model output |
-| Cache create tokens | 70,170,003 | cache write |
-| Cache read tokens | 7,553,218,927 | cache hit |
-| Total tokens | 7,766,996,172 | 77.67 億 tokens |
-| Token cost | $5,207.22 | `ccusage` computed USD cost |
-| Outcome points | 1,731 | Done specs through `v4.86.0 / S202`, including early MVP rows with `—` version, milestone-only S170/S192, and split-parent specs S160/S161/S163/S164 |
-| Weekly delivery | 465.9 points/week | `1731 / 26 * 7` |
-| Cost per point | $3.01 | `$5207.21555895 / 1731` |
+| Commands | `npx ccusage@latest --json --since 2026-04-24 --until 2026-05-19 --timezone Asia/Taipei`; `npx ccusage@latest claude daily --json --since 20260424 --until 20260519 --timezone Asia/Taipei`; `npx ccusage@latest claude daily --json --since 20260424 --until 20260519 --timezone Asia/Taipei --project=-Users-samzhu-workspace-github-samzhu-skills-hub` | Combined with Python arithmetic |
+| Input tokens | 118,415,608 | uncached input |
+| Output tokens | 15,712,934 | model output |
+| Cache create tokens | 35,399,159 | cache write |
+| Cache read tokens | 4,570,901,843 | cache hit |
+| Total tokens | 4,740,430,679 | 47.40 億 tokens |
+| Token cost | $3,362.38 | `ccusage` computed USD cost after Claude project filtering |
+| Outcome points | 1,276 | Fibonacci story points through `v4.86.0 / S202`; generated by `tools/reestimate_story_points.py` |
+| Counted specs | 235 | `META`, cancelled, superseded, deferred, and rolled-up child specs count as 0 |
+| Weekly delivery | 343.5 points/week | `1276 / 26 * 7` |
+| Cost per point | $2.64 | `$3362.38176865 / 1276` |
 
 Roadmap cross-check:
 
-| Roadmap denominator | Points | Weekly delivery | Cost per point | Use when |
-|---|---:|---:|---:|---|
-| Through `v4.84.0 / S201` | 1,717 | 462.3 | $3.03 | Stop before S202, even though S202 also shipped on 2026-05-19 |
-| Through `v4.86.0 / S202` | 1,731 | 465.9 | $3.01 | Marketing outcome date range: 2026-04-24 to 2026-05-19 |
-| Through `v4.87.0 / S203` | 1,745 | 469.8 | N/A | S203 archive work date is 2026-05-19, but roadmap milestone says shipped 2026-05-20 |
-| Current roadmap through `v4.90.0 / S206` | 1,779 | N/A | N/A | Includes work after the `ccusage` date range, so do not pair with this cost total |
+| Roadmap denominator | Counted specs | Story points | Use when |
+|---|---:|---:|---|
+| Through `v4.86.0 / S202` | 235 | 1,276 | Marketing outcome date range: 2026-04-24 to 2026-05-19 |
+| Current roadmap through `v4.90.0 / S206` | 239 | 1,318 | Includes work after the `ccusage` date range, so do not pair with the 2026-05-19 cost total |
 
-Do not use the old `10,375,768,169 tokens` / `$5,757.85` / `1663 points`
-figures for the marketing outcome. The local `ccusage` run plus the Python
-roadmap audit above is the current accounting source of truth.
+Do not use the old `10,375,768,169 tokens` / `$5,757.85` / `1663 points`,
+`7,479,655,240 tokens` / `$4,924.01` / `1731 points`, or
+`7,766,996,172 tokens` / `$5,207.22` / `1731 points` figures for the
+marketing outcome. The local `ccusage` run, Claude project filter, and Python
+story-point re-estimate above are the current accounting source of truth.
 
 ---
 
