@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Re-estimate shipped Grimo specs onto the current Fibonacci story-point deck.
+"""Calculate shipped Grimo specs on the Fibonacci story-point deck.
 
-The script intentionally uses spec/roadmap evidence instead of converting old
-labels such as ``XS(7)`` directly. Old numeric values are kept only as legacy
-metadata for audit comparison.
+The script uses spec and roadmap evidence instead of converting old labels
+such as ``XS(7)`` directly. Old numeric values are kept only as legacy
+metadata for comparison.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from typing import Iterable
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "docs/grimo/specs/spec-roadmap.md"
 ARCHIVE = ROOT / "docs/grimo/specs/archive"
-DEFAULT_OUTPUT = ROOT / "docs/grimo/specs/story-point-reestimate-2026-06-02.json"
+DEFAULT_OUTPUT = ROOT / "docs/grimo/specs/story-points-2026-06-02.json"
 
 MARKETING_CUTOFF_VERSION = (4, 86, 0)
 MARKETING_CUTOFF_DATE = date(2026, 5, 19)
@@ -35,7 +35,7 @@ PATH_RE = re.compile(r"(?:backend|frontend|e2e|docs|scripts|tools)/[A-Za-z0-9_./
 FIBONACCI = (1, 2, 3, 5, 8, 13, 20)
 
 # These rows were historical split children under a parent shipped package.
-# They are re-estimated for visibility but not counted in outcome totals.
+# They are listed for visibility but not counted in outcome totals.
 ROLLED_UP_CHILDREN = {
     "S160b",
     "S160b'",
@@ -66,7 +66,7 @@ class ArchiveDoc:
     spec_id: str
     path: str
     source_paths: list[str]
-    full_read_audit: list[dict[str, object]]
+    archive_file_records: list[dict[str, object]]
     bytes_read: int
     archive_date: str | None
     title: str
@@ -75,12 +75,12 @@ class ArchiveDoc:
 
 
 @dataclass
-class Reestimate:
+class StoryPointRecord:
     spec_id: str
     title: str
     source_path: str | None
     archive_source_paths: list[str]
-    archive_full_read_count: int
+    archive_file_count: int
     archive_bytes_read: int
     archive_sha256s: dict[str, str]
     roadmap_section: str | None
@@ -174,7 +174,7 @@ def parse_archives() -> dict[str, ArchiveDoc]:
         raw = path.read_bytes()
         text = raw.decode("utf-8")
         relative_path = str(path.relative_to(ROOT))
-        read_audit = {
+        archive_file_record = {
             "path": relative_path,
             "bytes": len(raw),
             "lines": text.count("\n") + 1,
@@ -187,7 +187,7 @@ def parse_archives() -> dict[str, ArchiveDoc]:
             spec_id=spec_id,
             path=relative_path,
             source_paths=[relative_path],
-            full_read_audit=[read_audit],
+            archive_file_records=[archive_file_record],
             bytes_read=len(raw),
             archive_date=archive_date,
             title=title,
@@ -200,12 +200,12 @@ def parse_archives() -> dict[str, ArchiveDoc]:
 
         existing = docs[spec_id]
         existing.source_paths.append(relative_path)
-        existing.full_read_audit.append(read_audit)
+        existing.archive_file_records.append(archive_file_record)
         existing.bytes_read += len(raw)
         existing.text += f"\n\n--- Archive source: {relative_path} ---\n\n{text}"
         # Keep the largest file as the display title/header source, but retain
-        # every duplicate archive body in `text` and `full_read_audit`.
-        if len(raw) > max(item["bytes"] for item in existing.full_read_audit if item["path"] != relative_path):
+        # every duplicate archive body in `text` and `archive_file_records`.
+        if len(raw) > max(item["bytes"] for item in existing.archive_file_records if item["path"] != relative_path):
             existing.path = relative_path
             existing.archive_date = archive_date
             existing.title = title
@@ -467,7 +467,7 @@ def estimate_points(spec_id: str, title: str, row: RoadmapRow | None, doc: Archi
     ]
     evidence.extend(flags)
     rationale = (
-        f"新制用 story points + full-read evidence 重估：{', '.join(evidence[:4])}；"
+        f"story_points 依 full spec evidence 計算：{', '.join(evidence[:4])}；"
         f"診斷分 {diagnostic}，上調訊號 {upward_reasons}，下調訊號 {downward_reasons}，最後 {points} 點。"
     )
     return points, diagnostic, dimensions, evidence, rationale
@@ -485,11 +485,11 @@ def should_marketing_count(row: RoadmapRow | None, doc: ArchiveDoc | None) -> bo
     return False
 
 
-def build_reestimates() -> list[Reestimate]:
+def build_story_point_records() -> list[StoryPointRecord]:
     rows = parse_roadmap()
     docs = parse_archives()
     spec_ids = sorted(set(rows) | set(docs), key=sort_key)
-    results: list[Reestimate] = []
+    results: list[StoryPointRecord] = []
 
     for spec_id in spec_ids:
         row = rows.get(spec_id)
@@ -512,14 +512,14 @@ def build_reestimates() -> list[Reestimate]:
         marketing_counted = counted and should_marketing_count(row, doc)
 
         results.append(
-            Reestimate(
+            StoryPointRecord(
                 spec_id=spec_id,
                 title=title,
                 source_path=doc.path if doc else None,
                 archive_source_paths=doc.source_paths if doc else [],
-                archive_full_read_count=len(doc.full_read_audit) if doc else 0,
+                archive_file_count=len(doc.archive_file_records) if doc else 0,
                 archive_bytes_read=doc.bytes_read if doc else 0,
-                archive_sha256s={str(item["path"]): str(item["sha256"]) for item in doc.full_read_audit} if doc else {},
+                archive_sha256s={str(item["path"]): str(item["sha256"]) for item in doc.archive_file_records} if doc else {},
                 roadmap_section=row.section if row else None,
                 legacy_points_raw=points_raw,
                 legacy_numeric_points=legacy,
@@ -544,19 +544,19 @@ def sort_key(spec_id: str) -> tuple[int, str]:
     return num, spec_id
 
 
-def summarize(records: list[Reestimate]) -> dict[str, object]:
+def summarize(records: list[StoryPointRecord]) -> dict[str, object]:
     counted = [record for record in records if record.counted]
     marketing = [record for record in records if record.marketing_counted]
     excluded = [record for record in records if not record.counted]
     by_points: dict[str, int] = {}
     for record in counted:
         by_points[str(record.story_points)] = by_points.get(str(record.story_points), 0) + 1
-    archive_files_read = sum(record.archive_full_read_count for record in records)
+    archive_files_read = sum(record.archive_file_count for record in records)
     archive_bytes_read = sum(record.archive_bytes_read for record in records)
     return {
-        "generated_by": "tools/reestimate_story_points.py",
+        "generated_by": "tools/calculate_story_points.py",
         "model": "Fibonacci story points with optional six-factor diagnostic",
-        "read_policy": "Every archive spec file is read in full via read_bytes(); duplicate archive files for the same SpecID are merged into that SpecID audit record.",
+        "source_read_policy": "Every archive spec file is read in full via read_bytes(); duplicate archive files for the same SpecID are merged into that SpecID record.",
         "deck": list(FIBONACCI),
         "marketing_cutoff": {
             "version": "v4.86.0",
@@ -585,7 +585,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
 
-    records = build_reestimates()
+    records = build_story_point_records()
     payload = {
         "summary": summarize(records),
         "records": [asdict(record) for record in records],

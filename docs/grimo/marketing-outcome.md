@@ -21,8 +21,8 @@ $3,362.38，把企業級 AI Agent Skills Registry 從產品概念推進到
 
 ## 1305 點怎麼算
 
-1305 點是把 2026-05-19 前已完成的 spec 重新估到目前的
-Fibonacci story point deck 後加總，算到 `v4.86.0 / S202`。
+1305 點是以 Fibonacci story point deck 加總 2026-05-19 前已完成的
+spec，算到 `v4.86.0 / S202`。
 
 目前正式點數只使用：
 
@@ -34,22 +34,22 @@ Fibonacci story point deck 後加總，算到 `v4.86.0 / S202`。
 `S147`、`S160`、`S161`、`S163`、`S164`。一般單一 spec 即使很大，
 上限也落在 `13`，代表它應該被拆分前不再繼續膨脹。
 
-這次重估不是把舊制括號數字直接相加。Python 腳本會完整讀取
+這份結算不是把舊制括號數字直接相加。Python 腳本會完整讀取
 `docs/grimo/specs/spec-roadmap.md` 與 `docs/grimo/specs/archive/`，
-每個 SpecID 只算一次，並用以下資料判斷新制點數：
+每個 SpecID 只算一次，並用以下資料判斷 story points：
 
 - roadmap 的正式 story point 值；舊 rows 的 `XS/S/M/L/XL` 只當 legacy
-  標籤讀取，不輸出成新制估算欄位。
+  標籤讀取，不輸出成 story point 欄位。
 - archive spec 的實作證據，例如前端/後端/資料庫、E2E、production、
   Cloud Run、Docker、native image、schema migration、pivot/debug。
 - `META`、取消、取代、延後、尚未完成的 spec 不計入。
-- 歷史拆段子 spec 仍列在重估檔，但點數歸入 parent 工作包，避免重複計算。
+- 歷史拆段子 spec 仍列在 story point records，但點數歸入 parent 工作包，避免重複計算。
 
-重估輸出：
+結算資料：
 
-- 腳本：`tools/reestimate_story_points.py`
-- 每個 spec 的結果：`docs/grimo/specs/story-point-reestimate-2026-06-02.json`
-- archive full-read audit：252 個 archive 檔、4,482,923 bytes。
+- 腳本：`tools/calculate_story_points.py`
+- 每個 spec 的結果：`docs/grimo/specs/story-points-2026-06-02.json`
+- source coverage：252 個 archive 檔、4,482,923 bytes。
 - marketing 區間：235 個 counted spec，1305 story points。
 - 目前全 repo shipped 區間：239 個 counted spec，1347 story points。
 
