@@ -33,7 +33,6 @@ LEGACY_LABEL_RE = re.compile(r"\b(XS|S-M|M-L|XL|S|M|L)\(")
 PATH_RE = re.compile(r"(?:backend|frontend|e2e|docs|scripts|tools)/[A-Za-z0-9_./'{}:@+-]+")
 
 FIBONACCI = (1, 2, 3, 5, 8, 13, 20)
-SIZE_LABEL = {1: "Micro", 2: "XS", 3: "S", 5: "S-M", 8: "M", 13: "L", 20: "XL"}
 
 # These rows were historical split children under a parent shipped package.
 # They are re-estimated for visibility but not counted in outcome totals.
@@ -94,7 +93,6 @@ class Reestimate:
     marketing_counted: bool
     exclusion_reason: str | None
     story_points: int
-    planning_size: str
     diagnostic_score: int
     dimensions: dict[str, int]
     evidence_flags: list[str]
@@ -415,7 +413,7 @@ def estimate_points(spec_id: str, title: str, row: RoadmapRow | None, doc: Archi
         "XL": 20,
     }.get(label or "")
     if label:
-        flags.append(f"legacy-size-label:{label}")
+        flags.append(f"legacy-roadmap-label:{label}")
     points = label_points or diagnostic_score_to_points(diagnostic, parent_or_rollup)
 
     upward_reasons = 0
@@ -469,7 +467,7 @@ def estimate_points(spec_id: str, title: str, row: RoadmapRow | None, doc: Archi
     ]
     evidence.extend(flags)
     rationale = (
-        f"新制用質性尺寸 + 實作證據重估：{', '.join(evidence[:4])}；"
+        f"新制用 story points + full-read evidence 重估：{', '.join(evidence[:4])}；"
         f"診斷分 {diagnostic}，上調訊號 {upward_reasons}，下調訊號 {downward_reasons}，最後 {points} 點。"
     )
     return points, diagnostic, dimensions, evidence, rationale
@@ -532,7 +530,6 @@ def build_reestimates() -> list[Reestimate]:
                 marketing_counted=marketing_counted,
                 exclusion_reason=exclusion_reason,
                 story_points=points,
-                planning_size=SIZE_LABEL[points],
                 diagnostic_score=diagnostic,
                 dimensions=dimensions,
                 evidence_flags=evidence,

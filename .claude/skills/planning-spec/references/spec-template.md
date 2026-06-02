@@ -5,7 +5,7 @@ File: `docs/grimo/specs/YYYY-MM-DD-<spec-id>-<topic>.md`
 ```markdown
 # <spec-id>: [Topic]
 
-> Spec: <spec-id> | Size: XS/S/M(N) | Status: ⏳ Design
+> Spec: <spec-id> | Story points: <1|2|3|5|8|13|20> | Status: ⏳ Design
 > Date: YYYY-MM-DD
 > Traces to: PRD §X.Y / ADR-NNN / spec-roadmap row <spec-id>
 

@@ -205,7 +205,7 @@ Read `references/research-protocol.md` for the full dispatch sequence, prior-art
 
 The roadmap entry is intentionally coarse-grained. Details emerge by asking. Treat clarification as a LOOP, not one-shot.
 
-Core rules: one question at a time (S-sized may batch 2 related questions); always provide recommended answer; inspect files before asking; walk decision branches; don't stop early.
+Core rules: one question at a time (3-point specs may batch 2 related questions); always provide recommended answer; inspect files before asking; walk decision branches; don't stop early.
 
 Read `references/grill-protocol.md` for the full loop rules, focus topics, and troubleshooting patterns.
 
@@ -221,7 +221,7 @@ When designing a capability that involves switching between multiple variants (p
 
 ### Confirm — present approaches, let user choose
 
-After exploring approaches, present a comparison table and **wait for user's choice**. Do not pick for the user on M+ specs.
+After exploring approaches, present a comparison table and **wait for user's choice**. Do not pick for the user on 8+ point specs.
 
 **Every cell in the table must be grounded in research findings or codebase inspection.** If a Pros/Cons claim is based on an assumption rather than a verified fact, mark it as "(assumed)" and explain why verification was not possible.
 
@@ -311,16 +311,16 @@ all task planning effort.
 
 Read `references/estimation-scale.md` for the official story point model, adjustment rules, legacy roadmap accounting, and reference appendix. `story_points` is the value stored in `spec-roadmap.md`.
 
-| Story points | Size | Depth | User interaction |
-|---:|------|-------|------------------|
-| 1 | Micro | Direct recommendation; no approach comparison | Clarify only if requirement is ambiguous |
-| 2 | XS | Skip approach comparison. Recommend directly. | 3-question intake plus up to 1 spec-specific grill question. If prior context already answers a question, state the answer in §2 Approach and skip asking. |
-| 3 | S | Brief comparison | 3-4 questions, confirm approach |
-| 5 | S-M | Focused comparison + API/test outline | Confirm approach + one key interface |
-| 8 | M | Full comparison + interface definition | Confirm approach + key interfaces |
-| 13 | L | Deep design + PoC spike may be needed | Confirm at each phase boundary |
+| Story points | Depth | User interaction |
+|---:|-------|------------------|
+| 1 | Direct recommendation; no approach comparison | Clarify only if requirement is ambiguous |
+| 2 | Skip approach comparison. Recommend directly. | 3-question intake plus up to 1 spec-specific grill question. If prior context already answers a question, state the answer in §2 Approach and skip asking. |
+| 3 | Brief comparison | 3-4 questions, confirm approach |
+| 5 | Focused comparison + API/test outline | Confirm approach + one key interface |
+| 8 | Full comparison + interface definition | Confirm approach + key interfaces |
+| 13 | Deep design + PoC spike may be needed | Confirm at each phase boundary |
 
-**20 points = XL parent only.** Decompose into 2+ specs before proceeding. High technical risk triggers parallel research sub-agents (see Research section above).
+**20 points = parent-spec only.** Decompose into 2+ specs before proceeding. High technical risk triggers parallel research sub-agents (see Research section above).
 
 ### Spec File Structure
 
@@ -418,7 +418,7 @@ Rationale: extra layers add plugin compatibility risk, version drift between plu
 
 ## Forbidden File-Plan Patterns
 
-An XS or S spec MUST NOT pre-create files — configs, placeholders, empty directories, version catalogs — for downstream specs that have not yet shipped. If file X is only needed by spec N, it lands in spec N, not earlier.
+A 1-3 point spec MUST NOT pre-create files — configs, placeholders, empty directories, version catalogs — for downstream specs that have not yet shipped. If file X is only needed by spec N, it lands in spec N, not earlier.
 
 Exception: project-wide formatters, linters, CI configs, or other cross-cutting tooling where the cost of retro-fitting exceeds the cost of early adoption. These MUST be explicitly justified in the spec's Approach section (§2) and tied to an acceptance criterion.
 
@@ -494,9 +494,9 @@ After spec file is written, present a summary to the user:
 - Key interfaces (signatures)
 - AC count and coverage
 
-**XS/S**: Ask user "Proceed to task planning?" — if confirmed, invoke `/planning-tasks [spec-id]`.
+**1-3 points**: Ask user "Proceed to task planning?" — if confirmed, invoke `/planning-tasks [spec-id]`.
 
-**M+**: Always wait for explicit user approval before handoff. The user may want to revise scope, interfaces, or approach.
+**5+ points**: Always wait for explicit user approval before handoff. The user may want to revise scope, interfaces, or approach.
 
 ## Return from /planning-tasks
 

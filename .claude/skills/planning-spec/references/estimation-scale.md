@@ -19,31 +19,30 @@ Use one Fibonacci deck value as the spec estimate:
 `20` is a parent-spec planning signal, not a normal implementation target.
 Split it into smaller specs before `/planning-tasks`.
 
-| Story points | Planning size | Design depth | User interaction |
-|---:|---|---|---|
-| 1 | Micro | Direct recommendation; no approach comparison | Clarify only if requirement is ambiguous |
-| 2 | XS | Skip approach comparison; state chosen path | 3-question intake + up to 1 grill question |
-| 3 | S | Brief comparison | 3-4 questions, confirm approach |
-| 5 | S-M | Focused comparison + API/test outline | Confirm approach + one key interface |
-| 8 | M | Full comparison + interface definition | Confirm approach + key interfaces |
-| 13 | L | Deep design + PoC spike may be needed | Confirm at each phase boundary |
-| 20 | XL parent only | Must be decomposed | N/A |
+| Story points | Design depth | User interaction |
+|---:|---|---|
+| 1 | Direct recommendation; no approach comparison | Clarify only if requirement is ambiguous |
+| 2 | Skip approach comparison; state chosen path | 3-question intake + up to 1 grill question |
+| 3 | Brief comparison | 3-4 questions, confirm approach |
+| 5 | Focused comparison + API/test outline | Confirm approach + one key interface |
+| 8 | Full comparison + interface definition | Confirm approach + key interfaces |
+| 13 | Deep design + PoC spike may be needed | Confirm at each phase boundary |
+| 20 | Parent-spec only; must be decomposed | N/A |
 
 ## Recording Rules
 
 - `story_points`: the official Fibonacci delivery estimate stored in
   `docs/grimo/specs/spec-roadmap.md`.
-- `planning_size`: Micro / XS / S / S-M / M / L / XL.
 
 New roadmap rows should put the story point value in the `點數` column.
-Prefer a plain deck value such as `8`. If a human-readable label is helpful,
-use `M(8)`, where `8` is still the official story point value.
+Use a plain deck value such as `1`, `2`, `3`, `5`, `8`, `13`, or parent-only
+`20`.
 
 Examples:
 
-- `story_points = 1`, `planning_size = Micro`.
-- `story_points = 2`, `planning_size = XS`.
-- `story_points = 8`, `planning_size = M`.
+- `story_points = 1`.
+- `story_points = 2`.
+- `story_points = 8`.
 
 Do not store the Appendix A diagnostic score as the roadmap point value. A
 diagnostic score of 6 maps to `story_points = 1`.
@@ -119,6 +118,9 @@ In old rows, values below 6 are still valid story points. They are not
 six-factor diagnostic scores, because the six-factor diagnostic minimum is
 6.
 
+Legacy size labels are for interpreting old roadmap rows only. Do not use
+`XS`, `S`, `M`, `L`, or `XL` as fields, labels, or shorthand in new estimates.
+
 ---
 
 ## Appendix A — Six-Factor Diagnostic
@@ -138,15 +140,15 @@ six_factor_score =
 
 Default diagnostic mapping:
 
-| Six-factor score | Default story points | Planning size |
-|---:|---:|---|
-| 6 | 1 | Micro |
-| 7-8 | 2 | XS |
-| 9-10 | 3 | S |
-| 11-12 | 5 | S-M |
-| 13-14 | 8 | M |
-| 15-16 | 13 | L |
-| 17-18 | 20 parent only | XL |
+| Six-factor score | Default story points |
+|---:|---:|
+| 6 | 1 |
+| 7-8 | 2 |
+| 9-10 | 3 |
+| 11-12 | 5 |
+| 13-14 | 8 |
+| 15-16 | 13 |
+| 17-18 | 20 parent only |
 
 The mapping is a starting point, not a second point system. If actual scope
 evidence contradicts the diagnostic score, keep `story_points` as the
@@ -252,7 +254,7 @@ monsters" [11], and IFPUG FPA's **GSC14 (Facilitate Change)** [2].
 
 ### Worked Examples
 
-#### S001 — Core Domain Primitives → score 7 / XS / 2 points
+#### S001 — Core Domain Primitives → score 7 / 2 points
 
 | Dimension | Score | Rationale |
 |-----------|-------|-----------|
@@ -263,9 +265,9 @@ monsters" [11], and IFPUG FPA's **GSC14 (Facilitate Change)** [2].
 | Testing | 1 | Pure JUnit |
 | Reversibility | 1 | No consumers yet |
 
-Default mapping: six-factor score 7 -> XS -> 2 story points.
+Default mapping: six-factor score 7 -> 2 story points.
 
-#### S002 — Module Skeleton + Modulith Verify → score 9 / S / 3 points
+#### S002 — Module Skeleton + Modulith Verify → score 9 / 3 points
 
 | Dimension | Score | Rationale |
 |-----------|-------|-----------|
@@ -276,9 +278,9 @@ Default mapping: six-factor score 7 -> XS -> 2 story points.
 | Testing | 2 | `@ApplicationModuleTest` slice |
 | Reversibility | 1 | Empty modules, easily changed |
 
-Default mapping: six-factor score 9 -> S -> 3 story points.
+Default mapping: six-factor score 9 -> 3 story points.
 
-#### S003 — Sandbox SPI + Bind-Mount Adapter → score 13 / M / 8 points
+#### S003 — Sandbox SPI + Bind-Mount Adapter → score 13 / 8 points
 
 | Dimension | Score | Rationale |
 |-----------|-------|-----------|
@@ -289,7 +291,7 @@ Default mapping: six-factor score 9 -> S -> 3 story points.
 | Testing | 3 | Testcontainers + Docker Daemon; `@DisabledInNativeImage` |
 | Reversibility | 1 | No downstream consumers yet |
 
-Default mapping: six-factor score 13 -> M -> 8 story points.
+Default mapping: six-factor score 13 -> 8 story points.
 
 ---
 

@@ -38,7 +38,8 @@ Fibonacci story point deck 後加總，算到 `v4.86.0 / S202`。
 `docs/grimo/specs/spec-roadmap.md` 與 `docs/grimo/specs/archive/`，
 每個 SpecID 只算一次，並用以下資料判斷新制點數：
 
-- roadmap 的質性尺寸標籤，例如 `XS`、`S`、`M`、`L`。
+- roadmap 的正式 story point 值；舊 rows 的 `XS/S/M/L/XL` 只當 legacy
+  標籤讀取，不輸出成新制估算欄位。
 - archive spec 的實作證據，例如前端/後端/資料庫、E2E、production、
   Cloud Run、Docker、native image、schema migration、pivot/debug。
 - `META`、取消、取代、延後、尚未完成的 spec 不計入。

@@ -13,7 +13,7 @@
 
 ## Loop Rules
 
-1. **Ask one question at a time.** Prefer multiple-choice for speed; always allow free-form override. **S-sized exception:** may batch 2 closely-related questions in one turn if the answer to Q1 does not change Q2's options.
+1. **Ask one question at a time.** Prefer multiple-choice for speed; always allow free-form override. **3-point exception:** may batch 2 closely-related questions in one turn if the answer to Q1 does not change Q2's options.
 2. **Provide your recommended answer with every question.** One or two sentences on why. Convert the interview into "approve or override" — faster than asking the user to decide from scratch.
 3. **Inspect before asking.** If the project files (roadmap, architecture doc, development standards, prior shipped specs, the codebase itself) already answer the question, read them instead. Do NOT ask what the source already reveals.
 4. **Walk decision branches; don't flatten.** A spec-level decision (e.g., which library provides a capability) typically determines the next question (e.g., which adapter shape to expose, which errors translate across the port). Re-plan the next question based on the answer just received.
