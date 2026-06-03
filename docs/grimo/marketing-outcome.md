@@ -2,7 +2,7 @@
 
 我們用 26 天、約 47.40 億 tokens 的 AI 開發投入，等價成本
 $3,362.38，把企業級 AI Agent Skills Registry 從產品概念推進到
-1305 點可驗收成果，平均每週交付 351.3 點。
+2291 點專案成果，平均每週交付 616.8 點。
 
 換句話說：約 3,400 美元，交付一套能發佈、搜尋、審核、下載、
 管理權限、跑 E2E 驗證，並持續部署修正的 AI Agent Skills Registry。
@@ -15,14 +15,16 @@ $3,362.38，把企業級 AI Agent Skills Registry 從產品概念推進到
 | 總天數 | 26 天 |
 | Token 投入 | 4,740,430,679 tokens（約 47.40 億） |
 | Token 等價成本 | $3,362.38 |
-| 可驗收成果 | 1305 story points |
-| 每週交付 | 351.3 story points |
-| 每點成本 | $2.58 |
+| 專案成果 | 2291 story points |
+| 每週交付 | 616.8 story points |
+| 每點成本 | $1.47 |
 
-## 1305 點怎麼算
+## 2291 點怎麼算
 
-1305 點是以 Fibonacci story point deck 加總 2026-05-19 前已完成的
-spec，算到 `v4.86.0 / S202`。
+2291 點是以 MVP complexity-only Fibonacci story point deck 加總 repo
+所有 spec records。這個口徑包含 shipped、cancelled、superseded、
+deferred、META、rolled-up child，以及 roadmap 有列但沒有 archive spec 檔的
+records；也就是每個 SpecID 都分配 story points。
 
 目前正式點數只使用：
 
@@ -30,27 +32,34 @@ spec，算到 `v4.86.0 / S202`。
 1, 2, 3, 5, 8, 13, 20
 ```
 
-`20` 只保留給 parent / rollup 工作包，例如 `S014`、
-`S147`、`S160`、`S161`、`S163`、`S164`。一般單一 spec 即使很大，
-上限也落在 `13`，代表它應該被拆分前不再繼續膨脹。
+`20` 只保留給 parent / rollup 工作包，例如 `S014`、`S147`、`S160`、
+`S161`、`S163`、`S164`。一般單一 spec 即使很大，上限也落在 `13`，
+代表它應該被拆分前不再繼續膨脹。
 
 Python 腳本會完整讀取 `docs/grimo/specs/spec-roadmap.md` 與
-`docs/grimo/specs/archive/`，每個 SpecID 只算一次，並用以下資料判斷
-story points：
+`docs/grimo/specs/archive/`，每個 SpecID 只算一次，並用以下 complexity
+dimensions 判斷 story points：
 
-- roadmap 的正式 story point 值。
-- archive spec 的實作證據，例如前端/後端/資料庫、E2E、production、
-  Cloud Run、Docker、native image、schema migration、pivot/debug。
-- `META`、取消、取代、延後、尚未完成的 spec 不計入。
-- 拆段子 spec 仍列在 story point records，但點數歸入 parent 工作包，避免重複計算。
+- implementation surface
+- state and contract
+- integration surface
+- verification effort
+
+MVP 口徑只看實作複雜度，不因 failure cost、business risk、reversibility
+risk、研究主題不確定、或成熟工具名稱本身加點。Spring、React、Playwright、
+Cloud Run、Docker、Testcontainers 等固定技術棧只在真的新增 setup、
+implementation、fixture 或 verification work 時才計入。
 
 結算資料：
 
 - 腳本：`tools/calculate_story_points.py`
 - 每個 spec 的結果：`docs/grimo/specs/story-points-2026-06-02.json`
-- source coverage：252 個 archive 檔、4,482,923 bytes。
-- marketing 區間：235 個 counted spec，1305 story points。
-- 目前全 repo shipped 區間：239 個 counted spec，1347 story points。
+- source coverage：252 個 spec 檔、4,482,923 bytes、79,657 lines。
+- repo 所有 spec records：286 個 records，2291 story points。
+- repo shipped records：239 個 records，2012 story points。
+- excluded / non-shipped records：47 個 records，279 story points。
+- marketing date range 內所有 records：266 個 records，2210 story points。
+- marketing date range 內 shipped records：235 個 records，1965 story points。
 
 實際例子：
 
@@ -96,5 +105,5 @@ Python 計算後：
 
 ## 一句話版本
 
-26 天，47.40 億 tokens，$3.36K，1305 story points 交付。從產品概念到
+26 天，47.40 億 tokens，$3.36K，2291 story points 交付。從產品概念到
 企業級 AI Agent Skills Registry。

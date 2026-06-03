@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Calculate shipped Grimo specs on the Fibonacci story-point deck.
-
-The script uses spec and roadmap evidence, then emits final `story_points`
-records for outcome accounting.
-"""
+"""Calculate Grimo spec records on the MVP complexity story-point deck."""
 
 from __future__ import annotations
 
@@ -11,29 +7,29 @@ import argparse
 import hashlib
 import json
 import re
-from dataclasses import asdict, dataclass
+from collections import Counter
+from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Iterable
 
-
 ROOT = Path(__file__).resolve().parents[1]
 ROADMAP = ROOT / "docs/grimo/specs/spec-roadmap.md"
-ARCHIVE = ROOT / "docs/grimo/specs/archive"
+SPEC_DIR = ROOT / "docs/grimo/specs"
+ARCHIVE_DIR = SPEC_DIR / "archive"
 DEFAULT_OUTPUT = ROOT / "docs/grimo/specs/story-points-2026-06-02.json"
 
 MARKETING_CUTOFF_VERSION = (4, 86, 0)
 MARKETING_CUTOFF_DATE = date(2026, 5, 19)
+TOKEN_COST = Decimal("3362.38")
+DAYS = Decimal("26")
 
 SPEC_ID_RE = re.compile(r"\bS\d{3}(?:[a-z])?(?:-\d+)?(?:'{1,3})?\b")
 VERSION_RE = re.compile(r"v(\d+)\.(\d+)\.(\d+)")
-POINT_LABEL_RE = re.compile(r"\b(XS|S-M|M-L|XL|S|M|L)\(")
 PATH_RE = re.compile(r"(?:backend|frontend|e2e|docs|scripts|tools)/[A-Za-z0-9_./'{}:@+-]+")
+HEADER_TITLE_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 
-FIBONACCI = (1, 2, 3, 5, 8, 13, 20)
-
-# These rows are split children under a parent shipped package.
-# They are listed for visibility but not counted in outcome totals.
 ROLLED_UP_CHILDREN = {
     "S160b",
     "S160b'",
@@ -47,6 +43,8 @@ ROLLED_UP_CHILDREN = {
     "S163b'",
     "S164b",
 }
+PARENT_OR_ROLLUP_IDS = {"S014", "S147", "S160", "S161", "S163", "S164"}
+FIBONACCI = (1, 2, 3, 5, 8, 13, 20)
 
 
 @dataclass
@@ -60,39 +58,16 @@ class RoadmapRow:
 
 
 @dataclass
-class ArchiveDoc:
+class SpecDoc:
     spec_id: str
     path: str
-    source_paths: list[str]
-    archive_file_records: list[dict[str, object]]
     bytes_read: int
+    lines_read: int
+    sha256: str
     archive_date: str | None
     title: str
     header_status: str
     text: str
-
-
-@dataclass
-class StoryPointRecord:
-    spec_id: str
-    title: str
-    source_path: str | None
-    archive_source_paths: list[str]
-    archive_file_count: int
-    archive_bytes_read: int
-    archive_sha256s: dict[str, str]
-    roadmap_section: str | None
-    version: str | None
-    archive_date: str | None
-    terminal_status: str
-    counted: bool
-    marketing_counted: bool
-    exclusion_reason: str | None
-    story_points: int
-    diagnostic_score: int
-    dimensions: dict[str, int]
-    evidence_flags: list[str]
-    rationale: str
 
 
 def version_tuple(text: str) -> tuple[int, int, int] | None:
@@ -108,92 +83,9 @@ def version_text(version: tuple[int, int, int] | None) -> str | None:
     return f"v{version[0]}.{version[1]}.{version[2]}"
 
 
-def point_label(points_raw: str | None) -> str | None:
-    if not points_raw:
-        return None
-    arrow_part = points_raw.split("->")[-1].split("→")[-1]
-    match = POINT_LABEL_RE.search(arrow_part)
-    return match.group(1) if match else None
-
-
-def parse_roadmap() -> dict[str, RoadmapRow]:
-    rows: dict[str, RoadmapRow] = {}
-    section = ""
-    for line in ROADMAP.read_text(encoding="utf-8").splitlines():
-        if line.startswith("## "):
-            section = line.lstrip("# ").strip()
-            continue
-        if not line.startswith("| S"):
-            continue
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) < 3 or not SPEC_ID_RE.fullmatch(cells[0]):
-            continue
-        spec_id = cells[0]
-        if section.startswith("Milestones"):
-            continue
-        status_raw = cells[4] if len(cells) >= 5 else cells[-1]
-        version = version_tuple(" | ".join(cells))
-        row = RoadmapRow(
-            spec_id=spec_id,
-            title=cells[1],
-            points_raw=cells[2],
-            status_raw=status_raw,
-            section=section,
-            version=version,
-        )
-        # Prefer explicit shipped rows over older active/backlog duplicates.
-        if spec_id not in rows or section.startswith("✅ Shipped"):
-            rows[spec_id] = row
-    return rows
-
-
-def parse_archives() -> dict[str, ArchiveDoc]:
-    docs: dict[str, ArchiveDoc] = {}
-    for path in sorted(ARCHIVE.glob("*.md")):
-        match = re.match(r"(\d{4}-\d{2}-\d{2})-(S[^-]+)-", path.name)
-        if not match:
-            continue
-        archive_date, spec_id = match.groups()
-        raw = path.read_bytes()
-        text = raw.decode("utf-8")
-        relative_path = str(path.relative_to(ROOT))
-        archive_file_record = {
-            "path": relative_path,
-            "bytes": len(raw),
-            "lines": text.count("\n") + 1,
-            "sha256": hashlib.sha256(raw).hexdigest(),
-        }
-        title_match = re.search(r"^#\s+(.+)$", text, flags=re.MULTILINE)
-        title = title_match.group(1).strip() if title_match else spec_id
-        header = "\n".join(text.splitlines()[:12])
-        doc = ArchiveDoc(
-            spec_id=spec_id,
-            path=relative_path,
-            source_paths=[relative_path],
-            archive_file_records=[archive_file_record],
-            bytes_read=len(raw),
-            archive_date=archive_date,
-            title=title,
-            header_status=header,
-            text=text,
-        )
-        if spec_id not in docs:
-            docs[spec_id] = doc
-            continue
-
-        existing = docs[spec_id]
-        existing.source_paths.append(relative_path)
-        existing.archive_file_records.append(archive_file_record)
-        existing.bytes_read += len(raw)
-        existing.text += f"\n\n--- Archive source: {relative_path} ---\n\n{text}"
-        # Keep the largest file as the display title/header source, but retain
-        # every duplicate archive body in `text` and `archive_file_records`.
-        if len(raw) > max(item["bytes"] for item in existing.archive_file_records if item["path"] != relative_path):
-            existing.path = relative_path
-            existing.archive_date = archive_date
-            existing.title = title
-            existing.header_status = header
-    return docs
+def sort_key(spec_id: str) -> tuple[int, str]:
+    match = re.search(r"\d+", spec_id)
+    return (int(match.group(0)) if match else 9999, spec_id)
 
 
 def text_has(text: str, patterns: Iterable[str]) -> bool:
@@ -219,7 +111,86 @@ def task_count(text: str) -> int:
     return len(set(re.findall(r"\bT\d{2}\b", text)))
 
 
-def terminal_status(row: RoadmapRow | None, doc: ArchiveDoc | None) -> str:
+def parse_roadmap() -> dict[str, RoadmapRow]:
+    rows: dict[str, RoadmapRow] = {}
+    section = ""
+    for line in ROADMAP.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## "):
+            section = line.lstrip("# ").strip()
+            continue
+        if not line.startswith("| S"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 3 or not SPEC_ID_RE.fullmatch(cells[0]):
+            continue
+        if section.startswith("Milestones"):
+            continue
+        spec_id = cells[0]
+        row = RoadmapRow(
+            spec_id=spec_id,
+            title=cells[1],
+            points_raw=cells[2],
+            status_raw=cells[4] if len(cells) >= 5 else cells[-1],
+            section=section,
+            version=version_tuple(" | ".join(cells)),
+        )
+        if spec_id not in rows or section.startswith("✅ Shipped"):
+            rows[spec_id] = row
+    return rows
+
+
+def spec_id_from_path(path: Path) -> tuple[str | None, str | None]:
+    archive_match = re.match(r"(\d{4}-\d{2}-\d{2})-(S[^-]+)-", path.name)
+    if archive_match:
+        archive_date, spec_id = archive_match.groups()
+        return spec_id, archive_date
+    any_match = re.search(r"(S\d{3}(?:[a-z])?(?:-\d+)?(?:'{1,3})?)", path.name)
+    if any_match:
+        return any_match.group(1), None
+    return None, None
+
+
+def read_all_spec_docs() -> tuple[dict[str, list[SpecDoc]], list[dict[str, object]]]:
+    docs: dict[str, list[SpecDoc]] = {}
+    file_records: list[dict[str, object]] = []
+    paths = sorted(ARCHIVE_DIR.glob("*.md")) + sorted(
+        path for path in SPEC_DIR.glob("*.md") if path.name != "spec-roadmap.md"
+    )
+    for path in paths:
+        spec_id, archive_date = spec_id_from_path(path)
+        if not spec_id:
+            continue
+        raw = path.read_bytes()
+        text = raw.decode("utf-8")
+        relative_path = str(path.relative_to(ROOT))
+        title_match = HEADER_TITLE_RE.search(text)
+        title = title_match.group(1).strip() if title_match else spec_id
+        doc = SpecDoc(
+            spec_id=spec_id,
+            path=relative_path,
+            bytes_read=len(raw),
+            lines_read=text.count("\n") + 1,
+            sha256=hashlib.sha256(raw).hexdigest(),
+            archive_date=archive_date,
+            title=title,
+            header_status="\n".join(text.splitlines()[:12]),
+            text=text,
+        )
+        docs.setdefault(spec_id, []).append(doc)
+        file_records.append(
+            {
+                "spec_id": spec_id,
+                "path": relative_path,
+                "bytes": doc.bytes_read,
+                "lines": doc.lines_read,
+                "sha256": doc.sha256,
+                "archive_date": archive_date,
+            }
+        )
+    return docs, file_records
+
+
+def terminal_status(row: RoadmapRow | None, docs: list[SpecDoc]) -> str:
     if row:
         row_source = f"{row.section} {row.status_raw}".lower()
         if "superseded" in row_source or "取代" in row_source:
@@ -230,7 +201,7 @@ def terminal_status(row: RoadmapRow | None, doc: ArchiveDoc | None) -> str:
             return "deferred"
         if row.section.startswith("✅ Shipped") or "✅" in row.status_raw or "shipped" in row_source:
             return "shipped"
-    source = " ".join(part for part in [row.status_raw if row else "", doc.header_status if doc else ""] if part)
+    source = "\n".join(doc.header_status for doc in docs)
     lowered = source.lower()
     if "superseded" in lowered or "取代" in lowered:
         return "superseded"
@@ -243,48 +214,39 @@ def terminal_status(row: RoadmapRow | None, doc: ArchiveDoc | None) -> str:
     return "other"
 
 
-def diagnostic_score_to_points(score: int, parent_or_rollup: bool) -> int:
-    if score <= 6:
+def choose_display_doc(docs: list[SpecDoc]) -> SpecDoc | None:
+    return max(docs, key=lambda doc: doc.bytes_read) if docs else None
+
+
+def story_points_from_score(score: int, parent_or_rollup: bool) -> int:
+    if score <= 4:
         return 1
-    if score <= 8:
+    if score == 5:
         return 2
-    if score <= 10:
+    if score == 6:
         return 3
-    if score <= 12:
+    if score <= 9:
         return 5
-    if score <= 14:
+    if score <= 11:
         return 8
-    if score <= 16:
-        return 13
     return 20 if parent_or_rollup else 13
 
 
-def step(points: int, delta: int) -> int:
-    index = FIBONACCI.index(points)
-    index = max(0, min(len(FIBONACCI) - 1, index + delta))
-    return FIBONACCI[index]
-
-
-def estimate_points(spec_id: str, title: str, row: RoadmapRow | None, doc: ArchiveDoc | None) -> tuple[int, int, dict[str, int], list[str], str]:
+def calculate_spec(spec_id: str, row: RoadmapRow | None, docs: list[SpecDoc]) -> dict[str, object]:
+    display_doc = choose_display_doc(docs)
+    title = row.title if row else (display_doc.title if display_doc else spec_id)
     label_text = " ".join(part for part in [title, row.status_raw if row else "", row.points_raw if row else ""] if part)
-    doc_text = doc.text if doc else ""
-    text = " ".join(part for part in [label_text, doc_text] if part)
+    full_text = "\n\n".join(doc.text for doc in docs)
+    text = " ".join(part for part in [label_text, full_text] if part)
     lower = text.lower()
     label_lower = label_text.lower()
     paths = unique_paths(text)
     prod_paths = {
         path
         for path in paths
-        if (
-            path.startswith("backend/src/main")
-            or path.startswith("frontend/src")
-            or path.startswith("e2e/")
-            or path.startswith("scripts/")
-            or path.startswith("tools/")
-        )
+        if path.startswith(("backend/src/main", "frontend/src", "e2e/", "scripts/", "tools/"))
     }
     docs_paths = {path for path in paths if path.startswith("docs/")}
-
     flags: list[str] = []
 
     def flag(name: str, enabled: bool) -> bool:
@@ -296,10 +258,12 @@ def estimate_points(spec_id: str, title: str, row: RoadmapRow | None, doc: Archi
         "docs-only",
         text_has(label_lower, ["doc", "docs", "prd", "adr", "architecture", "development-standards", "glossary", "changelog"])
         and bool(docs_paths)
-        and not prod_paths
+        and not prod_paths,
     )
     is_config_only = flag("config-only", text_has(label_lower, ["config", "設定", ".gcloudignore", "compression", "cors", "dev db persistence"]))
+    is_research_only = flag("research/audit", text_has(label_lower, ["research", "audit", "analysis", "poc", "scanner architecture", "meta"]))
     is_test_only = flag("test-only", text_has(label_lower, ["test debt", "e2e critical path backfill", "verification baseline", "jacoco", "verify"]))
+    is_copy = flag("copy/message-only", text_has(label_lower, ["copy", "文案", "message", "placeholder", "label", "i18n", "polish", "修正", "tuning"]))
     has_frontend = flag("frontend", "frontend/src/" in lower or "vitest" in lower or "page" in label_lower or "ui" in label_lower or "frontend" in label_lower)
     has_backend = flag("backend", "backend/src/main" in lower or "controller" in lower or "service" in lower or "repository" in lower or "api" in label_lower or "backend" in label_lower)
     has_db = flag("database/schema", text_has(lower, ["flyway", "migration", "postgresql", "pgvector", "jsonb", "schema", "table ", "column"]))
@@ -307,254 +271,183 @@ def estimate_points(spec_id: str, title: str, row: RoadmapRow | None, doc: Archi
     has_external = flag("external-env", text_has(lower, ["cloud run", "cloud build", "gcp", "docker", "native image", "graalvm", "testcontainers", "google oauth", "gemini", "spring ai"]))
     has_e2e = flag("e2e/playwright", text_has(lower, ["playwright", " e2e", "browser", "critical path", "fixture runner"]))
     has_prod = flag("production", text_has(lower, ["production", "prod ", "deploy", "cloud run", "native image", "cloud build"]))
-    has_pivot = flag("pivot/debug", text_has(label_lower + " " + row.status_raw.lower() if row else label_lower, ["pivot", "root cause", "hotfix", "round 2", "production bug", "503", "failures"]))
-    has_research = flag("research/audit", text_has(label_lower, ["research", "audit", "poc", "scanner architecture", "meta"]))
+    flag("pivot/debug", text_has((label_lower + " " + row.status_raw.lower()) if row else label_lower, ["pivot", "root cause", "hotfix", "round 2", "production bug", "503", "failures"]))
     has_api_contract = flag("api-contract", text_has(lower, ["api contract", "response", "request", "endpoint", "controller", "contract"]))
     parent_or_rollup = flag(
         "parent-or-rollup",
-        bool(
-            row
-            and (
-                "五段" in row.points_raw
-                or "三段" in row.points_raw
-                or "兩段" in row.points_raw
-                or "absorbed" in title.lower()
-            )
-        )
-        or spec_id in {"S014", "S147", "S160", "S161", "S163", "S164"},
+        bool(row and ("五段" in row.points_raw or "三段" in row.points_raw or "兩段" in row.points_raw or "absorbed" in title.lower()))
+        or spec_id in PARENT_OR_ROLLUP_IDS,
     )
 
     deps = dependency_count(text, spec_id)
     acs = ac_count(text)
     tasks = task_count(text)
 
-    tech_risk = 1
-    if has_external or text_has(lower, ["spring modulith", "spring ai", "graalvm", "native", "vector", "outbox"]):
-        tech_risk = 3
-    elif has_db or has_security or has_backend:
-        tech_risk = 2
-
-    uncertainty = 1
-    if has_pivot or has_research or text_has(lower, ["production upload", "not functional", "audit polish"]):
-        uncertainty = 3
-    elif "rework" in lower or "v2" in lower or "compatibility" in lower:
-        uncertainty = 2
-
-    dependencies = 1
-    if deps >= 3 or (has_external and deps >= 1):
-        dependencies = 3
-    elif deps >= 1 or has_external:
-        dependencies = 2
-
-    scope = 1
+    implementation_surface = 1
     if parent_or_rollup or (has_frontend and has_backend and has_db) or len(prod_paths) >= 9 or acs >= 8 or tasks >= 5:
-        scope = 3
+        implementation_surface = 3
     elif (has_frontend and has_backend) or has_db or len(prod_paths) >= 4 or acs >= 4 or tasks >= 2:
-        scope = 2
+        implementation_surface = 2
 
-    testing = 1
-    if has_e2e or has_prod or "testcontainers" in lower or "native image" in lower:
-        testing = 3
-    elif has_backend or has_frontend or is_test_only:
-        testing = 2
+    state_and_contract = 1
+    if (has_db and has_api_contract) or has_security or text_has(lower, ["aggregate", "outbox", "projection", "vector", "permission", "migration"]):
+        state_and_contract = 3
+    elif has_db or has_api_contract or has_backend:
+        state_and_contract = 2
 
-    reversibility = 1
-    if has_db or has_security or has_prod or text_has(lower, ["aggregate", "outbox", "permission", "migration"]):
-        reversibility = 3
-    elif has_api_contract or (has_frontend and has_backend):
-        reversibility = 2
+    integration_surface = 1
+    if has_prod or text_has(lower, ["cloud run", "cloud build", "native image", "graalvm", "google oauth", "gemini", "spring ai"]):
+        integration_surface = 3
+    elif has_external or has_e2e or deps >= 3:
+        integration_surface = 2
+
+    verification_effort = 1
+    if has_e2e or has_prod or "native image" in lower or tasks >= 5:
+        verification_effort = 3
+    elif has_backend or has_frontend or is_test_only or "testcontainers" in lower or acs >= 4:
+        verification_effort = 2
 
     if is_docs_only:
-        tech_risk = min(tech_risk, 1)
-        testing = min(testing, 1)
-        reversibility = min(reversibility, 1)
-        scope = min(scope, 2 if len(docs_paths) >= 4 else 1)
+        implementation_surface = min(implementation_surface, 2 if len(docs_paths) >= 4 else 1)
+        state_and_contract = min(state_and_contract, 1)
+        integration_surface = min(integration_surface, 1)
+        verification_effort = min(verification_effort, 1)
     if is_config_only and not (has_prod or has_external):
-        scope = min(scope, 1)
-        reversibility = min(reversibility, 2)
+        implementation_surface = min(implementation_surface, 1)
+        state_and_contract = min(state_and_contract, 1)
+        integration_surface = min(integration_surface, 1)
     if is_test_only and not has_e2e:
-        tech_risk = min(tech_risk, 2)
-        reversibility = min(reversibility, 1)
+        state_and_contract = min(state_and_contract, 1)
+        integration_surface = min(integration_surface, 1)
+    if is_research_only and not (has_backend or has_frontend or has_db or has_prod):
+        implementation_surface = min(implementation_surface, 2)
+        state_and_contract = min(state_and_contract, 1)
+        integration_surface = min(integration_surface, 1)
+        verification_effort = min(verification_effort, 1)
 
     dimensions = {
-        "tech_risk": tech_risk,
-        "uncertainty": uncertainty,
-        "dependencies": dependencies,
-        "scope": scope,
-        "testing": testing,
-        "reversibility": reversibility,
+        "implementation_surface": implementation_surface,
+        "state_and_contract": state_and_contract,
+        "integration_surface": integration_surface,
+        "verification_effort": verification_effort,
     }
-    diagnostic = sum(dimensions.values())
-    label = point_label(row.points_raw if row else None)
-    label_points = {
-        "XS": 2,
-        "S": 3,
-        "S-M": 5,
-        "M": 8,
-        "M-L": 8,
-        "L": 13,
-        "XL": 20,
-    }.get(label or "")
-    points = label_points or diagnostic_score_to_points(diagnostic, parent_or_rollup)
+    complexity_score = sum(dimensions.values())
+    story_points = story_points_from_score(complexity_score, parent_or_rollup)
+    if story_points == 20 and not parent_or_rollup:
+        story_points = 13
+    if is_docs_only or (is_research_only and not (has_backend or has_frontend or has_db or has_prod)):
+        story_points = min(story_points, 3)
+    if is_config_only and not (has_prod or has_external):
+        story_points = min(story_points, 3)
+    if is_copy and len(prod_paths) == 0 and tasks == 0:
+        story_points = 1
 
-    upward_reasons = 0
-    if parent_or_rollup or len(prod_paths) >= 9 or tasks >= 5:
-        upward_reasons += 1
-    if has_frontend and has_backend and has_db:
-        upward_reasons += 1
-    if has_e2e or has_prod or has_external:
-        upward_reasons += 1
-    if has_pivot:
-        upward_reasons += 1
-    if diagnostic >= 17:
-        upward_reasons += 1
+    status = terminal_status(row, docs)
+    roadmap_points_raw = row.points_raw if row else None
+    exclusion_reason = None
+    if "META" in (roadmap_points_raw or "") or "META" in title:
+        exclusion_reason = "META"
+    elif status != "shipped":
+        exclusion_reason = status
+    elif spec_id in ROLLED_UP_CHILDREN:
+        exclusion_reason = "rolled_up_child"
 
-    downward_reasons = 0
-    if is_docs_only or (is_config_only and not has_prod):
-        downward_reasons += 1
-    if text_has(label_lower, ["copy", "文案", "message", "placeholder", "label", "i18n", "polish", "修正", "tuning"]):
-        downward_reasons += 1
-    if len(prod_paths) <= 1 and acs <= 3 and tasks == 0 and not (has_db or has_external):
-        downward_reasons += 1
-    if is_test_only and not has_e2e:
-        downward_reasons += 1
-
-    if upward_reasons >= 3:
-        points = step(points, 2)
-    elif upward_reasons >= 1:
-        points = step(points, 1)
-
-    if downward_reasons >= 2:
-        points = step(points, -2)
-    elif downward_reasons == 1:
-        points = step(points, -1)
-
-    if is_docs_only:
-        points = min(points, 3)
-    if is_config_only and not has_prod:
-        points = min(points, 3)
-    if "message polish" in label_lower or "i18n" in label_lower or "placeholder" in label_lower or "文案" in label_lower:
-        points = min(points, 2 if not (has_backend and has_frontend) else 3)
-    if points == 20 and not parent_or_rollup:
-        points = 13
-    if parent_or_rollup and (diagnostic >= 17 or (label == "XL")):
-        points = 20
-
-    evidence = [
-        f"{len(prod_paths)} production/tool paths",
-        f"{acs} AC markers",
-        f"{tasks} task markers",
-        f"{deps} referenced specs",
-    ]
-    evidence.extend(flags)
-    rationale = (
-        f"story_points 依 full spec evidence 計算：{', '.join(evidence[:4])}；"
-        f"診斷分 {diagnostic}，上調訊號 {upward_reasons}，下調訊號 {downward_reasons}，最後 {points} 點。"
-    )
-    return points, diagnostic, dimensions, evidence, rationale
-
-
-def should_marketing_count(row: RoadmapRow | None, doc: ArchiveDoc | None) -> bool:
+    included_in_shipped_total = exclusion_reason is None
+    archive_dates = [doc.archive_date for doc in docs if doc.archive_date]
+    archive_date = min(archive_dates) if archive_dates else None
+    marketing_period = False
     if row and row.version:
-        return row.version <= MARKETING_CUTOFF_VERSION
-    if doc and doc.archive_date:
-        try:
-            doc_date = date.fromisoformat(doc.archive_date)
-            return doc_date <= MARKETING_CUTOFF_DATE
-        except ValueError:
-            return False
-    return False
+        marketing_period = row.version <= MARKETING_CUTOFF_VERSION
+    elif archive_date:
+        marketing_period = date.fromisoformat(archive_date) <= MARKETING_CUTOFF_DATE
+
+    return {
+        "spec_id": spec_id,
+        "title": title,
+        "story_points": story_points,
+        "all_spec_story_points": story_points,
+        "shipped_total_story_points": story_points if included_in_shipped_total else 0,
+        "marketing_period_story_points": story_points if marketing_period else 0,
+        "marketing_shipped_story_points": story_points if included_in_shipped_total and marketing_period else 0,
+        "complexity_score": complexity_score,
+        "dimensions": dimensions,
+        "evidence_flags": flags,
+        "counts": {
+            "prod_paths": len(prod_paths),
+            "doc_paths": len(docs_paths),
+            "ac_markers": acs,
+            "task_markers": tasks,
+            "referenced_specs": deps,
+            "source_files_read": len(docs),
+            "bytes_read": sum(doc.bytes_read for doc in docs),
+            "lines_read": sum(doc.lines_read for doc in docs),
+            "parent_or_rollup": parent_or_rollup,
+        },
+        "terminal_status": status,
+        "included_in_shipped_total": included_in_shipped_total,
+        "marketing_period": marketing_period,
+        "exclusion_reason": exclusion_reason,
+        "roadmap_section": row.section if row else None,
+        "roadmap_points_raw": roadmap_points_raw,
+        "version": version_text(row.version if row else None),
+        "archive_date": archive_date,
+        "source_paths": [doc.path for doc in docs],
+        "source_sha256s": {doc.path: doc.sha256 for doc in docs},
+        "rationale": f"complexity_score={complexity_score}; dimensions={dimensions}; story_points={story_points}",
+    }
 
 
-def build_story_point_records() -> list[StoryPointRecord]:
-    rows = parse_roadmap()
-    docs = parse_archives()
-    spec_ids = sorted(set(rows) | set(docs), key=sort_key)
-    results: list[StoryPointRecord] = []
-
-    for spec_id in spec_ids:
-        row = rows.get(spec_id)
-        doc = docs.get(spec_id)
-        title = row.title if row else (doc.title if doc else spec_id)
-        status = terminal_status(row, doc)
-        points_raw = row.points_raw if row else None
-        points, diagnostic, dimensions, evidence, rationale = estimate_points(spec_id, title, row, doc)
-
-        exclusion_reason = None
-        if "META" in (points_raw or "") or "META" in title:
-            exclusion_reason = "META row records grouping/research management, not direct delivery."
-        elif status != "shipped":
-            exclusion_reason = f"Terminal status is {status}."
-        elif spec_id in ROLLED_UP_CHILDREN:
-            exclusion_reason = "Counted inside the shipped parent split package to avoid double counting."
-
-        counted = exclusion_reason is None
-        marketing_counted = counted and should_marketing_count(row, doc)
-
-        results.append(
-            StoryPointRecord(
-                spec_id=spec_id,
-                title=title,
-                source_path=doc.path if doc else None,
-                archive_source_paths=doc.source_paths if doc else [],
-                archive_file_count=len(doc.archive_file_records) if doc else 0,
-                archive_bytes_read=doc.bytes_read if doc else 0,
-                archive_sha256s={str(item["path"]): str(item["sha256"]) for item in doc.archive_file_records} if doc else {},
-                roadmap_section=row.section if row else None,
-                version=version_text(row.version if row else None),
-                archive_date=doc.archive_date if doc else None,
-                terminal_status=status,
-                counted=counted,
-                marketing_counted=marketing_counted,
-                exclusion_reason=exclusion_reason,
-                story_points=points,
-                diagnostic_score=diagnostic,
-                dimensions=dimensions,
-                evidence_flags=evidence,
-                rationale=rationale,
-            )
-        )
-    return results
-
-
-def sort_key(spec_id: str) -> tuple[int, str]:
-    num = int(re.search(r"\d+", spec_id).group(0))
-    return num, spec_id
-
-
-def summarize(records: list[StoryPointRecord]) -> dict[str, object]:
-    counted = [record for record in records if record.counted]
-    marketing = [record for record in records if record.marketing_counted]
-    excluded = [record for record in records if not record.counted]
-    by_points: dict[str, int] = {}
-    for record in counted:
-        by_points[str(record.story_points)] = by_points.get(str(record.story_points), 0) + 1
-    archive_files_read = sum(record.archive_file_count for record in records)
-    archive_bytes_read = sum(record.archive_bytes_read for record in records)
+def summarize(records: list[dict[str, object]], file_records: list[dict[str, object]]) -> dict[str, object]:
+    shipped = [record for record in records if record["included_in_shipped_total"]]
+    marketing_period = [record for record in records if record["marketing_period"]]
+    marketing_shipped = [record for record in records if record["included_in_shipped_total"] and record["marketing_period"]]
+    all_spec_points = sum(int(record["story_points"]) for record in records)
+    marketing_period_points = sum(int(record["story_points"]) for record in marketing_period)
     return {
         "generated_by": "tools/calculate_story_points.py",
-        "model": "Fibonacci story points with optional six-factor diagnostic",
-        "source_read_policy": "Every archive spec file is read in full via read_bytes(); duplicate archive files for the same SpecID are merged into that SpecID record.",
+        "model": "MVP complexity-only Fibonacci story points",
+        "source_read_policy": "Every spec archive file is read in full via read_bytes(); all spec records receive story_points, including excluded/non-shipped records.",
         "deck": list(FIBONACCI),
-        "marketing_cutoff": {
-            "version": "v4.86.0",
-            "date": MARKETING_CUTOFF_DATE.isoformat(),
-        },
+        "source_files_read": len(file_records),
+        "source_bytes_read": sum(int(record["bytes"]) for record in file_records),
+        "source_lines_read": sum(int(record["lines"]) for record in file_records),
+        "total_spec_records": len(records),
+        "spec_records_with_source_files": sum(1 for record in records if record["source_paths"]),
+        "spec_records_without_source_files": sum(1 for record in records if not record["source_paths"]),
         "totals": {
-            "all_counted_specs": len(counted),
-            "all_counted_story_points": sum(record.story_points for record in counted),
-            "marketing_counted_specs": len(marketing),
-            "marketing_story_points": sum(record.story_points for record in marketing),
-            "excluded_specs": len(excluded),
-            "archive_files_read": archive_files_read,
-            "archive_bytes_read": archive_bytes_read,
+            "all_spec_records": len(records),
+            "all_spec_story_points": all_spec_points,
+            "shipped_specs": len(shipped),
+            "shipped_story_points": sum(int(record["story_points"]) for record in shipped),
+            "marketing_period_specs": len(marketing_period),
+            "marketing_period_story_points": marketing_period_points,
+            "marketing_shipped_specs": len(marketing_shipped),
+            "marketing_shipped_story_points": sum(int(record["story_points"]) for record in marketing_shipped),
+            "excluded_specs": len(records) - len(shipped),
+            "excluded_story_points": all_spec_points - sum(int(record["story_points"]) for record in shipped),
         },
-        "distribution": by_points,
-        "exclusion_notes": {
-            "META": "Grouping/research management rows are not delivery points.",
-            "cancelled/superseded/deferred": "Terminal non-delivery states count as 0.",
-            "rolled_up_children": "Split children are listed but counted inside their shipped parent package.",
+        "distribution": {
+            "all_spec_points": dict(sorted(Counter(str(record["story_points"]) for record in records).items(), key=lambda item: int(item[0]))),
+            "shipped_points": dict(sorted(Counter(str(record["story_points"]) for record in shipped).items(), key=lambda item: int(item[0]))),
+            "complexity_scores": dict(sorted(Counter(str(record["complexity_score"]) for record in records).items(), key=lambda item: int(item[0]))),
         },
+        "marketing_outcome": {
+            "story_points": all_spec_points,
+            "weekly_points": float((Decimal(all_spec_points) / DAYS * Decimal("7")).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)),
+            "cost_per_point": float((TOKEN_COST / Decimal(all_spec_points)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+        },
+    }
+
+
+def build_payload() -> dict[str, object]:
+    rows = parse_roadmap()
+    docs_by_spec, file_records = read_all_spec_docs()
+    spec_ids = sorted(set(rows) | set(docs_by_spec), key=sort_key)
+    records = [calculate_spec(spec_id, rows.get(spec_id), docs_by_spec.get(spec_id, [])) for spec_id in spec_ids]
+    return {
+        "summary": summarize(records, file_records),
+        "source_file_records": file_records,
+        "records": records,
     }
 
 
@@ -562,12 +455,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
-
-    records = build_story_point_records()
-    payload = {
-        "summary": summarize(records),
-        "records": [asdict(record) for record in records],
-    }
+    payload = build_payload()
     args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(payload["summary"], ensure_ascii=False, indent=2))
 
