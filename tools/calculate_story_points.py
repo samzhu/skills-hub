@@ -45,6 +45,7 @@ ROLLED_UP_CHILDREN = {
 }
 PARENT_OR_ROLLUP_IDS = {"S014", "S147", "S160", "S161", "S163", "S164"}
 FIBONACCI = (1, 2, 3, 5, 8, 13, 20)
+NOT_EXECUTED_STATUSES = {"cancelled", "deferred", "other"}
 
 
 @dataclass
@@ -353,6 +354,7 @@ def calculate_spec(spec_id: str, row: RoadmapRow | None, docs: list[SpecDoc]) ->
         exclusion_reason = "rolled_up_child"
 
     included_in_shipped_total = exclusion_reason is None
+    included_in_outcome_total = status not in NOT_EXECUTED_STATUSES
     archive_dates = [doc.archive_date for doc in docs if doc.archive_date]
     archive_date = min(archive_dates) if archive_dates else None
     marketing_period = False
@@ -366,8 +368,10 @@ def calculate_spec(spec_id: str, row: RoadmapRow | None, docs: list[SpecDoc]) ->
         "title": title,
         "story_points": story_points,
         "all_spec_story_points": story_points,
+        "accounted_story_points": story_points if included_in_outcome_total else 0,
         "shipped_total_story_points": story_points if included_in_shipped_total else 0,
         "marketing_period_story_points": story_points if marketing_period else 0,
+        "marketing_accounted_story_points": story_points if included_in_outcome_total and marketing_period else 0,
         "marketing_shipped_story_points": story_points if included_in_shipped_total and marketing_period else 0,
         "complexity_score": complexity_score,
         "dimensions": dimensions,
@@ -384,9 +388,11 @@ def calculate_spec(spec_id: str, row: RoadmapRow | None, docs: list[SpecDoc]) ->
             "parent_or_rollup": parent_or_rollup,
         },
         "terminal_status": status,
+        "included_in_outcome_total": included_in_outcome_total,
         "included_in_shipped_total": included_in_shipped_total,
         "marketing_period": marketing_period,
         "exclusion_reason": exclusion_reason,
+        "outcome_exclusion_reason": status if not included_in_outcome_total else None,
         "roadmap_section": row.section if row else None,
         "roadmap_points_raw": roadmap_points_raw,
         "version": version_text(row.version if row else None),
@@ -398,15 +404,19 @@ def calculate_spec(spec_id: str, row: RoadmapRow | None, docs: list[SpecDoc]) ->
 
 
 def summarize(records: list[dict[str, object]], file_records: list[dict[str, object]]) -> dict[str, object]:
+    accounted = [record for record in records if record["included_in_outcome_total"]]
+    not_executed = [record for record in records if not record["included_in_outcome_total"]]
     shipped = [record for record in records if record["included_in_shipped_total"]]
     marketing_period = [record for record in records if record["marketing_period"]]
+    marketing_accounted = [record for record in records if record["included_in_outcome_total"] and record["marketing_period"]]
     marketing_shipped = [record for record in records if record["included_in_shipped_total"] and record["marketing_period"]]
     all_spec_points = sum(int(record["story_points"]) for record in records)
+    accounted_points = sum(int(record["story_points"]) for record in accounted)
     marketing_period_points = sum(int(record["story_points"]) for record in marketing_period)
     return {
         "generated_by": "tools/calculate_story_points.py",
         "model": "MVP complexity-only Fibonacci story points",
-        "source_read_policy": "Every spec archive file is read in full via read_bytes(); all spec records receive story_points, including excluded/non-shipped records.",
+        "source_read_policy": "Every spec archive file is read in full via read_bytes(); all spec records receive story_points, while outcome totals exclude cancelled/deferred/other records that were not executed.",
         "deck": list(FIBONACCI),
         "source_files_read": len(file_records),
         "source_bytes_read": sum(int(record["bytes"]) for record in file_records),
@@ -417,10 +427,16 @@ def summarize(records: list[dict[str, object]], file_records: list[dict[str, obj
         "totals": {
             "all_spec_records": len(records),
             "all_spec_story_points": all_spec_points,
+            "accounted_specs": len(accounted),
+            "accounted_story_points": accounted_points,
+            "not_executed_specs": len(not_executed),
+            "not_executed_story_points": all_spec_points - accounted_points,
             "shipped_specs": len(shipped),
             "shipped_story_points": sum(int(record["story_points"]) for record in shipped),
             "marketing_period_specs": len(marketing_period),
             "marketing_period_story_points": marketing_period_points,
+            "marketing_accounted_specs": len(marketing_accounted),
+            "marketing_accounted_story_points": sum(int(record["story_points"]) for record in marketing_accounted),
             "marketing_shipped_specs": len(marketing_shipped),
             "marketing_shipped_story_points": sum(int(record["story_points"]) for record in marketing_shipped),
             "excluded_specs": len(records) - len(shipped),
@@ -428,13 +444,14 @@ def summarize(records: list[dict[str, object]], file_records: list[dict[str, obj
         },
         "distribution": {
             "all_spec_points": dict(sorted(Counter(str(record["story_points"]) for record in records).items(), key=lambda item: int(item[0]))),
+            "accounted_points": dict(sorted(Counter(str(record["story_points"]) for record in accounted).items(), key=lambda item: int(item[0]))),
             "shipped_points": dict(sorted(Counter(str(record["story_points"]) for record in shipped).items(), key=lambda item: int(item[0]))),
             "complexity_scores": dict(sorted(Counter(str(record["complexity_score"]) for record in records).items(), key=lambda item: int(item[0]))),
         },
         "marketing_outcome": {
-            "story_points": all_spec_points,
-            "weekly_points": float((Decimal(all_spec_points) / DAYS * Decimal("7")).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)),
-            "cost_per_point": float((TOKEN_COST / Decimal(all_spec_points)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+            "story_points": accounted_points,
+            "weekly_points": float((Decimal(accounted_points) / DAYS * Decimal("7")).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)),
+            "cost_per_point": float((TOKEN_COST / Decimal(accounted_points)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
         },
     }
 

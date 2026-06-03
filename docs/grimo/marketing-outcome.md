@@ -2,7 +2,7 @@
 
 我們用 26 天、約 47.40 億 tokens 的 AI 開發投入，等價成本
 $3,362.38，把企業級 AI Agent Skills Registry 從產品概念推進到
-2291 點專案成果，平均每週交付 616.8 點。
+2208 點專案成果，平均每週交付 594.5 點。
 
 換句話說：約 3,400 美元，交付一套能發佈、搜尋、審核、下載、
 管理權限、跑 E2E 驗證，並持續部署修正的 AI Agent Skills Registry。
@@ -15,16 +15,20 @@ $3,362.38，把企業級 AI Agent Skills Registry 從產品概念推進到
 | 總天數 | 26 天 |
 | Token 投入 | 4,740,430,679 tokens（約 47.40 億） |
 | Token 等價成本 | $3,362.38 |
-| 專案成果 | 2291 story points |
-| 每週交付 | 616.8 story points |
-| 每點成本 | $1.47 |
+| 專案成果 | 2208 story points |
+| 每週交付 | 594.5 story points |
+| 每點成本 | $1.52 |
 
-## 2291 點怎麼算
+## 2208 點怎麼算
 
-2291 點是以 MVP complexity-only Fibonacci story point deck 加總 repo
-所有 spec records。這個口徑包含 shipped、cancelled、superseded、
-deferred、META、rolled-up child，以及 roadmap 有列但沒有 archive spec 檔的
-records；也就是每個 SpecID 都分配 story points。
+2208 點是以 MVP complexity-only Fibonacci story point deck 先為 repo
+所有 spec records 分配 story points，再排除沒有執行的 records 後得到的
+成效結算點數。
+
+每個 SpecID 都仍會分配 story points，方便盤點完整工作量；但成效摘要只把
+已執行的 records 算進成果。`cancelled`、`deferred`、`other` 不進成效結算；
+`shipped`、`superseded`、`META`、rolled-up child，以及 roadmap 有列但沒有
+archive spec 檔、但狀態可判定已執行的 records 仍會計入。
 
 目前正式點數只使用：
 
@@ -55,10 +59,13 @@ implementation、fixture 或 verification work 時才計入。
 - 腳本：`tools/calculate_story_points.py`
 - 每個 spec 的結果：`docs/grimo/specs/story-points-2026-06-02.json`
 - source coverage：252 個 spec 檔、4,482,923 bytes、79,657 lines。
-- repo 所有 spec records：286 個 records，2291 story points。
+- repo 所有 spec records：286 個 records，2291 assigned story points。
+- 不進成效結算：13 個 records，83 story points。
+- 成效結算 records：273 個 records，2208 story points。
 - repo shipped records：239 個 records，2012 story points。
 - excluded / non-shipped records：47 個 records，279 story points。
 - marketing date range 內所有 records：266 個 records，2210 story points。
+- marketing date range 內成效結算 records：257 個 records，2136 story points。
 - marketing date range 內 shipped records：235 個 records，1965 story points。
 
 實際例子：
@@ -105,5 +112,5 @@ Python 計算後：
 
 ## 一句話版本
 
-26 天，47.40 億 tokens，$3.36K，2291 story points 交付。從產品概念到
+26 天，47.40 億 tokens，$3.36K，2208 story points 交付。從產品概念到
 企業級 AI Agent Skills Registry。
